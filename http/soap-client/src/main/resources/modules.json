@@ -1,0 +1,8 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetryFactory",
+        "moduleName": "ru.tinkoff.kora.soap.client.common.SoapClientModule",
+        "artifact": "ru.tinkoff.kora:soap-client"
+    }
+]

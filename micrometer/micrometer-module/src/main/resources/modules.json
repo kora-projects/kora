@@ -1,0 +1,14 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "io.micrometer.prometheus.PrometheusMeterRegistry",
+        "moduleName": "ru.tinkoff.kora.micrometer.module.MetricsModule",
+        "artifact": "ru.tinkoff.kora:micrometer-module"
+    },
+    {
+        "tags": [],
+        "typeRegex": "io.micrometer.core.instrument.MeterRegistry",
+        "moduleName": "ru.tinkoff.kora.micrometer.module.MetricsModule",
+        "artifact": "ru.tinkoff.kora:micrometer-module"
+    }
+]

@@ -1,0 +1,5 @@
+ru.tinkoff.kora.database.symbol.processor.extension.RepositoryLinkerExtensionFactory
+ru.tinkoff.kora.database.symbol.processor.cassandra.extension.CassandraTypesExtensionFactory
+ru.tinkoff.kora.database.symbol.processor.jdbc.extension.JdbcTypesExtensionFactory
+ru.tinkoff.kora.database.symbol.processor.r2dbc.extension.R2dbcTypesExtensionFactory
+ru.tinkoff.kora.database.symbol.processor.vertx.extension.VertxTypesExtensionFactory

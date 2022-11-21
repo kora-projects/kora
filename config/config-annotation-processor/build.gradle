@@ -1,0 +1,11 @@
+dependencies {
+    api project(':annotation-processor-common')
+    api project(':config:config-common')
+
+    implementation project(':kora-app-annotation-processor')
+
+    testImplementation testFixtures(project(':annotation-processor-common'))
+}
+
+apply from: '../../in-test-generated.gradle'
+

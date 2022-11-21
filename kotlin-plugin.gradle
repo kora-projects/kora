@@ -1,0 +1,11 @@
+apply plugin: 'org.jetbrains.kotlin.jvm'
+
+tasks.findAll {
+    if (it.class.canonicalName == "org.jetbrains.kotlin.gradle.tasks.KotlinCompile_Decorated") {
+        it.kotlinOptions {
+            jvmTarget = '17'
+            javaParameters = true
+            freeCompilerArgs += '-Xjvm-default=all'
+        }
+    }
+}

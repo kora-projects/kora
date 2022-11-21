@@ -1,0 +1,14 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "ru.tinkoff.kora.database.cassandra.CassandraQueryExecutor",
+        "moduleName": "ru.tinkoff.kora.database.cassandra.CassandraModule",
+        "artifact": "ru.tinkoff.kora:database-cassandra"
+    },
+    {
+        "tags": [],
+        "typeRegex": "ru.tinkoff.kora.database.cassandra.CassandraDatabase",
+        "moduleName": "ru.tinkoff.kora.database.cassandra.CassandraModule",
+        "artifact": "ru.tinkoff.kora:database-cassandra"
+    }
+]

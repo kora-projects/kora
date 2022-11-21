@@ -1,0 +1,21 @@
+plugins {
+    id "com.google.devtools.ksp"
+    id "java-test-fixtures"
+}
+apply from: "${project.rootDir}/kotlin-plugin.gradle"
+
+dependencies {
+    api project(':common')// todo delete
+
+    implementation libs.ksp.api
+    implementation libs.kotlin.reflect
+    implementation libs.kotlinpoet
+    implementation libs.kotlinpoet.ksp
+
+
+    testFixturesImplementation libs.kotlin.compile.testing
+    testFixturesImplementation libs.kotlin.annotation.processing
+    testFixturesImplementation libs.ksp
+    testFixturesImplementation libs.ksp.api
+
+}

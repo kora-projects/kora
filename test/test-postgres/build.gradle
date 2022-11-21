@@ -1,0 +1,5 @@
+dependencies {
+    api libs.testcontainers.postgresql
+    api libs.jdbc.postgresql
+    api libs.jsr305
+}

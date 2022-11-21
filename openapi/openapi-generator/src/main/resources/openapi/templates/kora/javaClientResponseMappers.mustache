@@ -1,0 +1,49 @@
+package {{package}};
+
+import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
+import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper;
+import reactor.core.publisher.Mono;
+import {{package}}.{{classname}}Responses.*;
+
+{{#imports}}import {{import}};
+{{/imports}}
+
+@javax.annotation.processing.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
+public interface {{classname}}ClientResponseMappers {
+{{#operations}}
+{{#operation}}
+  {{#responses}}
+  public static final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper implements HttpClientResponseMapper<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse, Mono<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>>{
+    {{#dataType}}
+    private final HttpClientResponseMapper<{{{dataType}}}, Mono<{{{dataType}}}>> delegate;
+    public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper(HttpClientResponseMapper<{{{dataType}}}, Mono<{{{dataType}}}>> delegate) {
+      this.delegate = delegate;
+    }
+    {{/dataType}}
+    @Override
+    public Mono<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> apply(HttpClientResponse response) {
+      {{#headers}}
+      var {{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}} = response.headers().getFirst("{{baseName}}");
+      {{/headers}}
+      {{^dataType}}
+      return Mono.just(new {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse(
+        {{#isDefault}}response.code(){{#hasHeaders}}, {{/hasHeaders}}{{/isDefault}}
+        {{#headers}}{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}{{^-last}},{{/-last}}
+        {{/headers}}
+      ));
+      {{/dataType}}
+      {{#dataType}}
+      return this.delegate.apply(response)
+        .map(content -> new {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse(
+          {{#isDefault}}response.code(), {{/isDefault}}
+          content{{#hasHeaders}}, {{/hasHeaders}}
+          {{#headers}}{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}{{^-last}}, {{/-last}}{{/headers}}
+      ));
+      {{/dataType}}
+    }
+  }
+
+  {{/responses}}
+{{/operation}}
+{{/operations}}
+}

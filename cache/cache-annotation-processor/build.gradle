@@ -1,0 +1,16 @@
+dependencies {
+    implementation project(":common")
+    implementation project(":cache:cache-common")
+
+    implementation project(":annotation-processor-common")
+    implementation project(":aop:aop-annotation-processor")
+
+    implementation libs.javapoet
+    implementation libs.logback.classic
+
+    testImplementation testFixtures(project(":annotation-processor-common"))
+    testImplementation project(":test:test-logging")
+    testImplementation "com.google.testing.compile:compile-testing:0.19"
+}
+
+apply from: '../../in-test-generated.gradle'

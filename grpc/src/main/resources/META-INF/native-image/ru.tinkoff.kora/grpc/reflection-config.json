@@ -1,0 +1,39 @@
+[
+  {
+    "name": "io.grpc.netty.NettyClientHandler",
+    "allPublicMethods": true
+  },
+  {
+    "name": "io.grpc.netty.NettyServerHandler",
+    "allPublicMethods": true
+  },
+  {
+    "name": "io.grpc.netty.ProtocolNegotiators$GrpcNegotiationHandler",
+    "allPublicMethods": true
+  },
+  {
+    "name": "io.grpc.netty.ProtocolNegotiators$WaitUntilActiveHandler",
+    "allPublicMethods": true
+  },
+  {
+    "name": "io.grpc.netty.WriteBufferingAndExceptionHandler",
+    "allPublicMethods": true
+  },
+  {
+    "name": "java.nio.channels.spi.SelectorProvider",
+    "methods": [
+      {
+        "name": "openServerSocketChannel",
+        "parameterTypes": [
+          "java.net.ProtocolFamily"
+        ]
+      },
+      {
+        "name": "openSocketChannel",
+        "parameterTypes": [
+          "java.net.ProtocolFamily"
+        ]
+      }
+    ]
+  }
+]

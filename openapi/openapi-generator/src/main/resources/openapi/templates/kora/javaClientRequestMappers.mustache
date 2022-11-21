@@ -1,0 +1,48 @@
+package {{package}};
+
+import ru.tinkoff.kora.http.client.common.form.UrlEncodedWriter;
+import ru.tinkoff.kora.http.client.common.form.MultipartWriter;
+import ru.tinkoff.kora.http.client.common.request.HttpClientRequestMapper;
+import ru.tinkoff.kora.http.client.common.request.HttpClientRequestBuilder;
+import reactor.core.publisher.Mono;
+
+@javax.annotation.processing.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
+public interface {{classname}}ClientRequestMappers {
+{{#operations}}
+{{#operation}}
+{{#hasFormParams}}
+
+  public static final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper implements HttpClientRequestMapper<{{classname}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> {
+    @Override
+    public HttpClientRequestBuilder apply(HttpClientRequestMapper.Request<{{classname}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> request) {
+      {{#vendorExtensions.urlEncodedForm}}
+      var b = new UrlEncodedWriter();{{#formParams}}
+      if (request.parameter().{{paramName}}() != null) {
+        b.add("{{baseName}}", java.util.Objects.toString(request.parameter().{{paramName}}()));
+      }
+      {{/formParams}}
+      return b.write(request.builder());
+      {{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
+      var l = new java.util.ArrayList
+      <ru.tinkoff.kora.http.common.form.FormMultipart.FormPart>();{{#formParams}}
+              if (request.parameter().{{paramName}}() != null) {
+          {{#isFile}}
+                  var file = request.parameter().{{paramName}}();
+                  l.add(file);
+          {{/isFile}}{{^isFile}}
+                  var buf = java.nio.charset.StandardCharsets.UTF_8.encode(java.util.Objects.toString(request.parameter().{{paramName}}()));
+                  var part = ru.tinkoff.kora.http.common.form.FormMultipart.data(
+                  "{{baseName}}",
+                  java.util.Objects.toString(request.parameter().{{paramName}}())
+                  );{{/isFile}}
+      }
+      {{/formParams}}
+      return MultipartWriter.write(request.builder(), l);
+      {{/vendorExtensions.multipartForm}}
+
+    }
+  }
+{{/hasFormParams}}
+{{/operation}}
+{{/operations}}
+}

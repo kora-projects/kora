@@ -1,0 +1,95 @@
+  /**
+   * {{^description}}Gets or Sets {{{name}}}{{/description}}{{#description}}{{{description}}}{{/description}}
+   */
+  enum class {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{classname}}{{/datatypeWithEnum}} {
+{{#allowableValues}}{{#enumVars}}
+    {{{name}}} {
+      override fun getValue() : {{{dataType}}} {
+        return {{{value}}}
+      }
+    }{{^-last}},{{/-last}}{{#-last}};{{/-last}}
+{{/enumVars}}{{/allowableValues}}
+
+
+    override fun toString(): String = {{#dataType}}{{#isString}}getValue(){{/isString}}{{^isString}}"${getValue()}"{{/isString}}{{/dataType}}
+
+    open fun getValue() : {{{dataType}}} {
+      TODO()
+    }
+
+    companion object {
+      private val values = values()
+
+      @JvmStatic
+      fun fromValue(value: {{{dataType}}}): {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{classname}}{{/datatypeWithEnum}} {
+        return values.firstOrNull { it.getValue() == value }{{^isNullable}} ?: throw IllegalArgumentException("Unexpected value '$value'"){{/isNullable}}
+      }
+    }
+
+    @ru.tinkoff.kora.common.Component
+    class {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}JsonWriter : ru.tinkoff.kora.json.common.JsonWriter<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> {
+      private val delegate = ru.tinkoff.kora.json.common.EnumJsonWriter({{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}.values()) {
+         it.getValue()
+      }
+
+      override fun write(gen: com.fasterxml.jackson.core.JsonGenerator, value: {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}?) {
+        this.delegate.write(gen, value)
+      }
+    }
+
+    @ru.tinkoff.kora.common.Component
+    class {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}JsonReader : ru.tinkoff.kora.json.common.JsonReader<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> {
+      private val delegate = ru.tinkoff.kora.json.common.EnumJsonReader({{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}.values()) {
+        it.getValue()
+      }
+
+      override fun read(parser: com.fasterxml.jackson.core.JsonParser) : {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}} {
+        return this.delegate.read(parser)!!
+      }
+    }
+    @ru.tinkoff.kora.common.Component
+    class {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}NullableJsonWriter : ru.tinkoff.kora.json.common.JsonWriter<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}?> {
+      private val delegate = ru.tinkoff.kora.json.common.EnumJsonWriter({{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}.values()) {
+         it.getValue()
+      }
+
+      override fun write(gen: com.fasterxml.jackson.core.JsonGenerator, value: {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}?) {
+        this.delegate.write(gen, value)
+      }
+    }
+
+    @ru.tinkoff.kora.common.Component
+    class {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}NullableJsonReader : ru.tinkoff.kora.json.common.JsonReader<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}?> {
+      private val delegate = ru.tinkoff.kora.json.common.EnumJsonReader({{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}.values()) {
+        it.getValue()
+      }
+
+      override fun read(parser: com.fasterxml.jackson.core.JsonParser) : {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}? {
+        return this.delegate.read(parser)
+      }
+    }
+
+    @ru.tinkoff.kora.common.Component
+    class {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}StringParameterReader : ru.tinkoff.kora.http.server.common.handler.StringParameterReader<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> {
+      private val delegate = ru.tinkoff.kora.http.server.common.handler.EnumStringParameterReader(
+        {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}.values(),
+        { it.getValue() }
+      )
+
+      override fun read(string: String): {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}} {
+        return this.delegate.read(string)
+      }
+    }
+
+    @ru.tinkoff.kora.common.Component
+    class {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}StringParameterConverter : ru.tinkoff.kora.http.client.common.writer.StringParameterConverter<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> {
+      private val delegate = ru.tinkoff.kora.http.client.common.writer.EnumStringParameterConverter(
+        {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}.values(),
+        { it.getValue() }
+      )
+
+      override fun convert(value: {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}): String {
+        return this.delegate.convert(value)
+      }
+    }
+  }

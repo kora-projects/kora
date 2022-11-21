@@ -1,0 +1,6 @@
+dependencies {
+    api libs.jackson.databind
+
+    compileOnly project(":http:http-server-common")
+    compileOnly project(":http:http-client-common")
+}

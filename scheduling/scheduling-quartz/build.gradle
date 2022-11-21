@@ -1,0 +1,12 @@
+dependencies {
+    api project(':scheduling:scheduling-common')
+
+    api('org.quartz-scheduler:quartz:2.3.2') {
+        exclude group: 'com.mchange', module: 'c3p0'
+        exclude group: 'com.mchange', module: 'mchange-commons-java'
+        exclude group: 'com.zaxxer', module: 'HikariCP-java7'
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
+    implementation libs.hikari
+    implementation project(':logging:logging-common')
+}

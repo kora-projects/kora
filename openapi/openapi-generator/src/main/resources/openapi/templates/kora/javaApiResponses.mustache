@@ -1,0 +1,26 @@
+package {{package}};
+
+{{#imports}}import {{import}};
+{{/imports}}
+
+@javax.annotation.processing.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
+public interface {{classname}}Responses {
+{{#operations}}
+{{#operation}}
+  public sealed interface {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {
+    {{#responses}}
+      /**
+      * {{message}} (status code {{code}})
+      */
+      public record {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse(
+        {{#dataType}}{{#isDefault}}int statusCode,
+        {{/isDefault}}{{{dataType}}} content{{#hasHeaders}},{{/hasHeaders}}{{/dataType}}{{^dataType}}{{#isDefault}}int statusCode{{#hasHeaders}},{{/hasHeaders}}{{/isDefault}}{{/dataType}}{{#headers}}
+        String {{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}{{^-last}},{{/-last}}{{/headers}}
+      ) implements {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {}
+
+    {{/responses}}
+  }
+
+{{/operation}}
+{{/operations}}
+}

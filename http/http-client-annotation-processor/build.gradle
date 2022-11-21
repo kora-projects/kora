@@ -1,0 +1,26 @@
+dependencies {
+    implementation project(':http:http-client-common')
+    implementation project(':annotation-processor-common')
+    implementation project(':kora-app-annotation-processor')
+
+    testImplementation testFixtures(project(':annotation-processor-common'))
+    testImplementation project(':http:http-client-async')
+    testImplementation project(':opentelemetry:opentelemetry-module')
+
+    testImplementation project(':common')
+    testImplementation project(':json:jackson-module')
+    testImplementation libs.jackson.datatype.jsr310
+    testImplementation('com.github.fge:jackson-coreutils:1.8')
+    testImplementation(libs.mockserver.netty) {
+        exclude group: 'io.swagger.parser.v3', module: 'swagger-parser'
+    }
+    testImplementation(libs.mockserver.client) {
+        exclude group: 'io.swagger.parser.v3', module: 'swagger-parser'
+    }
+    testImplementation(libs.swagger.models) {
+        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
+        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-databind'
+    }
+}
+
+apply from: '../../in-test-generated.gradle'

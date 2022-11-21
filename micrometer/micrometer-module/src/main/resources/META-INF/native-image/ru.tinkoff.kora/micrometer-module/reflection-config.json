@@ -1,0 +1,15 @@
+[
+    {
+        "name": "com.sun.management.OperatingSystemMXBean",
+        "methods": [
+            {
+                "name": "getCpuLoad",
+                "parameterTypes": []
+            },
+            {
+                "name": "getProcessCpuLoad",
+                "parameterTypes": []
+            }
+        ]
+    }
+]

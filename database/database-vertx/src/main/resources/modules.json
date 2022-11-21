@@ -1,0 +1,14 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "ru.tinkoff.kora.database.vertx.VertxQueryExecutor",
+        "moduleName": "ru.tinkoff.kora.database.vertx.VertxDatabaseModule",
+        "artifact": "ru.tinkoff.kora:database-vertx"
+    },
+    {
+        "tags": [],
+        "typeRegex": "ru.tinkoff.kora.database.vertx.VertxDatabase",
+        "moduleName": "ru.tinkoff.kora.database.vertx.VertxDatabaseModule",
+        "artifact": "ru.tinkoff.kora:database-vertx"
+    }
+]

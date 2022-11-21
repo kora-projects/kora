@@ -1,0 +1,24 @@
+plugins {
+    id "java-test-fixtures"
+}
+apply from: "${project.rootDir}/kotlin-plugin.gradle"
+
+dependencies {
+    api project(':annotation-processor-common')
+    api libs.reactive.streams
+    api libs.javapoet
+
+    api project(':common')
+    api project(':http:http-server-common')
+
+    testImplementation testFixtures(project(':annotation-processor-common'))
+    testImplementation project(':json:json-common')
+    testImplementation libs.jackson.databind
+    testImplementation libs.mockito.kotlin
+    testImplementation libs.byte.buddy.core
+    testImplementation libs.byte.buddy.agent
+}
+
+test {
+    jvmArgs(['--enable-preview'])
+}

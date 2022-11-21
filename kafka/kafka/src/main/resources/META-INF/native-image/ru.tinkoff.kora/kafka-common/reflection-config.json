@@ -1,0 +1,45 @@
+[
+    {
+        "name": "org.apache.kafka.clients.consumer.RangeAssignor",
+        "methods": [
+            {
+                "name": "<init>",
+                "parameterTypes": []
+            }
+        ]
+    },
+    {
+        "name": "org.apache.kafka.common.utils.AppInfoParser$AppInfo",
+        "allPublicConstructors": true
+    },
+    {
+        "name": "org.apache.kafka.common.utils.AppInfoParser$AppInfoMBean",
+        "allPublicMethods": true
+    },
+    {
+        "name": "org.apache.kafka.clients.consumer.RangeAssignor",
+        "methods": [
+            {
+                "name": "<init>",
+                "parameterTypes": []
+            }
+        ]
+    },
+    {
+        "name": "org.apache.kafka.common.utils.AppInfoParser$AppInfo",
+        "queryAllPublicConstructors": true
+    },
+    {
+        "name": "org.apache.kafka.common.utils.AppInfoParser$AppInfoMBean",
+        "queryAllPublicMethods": true
+    },
+    {
+        "name": "org.apache.kafka.clients.producer.internals.DefaultPartitioner",
+        "methods": [
+            {
+                "name": "<init>",
+                "parameterTypes": []
+            }
+        ]
+    }
+]

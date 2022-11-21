@@ -1,0 +1,151 @@
+import org.gradle.api.initialization.resolve.DependencyResolutionManagement
+
+dependencyResolutionManagement { DependencyResolutionManagement it ->
+    it.versionCatalogs {
+        libs {
+            version('slf4j', '2.0.3')
+            version('micrometer', '1.10.0')
+            version('reactor', '3.5.0')
+            version('kotlin_', '1.7.21') //Visit https://kotlinlang.org/docs/releases.html#release-details to see versions compatability
+            version('kotlin-coroutines', '1.6.4')
+            version('jackson', '2.14.0')
+            version('mockserver', '5.14.0')
+            version('netty', '4.1.85.Final')
+            version('kafka', '3.3.1')
+            version('vertx', '4.3.4')
+            version('testcontainers', '1.17.5')
+            version('cassandra', '4.15.0')
+            version('grpc', '1.50.2')
+            version('grpc-kotlin', '1.3.0')
+            version('kotlin-testing', '1.4.9')
+            version('ksp', '1.7.21-1.0.8')
+            version('kotlinpoet', '1.12.0')
+
+            library('jsr305', 'com.google.code.findbugs', 'jsr305').version('3.0.2')
+
+            library('slf4j-api', 'org.slf4j', 'slf4j-api').versionRef('slf4j')
+            library('slf4j-jul', 'org.slf4j', 'jul-to-slf4j').versionRef('slf4j')
+            library('logback-classic', 'ch.qos.logback', 'logback-classic').version("1.4.4")
+
+            library('micrometer-core', 'io.micrometer', 'micrometer-core').versionRef('micrometer')
+            library('micrometer-registry-prometheus', 'io.micrometer', 'micrometer-registry-prometheus').versionRef('micrometer')
+            library('prometheus-jmx-collector', 'io.prometheus.jmx', 'collector').version("0.17.2")
+
+            library('opentelemetry-sdk-trace', 'io.opentelemetry', 'opentelemetry-sdk-trace').version('1.20.0')
+            library('opentelemetry-context', 'io.opentelemetry', 'opentelemetry-context').version('1.20.0')
+            library('opentelemetry-semconv', 'io.opentelemetry', 'opentelemetry-semconv').version('1.20.0-alpha')
+            library('opentelemetry-exporter-otlp-trace', 'io.opentelemetry', 'opentelemetry-exporter-otlp-trace').version('1.14.0')
+
+            library('typesafe-config', 'com.typesafe', 'config').version("1.4.2")
+
+            library('cassandra-driver', 'com.datastax.oss', 'java-driver-core').versionRef('cassandra')
+
+            library('reactive-streams', 'org.reactivestreams', 'reactive-streams').version("1.0.4")
+            library('reactor-core', 'io.projectreactor', 'reactor-core').versionRef('reactor')
+            library('reactor-test', 'io.projectreactor', 'reactor-test').versionRef('reactor')
+            library('reactor-pool', 'io.projectreactor.addons', 'reactor-pool').version('1.0.0')
+
+            library('kotlin-stdlib-common', 'org.jetbrains.kotlin', 'kotlin-stdlib-common').versionRef('kotlin_')
+            library('kotlin-stdlib-lib', 'org.jetbrains.kotlin', 'kotlin-stdlib').versionRef('kotlin_')
+            library('kotlin-reflect', 'org.jetbrains.kotlin', 'kotlin-reflect').versionRef('kotlin_')
+            library('kotlin-annotation-processing', 'org.jetbrains.kotlin', 'kotlin-annotation-processing-embeddable').versionRef('kotlin_')
+            library('kotlin-compiler', 'org.jetbrains.kotlin', 'kotlin-compiler-embeddable').versionRef('kotlin_')
+
+            library('kotlin-coroutines-core', 'org.jetbrains.kotlinx', 'kotlinx-coroutines-core').versionRef('kotlin-coroutines')
+            library('kotlin-coroutines-reactor', 'org.jetbrains.kotlinx', 'kotlinx-coroutines-reactor').versionRef('kotlin-coroutines')
+
+            library('jackson-core', 'com.fasterxml.jackson.core', 'jackson-core').versionRef('jackson')
+            library('jackson-databind', 'com.fasterxml.jackson.core', 'jackson-databind').versionRef('jackson')
+            library('jackson-kotlin', 'com.fasterxml.jackson.module', 'jackson-module-kotlin').versionRef('jackson')
+            library('jackson-datatype-jsr310', 'com.fasterxml.jackson.datatype', 'jackson-datatype-jsr310').versionRef('jackson')
+            library("jdbc-postgresql", "org.postgresql", "postgresql").version("42.5.0")
+            library("hikari", "com.zaxxer", "HikariCP").version("5.0.1")
+            library("jdbi-core", "org.jdbi", "jdbi3-core").version("3.34.0")
+            library("flyway", "org.flywaydb", "flyway-core").version("9.8.1")
+
+            library("jms-api", "javax.jms", "javax.jms-api").version("2.0.1")
+
+            library("undertow-core", "io.undertow", "undertow-core").version("2.2.10.Final")
+            library("async-http-client", "org.asynchttpclient", "async-http-client").version("2.12.4")
+            library("okhttp", "com.squareup.okhttp3", "okhttp").version("4.9.1")
+
+            library("netty-buffer", "io.netty", "netty-buffer").versionRef("netty")
+            library("netty-codecs", "io.netty", "netty-codec").versionRef("netty")
+            library("netty-codec-http", "io.netty", "netty-codec-http").versionRef("netty")
+            library("netty-codec-socks", "io.netty", "netty-codec-socks").versionRef("netty")
+            library("netty-common", "io.netty", "netty-common").versionRef("netty")
+            library("netty-handlers", "io.netty", "netty-handler").versionRef("netty")
+            library("netty-handler-proxy", "io.netty", "netty-handler-proxy").versionRef("netty")
+            library("netty-resolver", "io.netty", "netty-resolver").versionRef("netty")
+            library("netty-transports", "io.netty", "netty-transport").versionRef("netty")
+            bundle('netty', [
+                "netty-buffer", "netty-codecs", "netty-codec-http", "netty-codec-socks", "netty-common", "netty-handlers", "netty-handler-proxy",
+                "netty-resolver", "netty-transports"
+            ])
+
+            library('vertx-core', 'io.vertx', 'vertx-core').versionRef('vertx')
+            library('vertx-pg-client', 'io.vertx', 'vertx-pg-client').versionRef('vertx')
+
+            library('r2dbc-spi', 'io.r2dbc', 'r2dbc-spi').version('1.0.0.RELEASE')
+            library('r2dbc-pool', 'io.r2dbc', 'r2dbc-pool').version('1.0.0.RELEASE')
+            library('r2dbc-postgres', 'org.postgresql', 'r2dbc-postgresql').version('1.0.0.RELEASE')
+
+            library("byte-buddy-core", "net.bytebuddy", "byte-buddy").version("1.12.18")
+            library("byte-buddy-agent", "net.bytebuddy", "byte-buddy-agent").version("1.12.18")
+
+            library("javapoet", "com.squareup", "javapoet").version("1.13.0")
+            library("jgrapht", "org.jgrapht", "jgrapht-core").version("1.5.1")
+            library("classgraph", "io.github.classgraph", "classgraph").version("4.8.149")
+
+            library('lettuce-core', 'io.lettuce', 'lettuce-core').version('6.2.0.RELEASE')
+
+            library('caffeine', 'com.github.ben-manes.caffeine', 'caffeine').version('3.1.1')
+
+            library("junit-jupiter", "org.junit.jupiter", "junit-jupiter").version("5.9.1")
+            library("junit-platform-launcher", "org.junit.platform", "junit-platform-launcher").version("1.9.1")
+            library("mockito-core", "org.mockito", "mockito-core").version("4.8.1")
+            library("mockito-inline", "org.mockito", "mockito-inline").version("4.8.1")
+            library("mockito-kotlin", "org.mockito.kotlin", "mockito-kotlin").version("4.0.0")
+            library("assertj", "org.assertj", "assertj-core").version("3.23.1")
+            library("mockserver-netty", "org.mock-server", "mockserver-netty").versionRef("mockserver")
+            library("mockserver-client", "org.mock-server", "mockserver-client-java").versionRef("mockserver")
+
+            library("kafka-client", "org.apache.kafka", "kafka-clients").versionRef("kafka")
+
+            library("grpc-kotlin-stub", "io.grpc", "grpc-kotlin-stub").versionRef("grpc-kotlin")
+            library("grpc-kotlin-gen", "io.grpc", "protoc-gen-grpc-kotlin").versionRef("grpc-kotlin")
+            library("grpc-protobuf", "io.grpc", "grpc-protobuf").versionRef("grpc")
+            library("grpc-netty", "io.grpc", "grpc-netty").versionRef("grpc")
+            library("grpc-stub", "io.grpc", "grpc-stub").versionRef("grpc")
+            library("grpc-java-gen", "io.grpc", "protoc-gen-grpc-java").versionRef("grpc")
+
+            library("testcontainers-core", "org.testcontainers", "testcontainers").versionRef("testcontainers")
+            library("testcontainers-junit-jupiter", "org.testcontainers", "junit-jupiter").versionRef("testcontainers")
+            library("testcontainers-r2dbc", "org.testcontainers", "r2dbc").versionRef("testcontainers")
+            library("testcontainers-postgresql", "org.testcontainers", "postgresql").versionRef("testcontainers")
+            library("testcontainers-cassandra", "org.testcontainers", "cassandra").versionRef("testcontainers")
+            library("testcontainers-kafka", "org.testcontainers", "kafka").versionRef("testcontainers")
+
+            library('ksp-api', 'com.google.devtools.ksp', 'symbol-processing-api').versionRef('ksp')
+            library('ksp', 'com.google.devtools.ksp', 'symbol-processing').versionRef('ksp')
+            library('kotlin-compile-testing', 'com.github.tschuchortdev', 'kotlin-compile-testing').versionRef("kotlin-testing")
+
+            library('kotlinpoet', 'com.squareup', 'kotlinpoet').versionRef('kotlinpoet')
+            library('kotlinpoet-ksp', 'com.squareup', 'kotlinpoet-ksp').versionRef('kotlinpoet')
+
+            library('jakarta.xml.ws.api', 'jakarta.xml.ws', 'jakarta.xml.ws-api').version('3.0.1')
+            library('jakarta.jws.api', 'jakarta.jws', 'jakarta.jws-api').version('3.0.0')
+            library('jakarta.xml.bind.api', 'jakarta.xml.bind', 'jakarta.xml.bind-api').version('3.0.1')
+
+            library('glassfish.jaxb.jakarta', 'org.glassfish.jaxb', 'jaxb-runtime').version('3.0.1')
+            library('glassfish.jaxb.javax', 'org.glassfish.jaxb', 'jaxb-runtime').version('2.3.0.1')
+
+            library('commons.codec', 'commons-codec', 'commons-codec').version('1.15')
+
+            library('openapi-generator', 'org.openapitools', 'openapi-generator').version('6.2.1')
+            library('swagger-core', 'io.swagger.core.v3', 'swagger-core').version('2.2.6')
+            library('swagger-annotations', 'io.swagger.core.v3', 'swagger-annotations').version('2.2.6')
+            library('swagger-models', 'io.swagger.core.v3', 'swagger-models').version('2.2.6')
+        }
+    }
+}

@@ -1,0 +1,17 @@
+plugins {
+    id "java-test-fixtures"
+}
+
+
+dependencies {
+    compileOnly("org.jetbrains:annotations:23.0.0")
+
+    api project(":common")
+    api project(":logging:logging-common")
+
+    testFixturesApi project(":database:database-common")
+    testFixturesApi libs.testcontainers.postgresql
+    testFixturesApi libs.jdbc.postgresql
+    testFixturesApi libs.junit.jupiter
+    testFixturesApi libs.junit.platform.launcher
+}

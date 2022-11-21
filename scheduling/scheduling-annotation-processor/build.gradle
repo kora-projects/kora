@@ -1,0 +1,10 @@
+dependencies {
+    implementation project(':annotation-processor-common')
+
+    testImplementation project(':config:config-common')
+    testImplementation project(':scheduling:scheduling-quartz')
+    testImplementation project(':scheduling:scheduling-jdk')
+    testImplementation testFixtures(project(':annotation-processor-common'))
+}
+
+apply from:'../../in-test-generated.gradle'

@@ -1,0 +1,25 @@
+plugins {
+    id "com.google.devtools.ksp"
+}
+apply from: "${project.rootDir}/kotlin-plugin.gradle"
+
+dependencies {
+    api project(":common")
+    api project(':kafka:kafka')
+    api project(':symbol-processor-common')
+    api project(':config:config-common')
+
+    implementation libs.ksp.api
+    implementation libs.kotlin.reflect
+    implementation libs.kotlinpoet
+    implementation libs.kotlinpoet.ksp
+
+    implementation project(':kora-app-symbol-processor')
+
+    testImplementation project(':config:config-common')
+    testImplementation project(':annotation-processor-common')
+    testImplementation testFixtures(project(':symbol-processor-common'))
+
+}
+
+apply from:'../../in-test-generated.gradle'

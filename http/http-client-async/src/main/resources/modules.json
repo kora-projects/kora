@@ -1,0 +1,14 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "ru.tinkoff.kora.http.client.async.AsyncHttpClient",
+        "moduleName": "ru.tinkoff.kora.http.client.async.AsyncHttpClientModule",
+        "artifact": "ru.tinkoff.kora:http-client-async"
+    },
+    {
+        "tags": [],
+        "typeRegex": "ru.tinkoff.kora.http.client.common.HttpClient",
+        "moduleName": "ru.tinkoff.kora.http.client.async.AsyncHttpClientModule",
+        "artifact": "ru.tinkoff.kora:http-client-async"
+    }
+]

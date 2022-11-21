@@ -1,0 +1,210 @@
+plugins {
+    id "org.jetbrains.kotlin.jvm" version "1.7.21" apply false
+    id "com.google.devtools.ksp" version "1.7.21-1.0.8" apply false
+    id 'jacoco'
+}
+
+allprojects {
+    group = "ru.tinkoff.kora"
+    version = System.getenv().getOrDefault("KORA_VERSION", "1.0.0-SNAPSHOT")
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    }
+}
+
+// config libraries
+subprojects {
+    if (!project.childProjects.isEmpty() || project.name == 'maven-parent') {
+        return
+    }
+    apply plugin: 'java-library'
+    java {
+        toolchain {
+            languageVersion.set(JavaLanguageVersion.of(17))
+        }
+    }
+
+    tasks.withType(JavaCompile) {
+        options.debug = true
+        options.encoding = 'UTF-8'
+        options.compilerArgs << '-parameters' << '-Xlint:all' << '-Xlint:-serial' << '-XprintRounds'
+    }
+
+}
+
+// config test libraries
+subprojects {
+    if (project.parent.name != "test") {
+        return
+    }
+    dependencies {
+        api libs.junit.platform.launcher
+        api libs.junit.jupiter
+    }
+}
+
+def isPublishedLibrary = { Project p ->
+    if (!p.childProjects.isEmpty()) {
+        return false
+    }
+    if (p.parent.name == "test") {
+        return false
+    }
+    if (p.name == 'maven-parent') {
+        return false
+    }
+    return true
+}
+
+// config published libraries
+subprojects {
+    if (!isPublishedLibrary(it)) {
+        return
+    }
+
+    apply plugin: 'maven-publish'
+    apply plugin: 'jacoco'
+
+    java {
+        withSourcesJar()
+    }
+
+    publishing {
+        publications {
+            maven(MavenPublication) {
+                from components.java
+                pom {
+                    withXml { pom ->
+                        def xpf = javax.xml.xpath.XPathFactory.newInstance()
+                        def xp = xpf.newXPath()
+                        def xpath = xp.compile("//dependency[optional[contains(text(), 'true')]]")
+                        def nl = (org.w3c.dom.NodeList) xpath.evaluate(pom.asElement(), javax.xml.xpath.XPathConstants.NODESET);
+                        for (int i = nl.getLength() - 1; i >= 0; i--) {
+                            nl.item(i).getParentNode().removeChild(nl.item(i))
+                        }
+                    }
+                }
+            }
+        }
+        repositories {
+            mavenLocal()
+            maven { MavenArtifactRepository repo ->
+                url = uri(System.getenv().getOrDefault("REPO_URL", "http://some-uri.com"))
+                credentials {
+                    username = System.getenv().getOrDefault("REPO_USER", "")
+                    password = System.getenv().getOrDefault("REPO_PASSWORD", "")
+                }
+            }
+        }
+    }
+    test {
+        jvmArgs([
+            "-XX:+TieredCompilation",
+            "-XX:TieredStopAtLevel=1",
+            '--enable-preview',
+            '--add-opens', 'jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED',
+            '--add-opens', 'jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED',
+            '--add-opens', 'jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED',
+            '--add-opens', 'jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED',
+            '--add-opens', 'jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED',
+            '--add-opens', 'jdk.compiler/com.sun.tools.javac.jvm=ALL-UNNAMED',
+            '--add-opens', 'jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED',
+            '--add-opens', 'jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED',
+            '--add-opens', 'jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED',
+        ])
+        useJUnitPlatform()
+        testLogging {
+            showStandardStreams(false)
+            events("passed", "skipped", "failed")
+            exceptionFormat("full")
+        }
+        systemProperty "junit.jupiter.extensions.autodetection.enabled", "true"
+    }
+
+    jacocoTestReport {
+        reports {
+            xml.required = true
+            csv.required = false
+            html.required = false
+        }
+    }
+
+    dependencies {
+        api libs.jsr305
+
+        testImplementation project(":test:test-logging")
+        testImplementation libs.junit.jupiter
+        testImplementation libs.mockito.core
+        testImplementation libs.assertj
+    }
+
+    task allDeps(type: DependencyReportTask) {}
+}
+
+task jacocoRootReport(type: JacocoReport) {
+    var jacocoSubprojects = subprojects.stream()
+        .filter { isPublishedLibrary(it) }
+        .toArray()
+    dependsOn jacocoSubprojects.jacocoTestReport
+
+    group = 'verification'
+    executionData project.fileTree(dir: '.', include: '**/build/jacoco/test.exec')
+    jacocoSubprojects.each { subproject ->
+        subproject.tasks.withType(JacocoReport).each { report ->
+            additionalClassDirs report.allClassDirs
+            additionalSourceDirs report.allSourceDirs
+        }
+    }
+
+    reports {
+        xml.required = true
+        csv.required = false
+        html.required = false
+    }
+}
+
+tasks.register("database-test") {
+    group("verification")
+    description("Run database tests")
+    project.getAllprojects().stream()
+        .filter((p) -> p.depth > 1 && p.name.startsWith("database") && p.tasks.findByPath("test") != null)
+        .forEach((p) -> {
+            dependsOn(":database:" + p.name + ":test")
+        })
+}
+
+tasks.register("kafka-test") {
+    group("verification")
+    description("Run kafka tests")
+    project.getAllprojects().stream()
+        .filter((p) -> p.depth > 1 && p.name.startsWith("kafka") && p.tasks.findByPath("test") != null)
+        .forEach((p) -> {
+            dependsOn(":kafka:" + p.name + ":test")
+        })
+}
+
+tasks.register("http-test") {t ->
+    group("verification")
+    description("Run http tests")
+    project.childProjects["http"].subprojects { p ->
+        def testTask = p.tasks.findByPath("test")
+        if (p.name.startsWith("http") &&  testTask != null) {
+            t.dependsOn(testTask)
+        }
+    }
+}
+
+tasks.register("other-test") {
+    group("verification")
+    description("Run other tests")
+    project.getAllprojects().stream()
+        .filter((p) -> p.depth >= 1 && !p.name.startsWith("http") && !p.name.startsWith("kafka") && !p.name.startsWith("database") && p.tasks.findByPath("test") != null)
+        .forEach((p) -> {
+            var name = p.name
+            if (p.depth == 2) {
+                name = p.parent.name + ":" + name
+            }
+            dependsOn(":" + name + ":test")
+        })
+}

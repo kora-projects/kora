@@ -1,0 +1,10 @@
+apply from: "${project.rootDir}/kotlin-plugin.gradle"
+
+dependencies {
+    api project(":common")
+    api libs.kafka.client
+    compileOnly(libs.kotlin.stdlib.lib)
+    compileOnly(libs.kotlin.coroutines.reactor)
+
+    testImplementation project(':test:test-kafka')
+}

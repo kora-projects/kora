@@ -1,0 +1,7 @@
+dependencies {
+    api project(":common")
+    api project(":database:database-common")
+    api libs.cassandra.driver
+
+    testImplementation project(':test:test-cassandra')
+}

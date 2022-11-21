@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "ru.tinkoff.kora.grpc";
+
+service Events {
+    rpc sendEvent (SendEventRequest) returns (SendEventResponse) {
+    }
+}
+message SendEventRequest {
+    string event = 1;
+}
+message SendEventResponse {
+    string res = 1;
+}

@@ -1,0 +1,61 @@
+dependencies {
+    api(libs.openapi.generator) {
+        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
+        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-databind'
+        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-annotations'
+        exclude group: 'com.fasterxml.jackson.datatype', module: 'jackson-datatype-jsr310'
+        exclude group: 'com.fasterxml.jackson.datatype', module: 'jackson-datatype-guava'
+        exclude group: 'com.fasterxml.jackson.datatype', module: 'jackson-datatype-joda'
+        exclude group: 'com.fasterxml.jackson.dataformat', module: 'jackson-dataformat-yaml'
+    }
+    api("com.fasterxml.jackson.datatype:jackson-datatype-guava:${libs.versions.jackson.get()}")
+    api("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${libs.versions.jackson.get()}")
+    api("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${libs.versions.jackson.get()}")
+
+    testImplementation(project(":json:json-common"))
+    testImplementation(project(":json:jackson-module"))
+    testImplementation(project(":json:json-annotation-processor"))
+    testImplementation(project(":http:http-client-common"))
+    testImplementation(project(":http:http-client-annotation-processor"))
+    testImplementation(project(":http:http-server-common"))
+    testImplementation(project(":http:http-server-annotation-processor"))
+    testImplementation(testFixtures(project(":annotation-processor-common")))
+
+    testImplementation libs.kotlin.annotation.processing
+    testImplementation libs.kotlin.compiler
+}
+
+apply from: '../../in-test-generated.gradle'
+
+
+def javaPlugin = project.extensions.getByType(JavaPluginExtension)
+javaPlugin.sourceSets {
+    testGenerated {
+        java {
+            def addOpenapiDir = { String path ->
+                srcDir project.file("build/out/$path/java/client")
+                srcDir project.file("build/out/$path/java/server")
+                srcDir project.file("build/out/$path/reactive/client")
+                srcDir project.file("build/out/$path/reactive/server")
+                pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
+                    kotlin {
+                        sourceSets {
+                            testGenerated {
+                                kotlin.srcDir("build/out/$path/kotlin/client")
+                                kotlin.srcDir("build/out/$path/kotlin/server")
+                            }
+                        }
+                    }
+                }
+            }
+            addOpenapiDir("petstoreV2")
+            addOpenapiDir("petstoreV3")
+            addOpenapiDir("petstoreV3_discriminator")
+            addOpenapiDir("petstoreV3_security_api_key")
+            addOpenapiDir("petstoreV3_security_basic")
+            addOpenapiDir("petstoreV3_security_bearer")
+            addOpenapiDir("petstoreV3_security_oauth")
+            addOpenapiDir("statist")
+        }
+    }
+}

@@ -1,0 +1,46 @@
+package {{package}}
+
+import ru.tinkoff.kora.http.client.common.response.HttpClientResponse
+import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper
+import reactor.core.publisher.Mono
+import {{package}}.{{classname}}Responses.*
+
+{{#imports}}import {{import}}
+{{/imports}}
+
+//@javax.annotation.processing.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
+interface {{classname}}ClientResponseMappers {
+{{#operations}}
+{{#operation}}
+  {{#responses}}
+  class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper(
+    {{#dataType}}
+    private val delegate: HttpClientResponseMapper<{{{dataType}}}, Mono<{{{dataType}}}>>
+    {{/dataType}}
+  ) : HttpClientResponseMapper<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse, Mono<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>> {
+
+    override fun apply(response: HttpClientResponse): Mono<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {
+      {{#headers}}
+      val {{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}} = response.headers().getFirst("{{baseName}}"){{#required}}!!{{/required}} // {{required}}
+      {{/headers}}
+      {{^dataType}}
+      return Mono.just({{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse(
+        {{#isDefault}}response.code(){{#hasHeaders}}, {{/hasHeaders}}{{/isDefault}}
+        {{#headers}}{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}{{^-last}},{{/-last}}{{/headers}}
+      ))
+      {{/dataType}}
+      {{#dataType}}
+      return this.delegate.apply(response)
+        .map { content -> {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse(
+          {{#isDefault}}response.code(), {{/isDefault}}
+          content{{#hasHeaders}}, {{/hasHeaders}}
+          {{#headers}}{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}{{^-last}}, {{/-last}}{{/headers}}
+        ) }
+      {{/dataType}}
+    }
+  }
+
+  {{/responses}}
+{{/operation}}
+{{/operations}}
+}

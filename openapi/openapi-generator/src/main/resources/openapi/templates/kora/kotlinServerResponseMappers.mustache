@@ -1,0 +1,51 @@
+package {{package}}
+
+import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper
+import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseEntityMapper
+import ru.tinkoff.kora.http.server.common.HttpServerResponse
+import ru.tinkoff.kora.http.server.common.HttpServerResponseEntity
+import ru.tinkoff.kora.http.server.common.SimpleHttpServerResponse
+import ru.tinkoff.kora.http.common.HttpHeaders
+import reactor.core.publisher.Mono
+import {{package}}.{{classname}}Responses.*
+
+{{#imports}}import {{import}}
+{{/imports}}
+
+//@javax.annotation.processing.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
+interface {{classname}}ServerResponseMappers {
+{{#operations}}
+{{#operation}}
+  class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ResponseMapper(
+    {{#responses}}
+    {{#dataType}}
+    private val response{{code}}Delegate: HttpServerResponseMapper<HttpServerResponseEntity<{{{dataType}}}>>{{#vendorExtensions.hasMore}},{{/vendorExtensions.hasMore}}
+    {{/dataType}}
+    {{/responses}}
+  ): HttpServerResponseMapper<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>{
+
+    override fun apply(rs: {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse): Mono<out HttpServerResponse> {
+      when (rs) {
+      {{#responses}}
+        is {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse -> {
+          val headers = HttpHeaders.of(
+          {{#headers}}
+            java.util.Map.entry("{{baseName}}", listOf(rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}})){{^-last}},{{/-last}}
+          {{/headers}}
+          )
+          {{^dataType}}
+          return Mono.just(SimpleHttpServerResponse({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, "application/octet-stream", headers, null))
+          {{/dataType}}
+          {{#dataType}}
+          val entity = HttpServerResponseEntity({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, rs.content, headers)
+          return response{{code}}Delegate.apply(entity)
+          {{/dataType}}
+        }
+      {{/responses}}
+      }
+    }
+  }
+
+{{/operation}}
+{{/operations}}
+}

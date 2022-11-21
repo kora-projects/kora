@@ -1,0 +1,44 @@
+package {{package}}
+
+import ru.tinkoff.kora.http.client.common.form.UrlEncodedWriter
+import ru.tinkoff.kora.http.client.common.form.MultipartWriter
+import ru.tinkoff.kora.http.client.common.request.HttpClientRequestMapper
+import ru.tinkoff.kora.http.client.common.request.HttpClientRequestBuilder
+import reactor.core.publisher.Mono
+
+//@javax.annotation.processing.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
+interface {{classname}}ClientRequestMappers {
+{{#operations}}
+{{#operation}}
+{{#hasFormParams}}
+
+  class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper: HttpClientRequestMapper<{{classname}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> {
+    override fun apply(request: HttpClientRequestMapper.Request<{{classname}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam>): HttpClientRequestBuilder {
+      {{#vendorExtensions.urlEncodedForm}}
+      val b = UrlEncodedWriter(){{#formParams}}
+      if (request.parameter().{{paramName}} != null) {
+        b.add("{{baseName}}", "${request.parameter().{{paramName}}}")
+      }
+      {{/formParams}}
+      return b.write(request.builder())
+      {{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
+      val l = mutableListOf<ru.tinkoff.kora.http.common.form.FormMultipart.FormPart>(){{#formParams}}
+              if (request.parameter().{{paramName}} != null) {
+          {{#isFile}}
+                  val file = request.parameter().{{paramName}}
+                  if (file != null) l += file
+          {{/isFile}}{{^isFile}}
+                  l += ru.tinkoff.kora.http.common.form.FormMultipart.data(
+                  "{{baseName}}",
+                  "${request.parameter().{{paramName}}}"
+                  ){{/isFile}}
+              }
+      {{/formParams}}
+      return MultipartWriter.write(request.builder(), l)
+      {{/vendorExtensions.multipartForm}}
+    }
+  }
+{{/hasFormParams}}
+{{/operation}}
+{{/operations}}
+}

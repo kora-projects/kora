@@ -1,0 +1,63 @@
+package {{package}};
+
+import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper;
+import ru.tinkoff.kora.http.server.common.HttpServerResponse;
+import ru.tinkoff.kora.http.server.common.HttpServerResponseEntity;
+import ru.tinkoff.kora.http.server.common.SimpleHttpServerResponse;
+import ru.tinkoff.kora.http.common.HttpHeaders;
+import reactor.core.publisher.Mono;
+import {{package}}.{{classname}}Responses.*;
+
+{{#imports}}import {{import}};
+{{/imports}}
+
+@javax.annotation.processing.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
+public interface {{classname}}ServerResponseMappers {
+{{#operations}}
+{{#operation}}
+  public static final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper implements HttpServerResponseMapper<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>{
+    {{#responses}}
+    {{#dataType}}
+    private final HttpServerResponseMapper<HttpServerResponseEntity<{{{dataType}}}>> response{{code}}Delegate;
+    {{/dataType}}
+    {{/responses}}
+
+
+    public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponseMapper(
+      {{#responses}}
+      {{#dataType}}
+      HttpServerResponseMapper<HttpServerResponseEntity<{{{dataType}}}>> response{{code}}Delegate{{#vendorExtensions.hasMore}},{{/vendorExtensions.hasMore}}
+      {{/dataType}}
+      {{/responses}}) {
+      {{#responses}}
+      {{#dataType}}
+      this.response{{code}}Delegate = response{{code}}Delegate;
+      {{/dataType}}
+      {{/responses}}
+    }
+
+    @Override
+    public Mono<? extends HttpServerResponse> apply({{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse response) {
+      {{#responses}}
+      if (response instanceof {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse rs) {
+        var headers = HttpHeaders.of(
+        {{#headers}}
+          java.util.Map.entry("{{baseName}}", java.util.List.of(rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}())){{^-last}},{{/-last}}
+        {{/headers}}
+        );
+        {{^dataType}}
+        return Mono.just(new SimpleHttpServerResponse({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, "application/octet-stream", headers, null));
+        {{/dataType}}
+        {{#dataType}}
+        var entity = new HttpServerResponseEntity<>({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, rs.content(), headers);
+        return this.response{{code}}Delegate.apply(entity);
+        {{/dataType}}
+      } else{{/responses}} {
+        throw new IllegalStateException();
+      }
+    }
+  }
+
+{{/operation}}
+{{/operations}}
+}

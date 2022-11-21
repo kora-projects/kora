@@ -1,0 +1,12 @@
+dependencies {
+    api project(':opentelemetry:opentelemetry-common')
+
+    compileOnly project(':http:http-server-common')
+    compileOnly project(':http:http-client-common')
+    compileOnly project(':grpc')
+    compileOnly project(':kafka:kafka')
+    compileOnly project(':jms')
+    compileOnly project(':database:database-common')
+    compileOnly project(':scheduling:scheduling-common')
+    compileOnly project(':cache:cache-common')
+}

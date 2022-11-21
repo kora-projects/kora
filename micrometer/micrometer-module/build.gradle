@@ -1,0 +1,17 @@
+dependencies {
+    api libs.micrometer.core
+    api libs.micrometer.registry.prometheus
+    api libs.prometheus.jmx.collector
+    api libs.opentelemetry.semconv
+
+    compileOnly project(':http:http-server-common')
+    compileOnly project(':http:soap-client')
+    compileOnly project(':http:http-client-common')
+    compileOnly project(':grpc')
+    compileOnly project(':kafka:kafka')
+    compileOnly project(':jms')
+    compileOnly project(':database:database-common')
+    compileOnly project(':scheduling:scheduling-common')
+    compileOnly project(':resilient:resilient-circuitbreaker')
+    compileOnly project(':cache:cache-common')
+}
