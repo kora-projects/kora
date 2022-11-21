@@ -1,0 +1,13 @@
+{{#allParams}}      {{^isFormParam}}
+      {{^required}}@javax.annotation.Nullable
+      {{/required}}{{#isQueryParam}}@ru.tinkoff.kora.http.common.annotation.Query("{{baseName}}")
+      {{/isQueryParam}}{{#isPathParam}}@ru.tinkoff.kora.http.common.annotation.Path("{{baseName}}")
+      {{/isPathParam}}{{#isHeaderParam}}@ru.tinkoff.kora.http.common.annotation.Header("{{baseName}}")
+      {{/isHeaderParam}}{{#isCookieParam}}/* TODO Cookies */
+      {{/isCookieParam}}
+{{{dataType}}} {{paramName}}{{#hasFormParams}},{{/hasFormParams}}{{^hasFormParams}}{{^-last}},{{/-last}}{{/hasFormParams}}
+{{/isFormParam}}{{/allParams}}    {{#hasFormParams}}
+     {{#isClient}}@Mapping({{classname}}ClientRequestMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper.class)
+     {{/isClient}}{{^isClient}}@Mapping({{classname}}ServerRequestMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper.class)
+     {{/isClient}}{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam form
+    {{/hasFormParams}}

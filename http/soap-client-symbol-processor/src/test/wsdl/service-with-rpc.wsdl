@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  name="OfferService"
+                  targetNamespace="http://kora.tinkoff.ru/service/with/rpc"
+                  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+                  xmlns:tns="http://kora.tinkoff.ru/service/with/rpc"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <wsdl:message name="testRequestMsg">
+        <wsdl:part name="val1" type="xsd:string"/>
+    </wsdl:message>
+    <wsdl:message name="testResponseMsg">
+        <wsdl:part name="part1" type="xsd:string"/>
+        <wsdl:part name="part2" type="xsd:string"/>
+    </wsdl:message>
+
+    <wsdl:portType name="ServiceWithRpc">
+        <wsdl:operation name="test">
+            <wsdl:input message="tns:testRequestMsg" name="testRequest"/>
+            <wsdl:output message="tns:testResponseMsg" name="testResponse"/>
+        </wsdl:operation>
+    </wsdl:portType>
+
+    <wsdl:binding name="ServiceWithRpcBinding" type="tns:ServiceWithRpc">
+        <soap:binding style="rpc" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="test">
+            <soap:operation soapAction="rpc/http://kora.tinkoff.ru/service/with/rpc"/>
+            <wsdl:input name="testRequest">
+                <soap:body use="literal" namespace="http://kora.tinkoff.ru/service/with/rpc"/>
+            </wsdl:input>
+            <wsdl:output name="testResponse">
+                <soap:body use="literal" namespace="http://kora.tinkoff.ru/service/with/rpc"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+
+    <wsdl:service name="ServiceWithRpcService">
+        <wsdl:port binding="tns:ServiceWithRpcBinding" name="TestService">
+            <soap:address location="http://localhost:8080/service/with/rpc"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>

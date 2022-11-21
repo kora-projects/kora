@@ -1,0 +1,16 @@
+plugins {
+    id "java-test-fixtures"
+}
+
+
+dependencies {
+    api libs.javapoet
+    api project(':common')
+
+    implementation libs.logback.classic
+
+    testFixturesImplementation project(':common')
+
+    testFixturesImplementation libs.classgraph
+    testFixturesImplementation libs.mockito.core
+}

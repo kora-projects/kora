@@ -1,0 +1,18 @@
+plugins {
+    id "java-test-fixtures"
+}
+apply from: "${project.rootDir}/kotlin-plugin.gradle"
+
+dependencies {
+    api project(':common')
+    api project(':logging:logging-common')
+    api project(':http:http-common')
+    api libs.reactive.streams
+    compileOnly(libs.kotlin.stdlib.lib)
+    compileOnly(libs.kotlin.coroutines.reactor)
+
+    testFixturesImplementation libs.okhttp
+    testFixturesImplementation libs.junit.jupiter
+    testFixturesImplementation libs.assertj
+    testFixturesImplementation libs.mockito.core
+}

@@ -1,0 +1,120 @@
+plugins {
+    id 'java-platform'
+    id 'maven-publish'
+}
+
+def collectInterfaces(Class<?> c) {
+    return collectInterfaces(c, new ArrayList<Class<?>>())
+}
+List<Class<?>> collectInterfaces(Class<?> c, List<Class<?>> to) {
+    if (c == null) {
+        return to
+    }
+    to.add(c)
+    for (def i : c.interfaces){
+        to.add(i)
+    }
+    return collectInterfaces(c.superclass, to)
+}
+
+def visitLibrary(DependencyConstraintHandler dep, lib) {
+    if (lib instanceof Provider) {
+        dep.api(lib.get())
+    } else if (lib instanceof VersionCatalog) {
+        for (def sublib : lib.libraryAliases) {
+            visitLibrary(dep, lib.findLibrary(sublib).get())
+        }
+    } else if (lib instanceof org.gradle.api.internal.catalog.ExternalModuleDependencyFactory) {
+        for (def entry : lib.properties.entrySet()) {
+            visitLibrary(dep, entry.value)
+        }
+
+    }
+}
+
+
+dependencies {
+    constraints {
+        def addModule = { Project p ->
+            api(p)
+        }
+
+        var added = new HashSet<String>()
+        project.rootProject.subprojects {
+            if (added.add(it.name)){
+                addModule(it)
+            }
+        }
+
+
+        for (def lib : libs.properties) {
+            if (lib.value != null) {
+                visitLibrary(it, lib.value)
+            }
+        }
+    }
+}
+
+
+def modifyPom(Node pom) {
+    pom.appendNode('properties').appendNode('java.version', '17')
+    pom.appendNode('test').replaceNode {
+        delegate.build {
+            plugins {
+                plugin {
+                    groupId "org.apache.maven.plugins"
+                    artifactId "maven-compiler-plugin"
+                    delegate.version "3.8.1"
+                    configuration {
+                        release '${java.version}'
+                        source '${java.version}'
+                        target '${java.version}'
+                        compilerArgs {
+                            arg "-parameters"
+                        }
+                        annotationProcessorPaths {
+                            path {
+                                groupId "ru.tinkoff.kora"
+                                artifactId "annotation-processors"
+                                delegate.version project.version
+                            }
+                        }
+                    }
+                }
+                plugin {
+                    groupId "org.apache.maven.plugins"
+                    artifactId "maven-surefire-plugin"
+                    delegate.version "2.22.2"
+                    configuration {
+                        argLine "--enable-preview -Djunit.jupiter.extensions.autodetection.enabled=true"
+                    }
+                }
+            }
+        }
+    }
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            artifactId = 'kora-parent'
+            from components.javaPlatform
+            // remove scope information from published BOM
+            pom {
+                withXml {
+                    modifyPom(asNode())
+                }
+            }
+        }
+    }
+    repositories {
+        mavenLocal()
+        maven { MavenArtifactRepository repo ->
+            url = uri(System.getenv().getOrDefault("REPO_URL", "http://some-uri.com"))
+            credentials {
+                username = System.getenv().getOrDefault("REPO_USER", "")
+                password = System.getenv().getOrDefault("REPO_PASSWORD", "")
+            }
+        }
+    }
+}

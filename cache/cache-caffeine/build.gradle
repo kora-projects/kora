@@ -1,0 +1,16 @@
+dependencies {
+    api project(":cache:cache-common")
+
+    implementation project(":config:config-common")
+    implementation libs.caffeine
+
+    testImplementation testFixtures(project(":annotation-processor-common"))
+    testImplementation project(":annotation-processor-common")
+    testImplementation project(":aop:aop-annotation-processor")
+    testImplementation project(":cache:cache-annotation-processor")
+    testImplementation project(":config:config-annotation-processor")
+    testImplementation project(":kora-app-annotation-processor")
+    testImplementation project(":test:test-logging")
+}
+
+apply from: '../../in-test-generated.gradle'

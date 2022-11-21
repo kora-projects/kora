@@ -1,0 +1,7 @@
+dependencies {
+    api libs.testcontainers.core
+    api(libs.lettuce.core) {
+        exclude group: 'io.projectreactor', module: 'reactor-core'
+    }
+    api libs.reactor.core
+}

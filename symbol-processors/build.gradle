@@ -1,0 +1,16 @@
+apply from: "${project.rootDir}/kotlin-plugin.gradle"
+
+dependencies {
+    api project(':kora-app-symbol-processor')
+    api project(':aop:aop-symbol-processor')
+    api project(':config:config-symbol-processor')
+    api project(':json:json-symbol-processor')
+    api project(':http:http-server-symbol-processor')
+    api project(':kafka:kafka-symbol-processor')
+    api project(':http:http-client-symbol-processor')
+    api project(':http:soap-client-symbol-processor')
+    api project(':database:database-symbol-processor')
+    api project(':scheduling:scheduling-ksp')
+    api project(':resilient:resilient-symbol-processor')
+    api project(':cache:cache-symbol-processor')
+}

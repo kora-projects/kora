@@ -1,0 +1,20 @@
+def javaPlugin = project.extensions.getByType(JavaPluginExtension)
+javaPlugin.sourceSets {
+    testGenerated {
+        java {
+            compileClasspath += main.output + test.output + main.compileClasspath + test.compileClasspath
+            runtimeClasspath += main.output + test.output + main.runtimeClasspath + test.runtimeClasspath
+            srcDir project.file('build/in-test-generated/sources')
+        }
+    }
+}
+pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
+    kotlin {
+        sourceSets {
+            testGenerated {
+                kotlin.srcDir("build/in-test-generated-ksp/ksp/sources/kotlin")
+            }
+        }
+    }
+}
+

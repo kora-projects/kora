@@ -1,0 +1,8 @@
+dependencies {
+    api project(":common")
+    api project(":logging:logging-common")
+
+    api libs.jms.api
+//    api 'jakarta.jms:jakarta.jms-api'
+
+}

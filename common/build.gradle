@@ -1,0 +1,15 @@
+apply from: "${project.rootDir}/kotlin-plugin.gradle"
+
+dependencies {
+    api project(":application-graph")
+
+    api libs.slf4j.api
+    api libs.jackson.core
+
+    api libs.reactor.core
+    compileOnly(libs.kotlin.stdlib.lib)
+    compileOnly(libs.kotlin.coroutines.reactor)
+
+    testImplementation libs.kotlin.coroutines.reactor
+    testImplementation libs.reactor.test
+}

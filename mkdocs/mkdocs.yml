@@ -1,0 +1,61 @@
+# Project information
+site_name: kora
+site_description: Документация по фреймворку kora
+nav:
+  - Getting started: index.md
+  - Примеры:
+      - Hello world: examples/hello-world.md
+  - Компоненты:
+      - Контейнер: features/container.md
+      - Конфигурации: features/config.md
+      - Логирование: features/logging.md
+      - Метрики: features/metrics.md
+      - Пробы: features/probes.md
+      - Http server: features/http-server.md
+      - Http client: features/http-client.md
+      - Кодогенерация из OpenAPI: features/openapi-codegen.md
+      - Kafka: features/kafka.md
+      - Database: features/database.md
+      - Cassandra: features/cassandra.md
+      - Json: features/json.md
+      - Soap: features/soap.md
+      - gRPC server: features/grpc-server.md
+      - Tracing: features/tracing.md
+      - Scheduling: features/scheduling.md
+      - Resilient: features/resilient.md
+      - Cache: features/cache.md
+      - GraalVM Native Image: features/native.md
+
+
+# Repository
+repo_name: jvm-core/kora
+repo_url: https://github.com/Tinkoff/kora
+
+# Configuration
+theme:
+  name: material
+  language: ru
+  palette:
+    primary: indigo
+    accent: indigo
+  font:
+    text: Roboto
+    code: Roboto Mono
+  features:
+    - navigation.sections
+    - content.code.annotate
+
+extra_javascript:
+  - assets/highlightjs/highlight.min.js
+  - assets/config.js
+extra_css:
+  - assets/highlightjs/googlecode.min.css
+
+# Extensions
+markdown_extensions:
+  - admonition
+  - codehilite
+  - pymdownx.highlight:
+      use_pygments: false
+  - toc:
+      permalink: true

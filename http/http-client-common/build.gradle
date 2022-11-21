@@ -1,0 +1,35 @@
+plugins {
+    id "java-test-fixtures"
+}
+apply from: "${project.rootDir}/kotlin-plugin.gradle"
+
+dependencies {
+    api project(':logging:logging-common')
+    api project(':http:http-common')
+    compileOnly(libs.kotlin.stdlib.lib)
+    compileOnly(libs.kotlin.coroutines.reactor)
+
+    testFixturesImplementation libs.logback.classic
+    testFixturesImplementation project(':opentelemetry:opentelemetry-tracing')
+    testFixturesImplementation(libs.mockserver.netty) {
+        exclude group: 'io.swagger.parser.v3', module: 'swagger-parser'
+    }
+    testFixturesImplementation(libs.mockserver.client) {
+        exclude group: 'io.swagger.parser.v3', module: 'swagger-parser'
+    }
+    testFixturesImplementation(libs.swagger.models) {
+        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
+        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-databind'
+    }
+
+    testFixturesImplementation libs.bundles.netty
+
+    testFixturesImplementation libs.junit.jupiter
+    testFixturesImplementation libs.assertj
+    testFixturesImplementation libs.mockito.core
+    testFixturesImplementation libs.reactor.test
+
+    testFixturesImplementation(libs.kotlin.stdlib.lib)
+    testFixturesImplementation(libs.kotlin.coroutines.reactor)
+
+}

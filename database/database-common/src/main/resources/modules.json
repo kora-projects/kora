@@ -1,0 +1,14 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory",
+        "moduleName": "ru.tinkoff.kora.database.common.DataBaseModule",
+        "artifact": "ru.tinkoff.kora:database-common"
+    },
+    {
+        "tags": [],
+        "typeRegex": "ru.tinkoff.kora.database.common.telemetry.DataBaseLoggerFactory",
+        "moduleName": "ru.tinkoff.kora.database.common.DataBaseModule",
+        "artifact": "ru.tinkoff.kora:database-common"
+    }
+]

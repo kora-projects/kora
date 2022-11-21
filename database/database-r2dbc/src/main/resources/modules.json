@@ -1,0 +1,14 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "ru.tinkoff.kora.database.r2dbc.R2dbcQueryExecutor",
+        "moduleName": "ru.tinkoff.kora.database.r2dbc.R2dbcDatabaseModule",
+        "artifact": "ru.tinkoff.kora:database-r2dbc"
+    },
+    {
+        "tags": [],
+        "typeRegex": "ru.tinkoff.kora.database.r2dbc.R2dbcDatabase",
+        "moduleName": "ru.tinkoff.kora.database.r2dbc.R2dbcDatabaseModule",
+        "artifact": "ru.tinkoff.kora:database-r2dbc"
+    }
+]

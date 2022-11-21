@@ -1,0 +1,8 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "io.opentelemetry.api.trace.Tracer",
+        "moduleName": "ru.tinkoff.kora.opentelemetry.tracing.OpentelemetryTracingModule",
+        "artifact": "ru.tinkoff.kora:opentelemetry-tracing"
+    }
+]

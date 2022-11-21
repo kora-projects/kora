@@ -1,0 +1,103 @@
+import org.gradle.work.Incremental
+
+def cxfVersion = "3.4.5"
+
+configurations {
+    cxf
+}
+
+static ClassLoader getClassLoader(Configuration config) {
+    ArrayList urls = new ArrayList()
+    config.files.each { File file ->
+        urls += file.toURI().toURL()
+    }
+    return new URLClassLoader(urls.toArray(new URL[0]));
+}
+
+dependencies {
+    api libs.javapoet
+    api project(':annotation-processor-common')
+
+    cxf "org.apache.cxf:cxf-tools-wsdlto-core:$cxfVersion"
+    cxf "org.apache.cxf:cxf-tools-wsdlto-frontend-jaxws:$cxfVersion"
+    cxf "org.apache.cxf:cxf-tools-wsdlto-databinding-jaxb:$cxfVersion"
+    cxf 'javax.xml.bind:jaxb-api:2.3.1'
+    cxf 'javax.jws:javax.jws-api:1.1'
+    cxf 'javax.xml.ws:jaxws-api:2.3.1'
+
+    testImplementation testFixtures(project(':annotation-processor-common'))
+
+    testImplementation 'javax.xml.bind:jaxb-api:2.3.1'
+    testImplementation 'com.sun.xml.bind:jaxb-impl:2.3.5'
+    testImplementation 'javax.jws:javax.jws-api:1.1'
+    testImplementation 'javax.xml.ws:jaxws-api:2.3.1'
+
+    testImplementation 'org.apache.cxf:cxf-rt-bindings-soap:3.4.5'
+    testImplementation 'org.apache.cxf:cxf-rt-transports-http-jetty:3.4.5'
+    testImplementation 'org.apache.cxf:cxf-rt-frontend-jaxws:3.4.5'
+
+    testImplementation project(':http:http-client-common')
+    testImplementation project(':http:soap-client')
+    testImplementation project(':http:http-client-async')
+}
+
+ext {
+    cxfClassLoader = getClassLoader(configurations.cxf)
+}
+
+
+def wsdl2Java(String path) {
+    var wsdlName = path.substring(path.lastIndexOf('/') + 1).replace(".wsdl", "")
+    def jakartaOutput = "$buildDir/generated/" + 'wsdl-jakarta-' + wsdlName
+    def javaxOutput = "$buildDir/generated/" + 'wsdl-javax-' + wsdlName
+    def jakarta = project.tasks.register('wsdl-jakarta-' + wsdlName, CxfGenTask) {
+        inputFile = file(path)
+        outputDir = file(jakartaOutput)
+        doLast {
+            ant.replaceregexp(match: 'javax\\.xml\\.bind', replace: 'jakarta.xml.bind', flags: 'g', byline: true) {
+                fileset(dir: jakartaOutput, includes: '**/*.java')
+            }
+            ant.replaceregexp(match: 'javax\\.jws', replace: 'jakarta.jws', flags: 'g', byline: true) {
+                fileset(dir: jakartaOutput, includes: '**/*.java')
+            }
+            ant.replaceregexp(match: 'javax\\.xml\\.ws', replace: 'jakarta.xml.ws', flags: 'g', byline: true) {
+                fileset(dir: jakartaOutput, includes: '**/*.java')
+            }
+        }
+    }
+    def javax = project.tasks.register('wsdl-javax-' + wsdlName, CxfGenTask) {
+        inputFile = file(path)
+        outputDir = file(javaxOutput)
+    }
+    compileTestJava.dependsOn jakarta, javax
+}
+
+wsdl2Java("$projectDir/src/test/wsdl/simple-service.wsdl")
+wsdl2Java("$projectDir/src/test/wsdl/service-with-multipart-response.wsdl")
+wsdl2Java("$projectDir/src/test/wsdl/service-with-rpc.wsdl")
+
+apply from: '../../in-test-generated.gradle'
+
+
+
+abstract class CxfGenTask extends DefaultTask {
+    @Incremental
+    @PathSensitive(PathSensitivity.NAME_ONLY)
+    @InputFile
+    abstract RegularFileProperty getInputFile()
+
+    @OutputDirectory
+    abstract DirectoryProperty getOutputDir()
+
+    @TaskAction
+    void execute() {
+        def oldCl = Thread.currentThread().contextClassLoader
+        try {
+            Thread.currentThread().contextClassLoader = project.cxfClassLoader
+            def wsdlToJava = project.cxfClassLoader.loadClass('org.apache.cxf.tools.wsdlto.WSDLToJava')
+            wsdlToJava.main(new String[]{'-d', outputDir.get().toString(), '-fe', 'jaxws21', '-autoNameResolution', '-verbose', inputFile.get().asFile.absolutePath})
+        } finally {
+            Thread.currentThread().contextClassLoader = oldCl
+        }
+    }
+}

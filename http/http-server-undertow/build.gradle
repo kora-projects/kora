@@ -1,0 +1,9 @@
+dependencies {
+    api project(':common')
+    api project(':http:http-server-common')
+    api project(':logging:logging-common')
+
+    api libs.undertow.core
+
+    testImplementation testFixtures(project(":http:http-server-common"))
+}

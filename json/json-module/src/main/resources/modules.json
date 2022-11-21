@@ -1,0 +1,26 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "ru.tinkoff.kora.http.client.common.request.HttpClientRequestMapper.*",
+        "moduleName": "ru.tinkoff.kora.json.module.JsonModule",
+        "artifact": "ru.tinkoff.kora:json-module"
+    },
+    {
+        "tags": [],
+        "typeRegex": "ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper.*",
+        "moduleName": "ru.tinkoff.kora.json.module.JsonModule",
+        "artifact": "ru.tinkoff.kora:json-module"
+    },
+    {
+        "tags": [],
+        "typeRegex": "ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper.*",
+        "moduleName": "ru.tinkoff.kora.json.module.JsonModule",
+        "artifact": "ru.tinkoff.kora:json-module"
+    },
+    {
+        "tags": [],
+        "typeRegex": "ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper.*",
+        "moduleName": "ru.tinkoff.kora.json.module.JsonModule",
+        "artifact": "ru.tinkoff.kora:json-module"
+    }
+]

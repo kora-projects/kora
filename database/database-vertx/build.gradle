@@ -1,0 +1,17 @@
+apply from: "${project.rootDir}/kotlin-plugin.gradle"
+
+dependencies {
+    api project(":database:database-common")
+    api project(":vertx-common")
+    api project(":common")
+
+    api(libs.vertx.pg.client)
+    api libs.reactor.pool
+    compileOnly(libs.kotlin.stdlib.lib)
+    compileOnly(libs.kotlin.coroutines.reactor)
+    implementation "com.ongres.scram:common:2.1"
+    implementation "com.ongres.scram:client:2.1"
+
+    testImplementation project(':test:test-postgres')
+    testImplementation libs.reactor.test
+}

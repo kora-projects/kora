@@ -1,0 +1,6 @@
+return this.delegate.{{operationId}}(
+      {{#allParams}}{{#lambda.trim}}
+      {{#hasFormParams}}{{^isFormParam}}{{paramName}},{{/isFormParam}}{{/hasFormParams}}
+      {{^hasFormParams}}{{paramName}}{{^-last}},{{/-last}}{{/hasFormParams}}{{/lambda.trim}}{{/allParams}}{{#hasFormParams}}
+      form{{/hasFormParams}}
+);

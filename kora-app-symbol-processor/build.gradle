@@ -1,0 +1,83 @@
+import java.nio.file.Files
+
+plugins {
+    id "com.google.devtools.ksp"
+    id "java-test-fixtures"
+}
+apply from: "${project.rootDir}/kotlin-plugin.gradle"
+
+dependencies {
+    api project(':symbol-processor-common')
+    api libs.kotlin.reflect
+
+    implementation "org.reflections:reflections:0.10.2"
+    implementation libs.ksp.api
+    implementation libs.kotlin.reflect
+    implementation libs.kotlinpoet
+    implementation libs.kotlinpoet.ksp
+
+    testImplementation testFixtures(project(':annotation-processor-common'))
+    testImplementation testFixtures(project(':symbol-processor-common'))
+}
+
+test {
+    jvmArgs(['--enable-preview'])
+}
+
+
+apply from: '../in-test-generated.gradle'
+
+sourceSets {
+    main {
+        resources {
+            srcDirs "build/kora-modules"
+        }
+    }
+}
+
+project.tasks.register("copyModules", Copy) {
+    def counter = 0
+    from('..') {
+        includeEmptyDirs = false
+        include '/**/src/main/resources/modules.json'
+        exclude '**/build/**/*'
+        rename {
+            counter++
+            return "module-" + counter + ".json"
+        }
+        eachFile {
+            path = name
+        }
+    }
+    into 'build/kora-modules/parts'
+}
+
+
+project.tasks.register("buildModules") {
+    it.dependsOn('copyModules')
+    it.outputs.file("build/kora-modules/kora-modules.json")
+    it.inputs.dir('build/kora-modules/parts')
+    doLast {
+        def list = new ArrayList<>()
+        fileTree(dir: 'build/kora-modules/parts', include: '*.json').visit {
+            println it.file
+            def result = new groovy.json.JsonSlurper().parseText(it.file.text)
+            list.addAll(result)
+        }
+        def json = groovy.json.JsonOutput.toJson(list)
+        def resultFile = project.file("build/kora-modules/kora-modules.json")
+        if (resultFile.exists()) {
+            if (resultFile.text == json) {
+                return
+            }
+            resultFile.delete()
+        }
+
+        Files.createDirectories(resultFile.parentFile.toPath())
+        resultFile.createNewFile()
+        resultFile.text = json
+    }
+}
+
+processResources.dependsOn("buildModules", "copyModules")
+compileJava.dependsOn("buildModules", "copyModules")

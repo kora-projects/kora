@@ -1,0 +1,14 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "ru.tinkoff.kora.database.jdbc.JdbcQueryExecutor",
+        "moduleName": "ru.tinkoff.kora.database.jdbc.DatabaseModule",
+        "artifact": "ru.tinkoff.kora:database-jdbc"
+    },
+    {
+        "tags": [],
+        "typeRegex": "ru.tinkoff.kora.database.jdbc.JdbcQueryExecutor",
+        "moduleName": "ru.tinkoff.kora.database.jdbc.JdbcDataBase",
+        "artifact": "ru.tinkoff.kora:database-jdbc"
+    }
+]

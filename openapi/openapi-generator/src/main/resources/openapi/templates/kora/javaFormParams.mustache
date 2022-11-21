@@ -1,0 +1,10 @@
+{{#hasFormParams}}
+    public record {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(
+      {{#formParams}}{{^required}}
+        @javax.annotation.Nullable{{/required}}{{#isFile}}
+          ru.tinkoff.kora.http.common.form.FormMultipart.FormPart {{paramName}}{{^-last}},{{/-last}}
+      {{/isFile}}{{^isFile}}
+        {{{dataType}}} {{paramName}}{{^-last}},{{/-last}}
+      {{/isFile}}{{/formParams}}
+    ){}
+{{/hasFormParams}}

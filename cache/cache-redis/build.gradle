@@ -1,0 +1,25 @@
+dependencies {
+    api project(":cache:cache-common")
+
+    implementation project(":json:json-common")
+    implementation project(":config:config-common")
+    implementation libs.typesafe.config
+    implementation(libs.lettuce.core) {
+        exclude group: 'io.projectreactor', module: 'reactor-core'
+    }
+    implementation libs.reactor.core
+
+    testImplementation testFixtures(project(":annotation-processor-common"))
+    testImplementation project(":annotation-processor-common")
+    testImplementation project(":aop:aop-annotation-processor")
+    testImplementation project(":cache:cache-annotation-processor")
+    testImplementation project(":config:config-annotation-processor")
+    testImplementation project(":kora-app-annotation-processor")
+    testImplementation project(":json:json-annotation-processor")
+    testImplementation project(":test:test-logging")
+    testImplementation project(":test:test-redis")
+
+    testImplementation libs.testcontainers.junit.jupiter
+}
+
+apply from: "../../in-test-generated.gradle"

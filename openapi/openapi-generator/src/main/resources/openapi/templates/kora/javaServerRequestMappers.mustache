@@ -1,0 +1,77 @@
+package {{package}};
+
+import ru.tinkoff.kora.http.server.common.form.MultipartReader;
+import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
+import ru.tinkoff.kora.http.server.common.HttpServerRequest;
+import reactor.core.publisher.Mono;
+
+@javax.annotation.processing.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
+public interface {{classname}}ServerRequestMappers {
+{{#operations}}
+{{#operation}}
+{{#hasFormParams}}
+
+  public static final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper implements HttpServerRequestMapper<{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> {
+    @Override
+    public Mono<{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> apply(HttpServerRequest request) {
+      {{#vendorExtensions.urlEncodedForm}}
+              return ru.tinkoff.kora.common.util.ReactorUtils.toByteArrayMono(request.body()).handle((bytes, sink) -> {
+              var bodyString = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+              var formData = ru.tinkoff.kora.http.server.common.form.FormUrlEncodedServerRequestMapper.read(bodyString);
+          {{#formParams}}
+                  var {{paramName}}Part = formData.get("{{baseName}}");{{#isArray}}
+                      var {{paramName}} = {{paramName}}Part == null ? java.util.List.of() : {{paramName}}Part;
+              {{/isArray}}{{^isArray}}
+                  {{#required}}
+                          if ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) {
+                          sink.error(ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form field '{{baseName}}' is required"));
+                          return;
+                          }
+                          var {{paramName}} = {{paramName}}Part.values().get(0);
+                  {{/required}}{{^required}}
+                          var {{paramName}} = ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) ? null : {{paramName}}Part.values().get(0);
+                  {{/required}}
+        {{/isArray}}
+        {{/formParams}}
+
+        sink.next(new {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(
+          {{#formParams}}{{paramName}}{{^-last}}, {{/-last}}{{/formParams}}
+        ));
+      });{{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
+      class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState {
+      {{#formParams}}  @javax.annotation.Nullable
+      {{#isFile}}  ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile {{paramName}} = null;
+      {{/isFile}}{{^isFile}}  {{{dataType}}} {{paramName}} = null;
+      {{/isFile}}{{/formParams}}
+      }
+      return MultipartReader.read(request)
+        .reduce(new {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState(), (state, part) -> {
+          switch (part.name()) {
+            default:
+              break;{{#formParams}}
+              case "{{baseName}}":
+          {{#isFile}}  state.{{paramName}} = part;
+              break;
+          {{/isFile}}{{^isFile}}  state.{{paramName}} = new String(part.content(), java.nio.charset.StandardCharsets.UTF_8);
+              break;
+          {{/isFile}}{{/formParams}}
+          }
+          return state;
+        })
+        .handle((state, sink) -> {
+          {{#formParams}}{{#required}}
+          if (state.{{paramName}} == null) {
+            sink.error(ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form field '{{baseName}}' is required"));
+            return;
+          }
+          {{/required}}{{/formParams}}
+          sink.next(new {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(
+            {{#formParams}}state.{{paramName}}{{^-last}}, {{/-last}}{{/formParams}}
+          ));
+        });{{/vendorExtensions.multipartForm}}
+    }
+  }
+{{/hasFormParams}}
+{{/operation}}
+{{/operations}}
+}

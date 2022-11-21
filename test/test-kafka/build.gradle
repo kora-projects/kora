@@ -1,0 +1,5 @@
+dependencies {
+    api libs.testcontainers.kafka
+    api libs.jsr305
+    api libs.kafka.client
+}

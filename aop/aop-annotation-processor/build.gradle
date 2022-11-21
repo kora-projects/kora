@@ -1,0 +1,9 @@
+dependencies {
+    api(project(":annotation-processor-common"))
+
+    testImplementation testFixtures(project(':annotation-processor-common'))
+}
+
+
+
+apply from: '../../in-test-generated.gradle'

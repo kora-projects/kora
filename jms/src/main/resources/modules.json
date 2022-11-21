@@ -1,0 +1,8 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "ru.tinkoff.kora.jms.telemetry.JmsConsumerTelemetryFactory",
+        "moduleName": "ru.tinkoff.kora.jms.JmsConsumerModule",
+        "artifact": "ru.tinkoff.kora:jms"
+    }
+]

@@ -1,0 +1,9 @@
+dependencies {
+    api project(":http:http-client-common")
+    api libs.async.http.client
+    api project(":netty-common")
+
+    testImplementation(testFixtures(project(":http:http-client-common")))
+    testImplementation libs.jackson.datatype.jsr310
+    testImplementation('com.github.fge:jackson-coreutils:1.8')
+}

@@ -1,0 +1,999 @@
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.Blackbird.beanWithConstructorFromJson
+
+# Run progress: 0,00% complete, ETA 00:25:00
+# Fork: 1 of 1
+# Warmup Iteration   1: 3,553 ops/ms
+# Warmup Iteration   2: 3,690 ops/ms
+# Warmup Iteration   3: 3,704 ops/ms
+# Warmup Iteration   4: 3,685 ops/ms
+# Warmup Iteration   5: 3,708 ops/ms
+Iteration   1: 3,724 ops/ms
+Iteration   2: 3,738 ops/ms
+Iteration   3: 3,722 ops/ms
+Iteration   4: 3,715 ops/ms
+Iteration   5: 3,720 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.Blackbird.beanWithConstructorFromJson":
+  3,724 ?(99.9%) 0,033 ops/ms [Average]
+  (min, avg, max) = (3,715, 3,724, 3,738), stdev = 0,009
+  CI (99.9%): [3,691, 3,757] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.Blackbird.classicBeanFromJson
+
+# Run progress: 3,33% complete, ETA 00:24:29
+# Fork: 1 of 1
+# Warmup Iteration   1: 4,521 ops/ms
+# Warmup Iteration   2: 4,630 ops/ms
+# Warmup Iteration   3: 4,657 ops/ms
+# Warmup Iteration   4: 4,649 ops/ms
+# Warmup Iteration   5: 4,656 ops/ms
+Iteration   1: 4,646 ops/ms
+Iteration   2: 4,653 ops/ms
+Iteration   3: 4,657 ops/ms
+Iteration   4: 4,661 ops/ms
+Iteration   5: 4,651 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.Blackbird.classicBeanFromJson":
+  4,653 ?(99.9%) 0,022 ops/ms [Average]
+  (min, avg, max) = (4,646, 4,653, 4,661), stdev = 0,006
+  CI (99.9%): [4,631, 4,676] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.Blackbird.classicBeanToJson
+
+# Run progress: 6,67% complete, ETA 00:23:38
+# Fork: 1 of 1
+# Warmup Iteration   1: 7,339 ops/ms
+# Warmup Iteration   2: 7,396 ops/ms
+# Warmup Iteration   3: 7,400 ops/ms
+# Warmup Iteration   4: 7,407 ops/ms
+# Warmup Iteration   5: 7,403 ops/ms
+Iteration   1: 7,380 ops/ms
+Iteration   2: 7,373 ops/ms
+Iteration   3: 7,377 ops/ms
+Iteration   4: 7,396 ops/ms
+Iteration   5: 7,381 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.Blackbird.classicBeanToJson":
+  7,381 ?(99.9%) 0,034 ops/ms [Average]
+  (min, avg, max) = (7,373, 7,381, 7,396), stdev = 0,009
+  CI (99.9%): [7,347, 7,415] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.Blackbird.mediaItemFromJson
+
+# Run progress: 10,00% complete, ETA 00:22:47
+# Fork: 1 of 1
+# Warmup Iteration   1: 929,271 ops/ms
+# Warmup Iteration   2: 971,047 ops/ms
+# Warmup Iteration   3: 972,173 ops/ms
+# Warmup Iteration   4: 978,312 ops/ms
+# Warmup Iteration   5: 981,775 ops/ms
+Iteration   1: 972,703 ops/ms
+Iteration   2: 972,322 ops/ms
+Iteration   3: 977,264 ops/ms
+Iteration   4: 975,100 ops/ms
+Iteration   5: 974,210 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.Blackbird.mediaItemFromJson":
+  974,320 ?(99.9%) 7,676 ops/ms [Average]
+  (min, avg, max) = (972,322, 974,320, 977,264), stdev = 1,993
+  CI (99.9%): [966,644, 981,996] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.Blackbird.mediaItemToJson
+
+# Run progress: 13,33% complete, ETA 00:21:57
+# Fork: 1 of 1
+# Warmup Iteration   1: 1082,216 ops/ms
+# Warmup Iteration   2: 1106,225 ops/ms
+# Warmup Iteration   3: 1101,981 ops/ms
+# Warmup Iteration   4: 1106,146 ops/ms
+# Warmup Iteration   5: 1106,996 ops/ms
+Iteration   1: 1101,410 ops/ms
+Iteration   2: 1101,271 ops/ms
+Iteration   3: 1104,776 ops/ms
+Iteration   4: 1106,435 ops/ms
+Iteration   5: 1104,060 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.Blackbird.mediaItemToJson":
+  1103,590 ?(99.9%) 8,578 ops/ms [Average]
+  (min, avg, max) = (1101,271, 1103,590, 1106,435), stdev = 2,228
+  CI (99.9%): [1095,012, 1112,168] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.Blackbird.simpleRecordFromJson
+
+# Run progress: 16,67% complete, ETA 00:21:06
+# Fork: 1 of 1
+# Warmup Iteration   1: 4857,237 ops/ms
+# Warmup Iteration   2: 5155,981 ops/ms
+# Warmup Iteration   3: 5146,047 ops/ms
+# Warmup Iteration   4: 5135,043 ops/ms
+# Warmup Iteration   5: 5137,017 ops/ms
+Iteration   1: 5146,200 ops/ms
+Iteration   2: 5147,317 ops/ms
+Iteration   3: 5132,123 ops/ms
+Iteration   4: 5128,949 ops/ms
+Iteration   5: 5140,071 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.Blackbird.simpleRecordFromJson":
+  5138,932 ?(99.9%) 31,662 ops/ms [Average]
+  (min, avg, max) = (5128,949, 5138,932, 5147,317), stdev = 8,223
+  CI (99.9%): [5107,269, 5170,594] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.Blackbird.simpleRecordFromShuffledJson
+
+# Run progress: 20,00% complete, ETA 00:20:15
+# Fork: 1 of 1
+# Warmup Iteration   1: 4839,532 ops/ms
+# Warmup Iteration   2: 5032,151 ops/ms
+# Warmup Iteration   3: 5143,169 ops/ms
+# Warmup Iteration   4: 5119,487 ops/ms
+# Warmup Iteration   5: 5117,611 ops/ms
+Iteration   1: 5139,317 ops/ms
+Iteration   2: 5143,480 ops/ms
+Iteration   3: 5115,702 ops/ms
+Iteration   4: 5117,099 ops/ms
+Iteration   5: 5135,896 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.Blackbird.simpleRecordFromShuffledJson":
+  5130,299 ?(99.9%) 49,973 ops/ms [Average]
+  (min, avg, max) = (5115,702, 5130,299, 5143,480), stdev = 12,978
+  CI (99.9%): [5080,326, 5180,272] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.Blackbird.simpleRecordToJson
+
+# Run progress: 23,33% complete, ETA 00:19:25
+# Fork: 1 of 1
+# Warmup Iteration   1: 7287,748 ops/ms
+# Warmup Iteration   2: 7718,875 ops/ms
+# Warmup Iteration   3: 7738,662 ops/ms
+# Warmup Iteration   4: 7693,167 ops/ms
+# Warmup Iteration   5: 7694,295 ops/ms
+Iteration   1: 7739,218 ops/ms
+Iteration   2: 7749,641 ops/ms
+Iteration   3: 7700,603 ops/ms
+Iteration   4: 7697,937 ops/ms
+Iteration   5: 7738,185 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.Blackbird.simpleRecordToJson":
+  7725,117 ?(99.9%) 92,551 ops/ms [Average]
+  (min, avg, max) = (7697,937, 7725,117, 7749,641), stdev = 24,035
+  CI (99.9%): [7632,566, 7817,668] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.Blackbird.someBeanListFromJson
+
+# Run progress: 26,67% complete, ETA 00:18:34
+# Fork: 1 of 1
+# Warmup Iteration   1: 4,247 ops/ms
+# Warmup Iteration   2: 4,398 ops/ms
+# Warmup Iteration   3: 4,404 ops/ms
+# Warmup Iteration   4: 4,396 ops/ms
+# Warmup Iteration   5: 4,395 ops/ms
+Iteration   1: 4,400 ops/ms
+Iteration   2: 4,407 ops/ms
+Iteration   3: 4,391 ops/ms
+Iteration   4: 4,392 ops/ms
+Iteration   5: 4,405 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.Blackbird.someBeanListFromJson":
+  4,399 ?(99.9%) 0,029 ops/ms [Average]
+  (min, avg, max) = (4,391, 4,399, 4,407), stdev = 0,008
+  CI (99.9%): [4,370, 4,428] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.Blackbird.someBeanListToJson
+
+# Run progress: 30,00% complete, ETA 00:17:43
+# Fork: 1 of 1
+# Warmup Iteration   1: 6,269 ops/ms
+# Warmup Iteration   2: 6,395 ops/ms
+# Warmup Iteration   3: 6,407 ops/ms
+# Warmup Iteration   4: 6,388 ops/ms
+# Warmup Iteration   5: 6,402 ops/ms
+Iteration   1: 6,404 ops/ms
+Iteration   2: 6,415 ops/ms
+Iteration   3: 6,397 ops/ms
+Iteration   4: 6,396 ops/ms
+Iteration   5: 6,413 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.Blackbird.someBeanListToJson":
+  6,405 ?(99.9%) 0,034 ops/ms [Average]
+  (min, avg, max) = (6,396, 6,405, 6,415), stdev = 0,009
+  CI (99.9%): [6,371, 6,439] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.KoraBenchmark.beanWithConstructorFromJson
+
+# Run progress: 33,33% complete, ETA 00:16:53
+# Fork: 1 of 1
+# Warmup Iteration   1: 3,761 ops/ms
+# Warmup Iteration   2: 3,939 ops/ms
+# Warmup Iteration   3: 3,940 ops/ms
+# Warmup Iteration   4: 3,937 ops/ms
+# Warmup Iteration   5: 3,939 ops/ms
+Iteration   1: 3,938 ops/ms
+Iteration   2: 3,937 ops/ms
+Iteration   3: 3,934 ops/ms
+Iteration   4: 3,938 ops/ms
+Iteration   5: 3,941 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.KoraBenchmark.beanWithConstructorFromJson":
+  3,938 ?(99.9%) 0,010 ops/ms [Average]
+  (min, avg, max) = (3,934, 3,938, 3,941), stdev = 0,003
+  CI (99.9%): [3,927, 3,948] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.KoraBenchmark.classicBeanFromJson
+
+# Run progress: 36,67% complete, ETA 00:16:02
+# Fork: 1 of 1
+# Warmup Iteration   1: 5,097 ops/ms
+# Warmup Iteration   2: 5,317 ops/ms
+# Warmup Iteration   3: 5,316 ops/ms
+# Warmup Iteration   4: 5,318 ops/ms
+# Warmup Iteration   5: 5,315 ops/ms
+Iteration   1: 5,332 ops/ms
+Iteration   2: 5,341 ops/ms
+Iteration   3: 5,300 ops/ms
+Iteration   4: 5,330 ops/ms
+Iteration   5: 5,337 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.KoraBenchmark.classicBeanFromJson":
+  5,328 ?(99.9%) 0,063 ops/ms [Average]
+  (min, avg, max) = (5,300, 5,328, 5,341), stdev = 0,016
+  CI (99.9%): [5,265, 5,391] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.KoraBenchmark.classicBeanToJson
+
+# Run progress: 40,00% complete, ETA 00:15:11
+# Fork: 1 of 1
+# Warmup Iteration   1: 9,411 ops/ms
+# Warmup Iteration   2: 9,608 ops/ms
+# Warmup Iteration   3: 9,628 ops/ms
+# Warmup Iteration   4: 9,633 ops/ms
+# Warmup Iteration   5: 9,623 ops/ms
+Iteration   1: 9,602 ops/ms
+Iteration   2: 9,613 ops/ms
+Iteration   3: 9,645 ops/ms
+Iteration   4: 9,624 ops/ms
+Iteration   5: 9,599 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.KoraBenchmark.classicBeanToJson":
+  9,617 ?(99.9%) 0,073 ops/ms [Average]
+  (min, avg, max) = (9,599, 9,617, 9,645), stdev = 0,019
+  CI (99.9%): [9,544, 9,689] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.KoraBenchmark.mediaItemFromJson
+
+# Run progress: 43,33% complete, ETA 00:14:20
+# Fork: 1 of 1
+# Warmup Iteration   1: 1076,439 ops/ms
+# Warmup Iteration   2: 1128,015 ops/ms
+# Warmup Iteration   3: 1126,206 ops/ms
+# Warmup Iteration   4: 1123,095 ops/ms
+# Warmup Iteration   5: 1123,156 ops/ms
+Iteration   1: 1126,523 ops/ms
+Iteration   2: 1126,744 ops/ms
+Iteration   3: 1122,143 ops/ms
+Iteration   4: 1122,856 ops/ms
+Iteration   5: 1123,201 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.KoraBenchmark.mediaItemFromJson":
+  1124,293 ?(99.9%) 8,362 ops/ms [Average]
+  (min, avg, max) = (1122,143, 1124,293, 1126,744), stdev = 2,172
+  CI (99.9%): [1115,932, 1132,655] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.KoraBenchmark.mediaItemToJson
+
+# Run progress: 46,67% complete, ETA 00:13:29
+# Fork: 1 of 1
+# Warmup Iteration   1: 1116,564 ops/ms
+# Warmup Iteration   2: 1359,346 ops/ms
+# Warmup Iteration   3: 1355,181 ops/ms
+# Warmup Iteration   4: 1359,346 ops/ms
+# Warmup Iteration   5: 1358,140 ops/ms
+Iteration   1: 1355,454 ops/ms
+Iteration   2: 1354,244 ops/ms
+Iteration   3: 1359,146 ops/ms
+Iteration   4: 1359,874 ops/ms
+Iteration   5: 1356,440 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.KoraBenchmark.mediaItemToJson":
+  1357,032 ?(99.9%) 9,265 ops/ms [Average]
+  (min, avg, max) = (1354,244, 1357,032, 1359,874), stdev = 2,406
+  CI (99.9%): [1347,766, 1366,297] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.KoraBenchmark.simpleRecordFromJson
+
+# Run progress: 50,00% complete, ETA 00:12:39
+# Fork: 1 of 1
+# Warmup Iteration   1: 8129,577 ops/ms
+# Warmup Iteration   2: 8537,263 ops/ms
+# Warmup Iteration   3: 8566,272 ops/ms
+# Warmup Iteration   4: 8535,071 ops/ms
+# Warmup Iteration   5: 8537,505 ops/ms
+Iteration   1: 8574,598 ops/ms
+Iteration   2: 8583,786 ops/ms
+Iteration   3: 8540,319 ops/ms
+Iteration   4: 8528,581 ops/ms
+Iteration   5: 8572,799 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.KoraBenchmark.simpleRecordFromJson":
+  8560,017 ?(99.9%) 92,680 ops/ms [Average]
+  (min, avg, max) = (8528,581, 8560,017, 8583,786), stdev = 24,069
+  CI (99.9%): [8467,337, 8652,697] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.KoraBenchmark.simpleRecordFromShuffledJson
+
+# Run progress: 53,33% complete, ETA 00:11:48
+# Fork: 1 of 1
+# Warmup Iteration   1: 5833,292 ops/ms
+# Warmup Iteration   2: 6353,177 ops/ms
+# Warmup Iteration   3: 6219,153 ops/ms
+# Warmup Iteration   4: 6214,840 ops/ms
+# Warmup Iteration   5: 6184,239 ops/ms
+Iteration   1: 6202,753 ops/ms
+Iteration   2: 6217,034 ops/ms
+Iteration   3: 6211,795 ops/ms
+Iteration   4: 6188,872 ops/ms
+Iteration   5: 6210,031 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.KoraBenchmark.simpleRecordFromShuffledJson":
+  6206,097 ?(99.9%) 41,981 ops/ms [Average]
+  (min, avg, max) = (6188,872, 6206,097, 6217,034), stdev = 10,902
+  CI (99.9%): [6164,116, 6248,078] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.KoraBenchmark.simpleRecordToJson
+
+# Run progress: 56,67% complete, ETA 00:10:57
+# Fork: 1 of 1
+# Warmup Iteration   1: 8616,281 ops/ms
+# Warmup Iteration   2: 10276,942 ops/ms
+# Warmup Iteration   3: 10121,859 ops/ms
+# Warmup Iteration   4: 10190,782 ops/ms
+# Warmup Iteration   5: 10210,343 ops/ms
+Iteration   1: 10160,463 ops/ms
+Iteration   2: 10125,583 ops/ms
+Iteration   3: 10154,921 ops/ms
+Iteration   4: 10208,008 ops/ms
+Iteration   5: 10170,386 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.KoraBenchmark.simpleRecordToJson":
+  10163,872 ?(99.9%) 114,685 ops/ms [Average]
+  (min, avg, max) = (10125,583, 10163,872, 10208,008), stdev = 29,783
+  CI (99.9%): [10049,187, 10278,557] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.KoraBenchmark.someBeanListFromJson
+
+# Run progress: 60,00% complete, ETA 00:10:07
+# Fork: 1 of 1
+# Warmup Iteration   1: 4,759 ops/ms
+# Warmup Iteration   2: 4,903 ops/ms
+# Warmup Iteration   3: 4,919 ops/ms
+# Warmup Iteration   4: 4,901 ops/ms
+# Warmup Iteration   5: 4,896 ops/ms
+Iteration   1: 4,921 ops/ms
+Iteration   2: 4,922 ops/ms
+Iteration   3: 4,907 ops/ms
+Iteration   4: 4,904 ops/ms
+Iteration   5: 4,914 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.KoraBenchmark.someBeanListFromJson":
+  4,913 ?(99.9%) 0,031 ops/ms [Average]
+  (min, avg, max) = (4,904, 4,913, 4,922), stdev = 0,008
+  CI (99.9%): [4,882, 4,945] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.KoraBenchmark.someBeanListToJson
+
+# Run progress: 63,33% complete, ETA 00:09:16
+# Fork: 1 of 1
+# Warmup Iteration   1: 8,253 ops/ms
+# Warmup Iteration   2: 8,386 ops/ms
+# Warmup Iteration   3: 8,351 ops/ms
+# Warmup Iteration   4: 8,315 ops/ms
+# Warmup Iteration   5: 8,328 ops/ms
+Iteration   1: 8,279 ops/ms
+Iteration   2: 8,157 ops/ms
+Iteration   3: 8,265 ops/ms
+Iteration   4: 8,302 ops/ms
+Iteration   5: 8,299 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.KoraBenchmark.someBeanListToJson":
+  8,260 ?(99.9%) 0,230 ops/ms [Average]
+  (min, avg, max) = (8,157, 8,260, 8,302), stdev = 0,060
+  CI (99.9%): [8,030, 8,491] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.Vanilla.beanWithConstructorFromJson
+
+# Run progress: 66,67% complete, ETA 00:08:25
+# Fork: 1 of 1
+# Warmup Iteration   1: 3,622 ops/ms
+# Warmup Iteration   2: 3,767 ops/ms
+# Warmup Iteration   3: 3,765 ops/ms
+# Warmup Iteration   4: 3,761 ops/ms
+# Warmup Iteration   5: 3,752 ops/ms
+Iteration   1: 3,767 ops/ms
+Iteration   2: 3,778 ops/ms
+Iteration   3: 3,759 ops/ms
+Iteration   4: 3,768 ops/ms
+Iteration   5: 3,769 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.Vanilla.beanWithConstructorFromJson":
+  3,768 ?(99.9%) 0,026 ops/ms [Average]
+  (min, avg, max) = (3,759, 3,768, 3,778), stdev = 0,007
+  CI (99.9%): [3,742, 3,794] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.Vanilla.classicBeanFromJson
+
+# Run progress: 70,00% complete, ETA 00:07:35
+# Fork: 1 of 1
+# Warmup Iteration   1: 3,656 ops/ms
+# Warmup Iteration   2: 3,794 ops/ms
+# Warmup Iteration   3: 3,788 ops/ms
+# Warmup Iteration   4: 3,794 ops/ms
+# Warmup Iteration   5: 3,796 ops/ms
+Iteration   1: 3,800 ops/ms
+Iteration   2: 3,808 ops/ms
+Iteration   3: 3,807 ops/ms
+Iteration   4: 3,806 ops/ms
+Iteration   5: 3,812 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.Vanilla.classicBeanFromJson":
+  3,807 ?(99.9%) 0,017 ops/ms [Average]
+  (min, avg, max) = (3,800, 3,807, 3,812), stdev = 0,004
+  CI (99.9%): [3,789, 3,824] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.Vanilla.classicBeanToJson
+
+# Run progress: 73,33% complete, ETA 00:06:44
+# Fork: 1 of 1
+# Warmup Iteration   1: 7,358 ops/ms
+# Warmup Iteration   2: 7,501 ops/ms
+# Warmup Iteration   3: 7,561 ops/ms
+# Warmup Iteration   4: 7,512 ops/ms
+# Warmup Iteration   5: 7,518 ops/ms
+Iteration   1: 7,514 ops/ms
+Iteration   2: 7,540 ops/ms
+Iteration   3: 7,510 ops/ms
+Iteration   4: 7,517 ops/ms
+Iteration   5: 7,526 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.Vanilla.classicBeanToJson":
+  7,521 ?(99.9%) 0,047 ops/ms [Average]
+  (min, avg, max) = (7,510, 7,521, 7,540), stdev = 0,012
+  CI (99.9%): [7,474, 7,568] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.Vanilla.mediaItemFromJson
+
+# Run progress: 76,67% complete, ETA 00:05:54
+# Fork: 1 of 1
+# Warmup Iteration   1: 729,012 ops/ms
+# Warmup Iteration   2: 768,116 ops/ms
+# Warmup Iteration   3: 771,072 ops/ms
+# Warmup Iteration   4: 771,149 ops/ms
+# Warmup Iteration   5: 771,391 ops/ms
+Iteration   1: 773,734 ops/ms
+Iteration   2: 770,561 ops/ms
+Iteration   3: 763,012 ops/ms
+Iteration   4: 768,678 ops/ms
+Iteration   5: 774,851 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.Vanilla.mediaItemFromJson":
+  770,167 ?(99.9%) 18,084 ops/ms [Average]
+  (min, avg, max) = (763,012, 770,167, 774,851), stdev = 4,696
+  CI (99.9%): [752,083, 788,251] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.Vanilla.mediaItemToJson
+
+# Run progress: 80,00% complete, ETA 00:05:03
+# Fork: 1 of 1
+# Warmup Iteration   1: 1162,037 ops/ms
+# Warmup Iteration   2: 1210,122 ops/ms
+# Warmup Iteration   3: 1194,583 ops/ms
+# Warmup Iteration   4: 1201,604 ops/ms
+# Warmup Iteration   5: 1199,004 ops/ms
+Iteration   1: 1195,711 ops/ms
+Iteration   2: 1194,707 ops/ms
+Iteration   3: 1199,603 ops/ms
+Iteration   4: 1200,266 ops/ms
+Iteration   5: 1195,295 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.Vanilla.mediaItemToJson":
+  1197,116 ?(99.9%) 10,041 ops/ms [Average]
+  (min, avg, max) = (1194,707, 1197,116, 1200,266), stdev = 2,608
+  CI (99.9%): [1187,075, 1207,158] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.Vanilla.simpleRecordFromJson
+
+# Run progress: 83,33% complete, ETA 00:04:12
+# Fork: 1 of 1
+# Warmup Iteration   1: 4794,382 ops/ms
+# Warmup Iteration   2: 5252,449 ops/ms
+# Warmup Iteration   3: 5188,463 ops/ms
+# Warmup Iteration   4: 5220,168 ops/ms
+# Warmup Iteration   5: 5218,741 ops/ms
+Iteration   1: 5191,592 ops/ms
+Iteration   2: 5187,256 ops/ms
+Iteration   3: 5214,730 ops/ms
+Iteration   4: 5216,217 ops/ms
+Iteration   5: 5199,294 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.Vanilla.simpleRecordFromJson":
+  5201,818 ?(99.9%) 50,831 ops/ms [Average]
+  (min, avg, max) = (5187,256, 5201,818, 5216,217), stdev = 13,201
+  CI (99.9%): [5150,987, 5252,649] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.Vanilla.simpleRecordFromShuffledJson
+
+# Run progress: 86,67% complete, ETA 00:03:22
+# Fork: 1 of 1
+# Warmup Iteration   1: 4766,370 ops/ms
+# Warmup Iteration   2: 5287,273 ops/ms
+# Warmup Iteration   3: 5322,937 ops/ms
+# Warmup Iteration   4: 5295,303 ops/ms
+# Warmup Iteration   5: 5297,463 ops/ms
+Iteration   1: 5323,698 ops/ms
+Iteration   2: 5327,056 ops/ms
+Iteration   3: 5295,911 ops/ms
+Iteration   4: 5293,614 ops/ms
+Iteration   5: 5321,421 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.Vanilla.simpleRecordFromShuffledJson":
+  5312,340 ?(99.9%) 62,346 ops/ms [Average]
+  (min, avg, max) = (5293,614, 5312,340, 5327,056), stdev = 16,191
+  CI (99.9%): [5249,993, 5374,686] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.Vanilla.simpleRecordToJson
+
+# Run progress: 90,00% complete, ETA 00:02:31
+# Fork: 1 of 1
+# Warmup Iteration   1: 7271,104 ops/ms
+# Warmup Iteration   2: 6810,150 ops/ms
+# Warmup Iteration   3: 6854,042 ops/ms
+# Warmup Iteration   4: 6855,691 ops/ms
+# Warmup Iteration   5: 6851,070 ops/ms
+Iteration   1: 6855,947 ops/ms
+Iteration   2: 6856,630 ops/ms
+Iteration   3: 6851,393 ops/ms
+Iteration   4: 6848,768 ops/ms
+Iteration   5: 6849,072 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.Vanilla.simpleRecordToJson":
+  6852,362 ?(99.9%) 14,376 ops/ms [Average]
+  (min, avg, max) = (6848,768, 6852,362, 6856,630), stdev = 3,733
+  CI (99.9%): [6837,986, 6866,738] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.Vanilla.someBeanListFromJson
+
+# Run progress: 93,33% complete, ETA 00:01:41
+# Fork: 1 of 1
+# Warmup Iteration   1: 3,547 ops/ms
+# Warmup Iteration   2: 3,689 ops/ms
+# Warmup Iteration   3: 3,686 ops/ms
+# Warmup Iteration   4: 3,688 ops/ms
+# Warmup Iteration   5: 3,689 ops/ms
+Iteration   1: 3,687 ops/ms
+Iteration   2: 3,688 ops/ms
+Iteration   3: 3,683 ops/ms
+Iteration   4: 3,684 ops/ms
+Iteration   5: 3,685 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.Vanilla.someBeanListFromJson":
+  3,686 ?(99.9%) 0,008 ops/ms [Average]
+  (min, avg, max) = (3,683, 3,686, 3,688), stdev = 0,002
+  CI (99.9%): [3,678, 3,693] (assumes normal distribution)
+
+
+# JMH version: 1.28
+# VM version: JDK 16.0.1, OpenJDK 64-Bit Server VM, 16.0.1+9
+# VM invoker: C:\Users\aduyu\.jdks\adopt-openjdk-16.0.1\bin\java.exe
+# VM options: <none>
+# Blackhole mode: full + dont-inline hint
+# Warmup: 5 iterations, 5 s each
+# Measurement: 5 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: ru.tinkoff.kora.json.annotation.processor.Vanilla.someBeanListToJson
+
+# Run progress: 96,67% complete, ETA 00:00:50
+# Fork: 1 of 1
+# Warmup Iteration   1: 7,352 ops/ms
+# Warmup Iteration   2: 7,447 ops/ms
+# Warmup Iteration   3: 7,385 ops/ms
+# Warmup Iteration   4: 7,524 ops/ms
+# Warmup Iteration   5: 7,531 ops/ms
+Iteration   1: 7,490 ops/ms
+Iteration   2: 7,486 ops/ms
+Iteration   3: 7,519 ops/ms
+Iteration   4: 7,525 ops/ms
+Iteration   5: 7,483 ops/ms
+
+
+Result "ru.tinkoff.kora.json.annotation.processor.Vanilla.someBeanListToJson":
+  7,501 ?(99.9%) 0,077 ops/ms [Average]
+  (min, avg, max) = (7,483, 7,501, 7,525), stdev = 0,020
+  CI (99.9%): [7,424, 7,577] (assumes normal distribution)
+
+
+# Run complete. Total time: 00:25:17
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+Benchmark                                    Mode  Cnt      Score     Error   Units
+Blackbird.beanWithConstructorFromJson       thrpt    5      3,724 ?   0,033  ops/ms
+Blackbird.classicBeanFromJson               thrpt    5      4,653 ?   0,022  ops/ms
+Blackbird.classicBeanToJson                 thrpt    5      7,381 ?   0,034  ops/ms
+Blackbird.mediaItemFromJson                 thrpt    5    974,320 ?   7,676  ops/ms
+Blackbird.mediaItemToJson                   thrpt    5   1103,590 ?   8,578  ops/ms
+Blackbird.simpleRecordFromJson              thrpt    5   5138,932 ?  31,662  ops/ms
+Blackbird.simpleRecordFromShuffledJson      thrpt    5   5130,299 ?  49,973  ops/ms
+Blackbird.simpleRecordToJson                thrpt    5   7725,117 ?  92,551  ops/ms
+Blackbird.someBeanListFromJson              thrpt    5      4,399 ?   0,029  ops/ms
+Blackbird.someBeanListToJson                thrpt    5      6,405 ?   0,034  ops/ms
+KoraBenchmark.beanWithConstructorFromJson   thrpt    5      3,938 ?   0,010  ops/ms
+KoraBenchmark.classicBeanFromJson           thrpt    5      5,328 ?   0,063  ops/ms
+KoraBenchmark.classicBeanToJson             thrpt    5      9,617 ?   0,073  ops/ms
+KoraBenchmark.mediaItemFromJson             thrpt    5   1124,293 ?   8,362  ops/ms
+KoraBenchmark.mediaItemToJson               thrpt    5   1357,032 ?   9,265  ops/ms
+KoraBenchmark.simpleRecordFromJson          thrpt    5   8560,017 ?  92,680  ops/ms
+KoraBenchmark.simpleRecordFromShuffledJson  thrpt    5   6206,097 ?  41,981  ops/ms
+KoraBenchmark.simpleRecordToJson            thrpt    5  10163,872 ? 114,685  ops/ms
+KoraBenchmark.someBeanListFromJson          thrpt    5      4,913 ?   0,031  ops/ms
+KoraBenchmark.someBeanListToJson            thrpt    5      8,260 ?   0,230  ops/ms
+Vanilla.beanWithConstructorFromJson         thrpt    5      3,768 ?   0,026  ops/ms
+Vanilla.classicBeanFromJson                 thrpt    5      3,807 ?   0,017  ops/ms
+Vanilla.classicBeanToJson                   thrpt    5      7,521 ?   0,047  ops/ms
+Vanilla.mediaItemFromJson                   thrpt    5    770,167 ?  18,084  ops/ms
+Vanilla.mediaItemToJson                     thrpt    5   1197,116 ?  10,041  ops/ms
+Vanilla.simpleRecordFromJson                thrpt    5   5201,818 ?  50,831  ops/ms
+Vanilla.simpleRecordFromShuffledJson        thrpt    5   5312,340 ?  62,346  ops/ms
+Vanilla.simpleRecordToJson                  thrpt    5   6852,362 ?  14,376  ops/ms
+Vanilla.someBeanListFromJson                thrpt    5      3,686 ?   0,008  ops/ms
+Vanilla.someBeanListToJson                  thrpt    5      7,501 ?   0,077  ops/ms

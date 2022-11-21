@@ -1,0 +1,5 @@
+dependencies {
+    api project(":common")
+    api libs.jdbi.core
+}
+

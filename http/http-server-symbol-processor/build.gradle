@@ -1,0 +1,36 @@
+plugins {
+    id "com.google.devtools.ksp"
+    id "java-test-fixtures"
+}
+apply from: "${project.rootDir}/kotlin-plugin.gradle"
+
+
+dependencies {
+    api libs.reactive.streams
+
+    api project(':common')
+    api project(':http:http-server-common')
+    api project(':symbol-processor-common')
+
+    implementation libs.ksp.api
+    implementation libs.kotlin.reflect
+    implementation libs.kotlinpoet
+    implementation libs.kotlinpoet.ksp
+
+
+    testImplementation testFixtures(project(':annotation-processor-common'))
+    testImplementation testFixtures(project(':symbol-processor-common'))
+    testImplementation project(':json:json-common')
+    testImplementation libs.jackson.databind
+    testImplementation libs.mockito.kotlin
+    testImplementation libs.byte.buddy.core
+    testImplementation libs.byte.buddy.agent
+    testImplementation(libs.kotlin.stdlib.lib)
+    testImplementation(libs.kotlin.coroutines.reactor)
+}
+
+test {
+    jvmArgs(['--enable-preview'])
+}
+
+apply from:'../../in-test-generated.gradle'

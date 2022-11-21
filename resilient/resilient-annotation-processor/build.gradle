@@ -1,0 +1,18 @@
+dependencies {
+    implementation project(":annotation-processor-common")
+    implementation project(":aop:aop-annotation-processor")
+
+    implementation libs.reactor.core
+    implementation libs.javapoet
+
+    testImplementation testFixtures(project(":annotation-processor-common"))
+    testImplementation project(":annotation-processor-common")
+    testImplementation project(":aop:aop-annotation-processor")
+    testImplementation project(":config:config-annotation-processor")
+    testImplementation project(":kora-app-annotation-processor")
+    testImplementation project(":test:test-logging")
+    testImplementation project(":resilient:resilient-circuitbreaker")
+    testImplementation "com.google.testing.compile:compile-testing:0.19"
+}
+
+apply from: '../../in-test-generated.gradle'

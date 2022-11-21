@@ -1,0 +1,44 @@
+plugins {
+    id 'com.google.protobuf' version "0.8.17"
+}
+
+dependencies {
+    api project(':netty-common')
+    api project(':logging:logging-common')
+    api project(":common")
+
+    api libs.grpc.protobuf
+    api libs.grpc.kotlin.stub
+    api libs.grpc.kotlin.gen
+    api libs.grpc.netty
+    api libs.grpc.stub
+    compileOnly(libs.kotlin.stdlib.lib)
+    compileOnly(libs.kotlin.coroutines.reactor)
+
+    testImplementation project(':kora-app-annotation-processor')
+    testImplementation testFixtures(project(':annotation-processor-common'))
+    testImplementation libs.grpc.java.gen
+//    testImplementation(libs.kotlin.stdlib.lib)
+//    testImplementation(libs.kotlin.coroutines.reactor)
+}
+
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:3.17.2"
+    }
+    plugins {
+        grpc {
+            artifact = "io.grpc:protoc-gen-grpc-java:1.42.1"
+        }
+    }
+    generateProtoTasks {
+        ofSourceSet("test").forEach {
+            it.plugins {
+                grpc
+            }
+        }
+    }
+}
+
+apply from:'../in-test-generated.gradle'

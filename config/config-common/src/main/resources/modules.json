@@ -1,0 +1,8 @@
+[
+    {
+        "tags": [],
+        "typeRegex": "com.typesafe.config.Config",
+        "moduleName": "ru.tinkoff.kora.config.common.ConfigModule",
+        "artifact": "ru.tinkoff.kora:config-common"
+    }
+]

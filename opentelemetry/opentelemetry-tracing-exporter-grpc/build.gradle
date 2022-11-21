@@ -1,0 +1,9 @@
+dependencies {
+    api project(':opentelemetry:opentelemetry-tracing')
+    api project(':netty-common')
+    api(libs.opentelemetry.exporter.otlp.trace) {
+        exclude group: 'com.squareup.okhttp3', module: 'okhttp'
+    }
+    api libs.grpc.stub
+    api libs.grpc.netty
+}

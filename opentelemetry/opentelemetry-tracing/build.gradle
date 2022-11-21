@@ -1,0 +1,5 @@
+dependencies {
+    api project(':config:config-common')
+    api project(':opentelemetry:opentelemetry-module')
+    api libs.opentelemetry.sdk.trace
+}

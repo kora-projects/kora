@@ -1,0 +1,11 @@
+dependencies {
+    api project(':http:http-client-common')
+
+    api libs.glassfish.jaxb.jakarta
+    api libs.commons.codec
+    api libs.jakarta.xml.ws.api
+    api libs.jakarta.jws.api
+    api libs.jakarta.xml.bind.api
+
+    compileOnlyApi 'javax.xml.bind:jaxb-api:2.3.1'
+}
