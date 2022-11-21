@@ -28,8 +28,9 @@ nav:
 
 
 # Repository
-repo_name: jvm-core/kora
+repo_name: Tinkoff/kora
 repo_url: https://github.com/Tinkoff/kora
+edit_uri: tree/main/mkdocs/docs/
 
 # Configuration
 theme:

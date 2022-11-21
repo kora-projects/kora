@@ -2,11 +2,23 @@
 
 Kora предоставляет инструментарий для создания и исполнения http-запросов.
 
-## Подключение
+## Реализации клиента
+
+### AsyncHttpClient
 
 ```groovy
 implemenation 'ru.tinkoff.kora:http-client-async'
 ```
+
+Для работы через AsyncHttpClient необходимо добавить модуль `AsyncHttpClientModule` к своему `@KoraApp`
+
+### jdk client
+
+```groovy
+implemenation 'ru.tinkoff.kora:http-client-jdk'
+```
+
+Для работы через нативным jdk клиентом необходимо добавить модуль `JdkHttpClientModule` к своему `@KoraApp`
 
 ## Клиент
 
