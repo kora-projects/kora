@@ -1,0 +1,50 @@
+name: Run tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  test-database:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/workflows/test-job
+        with:
+          test-task-name: 'database-test'
+  test-kafka:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/workflows/test-job
+        with:
+          test-task-name: 'kafka-test'
+  test-http:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/workflows/test-job
+        with:
+          test-task-name: 'http-test'
+  test-openapi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/workflows/test-job
+        with:
+          test-task-name: 'openapi-test'
+  test-ksp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/workflows/test-job
+        with:
+          test-task-name: 'ksp-test'
+  test-other:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/workflows/test-job
+        with:
+          test-task-name: 'other-test'

@@ -34,7 +34,7 @@ public final class PostgresTestContainer implements TestExecutionListener, Param
             awaitForReady(params);
             return;
         }
-        container = new PostgreSQLContainer<>("postgres:12");
+        container = new PostgreSQLContainer<>("postgres:14");
         container.start();
         params = new PostgresParams(container.getHost(), container.getMappedPort(5432), container.getDatabaseName(), container.getUsername(), container.getPassword());
     }

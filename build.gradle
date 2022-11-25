@@ -4,6 +4,13 @@ plugins {
     id 'jacoco'
 }
 
+if (hasProperty('buildScan')) {
+    buildScan {
+        termsOfServiceUrl = 'https://gradle.com/terms-of-service'
+        termsOfServiceAgree = 'yes'
+    }
+}
+
 allprojects {
     group = "ru.tinkoff.kora"
     version = System.getenv().getOrDefault("KORA_VERSION", "1.0.0-SNAPSHOT")
@@ -65,6 +72,7 @@ subprojects {
 
     apply plugin: 'maven-publish'
     apply plugin: 'jacoco'
+    apply plugin: 'signing'
 
     java {
         withSourcesJar()
@@ -75,6 +83,20 @@ subprojects {
             maven(MavenPublication) {
                 from components.java
                 pom {
+                    licenses {
+                        license {
+                            name = 'The Apache Software License, Version 2.0'
+                            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        }
+                    }
+                    scm {
+                        url = 'https://github.com/Tinkoff/kora'
+                        connection = 'scm:git:git@github.com/Tinkoff/kora.git'
+                        developerConnection = 'scm:git:git@github.com/Tinkoff/kora.git'
+                    }
+                    url = 'https://github.com/Tinkoff/kora'
+
+
                     withXml { pom ->
                         def xpf = javax.xml.xpath.XPathFactory.newInstance()
                         def xp = xpf.newXPath()
@@ -98,6 +120,11 @@ subprojects {
             }
         }
     }
+
+    signing {
+        sign publishing.publications.maven
+    }
+
     test {
         jvmArgs([
             "-XX:+TieredCompilation",
@@ -194,13 +221,62 @@ tasks.register("http-test") {t ->
         }
     }
 }
+def kspProjects = Set.of(
+    'kora-app-symbol-processor',
+    'json-symbol-processor',
+    'cache-symbol-processor',
+    'config-symbol-processor',
+    'scheduling-ksp',
+    'resilient-symbol-processor',
+    'soap-client-symbol-processor',
+    'aop-symbol-processor'
+)
+
+tasks.register("ksp-test") {
+    group("verification")
+    description("Run ksp tests")
+    project.getAllprojects().stream()
+        .filter((p) -> kspProjects.contains(p.name) && p.tasks.findByPath("test") != null)
+        .forEach((p) -> {
+            var name = p.name
+            if (p.depth == 2) {
+                name = p.parent.name + ":" + name
+            }
+            dependsOn(":" + name + ":test")
+        })
+}
+
+
+tasks.register('openapi-test') {
+    group('verification')
+    description('Run openapi tests')
+    dependsOn(':openapi:openapi-generator:test')
+}
+
+
+def isOtherTest = { Project p ->
+    if (p.tasks.findByPath("test") == null) {
+        return false
+    }
+    if (p.name == 'openapi-generator') {
+        return false
+    }
+    if (p.name.startsWith("http") || p.name.startsWith("kafka") || p.name.startsWith("database")) {
+        return false
+    }
+    if (p.parent.name == "test") {
+        return false
+    }
+    return !kspProjects.contains(p.name)
+}
 
 tasks.register("other-test") {
     group("verification")
     description("Run other tests")
     project.getAllprojects().stream()
-        .filter((p) -> p.depth >= 1 && !p.name.startsWith("http") && !p.name.startsWith("kafka") && !p.name.startsWith("database") && p.tasks.findByPath("test") != null)
+        .filter(p -> isOtherTest(p))
         .forEach((p) -> {
+            println(p.name)
             var name = p.name
             if (p.depth == 2) {
                 name = p.parent.name + ":" + name
