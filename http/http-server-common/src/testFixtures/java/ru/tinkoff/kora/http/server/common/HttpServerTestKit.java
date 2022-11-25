@@ -278,7 +278,7 @@ public abstract class HttpServerTestKit {
             assertThat(future.get().getT1()).isEqualTo(200);
             assertThat(future.get().getT2()).isEqualTo("hello world");
         }
-        verifyResponse("GET", "/", 200, HttpResultCode.SUCCESS, "localhost", "http", ArgumentMatchers::isNull, anyLong(), times(100));
+        verifyResponse("GET", "/", 200, HttpResultCode.SUCCESS, "localhost", "http", ArgumentMatchers::isNull, anyLong(), timeout(100).times(100));
     }
 
     @Test
@@ -296,7 +296,7 @@ public abstract class HttpServerTestKit {
         verify(logger, never()).logStart(any());
         verify(logger, never()).logEnd(any(), any(), any(), anyLong().getAsLong(), any());
         verify(metrics, times(1)).requestStarted(eq(GET), eq("UNKNOWN_ROUTE"), eq("localhost"), eq("http"));
-        verify(metrics, times(1)).requestFinished(eq(GET), eq("UNKNOWN_ROUTE"), eq("localhost"), eq("http"), eq(404), Mockito.anyLong());
+        verify(metrics, timeout(100).times(1)).requestFinished(eq(GET), eq("UNKNOWN_ROUTE"), eq("localhost"), eq("http"), eq(404), Mockito.anyLong());
     }
 
     @Test
