@@ -19,7 +19,7 @@ jobs:
       - name: Retrieve the secret and decode it to a file
         env:
           GPG_KEY: ${{ secrets.GPG_KEY }}
-        run: echo "$GPG_KEY" | base64 --decode > $HOME/secring.gpg
+        run: echo "$GPG_KEY" | base64 --decode > /tmp/secring.gpg
 
       - name: Retrieve the gradle.properties
         env:
@@ -34,7 +34,7 @@ jobs:
       - name: Execute Gradle publish
         uses: gradle/gradle-build-action@v2
         with:
-          arguments: publish -Psigning.secretKeyRingFile=$HOME/secring.gpg
+          arguments: publish -Psigning.secretKeyRingFile=/tmp/secring.gpg
         env:
           REPO_URL: https://oss.sonatype.org/service/local/staging/deploy/maven2/
           REPO_USER: ${{ secrets.SONATYPE_USERNAME }}

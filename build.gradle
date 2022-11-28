@@ -13,7 +13,7 @@ if (hasProperty('buildScan')) {
 
 allprojects {
     group = "ru.tinkoff.kora"
-    version = System.getenv().getOrDefault("KORA_VERSION", "1.0.0-SNAPSHOT")
+    version = System.getenv().getOrDefault("KORA_VERSION", "0.10.0-SNAPSHOT")
     repositories {
         mavenLocal()
         mavenCentral()
