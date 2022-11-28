@@ -65,8 +65,8 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         }
         val b = method.queryMethodBuilder(resolver)
         if (method.isSuspend()) {
-            b.beginControlFlow("return %T.fromCompletionStage {", Mono::class)
-            b.beginControlFlow("%T.supplyAsync", CompletableFuture::class)
+            b.beginControlFlow("return %T.fromCompletionStage({", Mono::class)
+            b.beginControlFlow("%T.supplyAsync({", CompletableFuture::class)
         }
 
         val connection = parameters.firstOrNull { it is QueryParameter.ConnectionParameter }
@@ -97,11 +97,15 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
                         controlFlow("_stmt.executeQuery().use { _rs ->") {
                             addStatement("val _result = %N.apply(_rs)", method.resultMapperName())
                             addStatement("_telemetry.close(null)")
-                            if (methodType.returnType!!.isMarkedNullable) {
-                                addStatement("return _result")
-                            } else {
-                                addStatement("return _result!!")
+                            addCode("return")
+                            if (method.isSuspend()) {
+                                addCode("@supplyAsync")
                             }
+                            addCode(" _result")
+                            if (!methodType.returnType!!.isMarkedNullable) {
+                                addCode("!!")
+                            }
+                            addCode("\n")
                         }
                     }
                 }
@@ -115,7 +119,9 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         }
         if (method.isSuspend()) {
             b.endControlFlow()
+            b.addCode(", this._executor)")
             b.endControlFlow()
+            b.addCode(")")
             if (methodType.returnType!!.isMarkedNullable) {
                 b.addCode(".awaitSingleOrNull()")
             } else {

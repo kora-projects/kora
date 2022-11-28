@@ -302,8 +302,15 @@ object GraphBuilder {
         }
         val dependencyClaim = prevFrame.dependenciesToFind[prevFrame.currentDependency]
         val claimTypeDeclaration = dependencyClaim.type.declaration
-        assert(dependencyClaim.type.makeNotNullable().isAssignableFrom(declaration.type) || ctx.serviceTypesHelper.isAssignableToUnwrapped(declaration.type.makeNotNullable(), dependencyClaim.type) || ctx.serviceTypesHelper.isInterceptor(declaration.type)) {
-            "${declaration.type.toTypeName()} != ${dependencyClaim.type.makeNotNullable().toTypeName()} from $declaration"
+        val notNullableDependencyClaimType = dependencyClaim.type.makeNotNullable()
+        val notNullableDeclarationType = declaration.type.makeNotNullable()
+        assert(
+            notNullableDependencyClaimType.isAssignableFrom(notNullableDeclarationType) || ctx.serviceTypesHelper.isAssignableToUnwrapped(
+                notNullableDeclarationType,
+                dependencyClaim.type
+            ) || ctx.serviceTypesHelper.isInterceptor(declaration.type)
+        ) {
+            "${declaration.type.toTypeName()} != ${notNullableDependencyClaimType.toTypeName()} from $declaration"
         }
         for (frame in processing.resolutionStack) {
             if (frame !is ProcessingState.ResolutionFrame.Component || frame.declaration !== declaration) {

@@ -185,6 +185,16 @@ public class GraphResolutionHelper {
                     realParams,
                     typeParameters
                 ));
+            } else if (sourceDeclaration instanceof ComponentDeclaration.FromExtensionComponent extensionComponent) {
+                var realParams = new ArrayList<TypeMirror>();
+                for (var methodParameterType : extensionComponent.methodParameterTypes()) {
+                    realParams.add(ComponentTemplateHelper.replace(types, methodParameterType, map));
+                }
+                declarations.add(new ComponentDeclaration.FromExtensionComponent(
+                    realReturnType,
+                    extensionComponent.sourceMethod(),
+                    realParams
+                ));
             } else if (sourceDeclaration instanceof ComponentDeclaration.PromisedProxyComponent promisedProxyComponent) {
                 declarations.add(promisedProxyComponent.withType(realReturnType));
             } else if (sourceDeclaration instanceof ComponentDeclaration.DiscoveredAsDependencyComponent) {

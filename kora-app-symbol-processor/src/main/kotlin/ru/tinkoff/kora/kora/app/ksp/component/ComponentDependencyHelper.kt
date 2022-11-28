@@ -47,8 +47,7 @@ object ComponentDependencyHelper {
             is ComponentDeclaration.FromExtensionComponent -> {
                 val element = declaration.sourceMethod
                 val result = ArrayList<DependencyClaim>(element.parameters.size)
-                for (parameter in element.parameters) {
-                    val type = parameter.type.resolve()
+                for ((parameter, type) in element.parameters.zip(declaration.methodParameterTypes)) {
                     val tags = TagUtils.parseTagValue(parameter)
                     result.add(parseClaim(type, tags))
                 }

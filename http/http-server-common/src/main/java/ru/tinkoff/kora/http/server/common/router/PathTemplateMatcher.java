@@ -180,7 +180,7 @@ public class PathTemplateMatcher<T> {
             return null;
         }
         for (var next : values) {
-            if (next.template.templateString().equals(template)) {
+            if (next.template.equals(pathTemplate)) {
                 return next.value;
             }
         }
@@ -200,7 +200,7 @@ public class PathTemplateMatcher<T> {
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
-            if (o instanceof PathTemplateMatcher.PathTemplateHolder that) {
+            if (o instanceof PathTemplateMatcher<?>.PathTemplateHolder that) {
                 return template.equals(that.template);
             } else {
                 return false;

@@ -9,7 +9,6 @@ import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim
 import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponent
 import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
-import javax.annotation.Nullable
 
 object GraphResolutionHelper {
     fun findDependency(ctx: ProcessingContext, forDeclaration: ComponentDeclaration, resolvedComponents: List<ResolvedComponent>, dependencyClaim: DependencyClaim): SingleDependency? {
@@ -128,15 +127,18 @@ object GraphResolutionHelper {
                     for (typeParameter in template.method.typeParameters) {
                         realTypeParameters.add(ComponentTemplateHelper.replace(ctx.resolver, typeParameter, map)!!)
                     }
-                    result.add(ComponentDeclaration.FromModuleComponent(
-                        realReturnType,
-                        template.module,
-                        template.tags,
-                        template.method,
-                        realParams,
-                        realTypeParameters
-                    ))
+                    result.add(
+                        ComponentDeclaration.FromModuleComponent(
+                            realReturnType,
+                            template.module,
+                            template.tags,
+                            template.method,
+                            realParams,
+                            realTypeParameters
+                        )
+                    )
                 }
+
                 is ComponentDeclaration.AnnotatedComponent -> {
                     val match = ComponentTemplateHelper.match(ctx, template.classDeclaration.typeParameters, template.type, dependencyClaim.type)
                     if (match !is ComponentTemplateHelper.TemplateMatch.Some) {
@@ -153,15 +155,18 @@ object GraphResolutionHelper {
                     for (typeParameter in template.classDeclaration.typeParameters) {
                         realTypeParameters.add(ComponentTemplateHelper.replace(ctx.resolver, typeParameter, map)!!)
                     }
-                    result.add(ComponentDeclaration.AnnotatedComponent(
-                        realReturnType,
-                        template.classDeclaration,
-                        template.tags,
-                        template.constructor,
-                        realParams,
-                        realTypeParameters
-                    ))
+                    result.add(
+                        ComponentDeclaration.AnnotatedComponent(
+                            realReturnType,
+                            template.classDeclaration,
+                            template.tags,
+                            template.constructor,
+                            realParams,
+                            realTypeParameters
+                        )
+                    )
                 }
+
                 is ComponentDeclaration.PromisedProxyComponent -> {
                     val match = ComponentTemplateHelper.match(ctx, template.classDeclaration.typeParameters, template.type, dependencyClaim.type)
                     if (match !is ComponentTemplateHelper.TemplateMatch.Some) {
@@ -173,7 +178,31 @@ object GraphResolutionHelper {
 
                     result.add(template.copy(type = realReturnType))
                 }
-                else -> throw IllegalStateException()
+
+                is ComponentDeclaration.FromExtensionComponent -> {
+                    val classDeclaration = template.sourceMethod.returnType!!.resolve().declaration
+                    val match = ComponentTemplateHelper.match(ctx, classDeclaration.typeParameters, template.type, dependencyClaim.type)
+                    if (match !is ComponentTemplateHelper.TemplateMatch.Some) {
+                        continue
+                    }
+                    val map = match.map
+                    val realReturnType = ComponentTemplateHelper.replace(ctx.resolver, template.type, map)!!
+
+                    val realParams = mutableListOf<KSType>()
+                    for (methodParameterType in template.methodParameterTypes) {
+                        realParams.add(ComponentTemplateHelper.replace(ctx.resolver, methodParameterType, map)!!)
+                    }
+                    result.add(
+                        ComponentDeclaration.FromExtensionComponent(
+                            realReturnType,
+                            template.sourceMethod,
+                            realParams
+                        )
+                    )
+                }
+
+                is ComponentDeclaration.DiscoveredAsDependencyComponent -> throw IllegalStateException()
+                is ComponentDeclaration.OptionalComponent -> throw IllegalStateException()
             }
         }
         if (result.isEmpty()) {
