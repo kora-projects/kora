@@ -42,7 +42,6 @@ project.tasks.register("buildModules") {
     doLast {
         def list = new ArrayList<>()
         fileTree(dir: 'build/kora-modules/parts', include: '*.json').visit {
-            println it.file
             def result = new groovy.json.JsonSlurper().parseText(it.file.text)
             list.addAll(result)
         }

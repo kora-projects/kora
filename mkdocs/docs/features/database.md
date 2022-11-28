@@ -7,7 +7,7 @@
 
 ```java
 @Repository
-public interface EntityRepository {
+public interface EntityRepository extends JdbcRepository {
     record Entity(Long id, @Column("value1") String field1, String value2) {}
 
     @Query("SELECT id, value1, value2 FROM test_table WHERE id = :id")
@@ -33,21 +33,19 @@ public interface EntityRepository {
 Kora поддерживает batch-запросы с помощью аннотации `@Batch`. Её использование выглядит следующим образом:
 ```java
 @Repository
-interface RepoWithBatch {
+interface RepoWithBatch extends JdbcRepository {
     @Query("INSERT INTO test(value1, value2) VALUES (:entity.value1, :entity.value2)")
     void insertBatch(@Batch List<Entity> entity);
 }
 ```
 
 ## Реализации:
-Kora предоставляет возможность как блокирующего, так и не блокирующего взаимодействия с БД. 
-В зависимости от возвращаемого типа подбирается подходящий `QueryExecutor` - `Jdbc` для блокирующих вызовов, `Vertx` для реактивных(projectreactor и kotlin coroutines). Рассмотрим каждую реализацию чуть подробнее.
-
 ### JDBC
 
 При подключении через `jdbc` следует добавить `JdbcDatabaseModule`. Внутри `JdbcDatabaseModule` создаются экземпляры классов `JdbcDataBaseConfig` и `JdbcDataBase`.
 
 Параметры, описанные в классе `JdbcDataBaseConfig`:
+
 * **username** - имя пользователя
 * **password** - пароль
 * **jdbcUrl** - url базы данных
@@ -72,19 +70,13 @@ db {
 }
 ```
 
-Для выполнения блокирующих запросов в БД Kora предоставляет интерфейс `JdbcQueryExecutor`, api которого используется при генерации имплементаций репозиториев. Все сгенерированные репозитории так же наследуют `JdbcQueryExecutorAccessor`:
-
-```java
-public interface JdbcQueryExecutorAccessor {
-    JdbcQueryExecutor getJdbcQueryExecutor();
-}
-```
+Для выполнения блокирующих запросов в БД Kora предоставляет интерфейс `JdbcConnectionFactory`, api которого используется при генерации имплементаций репозиториев.
 Для того чтобы выполнять запросы транзакционно, можно сделать что-то подобное:
 
 ```java
 
 @Repository
-public interface SomeRepository {
+public interface SomeRepository extends JdbcRepository {
     @Query("select num from test where id=:id")
     Integer selectNum(Long id);
 
@@ -94,15 +86,15 @@ public interface SomeRepository {
 
 public final class SomeService {
     private final SomeRepository repo;
-    private final JdbcQueryExecutor executor;
+    private final JdbcConnectionFactory connectionFactory;
 
-    public SomeService(WithExecutorAccessorRepository repo, JdbcQueryExecutor executor) {
+    public SomeService(WithExecutorAccessorRepository repo, JdbcConnectionFactory connectionFactory) {
         this.repo = repo;
-        this.executor = executor;
+        this.connectionFactory = connectionFactory;
     }
 
     SomeEntity getAndCombine(Long id) {
-        return executor.inTx(connection -> {
+        return connectionFactory.inTx(connection -> {
            var num = repo.selectNum(id);
            var value = repo.selectValue(id);
            return new SomeEntity(num, value);
@@ -116,9 +108,9 @@ public final class SomeService {
 Если для запроса нужна какая-то более сложная логика, и `@Query` будет недостаточно, можно поступить следующим образом:
 ```java
 @Repository
-interface ComplexRepository extends JdbcQueryExecutorAccessor {
+interface ComplexRepository extends JdbcRepository {
     default SomeCoplexEntity getSome(Long id) {
-        return this.getJdbcQueryExecutor().inTx(connection -> {
+        return this.getJdbcConnectionFactory().inTx(connection -> {
             //some complex logic
         });
     }
@@ -129,6 +121,7 @@ interface ComplexRepository extends JdbcQueryExecutorAccessor {
 При подключении через `Vert.x` следует добавить `VertxDatabaseModule`. Внутри `VertxDatabaseModule` создаются экземпляры классов `VertxDatabaseConfig` и `VertxDatabase`.
 
 Параметры, описанные в классе `VertxDatabaseConfig`:
+
 * **username** - имя пользователя
 * **password** - пароль
 * **host** - host для подключения
@@ -153,14 +146,14 @@ db {
 }
 ```
 
-`VertxQueryExecutor` и `VertxQueryExecutorAccessor` используются следующим способом:
+`VertxConnectionFactory` и `VertxRepository` используются следующим способом:
 
 ```java
 @Repository
-public interface WithExecutorAccessorRepository extends VertxQueryExecutorAccessor {
+public interface WithExecutorAccessorRepository extends VertxRepository {
     default Mono<Integer> selectTwo() {
-        return this.getVertxQueryExecutor().inTx(connection -> {
-            return getVertxQueryExecutor().query(connection, new QueryContext("SELECT 2", "SELECT 2"), Tuple::tuple, rs -> {
+        return this.getVertxConnectionFactory().inTx(connection -> {
+            return getVertxConnectionFactory().query(connection, new QueryContext("SELECT 2", "SELECT 2"), Tuple::tuple, rs -> {
                 for (var row : rs) {
                     return row.getInteger(1);
                 }
@@ -178,6 +171,8 @@ public interface WithExecutorAccessorRepository extends VertxQueryExecutorAccess
 ```java
 @Repository
 interface RepoWithMapping {
+    record MappedEntity(String value1, @Mapping(JdbcParameterColumnMapper.class) String value2){}
+    
     @Query("SELECT test")
     @Mapping(MappedEntityRowMapper.class)
     MappedEntity returnEntityRowMapper();
@@ -201,13 +196,11 @@ class MappedEntityRowMapper implements JdbcRowMapper<MappedEntity> {
 ```
 
 ```java
-class ParameterMapper implements JdbcParameterStatementMapper<MappedEntity> {
+class ParameterMapper implements JdbcParameterColumnMapper<MappedEntity> {
 
         @Override
-        public Void apply(Parameter<MappedEntity> t) throws SQLException {
-            t.stmt().setString(1, t.value().value1().value());
-            t.stmt().setString(2, t.value().value2().value());
-            return null;
+        public void set(PreparedStatement stmt, int index, String value) throws SQLException {
+            stmt.setString(index, value);
         }
     }
 

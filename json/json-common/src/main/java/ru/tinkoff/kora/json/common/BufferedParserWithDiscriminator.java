@@ -84,7 +84,9 @@ public class BufferedParserWithDiscriminator extends JsonParser {
     public JsonToken getCurrentToken() {
         if (currentPosition > cache.size() - 1) {
             return originalParser.getCurrentToken();
-        } else return cache.get(currentPosition).token;
+        } else {
+            return cache.get(currentPosition).token;
+        }
     }
 
     @Override
@@ -168,7 +170,29 @@ public class BufferedParserWithDiscriminator extends JsonParser {
 
     @Override
     public NumberType getNumberType() throws IOException {
-        return originalParser.getNumberType();
+        if (currentPosition > cache.size() - 1) {
+            return originalParser.getNumberType();
+        }
+        var value = cache.get(currentPosition).value();
+        if (value instanceof Integer) {
+            return NumberType.INT;
+        }
+        if (value instanceof Long) {
+            return NumberType.LONG;
+        }
+        if (value instanceof Float) {
+            return NumberType.FLOAT;
+        }
+        if (value instanceof Double) {
+            return NumberType.DOUBLE;
+        }
+        if (value instanceof BigInteger) {
+            return NumberType.BIG_INTEGER;
+        }
+        if (value instanceof BigDecimal) {
+            return NumberType.BIG_DECIMAL;
+        }
+        throw new IllegalStateException();
     }
 
     @Override
@@ -176,7 +200,8 @@ public class BufferedParserWithDiscriminator extends JsonParser {
         if (currentPosition > cache.size() - 1) {
             return originalParser.getIntValue();
         } else {
-            return (int) cache.get(currentPosition).value;
+            var number = (Number) cache.get(currentPosition).value;
+            return number.intValue();
         }
     }
 
@@ -185,7 +210,8 @@ public class BufferedParserWithDiscriminator extends JsonParser {
         if (currentPosition > cache.size() - 1) {
             return originalParser.getLongValue();
         } else {
-            return (long) cache.get(currentPosition).value;
+            var number = (Number) cache.get(currentPosition).value;
+            return number.longValue();
         }
     }
 
@@ -203,7 +229,8 @@ public class BufferedParserWithDiscriminator extends JsonParser {
         if (currentPosition > cache.size() - 1) {
             return originalParser.getFloatValue();
         } else {
-            return (float) cache.get(currentPosition).value;
+            var number = (Number) cache.get(currentPosition).value;
+            return number.floatValue();
         }
     }
 
@@ -212,7 +239,8 @@ public class BufferedParserWithDiscriminator extends JsonParser {
         if (currentPosition > cache.size() - 1) {
             return originalParser.getDoubleValue();
         } else {
-            return (double) cache.get(currentPosition).value;
+            var number = (Number) cache.get(currentPosition).value;
+            return number.doubleValue();
         }
     }
 
@@ -261,7 +289,7 @@ public class BufferedParserWithDiscriminator extends JsonParser {
     @Nullable
     public final String getDiscriminator(String discriminatorField) throws IOException {
         var discriminatorName = new SerializedString(discriminatorField);
-        var level  = 0;
+        var level = 0;
         var _token = originalParser.currentToken();
         cache.add(new BufferSegment(_token, null, null));
         while (_token != null) {
