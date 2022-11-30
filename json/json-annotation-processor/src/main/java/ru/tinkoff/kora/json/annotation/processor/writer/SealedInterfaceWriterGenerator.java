@@ -57,14 +57,18 @@ public class SealedInterfaceWriterGenerator {
             .addParameter(ParameterSpec.builder(TypeName.get(jsonElement.asType()), "_object").addAnnotation(Nullable.class).build())
             .addAnnotation(Override.class)
             .addAnnotation(Nullable.class);
-        jsonElements.forEach(elem -> {
+        method.beginControlFlow("if (_object == null)")
+            .addStatement("_gen.writeNull()");
+        for (var elem : jsonElements) {
             var writerName = getWriterFieldName(elem);
             var elemErasure = types.erasure(elem.asType());
-            method.addCode("if (_object instanceof $T) {$>\n$L.write(_gen, ($T) _object);$<\n} else ", elemErasure, writerName, elem);
-        });
-        method.addCode("throw new $T($S);", IllegalStateException.class, "Unsupported class");
+            method.nextControlFlow("else if (_object instanceof $T _o)", elemErasure)
+                .addStatement("$L.write(_gen, _o)", writerName);
+        }
+        method.nextControlFlow("else")
+            .addStatement("throw new $T($S)", IllegalStateException.class, "Unsupported class")
+            .endControlFlow();
         typeBuilder.addMethod(method.build());
-
         return typeBuilder.build();
     }
 

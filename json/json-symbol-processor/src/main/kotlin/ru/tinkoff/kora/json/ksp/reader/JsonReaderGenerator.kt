@@ -13,7 +13,6 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.*
 import ru.tinkoff.kora.json.common.EnumJsonReader
-import ru.tinkoff.kora.json.common.JsonObjectCodec
 import ru.tinkoff.kora.json.common.JsonReader
 import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum
 import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum.*
@@ -48,7 +47,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
                     .addMember(CodeBlock.of("%S", JsonReaderGenerator::class.java.canonicalName))
                     .build()
             )
-            .addOriginatingKSFile(meta.type.declaration.containingFile!!)
+        declaration.containingFile?.let { typeBuilder.addOriginatingKSFile(it) }
 
         if (enumType.isAssignableFrom(meta.type.makeNotNullable())) {
             return this.generateForEnum(meta, typeBuilder, typeParameterResolver)
@@ -371,6 +370,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
                         addStatement("return _parser.text")
                     }.build()
                 }
+
                 KnownTypesEnum.BOOLEAN -> {
                     CodeBlock.builder().apply {
                         beginControlFlow("if (_token == %T.VALUE_TRUE)", JsonToken::class)
@@ -379,61 +379,73 @@ class JsonReaderGenerator(val resolver: Resolver) {
                         addStatement("return false")
                     }.build()
                 }
+
                 INTEGER -> {
-                    CodeBlock.builder().beginControlFlow(" if (_token == %T.VALUE_NUMBER_INT)", JsonToken::class).apply{
+                    CodeBlock.builder().beginControlFlow(" if (_token == %T.VALUE_NUMBER_INT)", JsonToken::class).apply {
                         addStatement("return _parser.intValue")
                     }.build()
                 }
+
                 BIG_INTEGER -> {
-                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_NUMBER_INT)", JsonToken::class).apply{
+                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_NUMBER_INT)", JsonToken::class).apply {
                         addStatement("return _parser.bigIntegerValue")
                     }.build()
                 }
+
                 BIG_DECIMAL -> {
-                    CodeBlock.builder().beginControlFlow("if (_token == %1T.VALUE_NUMBER_INT || _token == %1T.VALUE_NUMBER_FLOAT)", JsonToken::class).apply{
+                    CodeBlock.builder().beginControlFlow("if (_token == %1T.VALUE_NUMBER_INT || _token == %1T.VALUE_NUMBER_FLOAT)", JsonToken::class).apply {
                         addStatement("return _parser.decimalValue")
                     }.build()
                 }
+
                 KnownTypesEnum.DOUBLE -> {
-                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_NUMBER_FLOAT)", JsonToken::class).apply{
+                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_NUMBER_FLOAT)", JsonToken::class).apply {
                         addStatement("return _parser.doubleValue")
                     }.build()
                 }
+
                 KnownTypesEnum.FLOAT -> {
-                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_NUMBER_FLOAT)", JsonToken::class).apply{
+                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_NUMBER_FLOAT)", JsonToken::class).apply {
                         addStatement("return _parser.floatValue\n")
                     }.build()
                 }
+
                 KnownTypesEnum.LONG -> {
-                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_NUMBER_INT)", JsonToken::class).apply{
+                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_NUMBER_INT)", JsonToken::class).apply {
                         addStatement("return _parser.longValue")
                     }.build()
                 }
+
                 KnownTypesEnum.SHORT -> {
-                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_NUMBER_INT)", JsonToken::class).apply{
+                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_NUMBER_INT)", JsonToken::class).apply {
                         addStatement("return _parser.shortValue")
                     }.build()
                 }
+
                 BINARY -> {
-                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_STRING)", JsonToken::class).apply{
+                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_STRING)", JsonToken::class).apply {
                         addStatement("return _parser.binaryValue")
                     }.build()
                 }
+
                 LOCAL_DATE -> {
-                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_STRING)", JsonToken::class).apply{
+                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_STRING)", JsonToken::class).apply {
                         addStatement("return %T.parse(_parser.text)", LocalDate::class)
                     }.build()
                 }
+
                 LOCAL_DATE_TIME -> {
-                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_STRING) ", JsonToken::class).apply{
+                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_STRING) ", JsonToken::class).apply {
                         addStatement("return %T.parse(_parser.text)", LocalDateTime::class)
                     }.build()
                 }
+
                 OFFSET_DATE_TIME -> {
-                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_STRING) ", JsonToken::class).apply{
+                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_STRING) ", JsonToken::class).apply {
                         addStatement("return %T.parse(_parser.text)", OffsetDateTime::class)
                     }.build()
                 }
+
                 KnownTypesEnum.UUID -> {
                     CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_STRING)", JsonToken::class).apply {
                         addStatement("return %T.fromString(_parser.text)", UUID::class)
@@ -462,13 +474,16 @@ class JsonReaderGenerator(val resolver: Resolver) {
             KnownTypesEnum.STRING, BINARY, LOCAL_DATE, LOCAL_DATE_TIME, OFFSET_DATE_TIME, KnownTypesEnum.UUID -> arrayOf(
                 JsonToken.VALUE_STRING
             )
+
             KnownTypesEnum.BOOLEAN -> arrayOf(
                 JsonToken.VALUE_TRUE,
                 JsonToken.VALUE_FALSE
             )
+
             KnownTypesEnum.SHORT, INTEGER, KnownTypesEnum.LONG, BIG_INTEGER -> arrayOf(
                 JsonToken.VALUE_NUMBER_INT
             )
+
             BIG_DECIMAL, KnownTypesEnum.DOUBLE, KnownTypesEnum.FLOAT -> arrayOf(
                 JsonToken.VALUE_NUMBER_FLOAT, JsonToken.VALUE_NUMBER_INT
             )

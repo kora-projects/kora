@@ -105,6 +105,27 @@ object GraphResolutionHelper {
         templateDeclarations: List<ComponentDeclaration>,
         dependencyClaim: DependencyClaim
     ): ComponentDeclaration? {
+        val result = findDependencyDeclarationsFromTemplate(ctx, forDeclaration, templateDeclarations, dependencyClaim)
+        if (result.isEmpty()) {
+            return null
+        }
+        // todo exact match
+        if (result.size == 1) {
+            return result[0]
+        }
+        val deps = result.asSequence().map { it.toString() }.joinToString("\n").prependIndent("  ")
+        throw ProcessingErrorException(
+            "More than one component matches dependency claim ${dependencyClaim.type.declaration.qualifiedName?.asString()} tag=${dependencyClaim.tags}:\n$deps",
+            forDeclaration.source
+        )
+    }
+
+    fun findDependencyDeclarationsFromTemplate(
+        ctx: ProcessingContext,
+        forDeclaration: ComponentDeclaration,
+        templateDeclarations: List<ComponentDeclaration>,
+        dependencyClaim: DependencyClaim
+    ): List<ComponentDeclaration> {
         val result = arrayListOf<ComponentDeclaration>()
         for (template in templateDeclarations) {
             if (!dependencyClaim.tagsMatches(template.tags)) {
@@ -206,23 +227,17 @@ object GraphResolutionHelper {
             }
         }
         if (result.isEmpty()) {
-            return null
+            return result
         }
-        // todo exact match
         if (result.size > 1) {
             val exactMatch = result.filter { it.type == dependencyClaim.type }
-            if (exactMatch.size == 1) {
-                return exactMatch[0]
+            if (exactMatch.isEmpty()) {
+                return result
+            } else {
+                return exactMatch
             }
-            val deps = result.asSequence().map { it.toString() }.joinToString("\n").prependIndent("  ")
-            throw ProcessingErrorException(
-                "More than one component matches dependency claim ${dependencyClaim.type.declaration.qualifiedName?.asString()} tag=${dependencyClaim.tags}:\n$deps",
-                forDeclaration.source
-            )
         }
-
-
-        return result[0]
+        return result
     }
 
 

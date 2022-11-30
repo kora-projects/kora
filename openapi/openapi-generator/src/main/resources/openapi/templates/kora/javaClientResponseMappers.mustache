@@ -16,7 +16,7 @@ public interface {{classname}}ClientResponseMappers {
   public static final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper implements HttpClientResponseMapper<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse, Mono<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>>{
     {{#dataType}}
     private final HttpClientResponseMapper<{{{dataType}}}, Mono<{{{dataType}}}>> delegate;
-    public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper(HttpClientResponseMapper<{{{dataType}}}, Mono<{{{dataType}}}>> delegate) {
+    public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper({{#vendorExtensions.hasMapperTag}}@{{vendorExtensions.mapperTag}}{{/vendorExtensions.hasMapperTag}} HttpClientResponseMapper<{{{dataType}}}, Mono<{{{dataType}}}>> delegate) {
       this.delegate = delegate;
     }
     {{/dataType}}

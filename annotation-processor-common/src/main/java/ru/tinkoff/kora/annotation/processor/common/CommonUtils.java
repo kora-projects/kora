@@ -119,9 +119,9 @@ public class CommonUtils {
             var containerAnnotationType = (TypeElement) a.getAnnotationType().asElement();
             if (containerAnnotationType.getQualifiedName().contentEquals(containerClassName.canonicalName())) {
                 @SuppressWarnings("unchecked")
-                var value = (List<AnnotationValue>)a.getElementValues().values().iterator().next().getValue();
+                var value = (List<AnnotationValue>) a.getElementValues().values().iterator().next().getValue();
                 for (var annotationValue : value) {
-                    var am = (AnnotationMirror)annotationValue.getValue();
+                    var am = (AnnotationMirror) annotationValue.getValue();
                     result.add(am);
                 }
             }
@@ -218,10 +218,10 @@ public class CommonUtils {
         return element.getModifiers().contains(Modifier.FINAL);
     }
 
-    public static record MappersData(@Nullable List<TypeMirror> mapperClasses, @Nullable List<TypeMirror> mapperTags) {
+    public record MappersData(@Nullable List<TypeMirror> mapperClasses, Set<String> mapperTags) {
         @Nullable
         public MappingData getMapping(Types types, TypeMirror type) {
-            if (this.mapperClasses == null && this.mapperTags == null) {
+            if (this.mapperClasses == null && this.mapperTags.isEmpty()) {
                 return null;
             }
             for (var mapperClass : Objects.requireNonNullElse(mapperClasses, List.<TypeMirror>of())) {
@@ -229,7 +229,7 @@ public class CommonUtils {
                     return new MappingData(mapperClass, this.mapperTags);
                 }
             }
-            if (this.mapperTags == null) {
+            if (this.mapperTags.isEmpty()) {
                 return null;
             }
             return new MappingData(null, this.mapperTags);
@@ -245,7 +245,7 @@ public class CommonUtils {
                     return new MappingData(mapperClass, this.mapperTags);
                 }
             }
-            if (this.mapperTags == null) {
+            if (this.mapperTags.isEmpty()) {
                 return null;
             }
             return new MappingData(null, this.mapperTags);
@@ -284,19 +284,20 @@ public class CommonUtils {
         return false;
     }
 
-    public static record MappingData(@Nullable TypeMirror mapperClass, @Nullable List<TypeMirror> mapperTags) {
+    public record MappingData(@Nullable TypeMirror mapperClass, Set<String> mapperTags) {
         @Nullable
         public AnnotationSpec toTagAnnotation() {
-            if (this.mapperTags == null) {
+            if (this.mapperTags == null || this.mapperTags.isEmpty()) {
                 return null;
             }
 
             var tags = CodeBlock.builder().add("{");
-            for (int i = 0; i < this.mapperTags.size(); i++) {
-                if (i > 0) {
+            for (var i = this.mapperTags.iterator(); i.hasNext(); ) {
+                var tag = i.next();
+                tags.add("$L.class", tag);
+                if (i.hasNext()) {
                     tags.add(", ");
                 }
-                tags.add("$T.class", this.mapperTags.get(i));
             }
             tags.add("}");
             return AnnotationSpec.builder(Tag.class).addMember("value", tags.build()).build();
@@ -304,21 +305,10 @@ public class CommonUtils {
     }
 
     public static MappersData parseMapping(Element element) {
-        if (element.getAnnotationsByType(Mapping.class).length == 0 && element.getAnnotation(Tag.class) == null) {
-            return new MappersData(null, null);
+        var tag = TagUtils.parseTagValue(element);
+        if (element.getAnnotationsByType(Mapping.class).length == 0 && tag.isEmpty()) {
+            return new MappersData(null, tag);
         }
-        var tag = element.getAnnotationMirrors()
-            .stream()
-            .filter(a -> a.getAnnotationType().toString().equals(Tag.class.getCanonicalName()))
-            .findFirst()
-            .map(AnnotationMirror::getElementValues)
-            .map(Map::values)
-            .map(Collection::iterator)
-            .map(Iterator::next)
-            .map(AnnotationValue::getValue)
-            .map(v -> (List<? extends AnnotationValue>) v)
-            .map(v -> v.stream().map(AnnotationValue::getValue).map(TypeMirror.class::cast).toList())
-            .orElse(null);
         var mapping = Stream.of(element.getAnnotationsByType(Mapping.class))
             .map(m -> {
                 try {

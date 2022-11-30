@@ -15,6 +15,7 @@ interface {{classname}}ClientResponseMappers {
   {{#responses}}
   class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper(
     {{#dataType}}
+    {{#vendorExtensions.hasMapperTag}}@param:{{vendorExtensions.mapperTag}}{{/vendorExtensions.hasMapperTag}}
     private val delegate: HttpClientResponseMapper<{{{dataType}}}, Mono<{{{dataType}}}>>
     {{/dataType}}
   ) : HttpClientResponseMapper<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse, Mono<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>> {

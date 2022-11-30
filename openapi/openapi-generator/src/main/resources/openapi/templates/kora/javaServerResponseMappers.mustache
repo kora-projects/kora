@@ -26,12 +26,13 @@ public interface {{classname}}ServerResponseMappers {
     public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponseMapper(
       {{#responses}}
       {{#dataType}}
-      HttpServerResponseMapper<HttpServerResponseEntity<{{{dataType}}}>> response{{code}}Delegate{{#vendorExtensions.hasMore}},{{/vendorExtensions.hasMore}}
+      @{{vendorExtensions.jsonTag}}
+      HttpServerResponseMapper<{{{dataType}}}> response{{code}}Delegate{{#vendorExtensions.hasMore}},{{/vendorExtensions.hasMore}}
       {{/dataType}}
       {{/responses}}) {
       {{#responses}}
       {{#dataType}}
-      this.response{{code}}Delegate = response{{code}}Delegate;
+      this.response{{code}}Delegate = new ru.tinkoff.kora.http.server.common.handler.HttpServerResponseEntityMapper(response{{code}}Delegate);
       {{/dataType}}
       {{/responses}}
     }

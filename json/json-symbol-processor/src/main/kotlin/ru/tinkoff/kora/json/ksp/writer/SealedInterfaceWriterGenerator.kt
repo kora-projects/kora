@@ -12,6 +12,7 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.*
 import ru.tinkoff.kora.json.common.JsonWriter
 import ru.tinkoff.kora.json.ksp.jsonWriterName
+import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import javax.annotation.processing.Generated
 
@@ -64,12 +65,14 @@ class SealedInterfaceWriterGenerator(
             .addModifiers(KModifier.PUBLIC, KModifier.OVERRIDE)
             .addParameter("_gen", JsonGenerator::class)
             .addParameter("_object", objectType.copy(nullable = true))
-        jsonElements.forEach { sealedSub ->
-            val typeParameterResolver = sealedSub.typeParameters.toTypeParameterResolver()
-            val writerName = getWriterFieldName(sealedSub)
-            function.addCode("if (_object is %T) {\n%L.write(_gen, _object)\n} else ", sealedSub.asStarProjectedType().toTypeName(typeParameterResolver), writerName)
+        function.controlFlow("when (_object)") {
+            addCode("null -> _gen.writeNull()\n")
+            jsonElements.forEach { sealedSub ->
+                val typeParameterResolver = sealedSub.typeParameters.toTypeParameterResolver()
+                val writerName = getWriterFieldName(sealedSub)
+                addCode("is %T -> %L.write(_gen, _object)\n", sealedSub.asStarProjectedType().toTypeName(typeParameterResolver), writerName)
+            }
         }
-        function.addCode("throw %T(%S)", IllegalStateException::class, "Unsupported class")
         typeBuilder.addFunction(function.build())
         return typeBuilder.build()
     }

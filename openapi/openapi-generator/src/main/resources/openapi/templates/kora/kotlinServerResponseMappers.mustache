@@ -18,11 +18,17 @@ interface {{classname}}ServerResponseMappers {
 {{#operation}}
   class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ResponseMapper(
     {{#responses}}
-    {{#dataType}}
-    private val response{{code}}Delegate: HttpServerResponseMapper<HttpServerResponseEntity<{{{dataType}}}>>{{#vendorExtensions.hasMore}},{{/vendorExtensions.hasMore}}
+    {{#dataType}}{{#vendorExtensions.hasMapperTag}}
+    @{{vendorExtensions.mapperTag}}{{/vendorExtensions.hasMapperTag}}
+    response{{code}}Delegate: HttpServerResponseMapper<{{{dataType}}}>{{#vendorExtensions.hasMore}},{{/vendorExtensions.hasMore}}
     {{/dataType}}
     {{/responses}}
   ): HttpServerResponseMapper<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>{
+    {{#responses}}
+    {{#dataType}}
+    private val response{{code}}Delegate = HttpServerResponseEntityMapper(response{{code}}Delegate)
+    {{/dataType}}
+    {{/responses}}
 
     override fun apply(rs: {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse): Mono<out HttpServerResponse> {
       when (rs) {

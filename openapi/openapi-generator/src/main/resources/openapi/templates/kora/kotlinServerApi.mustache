@@ -5,6 +5,11 @@
  */
 package {{package}}
 
+import ru.tinkoff.kora.common.Mapping;
+import ru.tinkoff.kora.http.common.annotation.HttpRoute;
+import ru.tinkoff.kora.http.client.common.annotation.ResponseCodeMapper;
+import ru.tinkoff.kora.http.server.common.annotation.HttpController;
+
 {{#imports}}import {{import}}
 {{/imports}}
 {{#hasAuthMethods}}
@@ -13,7 +18,7 @@ import ru.tinkoff.kora.http.common.annotation.InterceptWith;
 import ru.tinkoff.kora.http.server.common.HttpServerInterceptor;
 {{/hasAuthMethods}}
 //@javax.annotation.processing.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
-@ru.tinkoff.kora.http.server.common.annotation.HttpController
+@HttpController
 class {{classname}}Controller(private val delegate: {{classname}}Delegate) {
 {{#operations}}
 {{#operation}}
@@ -36,7 +41,7 @@ class {{classname}}Controller(private val delegate: {{classname}}Delegate) {
      * @see <a href="{{url}}">{{summary}} Documentation</a>
     {{/externalDocs}}
      */
-    @ru.tinkoff.kora.http.common.annotation.HttpRoute(method = "{{httpMethod}}", path = "{{path}}")
+    @HttpRoute(method = "{{httpMethod}}", path = "{{path}}")
     {{#implicitHeaders}}
     @ApiImplicitParams({
     {{#headerParams}}
@@ -45,7 +50,7 @@ class {{classname}}Controller(private val delegate: {{classname}}Delegate) {
     {{/headerParams}}
     })
     {{/implicitHeaders}}
-    @ru.tinkoff.kora.common.Mapping({{classname}}ServerResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ResponseMapper::class){{#hasAuthMethods}}
+    @Mapping({{classname}}ServerResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ResponseMapper::class){{#hasAuthMethods}}
     @InterceptWith(tag = Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}::class), value = HttpServerInterceptor::class){{/hasAuthMethods}}
     suspend fun {{operationId}}({{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {
       return this.delegate.{{operationId}}(
