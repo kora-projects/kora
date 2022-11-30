@@ -19,6 +19,8 @@ import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
+import java.util.*
+import java.util.stream.Collectors
 
 object GraphBuilder {
     fun processProcessing(ctx: ProcessingContext, processing: ProcessingState.Processing): ProcessingState {
@@ -77,13 +79,59 @@ object GraphBuilder {
                     stack.addAll(findInterceptors(ctx, processing, dependencyDeclaration))
                     continue@frame
                 }
-                val template = GraphResolutionHelper.findDependencyDeclarationFromTemplate(ctx, declaration, processing.templateDeclarations, dependencyClaim)
-                if (template != null) {
-                    processing.sourceDeclarations.add(template)
-                    stack.addLast(frame.copy(currentDependency = currentDependency))
-                    stack.addLast(ProcessingState.ResolutionFrame.Component(template))
-                    stack.addAll(findInterceptors(ctx, processing, template))
-                    continue@frame
+                val templates = GraphResolutionHelper.findDependencyDeclarationsFromTemplate(ctx, declaration, processing.templateDeclarations, dependencyClaim)
+                if (templates.isNotEmpty()) {
+                    if (templates.size == 1) {
+                        val template = templates[0]
+                        processing.sourceDeclarations.add(template)
+                        stack.addLast(frame.copy(currentDependency = currentDependency))
+                        stack.addLast(ProcessingState.ResolutionFrame.Component(template))
+                        stack.addAll(findInterceptors(ctx, processing, template))
+                        continue@frame
+                    }
+                    val results = ArrayList<ProcessingState>(templates.size)
+                    var exception: UnresolvedDependencyException? = null
+                    for (template in templates) {
+                        val newProcessing: ProcessingState.Processing = ProcessingState.Processing(
+                            processing.root,
+                            processing.allModules,
+                            ArrayList(processing.sourceDeclarations),
+                            ArrayList(processing.templateDeclarations),
+                            processing.rootSet,
+                            ArrayList(processing.resolvedComponents),
+                            ArrayDeque(processing.resolutionStack)
+                        )
+                        newProcessing.sourceDeclarations.add(template)
+                        newProcessing.resolutionStack.addLast(frame.copy(currentDependency = currentDependency))
+                        newProcessing.resolutionStack.addLast(ProcessingState.ResolutionFrame.Component(template))
+                        newProcessing.resolutionStack.addAll(this.findInterceptors(ctx, processing, template))
+                        try {
+                            results.add(this.processProcessing(ctx, newProcessing))
+                        } catch (e: NewRoundException) {
+                            results.add(e.resolving)
+                        } catch (e: UnresolvedDependencyException) {
+                            if (exception != null) {
+                                exception.addSuppressed(e)
+                            } else {
+                                exception = e
+                            }
+                        }
+                    }
+                    if (results.size == 1) {
+                        return results[0]
+                    }
+                    if (results.size > 1) {
+                        val deps = templates.stream().map { Objects.toString(it) }
+                            .collect(Collectors.joining("\n"))
+                            .prependIndent("  ")
+                        throw ProcessingErrorException(
+                            """
+                            More than one component matches dependency claim ${dependencyClaim.type}:
+                            $deps
+                            """.trimIndent(), declaration.source
+                        )
+                    }
+                    throw exception!!
                 }
                 val optionalDependency = findOptionalDependency(dependencyClaim)
                 if (optionalDependency != null) {

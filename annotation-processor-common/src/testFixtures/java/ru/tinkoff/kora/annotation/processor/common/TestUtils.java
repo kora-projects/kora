@@ -61,7 +61,7 @@ public class TestUtils {
     public static ClassLoader testKoraExtension(TypeRef<?>[] targetClasses, TypeRef<?>... requiredDependencies) throws Exception {
         var template = """
             package test;
-                        
+
             @ru.tinkoff.kora.common.KoraApp
             public interface TestApp {
                 default ru.tinkoff.kora.application.graph.Lifecycle someLifecycle(${targets}) {
@@ -70,7 +70,7 @@ public class TestUtils {
                         public reactor.core.publisher.Mono<?> init() {
                             return null;
                         }
-                        
+
                         @Override
                         public reactor.core.publisher.Mono<?> release() {
                             return null;

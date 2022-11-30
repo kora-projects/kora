@@ -83,7 +83,7 @@ object KspCommonUtils {
 }
 
 
-data class MappersData(val mapperClasses: List<KSType>, val tags: List<KSType>) {
+data class MappersData(val mapperClasses: List<KSType>, val tags: Set<String>) {
     fun getMapping(type: KSType): MappingData? {
         if (mapperClasses.isEmpty() && tags.isEmpty()) {
             return null
@@ -126,17 +126,18 @@ fun KSClassDeclaration.doesImplement(type: ClassName) = this.superTypes
     .any { (it.resolve().declaration as KSClassDeclaration).toClassName() == type }
 
 
-data class MappingData(val mapper: KSType?, val tags: List<KSType>) {
+data class MappingData(val mapper: KSType?, val tags: Set<String>) {
     fun toTagAnnotation(): AnnotationSpec? {
         if (this.tags.isEmpty()) {
             return null
         }
         val tags = CodeBlock.builder()
-        for (i in this.tags.indices) {
+
+        for ((i, tag) in this.tags.iterator().withIndex()) {
             if (i > 0) {
                 tags.add(", ")
             }
-            tags.add("%T::class", this.tags[i].toClassName())
+            tags.add("%L::class", tag)
         }
         return AnnotationSpec.builder(CommonClassNames.tag).addMember(tags.build()).build()
     }
@@ -144,7 +145,7 @@ data class MappingData(val mapper: KSType?, val tags: List<KSType>) {
 
 @KspExperimental
 fun KSAnnotated.parseMappingData(): MappersData {
-    val tags = parseTagValue(this)
+    val tags = TagUtils.parseTagValue(this)
     val mappingsAnnotation = this.findAnnotation(Mapping.Mappings::class)
     if (mappingsAnnotation != null) {
         val mappings = mappingsAnnotation.findValue<List<KSAnnotation>>("value")!!

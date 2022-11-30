@@ -1,6 +1,7 @@
 dependencies {
     api project(":json:json-common")
 
+    compileOnly project(":kafka:kafka")
     compileOnly project(":http:http-server-common")
     compileOnly project(":http:http-client-common")
 }

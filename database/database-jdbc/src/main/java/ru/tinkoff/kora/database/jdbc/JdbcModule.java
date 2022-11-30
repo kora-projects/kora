@@ -7,6 +7,7 @@ import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcRowMapper;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 public interface JdbcModule extends DataBaseModule {
@@ -14,9 +15,14 @@ public interface JdbcModule extends DataBaseModule {
         return JdbcResultSetMapper.optionalResultSetMapper(rowMapper);
     }
 
+    default <T> JdbcResultSetMapper<List<T>> listResultSetMapper(JdbcRowMapper<T> rowMapper) {
+        return JdbcResultSetMapper.listResultSetMapper(rowMapper);
+    }
+
     default <T> JdbcResultSetMapper<T> singleResultSetMapper(JdbcRowMapper<T> rowMapper) {
         return JdbcResultSetMapper.singleResultSetMapper(rowMapper);
     }
+
 
     default JdbcRowMapper<Boolean> booleanJdbcRowMapper() {
         return rs -> {

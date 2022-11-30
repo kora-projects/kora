@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Map;
 import ru.tinkoff.kora.common.Mapping;
 import ru.tinkoff.kora.http.client.common.annotation.HttpClient;
+import ru.tinkoff.kora.http.client.common.annotation.ResponseCodeMapper;
+import ru.tinkoff.kora.http.common.annotation.HttpRoute;
 
 {{#hasAuthMethods}}
 import ru.tinkoff.kora.common.Tag;
@@ -44,21 +46,16 @@ public interface {{classname}} {
      * @see <a href="{{url}}">{{summary}} Documentation</a>
     {{/externalDocs}}
      */
-    @ru.tinkoff.kora.http.common.annotation.HttpRoute(method = "{{httpMethod}}", path = "{{path}}")
-    {{#responses}}
-    @ru.tinkoff.kora.http.client.common.annotation.ResponseCodeMapper(code = {{#isDefault}}-1{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, mapper = {{classname}}ClientResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper.class)
-    {{/responses}}{{#hasAuthMethods}}
-    @InterceptWith(tag = @Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}.class), value = HttpClientInterceptor.class){{/hasAuthMethods}}
-    {{#implicitHeaders}}
+    @HttpRoute(method = "{{httpMethod}}", path = "{{path}}"){{#responses}}
+    @ResponseCodeMapper(code = {{#isDefault}}-1{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, mapper = {{classname}}ClientResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper.class){{/responses}}{{#hasAuthMethods}}
+    @InterceptWith(tag = @Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}.class), value = HttpClientInterceptor.class){{/hasAuthMethods}}{{#implicitHeaders}}
     @ApiImplicitParams({
     {{#headerParams}}
      TODO implisit header
     {{>implicitHeader}}
     {{/headerParams}}
-    })
-    {{/implicitHeaders}}
-    Mono<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {{operationId}}({{>javaAnnotatedParams}}
-    );
+    }){{/implicitHeaders}}
+    Mono<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {{operationId}}({{>javaAnnotatedParams}});
 
 
 {{>javaFormParams}}

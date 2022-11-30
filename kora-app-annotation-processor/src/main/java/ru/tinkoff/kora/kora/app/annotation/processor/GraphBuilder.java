@@ -23,9 +23,8 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import java.io.IOException;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim.DependencyClaimType.*;
 
@@ -92,15 +91,57 @@ public class GraphBuilder {
                     stack.addAll(findInterceptors(ctx, processing, dependencyDeclaration));
                     continue frame;
                 }
-                var template = GraphResolutionHelper.findDependencyDeclarationFromTemplate(ctx, declaration, processing.templates(), dependencyClaim);
-                if (template != null) {
-                    processing.sourceDeclarations().add(template);
-                    stack.addLast(componentFrame.withCurrentDependency(currentDependency));
-                    stack.addLast(new ProcessingState.ResolutionFrame.Component(
-                        template, ComponentDependencyHelper.parseDependencyClaims(template)
-                    ));
-                    stack.addAll(findInterceptors(ctx, processing, template));
-                    continue frame;
+                var templates = GraphResolutionHelper.findDependencyDeclarationsFromTemplate(ctx, declaration, processing.templates(), dependencyClaim);
+                if (!templates.isEmpty()) {
+                    if (templates.size() == 1) {
+                        var template = templates.get(0);
+                        processing.sourceDeclarations().add(template);
+                        stack.addLast(componentFrame.withCurrentDependency(currentDependency));
+                        stack.addLast(new ProcessingState.ResolutionFrame.Component(
+                            template, ComponentDependencyHelper.parseDependencyClaims(template)
+                        ));
+                        stack.addAll(findInterceptors(ctx, processing, template));
+                        continue frame;
+                    }
+                    UnresolvedDependencyException exception = null;
+                    var results = new ArrayList<ProcessingState>(templates.size());
+                    for (var template : templates) {
+                        var newProcessing = new ProcessingState.Processing(
+                            processing.root(),
+                            processing.allModules(),
+                            new ArrayList<>(processing.sourceDeclarations()),
+                            new ArrayList<>(processing.templates()),
+                            processing.rootSet(),
+                            new ArrayList<>(processing.resolvedComponents()),
+                            new ArrayDeque<>(processing.resolutionStack())
+                        );
+                        newProcessing.sourceDeclarations().add(template);
+                        newProcessing.resolutionStack().addLast(componentFrame.withCurrentDependency(currentDependency));
+                        newProcessing.resolutionStack().addLast(new ProcessingState.ResolutionFrame.Component(
+                            template, ComponentDependencyHelper.parseDependencyClaims(template)
+                        ));
+                        newProcessing.resolutionStack().addAll(findInterceptors(ctx, processing, template));
+
+                        try {
+                            results.add(processProcessing(ctx, roundEnv, newProcessing));
+                        } catch (NewRoundException e) {
+                            results.add(e.getResolving());
+                        } catch (UnresolvedDependencyException e) {
+                            if (exception != null) {
+                                exception.addSuppressed(e);
+                            } else {
+                                exception = e;
+                            }
+                        }
+                    }
+                    if (results.size() == 1) {
+                        return results.get(0);
+                    }
+                    if (results.size() > 1) {
+                        var deps = templates.stream().map(Objects::toString).collect(Collectors.joining("\n")).indent(2);
+                        throw new ProcessingErrorException("More than one component matches dependency claim " + dependencyClaim.type() + ":\n" + deps, declaration.source());
+                    }
+                    throw exception;
                 }
                 if (dependencyClaim.claimType() == ONE_NULLABLE) {
                     resolvedDependencies.add(new ComponentDependency.NullDependency(dependencyClaim));

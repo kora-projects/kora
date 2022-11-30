@@ -121,7 +121,9 @@ subprojects {
         }
     }
 
+
     signing {
+        required = false
         sign publishing.publications.maven
     }
 

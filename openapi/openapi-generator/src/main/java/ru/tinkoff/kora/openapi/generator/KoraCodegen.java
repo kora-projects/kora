@@ -22,7 +22,6 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.openapitools.codegen.*;
-import org.openapitools.codegen.languages.AbstractJavaCodegen;
 import org.openapitools.codegen.meta.features.*;
 import org.openapitools.codegen.model.ModelMap;
 import org.openapitools.codegen.model.ModelsMap;
@@ -46,7 +45,7 @@ import static org.openapitools.codegen.utils.StringUtils.*;
 
 public class KoraCodegen extends DefaultCodegen {
 
-    private final Logger LOGGER = LoggerFactory.getLogger(AbstractJavaCodegen.class);
+    private final Logger LOGGER = LoggerFactory.getLogger(KoraCodegen.class);
 
     private enum Mode {
         JAVA_CLIENT, JAVA_SERVER, REACTIVE_CLIENT, REACTIVE_SERVER, KOTLIN_CLIENT, KOTLIN_SERVER
@@ -60,6 +59,7 @@ public class KoraCodegen extends DefaultCodegen {
     }
 
     public static final String CODEGEN_MODE = "mode";
+    public static final String JSON_ANNOTATION = "jsonAnnotation";
     public static final String OBJECT_TYPE = "objectType";
     public static final String DISABLE_HTML_ESCAPING = "disableHtmlEscaping";
     public static final String IGNORE_ANYOF_IN_ENUM = "ignoreAnyOfInEnum";
@@ -77,6 +77,7 @@ public class KoraCodegen extends DefaultCodegen {
     protected String booleanGetterPrefix = "get";
     protected boolean ignoreAnyOfInEnum = false;
     private Mode codegenMode = Mode.JAVA_CLIENT;
+    private String jsonAnnotation = "ru.tinkoff.kora.json.common.annotation.Json";
     private Map<String, TagData> tags = Map.of();
     private String securityConfigPrefix;
     private String clientConfigPrefix;
@@ -163,6 +164,7 @@ public class KoraCodegen extends DefaultCodegen {
         cliOptions.add(CliOption.newString(SECURITY_CONFIG_PREFIX, "Config prefix for security config parsers"));
         cliOptions.add(CliOption.newString(CLIENT_CONFIG_PREFIX, "Generated client config prefix"));
         cliOptions.add(new CliOption("tags", "Json containing http client tags configuration for apis", "string"));
+        cliOptions.add(CliOption.newString(JSON_ANNOTATION, "Json annotation tag to place on body and other json related params"));
     }
 
     @Override
@@ -176,6 +178,9 @@ public class KoraCodegen extends DefaultCodegen {
             this.codegenMode = Mode.valueOf(additionalProperties.get(CODEGEN_MODE).toString().toUpperCase());
         } else {
             this.codegenMode = Mode.JAVA_CLIENT;
+        }
+        if (additionalProperties.containsKey(JSON_ANNOTATION)) {
+            this.jsonAnnotation = additionalProperties.get(JSON_ANNOTATION).toString();
         }
         if (this.additionalProperties.containsKey("tags")) {
             var tagsJson = this.additionalProperties.get("tags").toString();
@@ -592,15 +597,15 @@ public class KoraCodegen extends DefaultCodegen {
         // model name cannot use reserved keyword, e.g. return
         if (isReservedWord(camelizedName)) {
             final String modelName = "Model" + camelizedName;
-            LOGGER.warn("{} (reserved word) cannot be used as model name. Renamed to {}", camelizedName, modelName);
+//            LOGGER.warn("{} (reserved word) cannot be used as model name. Renamed to {}", camelizedName, modelName);
             return modelName;
         }
 
         // model name starts with number
         if (camelizedName.matches("^\\d.*")) {
             final String modelName = "Model" + camelizedName; // e.g. 200Response => Model200Response (after camelize)
-            LOGGER.warn("{} (model name starts with number) cannot be used as model name. Renamed to {}", name,
-                modelName);
+//            LOGGER.warn("{} (model name starts with number) cannot be used as model name. Renamed to {}", name,
+//                modelName);
             return modelName;
         }
 
@@ -1091,9 +1096,28 @@ public class KoraCodegen extends DefaultCodegen {
             op.vendorExtensions.put("urlEncodedForm", urlEncodedForm);
             for (var response : op.responses) {
                 var hasData = response.hasHeaders || response.isDefault || response.dataType != null;
+                response.vendorExtensions.put("jsonTag", this.jsonAnnotation);
                 response.vendorExtensions.put("hasData", hasData);
             }
+            if (op.bodyParam != null) {
+                if (Objects.equals("application/json", op.bodyParam.contentType) || op.bodyParam.contentType == null) {
+                    op.bodyParam.vendorExtensions.put("hasMapperTag", true);
+                    op.bodyParam.vendorExtensions.put("mapperTag", this.jsonAnnotation);
+                }
+                for (var param : op.allParams) {
+                    if (param.isBodyParam && Objects.equals("application/json", param.contentType) || param.contentType == null) {
+                        param.vendorExtensions.put("hasMapperTag", true);
+                        param.vendorExtensions.put("mapperTag", this.jsonAnnotation);
+                    }
+                }
+            }
 
+            for (var response : op.responses) {
+                if (response.getContent() != null && response.getContent().containsKey("application/json")) {
+                    response.vendorExtensions.put("hasMapperTag", true);
+                    response.vendorExtensions.put("mapperTag", this.jsonAnnotation);
+                }
+            }
             int lastIdx = 0;
             for (int i = op.responses.size() - 1; i >= 0; i--) {
                 var response = op.responses.get(i);

@@ -21,7 +21,7 @@ public final class KoraAsyncAppender extends AsyncAppenderBase<ILoggingEvent> {
             eventObject.getArgumentArray(),
             eventObject.getThrowableProxy(),
             eventObject.getMarkerList(),
-            Map.copyOf(eventObject.getMDCPropertyMap()),
+            eventObject.getMDCPropertyMap(),
             eventObject.getTimeStamp(),
             eventObject.getNanoseconds(),
             eventObject.getSequenceNumber(),

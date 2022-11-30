@@ -4,8 +4,8 @@
       {{/isQueryParam}}{{#isPathParam}}@ru.tinkoff.kora.http.common.annotation.Path("{{baseName}}")
       {{/isPathParam}}{{#isHeaderParam}}@ru.tinkoff.kora.http.common.annotation.Header("{{baseName}}")
       {{/isHeaderParam}}{{#isCookieParam}}/* TODO Cookies */
-      {{/isCookieParam}}
-{{{dataType}}} {{paramName}}{{#hasFormParams}},{{/hasFormParams}}{{^hasFormParams}}{{^-last}},{{/-last}}{{/hasFormParams}}
+      {{/isCookieParam}}{{#isBodyParam}}{{#vendorExtensions.hasMapperTag}}@{{vendorExtensions.mapperTag}}{{/vendorExtensions.hasMapperTag}}
+      {{/isBodyParam}}{{{dataType}}} {{paramName}}{{#hasFormParams}},{{/hasFormParams}}{{^hasFormParams}}{{^-last}},{{/-last}}{{/hasFormParams}}
 {{/isFormParam}}{{/allParams}}    {{#hasFormParams}}
      {{#isClient}}@Mapping({{classname}}ClientRequestMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper.class)
      {{/isClient}}{{^isClient}}@Mapping({{classname}}ServerRequestMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper.class)

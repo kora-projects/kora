@@ -42,18 +42,15 @@ interface {{classname}} {
      * @see <a href="{{url}}">{{summary}} Documentation</a>
     {{/externalDocs}}
      */
-    @HttpRoute(method = "{{httpMethod}}", path = "{{path}}")
-    {{#implicitHeaders}}
+    @HttpRoute(method = "{{httpMethod}}", path = "{{path}}"){{#implicitHeaders}}
     @ApiImplicitParams({
     {{#headerParams}}
      TODO implisit header
     {{>implicitHeader}}
     {{/headerParams}}
     })
-    {{/implicitHeaders}}
-    {{#responses}}
-    @ResponseCodeMapper(code = {{#isDefault}}-1{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, mapper = {{classname}}ClientResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper::class)
-    {{/responses}}{{#hasAuthMethods}}
+    {{/implicitHeaders}}{{#responses}}
+    @ResponseCodeMapper(code = {{#isDefault}}-1{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, mapper = {{classname}}ClientResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper::class){{/responses}}{{#hasAuthMethods}}
     @InterceptWith(tag = Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}::class), value = HttpClientInterceptor::class){{/hasAuthMethods}}
     suspend fun {{operationId}}({{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse
 

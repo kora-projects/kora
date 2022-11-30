@@ -124,6 +124,25 @@ public class GraphResolutionHelper {
 
     @Nullable
     public static ComponentDeclaration findDependencyDeclarationFromTemplate(ProcessingContext ctx, ComponentDeclaration forDeclaration, List<ComponentDeclaration> sourceDeclarations, DependencyClaim dependencyClaim) {
+        var declarations = findDependencyDeclarationsFromTemplate(ctx, forDeclaration, sourceDeclarations, dependencyClaim);
+        if (declarations.size() == 0) {
+            return null;
+        }
+        if (declarations.size() == 1) {
+            return declarations.get(0);
+        }
+        var exactMatch = declarations.stream().filter(d -> ctx.types.isSameType(
+            d.type(),
+            dependencyClaim.type()
+        )).toList();
+        if (exactMatch.size() == 1) {
+            return exactMatch.get(0);
+        }
+        var deps = declarations.stream().map(Objects::toString).collect(Collectors.joining("\n")).indent(2);
+        throw new ProcessingErrorException("More than one component matches dependency claim " + dependencyClaim.type() + ":\n" + deps, forDeclaration.source());
+    }
+
+    public static List<ComponentDeclaration> findDependencyDeclarationsFromTemplate(ProcessingContext ctx, ComponentDeclaration forDeclaration, List<ComponentDeclaration> sourceDeclarations, DependencyClaim dependencyClaim) {
         var claimType = dependencyClaim.claimType();
         if (claimType == ALL_OF_ONE || claimType == ALL_OF_PROMISE || claimType == ALL_OF_VALUE) {
             throw new IllegalStateException();
@@ -204,20 +223,20 @@ public class GraphResolutionHelper {
             }
         }
         if (declarations.size() == 0) {
-            return null;
+            return declarations;
         }
         if (declarations.size() == 1) {
-            return declarations.get(0);
+            return declarations;
         }
         var exactMatch = declarations.stream().filter(d -> types.isSameType(
             d.type(),
             dependencyClaim.type()
         )).toList();
-        if (exactMatch.size() == 1) {
-            return exactMatch.get(0);
+        if (exactMatch.isEmpty()) {
+            return declarations;
+        } else {
+            return exactMatch;
         }
-        var deps = declarations.stream().map(Objects::toString).collect(Collectors.joining("\n")).indent(2);
-        throw new ProcessingErrorException("More than one component matches dependency claim " + dependencyClaim.type() + ":\n" + deps, forDeclaration.source());
     }
 
     @Nullable
