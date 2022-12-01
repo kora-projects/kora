@@ -9,6 +9,7 @@ import ru.tinkoff.kora.annotation.processor.common.TagUtils;
 import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.common.Tag;
 
+import javax.annotation.processing.Generated;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeKind;
@@ -184,8 +185,12 @@ public class AopProcessor {
         var aopContext = new KoraAspect.AspectContext(typeFieldFactory);
 
         var typeBuilder = TypeSpec.classBuilder(AopUtils.aopProxyName(typeElement))
+            .addAnnotation(AnnotationSpec.builder(Generated.class)
+                .addMember("value", CodeBlock.of("$S", AopAnnotationProcessor.class.getCanonicalName()))
+                .build())
             .superclass(typeElement.asType())
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+
         if (typeElement.getAnnotation(Component.class) != null) {
             typeBuilder.addAnnotation(Component.class);
         }
