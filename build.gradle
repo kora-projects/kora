@@ -83,6 +83,10 @@ subprojects {
             maven(MavenPublication) {
                 from components.java
                 pom {
+                    afterEvaluate {
+                        name = project.name
+                        description = "Kora $project.name module"
+                    }
                     licenses {
                         license {
                             name = 'The Apache Software License, Version 2.0'
@@ -95,7 +99,28 @@ subprojects {
                         developerConnection = 'scm:git:git@github.com/Tinkoff/kora.git'
                     }
                     url = 'https://github.com/Tinkoff/kora'
-
+                    developers {
+                        developer {
+                            id = 'a.otts'
+                            name = 'Aleksei Otts'
+                            email = 'eld0727@mail.ru'
+                        }
+                        developer {
+                            id = 'a.duyun'
+                            name = 'Anton Duyun'
+                            email = 'anton.duyun@gmail.com'
+                        }
+                        developer {
+                            id = 'a.kurako'
+                            name = 'Anton Kurako'
+                            email = 'goodforgod.dev@gmail.com'
+                        }
+                        developer {
+                            id = 'a.yakovlev'
+                            name = 'Artem Yakovlev'
+                            email = 'jakart89@gmail.com'
+                        }
+                    }
 
                     withXml { pom ->
                         def xpf = javax.xml.xpath.XPathFactory.newInstance()
