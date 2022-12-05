@@ -13,17 +13,17 @@ import java.lang.annotation.Target;
 /**
  * Indicates how JSON field must be associated with DTO field.
  *
- * <pre>
+ * <pre>{@code
  * @Json
- * class Example(@JsonField("val") String movie)
- * </pre>
+ * record Example(@JsonField("val") String movie){}
+ * }</pre>
  * <p>
  * With corresponding JSON:
- * <pre>
+ * <pre>{@code
  * {
  *   "val": "Movies"
  * }
- * </pre>
+ * }</pre>
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.PARAMETER, ElementType.FIELD})

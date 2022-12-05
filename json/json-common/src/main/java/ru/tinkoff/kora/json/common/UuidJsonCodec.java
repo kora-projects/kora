@@ -8,8 +8,8 @@ import java.util.Arrays;
 import java.util.UUID;
 
 /**
- * @see com.fasterxml.jackson.databind.deser.std.UUIDDeserializer
- * @see com.fasterxml.jackson.databind.ser.std.UUIDSerializer
+ * @see <a href="https://github.com/FasterXML/jackson-databind/blob/2.15/src/main/java/com/fasterxml/jackson/databind/deser/std/UUIDDeserializer.java">UUIDDeserializer</a>
+ * @see <a href="https://github.com/FasterXML/jackson-databind/blob/2.15/src/main/java/com/fasterxml/jackson/databind/ser/std/UUIDSerializer.java">UUIDSerializer</a>>
  */
 public class UuidJsonCodec implements JsonReader<UUID>, JsonWriter<UUID> {
     final static char[] HEX_CHARS = "0123456789abcdef".toCharArray();

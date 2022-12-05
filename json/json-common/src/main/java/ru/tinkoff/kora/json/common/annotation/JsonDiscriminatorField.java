@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
  * Indicates that class/interface must be sealed and its deserialized type is will depend on {@link #value()} field, works in conjunctions with {@link JsonDiscriminatorValue} annotation
  * <p>
  * Given classes:
- * <pre>
+ * <pre>{@code
  * @Json
  * @JsonDiscriminatorField("type")
  * public sealed interface SealedDto {
@@ -20,7 +20,7 @@ import java.lang.annotation.Target;
  *     @JsonDiscriminatorValue("type2")
  *     record SecondType(String val, int dig) implements SealedDto {}
  * }
- * </pre>
+ * }</pre>
  * <p>
  * Json for type1 will look like:
  * <pre>
