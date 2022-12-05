@@ -6,7 +6,7 @@ import java.util.List;
 /**
  * Represent CacheKey interface that is used by the implementation that represents method arguments as key for Cache
  *
- * @see #toString() generates string where all values are separated with '-' according to contract for CacheKey
+ * @see Object#toString() generates string where all values are separated with '-' according to contract for CacheKey
  */
 public interface CacheKey {
 
