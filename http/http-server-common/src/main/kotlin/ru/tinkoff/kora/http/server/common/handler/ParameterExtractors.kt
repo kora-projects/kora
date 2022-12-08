@@ -101,7 +101,7 @@ fun extractStringListHeaderParameter(request: HttpServerRequest, name: String): 
 fun extractStringQueryParameter(request: HttpServerRequest, name: String): String {
     val result = request.queryParams()[name]
     if (result == null || result.isEmpty()) {
-        throw HttpServerResponseException.of(400, "Query parameter '%s' is required")
+        throw HttpServerResponseException.of(400, "Query parameter '$name' is required")
     }
     return result.iterator().next()
 }

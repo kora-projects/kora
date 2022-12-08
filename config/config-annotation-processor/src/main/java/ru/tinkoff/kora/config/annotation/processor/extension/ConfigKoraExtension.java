@@ -11,6 +11,7 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
@@ -39,6 +40,9 @@ public final class ConfigKoraExtension implements KoraExtension {
         }
 
         var paramType = ((DeclaredType) typeMirror).getTypeArguments().get(0);
+        if (paramType.getKind() != TypeKind.DECLARED) {
+            return null;
+        }
         var element = ((TypeElement) types.asElement(paramType));
 
         if (element.getKind() == ElementKind.RECORD) {

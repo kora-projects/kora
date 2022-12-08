@@ -8,7 +8,6 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.common.Context
-import ru.tinkoff.kora.common.Mapping
 import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.http.common.annotation.Header
 import ru.tinkoff.kora.http.common.annotation.HttpRoute
@@ -16,8 +15,8 @@ import ru.tinkoff.kora.http.common.annotation.Path
 import ru.tinkoff.kora.http.common.annotation.Query
 import ru.tinkoff.kora.http.server.common.HttpServerRequestHandler
 import ru.tinkoff.kora.http.server.common.handler.*
-import ru.tinkoff.kora.ksp.common.KspCommonUtils.findRepeatableAnnotation
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.findRepeatableAnnotation
 import ru.tinkoff.kora.ksp.common.parseAnnotationValue
 import ru.tinkoff.kora.ksp.common.parseMappingData
 
@@ -194,28 +193,15 @@ class RouteProcessor(private val resolver: Resolver) {
 
     private fun generateMappedParamDeclaration(requestName: String, valueParameter: KSValueParameter, funBuilder: FunSpec.Builder) {
         val paramName = valueParameter.name?.asString()
-        val mappedAnnotation = valueParameter.getAnnotationsByType(Mapping::class).toList().firstOrNull()
-        val tag = valueParameter.getAnnotationsByType(Tag::class).toList().firstOrNull()
+        val mappingData = valueParameter.parseMappingData()
+        val mapping = mappingData.getMapping(requestMapper)
 
         val isNullable = valueParameter.type.resolve().nullability == Nullability.NULLABLE
         val awaitCode = if (isNullable) awaitSingleOrNull else awaitSingle
-        val mapperType = try {
-            mappedAnnotation?.value?.asTypeName() ?: requestMapper.parameterizedBy(valueParameter.type.toTypeName())
-        } catch (e: KSTypeNotPresentException) {
-            e.ksType.toTypeName()
-        }
+        val mapperType = mapping?.mapper?.toTypeName() ?: requestMapper.parameterizedBy(valueParameter.type.toTypeName())
         val mapperParameter = ParameterSpec.builder("_${paramName}Mapper", mapperType)
-        if (tag != null) {
-            val tagAnnotation = AnnotationSpec.builder(Tag::class.asClassName())
-            val tagTypes = try {
-                tag.value.map { it.asClassName() }
-            } catch (e: KSTypesNotPresentException) {
-                e.ksTypes.map { it.toClassName() }
-            }
-            tagTypes.forEach {
-                tagAnnotation.addMember("%T::class", it)
-            }
-            mapperParameter.addAnnotation(tagAnnotation.build())
+        mapping?.toTagAnnotation()?.let {
+            mapperParameter.addAnnotation(it)
         }
         funBuilder.addParameter(mapperParameter.build())
         funBuilder.addCode("val $paramName = _${paramName}Mapper.apply(%N).%M()\n", requestName, awaitCode)

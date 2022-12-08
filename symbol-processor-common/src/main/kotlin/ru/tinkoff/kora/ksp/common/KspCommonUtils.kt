@@ -101,7 +101,7 @@ data class MappersData(val mapperClasses: List<KSType>, val tags: Set<String>) {
     }
 
     fun getMapping(type: ClassName): MappingData? {
-        if (mapperClasses.isEmpty()) {
+        if (mapperClasses.isEmpty() && tags.isEmpty()) {
             return null
         }
         for (mapperClass in mapperClasses) {
