@@ -47,7 +47,7 @@ class RepositoryKoraExtension(private val kspLogger: KSPLogger) : KoraExtension 
             if (constructor == null) {
                 throw IllegalStateException()
             }
-            ExtensionResult.fromConstructor(constructor, repositoryElement)
+            ExtensionResult.fromConstructor(constructor, aopProxyElement)
         }
     }
 }

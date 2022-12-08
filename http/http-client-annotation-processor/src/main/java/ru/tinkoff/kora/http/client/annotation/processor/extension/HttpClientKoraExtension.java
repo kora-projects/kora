@@ -51,11 +51,14 @@ public class HttpClientKoraExtension implements KoraExtension {
                 // annotation processor will handle it
                 return ExtensionResult.nextRound();
             }
-            var aopProxy = CommonUtils.getOuterClassesAsPrefix(maybeGenerated) + maybeGenerated.getSimpleName() + "__AopProxy";
-            var aopProxyElement = this.elements.getTypeElement(packageName + "." + aopProxy);
-            if (aopProxyElement == null) {
-                // aop annotation processor will handle it
-                return ExtensionResult.nextRound();
+            if (CommonUtils.hasAopAnnotations(typeElement)) {
+                var aopProxy = CommonUtils.getOuterClassesAsPrefix(maybeGenerated) + maybeGenerated.getSimpleName() + "__AopProxy";
+                var aopProxyElement = this.elements.getTypeElement(packageName + "." + aopProxy);
+                if (aopProxyElement == null) {
+                    // aop annotation processor will handle it
+                    return ExtensionResult.nextRound();
+                }
+                maybeGenerated = aopProxyElement;
             }
             return maybeGenerated.getEnclosedElements().stream()
                 .filter(e -> e.getKind() == ElementKind.CONSTRUCTOR)

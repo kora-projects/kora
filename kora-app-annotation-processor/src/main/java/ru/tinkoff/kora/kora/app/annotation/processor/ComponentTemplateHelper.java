@@ -45,18 +45,23 @@ public class ComponentTemplateHelper {
         if (ctx.types.isAssignable(declarationTypeParameter, requiredTypeParameter)) {
             return true;
         }
-        if (requiredTypeParameter.getKind() != TypeKind.DECLARED || declarationTypeParameter.getKind() != TypeKind.DECLARED) {
+        if (requiredTypeParameter.getKind() == TypeKind.DECLARED && declarationTypeParameter.getKind() == TypeKind.DECLARED) {
+            var drt = (DeclaredType) requiredTypeParameter;
+            var ddt = (DeclaredType) declarationTypeParameter;
+            var match = match(ctx, ddt, drt);
+            if (match instanceof TemplateMatch.None) {
+                return false;
+            }
+            var some = (TemplateMatch.Some) match;
+            map.putAll(some.map());
+            return true;
+        } else if (requiredTypeParameter.getKind() == TypeKind.ARRAY && declarationTypeParameter.getKind() == TypeKind.ARRAY) {
+            var ddt = (ArrayType) declarationTypeParameter;
+            var drt = (ArrayType) requiredTypeParameter;
+            return match(ctx, ddt.getComponentType(), drt.getComponentType(), map);
+        } else {
             return false;
         }
-        var drt = (DeclaredType) requiredTypeParameter;
-        var ddt = (DeclaredType) declarationTypeParameter;
-        var match = match(ctx, ddt, drt);
-        if (match instanceof TemplateMatch.None) {
-            return false;
-        }
-        var some = (TemplateMatch.Some) match;
-        map.putAll(some.map());
-        return true;
     }
 
     public static TypeMirror replace(Types types, TypeMirror declaredType, IdentityHashMap<? extends TypeMirror, TypeMirror> getFrom) {
