@@ -7,7 +7,6 @@ import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
 import ru.tinkoff.kora.json.annotation.processor.KnownType;
 import ru.tinkoff.kora.json.annotation.processor.writer.JsonClassWriterMeta.FieldMeta;
 import ru.tinkoff.kora.json.common.EnumJsonWriter;
-import ru.tinkoff.kora.json.common.JsonObjectCodec;
 import ru.tinkoff.kora.json.common.JsonWriter;
 import ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorValue;
 

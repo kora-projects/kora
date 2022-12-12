@@ -11,7 +11,6 @@ import ru.tinkoff.kora.json.annotation.processor.KnownType;
 import ru.tinkoff.kora.json.annotation.processor.reader.JsonClassReaderMeta.FieldMeta;
 import ru.tinkoff.kora.json.annotation.processor.reader.ReaderFieldType.KnownTypeReaderMeta;
 import ru.tinkoff.kora.json.common.EnumJsonReader;
-import ru.tinkoff.kora.json.common.JsonObjectCodec;
 import ru.tinkoff.kora.json.common.JsonReader;
 
 import javax.annotation.Nullable;
