@@ -1,15 +1,14 @@
-[[ Документация ]](https://tinkoff.github.io/kora/)
-
 # Kora framework
 
-kora это фреймворк нацеленный на оптимизацию используемых ресурсов путём уменьшения абстракций над "железом".
-При этом kora стремится предоставить достаточно высокоуровневые декларативные API для разработчиков, которые на этапе компиляции преобразуются в оптимальный код для исполнения.
+Kora is a jvm-based framework for building backend apps. It aims to be the solution for writing highly scalable and performant web applications using idiomatic java and kotlin with minimal amount of a boilerplate code.
+
+Check out the full documentation here: [Documentation](https://tinkoff.github.io/kora/)
 
 ## Name origin
 
 Kora (Kore) aka Persephone - ancient greek goddess of Spring
 
-## Подключение
+## Installation
 
 ```groovy
     implementation platform("ru.tinkoff.kora:kora-parent:$koraVersion")
