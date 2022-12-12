@@ -1100,12 +1100,16 @@ public class KoraCodegen extends DefaultCodegen {
                 response.vendorExtensions.put("hasData", hasData);
             }
             if (op.bodyParam != null) {
-                if (Objects.equals("application/json", op.bodyParam.contentType) || op.bodyParam.contentType == null) {
+                if (op.bodyParam.isBinary) {
+                    op.bodyParam.vendorExtensions.put("hasMapperTag", false);
+                } else if (Objects.equals("application/json", op.bodyParam.contentType) || op.bodyParam.contentType == null) {
                     op.bodyParam.vendorExtensions.put("hasMapperTag", true);
                     op.bodyParam.vendorExtensions.put("mapperTag", this.jsonAnnotation);
                 }
                 for (var param : op.allParams) {
-                    if (param.isBodyParam && Objects.equals("application/json", param.contentType) || param.contentType == null) {
+                    if (param.isBodyParam && param.isBinary) {
+                        op.bodyParam.vendorExtensions.put("hasMapperTag", false);
+                    } else if (param.isBodyParam && Objects.equals("application/json", param.contentType) || param.contentType == null) {
                         param.vendorExtensions.put("hasMapperTag", true);
                         param.vendorExtensions.put("mapperTag", this.jsonAnnotation);
                     }

@@ -18,8 +18,10 @@ interface {{classname}}ServerResponseMappers {
 {{#operation}}
   class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ResponseMapper(
     {{#responses}}
-    {{#dataType}}{{#vendorExtensions.hasMapperTag}}
-    @{{vendorExtensions.mapperTag}}{{/vendorExtensions.hasMapperTag}}
+    {{#dataType}}
+    {{#vendorExtensions.hasMapperTag}}
+    @{{vendorExtensions.mapperTag}}
+    {{/vendorExtensions.hasMapperTag}}
     response{{code}}Delegate: HttpServerResponseMapper<{{{dataType}}}>{{#vendorExtensions.hasMore}},{{/vendorExtensions.hasMore}}
     {{/dataType}}
     {{/responses}}
