@@ -2,6 +2,7 @@ package ru.tinkoff.kora.database.annotation.processor.r2dbc.extension;
 
 import com.squareup.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.database.annotation.processor.DbEntityReadHelper;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
 import ru.tinkoff.kora.database.annotation.processor.r2dbc.R2dbcNativeTypes;
@@ -11,7 +12,6 @@ import ru.tinkoff.kora.kora.app.annotation.processor.extension.KoraExtension;
 
 import javax.annotation.Nullable;
 import javax.annotation.processing.Filer;
-import javax.annotation.processing.Generated;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.Modifier;

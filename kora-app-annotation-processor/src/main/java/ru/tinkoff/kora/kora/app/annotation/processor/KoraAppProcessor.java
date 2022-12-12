@@ -16,7 +16,10 @@ import ru.tinkoff.kora.kora.app.annotation.processor.exception.NewRoundException
 import ru.tinkoff.kora.kora.app.annotation.processor.interceptor.ComponentInterceptors;
 
 import javax.annotation.Nullable;
-import javax.annotation.processing.*;
+import javax.annotation.processing.FilerException;
+import javax.annotation.processing.ProcessingEnvironment;
+import javax.annotation.processing.RoundEnvironment;
+import javax.annotation.processing.SupportedOptions;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
@@ -62,7 +65,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         if (!this.initialized) {
             return Set.of();
         }
-        return Set.of(CommonClassNames.koraApp.canonicalName(), CommonClassNames.module.canonicalName(), CommonClassNames.component.canonicalName(), CommonClassNames.koraSubmodule.canonicalName(), Generated.class.getCanonicalName());
+        return Set.of(CommonClassNames.koraApp.canonicalName(), CommonClassNames.module.canonicalName(), CommonClassNames.component.canonicalName(), CommonClassNames.koraSubmodule.canonicalName(), CommonClassNames.koraGenerated.canonicalName());
     }
 
     @Override
@@ -171,7 +174,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
     }
 
     private void processGenerated(RoundEnvironment roundEnv) {
-        log.info("Generated from prev round:\n{}", roundEnv.getElementsAnnotatedWith(Generated.class)
+        log.info("Generated from prev round:\n{}", roundEnv.getElementsAnnotatedWith(ru.tinkoff.kora.common.annotation.Generated.class)
             .stream()
             .map(Object::toString)
             .collect(Collectors.joining("\n"))
@@ -439,7 +442,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             statement.add("(");
         } else if (declaration instanceof ComponentDeclaration.OptionalComponent optional) {
             statement.add("$T", Optional.class);
-            statement.add(".<$T>ofNullable(", ((DeclaredType)optional.type()).getTypeArguments().get(0));
+            statement.add(".<$T>ofNullable(", ((DeclaredType) optional.type()).getTypeArguments().get(0));
         } else {
             throw new RuntimeException("Unknown type " + declaration);
         }

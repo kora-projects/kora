@@ -8,7 +8,7 @@ import {{package}}.{{classname}}Responses.*;
 {{#imports}}import {{import}};
 {{/imports}}
 
-@javax.annotation.processing.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
+@ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
 public interface {{classname}}ClientResponseMappers {
 {{#operations}}
 {{#operation}}

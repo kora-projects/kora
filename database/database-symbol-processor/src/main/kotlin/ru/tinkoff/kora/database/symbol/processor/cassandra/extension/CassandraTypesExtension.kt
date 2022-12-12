@@ -10,6 +10,7 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
+import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.database.symbol.processor.DbEntityReader
 import ru.tinkoff.kora.database.symbol.processor.cassandra.CassandraNativeTypes
 import ru.tinkoff.kora.database.symbol.processor.cassandra.CassandraTypes
@@ -18,7 +19,6 @@ import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
-import javax.annotation.processing.Generated
 
 //CassandraRowMapper<T>
 //CassandraResultSetMapper<List<T>>

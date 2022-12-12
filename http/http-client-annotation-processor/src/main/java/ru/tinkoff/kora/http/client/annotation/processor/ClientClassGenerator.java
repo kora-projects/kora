@@ -6,6 +6,7 @@ import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ComparableTypeMirror;
 import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.http.client.common.HttpClient;
 import ru.tinkoff.kora.http.client.common.HttpClientException;
 import ru.tinkoff.kora.http.client.common.HttpClientResponseException;
@@ -19,7 +20,6 @@ import ru.tinkoff.kora.http.client.common.writer.StringParameterConverter;
 import ru.tinkoff.kora.http.common.annotation.HttpRoute;
 
 import javax.annotation.Nullable;
-import javax.annotation.processing.Generated;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;

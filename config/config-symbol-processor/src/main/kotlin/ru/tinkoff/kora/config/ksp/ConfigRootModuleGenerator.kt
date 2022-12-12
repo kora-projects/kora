@@ -12,11 +12,11 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import com.typesafe.config.Config
 import ru.tinkoff.kora.common.Module
 import ru.tinkoff.kora.common.Tag
+import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.config.common.ConfigRoot
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor
 import ru.tinkoff.kora.config.ksp.exception.NewRoundWantedException
 import ru.tinkoff.kora.ksp.common.parseTagValue
-import javax.annotation.processing.Generated
 
 @KspExperimental
 class ConfigRootModuleGenerator(

@@ -14,6 +14,7 @@ import com.squareup.kotlinpoet.ksp.writeTo
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw
+import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.kora.app.ksp.component.ComponentDependency
 import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim
 import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponent
@@ -31,7 +32,6 @@ import java.util.*
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.Function
 import java.util.function.Supplier
-import javax.annotation.processing.Generated
 import javax.annotation.processing.SupportedOptions
 
 @KspExperimental

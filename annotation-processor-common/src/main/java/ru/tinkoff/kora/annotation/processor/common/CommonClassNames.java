@@ -34,4 +34,6 @@ public class CommonClassNames {
     public static final ClassName graphInterceptor = ClassName.get("ru.tinkoff.kora.application.graph", "GraphInterceptor");
     public static final ClassName promisedProxy = ClassName.get("ru.tinkoff.kora.common", "PromisedProxy");
     public static final ClassName refreshListener = ClassName.get("ru.tinkoff.kora.application.graph", "RefreshListener");
+
+    public static final ClassName koraGenerated = ClassName.get("ru.tinkoff.kora.common.annotation", "Generated");
 }

@@ -5,11 +5,11 @@ import com.typesafe.config.Config;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.common.Module;
 import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.config.annotation.processor.exception.NewRoundWantedException;
 import ru.tinkoff.kora.config.common.ConfigRoot;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 
-import javax.annotation.processing.Generated;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.*;

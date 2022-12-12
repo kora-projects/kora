@@ -18,7 +18,7 @@ import ru.tinkoff.kora.http.client.common.auth.*;
 
 
 @Module
-@javax.annotation.processing.Generated("openapi generator kora client")
+@ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
 public interface ApiSecurity {
 {{#authMethods}}
     static final class {{#lambda.classname}}{{name}}{{/lambda.classname}} {}

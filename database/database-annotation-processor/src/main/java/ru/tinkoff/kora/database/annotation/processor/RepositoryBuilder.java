@@ -5,23 +5,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
+import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.database.annotation.processor.cassandra.CassandraRepositoryGenerator;
 import ru.tinkoff.kora.database.annotation.processor.jdbc.JdbcRepositoryGenerator;
 import ru.tinkoff.kora.database.annotation.processor.r2dbc.R2DbcRepositoryGenerator;
 import ru.tinkoff.kora.database.annotation.processor.vertx.VertxRepositoryGenerator;
 
 import javax.annotation.Nullable;
-import javax.annotation.processing.Generated;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Types;
 import java.io.IOException;
-import java.lang.annotation.Annotation;
-import java.util.*;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.List;
 
 public class RepositoryBuilder {
     private static final Logger log = LoggerFactory.getLogger(RepositoryBuilder.class);

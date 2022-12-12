@@ -3,10 +3,10 @@ package ru.tinkoff.kora.http.client.annotation.processor;
 import com.squareup.javapoet.*;
 import com.typesafe.config.Config;
 import ru.tinkoff.kora.common.Module;
+import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.http.client.common.annotation.HttpClient;
 
-import javax.annotation.processing.Generated;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
