@@ -20,7 +20,7 @@ import ru.tinkoff.kora.http.server.common.HttpServerInterceptor;
 {{/hasAuthMethods}}
 
 
-@javax.annotation.processing.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
+@ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
 @HttpController
 public final class {{classname}}Controller {
     private final {{classname}}Delegate delegate;

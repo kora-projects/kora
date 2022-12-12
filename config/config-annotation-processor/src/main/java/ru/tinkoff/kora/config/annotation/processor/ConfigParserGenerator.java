@@ -5,13 +5,13 @@ import com.typesafe.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.config.annotation.processor.exception.NewRoundWantedException;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueUtils;
 import ru.tinkoff.kora.config.common.extractor.ObjectConfigValueExtractor;
 
 import javax.annotation.Nullable;
-import javax.annotation.processing.Generated;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.ExecutableElement;

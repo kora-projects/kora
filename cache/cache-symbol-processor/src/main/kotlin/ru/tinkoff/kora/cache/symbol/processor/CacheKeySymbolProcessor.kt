@@ -11,6 +11,7 @@ import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.cache.CacheKey
 import ru.tinkoff.kora.cache.annotation.*
 import ru.tinkoff.kora.cache.symbol.processor.MethodUtils.Companion.getParameters
+import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
@@ -22,7 +23,6 @@ import ru.tinkoff.kora.ksp.common.exception.ProcessingError
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.visitFunction
 import java.io.IOException
-import javax.annotation.processing.Generated
 
 @KspExperimental
 class CacheKeySymbolProcessor(

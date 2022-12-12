@@ -12,6 +12,7 @@ import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.*
+import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.json.common.EnumJsonReader
 import ru.tinkoff.kora.json.common.JsonReader
 import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum
@@ -23,7 +24,6 @@ import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.util.*
 import java.util.UUID
-import javax.annotation.processing.Generated
 
 class JsonReaderGenerator(val resolver: Resolver) {
     companion object {

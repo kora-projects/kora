@@ -12,6 +12,7 @@ import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import ru.tinkoff.kora.common.Tag
+import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.http.client.common.HttpClient
 import ru.tinkoff.kora.http.client.common.HttpClientException
 import ru.tinkoff.kora.http.client.common.HttpClientResponseException
@@ -27,14 +28,15 @@ import ru.tinkoff.kora.http.common.annotation.HttpRoute
 import ru.tinkoff.kora.kora.app.ksp.extendsKeepAop
 import ru.tinkoff.kora.kora.app.ksp.hasAopAnnotations
 import ru.tinkoff.kora.kora.app.ksp.overridingKeepAop
-import ru.tinkoff.kora.ksp.common.*
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.writeTagValue
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.findRepeatableAnnotation
+import ru.tinkoff.kora.ksp.common.MappingData
+import ru.tinkoff.kora.ksp.common.parseAnnotationValue
+import ru.tinkoff.kora.ksp.common.parseMappingData
 import java.util.*
-import javax.annotation.processing.Generated
 
 @KspExperimental
 class ClientClassGenerator(private val resolver: Resolver) {

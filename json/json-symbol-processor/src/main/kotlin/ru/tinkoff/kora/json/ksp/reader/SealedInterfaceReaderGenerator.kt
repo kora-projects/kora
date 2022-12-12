@@ -14,13 +14,13 @@ import com.google.devtools.ksp.symbol.KSTypeReference
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.*
+import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.json.common.BufferedParserWithDiscriminator
 import ru.tinkoff.kora.json.common.JsonReader
 import ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorValue
 import ru.tinkoff.kora.json.ksp.KnownType
 import ru.tinkoff.kora.json.ksp.jsonReaderName
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
-import javax.annotation.processing.Generated
 
 @KspExperimental
 class SealedInterfaceReaderGenerator(private val resolver: Resolver, logger: KSPLogger) {

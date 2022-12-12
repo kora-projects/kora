@@ -3,9 +3,9 @@ package ru.tinkoff.kora.cache.annotation.processor;
 import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
 import ru.tinkoff.kora.cache.annotation.*;
+import ru.tinkoff.kora.common.annotation.Generated;
 
 import javax.annotation.processing.Filer;
-import javax.annotation.processing.Generated;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.Element;
@@ -114,7 +114,7 @@ public class CacheKeyAnnotationProcessor extends AbstractKoraProcessor {
                     import java.util.Arrays;
                     import java.lang.Object;
                     import ru.tinkoff.kora.cache.CacheKey;
-                    import javax.annotation.processing.Generated;
+                    import ru.tinkoff.kora.common.annotation.Generated;
                                         
                     @%s("%s")
                     public record %s(%s) implements CacheKey {

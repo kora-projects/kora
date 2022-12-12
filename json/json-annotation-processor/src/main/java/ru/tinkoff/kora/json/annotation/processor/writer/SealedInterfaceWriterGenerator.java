@@ -2,12 +2,12 @@ package ru.tinkoff.kora.json.annotation.processor.writer;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.squareup.javapoet.*;
+import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
 import ru.tinkoff.kora.json.common.JsonWriter;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.annotation.processing.Generated;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;

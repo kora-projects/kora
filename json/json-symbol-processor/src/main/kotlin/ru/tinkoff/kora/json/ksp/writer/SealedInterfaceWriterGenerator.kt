@@ -10,11 +10,11 @@ import com.google.devtools.ksp.symbol.KSTypeReference
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.*
+import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.json.common.JsonWriter
 import ru.tinkoff.kora.json.ksp.jsonWriterName
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
-import javax.annotation.processing.Generated
 
 @OptIn(KspExperimental::class)
 class SealedInterfaceWriterGenerator(

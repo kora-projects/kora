@@ -6,7 +6,6 @@ import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
@@ -14,12 +13,12 @@ import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.writeTo
 import com.typesafe.config.Config
 import ru.tinkoff.kora.common.Module
+import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.config.common.ConfigSource
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 import ru.tinkoff.kora.ksp.common.visitClass
 import java.io.IOException
-import javax.annotation.processing.Generated
 
 class ConfigSourceSymbolProcessor(
     environment: SymbolProcessorEnvironment

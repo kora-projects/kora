@@ -8,8 +8,8 @@ import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.annotation.processor.common.TagUtils;
 import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.common.annotation.Generated;
 
-import javax.annotation.processing.Generated;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeKind;
