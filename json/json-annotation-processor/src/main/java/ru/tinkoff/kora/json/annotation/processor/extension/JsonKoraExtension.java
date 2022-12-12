@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.json.annotation.processor.extension;
 
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.json.annotation.processor.JsonProcessor;
 import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
 import ru.tinkoff.kora.json.annotation.processor.KnownType;
@@ -87,8 +88,12 @@ public class JsonKoraExtension implements KoraExtension {
             var readerMeta = this.readerTypeMetaParser.parse(possibleJsonClass);
             if (readerMeta == null) {
                 return null;
-            } else if (readerMeta.isSealedStructure() && readerMeta.discriminatorField() != null) {
-                return () -> this.generateReader(possibleJsonClass);
+            } else if (readerMeta.isSealedStructure()) {
+                if (readerMeta.discriminatorField() != null) {
+                    return () -> this.generateReader(possibleJsonClass);
+                } else {
+                    throw new ProcessingErrorException("Unspecified discriminator field for sealed interface, please use @JsonDiscriminatorField annotation", readerMeta.typeElement());
+                }
             } else if (this.isProcessableType(readerMeta.typeElement())) {
                 return () -> this.generateReader(possibleJsonClass);
             }

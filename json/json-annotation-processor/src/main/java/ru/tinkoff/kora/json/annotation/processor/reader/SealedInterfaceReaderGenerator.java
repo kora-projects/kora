@@ -3,6 +3,7 @@ package ru.tinkoff.kora.json.annotation.processor.reader;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.squareup.javapoet.*;
+import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
 import ru.tinkoff.kora.json.annotation.processor.KnownType;
 import ru.tinkoff.kora.json.common.BufferedParserWithDiscriminator;
@@ -58,11 +59,12 @@ public class SealedInterfaceReaderGenerator {
             typeBuilder.addTypeVariable(TypeVariableName.get(typeParameter));
         }
 
-
         this.addReaders(typeBuilder, jsonElements);
 
         var discriminatorField = meta.discriminatorField();
-
+        if (discriminatorField == null) {
+            throw new ProcessingErrorException("Unspecified discriminator field for sealed interface, please use @JsonDiscriminatorField annotation", jsonElement);
+        }
         var method = MethodSpec.methodBuilder("read")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addException(IOException.class)

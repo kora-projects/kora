@@ -20,6 +20,7 @@ import ru.tinkoff.kora.json.ksp.writer.SealedInterfaceWriterGenerator
 import ru.tinkoff.kora.json.ksp.writer.WriterTypeMetaParser
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
+import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
 @OptIn(KspExperimental::class)
 class JsonKoraExtension(
@@ -63,8 +64,15 @@ class JsonKoraExtension(
             if (readerMeta == null) {
                 return null
             }
-            if (readerMeta.isSealedStructure && readerMeta.discriminatorField != null) {
-                return { generateReader(resolver, possibleJsonClass) }
+            if (readerMeta.isSealedStructure) {
+                if (readerMeta.discriminatorField != null) {
+                    return { generateReader(resolver, possibleJsonClass) }
+                } else {
+                    throw ProcessingErrorException(
+                        "Unspecified discriminator field for sealed interface, please use @JsonDiscriminatorField annotation",
+                        readerMeta.type.declaration
+                    )
+                }
             }
             if (isProcessableType(readerMeta.type)) {
                 return { generateReader(resolver, possibleJsonClass) }

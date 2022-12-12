@@ -61,7 +61,10 @@ class SealedInterfaceReaderGenerator(private val resolver: Resolver, logger: KSP
         }
 
         addReaders(meta, typeBuilder, jsonElements, typeParameterResolver)
-        val discriminatorField = meta.discriminatorField
+        val discriminatorField = meta.discriminatorField ?: throw ProcessingErrorException(
+            "Unspecified discriminator field for sealed interface, please use @JsonDiscriminatorField annotation",
+            meta.type.declaration
+        )
         val function = FunSpec.builder("read")
             .addModifiers(KModifier.PUBLIC, KModifier.OVERRIDE)
             .addParameter("_parser", JsonParser::class)
@@ -91,7 +94,7 @@ class SealedInterfaceReaderGenerator(private val resolver: Resolver, logger: KSP
     private fun addReaders(meta: JsonClassReaderMeta, typeBuilder: TypeSpec.Builder, jsonElements: List<KSDeclaration>, typeParameterResolver: TypeParameterResolver) {
         val constructor = FunSpec.constructorBuilder()
         jsonElements.forEach { elem ->
-            val elementType = if (meta.type.isMarkedNullable){
+            val elementType = if (meta.type.isMarkedNullable) {
                 (elem as KSClassDeclaration).asStarProjectedType().makeNullable()
             } else {
                 (elem as KSClassDeclaration).asStarProjectedType().makeNotNullable()
