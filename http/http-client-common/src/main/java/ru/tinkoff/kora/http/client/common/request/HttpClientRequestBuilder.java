@@ -119,7 +119,7 @@ public class HttpClientRequestBuilder {
     }
 
     public HttpClientRequestBuilder header(String name, String value) {
-        var headers = this.headers.computeIfAbsent(name, k -> new ArrayList<>());
+        var headers = this.headers.computeIfAbsent(name.toLowerCase(), k -> new ArrayList<>(1));
         headers.add(value);
 
         return this;
