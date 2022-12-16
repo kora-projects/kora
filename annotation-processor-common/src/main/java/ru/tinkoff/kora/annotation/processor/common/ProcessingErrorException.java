@@ -58,8 +58,17 @@ public class ProcessingErrorException extends RuntimeException {
     }
 
     public void printError(ProcessingEnvironment processingEnv) {
+        this.printError(0, processingEnv);
+    }
+
+    private void printError(int indent, ProcessingEnvironment processingEnv) {
         for (var error : this.errors) {
-            error.print(processingEnv);
+            error.print(indent, processingEnv);
+        }
+        for (var supressed : this.getSuppressed()) {
+            if (supressed instanceof ProcessingErrorException e) {
+                e.printError(indent + 6, processingEnv);
+            }
         }
     }
 }

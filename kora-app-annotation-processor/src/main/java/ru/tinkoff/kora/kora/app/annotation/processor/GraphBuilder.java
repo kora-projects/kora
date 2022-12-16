@@ -30,6 +30,10 @@ import static ru.tinkoff.kora.kora.app.annotation.processor.component.Dependency
 
 public class GraphBuilder {
     public static ProcessingState processProcessing(ProcessingContext ctx, RoundEnvironment roundEnv, ProcessingState.Processing processing) {
+        return processProcessing(ctx, roundEnv, processing, null);
+    }
+
+    public static ProcessingState processProcessing(ProcessingContext ctx, RoundEnvironment roundEnv, ProcessingState.Processing processing, @Nullable DependencyClaim forClaim) {
         if (processing.rootSet().isEmpty()) {
             return new ProcessingState.Failed(new ProcessingErrorException(
                 "Application has no root components",
@@ -123,7 +127,7 @@ public class GraphBuilder {
                         newProcessing.resolutionStack().addAll(findInterceptors(ctx, processing, template));
 
                         try {
-                            results.add(processProcessing(ctx, roundEnv, newProcessing));
+                            results.add(processProcessing(ctx, roundEnv, newProcessing, dependencyClaim));
                         } catch (NewRoundException e) {
                             results.add(e.getResolving());
                         } catch (UnresolvedDependencyException e) {
@@ -135,7 +139,12 @@ public class GraphBuilder {
                         }
                     }
                     if (results.size() == 1) {
-                        return results.get(0);
+                        var result = results.get(0);
+                        if (result instanceof ProcessingState.Processing processing1) {
+                            processing = processing1;
+                            stack = processing1.resolutionStack();
+                            continue frame;
+                        }
                     }
                     if (results.size() > 1) {
                         var deps = templates.stream().map(Objects::toString).collect(Collectors.joining("\n")).indent(2);
@@ -208,7 +217,11 @@ public class GraphBuilder {
                 List.of(), // TODO,
                 resolvedDependencies
             ));
-
+            if (forClaim != null) {
+                if (forClaim.tagsMatches(componentFrame.declaration().tags()) && ctx.types.isAssignable(componentFrame.declaration().type(), forClaim.type())) {
+                    return processing;
+                }
+            }
         }
         return new ProcessingState.Ok(processing.root(), processing.allModules(), processing.resolvedComponents());
     }

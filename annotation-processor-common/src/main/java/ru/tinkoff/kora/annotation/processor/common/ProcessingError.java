@@ -20,6 +20,10 @@ public record ProcessingError(Diagnostic.Kind kind, String message, Element elem
     }
 
     public void print(ProcessingEnvironment processingEnvironment) {
+        this.print(0, processingEnvironment);
+    }
+
+    public void print(int indent, ProcessingEnvironment processingEnvironment) {
         var element = this.element();
 
         if (element != null) for (var enclosedElement : element.getEnclosingElement().getEnclosedElements()) {
@@ -27,8 +31,11 @@ public record ProcessingError(Diagnostic.Kind kind, String message, Element elem
                 element = enclosedElement;
             }
         }
-
-        processingEnvironment.getMessager().printMessage(kind, this.message(), element, this.a(), this.v());
+        var message = this.message();
+        if (indent > 0) {
+            message = message.indent(indent);
+        }
+        processingEnvironment.getMessager().printMessage(kind, message, element, this.a(), this.v());
     }
 
 
@@ -59,4 +66,5 @@ public record ProcessingError(Diagnostic.Kind kind, String message, Element elem
             kind, message.indent(i), element, a, v
         );
     }
+
 }

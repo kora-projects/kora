@@ -23,16 +23,17 @@ import java.util.*
 import java.util.stream.Collectors
 
 object GraphBuilder {
-    fun processProcessing(ctx: ProcessingContext, processing: ProcessingState.Processing): ProcessingState {
-        if (processing.rootSet.isEmpty()) {
+    fun processProcessing(ctx: ProcessingContext, p: ProcessingState.Processing, forClaim: DependencyClaim? = null): ProcessingState {
+        if (p.rootSet.isEmpty()) {
             return ProcessingState.Failed(
                 ProcessingErrorException(
                     "Application has no root components",
-                    processing.root
+                    p.root
                 )
             )
         }
-        val stack = processing.resolutionStack
+        var processing = p;
+        var stack = processing.resolutionStack
         frame@ while (stack.isNotEmpty()) {
             val frame = stack.removeLast()
             if (frame is ProcessingState.ResolutionFrame.Root) {
@@ -106,7 +107,7 @@ object GraphBuilder {
                         newProcessing.resolutionStack.addLast(ProcessingState.ResolutionFrame.Component(template))
                         newProcessing.resolutionStack.addAll(this.findInterceptors(ctx, processing, template))
                         try {
-                            results.add(this.processProcessing(ctx, newProcessing))
+                            results.add(this.processProcessing(ctx, newProcessing, dependencyClaim))
                         } catch (e: NewRoundException) {
                             results.add(e.resolving)
                         } catch (e: UnresolvedDependencyException) {
@@ -118,7 +119,12 @@ object GraphBuilder {
                         }
                     }
                     if (results.size == 1) {
-                        return results[0]
+                        val result = results[0]
+                        if (result is ProcessingState.Processing) {
+                            stack = result.resolutionStack
+                            processing = result
+                            continue@frame
+                        }
                     }
                     if (results.size > 1) {
                         val deps = templates.stream().map { Objects.toString(it) }
@@ -209,6 +215,11 @@ object GraphBuilder {
                     resolvedDependencies
                 )
             )
+            if (forClaim != null) {
+                if (forClaim.tagsMatches(declaration.tags) && forClaim.type.isAssignableFrom(declaration.type)) {
+                    return processing
+                }
+            }
         }
         return ProcessingState.Ok(processing.root, processing.allModules, ArrayList(processing.resolvedComponents))
     }
