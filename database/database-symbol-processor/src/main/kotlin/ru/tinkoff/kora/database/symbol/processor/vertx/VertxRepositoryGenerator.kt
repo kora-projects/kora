@@ -25,7 +25,6 @@ import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isFlow
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
-import ru.tinkoff.kora.ksp.common.FunctionUtils.isList
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.parseMappingData
 
@@ -62,7 +61,7 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
         query.parameters.indices.asSequence()
             .map { query.parameters[it].sqlParameterName to "$" + (it + 1) }
             .sortedByDescending { it.first.length }
-            .forEach { sql = sql.replace("$" + it.first, it.second) }
+            .forEach { sql = sql.replace(":" + it.first, it.second) }
 
         val b = funDeclaration.queryMethodBuilder(resolver)
         b.addCode("val _query = %T(\n  %S,\n  %S\n)\n", DbUtils.queryContext, query.rawQuery, sql)
