@@ -487,10 +487,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 }
                 continue;
             }
-            if (resolvedDependency instanceof ComponentDependency.PromiseOfDependency
-                || resolvedDependency instanceof ComponentDependency.OptionalDependency od && od.delegate() instanceof ComponentDependency.PromiseOfDependency
-                || resolvedDependency instanceof ComponentDependency.PromisedProxyParameterDependency
-            ) {
+            if (resolvedDependency instanceof ComponentDependency.PromiseOfDependency || resolvedDependency instanceof ComponentDependency.PromisedProxyParameterDependency) {
                 continue;
             }
 
@@ -499,7 +496,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 if (promisedComponents.contains(dependency.component().index())) {
                     statement.add(".get()");
                 }
-                if (resolvedDependency instanceof ComponentDependency.ValueOfDependency || resolvedDependency instanceof ComponentDependency.OptionalDependency od && od.delegate() instanceof ComponentDependency.ValueOfDependency) {
+                if (resolvedDependency instanceof ComponentDependency.ValueOfDependency) {
                     statement.add(".valueOf()");
                 }
             }

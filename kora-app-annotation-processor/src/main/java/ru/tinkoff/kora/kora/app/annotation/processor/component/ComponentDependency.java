@@ -6,12 +6,10 @@ import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.kora.app.annotation.processor.GraphResolutionHelper;
 import ru.tinkoff.kora.kora.app.annotation.processor.ProcessingContext;
 
-import javax.annotation.Nullable;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 public sealed interface ComponentDependency {
@@ -44,43 +42,18 @@ public sealed interface ComponentDependency {
     record NullDependency(DependencyClaim claim) implements ComponentDependency {
         @Override
         public CodeBlock write(ProcessingContext ctx, List<ResolvedComponent> resolvedComponents, Set<Integer> promisedComponents) {
-            return CodeBlock.of("($T) null", claim.type());
-        }
-    }
-
-    record OptionalDependency(DependencyClaim claim, @Nullable SingleDependency delegate) implements SingleDependency {
-        @Override
-        public CodeBlock write(ProcessingContext ctx, List<ResolvedComponent> resolvedComponents, Set<Integer> promisedComponents) {
-            if (delegate != null) {
-                return CodeBlock.of("$T.of($L)", Optional.class, this.delegate.write(ctx, resolvedComponents, promisedComponents));
-            } else {
-                return CodeBlock.of("$T.empty()", Optional.class);
-            }
-        }
-
-        @Override
-        public ResolvedComponent component() {
-            if (this.delegate == null) {
-                return null;
-            }
-            return this.delegate.component();
+            return switch (this.claim.claimType()) {
+                case ONE_NULLABLE -> CodeBlock.of("($T) null", this.claim.type());
+                case NULLABLE_VALUE_OF -> CodeBlock.of("($T<$T>) null", CommonClassNames.valueOf, this.claim.type());
+                case NULLABLE_PROMISE_OF -> CodeBlock.of("($T<$T>) null", CommonClassNames.promiseOf, this.claim.type());
+                default -> throw new IllegalArgumentException(this.claim.claimType().toString());
+            };
         }
     }
 
     record ValueOfDependency(DependencyClaim claim, SingleDependency delegate) implements SingleDependency {
         @Override
         public CodeBlock write(ProcessingContext ctx, List<ResolvedComponent> resolvedComponents, Set<Integer> promisedComponents) {
-            if (this.delegate instanceof OptionalDependency optional) {
-                if (optional.component() != null) {
-                    var node = promisedComponents.contains(optional.component().index()) ? CodeBlock.of("$L.get()", optional.component().name()) : CodeBlock.of("$L", optional.component().name());
-                    if (optional.delegate() instanceof WrappedTargetDependency) {
-                        return CodeBlock.of("g.valueOf($L).optional().map(o -> o.map($T::value).map(v -> ($T) v))", node, CommonClassNames.wrapped, claim.type());
-                    }
-                    return CodeBlock.of("g.valueOf($L).optional().map(o -> o.map(v -> ($T) v))", node, claim.type());
-                } else {
-                    return CodeBlock.of("$T.emptyOptional()", CommonClassNames.valueOf);
-                }
-            }
             var node = promisedComponents.contains(delegate.component().index()) ? CodeBlock.of("$L.get()", delegate.component().name()) : CodeBlock.of("$L", delegate.component().name());
             if (this.delegate instanceof WrappedTargetDependency) {
                 return CodeBlock.of("g.valueOf($L).map($T::value).map(v -> ($T) v)", node, CommonClassNames.wrapped, claim.type());
@@ -97,16 +70,6 @@ public sealed interface ComponentDependency {
     record PromiseOfDependency(DependencyClaim claim, SingleDependency delegate) implements SingleDependency {
         @Override
         public CodeBlock write(ProcessingContext ctx, List<ResolvedComponent> resolvedComponents, Set<Integer> promisedComponents) {
-            if (this.delegate instanceof OptionalDependency optional) {
-                if (optional.component() != null) {
-                    if (optional.delegate() instanceof WrappedTargetDependency) {
-                        return CodeBlock.of("g.promiseOf($L.get()).optional().map(o -> o.map($T::value).map(v -> ($T) v))", this.delegate.component().name(), CommonClassNames.wrapped, this.claim.type());
-                    }
-                    return CodeBlock.of("g.promiseOf($L.get()).optional().map(o -> o.map(v -> ($T) v))", this.delegate.component().name(), this.claim.type());
-                } else {
-                    return CodeBlock.of("$T.emptyOptional()", CommonClassNames.promiseOf);
-                }
-            }
             if (this.delegate instanceof WrappedTargetDependency) {
                 return CodeBlock.of("g.promiseOf($L.get()).map($T::value).map(v -> ($T) v)", this.delegate.component().name(), CommonClassNames.wrapped, this.claim.type());
             }

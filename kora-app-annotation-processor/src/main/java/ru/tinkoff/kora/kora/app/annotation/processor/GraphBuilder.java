@@ -152,7 +152,7 @@ public class GraphBuilder {
                     }
                     throw exception;
                 }
-                if (dependencyClaim.claimType() == ONE_NULLABLE) {
+                if (dependencyClaim.claimType().isNullable()) {
                     resolvedDependencies.add(new ComponentDependency.NullDependency(dependencyClaim));
                     continue dependency;
                 }
@@ -161,7 +161,7 @@ public class GraphBuilder {
                     processing.sourceDeclarations().add(optionalDeclaration);
                     stack.addLast(componentFrame.withCurrentDependency(currentDependency));
                     stack.addLast(new ProcessingState.ResolutionFrame.Component(
-                        optionalDeclaration, List.of(new DependencyClaim(((DeclaredType) dependencyClaim.type()).getTypeArguments().get(0), dependencyClaim.tags(), ONE_NULLABLE))
+                        optionalDeclaration, List.of(ComponentDependencyHelper.parseClaim(((DeclaredType) dependencyClaim.type()).getTypeArguments().get(0), dependencyClaim.tags(), true))
                     ));
                     continue frame;
                 }

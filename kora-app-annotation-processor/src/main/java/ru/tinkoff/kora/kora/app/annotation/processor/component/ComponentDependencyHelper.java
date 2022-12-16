@@ -68,7 +68,7 @@ public class ComponentDependencyHelper {
         throw new IllegalArgumentException();
     }
 
-    private static DependencyClaim parseClaim(TypeMirror parameterType, Set<String> tags, boolean isNullable) {
+    public static DependencyClaim parseClaim(TypeMirror parameterType, Set<String> tags, boolean isNullable) {
         var typeName = TypeName.get(parameterType);
         if (typeName instanceof ParameterizedTypeName ptn && parameterType instanceof DeclaredType dt) {
             if (ptn.rawType.canonicalName().equals(CommonClassNames.typeRef.canonicalName())) {
@@ -86,10 +86,18 @@ public class ComponentDependencyHelper {
                 return new DependencyClaim(dt.getTypeArguments().get(0), tags, DependencyClaimType.ALL_OF_ONE);
             }
             if (ptn.rawType.canonicalName().equals(CommonClassNames.valueOf.canonicalName())) {
-                return new DependencyClaim(dt.getTypeArguments().get(0), tags, DependencyClaimType.VALUE_OF);
+                if (isNullable) {
+                    return new DependencyClaim(dt.getTypeArguments().get(0), tags, DependencyClaimType.NULLABLE_VALUE_OF);
+                } else {
+                    return new DependencyClaim(dt.getTypeArguments().get(0), tags, DependencyClaimType.VALUE_OF);
+                }
             }
             if (ptn.rawType.canonicalName().equals(CommonClassNames.promiseOf.canonicalName())) {
-                return new DependencyClaim(dt.getTypeArguments().get(0), tags, DependencyClaimType.PROMISE_OF);
+                if (isNullable) {
+                    return new DependencyClaim(dt.getTypeArguments().get(0), tags, DependencyClaimType.NULLABLE_PROMISE_OF);
+                } else {
+                    return new DependencyClaim(dt.getTypeArguments().get(0), tags, DependencyClaimType.PROMISE_OF);
+                }
             }
         }
         if (isNullable) {

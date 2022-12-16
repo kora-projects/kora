@@ -49,18 +49,13 @@ public class GraphResolutionHelper {
             var targetDependency = isWrappedAssignable
                 ? new ComponentDependency.WrappedTargetDependency(dependencyClaim, resolvedComponent)
                 : new ComponentDependency.TargetDependency(dependencyClaim, resolvedComponent);
-            // todo switch
-            if (dependencyClaim.claimType() == ONE_REQUIRED) {
-                result.add(targetDependency);
-            } else if (dependencyClaim.claimType() == ONE_NULLABLE) {
-                result.add(targetDependency);
-            } else if (dependencyClaim.claimType() == PROMISE_OF) {
-                result.add(new ComponentDependency.PromiseOfDependency(dependencyClaim, targetDependency));
-            } else if (dependencyClaim.claimType() == VALUE_OF) {
-                result.add(new ComponentDependency.ValueOfDependency(dependencyClaim, targetDependency));
-            } else if (dependencyClaim.claimType() == ALL_OF_ONE || dependencyClaim.claimType() == ALL_OF_PROMISE || dependencyClaim.claimType() == ALL_OF_VALUE) {
-                throw new IllegalStateException();
+            switch (dependencyClaim.claimType()) {
+                case ONE_REQUIRED, ONE_NULLABLE -> result.add(targetDependency);
+                case PROMISE_OF, NULLABLE_PROMISE_OF -> result.add(new ComponentDependency.PromiseOfDependency(dependencyClaim, targetDependency));
+                case VALUE_OF, NULLABLE_VALUE_OF -> result.add(new ComponentDependency.ValueOfDependency(dependencyClaim, targetDependency));
+                case ALL_OF_ONE, ALL_OF_PROMISE, ALL_OF_VALUE, TYPE_REF -> throw new IllegalStateException();
             }
+            ;
         }
         return result;
     }
