@@ -3,9 +3,9 @@ package ru.tinkoff.kora.kora.app.ksp
 import com.fasterxml.jackson.core.*
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSType
+import com.squareup.kotlinpoet.ksp.toTypeName
 import org.slf4j.LoggerFactory
 import java.io.IOException
-import java.util.regex.Matcher
 import java.util.regex.Pattern
 
 class DependencyModuleHintProvider(private val resolver: Resolver) {
@@ -44,7 +44,7 @@ class DependencyModuleHintProvider(private val resolver: Resolver) {
                 log.trace("Hint {} doesn't match because of tag", hint)
                 continue
             }
-            val matcher: Matcher = hint.typeRegex.matcher(missingType.toString())
+            val matcher = hint.typeRegex.matcher(missingType.toTypeName().toString())
             if (matcher.matches()) {
                 log.trace("Hint {} matched!", hint)
                 result.add(Hint(missingType, hint.artifact, hint.moduleName))
@@ -58,18 +58,18 @@ class DependencyModuleHintProvider(private val resolver: Resolver) {
         if (missingTag.isEmpty() && tags.isEmpty()) {
             return true
         }
-        if (missingTag.size >= tags.size) {
+        if (missingTag.size > tags.size) {
             return false
         }
         for (tag in missingTag) {
-            if (!tags.contains(tag.toString())) {
+            if (!tags.contains(tag)) {
                 return false
             }
         }
         return true
     }
 
-    internal class ModuleHint(
+    internal data class ModuleHint(
         val tags: Set<String>,
         val typeRegex: Pattern,
         val moduleName: String,
@@ -152,7 +152,7 @@ class DependencyModuleHintProvider(private val resolver: Resolver) {
                 if (typeRegex == null || moduleName == null || artifact == null) {
                     throw JsonParseException(p, "Some required fields missing")
                 }
-                return ModuleHint(tags, Pattern.compile(typeRegex), moduleName, artifact)
+                return ModuleHint(tags, Pattern.compile(typeRegex.trim()), moduleName, artifact)
             }
 
             private val log = LoggerFactory.getLogger(DependencyModuleHintProvider::class.java)
