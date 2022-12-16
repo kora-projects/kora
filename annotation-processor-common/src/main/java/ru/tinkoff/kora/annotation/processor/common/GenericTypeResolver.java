@@ -70,7 +70,7 @@ public class GenericTypeResolver {
                 var thrownTypes = t.getThrownTypes();
                 var enrichedReturnType = returnType.accept(this, null);
                 var enrichedParameterTypes = parameterTypes.stream().map(pt -> pt.accept(this, null)).toList();
-                var enrichedReceiverType = receiverType.accept(this, null);
+                var enrichedReceiverType = receiverType != null ? receiverType.accept(this, null) : null;
                 var enrichedThrownTypes = thrownTypes.stream().map(pt -> pt.accept(this, null)).toList();
                 var element = (ExecutableElement) types.asElement(t);
                 if (returnType != enrichedReturnType) {
