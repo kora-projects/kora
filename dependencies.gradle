@@ -50,6 +50,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             library('kotlin-reflect', 'org.jetbrains.kotlin', 'kotlin-reflect').versionRef('kotlin_')
             library('kotlin-annotation-processing', 'org.jetbrains.kotlin', 'kotlin-annotation-processing-embeddable').versionRef('kotlin_')
             library('kotlin-compiler', 'org.jetbrains.kotlin', 'kotlin-compiler-embeddable').versionRef('kotlin_')
+            library('jetbrains.annotations', 'org.jetbrains', 'annotations').version('23.1.0')
 
             library('kotlin-coroutines-core', 'org.jetbrains.kotlinx', 'kotlinx-coroutines-core').versionRef('kotlin-coroutines')
             library('kotlin-coroutines-reactor', 'org.jetbrains.kotlinx', 'kotlinx-coroutines-reactor').versionRef('kotlin-coroutines')

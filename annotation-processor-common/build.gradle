@@ -12,5 +12,7 @@ dependencies {
     testFixturesImplementation project(':common')
 
     testFixturesImplementation libs.classgraph
+    testFixturesImplementation libs.junit.jupiter
     testFixturesImplementation libs.mockito.core
+    testFixturesApi libs.jetbrains.annotations
 }

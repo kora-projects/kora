@@ -36,10 +36,16 @@ public record DependencyClaim(TypeMirror type, Set<String> tags, DependencyClaim
         ONE_REQUIRED,
         ONE_NULLABLE,
         VALUE_OF,
+        NULLABLE_VALUE_OF,
         PROMISE_OF,
+        NULLABLE_PROMISE_OF,
         TYPE_REF,
         ALL_OF_ONE,
         ALL_OF_VALUE,
-        ALL_OF_PROMISE
+        ALL_OF_PROMISE;
+
+        public boolean isNullable() {
+            return this == ONE_NULLABLE || this == NULLABLE_VALUE_OF || this == NULLABLE_PROMISE_OF;
+        }
     }
 }
