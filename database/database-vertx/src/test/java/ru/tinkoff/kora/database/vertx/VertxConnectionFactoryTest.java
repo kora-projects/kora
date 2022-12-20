@@ -39,16 +39,14 @@ class VertxConnectionFactoryTest {
         var config = new VertxDatabaseConfig(
             params.user(),
             params.password(),
-            params.host() + ":" + params.port(),
+            params.host(),
+            params.port(),
             params.db(),
             "test",
-            null,
             1000,
             1000,
             1000,
-            1,
-            0,
-            1000
+            1
         );
         var db = new VertxDatabase(config, eventLoopGroup, new DefaultDataBaseTelemetryFactory(null, null, null));
         db.init().block();

@@ -2,6 +2,7 @@ package ru.tinkoff.kora.database.vertx;
 
 import io.netty.channel.EventLoopGroup;
 import io.vertx.core.Future;
+import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Transaction;
@@ -11,9 +12,8 @@ import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory;
-import ru.tinkoff.kora.database.vertx.pool.VertxSqlPool;
+import ru.tinkoff.kora.vertx.common.VertxUtil;
 
-import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
@@ -31,15 +31,11 @@ public class VertxDatabase implements Lifecycle, Wrapped<Pool>, VertxConnectionF
         }
     };
     private final Pool pool;
-    private final VertxDatabaseConfig vertxDatabaseConfig;
-    private final EventLoopGroup eventLoopGroup;
     private final DataBaseTelemetry telemetry;
 
     public VertxDatabase(VertxDatabaseConfig vertxDatabaseConfig, EventLoopGroup eventLoopGroup, DataBaseTelemetryFactory telemetryFactory) {
-        this.vertxDatabaseConfig = vertxDatabaseConfig;
         this.telemetry = telemetryFactory.get(vertxDatabaseConfig.poolName(), "postgres", vertxDatabaseConfig.username());
-        this.pool = new VertxSqlPool(vertxDatabaseConfig, eventLoopGroup);
-        this.eventLoopGroup = eventLoopGroup;
+        this.pool = PgPool.pool(VertxUtil.customEventLoopVertx(eventLoopGroup), vertxDatabaseConfig.toPgConnectOptions(), vertxDatabaseConfig.toPgPoolOptions());
     }
 
     @Override

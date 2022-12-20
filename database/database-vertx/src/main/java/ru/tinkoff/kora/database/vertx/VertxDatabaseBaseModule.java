@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.database.vertx;
 
 import io.vertx.core.buffer.Buffer;
+import ru.tinkoff.kora.database.common.DataBaseModule;
 import ru.tinkoff.kora.database.vertx.mapper.result.VertxRowMapper;
 import ru.tinkoff.kora.database.vertx.mapper.result.VertxRowSetMapper;
 import ru.tinkoff.kora.netty.common.NettyCommonModule;
@@ -13,10 +14,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface VertxDatabaseBaseModule extends NettyCommonModule, VertxCommonModule {
-    default <T> VertxRowSetMapper<T> vertxSingleRowSetMapper(VertxRowMapper<T> rowMapper) {
-        return VertxRowSetMapper.singleRowSetMapper(rowMapper);
-    }
+public interface VertxDatabaseBaseModule extends NettyCommonModule, VertxCommonModule, DataBaseModule {
 
     default <T> VertxRowSetMapper<Optional<T>> vertxOptionalRowSetMapper(VertxRowMapper<T> rowMapper) {
         return VertxRowSetMapper.optionalRowSetMapper(rowMapper);

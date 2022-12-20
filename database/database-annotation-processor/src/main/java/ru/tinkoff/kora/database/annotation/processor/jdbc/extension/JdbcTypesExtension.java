@@ -32,6 +32,8 @@ import java.util.Map;
 import java.util.Objects;
 
 // JdbcRowMapper<T>
+// JdbcResultSetMapper<T>
+// JdbcResultSetMapper<List<T>>
 public class JdbcTypesExtension implements KoraExtension {
     private static final ClassName LIST_CLASS_NAME = ClassName.get(List.class);
 
@@ -113,6 +115,19 @@ public class JdbcTypesExtension implements KoraExtension {
                         return ExtensionResult.fromExecutable(listResultSetMapper, executableType);
                     };
                 }
+            } else {
+                return () -> {
+                    var singleResultSetMapper = this.elements.getTypeElement(JdbcTypes.RESULT_SET_MAPPER.canonicalName()).getEnclosedElements()
+                        .stream()
+                        .filter(e -> e.getKind() == ElementKind.METHOD && e.getModifiers().contains(Modifier.STATIC))
+                        .map(ExecutableElement.class::cast)
+                        .filter(m -> m.getSimpleName().contentEquals("singleResultSetMapper"))
+                        .findFirst()
+                        .orElseThrow();
+                    var tp = (TypeVariable) singleResultSetMapper.getTypeParameters().get(0).asType();
+                    var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, resultTypeMirror), singleResultSetMapper.asType());
+                    return ExtensionResult.fromExecutable(singleResultSetMapper, executableType);
+                };
             }
         }
         return null;
