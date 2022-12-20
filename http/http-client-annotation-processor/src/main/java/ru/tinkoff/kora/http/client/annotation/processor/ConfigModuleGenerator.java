@@ -38,7 +38,7 @@ public class ConfigModuleGenerator {
             .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", "$S", ConfigModuleGenerator.class.getCanonicalName()).build())
             .addAnnotation(AnnotationSpec.builder(Module.class).build())
             .addOriginatingElement(element)
-            .addMethod(MethodSpec.methodBuilder(lowercaseName.toString() + "Config")
+            .addMethod(MethodSpec.methodBuilder(lowercaseName + "Config")
                 .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
                 .returns(configClass)
                 .addParameter(ParameterSpec.builder(Config.class, "config").build())
@@ -46,7 +46,7 @@ public class ConfigModuleGenerator {
                 .addStatement("var value = config.getValue($S)", configPath)
                 .addStatement("return extractor.extract(value)")
                 .build());
-        return JavaFile.builder(packageName, type.build())
-            .build();
+
+        return JavaFile.builder(packageName, type.build()).build();
     }
 }

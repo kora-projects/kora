@@ -5,6 +5,7 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.*
 import ru.tinkoff.kora.http.client.common.declarative.DeclarativeHttpClientConfig
 import ru.tinkoff.kora.http.client.common.declarative.HttpClientOperationConfig
+import java.time.Duration
 
 class ConfigClassGenerator {
     fun generate(declaration: KSClassDeclaration): TypeSpec {
@@ -29,7 +30,17 @@ class ConfigClassGenerator {
             constructor.addParameter("${function}Config", HttpClientOperationConfig::class.asTypeName().copy(true))
         }
 
+        val secondConstructor = FunSpec.constructorBuilder()
+            .addParameter("url", String::class)
+            .addParameter("requestTimeout", Duration::class.asTypeName().copy(true))
+        functions.forEach { function ->
+            secondConstructor.addParameter("${function}Config", HttpClientOperationConfig::class.asTypeName().copy(true))
+        }
+        val args = functions.map { function -> "${function}Config" }.joinToString(", ", "url, requestTimeout?.toMillisPart(), ")
+        secondConstructor.callThisConstructor(args)
+
         tb.primaryConstructor(constructor.build())
+        tb.addFunction(secondConstructor.build())
         tb.addSuperinterface(DeclarativeHttpClientConfig::class)
         return tb.build()
     }
