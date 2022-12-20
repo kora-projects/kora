@@ -2,6 +2,7 @@ package ru.tinkoff.kora.database.annotation.processor.vertx.extension;
 
 import com.squareup.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.GenericTypeResolver;
 import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.database.annotation.processor.DbEntityReadHelper;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
@@ -14,13 +15,18 @@ import javax.annotation.Nullable;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.TypeVariable;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 //VertxRowSetMapper<List<T>>
 //VertxRowMapper<T>
@@ -47,11 +53,17 @@ public class VertxTypesExtension implements KoraExtension {
                 }
                 return null;
             },
-            fd -> CodeBlock.of("""
-                if ($L == null) {
-                  throw new $T($S);
+            fd -> {
+                if (fd.type().getKind().isPrimitive()) {
+                    return CodeBlock.of("");
+                } else {
+                    return CodeBlock.of("""
+                        if ($L == null) {
+                          throw new $T($S);
+                        }
+                        """, fd.fieldName(), NullPointerException.class, "Result field %s is not nullable but row has null".formatted(fd.fieldName()));
                 }
-                """, fd.fieldName(), NullPointerException.class, "Result field %s is not nullable but row has null".formatted(fd.fieldName()))
+            }
         );
     }
 
@@ -113,7 +125,6 @@ public class VertxTypesExtension implements KoraExtension {
         };
     }
 
-    @Nullable
     private KoraExtensionDependencyGenerator generateResultSetMapper(RoundEnvironment roundEnvironment, DeclaredType typeMirror) {
         //VertxRowSetMapper<T>
         //VertxRowSetMapper<List<T>>
@@ -125,14 +136,36 @@ public class VertxTypesExtension implements KoraExtension {
             if (dbEntity != null) {
                 return this.entityListRowSetMapper(rowType, dbEntity);
             } else {
-                return null;
+                return () -> {
+                    var listResultSetMapper = this.elements.getTypeElement(VertxTypes.ROW_SET_MAPPER.canonicalName()).getEnclosedElements()
+                        .stream()
+                        .filter(e -> e.getKind() == ElementKind.METHOD && e.getModifiers().contains(Modifier.STATIC))
+                        .map(ExecutableElement.class::cast)
+                        .filter(m -> m.getSimpleName().contentEquals("listResultSetMapper"))
+                        .findFirst()
+                        .orElseThrow();
+                    var tp = (TypeVariable) listResultSetMapper.getTypeParameters().get(0).asType();
+                    var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, rowType), listResultSetMapper.asType());
+                    return ExtensionResult.fromExecutable(listResultSetMapper, executableType);
+                };
             }
         }
         var dbEntity = DbEntity.parseEntity(this.types, resultTypeMirror);
         if (dbEntity != null) {
             return this.rowSetMapper(resultTypeMirror, dbEntity);
         } else {
-            return null;
+            return () -> {
+                var singleResultSetMapper = this.elements.getTypeElement(VertxTypes.ROW_SET_MAPPER.canonicalName()).getEnclosedElements()
+                    .stream()
+                    .filter(e -> e.getKind() == ElementKind.METHOD && e.getModifiers().contains(Modifier.STATIC))
+                    .map(ExecutableElement.class::cast)
+                    .filter(m -> m.getSimpleName().contentEquals("singleRowSetMapper"))
+                    .findFirst()
+                    .orElseThrow();
+                var tp = (TypeVariable) singleResultSetMapper.getTypeParameters().get(0).asType();
+                var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, resultTypeMirror), singleResultSetMapper.asType());
+                return ExtensionResult.fromExecutable(singleResultSetMapper, executableType);
+            };
         }
     }
 
@@ -153,7 +186,7 @@ public class VertxTypesExtension implements KoraExtension {
             var constructor = MethodSpec.constructorBuilder()
                 .addModifiers(Modifier.PUBLIC);
             var type = TypeSpec.classBuilder(mapperName)
-                .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", "_S", VertxTypesExtension.class.getCanonicalName()).build())
+                .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", "$S", VertxTypesExtension.class.getCanonicalName()).build())
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addSuperinterface(ParameterizedTypeName.get(
                     VertxTypes.ROW_SET_MAPPER, rowType

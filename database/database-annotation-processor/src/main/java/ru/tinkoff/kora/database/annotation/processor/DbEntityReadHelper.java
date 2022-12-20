@@ -88,7 +88,7 @@ public class DbEntityReadHelper {
                     b.add("$T $L = $L;\n", fieldData.type(), fieldName, this.mapperCallGenerator.apply(fieldData));
                 }
             }
-            if (!CommonUtils.isNullable(entityField.element()) && !entityField.typeMirror().getKind().isPrimitive()) {
+            if (!CommonUtils.isNullable(entityField.element()) || entityField.typeMirror().getKind().isPrimitive()) {
                 b.add(this.nullCheckGenerator.apply(fieldData));
             }
 

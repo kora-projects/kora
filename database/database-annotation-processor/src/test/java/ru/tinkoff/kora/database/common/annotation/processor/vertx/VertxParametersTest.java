@@ -1,8 +1,5 @@
 package ru.tinkoff.kora.database.common.annotation.processor.vertx;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler;
-import io.vertx.sqlclient.PreparedStatement;
 import io.vertx.sqlclient.Tuple;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,7 +49,7 @@ public class VertxParametersTest {
     void testParametersWithSimilarNames() {
         repository.parametersWithSimilarNames("test", 42).block();
 
-        Mockito.verify(executor.connection).prepare(eq("INSERT INTO test(value1, value2) VALUES ($1, $2)"), Mockito.<Handler<AsyncResult<PreparedStatement>>>any());
+        Mockito.verify(executor.connection).preparedQuery(eq("INSERT INTO test(value1, value2) VALUES ($1, $2)"));
         Mockito.verify(executor.query).execute(ArgumentMatchers.argThat(argument -> Tuple.of("test", 42).deepToString().equals(argument.deepToString())), any());
     }
 }

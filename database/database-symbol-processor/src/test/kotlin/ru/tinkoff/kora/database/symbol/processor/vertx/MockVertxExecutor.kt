@@ -1,17 +1,12 @@
 package ru.tinkoff.kora.database.symbol.processor.vertx
 
-import org.mockito.kotlin.any
-import org.mockito.kotlin.doAnswer
-import org.mockito.kotlin.whenever
 import io.vertx.core.AsyncResult
 import io.vertx.core.Future
 import io.vertx.core.Handler
-import io.vertx.sqlclient.PreparedQuery
-import io.vertx.sqlclient.PreparedStatement
-import io.vertx.sqlclient.Row
-import io.vertx.sqlclient.RowSet
-import io.vertx.sqlclient.SqlConnection
+import io.vertx.sqlclient.*
 import org.mockito.Mockito
+import org.mockito.kotlin.any
+import org.mockito.kotlin.whenever
 import reactor.core.publisher.Mono
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry.DataBaseTelemetryContext
@@ -32,9 +27,7 @@ class MockVertxExecutor : VertxConnectionFactory {
 
     fun reset() {
         whenever(telemetry.createContext(any(), any())).thenReturn(telemetryCtx)
-        doAnswer {
-            (it.arguments[1] as Handler<AsyncResult<PreparedStatement>>).handle(Future.succeededFuture(statement))
-        }.`when`(connection).prepare(any(), any<Handler<AsyncResult<PreparedStatement>>>())
+        whenever(connection.preparedQuery(any())).thenReturn(query)
         whenever(statement.query()).thenReturn(query)
         whenever(query.execute(any(), any())).thenAnswer {
             (it.arguments[1] as Handler<AsyncResult<RowSet<Row>>>).handle(Future.succeededFuture(rowSet))

@@ -5,6 +5,7 @@ import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
 
 import javax.lang.model.element.*;
 import javax.lang.model.type.TypeMirror;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -142,14 +143,15 @@ public sealed interface ComponentDeclaration {
 
     static ComponentDeclaration fromExtension(ExtensionResult.GeneratedResult generatedResult) {
         var sourceMethod = generatedResult.sourceElement();
-        var parameterTypes = sourceMethod.getParameters().stream().map(VariableElement::asType).toList();
         if (sourceMethod.getKind() == ElementKind.CONSTRUCTOR) {
+            var parameterTypes = sourceMethod.getParameters().stream().map(VariableElement::asType).toList();
             var typeElement = (TypeElement) sourceMethod.getEnclosingElement();
             var type = typeElement.asType();
             return new FromExtensionComponent(type, sourceMethod, parameterTypes);
         } else {
-            var type = sourceMethod.getReturnType();
-            return new FromExtensionComponent(type, sourceMethod, parameterTypes);
+            var type = generatedResult.targetType().getReturnType();
+            var parameterTypes = generatedResult.targetType().getParameterTypes();
+            return new FromExtensionComponent(type, sourceMethod, new ArrayList<>(parameterTypes));
         }
     }
 }

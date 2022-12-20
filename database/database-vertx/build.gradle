@@ -6,7 +6,6 @@ dependencies {
     api project(":common")
 
     api(libs.vertx.pg.client)
-    api libs.reactor.pool
     compileOnly(libs.kotlin.stdlib.lib)
     compileOnly(libs.kotlin.coroutines.reactor)
     implementation "com.ongres.scram:common:2.1"

@@ -44,11 +44,16 @@ public class R2dbcTypesExtension implements KoraExtension {
                 }
                 return null;
             },
-            fd -> CodeBlock.of("""
-                if ($L == null) {
-                  throw new $T($S);
+            fd -> {
+                if (fd.type().getKind().isPrimitive()) {
+                    return CodeBlock.of("");
                 }
-                """, fd.fieldName(), NullPointerException.class, "Result field %s is not nullable but row has null".formatted(fd.fieldName()))
+                return CodeBlock.of("""
+                    if ($L == null) {
+                      throw new $T($S);
+                    }
+                    """, fd.fieldName(), NullPointerException.class, "Result field %s is not nullable but row has null".formatted(fd.fieldName()));
+            }
         );
     }
 

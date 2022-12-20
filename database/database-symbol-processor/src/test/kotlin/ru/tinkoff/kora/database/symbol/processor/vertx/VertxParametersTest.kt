@@ -1,8 +1,5 @@
 package ru.tinkoff.kora.database.symbol.processor.vertx
 
-import io.vertx.core.AsyncResult
-import io.vertx.core.Handler
-import io.vertx.sqlclient.PreparedStatement
 import io.vertx.sqlclient.Tuple
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -102,7 +99,7 @@ class VertxParametersTest {
     @Test
     fun testNativeParameter() {
         repository.nativeParameter(null, 1)
-        verify(executor.connection).prepare(org.mockito.kotlin.eq("INSERT INTO test(value1, value2) VALUES ($1, $2)"), any<Handler<AsyncResult<PreparedStatement>>>())
+        verify(executor.connection).preparedQuery(org.mockito.kotlin.eq("INSERT INTO test(value1, value2) VALUES ($1, $2)"))
         verify(executor.query).execute(matches(Tuple.of(null, 1)), any())
     }
 //
