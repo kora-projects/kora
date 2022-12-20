@@ -5,7 +5,6 @@ import io.undertow.server.handlers.GracefulShutdownHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xnio.XnioWorker;
-import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
@@ -18,9 +17,6 @@ import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
 import java.time.Duration;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class UndertowHttpServer implements HttpServer, ReadinessProbe {

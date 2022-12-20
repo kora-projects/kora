@@ -217,7 +217,11 @@ class RouteProcessor(private val resolver: Resolver) {
             when (val arg = listTypeArgument.resolve()) {
                 resolver.builtIns.intType, resolver.builtIns.intType.makeNullable() -> {
                     if (paramType == "Query") {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.LIST_INT_QUERY, name, valueParameter))
+                        if (parameterType.isMarkedNullable) {
+                            funBuilder.addCode(generateParamDeclaration(ExtractorFunction.INT_LIST_NULLABLE_QUERY, name, valueParameter))
+                        } else {
+                            funBuilder.addCode(generateParamDeclaration(ExtractorFunction.INT_LIST_QUERY, name, valueParameter))
+                        }
                         return
                     }
                 }
@@ -225,12 +229,20 @@ class RouteProcessor(private val resolver: Resolver) {
                 resolver.builtIns.stringType, resolver.builtIns.stringType.makeNullable() -> {
                     when (paramType) {
                         "Query" -> {
-                            funBuilder.addCode(generateParamDeclaration(ExtractorFunction.LIST_STRING_QUERY, name, valueParameter))
+                            if (parameterType.isMarkedNullable) {
+                                funBuilder.addCode(generateParamDeclaration(ExtractorFunction.STRING_LIST_NULLABLE_QUERY, name, valueParameter))
+                            } else {
+                                funBuilder.addCode(generateParamDeclaration(ExtractorFunction.STRING_LIST_QUERY, name, valueParameter))
+                            }
                             return
                         }
 
                         "Header" -> {
-                            funBuilder.addCode(generateParamDeclaration(ExtractorFunction.LIST_STRING_HEADER, name, valueParameter))
+                            if (parameterType.isMarkedNullable) {
+                                funBuilder.addCode(generateParamDeclaration(ExtractorFunction.LIST_STRING_HEADER, name, valueParameter))
+                            } else {
+                                funBuilder.addCode(generateParamDeclaration(ExtractorFunction.LIST_STRING_NULLABLE_HEADER, name, valueParameter))
+                            }
                             return
                         }
                     }
@@ -238,21 +250,44 @@ class RouteProcessor(private val resolver: Resolver) {
 
                 resolver.builtIns.doubleType, resolver.builtIns.doubleType.makeNullable() -> {
                     if (paramType == "Query") {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.LIST_DOUBLE_QUERY, name, valueParameter))
+                        if (parameterType.isMarkedNullable) {
+                            funBuilder.addCode(generateParamDeclaration(ExtractorFunction.DOUBLE_LIST_NULLABLE_QUERY, name, valueParameter))
+                        } else {
+                            funBuilder.addCode(generateParamDeclaration(ExtractorFunction.DOUBLE_LIST_QUERY, name, valueParameter))
+                        }
                         return
                     }
                 }
 
                 resolver.builtIns.booleanType, resolver.builtIns.booleanType.makeNullable() -> {
                     if (paramType == "Query") {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.LIST_BOOLEAN_QUERY, name, valueParameter))
+                        if (parameterType.isMarkedNullable) {
+                            funBuilder.addCode(generateParamDeclaration(ExtractorFunction.BOOLEAN_LIST_NULLABLE_QUERY, name, valueParameter))
+                        } else {
+                            funBuilder.addCode(generateParamDeclaration(ExtractorFunction.BOOLEAN_LIST_QUERY, name, valueParameter))
+                        }
                         return
                     }
                 }
 
                 resolver.builtIns.longType, resolver.builtIns.longType.makeNullable() -> {
                     if (paramType == "Query") {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.LIST_LONG_QUERY, name, valueParameter))
+                        if (parameterType.isMarkedNullable) {
+                            funBuilder.addCode(generateParamDeclaration(ExtractorFunction.LONG_LIST_NULLABLE_QUERY, name, valueParameter))
+                        } else {
+                            funBuilder.addCode(generateParamDeclaration(ExtractorFunction.LONG_LIST_QUERY, name, valueParameter))
+                        }
+                        return
+                    }
+                }
+
+                uuidType -> {
+                    if (paramType == "Query") {
+                        if (parameterType.isMarkedNullable) {
+                            funBuilder.addCode(generateParamDeclaration(ExtractorFunction.UUID_LIST_NULLABLE_QUERY, name, valueParameter))
+                        } else {
+                            funBuilder.addCode(generateParamDeclaration(ExtractorFunction.UUID_LIST_QUERY, name, valueParameter))
+                        }
                         return
                     }
                 }
@@ -260,21 +295,41 @@ class RouteProcessor(private val resolver: Resolver) {
                 else -> {
                     val parameterName = valueParameter.name!!.asString()
                     if (paramType == "Query") {
+                        val extractor = if (parameterType.isMarkedNullable) {
+                            ExtractorFunction.STRING_LIST_NULLABLE_QUERY
+                        } else {
+                            ExtractorFunction.STRING_LIST_QUERY
+                        }
+                        val nullChecker = if (parameterType.isMarkedNullable) {
+                            "?"
+                        } else {
+                            ""
+                        }
                         funBuilder.addParameter("_${parameterName}StringParameterReader", stringParameterReader.parameterizedBy(arg.toTypeName()))
                         funBuilder.addStatement(
-                            "val %L = %M(_request, %S).map { _${parameterName}StringParameterReader.read(it) }",
+                            "val %L = %M(_request, %S)$nullChecker.map { _${parameterName}StringParameterReader.read(it) }",
                             parameterName,
-                            ExtractorFunction.LIST_STRING_QUERY.memberName,
+                            extractor.memberName,
                             name
                         )
                         return
                     }
                     if (paramType == "Header") {
+                        val extractor = if (parameterType.isMarkedNullable) {
+                            ExtractorFunction.LIST_STRING_NULLABLE_HEADER
+                        } else {
+                            ExtractorFunction.LIST_STRING_HEADER
+                        }
+                        val nullChecker = if (parameterType.isMarkedNullable) {
+                            "?"
+                        } else {
+                            ""
+                        }
                         funBuilder.addParameter("_${parameterName}StringParameterReader", stringParameterReader.parameterizedBy(arg.toTypeName()))
                         funBuilder.addStatement(
-                            "val %L = %M(_request, %S).map { _${parameterName}StringParameterReader.read(it) }",
+                            "val %L = %M(_request, %S)$nullChecker.map { _${parameterName}StringParameterReader.read(it) }",
                             parameterName,
-                            ExtractorFunction.LIST_STRING_HEADER.memberName,
+                            extractor,
                             name
                         )
                         return
@@ -288,7 +343,7 @@ class RouteProcessor(private val resolver: Resolver) {
             resolver.builtIns.stringType, resolver.builtIns.stringType.makeNullable() -> {
                 when (paramType) {
                     "Query" -> if (isNullable) {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.NULLABLE_STRING_QUERY, name, valueParameter))
+                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.STRING_NULLABLE_QUERY, name, valueParameter))
                         return
                     } else {
                         funBuilder.addCode(generateParamDeclaration(ExtractorFunction.STRING_QUERY, name, valueParameter))
@@ -296,7 +351,7 @@ class RouteProcessor(private val resolver: Resolver) {
                     }
 
                     "Header" -> if (isNullable) {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.NULLABLE_STRING_HEADER, name, valueParameter))
+                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.STRING_NULLABLE_HEADER, name, valueParameter))
                         return
                     } else {
                         funBuilder.addCode(generateParamDeclaration(ExtractorFunction.STRING_HEADER, name, valueParameter))
@@ -313,7 +368,7 @@ class RouteProcessor(private val resolver: Resolver) {
             resolver.builtIns.intType, resolver.builtIns.intType.makeNullable() -> {
                 when (paramType) {
                     "Query" -> if (isNullable) {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.NULLABLE_INT_QUERY, name, valueParameter))
+                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.INT_NULLABLE_QUERY, name, valueParameter))
                         return
                     } else {
                         funBuilder.addCode(generateParamDeclaration(ExtractorFunction.INT_QUERY, name, valueParameter))
@@ -330,7 +385,7 @@ class RouteProcessor(private val resolver: Resolver) {
             resolver.builtIns.longType, resolver.builtIns.longType.makeNullable() -> {
                 when (paramType) {
                     "Query" -> if (isNullable) {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.NULLABLE_LONG_QUERY, name, valueParameter))
+                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.LONG_NULLABLE_QUERY, name, valueParameter))
                         return
                     } else {
                         funBuilder.addCode(generateParamDeclaration(ExtractorFunction.LONG_QUERY, name, valueParameter))
@@ -347,7 +402,7 @@ class RouteProcessor(private val resolver: Resolver) {
             resolver.builtIns.doubleType, resolver.builtIns.doubleType.makeNullable() -> {
                 when (paramType) {
                     "Query" -> if (isNullable) {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.NULLABLE_DOUBLE_QUERY, name, valueParameter))
+                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.DOUBLE_NULLABLE_QUERY, name, valueParameter))
                         return
                     } else {
                         funBuilder.addCode(generateParamDeclaration(ExtractorFunction.DOUBLE_QUERY, name, valueParameter))
@@ -364,7 +419,7 @@ class RouteProcessor(private val resolver: Resolver) {
             resolver.builtIns.booleanType, resolver.builtIns.booleanType.makeNullable() -> {
                 when (paramType) {
                     "Query" -> if (isNullable) {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.NULLABLE_BOOLEAN_QUERY, name, valueParameter))
+                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.BOOLEAN_NULLABLE_QUERY, name, valueParameter))
                         return
                     } else {
                         funBuilder.addCode(generateParamDeclaration(ExtractorFunction.BOOLEAN_QUERY, name, valueParameter))
@@ -375,6 +430,14 @@ class RouteProcessor(private val resolver: Resolver) {
 
             uuidType -> {
                 when (paramType) {
+                    "Query" -> if (isNullable) {
+                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.UUID_NULLABLE_QUERY, name, valueParameter))
+                        return
+                    } else {
+                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.UUID_QUERY, name, valueParameter))
+                        return
+                    }
+
                     "Path" -> {
                         funBuilder.addCode(generateParamDeclaration(ExtractorFunction.UUID_PATH, name, valueParameter))
                         return
@@ -390,7 +453,7 @@ class RouteProcessor(private val resolver: Resolver) {
         when (paramType) {
             "Query" -> {
                 if (isNullable) {
-                    funBuilder.addStatement("val %L = %M(_request, %S)?.let(%L::read)", parameterName, ExtractorFunction.NULLABLE_STRING_QUERY.memberName, name, readerParameterName)
+                    funBuilder.addStatement("val %L = %M(_request, %S)?.let(%L::read)", parameterName, ExtractorFunction.STRING_NULLABLE_QUERY.memberName, name, readerParameterName)
                 } else {
                     funBuilder.addStatement("val %L = %L.read(%M(_request, %S))", parameterName, readerParameterName, ExtractorFunction.STRING_QUERY.memberName, name)
                 }
@@ -400,7 +463,7 @@ class RouteProcessor(private val resolver: Resolver) {
 
             "Header" -> {
                 if (isNullable) {
-                    funBuilder.addStatement("val %L = %M(_request, %S)?.let(%L::read)", parameterName, ExtractorFunction.NULLABLE_STRING_HEADER.memberName, name, readerParameterName)
+                    funBuilder.addStatement("val %L = %M(_request, %S)?.let(%L::read)", parameterName, ExtractorFunction.STRING_NULLABLE_HEADER.memberName, name, readerParameterName)
                 } else {
                     funBuilder.addStatement("val %L = %L.read(%M(_request, %S))", parameterName, readerParameterName, ExtractorFunction.STRING_HEADER.memberName, name)
                 }

@@ -3,12 +3,10 @@ package ru.tinkoff.kora.http.client.annotation.processor.client;
 
 import ru.tinkoff.kora.http.client.common.annotation.HttpClient;
 import ru.tinkoff.kora.http.common.HttpMethod;
-import ru.tinkoff.kora.http.common.annotation.Header;
 import ru.tinkoff.kora.http.common.annotation.HttpRoute;
 import ru.tinkoff.kora.http.common.annotation.Query;
 
 import javax.annotation.Nullable;
-import java.time.LocalDate;
 import java.util.List;
 
 @HttpClient(configPath = "clientWithQueryParams")

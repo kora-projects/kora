@@ -8,11 +8,7 @@ import ru.tinkoff.kora.http.client.common.interceptor.HttpClientInterceptor
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse
 import ru.tinkoff.kora.http.common.HttpMethod
-import ru.tinkoff.kora.http.common.annotation.Header
-import ru.tinkoff.kora.http.common.annotation.HttpRoute
-import ru.tinkoff.kora.http.common.annotation.InterceptWith
-import ru.tinkoff.kora.http.common.annotation.Path
-import ru.tinkoff.kora.http.common.annotation.Query
+import ru.tinkoff.kora.http.common.annotation.*
 import java.util.function.Function
 
 @HttpClient(telemetryTag = [GithubClient::class], httpClientTag = [GithubClient::class])

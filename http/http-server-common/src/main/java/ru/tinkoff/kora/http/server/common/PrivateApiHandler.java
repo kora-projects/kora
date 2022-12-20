@@ -11,12 +11,8 @@ import ru.tinkoff.kora.common.liveness.LivenessProbeFailure;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
 import ru.tinkoff.kora.http.common.HttpHeaders;
-import ru.tinkoff.kora.http.common.HttpResultCode;
-import ru.tinkoff.kora.http.server.common.telemetry.HttpServerLogger;
 import ru.tinkoff.kora.http.server.common.telemetry.PrivateApiMetrics;
-import ru.tinkoff.kora.logging.common.MDC;
 
-import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;

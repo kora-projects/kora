@@ -6,7 +6,6 @@ import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.google.devtools.ksp.KspExperimental
-import org.mockito.kotlin.any
 import io.opentelemetry.api.trace.TracerProvider
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions
@@ -15,6 +14,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
+import org.mockito.kotlin.any
 import org.mockserver.integration.ClientAndServer
 import org.mockserver.model.HttpRequest
 import org.mockserver.model.HttpResponse

@@ -4,8 +4,8 @@ import kotlinx.coroutines.delay
 import ru.tinkoff.kora.http.common.HttpMethod
 import ru.tinkoff.kora.http.common.annotation.HttpRoute
 import ru.tinkoff.kora.http.common.annotation.Query
-import ru.tinkoff.kora.http.server.common.annotation.HttpController
 import ru.tinkoff.kora.http.server.common.HttpServerResponseEntity
+import ru.tinkoff.kora.http.server.common.annotation.HttpController
 
 @HttpController
 open class TestControllerWithResponseEntity {

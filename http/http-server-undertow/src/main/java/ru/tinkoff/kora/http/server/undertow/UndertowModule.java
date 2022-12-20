@@ -5,14 +5,12 @@ import org.xnio.Xnio;
 import org.xnio.XnioWorker;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.LifecycleWrapper;
-import ru.tinkoff.kora.application.graph.PromiseOf;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.HttpServerModule;
 import ru.tinkoff.kora.http.server.common.PrivateApiHandler;
 
-import javax.annotation.Nullable;
 import java.util.concurrent.TimeUnit;
 
 public interface UndertowModule extends HttpServerModule {

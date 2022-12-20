@@ -1,13 +1,11 @@
 package ru.tinkoff.kora.http.server.symbol.processor.controllers
 
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.reactor.mono
 import ru.tinkoff.kora.http.common.HttpMethod.GET
 import ru.tinkoff.kora.http.common.annotation.Header
 import ru.tinkoff.kora.http.common.annotation.HttpRoute
 import ru.tinkoff.kora.http.common.annotation.Query
 import ru.tinkoff.kora.http.server.common.annotation.HttpController
-import kotlin.coroutines.CoroutineContext
 
 @HttpController
 open class TestControllerKotlinSuspendHandler {

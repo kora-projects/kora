@@ -6,8 +6,6 @@ import ru.tinkoff.kora.http.common.annotation.Query;
 import ru.tinkoff.kora.http.server.common.HttpServerResponseEntity;
 import ru.tinkoff.kora.http.server.common.annotation.HttpController;
 
-import java.nio.ByteBuffer;
-
 import static ru.tinkoff.kora.http.common.HttpMethod.GET;
 
 @HttpController
