@@ -9,6 +9,7 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import java.time.Duration;
 import java.util.Objects;
 
 public class ConfigClassGenerator {
@@ -29,6 +30,7 @@ public class ConfigClassGenerator {
             .map(ExecutableElement::getSimpleName)
             .map(Objects::toString)
             .toList();
+
         var packageName = this.processingEnv.getElementUtils().getPackageOf(element);
         var typeName = HttpClientUtils.configName(element);
         var type = """
@@ -37,11 +39,12 @@ public class ConfigClassGenerator {
             import %s;
             import %s;
             import %s;
+            import %s;
                         
             public record %s(String url, @Nullable Integer requestTimeout,
-                        
             """.formatted(packageName.getQualifiedName(),
-            Nullable.class.getCanonicalName(), HttpClientOperationConfig.class.getCanonicalName(), DeclarativeHttpClientConfig.class.getCanonicalName(),
+            Nullable.class.getCanonicalName(), HttpClientOperationConfig.class.getCanonicalName(),
+            DeclarativeHttpClientConfig.class.getCanonicalName(), Duration.class.getCanonicalName(),
             typeName
         );
         var b = new StringBuilder(type);
@@ -53,7 +56,22 @@ public class ConfigClassGenerator {
             }
             b.append('\n');
         }
-        b.append(") implements ").append(DeclarativeHttpClientConfig.class.getName()).append(" {}");
+        b.append(") implements ").append(DeclarativeHttpClientConfig.class.getName()).append(" {\n");
+
+        b.append("\tpublic ").append(typeName).append("(String url, @Nullable Duration requestTimeout");
+        for (String method : methods) {
+            b.append(',').append(" ");
+            b.append("@Nullable ").append(HttpClientOperationConfig.class.getSimpleName()).append(" ").append(method).append("Config");
+        }
+
+        b.append(") {\n")
+            .append("\t\tthis(url, (requestTimeout == null) ? null : ((Long) requestTimeout.toMillis()).intValue()");
+
+        for (String method : methods) {
+            b.append(',').append(" ").append(method).append("Config");
+        }
+
+        b.append(");").append("\n\t}\n").append("}");
         return new ConfigClass(typeName, b.toString());
     }
 }
