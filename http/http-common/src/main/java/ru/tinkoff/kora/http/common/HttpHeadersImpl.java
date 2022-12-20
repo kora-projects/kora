@@ -2,10 +2,7 @@ package ru.tinkoff.kora.http.common;
 
 
 import javax.annotation.Nullable;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 class HttpHeadersImpl implements HttpHeaders {
     private final Map<String, List<String>> values;
@@ -14,6 +11,10 @@ class HttpHeadersImpl implements HttpHeaders {
     @SuppressWarnings("varargs")
     HttpHeadersImpl(Map.Entry<String, List<String>>... entries) {
         this.values = Map.ofEntries(entries);
+    }
+
+    HttpHeadersImpl(Map<String, List<String>> values) {
+        this.values = values;
     }
 
     @Nullable
@@ -38,8 +39,32 @@ class HttpHeadersImpl implements HttpHeaders {
     }
 
     @Override
+    public boolean has(String key) {
+        return this.values.containsKey(key.toLowerCase());
+    }
+
+    @Override
+    public HttpHeaders with(String key, String value) {
+        var newValues = new HashMap<>(this.values);
+        newValues.put(key.toLowerCase(), List.of(value));
+        return new HttpHeadersImpl(newValues);
+    }
+
+    @Override
+    public HttpHeaders without(String key) {
+        var newValues = new HashMap<>(this.values);
+        newValues.remove(key.toLowerCase());
+        return new HttpHeadersImpl(newValues);
+    }
+
+    @Override
     public int size() {
         return this.values.size();
+    }
+
+    @Override
+    public Set<String> names() {
+        return Collections.unmodifiableSet(this.values.keySet());
     }
 
     @Override
