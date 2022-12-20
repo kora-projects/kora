@@ -7,6 +7,7 @@ import javax.annotation.Nullable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class AsyncHttpClientHeaders implements HttpHeaders {
     private final io.netty.handler.codec.http.HttpHeaders headers;
@@ -27,8 +28,18 @@ public class AsyncHttpClientHeaders implements HttpHeaders {
     }
 
     @Override
+    public boolean has(String key) {
+        return headers.contains(key);
+    }
+
+    @Override
     public int size() {
         return this.headers.size();
+    }
+
+    @Override
+    public Set<String> names() {
+        return headers.names();
     }
 
     @Nonnull

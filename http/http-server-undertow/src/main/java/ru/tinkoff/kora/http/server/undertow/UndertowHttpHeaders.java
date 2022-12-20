@@ -32,6 +32,11 @@ public class UndertowHttpHeaders implements HttpHeaders {
     }
 
     @Override
+    public boolean has(String key) {
+        return headerMap.contains(key);
+    }
+
+    @Override
     public int size() {
         return this.headerMap.size();
     }
