@@ -4,7 +4,6 @@ import ru.tinkoff.kora.http.common.HttpMethod
 import ru.tinkoff.kora.http.common.annotation.Header
 import ru.tinkoff.kora.http.common.annotation.HttpRoute
 import ru.tinkoff.kora.http.server.common.annotation.HttpController
-import java.util.*
 
 @HttpController
 open class TestControllerHeaderParameters {

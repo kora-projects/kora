@@ -19,10 +19,11 @@ import static ru.tinkoff.kora.http.common.HttpMethod.GET;
 public class TestControllerWithCustomReaders {
 
     @HttpRoute(method = GET, path = "/test/{pathEntity}")
-    public HttpServerResponseEntity<String> test(@Query("queryEntity") List<ReadableEntity> queryList, @Path("pathEntity") ReadableEntity pathEntity, @Header("header-Entity") Optional<ReadableEntity> headerEntity) {
-        var resultList = new ArrayList<>(queryList);
+    public HttpServerResponseEntity<String> test(@Path("pathEntity") ReadableEntity pathEntity,
+                                                 @Nullable @Query("queryEntity") List<ReadableEntity> queryList,
+                                                 @Header("header-Entity") Optional<ReadableEntity> headerEntity) {
+        var resultList = queryList == null ? new ArrayList<ReadableEntity>() : new ArrayList<>(queryList);
         resultList.add(pathEntity);
-
         return new HttpServerResponseEntity<>(200, resultList.stream().map(ReadableEntity::string).collect(Collectors.joining(", ")));
     }
 }

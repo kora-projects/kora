@@ -4,13 +4,10 @@ import io.undertow.server.HttpServerExchange;
 import io.undertow.util.SameThreadExecutor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import ru.tinkoff.kora.application.graph.PromiseOf;
 import ru.tinkoff.kora.http.server.common.PrivateApiHandler;
 
-import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class UndertowPrivateApiHandler {
     private final PrivateApiHandler privateApiHandler;
