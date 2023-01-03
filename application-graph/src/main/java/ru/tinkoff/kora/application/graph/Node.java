@@ -64,8 +64,8 @@ public final class Node<T> {
         return this.dependencyNodes;
     }
 
-    List<Node<? extends GraphInterceptor<T>>> getInterceptors() {
-        return this.interceptors;
+    public List<Node<? extends GraphInterceptor<T>>> getInterceptors() {
+        return List.copyOf(this.interceptors);
     }
 
     public List<Node<?>> getIntercepts() {

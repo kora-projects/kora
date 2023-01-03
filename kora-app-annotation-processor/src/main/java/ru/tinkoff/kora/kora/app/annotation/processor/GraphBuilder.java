@@ -52,6 +52,7 @@ public class GraphBuilder {
                 stack.add(new ProcessingState.ResolutionFrame.Component(
                     declaration, ComponentDependencyHelper.parseDependencyClaims(declaration)
                 ));
+                stack.addAll(findInterceptors(ctx, processing, declaration));
                 continue;
             }
 
