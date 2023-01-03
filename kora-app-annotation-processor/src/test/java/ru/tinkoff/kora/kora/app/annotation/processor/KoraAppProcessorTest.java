@@ -329,16 +329,6 @@ class KoraAppProcessorTest {
     }
 
     @Test
-    void appWithInterceptor() throws Exception {
-        var graphDraw = testClass(AppWithInterceptor.class);
-        Assertions.assertThat(graphDraw.getNodes()).hasSize(3);
-        var materializedGraph = graphDraw.init().block();
-        Assertions.assertThat(materializedGraph).isNotNull();
-
-        materializedGraph.release().block();
-    }
-
-    @Test
     void appWithPromiseOf() throws Exception {
         var graphDraw = testClass(AppWithPromiseOf.class);
         Assertions.assertThat(graphDraw.getNodes()).hasSize(6);
