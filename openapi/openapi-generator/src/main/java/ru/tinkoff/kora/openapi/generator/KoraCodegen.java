@@ -416,7 +416,7 @@ public class KoraCodegen extends DefaultCodegen {
             var model = (Map<String, Object>) obj;
             var models = (List<Map<String, Object>>) model.get("models");
             var codegenModel = (CodegenModel) models.get(0).get("model");
-            var additionalConstructor = codegenModel.getHasRequired() && codegenModel.getHasVars() && codegenModel.getVars().size() != codegenModel.getRequiredVars().size();
+            var additionalConstructor = codegenModel.getHasVars() && codegenModel.getVars().size() != codegenModel.getRequiredVars().size();
             model.put("additionalConstructor", additionalConstructor);
         }
         return objs;
