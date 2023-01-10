@@ -8,10 +8,10 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.typesafe.config.Config
-import ru.tinkoff.kora.common.Module
-import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor
 import ru.tinkoff.kora.http.client.common.annotation.HttpClient
+import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 
 @KspExperimental
 class ConfigModuleGenerator(val resolver: Resolver) {
@@ -31,11 +31,8 @@ class ConfigModuleGenerator(val resolver: Resolver) {
         val configClass = ClassName(packageName, configName)
         val extractorClass = ConfigValueExtractor::class.asClassName().parameterizedBy(configClass)
         val type = TypeSpec.interfaceBuilder(moduleName)
-            .addAnnotation(
-                AnnotationSpec.builder(Generated::class)
-                    .addMember("%S", ConfigModuleGenerator::class.qualifiedName!!).build()
-            )
-            .addAnnotation(AnnotationSpec.builder(Module::class).build())
+            .generated(ConfigModuleGenerator::class)
+            .addAnnotation(AnnotationSpec.builder(CommonClassNames.module).build())
             .addOriginatingKSFile(declaration.containingFile!!)
             .addFunction(
                 FunSpec.builder(lowercaseName.toString() + "Config")

@@ -8,6 +8,7 @@ import com.google.devtools.ksp.visitor.KSEmptyVisitor
 import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.toClassName
 import ru.tinkoff.kora.common.Mapping
 import ru.tinkoff.kora.common.naming.NameConverter
@@ -80,6 +81,8 @@ object KspCommonUtils {
         val immutableName = declaration.qualifiedName!!.asString().replaceFirst(".Mutable", ".")
         return resolver.getClassDeclarationByName(resolver.getKSNameFromString(immutableName))!!
     }
+
+    fun TypeSpec.Builder.generated(generator: KClass<*>) = addAnnotation(AnnotationSpec.builder(CommonClassNames.generated).addMember("%S", generator.java.canonicalName).build())
 }
 
 

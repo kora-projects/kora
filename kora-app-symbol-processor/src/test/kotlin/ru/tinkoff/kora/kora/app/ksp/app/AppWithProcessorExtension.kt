@@ -16,6 +16,7 @@ import ru.tinkoff.kora.common.KoraApp
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionFactory
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.visitClass
 
 @KoraApp
@@ -53,6 +54,7 @@ interface AppWithProcessorExtension {
                     val packageName = interfaceDeclaration.packageName.asString()
                     val typeName = "AppWithExtensionInterface1Impl"
                     val type = TypeSpec.classBuilder(typeName)
+                        .generated(TestProcessor::class)
                         .addModifiers(KModifier.PUBLIC)
                         .addSuperinterface(Interface1::class)
                         .build()

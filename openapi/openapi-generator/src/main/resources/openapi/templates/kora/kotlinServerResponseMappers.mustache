@@ -12,7 +12,7 @@ import {{package}}.{{classname}}Responses.*
 {{#imports}}import {{import}}
 {{/imports}}
 
-//@ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
+@ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
 interface {{classname}}ServerResponseMappers {
 {{#operations}}
 {{#operation}}

@@ -11,7 +11,6 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.*
-import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.json.common.EnumJsonWriter
 import ru.tinkoff.kora.json.common.JsonWriter
 import ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorValue
@@ -19,6 +18,7 @@ import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum
 import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum.*
 import ru.tinkoff.kora.json.ksp.jsonWriterName
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 
 @KspExperimental
 class JsonWriterGenerator(
@@ -37,11 +37,7 @@ class JsonWriterGenerator(
         }
         val writerInterface = writerErasure.toClassName().parameterizedBy(writedType)
         val typeBuilder = TypeSpec.classBuilder(jsonWriterName(meta.type))
-            .addAnnotation(
-                AnnotationSpec.builder(Generated::class)
-                    .addMember(CodeBlock.of("%S", JsonWriterGenerator::class.qualifiedName!!))
-                    .build()
-            )
+            .generated(JsonWriterGenerator::class)
         jsonClassDeclaration.containingFile?.let { typeBuilder.addOriginatingKSFile(it) }
 
         if (enumType.isAssignableFrom(meta.type)) {
@@ -174,6 +170,7 @@ class JsonWriterGenerator(
                 nullableCodeBlock,
                 value
             )
+
             UUID -> CodeBlock.of("%L_gen.writeString(%L.toString())\n", nullableCodeBlock, value)
         }
     }

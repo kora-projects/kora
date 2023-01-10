@@ -4,9 +4,9 @@ import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.*
-import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.http.client.common.declarative.DeclarativeHttpClientConfig
 import ru.tinkoff.kora.http.client.common.declarative.HttpClientOperationConfig
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import java.time.Duration
 
 @KspExperimental
@@ -17,11 +17,7 @@ class ConfigClassGenerator {
         val typeName = declaration.configName()
 
         val tb = TypeSpec.classBuilder(typeName)
-            .addAnnotation(
-                AnnotationSpec.builder(Generated::class)
-                    .addMember("value = [%S]", HttpClientSymbolProcessor::class.java.canonicalName)
-                    .build()
-            )
+            .generated(HttpClientSymbolProcessor::class)
             .addModifiers(KModifier.DATA)
             .addProperty(PropertySpec.builder("url", String::class).initializer("url").build())
             .addReturnFun("url", String::class.asTypeName())

@@ -293,12 +293,13 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
     }
 
 
-    private JavaFile generateApplicationGraph(Element classElement, List<TypeElement> allModules, ComponentInterceptors interceptors, List<ResolvedComponent> components) throws IOException {
+    private JavaFile generateApplicationGraph(Element classElement, List<TypeElement> allModules, ComponentInterceptors interceptors, List<ResolvedComponent> components) {
         var graphDraw = this.elements.getTypeElement(CommonClassNames.applicationGraphDraw.canonicalName());
         var packageElement = (PackageElement) classElement.getEnclosingElement();
         var implClass = ClassName.get(packageElement.getQualifiedName().toString(), classElement.getSimpleName().toString() + "Impl");
 
         var classBuilder = TypeSpec.classBuilder(classElement.getSimpleName().toString() + "Graph")
+            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", CodeBlock.of("$S", KoraAppProcessor.class.getCanonicalName())).build())
             .addOriginatingElement(classElement)
             .addModifiers(Modifier.PUBLIC)
             .addSuperinterface(ParameterizedTypeName.get(ClassName.get(Supplier.class), TypeName.get(graphDraw.asType())))
@@ -513,6 +514,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         var className = classElement.getSimpleName().toString() + "Impl";
         var packageElement = (PackageElement) classElement.getEnclosingElement();
         var classBuilder = TypeSpec.classBuilder(className)
+            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", CodeBlock.of("$S", KoraAppProcessor.class.getCanonicalName())).build())
             .addOriginatingElement(classElement)
             .addModifiers(Modifier.PUBLIC)
             .addSuperinterface(typeMirror);

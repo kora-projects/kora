@@ -10,10 +10,10 @@ import com.google.devtools.ksp.symbol.KSTypeReference
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.*
-import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.json.common.JsonWriter
 import ru.tinkoff.kora.json.ksp.jsonWriterName
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
 @OptIn(KspExperimental::class)
@@ -46,11 +46,7 @@ class SealedInterfaceWriterGenerator(
         val writerInterface = writerErasure.toClassName().parameterizedBy(objectType)
         val typeName = jsonWriterName(meta.type)
         val typeBuilder = TypeSpec.classBuilder(typeName)
-            .addAnnotation(
-                AnnotationSpec.builder(Generated::class)
-                    .addMember(CodeBlock.of("%S", SealedInterfaceWriterGenerator::class.java.canonicalName))
-                    .build()
-            )
+            .generated(SealedInterfaceWriterGenerator::class)
             .addSuperinterface(writerInterface)
             .addModifiers(KModifier.PUBLIC)
             .addOriginatingKSFile(jsonClassDeclaration.containingFile!!)

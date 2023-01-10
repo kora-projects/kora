@@ -11,7 +11,6 @@ import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.cache.CacheKey
 import ru.tinkoff.kora.cache.annotation.*
 import ru.tinkoff.kora.cache.symbol.processor.MethodUtils.Companion.getParameters
-import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
@@ -19,6 +18,7 @@ import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isPublisher
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingError
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.visitFunction
@@ -87,9 +87,7 @@ class CacheKeySymbolProcessor(
                             var keyBuilder = TypeSpec.classBuilder(operation.key.simpleName)
                                 .addSuperinterface(CacheKey::class)
                                 .addModifiers(KModifier.DATA)
-                                .addAnnotation(AnnotationSpec.builder(Generated::class)
-                                    .addMember("\"%L\"", this.javaClass.canonicalName)
-                                    .build())
+                                .generated(this::class)
                                 .addFunction(
                                     FunSpec.builder("toString")
                                         .addModifiers(KModifier.OVERRIDE)

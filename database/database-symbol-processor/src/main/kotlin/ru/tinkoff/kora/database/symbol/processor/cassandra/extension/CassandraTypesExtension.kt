@@ -10,7 +10,6 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
-import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.database.symbol.processor.DbEntityReader
 import ru.tinkoff.kora.database.symbol.processor.cassandra.CassandraNativeTypes
 import ru.tinkoff.kora.database.symbol.processor.cassandra.CassandraTypes
@@ -18,6 +17,7 @@ import ru.tinkoff.kora.database.symbol.processor.model.DbEntity
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 
 //CassandraRowMapper<T>
@@ -75,7 +75,7 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
             val entityTypeName = entity.type.toTypeName();
             val listType = List::class.asClassName().parameterizedBy(entityTypeName)
             val type = TypeSpec.classBuilder(mapperName)
-                .addAnnotation(AnnotationSpec.builder(Generated::class).addMember("value = [%S]", CassandraTypesExtension::class.qualifiedName!!).build())
+                .generated(CassandraTypesExtension::class)
                 .addSuperinterface(CassandraTypes.resultSetMapper.parameterizedBy(listType))
 
             val constructor = FunSpec.constructorBuilder()
@@ -124,7 +124,7 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
                 return@lambda ExtensionResult.fromConstructor(constructor, maybeGenerated)
             }
             val type = TypeSpec.classBuilder(mapperName)
-                .addAnnotation(AnnotationSpec.builder(Generated::class).addMember("value = [%S]", CassandraTypesExtension::class.qualifiedName!!).build())
+                .generated(CassandraTypesExtension::class)
                 .addSuperinterface(CassandraTypes.rowMapper.parameterizedBy(entity.type.toTypeName()))
 
             val constructor = FunSpec.constructorBuilder()

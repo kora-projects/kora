@@ -17,6 +17,7 @@ import ru.tinkoff.kora.database.symbol.processor.jdbc.JdbcRepositoryGenerator
 import ru.tinkoff.kora.database.symbol.processor.r2dbc.R2DbcRepositoryGenerator
 import ru.tinkoff.kora.database.symbol.processor.vertx.VertxRepositoryGenerator
 import ru.tinkoff.kora.kora.app.ksp.extendsKeepAop
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 
@@ -38,6 +39,7 @@ class RepositoryBuilder(
         log.info("Generating Repository for {}", repositoryDeclaration.simpleName.asString())
         val name = repositoryDeclaration.getOuterClassesAsPrefix() + repositoryDeclaration.simpleName.asString() + "_Impl"
         val builder = extendsKeepAop(repositoryDeclaration, resolver, name)
+            .generated(RepositoryBuilder::class)
             .addOriginatingKSFile(repositoryDeclaration.containingFile!!)
         val constructorBuilder = FunSpec.constructorBuilder()
         if (repositoryDeclaration.classKind == ClassKind.CLASS) {

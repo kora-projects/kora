@@ -9,7 +9,6 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
-import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.database.symbol.processor.DbEntityReader
 import ru.tinkoff.kora.database.symbol.processor.jdbc.JdbcNativeTypes
 import ru.tinkoff.kora.database.symbol.processor.jdbc.JdbcTypes
@@ -18,6 +17,7 @@ import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 
 // JdbcRowMapper<T>
@@ -80,7 +80,7 @@ class JdbcTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val c
             val entityTypeName = entity.type.toTypeName()
             val resultTypeName = List::class.asClassName().parameterizedBy(entityTypeName)
             val type = TypeSpec.classBuilder(mapperName)
-                .addAnnotation(AnnotationSpec.builder(Generated::class).addMember("value = [%S]", JdbcTypesExtension::class.qualifiedName!!).build())
+                .generated(JdbcTypesExtension::class)
                 .addSuperinterface(JdbcTypes.jdbcResultSetMapper.parameterizedBy(resultTypeName))
 
             val constructor = FunSpec.constructorBuilder()
@@ -123,7 +123,7 @@ class JdbcTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val c
             }
             val entityTypeName = entity.type.toTypeName()
             val type = TypeSpec.classBuilder(mapperName)
-                .addAnnotation(AnnotationSpec.builder(Generated::class).addMember("value = [%S]", JdbcTypesExtension::class.qualifiedName!!).build())
+                .generated(JdbcTypesExtension::class)
                 .addSuperinterface(JdbcTypes.jdbcRowMapper.parameterizedBy(entityTypeName))
 
             val constructor = FunSpec.constructorBuilder()

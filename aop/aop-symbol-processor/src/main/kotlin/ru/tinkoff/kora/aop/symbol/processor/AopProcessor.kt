@@ -10,8 +10,8 @@ import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import ru.tinkoff.kora.common.Component
-import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.ksp.common.KoraSymbolProcessingEnv
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.findMethods
 import ru.tinkoff.kora.ksp.common.makeTagAnnotationSpec
@@ -104,12 +104,7 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
         val typeBuilder: TypeSpec.Builder = TypeSpec.classBuilder(aopProxyName(classDeclaration))
             .superclass(classDeclaration.toClassName())
             .addModifiers(KModifier.PUBLIC, KModifier.FINAL)
-            .addAnnotation(
-                AnnotationSpec.builder(Generated::class)
-                    .addMember("\"%L\"", AopSymbolProcessor::class.java.canonicalName)
-                    .build()
-            )
-
+            .generated(AopSymbolProcessor::class)
         if (classDeclaration.isAnnotationPresent(Component::class)) {
             typeBuilder.addAnnotation(Component::class)
         }

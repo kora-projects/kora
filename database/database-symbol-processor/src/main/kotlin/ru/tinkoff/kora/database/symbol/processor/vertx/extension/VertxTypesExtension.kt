@@ -9,7 +9,6 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
-import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.database.symbol.processor.DbEntityReader
 import ru.tinkoff.kora.database.symbol.processor.model.DbEntity
 import ru.tinkoff.kora.database.symbol.processor.vertx.VertxNativeTypes
@@ -17,6 +16,7 @@ import ru.tinkoff.kora.database.symbol.processor.vertx.VertxTypes
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 
 //RowMapper<T>
@@ -68,7 +68,7 @@ class VertxTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val 
                 return@lambda ExtensionResult.fromConstructor(constructor, maybeGenerated)
             }
             val type = TypeSpec.classBuilder(mapperName)
-                .addAnnotation(AnnotationSpec.builder(Generated::class).addMember("value = [%S]", VertxTypesExtension::class.qualifiedName!!).build())
+                .generated(VertxTypesExtension::class)
                 .addSuperinterface(VertxTypes.rowMapper.parameterizedBy(entity.type.toTypeName()))
 
             val constructor = FunSpec.constructorBuilder()
@@ -115,7 +115,7 @@ class VertxTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val 
                 return@lambda ExtensionResult.fromConstructor(constructor, maybeGenerated)
             }
             val type = TypeSpec.classBuilder(mapperName)
-                .addAnnotation(AnnotationSpec.builder(Generated::class).addMember("value = [%S]", VertxTypesExtension::class.qualifiedName!!).build())
+                .generated(VertxTypesExtension::class)
                 .addSuperinterface(VertxTypes.rowSetMapper.parameterizedBy(rowSetArg.type!!.toTypeName()))
 
             val readEntity = entityReader.readEntity("\$rowValue", entity)

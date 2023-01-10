@@ -14,12 +14,12 @@ import com.google.devtools.ksp.symbol.KSTypeReference
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.*
-import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.json.common.BufferedParserWithDiscriminator
 import ru.tinkoff.kora.json.common.JsonReader
 import ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorValue
 import ru.tinkoff.kora.json.ksp.KnownType
 import ru.tinkoff.kora.json.ksp.jsonReaderName
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
 @KspExperimental
@@ -47,11 +47,7 @@ class SealedInterfaceReaderGenerator(private val resolver: Resolver, logger: KSP
         val typeName = jsonReaderName(meta.type)
         val typeParameterResolver = meta.type.declaration.typeParameters.toTypeParameterResolver()
         val typeBuilder = TypeSpec.classBuilder(typeName)
-            .addAnnotation(
-                AnnotationSpec.builder(Generated::class)
-                    .addMember(CodeBlock.of("%S", SealedInterfaceReaderGenerator::class.java.canonicalName))
-                    .build()
-            )
+            .generated(SealedInterfaceReaderGenerator::class)
             .addSuperinterface(readerInterface)
             .addModifiers(KModifier.PUBLIC)
             .addOriginatingKSFile(meta.type.declaration.containingFile!!)
