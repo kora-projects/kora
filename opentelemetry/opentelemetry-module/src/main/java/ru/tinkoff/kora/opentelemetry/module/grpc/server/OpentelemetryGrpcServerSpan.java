@@ -5,9 +5,7 @@ import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.grpc.telemetry.GrpcServerTracer;
-import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 
 import javax.annotation.Nullable;
 import java.util.concurrent.TimeUnit;
@@ -28,7 +26,6 @@ public final class OpentelemetryGrpcServerSpan implements GrpcServerTracer.GrpcS
             this.span.setStatus(StatusCode.ERROR);
         }
         this.span.end(processingTime, TimeUnit.NANOSECONDS);
-        OpentelemetryContext.set(Context.current(), null);
     }
 
     @Override
