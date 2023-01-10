@@ -35,16 +35,19 @@ public class JdkHttpClient implements HttpClient {
     public Mono<HttpClientResponse> execute(HttpClientRequest request) {
         return Mono.deferContextual(ctxView -> {
             var httpClientRequest = HttpRequest.newBuilder()
-                .uri(URI.create(request.resolvedUri()))
-                .method(request.method(), this.toBodyPublisher(request.body()));
+                .uri(URI.create(request.resolvedUri()));
             if (request.requestTimeout() > 0) {
                 httpClientRequest.timeout(Duration.ofMillis(request.requestTimeout()));
             }
             for (var header : request.headers()) {
+                if (header.getKey().equalsIgnoreCase("content-length")) {
+                    continue;
+                }
                 for (var value : header.getValue()) {
                     httpClientRequest.header(header.getKey(), value);
                 }
             }
+            httpClientRequest.method(request.method(), this.toBodyPublisher(request.body()));
 
             var future = this.httpClient.sendAsync(httpClientRequest.build(), HttpResponse.BodyHandlers.ofPublisher())
                 .exceptionallyCompose(error -> {
@@ -78,16 +81,19 @@ public class JdkHttpClient implements HttpClient {
 
     public BlockingHttpResponse executeBlocking(HttpClientRequest request) {
         var httpClientRequest = HttpRequest.newBuilder()
-            .uri(URI.create(request.resolvedUri()))
-            .method(request.method(), this.toBodyPublisher(request.body()));
+            .uri(URI.create(request.resolvedUri()));
         if (request.requestTimeout() > 0) {
             httpClientRequest.timeout(Duration.ofMillis(request.requestTimeout()));
         }
         for (var header : request.headers()) {
+            if (header.getKey().equalsIgnoreCase("content-length")) {
+                continue;
+            }
             for (var value : header.getValue()) {
                 httpClientRequest.header(header.getKey(), value);
             }
         }
+        httpClientRequest.method(request.method(), this.toBodyPublisher(request.body()));
 
         try {
             var response = this.httpClient.send(httpClientRequest.build(), HttpResponse.BodyHandlers.ofInputStream());
