@@ -39,9 +39,17 @@ public class CommonUtils {
     }
 
     public static boolean isNullable(Element element) {
-        return element.getAnnotationMirrors()
+        var isNullable = element.getAnnotationMirrors()
             .stream()
             .anyMatch(a -> a.getAnnotationType().toString().endsWith(".Nullable"));
+        if (isNullable || element.getKind() != ElementKind.RECORD_COMPONENT) {
+            return isNullable;
+        }
+        return element.getEnclosingElement().getEnclosedElements()
+            .stream()
+            .filter(e -> e.getKind() == ElementKind.FIELD)
+            .filter(e -> e.getSimpleName().contentEquals(element.getSimpleName()))
+            .anyMatch(CommonUtils::isNullable);
     }
 
     public static void safeWriteTo(ProcessingEnvironment processingEnv, JavaFile file) throws IOException {
