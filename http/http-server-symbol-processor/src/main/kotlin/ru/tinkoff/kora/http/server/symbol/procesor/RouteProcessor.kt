@@ -34,6 +34,8 @@ class RouteProcessor(private val resolver: Resolver) {
     private val interceptWithClassName = ClassName("ru.tinkoff.kora.http.common.annotation", "InterceptWith")
     private val interceptWithContainerClassName = ClassName("ru.tinkoff.kora.http.common.annotation", "InterceptWith", "InterceptWithContainer")
     private val dispatchersClassName = ClassName("kotlinx.coroutines", "Dispatchers")
+    private val simpleHttpServerResponse = ClassName("ru.tinkoff.kora.http.server.common", "SimpleHttpServerResponse")
+    private val httpHeaders = ClassName("ru.tinkoff.kora.http.common", "HttpHeaders")
 
 
     data class RequestMappingData(val method: String, val pathTemplate: String)
@@ -71,7 +73,7 @@ class RouteProcessor(private val resolver: Resolver) {
                 b.addAnnotation(it)
             }
             funBuilder.addParameter(b.build())
-        } else {
+        } else if (returnType != resolver.builtIns.unitType) {
             funBuilder.addParameter(ParameterSpec.builder("_responseMapper", mapperClassName).build())
         }
 
@@ -107,10 +109,13 @@ class RouteProcessor(private val resolver: Resolver) {
                         params,
                         awaitCode,
                     )
-                    funBuilder.addStatement("_responseMapper.apply(response).%M()", awaitCode)
                 } else {
                     funBuilder.addStatement("val response = _controller.%L(%L)", function.simpleName.asString(), params)
-                    funBuilder.addStatement("_responseMapper.apply(response).%M()", awaitCode)
+                }
+                if (returnType == resolver.builtIns.unitType) {
+                    addStatement("%T(200, %S, %T.of(), null)", simpleHttpServerResponse, "application/octet-stream", httpHeaders)
+                } else {
+                    addStatement("_responseMapper.apply(response).%M()", awaitCode)
                 }
             }
         }
