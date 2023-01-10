@@ -13,6 +13,7 @@ import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import org.w3c.dom.Node
 import reactor.core.publisher.SynchronousSink
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 import ru.tinkoff.kora.soap.client.common.*
 import ru.tinkoff.kora.soap.client.common.envelope.SoapEnvelope
@@ -48,6 +49,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
         }
         val targetNamespace = findAnnotationValue(webService, "targetNamespace").toString()
         val builder = TypeSpec.classBuilder(service.getOuterClassesAsPrefix() + service.simpleName.asString() + "_SoapClientImpl")
+            .generated(WebServiceClientSymbolProcessor::class)
             .addProperty("envelopeProcessor", Function::class.parameterizedBy(SoapEnvelope::class, SoapEnvelope::class), KModifier.PRIVATE)
             .addProperty("jaxb", soapClasses.jaxbContextTypeName()!!, KModifier.PRIVATE)
             .primaryConstructor(

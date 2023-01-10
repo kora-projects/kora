@@ -10,6 +10,7 @@ import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import ru.tinkoff.kora.common.Component
 import ru.tinkoff.kora.common.Module
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 
 @KspExperimental
 class KafkaModuleGenerator(
@@ -19,6 +20,7 @@ class KafkaModuleGenerator(
     fun generateModule(declaration: KSClassDeclaration): FileSpec {
         val classBuilder = TypeSpec.interfaceBuilder(declaration.simpleName.asString() + "Module")
             .addOriginatingKSFile(declaration.containingFile!!)
+            .generated(KafkaModuleGenerator::class)
         if (declaration.isAnnotationPresent(Component::class)) {
             classBuilder.addAnnotation(AnnotationSpec.builder(Module::class).build())
         }

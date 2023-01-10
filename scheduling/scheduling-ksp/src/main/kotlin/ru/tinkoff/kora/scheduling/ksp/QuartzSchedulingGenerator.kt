@@ -10,8 +10,9 @@ import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
-import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.writeTagValue
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
+import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 
 class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
     private val koraQuartzJobClassName: ClassName = ClassName("ru.tinkoff.kora.scheduling.quartz", "KoraQuartzJob")
@@ -105,6 +106,7 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
         }
         val typeClassName = type.toClassName()
         val typeSpec: TypeSpec = TypeSpec.classBuilder(className)
+            .generated(QuartzSchedulingGenerator::class)
             .superclass(koraQuartzJobClassName)
             .addSuperclassConstructorParameter(CodeBlock.of("telemetry"))
             .addSuperclassConstructorParameter(callJob)
@@ -139,6 +141,7 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
             )
         }
         val configType = TypeSpec.classBuilder(configClassName)
+            .generated(QuartzSchedulingGenerator::class)
             .addModifiers(KModifier.PUBLIC, KModifier.DATA)
             .addProperty(
                 PropertySpec.builder("cron", STRING)

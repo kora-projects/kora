@@ -12,7 +12,6 @@ import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import ru.tinkoff.kora.common.Tag
-import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.http.client.common.HttpClient
 import ru.tinkoff.kora.http.client.common.HttpClientException
 import ru.tinkoff.kora.http.client.common.HttpClientResponseException
@@ -33,6 +32,7 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.writeTagValue
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.findRepeatableAnnotation
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.MappingData
 import ru.tinkoff.kora.ksp.common.parseAnnotationValue
 import ru.tinkoff.kora.ksp.common.parseMappingData
@@ -56,7 +56,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
         val typeName = declaration.clientName()
         val methods: List<MethodData> = this.parseMethods(declaration)
         val builder = extendsKeepAop(declaration, resolver, typeName)
-            .addAnnotation(AnnotationSpec.builder(Generated::class).addMember("%S", ClientClassGenerator::class.java.canonicalName).build())
+            .generated(ClientClassGenerator::class)
         if (hasAopAnnotations(resolver, declaration)) {
             builder.addModifiers(KModifier.OPEN)
         }
@@ -83,6 +83,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
                         }
                     }
+
                     is Parameter.QueryParameter -> {
                         var parameterType = parameter.parameter.type.resolve()
                         if (isIterable(parameterType)) {

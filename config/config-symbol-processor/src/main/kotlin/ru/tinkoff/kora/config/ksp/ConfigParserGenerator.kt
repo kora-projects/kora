@@ -16,12 +16,12 @@ import com.typesafe.config.ConfigList
 import com.typesafe.config.ConfigObject
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor
 import ru.tinkoff.kora.config.common.extractor.ConfigValueUtils
 import ru.tinkoff.kora.config.common.extractor.ObjectConfigValueExtractor
 import ru.tinkoff.kora.config.ksp.exception.NewRoundWantedException
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.fixPlatformType
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 import java.time.Duration
 import java.time.Period
@@ -53,9 +53,7 @@ class ConfigParserGenerator(
         )
         val typeBuilder = TypeSpec.classBuilder(typeName)
             .superclass(extractorType)
-            .addAnnotation(
-                AnnotationSpec.builder(Generated::class).addMember("%S", ConfigParserGenerator::class.java.canonicalName).build()
-            )
+            .generated(ConfigParserGenerator::class)
         val constructorBuilder = FunSpec.constructorBuilder()
         val methodBody = CodeBlock.builder()
             .add("return %T(", targetDeclaration.toClassName()).add("\n")

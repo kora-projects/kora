@@ -17,6 +17,7 @@ import ru.tinkoff.kora.kora.app.ksp.exception.UnresolvedDependencyException
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 import java.util.*
@@ -275,6 +276,7 @@ object GraphBuilder {
         val typeName = claimTypeDeclaration.toClassName().parameterizedBy(claimTypeDeclaration.typeParameters.map { it.toTypeVariableName(typeTpr) })
         val promiseType = CommonClassNames.promiseOf.parameterizedBy(WildcardTypeName.producerOf(typeName))
         val type = TypeSpec.classBuilder(resultClassName)
+            .generated(GraphBuilder::class)
             .addProperty("promise", promiseType, KModifier.PRIVATE, KModifier.FINAL)
             .addProperty(PropertySpec.builder("delegate", typeName.copy(true), KModifier.PRIVATE).mutable(true).initializer("null").build())
             .addSuperinterface(CommonClassNames.promisedProxy.parameterizedBy(typeName))

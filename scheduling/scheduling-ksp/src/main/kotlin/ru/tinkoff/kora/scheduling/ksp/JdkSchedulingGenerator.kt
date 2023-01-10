@@ -8,8 +8,9 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.writeTo
-import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
+import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 import java.time.Duration
 import java.util.concurrent.ScheduledExecutorService
@@ -166,6 +167,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         val constructor = FunSpec.constructorBuilder()
         val configType = TypeSpec.classBuilder(configClassName)
             .addModifiers(KModifier.PUBLIC, KModifier.DATA)
+            .generated(JdkSchedulingGenerator::class)
         for (param in params) {
             constructor.addParameter(
                 ParameterSpec.builder(param.name, param.type)

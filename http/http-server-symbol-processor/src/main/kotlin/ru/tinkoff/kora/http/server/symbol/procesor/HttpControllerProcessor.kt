@@ -12,11 +12,12 @@ import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.writeTo
-import ru.tinkoff.kora.common.Module
 import ru.tinkoff.kora.http.common.annotation.HttpRoute
 import ru.tinkoff.kora.http.server.common.annotation.HttpController
 import ru.tinkoff.kora.http.server.symbol.procesor.exception.HttpProcessorException
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
+import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.visitClass
 
 @KspExperimental
@@ -49,7 +50,8 @@ class HttpControllerProcessor(
         val packageName = containingFile.packageName.asString()
         val moduleName = "${declaration.toClassName().simpleName}Module"
         val moduleBuilder = TypeSpec.interfaceBuilder(moduleName)
-            .addAnnotation(Module::class)
+            .addAnnotation(CommonClassNames.module)
+            .generated(HttpControllerProcessor::class)
             .addOriginatingKSFile(containingFile)
         val fileSpec = FileSpec.builder(
             packageName = packageName,

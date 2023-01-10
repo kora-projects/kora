@@ -13,10 +13,11 @@ import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.writeTo
 import com.typesafe.config.Config
 import ru.tinkoff.kora.common.Module
-import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.config.common.ConfigSource
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor
+import ru.tinkoff.kora.config.ksp.ConfigRootModuleGenerator
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.visitClass
 import java.io.IOException
 
@@ -52,13 +53,7 @@ class ConfigSourceSymbolProcessor(
                     .addStatement("return extractor.extract(configValue)")
                 val type = typeBuilder.addFunction(function.build())
                     .addAnnotation(Module::class)
-                    .addAnnotation(
-                        AnnotationSpec.builder(Generated::class)
-                            .addMember(
-                                CodeBlock.of("%S", ConfigSourceSymbolProcessor::class.qualifiedName!!)
-                            )
-                            .build()
-                    )
+                    .generated(ConfigRootModuleGenerator::class)
                     .addModifiers(KModifier.PUBLIC)
                     .addOriginatingKSFile(config.containingFile!!)
                     .build()

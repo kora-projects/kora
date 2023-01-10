@@ -12,10 +12,10 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import com.typesafe.config.Config
 import ru.tinkoff.kora.common.Module
 import ru.tinkoff.kora.common.Tag
-import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.config.common.ConfigRoot
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor
 import ru.tinkoff.kora.config.ksp.exception.NewRoundWantedException
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.parseTagValue
 
 @KspExperimental
@@ -28,10 +28,7 @@ class ConfigRootModuleGenerator(
         val packageName = declaration.packageName.asString()
         val typeName = declaration.simpleName.asString() + "Module"
         val typeBuilder = TypeSpec.interfaceBuilder(typeName)
-            .addAnnotation(
-                AnnotationSpec.builder(Generated::class)
-                    .addMember(CodeBlock.of("%S", ConfigRootModuleGenerator::class.qualifiedName!!)).build()
-            )
+            .generated(ConfigRootModuleGenerator::class)
         val configRoot = declaration.getAnnotationsByType(ConfigRoot::class).firstOrNull()
         val i = configRoot?.value?.iterator()
         if (i?.hasNext() == true) typeBuilder.addAnnotation(

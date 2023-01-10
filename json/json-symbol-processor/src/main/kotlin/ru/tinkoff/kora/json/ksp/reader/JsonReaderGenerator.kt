@@ -12,13 +12,13 @@ import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.*
-import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.json.common.EnumJsonReader
 import ru.tinkoff.kora.json.common.JsonReader
 import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum
 import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum.*
 import ru.tinkoff.kora.json.ksp.jsonReaderName
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
@@ -42,11 +42,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
         val typeParameterResolver = declaration.typeParameters.toTypeParameterResolver()
         val readerInterface = JsonReader::class.asClassName().parameterizedBy(meta.type.toTypeName(typeParameterResolver).copy(false))
         val typeBuilder = TypeSpec.classBuilder(jsonReaderName(meta.type))
-            .addAnnotation(
-                AnnotationSpec.builder(Generated::class)
-                    .addMember(CodeBlock.of("%S", JsonReaderGenerator::class.java.canonicalName))
-                    .build()
-            )
+            .generated(JsonReaderGenerator::class)
         declaration.containingFile?.let { typeBuilder.addOriginatingKSFile(it) }
 
         if (enumType.isAssignableFrom(meta.type.makeNotNullable())) {

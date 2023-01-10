@@ -11,6 +11,7 @@ import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 
 class SchedulingKsp(val env: SymbolProcessorEnvironment) : BaseSymbolProcessor(env) {
     private val triggerTypes: Map<SchedulerType, List<String>> = mapOf(
@@ -53,6 +54,7 @@ class SchedulingKsp(val env: SymbolProcessorEnvironment) : BaseSymbolProcessor(e
         val typeName = type.simpleName.asString()
         val packageName = type.packageName.asString()
         val builder = TypeSpec.interfaceBuilder("\$${typeName}_SchedulingModule")
+            .generated(SchedulingKsp::class)
             .addAnnotation(ClassName("ru.tinkoff.kora.common", "Module"))
 
         for (function in functions) {

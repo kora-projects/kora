@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.ksp.common
 
-import com.google.devtools.ksp.symbol.*
+import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.KSTypeReference
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.ksp.toClassName
@@ -42,6 +43,7 @@ object CommonClassNames {
     val promisedProxy = ClassName("ru.tinkoff.kora.common", "PromisedProxy")
     val refreshListener = ClassName("ru.tinkoff.kora.application.graph", "RefreshListener")
 
+    val generated = ClassName("ru.tinkoff.kora.common.annotation", "Generated")
 
 
     fun KSType.isMono() = this.toClassName().canonicalName == mono.canonicalName

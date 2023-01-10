@@ -4,6 +4,7 @@ import com.squareup.javapoet.*;
 import org.w3c.dom.Node;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SynchronousSink;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 
 import javax.annotation.Nullable;
@@ -53,6 +54,7 @@ public class SoapClientImplGenerator {
         var targetNamespace = findAnnotationValue(webService, "targetNamespace").toString();
         var builder = TypeSpec.classBuilder(CommonUtils.getOuterClassesAsPrefix(service) + service.getSimpleName() + "_SoapClientImpl")
             .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", CodeBlock.of("$S", WebServiceClientAnnotationProcessor.class.getCanonicalName())).build())
             .addField(ParameterizedTypeName.get(ClassName.get(Function.class), soapClasses.soapEnvelopeTypeName(), soapClasses.soapEnvelopeTypeName()), "envelopeProcessor", Modifier.PRIVATE, Modifier.FINAL)
             .addField(soapClasses.jaxbContextTypeName(), "jaxb", Modifier.PRIVATE, Modifier.FINAL)
             .addMethod(MethodSpec.constructorBuilder()
