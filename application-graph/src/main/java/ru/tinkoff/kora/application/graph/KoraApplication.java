@@ -27,6 +27,7 @@ public class KoraApplication {
             return graph;
         } catch (Exception e) {
             log.error("Error while initializing application", e);
+            e.printStackTrace();
             try {
                 Thread.sleep(100);// so async logger is able to write exception to log
             } catch (InterruptedException ignore) {}
