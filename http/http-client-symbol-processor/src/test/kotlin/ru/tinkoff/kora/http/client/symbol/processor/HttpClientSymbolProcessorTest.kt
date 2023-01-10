@@ -36,6 +36,7 @@ import ru.tinkoff.kora.json.jackson.module.http.client.JacksonHttpClientRequestM
 import ru.tinkoff.kora.json.jackson.module.http.client.JacksonHttpClientResponseMapper
 import ru.tinkoff.kora.ksp.common.symbolProcess
 import ru.tinkoff.kora.opentelemetry.module.http.client.OpentelemetryHttpClientTracerFactory
+import java.time.Duration
 import java.time.LocalDate
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.reflect.KClass
@@ -447,7 +448,7 @@ class HttpClientSymbolProcessorTest {
         }
     }
 
-    private fun <T> config(clazz: Class<T>, url: String, requestTimeout: Int?, vararg configs: HttpClientOperationConfig): T {
+    private fun <T> config(clazz: Class<T>, url: String, requestTimeout: Duration?, vararg configs: HttpClientOperationConfig): T {
         val parameters = arrayOf<Any?>(url, requestTimeout).copyOf(2 + configs.size)
         System.arraycopy(configs, 0, parameters, 2, configs.size)
         return try {
