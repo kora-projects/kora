@@ -32,10 +32,11 @@ interface {{classname}}ServerResponseMappers {
     {{/dataType}}
     {{/responses}}
 
-    override fun apply(rs: {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse): Mono<out HttpServerResponse> {
+    override fun apply(rs: {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse): Mono<out HttpServerResponse> { {{^vendorExtensions.singleResponse}}
       when (rs) {
-      {{#responses}}
-        is {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse -> {
+      {{/vendorExtensions.singleResponse}}{{#responses}}{{^vendorExtensions.singleResponse}}
+        is {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{^vendorExtensions.singleResponse}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse{{/vendorExtensions.singleResponse}} -> {
+{{/vendorExtensions.singleResponse}}
           val headers = HttpHeaders.of(
           {{#headers}}
             java.util.Map.entry("{{baseName}}", listOf(rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}})){{^-last}},{{/-last}}
@@ -47,10 +48,10 @@ interface {{classname}}ServerResponseMappers {
           {{#dataType}}
           val entity = HttpServerResponseEntity({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, rs.content, headers)
           return response{{code}}Delegate.apply(entity)
-          {{/dataType}}
-        }
-      {{/responses}}
-      }
+          {{/dataType}}{{^vendorExtensions.singleResponse}}
+        }{{/vendorExtensions.singleResponse}}
+      {{/responses}}{{^vendorExtensions.singleResponse}}
+      }{{/vendorExtensions.singleResponse}}
     }
   }
 

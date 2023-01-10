@@ -15,7 +15,7 @@ import {{package}}.{{classname}}Responses.*;
 public interface {{classname}}ServerResponseMappers {
 {{#operations}}
 {{#operation}}
-  public static final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper implements HttpServerResponseMapper<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>{
+  final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper implements HttpServerResponseMapper<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>{
     {{#responses}}
     {{#dataType}}
     private final HttpServerResponseMapper<HttpServerResponseEntity<{{{dataType}}}>> response{{code}}Delegate;
@@ -34,15 +34,15 @@ public interface {{classname}}ServerResponseMappers {
       {{/responses}}) {
       {{#responses}}
       {{#dataType}}
-      this.response{{code}}Delegate = new ru.tinkoff.kora.http.server.common.handler.HttpServerResponseEntityMapper(response{{code}}Delegate);
+      this.response{{code}}Delegate = new ru.tinkoff.kora.http.server.common.handler.HttpServerResponseEntityMapper<>(response{{code}}Delegate);
       {{/dataType}}
       {{/responses}}
     }
 
     @Override
-    public Mono<? extends HttpServerResponse> apply({{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse response) {
-      {{#responses}}
-      if (response instanceof {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse rs) {
+    public Mono<? extends HttpServerResponse> apply({{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse response) { {{#responses}}{{^vendorExtensions.singleResponse}}
+      if (response instanceof {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse rs) { {{/vendorExtensions.singleResponse}}{{#vendorExtensions.singleResponse}}
+      var rs = response;{{/vendorExtensions.singleResponse}}
         var headers = HttpHeaders.of(
         {{#headers}}
           java.util.Map.entry("{{baseName}}", java.util.List.of(rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}())){{^-last}},{{/-last}}
@@ -55,9 +55,11 @@ public interface {{classname}}ServerResponseMappers {
         var entity = new HttpServerResponseEntity<>({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, rs.content(), headers);
         return this.response{{code}}Delegate.apply(entity);
         {{/dataType}}
-      } else{{/responses}} {
-        throw new IllegalStateException();
-      }
+      {{^vendorExtensions.singleResponse}}
+      }{{/vendorExtensions.singleResponse}}{{/responses}}
+      {{^vendorExtensions.singleResponse}}
+      throw new IllegalStateException();
+      {{/vendorExtensions.singleResponse}}
     }
   }
 

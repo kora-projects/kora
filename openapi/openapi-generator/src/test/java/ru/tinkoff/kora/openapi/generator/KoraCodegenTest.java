@@ -24,10 +24,8 @@ import java.io.File;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static ru.tinkoff.kora.annotation.processor.common.TestUtils.classpath;
@@ -52,6 +50,7 @@ class KoraCodegenTest {
             "kotlin_server"
         };
         var files = new String[]{
+            "/example/petstoreV3_single_response.yaml",
             "/example/petstoreV3_security_api_key.yaml",
             "/example/petstoreV3_security_basic.yaml",
             "/example/petstoreV3_security_bearer.yaml",

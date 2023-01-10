@@ -22,17 +22,17 @@ interface {{classname}}ClientResponseMappers {
 
     override fun apply(response: HttpClientResponse): Mono<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {
       {{#headers}}
-      val {{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}} = response.headers().getFirst("{{baseName}}"){{#required}}!!{{/required}} // {{required}}
+      val {{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}} = response.headers().getFirst("{{baseName}}"){{#required}}!!{{/required}}
       {{/headers}}
       {{^dataType}}
-      return Mono.just({{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse(
+      return Mono.just({{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{^vendorExtensions.singleResponse}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse{{/vendorExtensions.singleResponse}}(
         {{#isDefault}}response.code(){{#hasHeaders}}, {{/hasHeaders}}{{/isDefault}}
         {{#headers}}{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}{{^-last}},{{/-last}}{{/headers}}
       ))
       {{/dataType}}
       {{#dataType}}
       return this.delegate.apply(response)
-        .map { content -> {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse(
+        .map { content -> {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{^vendorExtensions.singleResponse}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse{{/vendorExtensions.singleResponse}}(
           {{#isDefault}}response.code(), {{/isDefault}}
           content{{#hasHeaders}}, {{/hasHeaders}}
           {{#headers}}{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}{{^-last}}, {{/-last}}{{/headers}}

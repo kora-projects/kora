@@ -190,6 +190,9 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         if (mimeType.contains("text") || mimeType.contains("json")) {
             return StandardCharsets.UTF_8;
         }
+        if (mimeType.contains("application/x-www-form-urlencoded")) {
+            return StandardCharsets.US_ASCII;
+        }
         return null;
     }
 }

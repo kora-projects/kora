@@ -6,7 +6,16 @@ package {{package}};
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
 public interface {{classname}}Responses {
 {{#operations}}
-{{#operation}}
+{{#operation}}{{#vendorExtensions.singleResponse}}{{#responses}}
+  /**
+  * {{message}} (status code {{code}})
+  */
+  public record {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse(
+    {{#dataType}}{{#isDefault}}int statusCode,
+    {{/isDefault}}{{{dataType}}} content{{#hasHeaders}},{{/hasHeaders}}{{/dataType}}{{^dataType}}{{#isDefault}}int statusCode{{#hasHeaders}},{{/hasHeaders}}{{/isDefault}}{{/dataType}}{{#headers}}
+    String {{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}{{^-last}},{{/-last}}{{/headers}}
+  ){}
+{{/responses}}{{/vendorExtensions.singleResponse}}{{^vendorExtensions.singleResponse}}
   public sealed interface {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {
     {{#responses}}
       /**
@@ -20,7 +29,7 @@ public interface {{classname}}Responses {
 
     {{/responses}}
   }
-
+{{/vendorExtensions.singleResponse}}
 {{/operation}}
 {{/operations}}
 }

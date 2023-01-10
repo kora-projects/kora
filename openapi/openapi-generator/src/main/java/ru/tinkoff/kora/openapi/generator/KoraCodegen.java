@@ -1135,6 +1135,10 @@ public class KoraCodegen extends DefaultCodegen {
                 var response = op.responses.get(i);
                 response.vendorExtensions.put("hasMore", true);
             }
+            op.vendorExtensions.put("singleResponse", op.responses.size() == 1);
+            for (var response : op.responses) {
+                response.vendorExtensions.put("singleResponse", op.responses.size() == 1);
+            }
             if (op.hasAuthMethods) {
                 if (this.codegenMode.name().contains("SERVER")) {
                     var operationAuthMethods = new TreeSet<String>();
