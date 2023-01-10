@@ -180,11 +180,12 @@ class KoraAppProcessor(
         try {
             val rootErasure = declaration.asStarProjectedType()
             val rootModule = ModuleDeclaration.MixedInModule(declaration)
+            val filterObjectMethods : (KSFunctionDeclaration) -> Boolean = {
+                val name = it.simpleName.asString()
+                name != "equals" && name != "hashCode" && name != "toString"// todo find out a better way to filter object methods
+            }
             val mixedInComponents = declaration.getAllFunctions()
-                .filter {
-                    val name = it.simpleName.asString()
-                    name != "equals" && name != "hashCode" && name != "toString"// todo find out a better way to filter object methods
-                }
+                .filter(filterObjectMethods)
                 .toMutableList()
 
             val submodules = declaration.superTypes.map { it.resolve() }
@@ -202,7 +203,8 @@ class KoraAppProcessor(
             val annotatedModules = allModules
                 .filter { !it.asStarProjectedType().isAssignableFrom(rootErasure) }
                 .map { ModuleDeclaration.AnnotatedModule(it) }
-            val annotatedModuleComponentsTmp = annotatedModules.flatMap { it.element.getAllFunctions().map { f -> ComponentDeclaration.fromModule(ctx!!, it, f) } }
+            val annotatedModuleComponentsTmp = annotatedModules
+                .flatMap { it.element.getAllFunctions().filter(filterObjectMethods).map { f -> ComponentDeclaration.fromModule(ctx!!, it, f) } }
             val annotatedModuleComponents = ArrayList(annotatedModuleComponentsTmp)
             for (annotatedComponent in annotatedModuleComponentsTmp) {
                 if (annotatedComponent.method.modifiers.contains(Modifier.OVERRIDE)) {
