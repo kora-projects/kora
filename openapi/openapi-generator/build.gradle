@@ -50,6 +50,7 @@ javaPlugin.sourceSets {
             }
             addOpenapiDir("petstoreV2")
             addOpenapiDir("petstoreV3")
+            addOpenapiDir("petstoreV3_single_response")
             addOpenapiDir("petstoreV3_discriminator")
             addOpenapiDir("petstoreV3_security_api_key")
             addOpenapiDir("petstoreV3_security_basic")

@@ -2,8 +2,8 @@ package ru.tinkoff.kora.http.common.auth;
 
 import ru.tinkoff.kora.common.Principal;
 
-import java.util.List;
+import java.util.Collection;
 
 public interface PrincipalWithScopes extends Principal {
-    List<String> scopes();
+    Collection<String> scopes();
 }
