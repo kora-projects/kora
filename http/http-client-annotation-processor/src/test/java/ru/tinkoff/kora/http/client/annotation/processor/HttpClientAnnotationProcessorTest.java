@@ -37,6 +37,7 @@ import ru.tinkoff.kora.json.jackson.module.http.client.JacksonHttpClientResponse
 import ru.tinkoff.kora.opentelemetry.module.http.client.OpentelemetryHttpClientTracerFactory;
 
 import javax.annotation.Nullable;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -342,7 +343,7 @@ class HttpClientAnnotationProcessorTest {
         var methodInterceptor1 = Mockito.spy(GithubClient.TestInterceptor2.class);
         var methodInterceptor2 = Mockito.spy(GithubClient.TestInterceptor2.class);
         var configs = new HttpClientOperationConfig[]{
-            new HttpClientOperationConfig(10),
+            new HttpClientOperationConfig(Duration.ofMillis(10)),
             new HttpClientOperationConfig(null),
         };
         var mappers = new Object[]{
@@ -355,7 +356,7 @@ class HttpClientAnnotationProcessorTest {
             voidMono()
         };
 
-        var config = this.config(configClass, "http://localhost:" + this.server.getLocalPort(), 100, configs);
+        var config = this.config(configClass, "http://localhost:" + this.server.getLocalPort(), Duration.ofMillis(100), configs);
         var client = GithubClient.class.cast(this.client(clientClass, config, mappers));
 
         server.when(request("/repos/testOwner/testRepo/contributors"))
@@ -380,8 +381,8 @@ class HttpClientAnnotationProcessorTest {
         return clazz.cast(this.client(clientClass, config, mappers));
     }
 
-    private <T> T config(Class<T> clazz, String url, @Nullable Integer requestTimeout, HttpClientOperationConfig... configs) {
-        var types = Arrays.copyOf(new Class<?>[]{String.class, Integer.class}, 2 + configs.length);
+    private <T> T config(Class<T> clazz, String url, @Nullable Duration requestTimeout, HttpClientOperationConfig... configs) {
+        var types = Arrays.copyOf(new Class<?>[]{String.class, Duration.class}, 2 + configs.length);
         Arrays.fill(types, 2, types.length, HttpClientOperationConfig.class);
         var parameters = Arrays.copyOf(new Object[]{url, requestTimeout}, 2 + configs.length);
         System.arraycopy(configs, 0, parameters, 2, configs.length);

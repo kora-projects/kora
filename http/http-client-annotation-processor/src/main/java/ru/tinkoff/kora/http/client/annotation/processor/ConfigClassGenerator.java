@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.http.client.annotation.processor;
 
+import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.http.client.common.declarative.DeclarativeHttpClientConfig;
 import ru.tinkoff.kora.http.client.common.declarative.HttpClientOperationConfig;
 
@@ -40,12 +41,15 @@ public class ConfigClassGenerator {
             import %s;
             import %s;
             import %s;
+            import %s;
                         
-            public record %s(String url, @Nullable Integer requestTimeout,
+            @Generated(\"%s\")
+            public record %s(String url, @Nullable Duration requestTimeout,
             """.formatted(packageName.getQualifiedName(),
             Nullable.class.getCanonicalName(), HttpClientOperationConfig.class.getCanonicalName(),
             DeclarativeHttpClientConfig.class.getCanonicalName(), Duration.class.getCanonicalName(),
-            typeName
+            Generated.class.getCanonicalName(),
+            HttpClientAnnotationProcessor.class.getCanonicalName(), typeName
         );
         var b = new StringBuilder(type);
         for (var iterator = methods.iterator(); iterator.hasNext(); ) {
@@ -56,22 +60,8 @@ public class ConfigClassGenerator {
             }
             b.append('\n');
         }
-        b.append(") implements ").append(DeclarativeHttpClientConfig.class.getName()).append(" {\n");
-
-        b.append("\tpublic ").append(typeName).append("(String url, @Nullable Duration requestTimeout");
-        for (String method : methods) {
-            b.append(',').append(" ");
-            b.append("@Nullable ").append(HttpClientOperationConfig.class.getSimpleName()).append(" ").append(method).append("Config");
-        }
-
-        b.append(") {\n")
-            .append("\t\tthis(url, (requestTimeout == null) ? null : ((Long) requestTimeout.toMillis()).intValue()");
-
-        for (String method : methods) {
-            b.append(',').append(" ").append(method).append("Config");
-        }
-
-        b.append(");").append("\n\t}\n").append("}");
+        b.append(") implements ").append(DeclarativeHttpClientConfig.class.getSimpleName()).append(" {\n");
+        b.append("\n").append("}");
         return new ConfigClass(typeName, b.toString());
     }
 }
