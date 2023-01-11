@@ -2,19 +2,26 @@
 
 Данный пример разбирает как создать простой сервис на kora, с настроенными метриками, логированием и пробами, который умеет отвечать на запрос `GET /hello/world`.
 
-## Требования
+## Подготовка
 
-Для работы нам потребуется gradlew с настроенной версией gradle `7.* +`  
-Например:
+Создаем новый Gradle-проект (через IDEA или `gradle init`).
+
+Для работы нам потребуется gradlew с настроенной версией Gradle выше `7.*`.
+
+Проверим конфигурацию в `gradle/wrapper/gradle-wrapper.properties`:
 
 ```properties
 distributionUrl=https\://services.gradle.org/distributions/gradle-7.5.1-bin.zip
 ```
 
-## Настройка gradle 
+## Настройка Gradle
 
 ### Kotlin
-Начиная с 9ой версии можно использовать ksp для проектов на kotlin
+
+Начиная с 9-й версии можно использовать ksp для проектов на Kotlin.
+
+`build.gradle.kts`:
+
 ```kotlin
 plugins {
     kotlin("jvm") version "1.7.10"
@@ -42,8 +49,7 @@ kotlin {
 
 }
 
-
-val koraVersion = "0.10.0"
+val koraVersion = "0.10.1"
 
 dependencies {
     val kora = platform("ru.tinkoff.kora:kora-parent:$koraVersion")
@@ -51,7 +57,6 @@ dependencies {
     ksp(kora)
 
     ksp("ru.tinkoff.kora:symbol-processors")
-
 
     implementation("ru.tinkoff.kora:http-server-undertow")
     implementation("ru.tinkoff.kora:micrometer-module")
@@ -62,28 +67,26 @@ dependencies {
 
 ### Groovy
 
+`build.gradle`:
+
 ```groovy
 plugins {
     id 'java'
 }
 
-group="ru.tinkoff.kora.hello.world"
+group 'ru.tinkoff.kora.hello.world'
 
 repositories {
-    mavenLocal()
     mavenCentral()
 }
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of("17"))
+        languageVersion.set(JavaLanguageVersion.of(17))
     }
 }
 
-compileJava {
-    targetCompatibility = JavaVersion.toVersion("17")
-    sourceCompatibility = JavaVersion.toVersion("17")
-}
+var koraVersion = '0.10.1'
 
 dependencies {
     implementation platform("ru.tinkoff.kora:kora-parent:$koraVersion")
@@ -94,7 +97,6 @@ dependencies {
     annotationProcessor "ru.tinkoff.kora:annotation-processors:$koraVersion"
 }
 ```
-
 
 
 ## Минимальная конфигурация приложения
@@ -120,12 +122,12 @@ public interface Application extends
 Если мы запустим компиляцию, то будет сгенерирован класс `ApplicationGraph.java`, в котором описано как собирать все компоненты нашего будущего контейнера.
 Что нам предоставляет `UndertowHttpServerModule`:
 
-* Сервер для публичного апи на порту 8080 
+* Сервер для публичного апи на порту 8080
 * Сервер для системного апи на порту 8085
-* liveness и readiness пробы на системном порту: [/system/liveness](http://localhost:8085/system/liveness) и [/system/readiness](http://localhost:8085/system/readiness)    
+* liveness и readiness пробы на системном порту: [/system/liveness](http://localhost:8085/system/liveness) и [/system/readiness](http://localhost:8085/system/readiness)
 * route отдающий метрики: [/metrics](http://localhost:8085/metrics)
 
-Далее нам нужно создать точку входа, создадим класс `AppRunner.java` с методом `main`
+Далее нам нужно создать точку входа, создадим класс `AppRunner.java` с методом `main`:
 
 ```java
 package ru.tinkoff.kora.hello.world;
@@ -141,10 +143,11 @@ public class AppRunner {
 
 `KoraApplication.run` запускает параллельную инициализацию всех компонентов в контейнере и блокирует основной поток до получения сигнала SIGTERM, после этого приложение начинает graceful shutdown.
 Теперь, если мы запустим это приложение, то нам будут доступны роуты по ссылкам выше.
-При этом в логах видно, что поднялся только порт 8085. Это происходит из-за того, что у нас ещё нет ни одного обработчика запросов. 
+При этом в логах видно, что поднялся только порт 8085. Это происходит из-за того, что у нас ещё нет ни одного обработчика запросов.
 
 ## Hello world контроллер
-Теперь давайте напишем контроллер, который будет обрабатывать запрос `GET /hello/world` на публичном порту.  
+
+Теперь давайте напишем контроллер, который будет обрабатывать запрос `GET /hello/world` на публичном порту.
 
 ```java
 package ru.tinkoff.kora.hello.world;
@@ -182,7 +185,8 @@ public final class HelloWorldController {
 * HttpServerResponse - это сырой вариант ответа, в котором можно выставить что угодно и отдать любые байты
 
 ## Ответ в формате json
-В обычной жизни мы всё-таки чаще отдаём json, для этого добавим модуль   
+
+В обычной жизни мы всё-таки чаще отдаём json, для этого добавим модуль `JsonModule`:
 
 ```java
 package ru.tinkoff.kora.hello.world;
@@ -203,7 +207,7 @@ public interface Application extends
 }
 ```
 
-Далее изменим контроллер, чтобы он возвращал DTO, которую мы хотим сериализовать
+И изменим контроллер, чтобы он возвращал DTO, который мы хотим сериализовать:
 
 ```java
 package ru.tinkoff.kora.hello.world;
@@ -216,7 +220,7 @@ import ru.tinkoff.kora.http.server.common.annotation.HttpController;
 @Component
 @HttpController
 public final class HelloWorldController {
-  final static record HelloWorldResponse(String greeting) {}
+  record HelloWorldResponse(String greeting) {}
 
   @HttpRoute(method = HttpMethod.GET, path = "/hello/world")
   public HelloWorldResponse helloWorld() {
@@ -225,7 +229,7 @@ public final class HelloWorldController {
 }
 ```
 
-Теперь для нашего record'а будет сформирован оптимальный JsonWriter и в ответе мы увидим json
+Теперь для нашего DTO будет сформирован оптимальный JsonWriter и в ответе мы увидим json.
 
 ```json
 {"greeting":"Hello world"}
