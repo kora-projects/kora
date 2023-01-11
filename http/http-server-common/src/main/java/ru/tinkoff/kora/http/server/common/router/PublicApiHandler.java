@@ -15,10 +15,7 @@ import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetry;
 import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -36,7 +33,8 @@ public class PublicApiHandler implements RefreshListener {
     private final Function<HttpServerRequest, Mono<HttpServerResponse>> NOT_FOUND_HANDLER = request ->
         Mono.just(new SimpleHttpServerResponse(404, "application/octet-stream", HttpHeaders.of(), null));
 
-    private final PathTemplateMatcher<Map<String, ValueOf<HttpServerRequestHandler>>> pathTemplateMatcher;
+    private final Map<String, PathTemplateMatcher<ValueOf<HttpServerRequestHandler>>> pathTemplateMatcher;
+    private final PathTemplateMatcher<List<String>> allMethodMatchers;
     private final All<ValueOf<HttpServerRequestHandler>> handlers;
     private final All<ValueOf<HttpServerInterceptor>> interceptors;
     private final AtomicReference<RequestHandler> requestHandler = new AtomicReference<>();
@@ -46,18 +44,20 @@ public class PublicApiHandler implements RefreshListener {
         this.handlers = handlers;
         this.interceptors = interceptors;
         this.telemetry = httpServerTelemetry;
-        this.pathTemplateMatcher = new PathTemplateMatcher<>();
+        this.pathTemplateMatcher = new HashMap<>();
+        this.allMethodMatchers = new PathTemplateMatcher<>();
         for (var h : handlers) {
             var handler = h.get();
             var route = handler.routeTemplate();
-            var routeHandlersByMethod = this.pathTemplateMatcher.get(route);
-            if (routeHandlersByMethod == null) {
-                routeHandlersByMethod = new HashMap<>();
-                this.pathTemplateMatcher.add(route, routeHandlersByMethod);
-            }
-            var oldValue = routeHandlersByMethod.put(handler.method(), h);
+            var methodMatchers = this.pathTemplateMatcher.computeIfAbsent(handler.method(), k -> new PathTemplateMatcher<>());
+            var oldValue = methodMatchers.add(route, h);
             if (oldValue != null) {
-                throw new IllegalStateException("Cannot add path template %s, matcher already contains an equivalent pattern %s".formatted(route, oldValue.get().routeTemplate()));
+                throw new IllegalStateException("Cannot add path template %s, matcher already contains an equivalent pattern %s".formatted(route, oldValue.getKey().templateString()));
+            }
+            var otherMethods = new ArrayList<>(List.of(handler.method()));
+            var oldAllMethodValue = this.allMethodMatchers.add(route, otherMethods);
+            if (oldAllMethodValue != null) {
+                otherMethods.addAll(oldAllMethodValue.getValue());
             }
         }
         if (interceptors.isEmpty()) {
@@ -83,27 +83,29 @@ public class PublicApiHandler implements RefreshListener {
     public record PublicApiRequest(String method, String path, String hostName, String scheme, HttpHeaders headers, Map<String, ? extends Collection<String>> queryParams, Flux<ByteBuffer> body) {}
 
     public void process(PublicApiRequest routerRequest, HttpServerResponseSender responseSender) {
-        Function<HttpServerRequest, Mono<HttpServerResponse>> handlerFunction;
-        Map<String, String> templateParameters;
-        @Nullable String routeTemplate;
+        final Function<HttpServerRequest, Mono<HttpServerResponse>> handlerFunction;
+        final Map<String, String> templateParameters;
+        final @Nullable String routeTemplate;
 
-        var pathTemplateMatch = pathTemplateMatcher.match(routerRequest.path());
+        var methodMatchers = pathTemplateMatcher.get(routerRequest.method());
+        var pathTemplateMatch = methodMatchers == null ? null : methodMatchers.match(routerRequest.path());
         if (pathTemplateMatch == null) {
-            handlerFunction = NOT_FOUND_HANDLER;
-            routeTemplate = null;
-            templateParameters = Map.of();
+            var allMethodMatch = allMethodMatchers.match(routerRequest.path);
+            if (allMethodMatch != null) {
+                var allowed = String.join(", ", allMethodMatch.value());
+                handlerFunction = request -> Mono.just(new SimpleHttpServerResponse(405, "application/octet-stream", HttpHeaders.of("allow", allowed), null));
+                routeTemplate = allMethodMatch.matchedTemplate();
+                templateParameters = Map.of();
+            } else {
+                handlerFunction = NOT_FOUND_HANDLER;
+                routeTemplate = null;
+                templateParameters = Map.of();
+            }
         } else {
             templateParameters = pathTemplateMatch.parameters();
             routeTemplate = pathTemplateMatch.matchedTemplate();
-            var handler = pathTemplateMatch.value().get(routerRequest.method());
-            if (handler == null) {
-                var allowed = String.join(", ", pathTemplateMatch.value().keySet());
-                handlerFunction = request -> Mono.just(new SimpleHttpServerResponse(405, "application/octet-stream", HttpHeaders.of("allow", allowed), null));
-            } else {
-                handlerFunction = handler.get()::handle;
-            }
+            handlerFunction = pathTemplateMatch.value().get()::handle;
         }
-
 
         var request = new Request(routerRequest.method(), routerRequest.path(), routeTemplate, routerRequest.headers(), routerRequest.queryParams(), templateParameters, routerRequest.body());
 
