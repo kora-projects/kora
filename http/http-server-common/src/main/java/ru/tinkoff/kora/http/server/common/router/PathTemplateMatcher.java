@@ -63,7 +63,10 @@ public class PathTemplateMatcher<T> {
     }
 
 
-    public synchronized PathTemplateMatcher<T> add(final PathTemplate template, final T value) {
+    /**
+     * @return the previous value associated with path template, or null if there was none
+     */
+    public Map.Entry<PathTemplate, T> add(final PathTemplate template, final T value) {
         var values = pathTemplateMap.get(trimBase(template));
         Set<PathTemplateHolder> newValues;
         if (values == null) {
@@ -73,19 +76,17 @@ public class PathTemplateMatcher<T> {
         }
         var holder = new PathTemplateHolder(value, template);
         if (newValues.contains(holder)) {
-            PathTemplate equivalent = null;
             for (var item : newValues) {
                 if (item.compareTo(holder) == 0) {
-                    equivalent = item.template;
-                    break;
+                    return Map.entry(item.template, item.value);
                 }
             }
-            throw new IllegalStateException("Cannot add path template %s, matcher already contains an equivalent pattern %s".formatted(template.templateString(), equivalent.templateString()));
+            throw new IllegalStateException();
         }
         newValues.add(holder);
         pathTemplateMap.put(trimBase(template), newValues);
         buildLengths();
-        return this;
+        return null;
     }
 
     private String trimBase(PathTemplate template) {
@@ -114,7 +115,7 @@ public class PathTemplateMatcher<T> {
         this.lengths = lengthArray;
     }
 
-    public synchronized PathTemplateMatcher<T> add(final String pathTemplate, final T value) {
+    public synchronized Map.Entry<PathTemplate, T> add(final String pathTemplate, final T value) {
         final PathTemplate template = PathTemplate.create(pathTemplate);
         return add(template, value);
     }

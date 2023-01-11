@@ -24,6 +24,7 @@ import ru.tinkoff.kora.http.server.common.telemetry.*;
 
 import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Optional;
 
@@ -75,6 +76,10 @@ public interface HttpServerModule extends StringParameterReadersModule {
 
     default HttpServerResponseMapper<byte[]> byteArrayResponseMapper() {
         return r -> Mono.just(new SimpleHttpServerResponse(200, "application/octet-stream", HttpHeaders.EMPTY, ByteBuffer.wrap(r)));
+    }
+
+    default HttpServerResponseMapper<String> stringResponseMapper() {
+        return r -> Mono.just(new SimpleHttpServerResponse(200, "text/plain; charset=utf-8", HttpHeaders.EMPTY, ByteBuffer.wrap(r.getBytes(StandardCharsets.UTF_8))));
     }
 
     default <T> HttpServerResponseMapper<HttpServerResponseEntity<T>> httpServerResponseEntityMapper(HttpServerResponseMapper<T> delegate) {
