@@ -10,15 +10,15 @@ Kora предоставляет инструментарий для создан
 implemenation 'ru.tinkoff.kora:http-client-async'
 ```
 
-Для работы через AsyncHttpClient необходимо добавить модуль `AsyncHttpClientModule` к своему `@KoraApp`
+Для работы через AsyncHttpClient необходимо добавить модуль `AsyncHttpClientModule` к своему `@KoraApp`.
 
-### jdk client
+### Нативный JDK client
 
 ```groovy
 implemenation 'ru.tinkoff.kora:http-client-jdk'
 ```
 
-Для работы через нативным jdk клиентом необходимо добавить модуль `JdkHttpClientModule` к своему `@KoraApp`
+Для работы через нативный JDK клиент необходимо добавить модуль `JdkHttpClientModule` к своему `@KoraApp`
 
 ## Клиент
 
@@ -37,8 +37,8 @@ public interface HttpClient {
 }
 ```
 
-* execute - метод исполнения запроса
-* with - метод, позволяющий добавлять различные интерцепторы
+* `execute` — метод исполнения запроса
+* `with` — метод, позволяющий добавлять различные интерцепторы
 
 На данный момент предоставляется одна реализация клиента на базе `org.asynchttpclient.AsyncHttpClient`: `ru.tinkoff.kora.http.client.async.AsyncHttpClient`
 ## Request builder
@@ -68,10 +68,10 @@ public interface Hello {
 ```
 
 В этом примере показана как работа с чистым `HttpClientResponse`, так и с маппингом тела запроса и ответа. Рассмотрим подробнее:
-* @Query - аннотация, помечающая параметр метода как query-параметр
-* @Path - аннотация, помечающая параметр метода как часть пути
-* @Header - аннотация, позволяющая добавить к запросу заголовок
-* @Mapping - аннотация, позволяющая указать кастомный маппер для преобразования в тело запроса
+* `@Query` — аннотация, помечающая параметр метода как query-параметр
+* `@Path` — аннотация, помечающая параметр метода как часть пути
+* `@Header` — аннотация, позволяющая добавить к запросу заголовок
+* `@Mapping` — аннотация, позволяющая указать кастомный маппер для преобразования в тело запроса
 
 По умолчанию маппер будет применяться только для 2хх статусов, для всех остальных будет выбрасываться исключение `HttpClientResponseException`, выглядящее следующим образом:
 
@@ -83,7 +83,9 @@ public class HttpClientResponseException extends HttpClientException {
     private final byte[] bytes;
 }
 ```
-Это поведение, впрочем, не применяется если работать с `HttpClientResponse `. Кроме того, можно задать собственные мапперы для любых статусов с помощью аннотации `@ResponseCodeMapper`. Пример:
+Это поведение, не применяется если работать с `HttpClientResponse`. Кроме того, можно задать собственные мапперы для любых статусов с помощью аннотации `@ResponseCodeMapper`. 
+
+Пример:
 
 ```java
 @HttpRoute(method = HttpMethod.POST, path = "/repos/{owner}/{repo}/issues")
@@ -91,7 +93,9 @@ public class HttpClientResponseException extends HttpClientException {
 @ResponseCodeMapper(code = 201, type = Void.class)
 void createIssue(Issue issue, @Path("owner") String owner, @Path("repo") String repo);
 ```
+
 Код маппера:
+
 ```java
 class CustomVoidMapper implements HttpClientResponseMapper<Void, Mono<Void>> {
     @Override
@@ -101,7 +105,7 @@ class CustomVoidMapper implements HttpClientResponseMapper<Void, Mono<Void>> {
 }
 ```
 
-Можно заметить, что в методе `addGreeting` не указаны аннотации для параметра. В таком случае кодогенератор будет считать, что в контейнере можно получить соответствующий экземпляр `HttpClientRequestMapper`
+Можно заметить, что в методе `addGreeting` не указаны аннотации для параметра. В таком случае кодогенератор будет считать, что в контейнере можно получить соответствующий экземпляр `HttpClientRequestMapper`.
 
 Посмотрим на сгенерированный код клиента:
 
@@ -139,10 +143,10 @@ public class HelloClient implements Hello {
 
 Для наглядности было убрано всё, связанное с обработкой `HttpClientResponse`. Здесь следует остановиться на параметрах конструктора сгенерированного клиента: 
 
-* httpClient - http client, через который будут выполняться все запросы
-* config - конфигурация клиента, о ней поговорим чуть ниже
-* addGreetingRequestMapper - маппер запроса
-* addGreetingResponseMapper - маппер ответа
+* `httpClient` - http client, через который будут выполняться все запросы
+* `config` - конфигурация клиента, о ней поговорим чуть ниже
+* `addGreetingRequestMapper` - маппер запроса
+* `addGreetingResponseMapper` - маппер ответа
 
 При использовании аннотации `@Mapping` вместо сгенерированного маппера будет использоваться указанный, кроме того, не будет проводиться проверка статусов, пример:
 ```java
@@ -154,7 +158,9 @@ public interface ClientWithMappers {
     List<Contributor> contributors(@Path("owner") String owner, @Path("repo") String repo);
 }
 ```
+
 Код маппера:
+
 ```java
 class ContributorListMapper implements HttpClientResponseMapper<List<Contributor>, Mono<List<Contributor>>> {
     private final JsonReader<List<Contributor>> reader;
@@ -177,6 +183,7 @@ class ContributorListMapper implements HttpClientResponseMapper<List<Contributor
 ### Конфигурация клиента
 
 Кроме клиента, кодогенератор создаёт класс конфигурации для него:
+
 ```java
 public record HelloConfig(
         String url,
@@ -186,9 +193,9 @@ public record HelloConfig(
         @Nullable HttpClientOperationConfig addGreetingConfig) implements ru.tinkoff.kora.http.client.common.declarative.DeclarativeHttpClientConfig {
 }
 ```
-`addGreetingConfig` позволяет переопределить конфигурацию для запроса `addGreeting`, а именно `requestTimeout`, `tracingEnabled` и `loggingEnabled`
+`addGreetingConfig` позволяет переопределить конфигурацию для запроса `addGreeting`, а именно `requestTimeout`, `tracingEnabled` и `loggingEnabled`.
 
-По умолчанию для поиска конфигурации будет использован следующий путь `httpClient.{lower case class name}`  
+По умолчанию для поиска конфигурации будет использован следующий путь `httpClient.{lower case class name}`.
 В таком случае файл конфигурации будет выглядеть следующим образом:
 
 ```
@@ -240,7 +247,7 @@ public class RootUriInterceptor implements HttpClientInterceptor {
 }
 ```
 
-Для декларативного клиента можно отмечать классы и методы аннотацией `@InterceptWith` с указанием интерцептора
+Для декларативного клиента можно отмечать классы и методы аннотацией `@InterceptWith` с указанием интерцептора.
 
 ### Пример использования в сервисе
 
@@ -260,9 +267,10 @@ public final class HelloService {
 
 ### Поддержка корутин и Reactor
 
-HttpClient Kora поддерживает kotlin coroutines и project reactor из коробки. Примеры:
+HttpClient Kora поддерживает Kotlin coroutines и Project Reactor из коробки. Примеры:
 
 * Kotlin coroutines:
+
 ```kotlin
 @HttpClient
 interface GithubClientKotlin {
@@ -286,5 +294,3 @@ public interface GithubClientReactive {
     Mono<Void> createIssue(Issue issue, @Path("owner") String owner, @Path("repo") String repo);
 }
 ```
-
-

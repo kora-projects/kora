@@ -1,4 +1,4 @@
-### Logging
+# Логирование
 
 В kora имеется поддержка структурированных логов.
 Передать структурированные данные в запись лога можно двумя способами:
@@ -14,7 +14,7 @@ log.info(marker, "message");
 ```
 
 
-- Через параметры
+- Через параметры:
 
 ```java
 var parameter = StructuredArgument.arg("key", gen -> {
@@ -23,13 +23,13 @@ var parameter = StructuredArgument.arg("key", gen -> {
 log.info("message", parameter);
 ```
 
-Методы `marker` и `arg` так же принимают в качестве шорткатов Long, Integer, String, Boolean и Map<String, String>.
+Методы `marker` и `arg` также принимают в качестве шорткатов Long, Integer, String, Boolean и Map<String, String>.
 
-Так же структурные данные можно прикреплять ко всем записям в рамках контекста с помощью класса `ru.tinkoff.kora.logging.common.MDC`:
+Структурные данные можно прикреплять ко всем записям в рамках контекста с помощью класса `ru.tinkoff.kora.logging.common.MDC`:
 
 ```java
 MDC.put("key",gen->gen.writeString("value"));
 ```
 
 Если вы используете `AsyncAppender` для отправки логов, то для корректной передачи MDC параметров нужно воспользоваться `ru.tinkoff.kora.logging.logback.KoraAsyncAppender`,
-который передаст делегату `ru.tinkoff.kora.logging.logback.KoraLoggingEvent`, содержащий в том числе структурный MDC.
+который передаст делегату `ru.tinkoff.kora.logging.logback.KoraLoggingEvent`, содержащий, в том числе, структурный MDC.
