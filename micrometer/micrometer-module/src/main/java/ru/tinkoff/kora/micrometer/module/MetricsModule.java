@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.micrometer.module;
 
+import com.typesafe.config.Config;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
@@ -16,6 +17,7 @@ import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.DefaultComponent;
+import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.micrometer.module.cache.MicrometerCacheMetrics;
 import ru.tinkoff.kora.micrometer.module.db.MicrometerDataBaseMetricWriterFactory;
 import ru.tinkoff.kora.micrometer.module.grpc.server.MicrometerGrpcServerMetricsFactory;
@@ -78,24 +80,32 @@ public interface MetricsModule {
         }
     }
 
+    default MetricsConfig metricsConfig(Config config, ConfigValueExtractor<MetricsConfig> extractor) {
+        if (config.hasPath("metrics")) {
+            return extractor.extract(config.getObject("metrics"));
+        } else {
+            return new MetricsConfig(null, null, null, null, null, null, null, null);
+        }
+    }
+
     @DefaultComponent
     default MicrometerHttpServerTagsProvider micrometerHttpServerTagsProvider() {
         return new DefaultMicrometerHttpServerTagsProvider();
     }
 
     @DefaultComponent
-    default MicrometerHttpServerMetrics micrometerHttpServerMetricWriter(MeterRegistry meterRegistry, MicrometerHttpServerTagsProvider httpServerTagsProvider) {
-        return new MicrometerHttpServerMetrics(meterRegistry, httpServerTagsProvider);
+    default MicrometerHttpServerMetrics micrometerHttpServerMetricWriter(MeterRegistry meterRegistry, MicrometerHttpServerTagsProvider httpServerTagsProvider, MetricsConfig metricsConfig) {
+        return new MicrometerHttpServerMetrics(meterRegistry, httpServerTagsProvider, metricsConfig.httpServer());
     }
 
     @DefaultComponent
-    default MicrometerHttpClientMetricsFactory micrometerHttpClientMetricsFactory(MeterRegistry meterRegistry) {
-        return new MicrometerHttpClientMetricsFactory(meterRegistry);
+    default MicrometerHttpClientMetricsFactory micrometerHttpClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
+        return new MicrometerHttpClientMetricsFactory(meterRegistry, metricsConfig.httpClient());
     }
 
     @DefaultComponent
-    default MicrometerSoapClientMetricsFactory micrometerSoapClientMetricsFactory(MeterRegistry meterRegistry) {
-        return new MicrometerSoapClientMetricsFactory(meterRegistry);
+    default MicrometerSoapClientMetricsFactory micrometerSoapClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
+        return new MicrometerSoapClientMetricsFactory(meterRegistry, metricsConfig.soapClient());
     }
 
     @DefaultComponent
@@ -104,28 +114,28 @@ public interface MetricsModule {
     }
 
     @DefaultComponent
-    default MicrometerGrpcServerMetricsFactory micrometerGrpcServerMetricsFactory(MeterRegistry meterRegistry) {
-        return new MicrometerGrpcServerMetricsFactory(meterRegistry);
+    default MicrometerGrpcServerMetricsFactory micrometerGrpcServerMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
+        return new MicrometerGrpcServerMetricsFactory(meterRegistry, metricsConfig.grpcServer());
     }
 
     @DefaultComponent
-    default MicrometerDataBaseMetricWriterFactory micrometerDataBaseMetricWriterFactory(MeterRegistry meterRegistry) {
-        return new MicrometerDataBaseMetricWriterFactory(meterRegistry);
+    default MicrometerDataBaseMetricWriterFactory micrometerDataBaseMetricWriterFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
+        return new MicrometerDataBaseMetricWriterFactory(meterRegistry, metricsConfig.db());
     }
 
     @DefaultComponent
-    default MicrometerKafkaConsumerMetrics micrometerKafkaConsumerMetrics(MeterRegistry meterRegistry) {
-        return new MicrometerKafkaConsumerMetrics(meterRegistry);
+    default MicrometerKafkaConsumerMetrics micrometerKafkaConsumerMetrics(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
+        return new MicrometerKafkaConsumerMetrics(meterRegistry, metricsConfig.kafkaConsumer());
     }
 
     @DefaultComponent
-    default MicrometerJmsConsumerMetricsFactory micrometerJmsConsumerMetricsFactory(MeterRegistry meterRegistry) {
-        return new MicrometerJmsConsumerMetricsFactory(meterRegistry);
+    default MicrometerJmsConsumerMetricsFactory micrometerJmsConsumerMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
+        return new MicrometerJmsConsumerMetricsFactory(meterRegistry, metricsConfig.jmsConsumer());
     }
 
     @DefaultComponent
-    default MicrometerSchedulingMetricsFactory micrometerSchedulingMetricsFactory(MeterRegistry meterRegistry) {
-        return new MicrometerSchedulingMetricsFactory(meterRegistry);
+    default MicrometerSchedulingMetricsFactory micrometerSchedulingMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
+        return new MicrometerSchedulingMetricsFactory(meterRegistry, metricsConfig.scheduling());
     }
 
     @DefaultComponent

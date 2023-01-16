@@ -4,10 +4,12 @@ import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerMetrics;
+import ru.tinkoff.kora.micrometer.module.MetricsConfig.HttpServerMetricsConfig;
 import ru.tinkoff.kora.micrometer.module.http.server.tag.ActiveRequestsKey;
 import ru.tinkoff.kora.micrometer.module.http.server.tag.DurationKey;
 import ru.tinkoff.kora.micrometer.module.http.server.tag.MicrometerHttpServerTagsProvider;
 
+import javax.annotation.Nullable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -16,10 +18,12 @@ public final class MicrometerHttpServerMetrics implements HttpServerMetrics {
     private final MicrometerHttpServerTagsProvider httpServerTagsProvider;
     private final ConcurrentHashMap<ActiveRequestsKey, AtomicInteger> requestCounters = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<DurationKey, DistributionSummary> duration = new ConcurrentHashMap<>();
+    private final HttpServerMetricsConfig config;
 
-    public MicrometerHttpServerMetrics(MeterRegistry meterRegistry, MicrometerHttpServerTagsProvider httpServerTagsProvider) {
+    public MicrometerHttpServerMetrics(MeterRegistry meterRegistry, MicrometerHttpServerTagsProvider httpServerTagsProvider, @Nullable HttpServerMetricsConfig config) {
         this.meterRegistry = meterRegistry;
         this.httpServerTagsProvider = httpServerTagsProvider;
+        this.config = config;
     }
 
     @Override
@@ -51,11 +55,17 @@ public final class MicrometerHttpServerMetrics implements HttpServerMetrics {
     }
 
     private DistributionSummary requestDuration(DurationKey key) {
-        return DistributionSummary.builder("http.server.duration")
-            .publishPercentileHistogram()
-            .serviceLevelObjectives(1, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 30000, 60000, 90000)
+        var builder = DistributionSummary.builder("http.server.duration");
+
+        if (this.config != null && this.config.slo() != null) {
+            builder.serviceLevelObjectives(this.config.slo().stream().mapToDouble(Double::doubleValue).toArray());
+        } else {
+            builder.serviceLevelObjectives(1, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 30000, 60000, 90000);
+        }
+
+        return builder
             .baseUnit("milliseconds")
-            .tags(httpServerTagsProvider.getDurationTags(key))
+            .tags(this.httpServerTagsProvider.getDurationTags(key))
             .register(this.meterRegistry);
     }
 }

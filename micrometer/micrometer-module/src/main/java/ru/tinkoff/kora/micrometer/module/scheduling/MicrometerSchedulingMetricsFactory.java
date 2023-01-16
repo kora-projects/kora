@@ -1,18 +1,23 @@
 package ru.tinkoff.kora.micrometer.module.scheduling;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import ru.tinkoff.kora.micrometer.module.MetricsConfig.SchedulingMetricsConfig;
 import ru.tinkoff.kora.scheduling.common.telemetry.SchedulingMetrics;
 import ru.tinkoff.kora.scheduling.common.telemetry.SchedulingMetricsFactory;
 
+import javax.annotation.Nullable;
+
 public class MicrometerSchedulingMetricsFactory implements SchedulingMetricsFactory {
     private final MeterRegistry meterRegistry;
+    private final SchedulingMetricsConfig config;
 
-    public MicrometerSchedulingMetricsFactory(MeterRegistry meterRegistry) {
+    public MicrometerSchedulingMetricsFactory(MeterRegistry meterRegistry, @Nullable SchedulingMetricsConfig config) {
         this.meterRegistry = meterRegistry;
+        this.config = config;
     }
 
     @Override
     public SchedulingMetrics get(Class<?> jobClass, String jobMethod) {
-        return new MicrometerSchedulingMetrics(this.meterRegistry, jobClass.getCanonicalName(), jobMethod);
+        return new MicrometerSchedulingMetrics(this.meterRegistry, this.config, jobClass.getCanonicalName(), jobMethod);
     }
 }

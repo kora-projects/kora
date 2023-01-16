@@ -5,6 +5,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseMetricWriter;
+import ru.tinkoff.kora.micrometer.module.MetricsConfig.DbMetricsConfig;
 
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -12,10 +13,12 @@ public final class MicrometerDataBaseMetricWriter implements DataBaseMetricWrite
     private final String poolName;
     private final ConcurrentHashMap<String, DbMetrics> metrics = new ConcurrentHashMap<>();
     private final MeterRegistry meterRegistry;
+    private final DbMetricsConfig config;
 
-    public MicrometerDataBaseMetricWriter(MeterRegistry meterRegistry, String poolName) {
+    public MicrometerDataBaseMetricWriter(MeterRegistry meterRegistry, DbMetricsConfig config, String poolName) {
         this.poolName = poolName;
         this.meterRegistry = meterRegistry;
+        this.config = config;
     }
 
     @Override
@@ -33,9 +36,13 @@ public final class MicrometerDataBaseMetricWriter implements DataBaseMetricWrite
     private record DbMetrics(DistributionSummary duration) {}
 
     private DbMetrics metrics(String key) {
-        var duration = DistributionSummary.builder("database.client.request.duration")
-            .serviceLevelObjectives(1, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 30000, 60000, 90000)
-            .baseUnit("milliseconds")
+        var builder = DistributionSummary.builder("database.client.request.duration");
+        if (this.config != null && this.config.slo() != null) {
+            builder.serviceLevelObjectives(this.config.slo().stream().mapToDouble(Double::doubleValue).toArray());
+        } else {
+            builder.serviceLevelObjectives(1, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 30000, 60000, 90000);
+        }
+        var duration = builder.baseUnit("milliseconds")
             .tag("pool", this.poolName)
             .tag("query.id", key)
             .register(Metrics.globalRegistry);
