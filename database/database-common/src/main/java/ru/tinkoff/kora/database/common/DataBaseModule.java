@@ -6,9 +6,11 @@ import ru.tinkoff.kora.database.common.telemetry.DataBaseMetricWriterFactory;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTracerFactory;
 import ru.tinkoff.kora.database.common.telemetry.DefaultDataBaseTelemetryFactory;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 public interface DataBaseModule {
+    @Nonnull
     @DefaultComponent
     default DefaultDataBaseTelemetryFactory defaultDataBaseTelemetry(
         @Nullable DataBaseLoggerFactory loggerFactory, @Nullable DataBaseMetricWriterFactory metricWriterFactory, @Nullable DataBaseTracerFactory tracingFactory

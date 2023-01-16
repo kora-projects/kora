@@ -86,6 +86,9 @@ include(
     'cache:cache-symbol-processor',
     'cache:cache-caffeine',
     'cache:cache-redis',
+    'validation:validation-common',
+    'validation:validation-annotation-processor',
+    'validation:validation-symbol-processor',
 )
 
 apply from: 'dependencies.gradle'

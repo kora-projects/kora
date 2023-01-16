@@ -62,6 +62,10 @@ fun symbolProcessJava(targetClasses: List<Class<*>>, vararg annotationProcessorP
 }
 
 fun symbolProcess(targetClasses: List<KClass<*>>, vararg annotationProcessorProviders: SymbolProcessorProvider): ClassLoader {
+    return symbolProcess(targetClasses, annotationProcessorProviders.toList())
+}
+
+fun symbolProcess(targetClasses: List<KClass<*>>, annotationProcessorProviders: List<SymbolProcessorProvider>): ClassLoader {
     val srcFilesPath = targetClasses.map { targetClass ->
         "src/test/kotlin/" + targetClass.qualifiedName!!.replace(".", "/") + ".kt"
     }

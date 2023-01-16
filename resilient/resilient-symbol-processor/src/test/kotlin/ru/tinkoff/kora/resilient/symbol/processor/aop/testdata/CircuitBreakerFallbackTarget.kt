@@ -2,11 +2,12 @@ package ru.tinkoff.kora.resilient.symbol.processor.aop.testdata
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import ru.tinkoff.kora.annotation.processor.common.MockLifecycle
 import ru.tinkoff.kora.common.Component
 import ru.tinkoff.kora.resilient.circuitbreaker.annotation.CircuitBreaker
 
 @Component
-open class CircuitBreakerFallbackTarget {
+open class CircuitBreakerFallbackTarget : MockLifecycle {
 
     companion object {
         val VALUE = "OK"
