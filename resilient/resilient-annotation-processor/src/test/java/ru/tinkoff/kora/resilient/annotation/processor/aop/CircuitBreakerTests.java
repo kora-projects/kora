@@ -2,32 +2,19 @@ package ru.tinkoff.kora.resilient.annotation.processor.aop;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import ru.tinkoff.kora.resilient.annotation.processor.aop.testdata.CircuitBreakerLifecycle;
+import ru.tinkoff.kora.resilient.annotation.processor.aop.testdata.CircuitBreakerFallbackTarget;
 import ru.tinkoff.kora.resilient.annotation.processor.aop.testdata.CircuitBreakerTarget;
 import ru.tinkoff.kora.resilient.circuitbreaker.CallNotPermittedException;
 
 import java.time.Duration;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class CircuitBreakerTests extends CircuitBreakerRunner {
-
-    private CircuitBreakerTarget getService(InitializedGraph graph) {
-        var values = graph.graphDraw().getNodes()
-            .stream()
-            .map(graph.refreshableGraph()::get)
-            .toList();
-
-        return values.stream()
-            .filter(a -> a instanceof CircuitBreakerLifecycle)
-            .map(a -> ((CircuitBreakerLifecycle) a).target())
-            .findFirst().orElseThrow();
-    }
+class CircuitBreakerTests extends TestAppRunner {
 
     @Test
     void syncCircuitBreaker() {
         // given
-        var graphDraw = createGraphDraw();
-        final CircuitBreakerTarget service = getService(graphDraw);
+        var service = getServicesFromGraph(CircuitBreakerTarget.class, CircuitBreakerFallbackTarget.class).first();
 
         // when
         try {
@@ -49,8 +36,7 @@ class CircuitBreakerTests extends CircuitBreakerRunner {
     @Test
     void monoCircuitBreaker() {
         // given
-        var graphDraw = createGraphDraw();
-        final CircuitBreakerTarget service = getService(graphDraw);
+        var service = getServicesFromGraph(CircuitBreakerTarget.class, CircuitBreakerFallbackTarget.class).first();
 
         // when
         try {
@@ -72,8 +58,7 @@ class CircuitBreakerTests extends CircuitBreakerRunner {
     @Test
     void fluxCircuitBreaker() {
         // given
-        var graphDraw = createGraphDraw();
-        final CircuitBreakerTarget service = getService(graphDraw);
+        var service = getServicesFromGraph(CircuitBreakerTarget.class, CircuitBreakerFallbackTarget.class).first();
 
         // when
         try {

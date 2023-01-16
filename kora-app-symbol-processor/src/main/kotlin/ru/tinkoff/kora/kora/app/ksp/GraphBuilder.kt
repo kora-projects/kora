@@ -6,6 +6,7 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.*
+import ru.tinkoff.kora.application.graph.Lifecycle
 import ru.tinkoff.kora.kora.app.ksp.component.ComponentDependency
 import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim
 import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim.DependencyClaimType.*
@@ -28,7 +29,7 @@ object GraphBuilder {
         if (p.rootSet.isEmpty()) {
             return ProcessingState.Failed(
                 ProcessingErrorException(
-                    "Application has no root components",
+                    "@KoraApp has no root components, expected at least one component implementing: " + Lifecycle::class.java.canonicalName,
                     p.root
                 )
             )

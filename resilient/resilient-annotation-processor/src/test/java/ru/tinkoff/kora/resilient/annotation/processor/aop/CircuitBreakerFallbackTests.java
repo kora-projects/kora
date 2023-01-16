@@ -3,30 +3,17 @@ package ru.tinkoff.kora.resilient.annotation.processor.aop;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import ru.tinkoff.kora.resilient.annotation.processor.aop.testdata.CircuitBreakerFallbackTarget;
-import ru.tinkoff.kora.resilient.annotation.processor.aop.testdata.CircuitBreakerLifecycle;
+import ru.tinkoff.kora.resilient.annotation.processor.aop.testdata.CircuitBreakerTarget;
 
 import java.time.Duration;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class CircuitBreakerFallbackTests extends CircuitBreakerRunner {
-
-    private CircuitBreakerFallbackTarget getService(InitializedGraph graph) {
-        var values = graph.graphDraw().getNodes()
-            .stream()
-            .map(graph.refreshableGraph()::get)
-            .toList();
-
-        return values.stream()
-            .filter(a -> a instanceof CircuitBreakerLifecycle)
-            .map(a -> ((CircuitBreakerLifecycle) a).fallbackTarget())
-            .findFirst().orElseThrow();
-    }
+class CircuitBreakerFallbackTests extends TestAppRunner {
 
     @Test
     void syncCircuitBreaker() {
         // given
-        var graphDraw = createGraphDraw();
-        var service = getService(graphDraw);
+        var service = getServicesFromGraph(CircuitBreakerTarget.class, CircuitBreakerFallbackTarget.class).second();
 
         // when
         try {
@@ -44,8 +31,7 @@ class CircuitBreakerFallbackTests extends CircuitBreakerRunner {
     @Test
     void monoCircuitBreaker() {
         // given
-        var graphDraw = createGraphDraw();
-        var service = getService(graphDraw);
+        var service = getServicesFromGraph(CircuitBreakerTarget.class, CircuitBreakerFallbackTarget.class).second();
 
         // when
         try {
@@ -63,8 +49,7 @@ class CircuitBreakerFallbackTests extends CircuitBreakerRunner {
     @Test
     void fluxCircuitBreaker() {
         // given
-        var graphDraw = createGraphDraw();
-        var service = getService(graphDraw);
+        var service = getServicesFromGraph(CircuitBreakerTarget.class, CircuitBreakerFallbackTarget.class).second();
 
         // when
         try {

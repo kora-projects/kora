@@ -3,7 +3,6 @@ plugins {
     id "java-test-fixtures"
 }
 
-
 dependencies {
     implementation project(":aop:aop-symbol-processor")
 

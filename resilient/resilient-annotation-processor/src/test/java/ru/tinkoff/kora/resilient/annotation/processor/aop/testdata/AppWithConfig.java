@@ -2,7 +2,6 @@ package ru.tinkoff.kora.resilient.annotation.processor.aop.testdata;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
 import ru.tinkoff.kora.common.KoraApp;
 import ru.tinkoff.kora.config.common.ConfigModule;
 import ru.tinkoff.kora.resilient.circuitbreaker.impl.FastCircuitBreakerModule;
@@ -29,9 +28,5 @@ public interface AppWithConfig extends FastCircuitBreakerModule, ConfigModule {
                 }
                 """
         ).resolve();
-    }
-
-    default MockLifecycle object(CircuitBreakerTarget target, CircuitBreakerFallbackTarget fallbackTarget) {
-        return new CircuitBreakerLifecycle(target, fallbackTarget);
     }
 }

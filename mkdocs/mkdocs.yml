@@ -25,6 +25,7 @@ nav:
       - Resilient: features/resilient.md
       - Cache: features/cache.md
       - GraalVM Native Image: features/native.md
+      - Validation: features/validation.md
 
 
 # Repository
