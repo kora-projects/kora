@@ -36,3 +36,5 @@ interface MetricsConfigModule {
 }
 ```
 
+Так же стандартные метрики имеют некоторые конфигурации, такие как service layer objectives для Distribution summary метрик.
+Имена полей конфигурации можно посмотреть в  `ru.tinkoff.kora.micrometer.module.MetricsConfig`.

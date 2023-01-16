@@ -1,16 +1,20 @@
 package ru.tinkoff.kora.micrometer.module.soap.client;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import ru.tinkoff.kora.micrometer.module.MetricsConfig;
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientMetrics;
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientMetricsFactory;
 
+import javax.annotation.Nullable;
 import java.net.URI;
 
 public class MicrometerSoapClientMetricsFactory implements SoapClientMetricsFactory {
     private final MeterRegistry meterRegistry;
+    private final MetricsConfig.SoapClientMetricsConfig config;
 
-    public MicrometerSoapClientMetricsFactory(MeterRegistry meterRegistry) {
+    public MicrometerSoapClientMetricsFactory(MeterRegistry meterRegistry, @Nullable MetricsConfig.SoapClientMetricsConfig config) {
         this.meterRegistry = meterRegistry;
+        this.config = config;
     }
 
     @Override
@@ -23,6 +27,6 @@ public class MicrometerSoapClientMetricsFactory implements SoapClientMetricsFact
             case "https" -> 443;
             default -> -1;
         };
-        return new MicrometerSoapClientMetrics(this.meterRegistry, serviceName, soapMethod, host, port);
+        return new MicrometerSoapClientMetrics(this.meterRegistry, this.config, serviceName, soapMethod, host, port);
     }
 }
