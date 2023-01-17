@@ -1,0 +1,16 @@
+dependencies {
+    api project(":common")
+    implementation project(":config:config-common")
+
+    api libs.reactor.core
+    implementation libs.typesafe.config
+
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.8.2"
+    testImplementation project(":test:test-logging")
+    testImplementation "org.junit.jupiter:junit-jupiter-api:5.8.2"
+    testImplementation "org.junit.jupiter:junit-jupiter-params:5.8.2"
+    testImplementation "org.testcontainers:junit-jupiter:1.17.1"
+    testImplementation "org.awaitility:awaitility:4.2.0"
+}
+
+apply from: "../../in-test-generated.gradle"

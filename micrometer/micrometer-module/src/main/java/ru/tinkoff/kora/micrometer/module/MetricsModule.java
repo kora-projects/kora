@@ -29,6 +29,9 @@ import ru.tinkoff.kora.micrometer.module.http.server.tag.MicrometerHttpServerTag
 import ru.tinkoff.kora.micrometer.module.jms.consumer.MicrometerJmsConsumerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.kafka.consumer.MicrometerKafkaConsumerMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerCircuitBreakerMetrics;
+import ru.tinkoff.kora.micrometer.module.resilient.MicrometerFallbackMetrics;
+import ru.tinkoff.kora.micrometer.module.resilient.MicrometerRetryMetrics;
+import ru.tinkoff.kora.micrometer.module.resilient.MicrometerTimeoutMetrics;
 import ru.tinkoff.kora.micrometer.module.scheduling.MicrometerSchedulingMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.soap.client.MicrometerSoapClientMetricsFactory;
 
@@ -141,6 +144,21 @@ public interface MetricsModule {
     @DefaultComponent
     default MicrometerCircuitBreakerMetrics micrometerCircuitBreakerMetrics(MeterRegistry meterRegistry) {
         return new MicrometerCircuitBreakerMetrics(meterRegistry);
+    }
+
+    @DefaultComponent
+    default MicrometerFallbackMetrics micrometerFallbackMetrics(MeterRegistry meterRegistry) {
+        return new MicrometerFallbackMetrics(meterRegistry);
+    }
+
+    @DefaultComponent
+    default MicrometerRetryMetrics micrometerRetryMetrics(MeterRegistry meterRegistry) {
+        return new MicrometerRetryMetrics(meterRegistry);
+    }
+
+    @DefaultComponent
+    default MicrometerTimeoutMetrics micrometerTimeoutMetrics(MeterRegistry meterRegistry) {
+        return new MicrometerTimeoutMetrics(meterRegistry);
     }
 
     @DefaultComponent

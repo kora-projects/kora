@@ -43,11 +43,6 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
         }
 
         final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream().filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE)).findFirst();
-        final String fallbackMethod = mirror.flatMap(a -> a.getElementValues().entrySet().stream()
-                .filter(e -> e.getKey().getSimpleName().contentEquals("fallbackMethod"))
-                .map(e -> String.valueOf(e.getValue().getValue())).findFirst()
-                .filter(v -> !v.isBlank()))
-            .orElse("");
         final String circuitBreakerName = mirror.flatMap(a -> a.getElementValues().entrySet().stream()
                 .filter(e -> e.getKey().getSimpleName().contentEquals("value"))
                 .map(e -> String.valueOf(e.getValue().getValue())).findFirst())
@@ -55,89 +50,86 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
 
         var managerType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreakerManager"));
         var fieldManager = aspectContext.fieldFactory().constructorParam(managerType, List.of());
+        var circuitType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreaker"));
+        var fieldCircuit= aspectContext.fieldFactory().constructorInitialized(circuitType,
+            CodeBlock.of("$L.get($S);", fieldManager, circuitBreakerName));
 
         final CodeBlock body;
         if (MethodUtils.isMono(method, env)) {
-            body = buildBodyMono(method, fallbackMethod, superCall, circuitBreakerName, fieldManager);
+            body = buildBodyMono(method, superCall, fieldCircuit);
         } else if (MethodUtils.isFlux(method, env)) {
-            body = buildBodyFlux(method, fallbackMethod, superCall, circuitBreakerName, fieldManager);
+            body = buildBodyFlux(method, superCall, fieldCircuit);
         } else {
-            body = buildBodySync(method, fallbackMethod, superCall, circuitBreakerName, fieldManager);
+            body = buildBodySync(method, superCall, fieldCircuit);
         }
 
         return new ApplyResult.MethodBody(body);
     }
 
-    private CodeBlock buildBodySync(ExecutableElement method, String fallbackCall, String superCall, String circuitBreakerName, String fieldManager) {
+    private CodeBlock buildBodySync(ExecutableElement method, String superCall, String circuitBreakerName) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
-        final CodeBlock fallbackMethod = (fallbackCall.isEmpty())
-            ? CodeBlock.of("throw e;")
-            : CodeBlock.of("return $L;", buildMethodCall(method, fallbackCall));
+        final CodeBlock fallbackMethod = CodeBlock.of("throw e;");
         final String returnType = method.getReturnType().toString();
 
         return CodeBlock.builder().add("""
-            var circuitBreaker = $L.get("$L");
+            var _circuitBreaker = $L;
             try {
-                circuitBreaker.acquire();
+                _circuitBreaker.acquire();
                 final $L t = $L;
-                circuitBreaker.releaseOnSuccess();
+                _circuitBreaker.releaseOnSuccess();
                 return t;
             } catch (ru.tinkoff.kora.resilient.circuitbreaker.CallNotPermittedException e) {
                 $L
             } catch (Exception e) {
-                circuitBreaker.releaseOnError(e);
+                _circuitBreaker.releaseOnError(e);
                 throw e;
             }
-            """, fieldManager, circuitBreakerName, returnType, superMethod.toString(), fallbackMethod.toString()).build();
+            """, circuitBreakerName, returnType, superMethod.toString(), fallbackMethod.toString()).build();
     }
 
-    private CodeBlock buildBodyMono(ExecutableElement method, String fallbackCall, String superCall, String circuitBreakerName, String fieldManager) {
+    private CodeBlock buildBodyMono(ExecutableElement method, String superCall, String circuitBreakerName) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
-        final CodeBlock fallbackMethod = (fallbackCall.isEmpty())
-            ? CodeBlock.of("return Mono.error(e);")
-            : CodeBlock.of("return $L;", buildMethodCall(method, fallbackCall).toString());
+        final CodeBlock fallbackMethod = CodeBlock.of("return Mono.error(e);");
         final TypeMirror erasure = MethodUtils.getGenericType(method.getReturnType()).orElseThrow();
 
         return CodeBlock.builder().add("""
             var superCall = $L;
-            var circuitBreaker = $L.get("$L");
-            return Mono.fromRunnable(circuitBreaker::acquire)
-                     .switchIfEmpty(superCall.doOnSuccess((r) -> circuitBreaker.releaseOnSuccess()))
+            var _circuitBreaker = $L;
+            return Mono.fromRunnable(_circuitBreaker::acquire)
+                     .switchIfEmpty(superCall.doOnSuccess((r) -> _circuitBreaker.releaseOnSuccess()))
                      .cast($L.class)
                      .onErrorResume(e -> {
                          if (e instanceof ru.tinkoff.kora.resilient.circuitbreaker.CallNotPermittedException) {
                             $L
                          }
                              
-                         circuitBreaker.releaseOnError(e);
+                         _circuitBreaker.releaseOnError(e);
                          return Mono.error(e);
                      });
-                 """, superMethod.toString(), fieldManager, circuitBreakerName, erasure.toString(), fallbackMethod.toString()).build();
+                 """, superMethod.toString(), circuitBreakerName, erasure.toString(), fallbackMethod.toString()).build();
     }
 
-    private CodeBlock buildBodyFlux(ExecutableElement method, String fallbackCall, String superCall, String circuitBreakerName, String fieldManager) {
+    private CodeBlock buildBodyFlux(ExecutableElement method, String superCall, String circuitBreakerName) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
-        final CodeBlock fallbackMethod = (fallbackCall.isEmpty())
-            ? CodeBlock.of("return Flux.error(e);")
-            : CodeBlock.of("return $L;", buildMethodCall(method, fallbackCall).toString());
+        final CodeBlock fallbackMethod = CodeBlock.of("return Flux.error(e);");
         final TypeMirror erasure = MethodUtils.getGenericType(method.getReturnType()).orElseThrow();
 
         return CodeBlock.builder().add("""
             var superCall = $L;
-            var circuitBreaker = $L.get("$L");
+            var _circuitBreaker = $L;
 
-            return Flux.from(Mono.fromRunnable(circuitBreaker::acquire))
-                .switchIfEmpty(superCall.doOnComplete(circuitBreaker::releaseOnSuccess))
+            return Flux.from(Mono.fromRunnable(_circuitBreaker::acquire))
+                .switchIfEmpty(superCall.doOnComplete(_circuitBreaker::releaseOnSuccess))
                 .cast($L.class)
                 .onErrorResume(e -> {
                     if (e instanceof ru.tinkoff.kora.resilient.circuitbreaker.CallNotPermittedException) {
                         $L
                     }
-                        
-                    circuitBreaker.releaseOnError(e);
+                    
+                    _circuitBreaker.releaseOnError(e);
                     return Flux.error(e);
                 });
-            """, superMethod.toString(), fieldManager, circuitBreakerName, erasure.toString(), fallbackMethod.toString()).build();
+            """, superMethod.toString(), circuitBreakerName, erasure.toString(), fallbackMethod.toString()).build();
     }
 
     private CodeBlock buildMethodCall(ExecutableElement method, String call) {

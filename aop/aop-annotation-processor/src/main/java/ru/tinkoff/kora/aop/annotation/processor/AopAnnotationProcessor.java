@@ -110,6 +110,7 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
                 e.printError(this.processingEnv);
                 continue;
             }
+
             var packageElement = this.elements.getPackageOf(te);
             var javaFile = JavaFile.builder(packageElement.getQualifiedName().toString(), typeSpec).build();
             try {

@@ -40,7 +40,7 @@ class MonoManyCacheAopTests extends Assertions {
             service = (CacheableTargetMonoMany) serviceClass.getConstructors()[0].newInstance(manager);
             return service;
         } catch (Exception e) {
-            throw new IllegalStateException(e.getMessage(), e);
+            throw new IllegalStateException(e);
         }
     }
 

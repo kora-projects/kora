@@ -13,5 +13,8 @@ dependencies {
     compileOnly project(':database:database-common')
     compileOnly project(':scheduling:scheduling-common')
     compileOnly project(':resilient:resilient-circuitbreaker')
+    compileOnly project(':resilient:resilient-fallback')
+    compileOnly project(':resilient:resilient-retry')
+    compileOnly project(':resilient:resilient-timeout')
     compileOnly project(':cache:cache-common')
 }

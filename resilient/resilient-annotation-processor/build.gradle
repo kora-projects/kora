@@ -12,6 +12,9 @@ dependencies {
     testImplementation project(":kora-app-annotation-processor")
     testImplementation project(":test:test-logging")
     testImplementation project(":resilient:resilient-circuitbreaker")
+    testImplementation project(":resilient:resilient-retry")
+    testImplementation project(":resilient:resilient-timeout")
+    testImplementation project(":resilient:resilient-fallback")
     testImplementation "com.google.testing.compile:compile-testing:0.19"
 }
 

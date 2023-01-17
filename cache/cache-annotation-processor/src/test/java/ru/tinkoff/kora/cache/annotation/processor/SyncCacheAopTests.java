@@ -33,7 +33,7 @@ class SyncCacheAopTests extends Assertions {
             service = (CacheableTargetSync) serviceClass.getConstructors()[0].newInstance(manager);
             return service;
         } catch (Exception e) {
-            throw new IllegalStateException(e.getMessage(), e);
+            throw new IllegalStateException(e);
         }
     }
 

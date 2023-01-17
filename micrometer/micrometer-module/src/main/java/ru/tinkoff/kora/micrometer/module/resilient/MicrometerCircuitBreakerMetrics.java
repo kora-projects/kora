@@ -5,11 +5,10 @@ import io.micrometer.core.instrument.MeterRegistry;
 import ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreaker.State;
 import ru.tinkoff.kora.resilient.circuitbreaker.telemetry.CircuitBreakerMetrics;
 
+import javax.annotation.Nonnull;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import javax.annotation.Nonnull;
 
 public final class MicrometerCircuitBreakerMetrics implements CircuitBreakerMetrics {
 
