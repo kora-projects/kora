@@ -8,7 +8,7 @@ import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.database.annotation.processor.cassandra.CassandraRepositoryGenerator;
 import ru.tinkoff.kora.database.annotation.processor.jdbc.JdbcRepositoryGenerator;
-import ru.tinkoff.kora.database.annotation.processor.r2dbc.R2DbcRepositoryGenerator;
+import ru.tinkoff.kora.database.annotation.processor.r2dbc.R2dbcRepositoryGenerator;
 import ru.tinkoff.kora.database.annotation.processor.vertx.VertxRepositoryGenerator;
 
 import javax.annotation.Nullable;
@@ -33,7 +33,7 @@ public class RepositoryBuilder {
             new JdbcRepositoryGenerator(this.env),
             new VertxRepositoryGenerator(this.env),
             new CassandraRepositoryGenerator(this.env),
-            new R2DbcRepositoryGenerator(this.env)
+            new R2dbcRepositoryGenerator(this.env)
         );
     }
 

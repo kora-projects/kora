@@ -3,6 +3,7 @@ package ru.tinkoff.kora.database.annotation.processor.jdbc;
 import com.squareup.javapoet.*;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
 import ru.tinkoff.kora.annotation.processor.common.Visitors;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
@@ -125,12 +126,13 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
     public MethodSpec generate(ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters) {
         var batchParam = parameters.stream().filter(QueryParameter.BatchParameter.class::isInstance).findFirst().orElse(null);
         var sql = query.rawQuery();
-        for (var parameter : query.parameters().stream().sorted(Comparator.<QueryWithParameters.QueryParameter, Integer>comparing(p -> p.sqlParameterName().length()).reversed()).toList()) {
+        for (var parameter : query.parameters().stream().sorted(Comparator.<QueryWithParameters.QueryParameter>comparingInt(s -> s.sqlParameterName().length()).reversed()).toList()) {
             sql = sql.replace(":" + parameter.sqlParameterName(), "?");
         }
 
         var b = DbUtils.queryMethodBuilder(method, methodType);
-        if (CommonUtils.isMono(methodType.getReturnType())) {
+        final boolean isMono = CommonUtils.isMono(methodType.getReturnType());
+        if (isMono) {
             b.addCode("return $T.fromCompletionStage(() -> $T.supplyAsync(() -> {$>\n", Mono.class, CompletableFuture.class);
         }
         var connection = parameters.stream().filter(QueryParameter.ConnectionParameter.class::isInstance).findFirst()
@@ -153,7 +155,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             try (_conToClose; var _stmt = _conToUse.prepareStatement(_query.sql())) {$>
             """, connection, JdbcTypes.CONNECTION, DbUtils.QUERY_CONTEXT, query.rawQuery(), sql);
         b.addCode(StatementSetterGenerator.generate(method, query, parameters, batchParam));
-        if (methodType.getReturnType().getKind() == TypeKind.VOID) {
+        if (MethodUtils.isVoid(method)) {
             if (batchParam != null) {
                 b.addStatement("var _batchResult = _stmt.executeBatch()");
             } else {
@@ -162,6 +164,9 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                     .addStatement("var updateCount = _stmt.getUpdateCount()");
             }
             b.addStatement("_telemetry.close(null)");
+            if (isMono) {
+                b.addStatement("return null");
+            }
         } else if (batchParam != null) {
             b.addStatement("var _batchResult = _stmt.executeBatch()");
             b.addStatement("_telemetry.close(null)");
@@ -176,7 +181,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                 .addStatement("_telemetry.close(null)")
                 .addStatement("return new $T(_updateCount)", DbUtils.UPDATE_COUNT);
         } else {
-            var result = CommonUtils.isNullable(method) || method.getReturnType().getKind().isPrimitive()
+            var result = CommonUtils.isNullable(method) || method.getReturnType().getKind().isPrimitive() || isMono
                 ? CodeBlock.of("_result")
                 : CodeBlock.of("$T.requireNonNull(_result)", Objects.class);
             b.addCode("try (var _rs = _stmt.executeQuery()) {$>\n")
@@ -192,7 +197,8 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             .addCode("  _telemetry.close(e);\n")
             .addCode("  throw e;\n")
             .addCode("}\n");
-        if (CommonUtils.isMono(methodType.getReturnType())) {
+
+        if (isMono) {
             b.addCode("$<\n}));\n");
         }
         return b.build();
@@ -217,14 +223,10 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         constructorBuilder.addStatement("this._connectionFactory = _connectionFactory");
 
         var needThreadPool = queryMethods.stream().anyMatch(e -> CommonUtils.isMono(e.getReturnType()));
-        if (needThreadPool) {
+        if (needThreadPool && executorTag != null) {
             builder.addField(TypeName.get(Executor.class), "_executor", Modifier.PRIVATE, Modifier.FINAL);
             constructorBuilder.addStatement("this._executor = _executor");
-            if (executorTag != null) {
-                constructorBuilder.addParameter(ParameterSpec.builder(TypeName.get(Executor.class), "_executor").addAnnotation(AnnotationSpec.builder(Tag.class).addMember("value", executorTag).build()).build());
-            } else {
-                constructorBuilder.addParameter(ParameterSpec.builder(TypeName.get(Executor.class), "_executor").build());
-            }
+            constructorBuilder.addParameter(ParameterSpec.builder(TypeName.get(Executor.class), "_executor").addAnnotation(AnnotationSpec.builder(Tag.class).addMember("value", executorTag).build()).build());
         }
     }
 }

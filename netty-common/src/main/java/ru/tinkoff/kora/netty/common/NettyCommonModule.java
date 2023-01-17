@@ -24,6 +24,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 public interface NettyCommonModule {
+
     default LifecycleWrapper<EventLoopGroup> nettyEventLoopGroupLifecycle(@Tag(NettyCommonModule.class) @Nullable ThreadFactory threadFactory, @Tag(NettyCommonModule.class) @Nullable Integer size) {
         return new LifecycleWrapper<>(
             eventLoopGroup(threadFactory, size),
@@ -61,32 +62,41 @@ public interface NettyCommonModule {
         if (size == null) {
             size = NettyRuntime.availableProcessors() * 2;
         }
-        if (Epoll.isAvailable()) {
+
+        if (isClassPresent("io.netty.channel.epoll.Epoll") && Epoll.isAvailable()) {
             return new EpollEventLoopGroup(size, threadFactory);
-        }
-        if (KQueue.isAvailable()) {
+        } else if (isClassPresent("io.netty.channel.kqueue.KQueue") && KQueue.isAvailable()) {
             return new KQueueEventLoopGroup(size, threadFactory);
+        } else {
+            return new NioEventLoopGroup(size, threadFactory);
         }
-        return new NioEventLoopGroup(size, threadFactory);
+    }
+
+    private static boolean isClassPresent(String className) {
+        try {
+            return NettyCommonModule.class.getClassLoader().loadClass(className) != null;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
     }
 
     static Class<? extends Channel> channelType() {
-        if (Epoll.isAvailable()) {
+        if(isClassPresent("io.netty.channel.epoll.Epoll") && Epoll.isAvailable()) {
             return EpollSocketChannel.class;
-        }
-        if (KQueue.isAvailable()) {
+        } else if (isClassPresent("io.netty.channel.kqueue.KQueue") && KQueue.isAvailable()) {
             return KQueueSocketChannel.class;
+        } else {
+            return NioSocketChannel.class;
         }
-        return NioSocketChannel.class;
     }
 
     static Class<? extends ServerChannel> serverChannelType() {
-        if (Epoll.isAvailable()) {
+        if(isClassPresent("io.netty.channel.epoll.Epoll") && Epoll.isAvailable()) {
             return EpollServerSocketChannel.class;
-        }
-        if (KQueue.isAvailable()) {
+        } else if (isClassPresent("io.netty.channel.kqueue.KQueue") && KQueue.isAvailable()) {
             return KQueueServerSocketChannel.class;
+        } else {
+            return NioServerSocketChannel.class;
         }
-        return NioServerSocketChannel.class;
     }
 }

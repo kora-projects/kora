@@ -1,7 +1,7 @@
 dependencies {
-    api project(":common")
+    compileOnly "io.netty:netty-transport-native-kqueue:${libs.versions.netty.get()}:osx-x86_64"
+    compileOnly "io.netty:netty-transport-native-epoll:${libs.versions.netty.get()}:linux-x86_64"
 
+    api project(":common")
     api libs.bundles.netty
-    api "io.netty:netty-transport-native-kqueue:${libs.versions.netty.get()}:osx-x86_64"
-    api "io.netty:netty-transport-native-epoll:${libs.versions.netty.get()}:linux-x86_64"
 }
