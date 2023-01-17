@@ -2,19 +2,28 @@ package ru.tinkoff.kora.resilient.annotation.processor.aop;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import ru.tinkoff.kora.resilient.annotation.processor.aop.testdata.CircuitBreakerFallbackTarget;
-import ru.tinkoff.kora.resilient.annotation.processor.aop.testdata.CircuitBreakerTarget;
+import ru.tinkoff.kora.resilient.annotation.processor.aop.testdata.*;
 import ru.tinkoff.kora.resilient.circuitbreaker.CallNotPermittedException;
 
 import java.time.Duration;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class CircuitBreakerTests extends TestAppRunner {
+class CircuitBreakerTests extends AppRunner {
+
+    private CircuitBreakerTarget getService() {
+        final InitializedGraph graph = getGraph(AppWithConfig.class,
+            CircuitBreakerTarget.class,
+            RetryableTarget.class,
+            TimeoutTarget.class,
+            FallbackTarget.class);
+
+        return getServiceFromGraph(graph, CircuitBreakerTarget.class);
+    }
 
     @Test
     void syncCircuitBreaker() {
         // given
-        var service = getServicesFromGraph(CircuitBreakerTarget.class, CircuitBreakerFallbackTarget.class).first();
+        final CircuitBreakerTarget service = getService();
 
         // when
         try {
@@ -36,7 +45,7 @@ class CircuitBreakerTests extends TestAppRunner {
     @Test
     void monoCircuitBreaker() {
         // given
-        var service = getServicesFromGraph(CircuitBreakerTarget.class, CircuitBreakerFallbackTarget.class).first();
+        final CircuitBreakerTarget service = getService();
 
         // when
         try {
@@ -58,7 +67,7 @@ class CircuitBreakerTests extends TestAppRunner {
     @Test
     void fluxCircuitBreaker() {
         // given
-        var service = getServicesFromGraph(CircuitBreakerTarget.class, CircuitBreakerFallbackTarget.class).first();
+        final CircuitBreakerTarget service = getService();
 
         // when
         try {

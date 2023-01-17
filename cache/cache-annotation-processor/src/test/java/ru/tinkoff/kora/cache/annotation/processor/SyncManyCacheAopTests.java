@@ -39,7 +39,7 @@ class SyncManyCacheAopTests extends Assertions {
             service = (CacheableTargetSyncMany) serviceClass.getConstructors()[0].newInstance(manager, manager);
             return service;
         } catch (Exception e) {
-            throw new IllegalStateException(e.getMessage(), e);
+            throw new IllegalStateException(e);
         }
     }
 

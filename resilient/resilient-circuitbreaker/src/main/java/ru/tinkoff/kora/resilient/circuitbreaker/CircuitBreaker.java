@@ -2,7 +2,7 @@ package ru.tinkoff.kora.resilient.circuitbreaker;
 
 
 import javax.annotation.Nonnull;
-
+import java.util.concurrent.Callable;
 import java.util.function.Supplier;
 
 /**
@@ -33,23 +33,26 @@ public interface CircuitBreaker {
      * or throws {@link CallNotPermittedException} if not acquired
      * or fails with exception from {@link Supplier} if it occurred there
      *
-     * @param supplier to accept to execute for result
+     * @param callable to accept to execute for result
      * @param <T>      type of result
      * @return result after {@link #tryAcquire()} was successful or throws {@link CallNotPermittedException}
-     * @throws CallNotPermittedException
+     * @throws CallNotPermittedException when can't acquire
+     * @throws CallException             wraps callable exception if occurred
      */
-    <T> T accept(@Nonnull Supplier<T> supplier) throws CallNotPermittedException;
+    <T> T accept(@Nonnull Callable<T> callable) throws CallNotPermittedException, CallException;
 
     /**
      * Try to acquire {@link CircuitBreaker} and return result from {@link Supplier} or result from {@link Supplier} fallback
      * or fails with exception from {@link Supplier} if it occurred there
      *
-     * @param supplier to accept to execute for result
+     * @param callable to accept to execute for result
      * @param fallback to execute if {@link #tryAcquire()} failed
      * @param <T>      type of result
      * @return result after {@link #tryAcquire()} was successful or return fallback result
+     * @throws CallException         wraps callable exception if occurred
+     * @throws CallFallbackException wraps fallback callable exception if occurred
      */
-    <T> T accept(@Nonnull Supplier<T> supplier, @Nonnull Supplier<T> fallback);
+    <T> T accept(@Nonnull Callable<T> callable, @Nonnull Callable<T> fallback) throws CallFallbackException, CallException;
 
     /**
      * Try to obtain a permission to execute a call. If a call is not permitted, the number of not

@@ -5,19 +5,30 @@ import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import ru.tinkoff.kora.resilient.circuitbreaker.CallNotPermittedException
-import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.CircuitBreakerFallbackTarget
-import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.CircuitBreakerTarget
+import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @KspExperimental
-class CircuitBreakerTests : TestAppRunner() {
+class CircuitBreakerTests : AppRunner() {
 
+    private inline fun <reified T> getService(): T {
+        val graph = getGraphForApp(
+            AppWithConfig::class,
+            listOf(
+                CircuitBreakerTarget::class,
+                FallbackTarget::class,
+                RetryableTarget::class,
+                TimeoutTarget::class,
+            )
+        )
+
+        return getServiceFromGraph(graph)
+    }
 
     @Test
     fun syncCircuitBreaker() {
         // given
-        val services: Pair<CircuitBreakerTarget, CircuitBreakerFallbackTarget> = getServicesFromGraph()
-        val service = services.first
+        val service = getService<CircuitBreakerTarget>()
 
         // when
         try {
@@ -39,8 +50,7 @@ class CircuitBreakerTests : TestAppRunner() {
     @Test
     fun suspendCircuitBreaker() {
         // given
-        val services: Pair<CircuitBreakerTarget, CircuitBreakerFallbackTarget> = getServicesFromGraph()
-        val service = services.first
+        val service = getService<CircuitBreakerTarget>()
 
         // when
         try {
@@ -62,8 +72,7 @@ class CircuitBreakerTests : TestAppRunner() {
     @Test
     fun flowCircuitBreaker() {
         // given
-        val services: Pair<CircuitBreakerTarget, CircuitBreakerFallbackTarget> = getServicesFromGraph()
-        val service = services.first
+        val service = getService<CircuitBreakerTarget>()
 
         // when
         try {

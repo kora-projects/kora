@@ -34,7 +34,7 @@ class MonoCacheAopTests extends Assertions {
             service = (CacheableTargetMono) serviceClass.getConstructors()[0].newInstance(manager);
             return service;
         } catch (Exception e) {
-            throw new IllegalStateException(e.getMessage(), e);
+            throw new IllegalStateException(e);
         }
     }
 
