@@ -13,7 +13,7 @@ public interface VertxRowSetMapper<T> extends Mapping.MappingFunction {
 
     static <T> VertxRowSetMapper<Optional<T>> optionalRowSetMapper(VertxRowMapper<T> rowMapper) {
         return rows -> {
-            if (rows.rowCount() < 1) {
+            if (rows.size() < 1) {
                 return Optional.empty();
             }
             var row = rows.iterator().next();
@@ -23,7 +23,7 @@ public interface VertxRowSetMapper<T> extends Mapping.MappingFunction {
 
     static <T> VertxRowSetMapper<List<T>> listRowSetMapper(VertxRowMapper<T> rowMapper) {
         return rows -> {
-            var result = new ArrayList<T>(rows.rowCount());
+            var result = new ArrayList<T>(rows.size());
             for (var row : rows) {
                 var value = rowMapper.apply(row);
                 result.add(value);
@@ -34,7 +34,7 @@ public interface VertxRowSetMapper<T> extends Mapping.MappingFunction {
 
     static <T> VertxRowSetMapper<T> singleRowSetMapper(VertxRowMapper<T> rowMapper) {
         return rows -> {
-            if (rows.rowCount() < 1) {
+            if (rows.size() < 1) {
                 return null;
             }
             var row = rows.iterator().next();

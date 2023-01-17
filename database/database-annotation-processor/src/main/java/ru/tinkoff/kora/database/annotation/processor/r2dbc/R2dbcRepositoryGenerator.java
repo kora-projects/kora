@@ -4,7 +4,9 @@ import com.squareup.javapoet.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
 import ru.tinkoff.kora.annotation.processor.common.Visitors;
+import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
 import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
@@ -26,13 +28,13 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.*;
 
-public final class R2DbcRepositoryGenerator implements RepositoryGenerator {
+public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
     private final TypeMirror repositoryInterface;
     private final Types types;
     private final Elements elements;
     private final Filer filer;
 
-    public R2DbcRepositoryGenerator(ProcessingEnvironment processingEnv) {
+    public R2dbcRepositoryGenerator(ProcessingEnvironment processingEnv) {
         var repository = processingEnv.getElementUtils().getTypeElement(R2dbcTypes.R2DBC_REPOSITORY.canonicalName());
         if (repository == null) {
             this.repositoryInterface = null;
@@ -56,6 +58,7 @@ public final class R2DbcRepositoryGenerator implements RepositoryGenerator {
         var repositoryType = (DeclaredType) repositoryElement.asType();
         var queryMethods = DbUtils.findQueryMethods(this.types, this.elements, repositoryElement);
         this.enrichWithExecutor(repositoryElement, type, constructor);
+
         for (var method : queryMethods) {
             var methodType = (ExecutableType) this.types.asMemberOf(repositoryType, method);
             var parameters = QueryParameterParser.parse(this.types, R2dbcTypes.CONNECTION, method, methodType);
@@ -80,32 +83,33 @@ public final class R2DbcRepositoryGenerator implements RepositoryGenerator {
 
     private MethodSpec generate(ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters) {
         var sql = query.rawQuery();
-        {
-            var params = new ArrayList<Map.Entry<QueryWithParameters.QueryParameter, Integer>>(query.parameters().size());
-            for (int i = 0; i < query.parameters().size(); i++) {
-                var parameter = query.parameters().get(i);
-                params.add(Map.entry(parameter, i));
-            }
-            for (var parameter : params.stream().sorted(Comparator.<Map.Entry<QueryWithParameters.QueryParameter, Integer>, Integer>comparing(p -> p.getKey().sqlParameterName().length()).reversed()).toList()) {
-                sql = sql.replace(":" + parameter.getKey().sqlParameterName(), "$" + (parameter.getValue() + 1));
+        for (var parameter : query.parameters().stream().sorted(Comparator.<QueryWithParameters.QueryParameter>comparingInt(s -> s.sqlParameterName().length()).reversed()).toList()) {
+            for (Integer sqlIndex : parameter.sqlIndexes()) {
+                sql = sql.replace(":" + parameter.sqlParameterName(), "$" + (sqlIndex + 1));
             }
         }
+
         var b = DbUtils.queryMethodBuilder(method, methodType);
         b.addStatement(CodeBlock.of("var _query = new $T(\n  $S,\n  $S\n)", DbUtils.QUERY_CONTEXT, query.rawQuery(), sql));
         var batchParam = parameters.stream().filter(QueryParameter.BatchParameter.class::isInstance).findFirst().orElse(null);
-        var returnType = methodType.getReturnType();
-        var isFlux = CommonUtils.isFlux(returnType);
-        var isMono = CommonUtils.isMono(returnType);
+        var isFlux = CommonUtils.isFlux(methodType.getReturnType());
+        var isMono = CommonUtils.isMono(methodType.getReturnType());
+
+        var returnType = isMono || isFlux
+            ? ((DeclaredType) method.getReturnType()).getTypeArguments().get(0)
+            : method.getReturnType();
+
         b.addCode("var _result = ");
         b.addCode("$T.deferContextual(_reactorCtx -> {$>\n", isFlux ? Flux.class : Mono.class);
-        b.addCode("var _telemetry = this._connectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.Reactor.current(_reactorCtx), _query);\n");
+        b.addCode("var _telemetry = this._connectionFactory.telemetry().createContext($T.Reactor.current(_reactorCtx), _query);\n", Context.class);
         b.addCode("return this._connectionFactory.withConnection$L(_con -> {$>\n", isFlux ? "Flux" : "");
         b.addCode("var _stmt = _con.createStatement(_query.sql());\n");
 
         R2dbcStatementSetterGenerator.generate(b, method, query, parameters, batchParam);
-
         b.addCode("var _flux = $T.<$T>from(_stmt.execute());\n", Flux.class, R2dbcTypes.RESULT);
+
         b.addCode("return $L.apply(_flux)\n", DbUtils.resultMapperName(method));
+
         b.addCode("""
               .doOnEach(_s -> {
                 if (_s.isOnComplete()) {
@@ -128,35 +132,32 @@ public final class R2DbcRepositoryGenerator implements RepositoryGenerator {
     }
 
     private Optional<DbUtils.Mapper> parseResultMappers(ExecutableElement method, List<QueryParameter> parameters, ExecutableType methodType) {
+        var returnType = methodType.getReturnType();
+        final boolean isFlux = CommonUtils.isFlux(returnType);
+        final boolean isMono = CommonUtils.isMono(returnType);
         var mapperName = DbUtils.resultMapperName(method);
         for (var parameter : parameters) {
             if (parameter instanceof QueryParameter.BatchParameter) {
-                if (method.getReturnType().getKind() == TypeKind.VOID) {
+                if(MethodUtils.isVoid(parameter.type())) {
                     return Optional.empty();
                 }
+
                 var type = ParameterizedTypeName.get(R2dbcTypes.RESULT_FLUX_MAPPER, TypeName.get(Void.class), TypeName.get(methodType.getReturnType()));
-                return Optional.of(new DbUtils.Mapper(
-                    type, mapperName
-                ));
+                return Optional.of(new DbUtils.Mapper(type, mapperName));
             }
         }
-        var returnType = methodType.getReturnType();
+
         var mappings = CommonUtils.parseMapping(method);
         var resultFluxMapper = mappings.getMapping(R2dbcTypes.RESULT_FLUX_MAPPER);
         var rowMapper = mappings.getMapping(R2dbcTypes.ROW_MAPPER);
-        if (CommonUtils.isFlux(returnType)) {
-            var fluxParam = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
-            var mapperType = ParameterizedTypeName.get(R2dbcTypes.RESULT_FLUX_MAPPER, TypeName.get(fluxParam), TypeName.get(returnType));
+
+        if (isMono || isFlux) {
+            var publisherParam = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
+            var mapperType = ParameterizedTypeName.get(R2dbcTypes.RESULT_FLUX_MAPPER, TypeName.get(publisherParam), TypeName.get(returnType));
             if (rowMapper != null) {
-                return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.flux($L)", R2dbcTypes.RESULT_FLUX_MAPPER, c)));
-            }
-            return Optional.of(new DbUtils.Mapper(mapperType, mapperName));
-        }
-        if (CommonUtils.isMono(returnType)) {
-            var monoParam = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
-            var mapperType = ParameterizedTypeName.get(R2dbcTypes.RESULT_FLUX_MAPPER, TypeName.get(monoParam), TypeName.get(returnType));
-            if (rowMapper != null) {
-                if (CommonUtils.isList(monoParam)) {
+                if (isFlux) {
+                    return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.flux($L)", R2dbcTypes.RESULT_FLUX_MAPPER, c)));
+                } else if (CommonUtils.isList(publisherParam)) {
                     return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.monoList($L)", R2dbcTypes.RESULT_FLUX_MAPPER, c)));
                 } else {
                     return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.mono($L)", R2dbcTypes.RESULT_FLUX_MAPPER, c)));
@@ -164,14 +165,13 @@ public final class R2DbcRepositoryGenerator implements RepositoryGenerator {
             }
             return Optional.of(new DbUtils.Mapper(mapperType, mapperName));
         }
-        if (returnType.getKind() == TypeKind.VOID) {
-            return Optional.empty();
-        }
+
         var monoParam = TypeName.get(returnType).box();
         var mapperType = ParameterizedTypeName.get(R2dbcTypes.RESULT_FLUX_MAPPER, monoParam, ParameterizedTypeName.get(ClassName.get(Mono.class), monoParam));
         if (resultFluxMapper != null) {
             return Optional.of(new DbUtils.Mapper(resultFluxMapper.mapperClass(), mapperType, mapperName));
         }
+
         if (rowMapper != null) {
             if (CommonUtils.isList(returnType)) {
                 return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.listResultFluxMapper($L)", R2dbcTypes.RESULT_FLUX_MAPPER, c)));

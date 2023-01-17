@@ -39,7 +39,7 @@ public record DbEntity(TypeMirror typeMirror, TypeElement typeElement, EntityTyp
     private static DbEntity parseRecordEntity(TypeElement typeElement) {
         var nameConverter = CommonUtils.getNameConverter(typeElement);
         var fields = typeElement.getEnclosedElements().stream()
-            .filter(e -> e.getKind() == ElementKind.RECORD_COMPONENT)
+            .filter(e -> e.getKind() == ElementKind.FIELD)
             .map(e -> {
                 var element = (VariableElement) e;
                 var type = element.asType();

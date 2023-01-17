@@ -40,7 +40,7 @@ public class R2dbcTypesExtension implements KoraExtension {
             fd -> {
                 var nativeType = R2dbcNativeTypes.findAndBox(TypeName.get(fd.type()));
                 if (nativeType != null) {
-                    return CodeBlock.of("_row.get($S, $T.class)", fd.fieldName(), nativeType);
+                    return CodeBlock.of("_row.get($S, $T.class)", fd.columnName(), nativeType);
                 }
                 return null;
             },
@@ -76,6 +76,7 @@ public class R2dbcTypesExtension implements KoraExtension {
         if (entity == null) {
             return null;
         }
+
         var mapperName = CommonUtils.getOuterClassesAsPrefix(entity.typeElement()) + entity.typeElement().getSimpleName() + "R2dbcRowMapper";
         var packageElement = this.elements.getPackageOf(entity.typeElement());
 
@@ -83,14 +84,15 @@ public class R2dbcTypesExtension implements KoraExtension {
             var maybeGenerated = this.elements.getTypeElement(packageElement.getQualifiedName() + "." + mapperName);
             if (maybeGenerated != null) {
                 var constructors = CommonUtils.findConstructors(maybeGenerated, m -> m.contains(Modifier.PUBLIC));
-                if (constructors.size() != 1) throw new IllegalStateException();
+                if (constructors.size() != 1) {
+                    throw new IllegalStateException();
+                }
                 return ExtensionResult.fromExecutable(constructors.get(0));
             }
+
             var type = TypeSpec.classBuilder(mapperName)
                 .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", "$S", R2dbcTypesExtension.class.getCanonicalName()).build())
-                .addSuperinterface(ParameterizedTypeName.get(
-                    R2dbcTypes.ROW_MAPPER, TypeName.get(entity.typeMirror())
-                ))
+                .addSuperinterface(ParameterizedTypeName.get(R2dbcTypes.ROW_MAPPER, TypeName.get(entity.typeMirror())))
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
             var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
 
@@ -99,6 +101,7 @@ public class R2dbcTypesExtension implements KoraExtension {
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addParameter(R2dbcTypes.ROW, "_row")
                 .returns(TypeName.get(entity.typeMirror()));
+
             var read = this.entityHelper.readEntity("_result", entity);
             read.enrich(type, constructor);
             apply.addCode(read.block());
