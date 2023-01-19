@@ -1,15 +1,19 @@
 package ru.tinkoff.kora.database.vertx;
 
+import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.SqlConnection;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 
+import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 public interface VertxConnectionFactory {
-    Mono<SqlConnection> currentConnection();
+    SqlConnection currentConnection();
 
-    Mono<SqlConnection> newConnection();
+    CompletionStage<SqlConnection> newConnection();
+
+    Pool pool();
 
     DataBaseTelemetry telemetry();
 

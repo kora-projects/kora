@@ -1,6 +1,8 @@
 package ru.tinkoff.kora.database.symbol.processor.vertx.repository
 
 import ru.tinkoff.kora.common.Mapping
+import ru.tinkoff.kora.database.common.UpdateCount
+import ru.tinkoff.kora.database.common.annotation.Batch
 import ru.tinkoff.kora.database.common.annotation.Query
 import ru.tinkoff.kora.database.common.annotation.Repository
 import ru.tinkoff.kora.database.symbol.processor.entity.TestEntity
@@ -38,4 +40,10 @@ interface AllowedResultsRepository : VertxRepository {
     @Query("SELECT test")
     @Mapping(TestEntityVertxRowMapperNonNull::class)
     fun returnListWithRowMapper(): List<TestEntity>
+
+    @Query("INSERT INTO test(test) VALUES (:param)")
+    fun returnBatchUpdateCount(@Batch param: List<String>): UpdateCount
+
+    @Query("INSERT INTO test(test) VALUES (:param)")
+    fun returnBatchUnit(@Batch param: List<String>)
 }

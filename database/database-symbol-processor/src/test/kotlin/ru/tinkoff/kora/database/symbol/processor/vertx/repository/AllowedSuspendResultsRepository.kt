@@ -2,6 +2,8 @@ package ru.tinkoff.kora.database.symbol.processor.vertx.repository
 
 import kotlinx.coroutines.flow.Flow
 import ru.tinkoff.kora.common.Mapping
+import ru.tinkoff.kora.database.common.UpdateCount
+import ru.tinkoff.kora.database.common.annotation.Batch
 import ru.tinkoff.kora.database.common.annotation.Query
 import ru.tinkoff.kora.database.common.annotation.Repository
 import ru.tinkoff.kora.database.symbol.processor.entity.TestEntity
@@ -46,4 +48,10 @@ interface AllowedSuspendResultsRepository : VertxRepository {
     @Query("SELECT test")
     @Mapping(TestEntityVertxRowMapperNonNull::class)
     fun returnObjectFlowWithRowMapper(): Flow<TestEntity>
+
+    @Query("INSERT INTO test(test) VALUES (:param)")
+    suspend fun returnBatchUpdateCount(@Batch param: List<String>): UpdateCount
+
+    @Query("INSERT INTO test(test) VALUES (:param)")
+    suspend fun returnBatchUnit(@Batch param: List<String>)
 }

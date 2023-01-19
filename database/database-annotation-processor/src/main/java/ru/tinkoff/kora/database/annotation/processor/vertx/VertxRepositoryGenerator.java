@@ -1,8 +1,6 @@
 package ru.tinkoff.kora.database.annotation.processor.vertx;
 
 import com.squareup.javapoet.*;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.Visitors;
 import ru.tinkoff.kora.common.Tag;
@@ -25,12 +23,14 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.*;
+import java.util.concurrent.CompletionStage;
 
 public final class VertxRepositoryGenerator implements RepositoryGenerator {
     private final TypeMirror repositoryInterface;
     private final Types types;
     private final Elements elements;
     private final Filer filer;
+    private final DeclaredType completionStageType;
 
     public VertxRepositoryGenerator(ProcessingEnvironment processingEnv) {
         var repository = processingEnv.getElementUtils().getTypeElement(VertxTypes.REPOSITORY.canonicalName());
@@ -42,6 +42,10 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
         this.types = processingEnv.getTypeUtils();
         this.elements = processingEnv.getElementUtils();
         this.filer = processingEnv.getFiler();
+        this.completionStageType = this.types.getDeclaredType(
+            this.elements.getTypeElement(CompletionStage.class.getCanonicalName()),
+            this.types.getWildcardType(null, null)
+        );
     }
 
     @Override
@@ -57,7 +61,7 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
         this.enrichWithExecutor(repositoryElement, type, constructor, queryMethods);
         for (var method : queryMethods) {
             var methodType = (ExecutableType) this.types.asMemberOf(repositoryType, method);
-            var parameters = QueryParameterParser.parse(this.types, VertxTypes.CONNECTION, method, methodType);
+            var parameters = QueryParameterParser.parse(this.types, List.of(VertxTypes.CONNECTION, VertxTypes.SQL_CLIENT), method, methodType);
             var queryAnnotation = CommonUtils.findDirectAnnotation(method, DbUtils.QUERY_ANNOTATION);
             var queryString = CommonUtils.parseAnnotationValueWithoutDefault(queryAnnotation, "value").toString();
             var query = QueryWithParameters.parse(filer, queryString, parameters);
@@ -92,33 +96,73 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
         var b = DbUtils.queryMethodBuilder(method, methodType);
         b.addStatement(CodeBlock.of("var _query = new $T(\n  $S,\n  $S\n)", DbUtils.QUERY_CONTEXT, query.rawQuery(), sql));
         var batchParam = parameters.stream().filter(QueryParameter.BatchParameter.class::isInstance).findFirst().orElse(null);
+        var connectionParam = parameters.stream().filter(QueryParameter.ConnectionParameter.class::isInstance).findFirst().orElse(null);
         var returnType = methodType.getReturnType();
         var isFlux = CommonUtils.isFlux(returnType);
         var isMono = CommonUtils.isMono(returnType);
+        var isCompletionStage = this.isCompletionStage(returnType);
+        var isVoid = isVoid(returnType);
+
+        ParametersToTupleBuilder.generate(b, query, method, parameters, batchParam);
+        var resultMapper = isVoid
+            ? CodeBlock.of("(rs) -> null")
+            : CodeBlock.of("$L", DbUtils.resultMapperName(method));
         if (returnType.getKind() != TypeKind.VOID) {
             b.addCode("return ");
         }
-
-        b.addCode("$T.deferContextual(_reactorCtx -> {$>\n", isFlux ? Flux.class : Mono.class);
-        ParametersToTupleBuilder.generate(b, query, method, parameters, batchParam);
         if (batchParam != null) {
-            b.addCode("return $T.batch(this._connectionFactory, _query, _batchParams);\n", VertxTypes.REPOSITORY_HELPER);
+            if (isCompletionStage) {
+                if (connectionParam == null) {
+                    b.addCode("$T.batchCompletionStage(this._connectionFactory, _query, _batchParams)\n", VertxTypes.REPOSITORY_HELPER);
+                } else {
+                    b.addCode("$T.batchCompletionStage($N, this._connectionFactory.telemetry(), _query, _batchParams)\n", VertxTypes.REPOSITORY_HELPER, connectionParam.name());
+                }
+                if (isVoid) {
+                    b.addCode("  .thenApply(v -> (Void) null)\n");
+                }
+            } else {
+                if (connectionParam == null) {
+                    b.addCode("$T.batchMono(this._connectionFactory, _query, _batchParams)\n", VertxTypes.REPOSITORY_HELPER);
+                } else {
+                    b.addCode("$T.batchMono($N, this._connectionFactory.telemetry(), _query, _batchParams)\n", VertxTypes.REPOSITORY_HELPER, connectionParam.name());
+                }
+                if (isVoid) {
+                    b.addCode("  .then()\n");
+                }
+            }
         } else if (isFlux) {
-            b.addCode("return $T.flux(this._connectionFactory, _query, _tuple, $L);\n", VertxTypes.REPOSITORY_HELPER, DbUtils.resultMapperName(method));
+            if (connectionParam == null) {
+                b.addCode("$T.flux(this._connectionFactory, _query, _tuple, $L)\n", VertxTypes.REPOSITORY_HELPER, DbUtils.resultMapperName(method));
+            } else {
+                b.addCode("$T.flux($N, this._connectionFactory.telemetry(), _query, _tuple, $L)\n", VertxTypes.REPOSITORY_HELPER, connectionParam.name(), DbUtils.resultMapperName(method));
+            }
+        } else if (isMono) {
+            if (connectionParam == null) {
+                b.addCode("$T.mono(this._connectionFactory, _query, _tuple, $L)\n", VertxTypes.REPOSITORY_HELPER, resultMapper);
+            } else {
+                b.addCode("$T.mono($N, this._connectionFactory.telemetry(), _query, _tuple, $L)\n", VertxTypes.REPOSITORY_HELPER, connectionParam.name(), resultMapper);
+            }
         } else {
-            b.addCode("return $T.mono(this._connectionFactory, _query, _tuple, $L);\n", VertxTypes.REPOSITORY_HELPER, DbUtils.resultMapperName(method));
+            if (connectionParam == null) {
+                b.addCode("$T.completionStage(this._connectionFactory, _query, _tuple, $L)\n", VertxTypes.REPOSITORY_HELPER, resultMapper);
+            } else {
+                b.addCode("$T.completionStage($N, this._connectionFactory.telemetry(), _query, _tuple, $L)\n", VertxTypes.REPOSITORY_HELPER, connectionParam.name(), resultMapper);
+            }
         }
-        b.addCode("$<\n})");
         if (isFlux) {
             b.addCode(";\n");
         } else if (isMono) {
             b.addCode(";\n");
+        } else if (isCompletionStage) {
+            if (isVoid) {
+                b.addCode("  .thenAccept(v -> {})");
+            }
+            b.addCode(";\n");
         } else {
-            b.addCode(".block();\n");
+            b.addCode("  .toCompletableFuture().join();\n");
         }
         return b.build();
     }
-
 
     private Optional<DbUtils.Mapper> parseResultMappers(ExecutableElement method, List<QueryParameter> parameters, ExecutableType methodType) {
         for (var parameter : parameters) {
@@ -127,6 +171,9 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
             }
         }
         var returnType = methodType.getReturnType();
+        if (isVoid(returnType)) {
+            return Optional.empty();
+        }
         var mapperName = DbUtils.resultMapperName(method);
         var mappings = CommonUtils.parseMapping(method);
         var rowSetMapper = mappings.getMapping(VertxTypes.ROW_SET_MAPPER);
@@ -139,7 +186,7 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
             }
             return Optional.of(new DbUtils.Mapper(mapperType, mapperName));
         }
-        if (CommonUtils.isMono(returnType)) {
+        if (CommonUtils.isMono(returnType) || this.isCompletionStage(returnType)) {
             var monoParam = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
             var mapperType = ParameterizedTypeName.get(VertxTypes.ROW_SET_MAPPER, TypeName.get(monoParam));
             if (rowSetMapper != null) {
@@ -187,5 +234,16 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
             constructorBuilder.addParameter(VertxTypes.CONNECTION_FACTORY, "_connectionFactory");
         }
         constructorBuilder.addStatement("this._connectionFactory = _connectionFactory");
+    }
+
+    private boolean isCompletionStage(TypeMirror returnType) {
+        return this.types.isAssignable(returnType, this.completionStageType);
+    }
+
+    private boolean isVoid(TypeMirror tm) {
+        if (isCompletionStage(tm) || CommonUtils.isMono(tm)) {
+            tm = Visitors.visitDeclaredType(tm, dt -> dt.getTypeArguments().get(0));
+        }
+        return tm.getKind() == TypeKind.NONE || tm.toString().equals("java.lang.Void");
     }
 }

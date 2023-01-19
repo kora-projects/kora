@@ -79,7 +79,7 @@ public abstract class AbstractAnnotationProcessorTest {
                 if (classStart < 14) {
                     classStart = s.indexOf("public enum ") + 12;
                 }
-                var classEnd = s.indexOf(" {", classStart);
+                var classEnd = s.indexOf(" ", classStart + 1);
                 var className = s.substring(classStart, classEnd);
                 return new ByteArrayJavaFileObject(JavaFileObject.Kind.SOURCE, testPackage + "." + className, s.getBytes(StandardCharsets.UTF_8));
             })
