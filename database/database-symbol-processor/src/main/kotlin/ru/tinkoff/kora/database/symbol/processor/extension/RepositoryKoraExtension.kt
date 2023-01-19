@@ -43,7 +43,7 @@ class RepositoryKoraExtension(private val kspLogger: KSPLogger) : KoraExtension 
             if (aopProxyElement == null) {
                 return@lambda ExtensionResult.RequiresCompilingResult
             }
-            val constructor = repositoryElement.getConstructors().filter { it.isPublic() }.firstOrNull()
+            val constructor = aopProxyElement.getConstructors().filter { it.isPublic() }.firstOrNull()
             if (constructor == null) {
                 throw IllegalStateException()
             }
