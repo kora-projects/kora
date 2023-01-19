@@ -4,7 +4,8 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 
 object VertxTypes {
-    val connection = ClassName("io.vertx.sqlclient", "SqlConnection")
+    val sqlConnection = ClassName("io.vertx.sqlclient", "SqlConnection")
+    val sqlClient = ClassName("io.vertx.sqlclient", "SqlClient")
     val row = ClassName("io.vertx.sqlclient", "Row")
     val tuple = ClassName("io.vertx.sqlclient", "Tuple")
     val arrayTuple = ClassName("io.vertx.sqlclient.impl", "ArrayTuple")

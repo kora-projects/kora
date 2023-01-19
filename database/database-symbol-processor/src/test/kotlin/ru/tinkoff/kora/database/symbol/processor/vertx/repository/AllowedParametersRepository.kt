@@ -1,5 +1,7 @@
 package ru.tinkoff.kora.database.symbol.processor.vertx.repository
 
+import io.vertx.sqlclient.SqlClient
+import io.vertx.sqlclient.SqlConnection
 import kotlinx.coroutines.flow.Flow
 import ru.tinkoff.kora.database.common.annotation.Batch
 import ru.tinkoff.kora.database.common.annotation.Query
@@ -91,4 +93,16 @@ interface AllowedParametersRepository : VertxRepository {
     """
     )
     fun allNativeParametersDto(entity: AllNativeTypesEntity?)
+
+    @Query("UPDATE table SET test = :test")
+    fun sqlConnectionParam(sqlConnection: SqlConnection)
+
+    @Query("UPDATE table SET test = :test")
+    fun sqlClientParam(sqlClient: SqlClient)
+
+    @Query("UPDATE table SET test = 'test' WHERE id = :param")
+    fun sqlConnectionParamWithBatch(sqlConnection: SqlConnection, @Batch param: List<String>)
+
+    @Query("UPDATE table SET test = 'test' WHERE id = :param")
+    fun sqlClientParamWithBatch(sqlClient: SqlClient, @Batch param: List<String>)
 }

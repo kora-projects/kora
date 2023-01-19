@@ -7,7 +7,6 @@ import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
-import ru.tinkoff.kora.database.annotation.processor.jdbc.JdbcTypes;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
@@ -21,19 +20,29 @@ import java.util.List;
 public final class QueryParameterParser {
 
     public static List<QueryParameter> parse(Types types, ClassName connectionType, ExecutableElement method, ExecutableType methodType) {
+        return parse(types, List.of(connectionType), method, methodType);
+    }
+
+    public static List<QueryParameter> parse(Types types, List<ClassName> connectionTypes, ExecutableElement method, ExecutableType methodType) {
         var result = new ArrayList<QueryParameter>(method.getParameters().size());
         for (int i = 0; i < method.getParameters().size(); i++) {
-            var parameter = QueryParameterParser.parse(types, method.getParameters().get(i), methodType.getParameterTypes().get(i), connectionType);
+            var parameter = QueryParameterParser.parse(types, method.getParameters().get(i), methodType.getParameterTypes().get(i), connectionTypes);
             result.add(parameter);
         }
         return result;
     }
 
     public static QueryParameter parse(Types types, VariableElement parameter, TypeMirror type, ClassName connectionType) {
+        return parse(types, parameter, type, List.of(connectionType));
+    }
+
+    public static QueryParameter parse(Types types, VariableElement parameter, TypeMirror type, List<ClassName> connectionTypes) {
         var name = parameter.getSimpleName().toString();
         var typeName = TypeName.get(type);
-        if (connectionType.equals(typeName)) {
-            return new QueryParameter.ConnectionParameter(name, type, parameter);
+        for (var connectionType : connectionTypes) {
+            if (connectionType.equals(typeName)) {
+                return new QueryParameter.ConnectionParameter(name, type, parameter);
+            }
         }
         var batch = CommonUtils.findDirectAnnotation(parameter, DbUtils.BATCH_ANNOTATION);
         if (batch != null) {

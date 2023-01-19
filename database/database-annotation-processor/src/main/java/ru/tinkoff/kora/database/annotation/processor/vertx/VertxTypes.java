@@ -5,6 +5,7 @@ import com.squareup.javapoet.ParameterizedTypeName;
 
 public class VertxTypes {
     public static final ClassName CONNECTION = ClassName.get("io.vertx.sqlclient", "SqlConnection");
+    public static final ClassName SQL_CLIENT = ClassName.get("io.vertx.sqlclient", "SqlClient");
     public static final ClassName ROW = ClassName.get("io.vertx.sqlclient", "Row");
     public static final ClassName TUPLE = ClassName.get("io.vertx.sqlclient", "Tuple");
     public static final ParameterizedTypeName ROW_SET = ParameterizedTypeName.get(

@@ -24,6 +24,7 @@ dependencies {
     testImplementation project(':database:database-cassandra')
     testImplementation(libs.kotlin.stdlib.lib)
     testImplementation(libs.kotlin.coroutines.reactor)
+    testImplementation(libs.kotlin.coroutines.jdk8)
 }
 
 apply from:'../../in-test-generated.gradle'

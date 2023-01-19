@@ -17,6 +17,7 @@ import ru.tinkoff.kora.database.vertx.VertxConnectionFactory;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -95,7 +96,7 @@ public class MockVertxExecutor implements VertxConnectionFactory {
                 })
                 .toArray(ColumnDescriptor[]::new);
             var row = new RowImpl(
-                new RowDesc(labels){}
+                new RowDesc(labels) {}
             );
             for (var mockColumn : mockRow) {
                 row.addValue(mockColumn.value());
@@ -105,12 +106,17 @@ public class MockVertxExecutor implements VertxConnectionFactory {
     }
 
     @Override
-    public Mono<SqlConnection> currentConnection() {
-        return Mono.just(connection);
+    public SqlConnection currentConnection() {
+        return connection;
     }
 
     @Override
-    public Mono<SqlConnection> newConnection() {
+    public CompletionStage<SqlConnection> newConnection() {
+        return null;
+    }
+
+    @Override
+    public Pool pool() {
         return null;
     }
 

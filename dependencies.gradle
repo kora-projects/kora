@@ -54,6 +54,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
 
             library('kotlin-coroutines-core', 'org.jetbrains.kotlinx', 'kotlinx-coroutines-core').versionRef('kotlin-coroutines')
             library('kotlin-coroutines-reactor', 'org.jetbrains.kotlinx', 'kotlinx-coroutines-reactor').versionRef('kotlin-coroutines')
+            library('kotlin-coroutines-jdk8', 'org.jetbrains.kotlinx', 'kotlinx-coroutines-jdk8').versionRef('kotlin-coroutines')
 
             library('jackson-core', 'com.fasterxml.jackson.core', 'jackson-core').versionRef('jackson')
             library('jackson-databind', 'com.fasterxml.jackson.core', 'jackson-databind').versionRef('jackson')

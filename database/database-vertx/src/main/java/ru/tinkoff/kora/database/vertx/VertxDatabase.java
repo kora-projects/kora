@@ -14,6 +14,7 @@ import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory;
 import ru.tinkoff.kora.vertx.common.VertxUtil;
 
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
@@ -39,29 +40,19 @@ public class VertxDatabase implements Lifecycle, Wrapped<Pool>, VertxConnectionF
     }
 
     @Override
-    public Mono<SqlConnection> currentConnection() {
-        return Mono.deferContextual(reactorContext -> {
-            var ctx = Context.Reactor.current(reactorContext);
-            var connection = ctx.get(this.connectionKey);
-            if (connection == null) {
-                return Mono.empty();
-            } else {
-                return Mono.just(connection);
-            }
-        });
+    public SqlConnection currentConnection() {
+        var ctx = Context.current();
+        return ctx.get(this.connectionKey);
     }
 
     @Override
-    public Mono<SqlConnection> newConnection() {
-        return Mono.create(sink -> {
-            this.pool.getConnection(result -> {
-                if (result.succeeded()) {
-                    sink.success(result.result());
-                } else {
-                    sink.error(result.cause());
-                }
-            });
-        });
+    public CompletionStage<SqlConnection> newConnection() {
+        return this.pool.getConnection().toCompletionStage();
+    }
+
+    @Override
+    public Pool pool() {
+        return this.pool;
     }
 
     @Override
@@ -82,20 +73,23 @@ public class VertxDatabase implements Lifecycle, Wrapped<Pool>, VertxConnectionF
 
                     var complete = new AtomicBoolean();
 
-                    return Future.<T>future(promise -> callback.apply(connection).subscribe(
-                        v -> {
-                            if (complete.compareAndSet(false, true)) {
-                                promise.complete(v);
-                            }
-                        },
-                        promise::fail,
-                        () -> {
-                            if (complete.compareAndSet(false, true)) {
-                                promise.complete();
-                            }
-                        },
-                        Context.Reactor.inject(reactorContext, ctx)
-                    ));
+                    return Future.<T>future(promise -> {
+                        ctx.inject();
+                        callback.apply(connection).subscribe(
+                            v -> {
+                                if (complete.compareAndSet(false, true)) {
+                                    promise.complete(v);
+                                }
+                            },
+                            promise::fail,
+                            () -> {
+                                if (complete.compareAndSet(false, true)) {
+                                    promise.complete();
+                                }
+                            },
+                            Context.Reactor.inject(reactorContext, ctx)
+                        );
+                    });
                 }, asyncResult -> {
                     if (asyncResult.failed()) {
                         sink.error(asyncResult.cause());
@@ -117,6 +111,7 @@ public class VertxDatabase implements Lifecycle, Wrapped<Pool>, VertxConnectionF
                 return callback.apply(connection);
             }
             return Mono.create(sink -> connection.begin(txEvent -> {
+                ctx.inject();
                 if (txEvent.failed()) {
                     sink.error(txEvent.cause());
                     return;

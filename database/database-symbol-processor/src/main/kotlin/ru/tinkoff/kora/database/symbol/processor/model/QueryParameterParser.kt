@@ -15,18 +15,22 @@ import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
 object QueryParameterParser {
     fun parse(connectionType: ClassName, method: KSFunctionDeclaration, methodType: KSFunction): List<QueryParameter> {
+        return parse(listOf(connectionType), method, methodType)
+    }
+
+    fun parse(connectionTypes: List<ClassName>, method: KSFunctionDeclaration, methodType: KSFunction): List<QueryParameter> {
         val result = ArrayList<QueryParameter>(method.parameters.size)
         for (i in method.parameters.indices) {
-            val parameter = this.parse(connectionType, method.parameters[i], methodType.parameterTypes[i]!!)
+            val parameter = this.parse(connectionTypes, method.parameters[i], methodType.parameterTypes[i]!!)
             result.add(parameter)
         }
         return result
     }
 
-    private fun parse(connectionType: ClassName, parameter: KSValueParameter, type: KSType): QueryParameter {
+    private fun parse(connectionTypes: List<ClassName>, parameter: KSValueParameter, type: KSType): QueryParameter {
         val name = parameter.name!!.getShortName();
         val typeName = type.toTypeName();
-        if (connectionType == typeName) {
+        if (connectionTypes.contains(typeName)) {
             return QueryParameter.ConnectionParameter(name, type, parameter);
         }
         val batch = parameter.findAnnotation(DbUtils.batchAnnotation);

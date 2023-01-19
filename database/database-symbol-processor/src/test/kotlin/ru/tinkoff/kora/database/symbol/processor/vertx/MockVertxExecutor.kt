@@ -11,6 +11,7 @@ import reactor.core.publisher.Mono
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry.DataBaseTelemetryContext
 import ru.tinkoff.kora.database.vertx.VertxConnectionFactory
+import java.util.concurrent.CompletableFuture
 import java.util.function.Function
 
 class MockVertxExecutor : VertxConnectionFactory {
@@ -34,9 +35,12 @@ class MockVertxExecutor : VertxConnectionFactory {
         }
     }
 
-    override fun currentConnection() = Mono.just(connection)
+    override fun currentConnection() = connection
 
-    override fun newConnection() = Mono.just(connection)
+    override fun newConnection() = CompletableFuture.completedFuture(connection)
+    override fun pool(): Pool {
+        TODO("Not yet implemented")
+    }
 
     override fun telemetry() = telemetry
 
