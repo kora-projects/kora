@@ -35,7 +35,8 @@ class VertxParametersTest {
 
     @BeforeEach
     internal fun setUp() {
-//        executor.reset()
+        executor.reset()
+        ctx.resetMocks()
     }
 
     private fun eq(tuple: Tuple): ArgumentMatcher<Tuple> {
@@ -102,12 +103,17 @@ class VertxParametersTest {
         verify(executor.connection).preparedQuery(org.mockito.kotlin.eq("INSERT INTO test(value1, value2) VALUES ($1, $2)"))
         verify(executor.query).execute(matches(Tuple.of(null, 1)), any())
     }
-//
-//    @Test
-//    fun testNativeParameter() {
-//        repository.nativeParameter("test", 42).block()
-//        verify(executor.query).execute(matches(Tuple.of("test", 42)))
-//    }
+
+    @Test
+    fun testUnknownTypeFieldParameter() {
+        val mapper = ctx.findInstance(TypeRef.of(VertxParameterColumnMapper::class.java, TestEntity.UnknownField::class.java)) as VertxParameterColumnMapper<TestEntity.UnknownField>
+        whenever(mapper.apply(any())).thenReturn(42)
+
+        repository.unknownTypeFieldParameter(TestEntity.UnknownField())
+
+        verify(mapper).apply(any())
+        verify(executor.query).execute(matches(Tuple.of(42)), any())
+    }
 //
 //    @Test
 //    fun testDtoParameter() {
