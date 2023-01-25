@@ -473,21 +473,6 @@ public class JsonReaderGenerator {
                   $L _parser.getBinaryValue();
                 }
                 """, JsonToken.class, parameterName);
-            case LOCAL_DATE -> CodeBlock.of("""
-                if (_token == $T.VALUE_STRING) {
-                  $L $T.parse(_parser.getText());
-                }
-                """, JsonToken.class, parameterName, LocalDate.class);
-            case LOCAL_DATE_TIME -> CodeBlock.of("""
-                if (_token == $T.VALUE_STRING) {
-                  $L $T.parse(_parser.getText());
-                }
-                """, JsonToken.class, parameterName, LocalDateTime.class);
-            case OFFSET_DATE_TIME -> CodeBlock.of("""
-                if (_token == $T.VALUE_STRING) {
-                  $L $T.parse(_parser.getText());
-                }
-                """, JsonToken.class, parameterName, OffsetDateTime.class);
             case UUID -> CodeBlock.of("""
                 if (_token == $T.VALUE_STRING) {
                   $L $T.fromString(_parser.getText());
@@ -504,7 +489,7 @@ public class JsonReaderGenerator {
 
     private JsonToken[] expectedTokens(KnownType.KnownTypesEnum knownType, boolean nullable) {
         var result = switch (knownType) {
-            case STRING, BINARY, LOCAL_DATE, LOCAL_DATE_TIME, OFFSET_DATE_TIME, UUID -> new JsonToken[]{VALUE_STRING};
+            case STRING, BINARY, UUID -> new JsonToken[]{VALUE_STRING};
             case BOOLEAN_OBJECT, BOOLEAN_PRIMITIVE -> new JsonToken[]{VALUE_TRUE, VALUE_FALSE};
             case SHORT_OBJECT, INTEGER_OBJECT, LONG_OBJECT, BIG_INTEGER, INTEGER_PRIMITIVE, LONG_PRIMITIVE, SHORT_PRIMITIVE -> new JsonToken[]{VALUE_NUMBER_INT};
             case BIG_DECIMAL, DOUBLE_OBJECT, FLOAT_OBJECT, DOUBLE_PRIMITIVE, FLOAT_PRIMITIVE -> new JsonToken[]{VALUE_NUMBER_FLOAT, VALUE_NUMBER_INT};

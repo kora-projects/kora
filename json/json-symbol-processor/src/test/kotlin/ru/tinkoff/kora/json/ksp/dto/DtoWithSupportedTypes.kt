@@ -18,7 +18,6 @@ data class DtoWithSupportedTypes(
     val long: Long,
     val short: Short,
     val binary: ByteArray,
-    val localDate: LocalDate,
     val listOfInteger: List<Int>,
     val setOfInteger: Set<Int>
 )

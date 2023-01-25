@@ -163,14 +163,7 @@ class JsonWriterGenerator(
                 nullableCodeBlock,
                 value
             )
-
             BINARY -> CodeBlock.of("%L_gen.writeBinary(%L)\n", nullableCodeBlock, value)
-            LOCAL_DATE, LOCAL_DATE_TIME, OFFSET_DATE_TIME -> CodeBlock.of(
-                "%L_gen.writeString(%L.toString())\n",
-                nullableCodeBlock,
-                value
-            )
-
             UUID -> CodeBlock.of("%L_gen.writeString(%L.toString())\n", nullableCodeBlock, value)
         }
     }

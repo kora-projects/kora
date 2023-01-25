@@ -42,7 +42,7 @@ internal class JsonAnnotationProcessorTest {
             1, BigInteger.TEN, BigDecimal.TEN,
             0.4, 0.6f,
             100L, 10.toShort(), byteArrayOf(1, 2, 3),
-            LocalDate.of(2020, 3, 15), listOf(1), mutableSetOf(1)
+            listOf(1), mutableSetOf(1)
         )
         val json = toJson(writer, obj)
         val parsed: DtoWithSupportedTypes = fromJson(reader, json)!!

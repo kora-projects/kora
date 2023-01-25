@@ -26,7 +26,6 @@ public record DtoWithSupportedTypes(
     Short shortObject,
     short shortPrimitive,
     byte[] binary,
-    LocalDate localDate,
     List<Integer> listOfInteger,
     Set<Integer> setOfInteger) {
 
