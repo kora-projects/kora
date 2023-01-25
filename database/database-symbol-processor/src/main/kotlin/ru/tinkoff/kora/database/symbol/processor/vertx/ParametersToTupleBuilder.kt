@@ -35,11 +35,10 @@ object ParametersToTupleBuilder {
                 if (param is QueryParameter.SimpleParameter) {
                     val nativeType = VertxNativeTypes.findNativeType(it.second.type.toTypeName())
                     val sqlParameter = query.find(param.name)!!
-                    val paramName = param.variable.name?.asString()
                     if (nativeType == null) {
-                        return@flatMap sequenceOf(Param(sqlParameter.sqlIndexes, param.name, CodeBlock.of("%N.apply(%N)", parameterMapperName(method, param.variable), paramName)))
+                        return@flatMap sequenceOf(Param(sqlParameter.sqlIndexes, param.name, CodeBlock.of("%N.apply(%N)", parameterMapperName(method, param.variable), it.first)))
                     } else {
-                        return@flatMap sequenceOf(Param(sqlParameter.sqlIndexes, param.name, CodeBlock.of("%N", paramName)))
+                        return@flatMap sequenceOf(Param(sqlParameter.sqlIndexes, param.name, CodeBlock.of("%N", it.first)))
                     }
                 }
                 param as QueryParameter.EntityParameter
@@ -49,7 +48,7 @@ object ParametersToTupleBuilder {
                         return@mapNotNull null
                     }
                     val fieldName = field.property.simpleName.asString()
-                    val variableName = param.variable.name?.asString() + "_" + fieldName
+                    val variableName = it.first + "_" + fieldName
                     val fieldAccessor = CodeBlock.of("%N?.%N", it.first, fieldName)
                     val nativeType = VertxNativeTypes.findNativeType(field.type.toTypeName())
                     if (nativeType == null) {
@@ -64,20 +63,15 @@ object ParametersToTupleBuilder {
         for (sqlParam in sqlParams) {
             b.addStatement("val %N = %L", "_${sqlParam.name}", sqlParam.code)
         }
-        val callParameters = sqlParams.asSequence()
-            .flatMap { it.indexes.asSequence().map { i -> it.name to i } }
-            .sortedBy { it.second }
-            .map { it.first }
-            .toList()
-        if (callParameters.isEmpty()) {
+        if (sqlParams.isEmpty()) {
             b.addStatement("val _tuple = %T.tuple()", VertxTypes.tuple)
         } else {
             b.addCode("val _tuple = %T.of(", VertxTypes.tuple)
-            for ((i, parameter) in callParameters.withIndex()) {
+            for ((i, parameter) in sqlParams.withIndex()) {
                 if (i > 0) {
                     b.addCode(",")
                 }
-                b.addCode("\n  %N", "_$parameter")
+                b.addCode("\n  %N", "_${parameter.name}")
             }
             b.addCode("\n)\n")
         }

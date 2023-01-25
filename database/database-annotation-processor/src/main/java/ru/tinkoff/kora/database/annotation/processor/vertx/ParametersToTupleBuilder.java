@@ -88,20 +88,15 @@ public class ParametersToTupleBuilder {
         for (var sqlParam : sqlParams) {
             b.addCode("var _$L = $L;\n", sqlParam.name, sqlParam.code);
         }
-        var sqlIndexes = sqlParams.stream()
-            .flatMap(p -> p.index.stream().map(i -> Map.entry(p.name, i)))
-            .sorted(Map.Entry.comparingByValue())
-            .map(Map.Entry::getKey)
-            .toList();
-        if (sqlIndexes.isEmpty()) {
+        if (sqlParams.isEmpty()) {
             b.addCode("var _tuple = $T.tuple();\n", VertxTypes.TUPLE);
         } else {
             b.addCode("var _tuple = $T.of($>\n", VertxTypes.TUPLE);
-            for (int i = 0; i < sqlIndexes.size(); i++) {
+            for (int i = 0; i < sqlParams.size(); i++) {
                 if (i > 0) {
                     b.addCode(",\n");
                 }
-                b.addCode("_$L", sqlIndexes.get(i));
+                b.addCode("_$L", sqlParams.get(i).name());
             }
             b.addCode("$<\n);\n");
         }
