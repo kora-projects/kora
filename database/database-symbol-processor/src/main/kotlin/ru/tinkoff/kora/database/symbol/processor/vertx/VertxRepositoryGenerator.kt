@@ -10,6 +10,7 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.database.symbol.processor.DbUtils
+import ru.tinkoff.kora.database.symbol.processor.DbUtils.asFlow
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.findQueryMethods
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.parseExecutorTag
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.queryMethodBuilder
@@ -84,9 +85,9 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
             }
         } else if (isFlow) {
             if (connectionParameter == null) {
-                b.addCode("%T.flux(this._vertxConnectionFactory, _query, _tuple, %N).asFlow()\n", VertxTypes.repositoryHelper, funDeclaration.resultMapperName())
+                b.addCode("%T.flux(this._vertxConnectionFactory, _query, _tuple, %N).%M()\n", VertxTypes.repositoryHelper, funDeclaration.resultMapperName(), asFlow)
             } else {
-                b.addCode("%T.flux(%N, this._vertxConnectionFactory.telemetry(), _query, _tuple, %N).asFlow()\n", VertxTypes.repositoryHelper, connectionParameter, funDeclaration.resultMapperName())
+                b.addCode("%T.flux(%N, this._vertxConnectionFactory.telemetry(), _query, _tuple, %N).%M()\n", VertxTypes.repositoryHelper, connectionParameter, funDeclaration.resultMapperName(), asFlow)
             }
         } else {
             if (connectionParameter == null) {
