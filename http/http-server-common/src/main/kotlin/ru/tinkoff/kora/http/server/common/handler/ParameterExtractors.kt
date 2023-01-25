@@ -152,11 +152,11 @@ fun extractNullableStringListQueryParameter(request: HttpServerRequest, name: St
 
 @Throws(HttpServerResponseException::class)
 fun extractUUIDQueryParameter(request: HttpServerRequest, name: String): UUID {
-    return extractNullableUuidQueryParameter(request, name) ?: throw HttpServerResponseException.of(400, "Query parameter '$name' is required")
+    return extractNullableUUIDQueryParameter(request, name) ?: throw HttpServerResponseException.of(400, "Query parameter '$name' is required")
 }
 
 @Throws(HttpServerResponseException::class)
-fun extractNullableUuidQueryParameter(request: HttpServerRequest, name: String): UUID? {
+fun extractNullableUUIDQueryParameter(request: HttpServerRequest, name: String): UUID? {
     val result = request.queryParams()[name]
     if (result.isNullOrEmpty()) {
         return null
@@ -175,12 +175,12 @@ fun extractNullableUuidQueryParameter(request: HttpServerRequest, name: String):
 }
 
 @Throws(HttpServerResponseException::class)
-fun extractUuidListQueryParameter(request: HttpServerRequest, name: String): List<UUID> {
-    return extractNullableUuidListQueryParameter(request, name) ?: throw HttpServerResponseException.of(400, "Query parameter '$name' is required")
+fun extractUUIDListQueryParameter(request: HttpServerRequest, name: String): List<UUID> {
+    return extractNullableUUIDListQueryParameter(request, name) ?: throw HttpServerResponseException.of(400, "Query parameter '$name' is required")
 }
 
 @Throws(HttpServerResponseException::class)
-fun extractNullableUuidListQueryParameter(request: HttpServerRequest, name: String): List<UUID>? {
+fun extractNullableUUIDListQueryParameter(request: HttpServerRequest, name: String): List<UUID>? {
     val result = request.queryParams()[name]
     return if (result.isNullOrEmpty()) null else result
         .map {
