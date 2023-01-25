@@ -281,7 +281,7 @@ class KoraAppKspTest {
     @Test
     fun appWithExtension() {
         val graphDraw = testClass(AppWithExtension::class)
-        Assertions.assertThat(graphDraw.nodes).hasSize(3)
+        Assertions.assertThat(graphDraw.nodes).hasSize(4)
         val materializedGraph = graphDraw.init().block()
         Assertions.assertThat(materializedGraph).isNotNull
     }

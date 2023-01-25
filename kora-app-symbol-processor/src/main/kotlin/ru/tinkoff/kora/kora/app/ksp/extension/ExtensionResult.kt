@@ -16,6 +16,13 @@ sealed interface ExtensionResult {
                 constructor.asMemberOf(type.asStarProjectedType())
             )
         }
+
+        fun fromExecutable(constructor: KSFunctionDeclaration, type: KSFunction): ExtensionResult {
+            return GeneratedResult(
+                constructor,
+                type
+            )
+        }
     }
 
 }

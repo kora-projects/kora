@@ -184,11 +184,6 @@ object GraphBuilder {
                         if (extensionComponent.isTemplate()) {
                             processing.templateDeclarations.add(extensionComponent)
                         } else {
-                            val type = extensionResult.constructor.returnType!!.resolve()
-                            assert(dependencyClaim.type.makeNotNullable().isAssignableFrom(type)) {
-                                "Extension produced result that cannot be assigned to required type ${type.toTypeName()} != ${dependencyClaim.type.makeNotNullable().toTypeName()}"
-                            }
-
                             processing.sourceDeclarations.add(extensionComponent)
                         }
                         stack.addLast(frame.copy(currentDependency = currentDependency))
@@ -364,16 +359,6 @@ object GraphBuilder {
         }
         val dependencyClaim = prevFrame.dependenciesToFind[prevFrame.currentDependency]
         val claimTypeDeclaration = dependencyClaim.type.declaration
-        val notNullableDependencyClaimType = dependencyClaim.type.makeNotNullable()
-        val notNullableDeclarationType = declaration.type.makeNotNullable()
-        assert(
-            notNullableDependencyClaimType.isAssignableFrom(notNullableDeclarationType) || ctx.serviceTypesHelper.isAssignableToUnwrapped(
-                notNullableDeclarationType,
-                dependencyClaim.type
-            ) || ctx.serviceTypesHelper.isInterceptor(declaration.type)
-        ) {
-            "${declaration.type.toTypeName()} != ${notNullableDependencyClaimType.toTypeName()} from $declaration"
-        }
         for (frame in processing.resolutionStack) {
             if (frame !is ProcessingState.ResolutionFrame.Component || frame.declaration !== declaration) {
                 continue

@@ -83,6 +83,18 @@ object KspCommonUtils {
     }
 
     fun TypeSpec.Builder.generated(generator: KClass<*>) = addAnnotation(AnnotationSpec.builder(CommonClassNames.generated).addMember("%S", generator.java.canonicalName).build())
+
+    fun KSFunctionDeclaration.parametrized(returnType: KSType, parameterTypes: List<KSType>): KSFunction {
+        val typeParameters = this.typeParameters
+        return object : KSFunction {
+            override val returnType = returnType
+            override val typeParameters = typeParameters
+            override val parameterTypes = parameterTypes
+
+            override val extensionReceiverType get() = TODO("Not yet implemented")
+            override val isError get() = TODO("Not yet implemented")
+        }
+    }
 }
 
 

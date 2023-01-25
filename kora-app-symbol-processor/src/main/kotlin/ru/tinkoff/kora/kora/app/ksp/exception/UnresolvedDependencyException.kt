@@ -21,8 +21,4 @@ data class UnresolvedDependencyException(
         missingTag: Set<String>,
         errors: List<ProcessingError>
     ) : this(toMessage(errors), forElement, missingType, missingTag, errors, null)
-
-    override fun fillInStackTrace(): Throwable {
-        return this
-    }
 }
