@@ -2,6 +2,7 @@ plugins {
     id "org.jetbrains.kotlin.jvm" version "1.7.21" apply false
     id "com.google.devtools.ksp" version "1.7.21-1.0.8" apply false
     id 'jacoco'
+    id 'io.codearte.nexus-staging' version '0.30.0'
 }
 
 if (hasProperty('buildScan')) {
@@ -11,9 +12,14 @@ if (hasProperty('buildScan')) {
     }
 }
 
+nexusStaging {
+    username = System.getenv().getOrDefault("REPO_USER", "")
+    password = System.getenv().getOrDefault("REPO_PASSWORD", "")
+}
+
 allprojects {
     group = "ru.tinkoff.kora"
-    version = System.getenv().getOrDefault("KORA_VERSION", "0.10.0-SNAPSHOT")
+    version = System.getenv().getOrDefault("KORA_VERSION", "0.11.0-SNAPSHOT")
     repositories {
         mavenLocal()
         mavenCentral()
