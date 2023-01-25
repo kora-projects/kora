@@ -1,10 +1,12 @@
 package ru.tinkoff.kora.database.symbol.processor.vertx.extension
 
 import com.google.devtools.ksp.getClassDeclarationByName
+import com.google.devtools.ksp.getFunctionDeclarationsByName
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.Variance
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toTypeName
@@ -17,6 +19,7 @@ import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.parametrized
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 
 //RowMapper<T>
@@ -24,11 +27,11 @@ import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 class VertxTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val codeGenerator: CodeGenerator) : KoraExtension {
     private val entityReader: DbEntityReader = DbEntityReader(
         VertxTypes.resultColumnMapper,
-        { CodeBlock.of("`%L`.apply(`\$row`, `\$idx_%L`)", it.mapperFieldName, it.fieldName) },
-        { VertxNativeTypes.findNativeType(it.type.toTypeName())?.extract("`\$row`", "`\$idx_${it.fieldName}`") },
+        { CodeBlock.of("%N.apply(_row, %N)", it.mapperFieldName, "_idx_${it.fieldName}") },
+        { VertxNativeTypes.findNativeType(it.type.toTypeName())?.extract("_row", "_idx_${it.fieldName}") },
         {
             CodeBlock.of(
-                "if (`%L` == null) {\n  throw %T(%S);\n}\n",
+                "if (%N == null) {\n  throw %T(%S);\n}\n",
                 it.fieldName,
                 NullPointerException::class.asClassName(),
                 "Required field ${it.columnName} is not nullable but row has null"
@@ -46,6 +49,7 @@ class VertxTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val 
             if (rowSetArg.type!!.resolve().declaration.qualifiedName?.asString()?.equals("kotlin.collections.List") == true) {
                 return this.generateListRowSetMapper(resolver, type)
             }
+            return this.generateRowSetMapper(resolver, type)
         }
         return null
     }
@@ -74,17 +78,17 @@ class VertxTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val 
             val constructor = FunSpec.constructorBuilder()
             val apply = FunSpec.builder("apply")
                 .addModifiers(KModifier.OVERRIDE)
-                .addParameter("\$row", VertxTypes.row)
+                .addParameter("_row", VertxTypes.row)
                 .returns(entity.type.toTypeName())
 
             for (field in entity.fields) {
-                apply.addCode("val `\$idx_%L` = `\$row`.getColumnIndex(%S);\n", field.property.simpleName.getShortName(), field.columnName)
+                apply.addCode("val %N = _row.getColumnIndex(%S);\n", "_idx_" + field.property.simpleName.getShortName(), field.columnName)
             }
 
-            val read = this.entityReader.readEntity("\$result", entity)
+            val read = this.entityReader.readEntity("_result", entity)
             read.enrich(type, constructor)
             apply.addCode(read.block)
-            apply.addCode("return `\$result`;\n")
+            apply.addCode("return _result;\n")
 
             type.primaryConstructor(constructor.build())
             type.addFunction(apply.build())
@@ -118,24 +122,24 @@ class VertxTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val 
                 .generated(VertxTypesExtension::class)
                 .addSuperinterface(VertxTypes.rowSetMapper.parameterizedBy(rowSetArg.type!!.toTypeName()))
 
-            val readEntity = entityReader.readEntity("\$rowValue", entity)
+            val readEntity = entityReader.readEntity("_rowValue", entity)
 
             val constructor = FunSpec.constructorBuilder()
             readEntity.enrich(type, constructor)
             val apply = FunSpec.builder("apply")
                 .addModifiers(KModifier.OVERRIDE)
                 .returns(rowSetArg.type!!.toTypeName())
-                .addParameter("\$rs", VertxTypes.rowSet)
+                .addParameter("_rs", VertxTypes.rowSet)
 
             for (field in entity.fields) {
-                apply.addCode("val `\$idx_%L` = `\$rs`.columnsNames().indexOf(%S);\n", field.property.simpleName.getShortName(), field.columnName)
+                apply.addCode("val %N = _rs.columnsNames().indexOf(%S);\n", "_idx_" + field.property.simpleName.getShortName(), field.columnName)
             }
-            apply.addStatement("var `\$result` = %T<%T>(`\$rs`.rowCount())", ArrayList::class, rowType.toTypeName())
-            apply.controlFlow("for (`\$row` in `\$rs`)") {
+            apply.addStatement("val _result = %T<%T>(_rs.rowCount())", ArrayList::class, rowType.toTypeName())
+            apply.controlFlow("for (_row in _rs)") {
                 apply.addCode(readEntity.block)
-                apply.addStatement("`\$result`.add(`\$rowValue`)")
+                apply.addStatement("_result.add(_rowValue)")
             }
-                .addStatement("return `\$result`")
+                .addStatement("return _result")
 
             type.primaryConstructor(constructor.build())
             type.addFunction(apply.build())
@@ -145,4 +149,22 @@ class VertxTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val 
             ExtensionResult.RequiresCompilingResult
         }
     }
+
+    private fun generateRowSetMapper(resolver: Resolver, ksType: KSType): (() -> ExtensionResult) {
+        val rowSetArg = ksType.arguments[0]
+        val rowType = rowSetArg.type!!.resolve()
+        return {
+            val rowSetMapperDecl = resolver.getClassDeclarationByName(VertxTypes.rowSetMapper.canonicalName)!!
+            val rowMapperDecl = resolver.getClassDeclarationByName(VertxTypes.rowMapper.canonicalName)!!
+            val rowSetMapper = rowSetMapperDecl
+                .asType(listOf(resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(rowType), Variance.INVARIANT)))
+            val rowMapper = rowMapperDecl
+                .asType(listOf(resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(rowType), Variance.INVARIANT)))
+
+            val functionDecl = resolver.getFunctionDeclarationsByName(VertxTypes.rowSetMapper.canonicalName + ".singleRowSetMapper").first()
+            val functionType = functionDecl.parametrized(rowSetMapper, listOf(rowMapper))
+            ExtensionResult.fromExecutable(functionDecl, functionType)
+        }
+    }
+
 }
