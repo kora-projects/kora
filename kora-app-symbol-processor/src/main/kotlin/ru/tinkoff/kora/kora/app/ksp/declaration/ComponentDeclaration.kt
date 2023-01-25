@@ -137,8 +137,9 @@ sealed interface ComponentDeclaration {
 
         fun fromExtension(extensionResult: ExtensionResult.GeneratedResult): FromExtensionComponent {
             val sourceMethod = extensionResult.constructor
-            val parameterTypes = sourceMethod.parameters.map { it.type.resolve() }
-            val type = sourceMethod.returnType!!.resolve()
+            val sourceType = extensionResult.type
+            val parameterTypes = sourceType.parameterTypes.map { it!! }
+            val type = sourceType.returnType!!
             return FromExtensionComponent(type, sourceMethod, parameterTypes)
         }
     }
