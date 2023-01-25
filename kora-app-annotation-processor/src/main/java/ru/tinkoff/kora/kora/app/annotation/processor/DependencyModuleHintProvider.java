@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class DependencyModuleHintProvider {
     private static final Logger log = LoggerFactory.getLogger(DependencyModuleHintProvider.class);
@@ -29,10 +30,25 @@ public class DependencyModuleHintProvider {
     }
 
 
-    record Hint(TypeMirror type, String artifact, String module) {
-        public String message() {
-            return "Missing component of type %s can be provided by module %s from artifact %s".formatted(type, module, artifact);
+    sealed interface Hint {
+        String message();
+
+        record SimpleHint(TypeMirror type, String artifact, String module) implements DependencyModuleHintProvider.Hint {
+            public String message() {
+                return "Missing component of type %s can be provided by module %s from artifact %s".formatted(
+                    type, module, artifact
+                );
+            }
         }
+
+        record HintWithTag(TypeMirror type, String artifact, String module, Set<String> tags) implements DependencyModuleHintProvider.Hint {
+            public String message() {
+                return "Missing component of type %s can be provided by module %s from artifact %s (required tags: `@Tag(%s)`)".formatted(
+                    type, module, artifact, tags.stream().map(s -> s + ".class").collect(Collectors.joining(", ", "{", "}"))
+                );
+            }
+        }
+
     }
 
     public List<Hint> findHints(TypeMirror missingType, Set<String> missingTag) {
@@ -46,7 +62,11 @@ public class DependencyModuleHintProvider {
             var matcher = hint.typeRegex.matcher(missingType.toString());
             if (matcher.matches()) {
                 log.trace("Hint {} matched!", hint);
-                result.add(new Hint(missingType, hint.artifact, hint.moduleName));
+                if (this.tagMatches(missingTag, hint.tags())) {
+                    result.add(new Hint.SimpleHint(missingType, hint.artifact, hint.moduleName));
+                } else {
+                    result.add(new Hint.HintWithTag(missingType, hint.artifact, hint.moduleName, hint.tags));
+                }
             }
             log.trace("Hint {} doesn't match because of regex", hint);
         }
