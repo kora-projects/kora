@@ -37,7 +37,7 @@ class JsonAnnotationProcessorTest {
             0.4d, 0.5d, 0.6f, 0.7f,
             100L, 101L, (short) 10, (short) 11,
             new byte[]{1, 2, 3},
-            LocalDate.of(2020, 3, 15), List.of(1), Set.of(1));
+            List.of(1), Set.of(1));
 
         var json = toJson(writer, object);
 

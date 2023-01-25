@@ -23,9 +23,6 @@ class KnownType(private val resolver: Resolver) {
     private val nullableLong = long.makeNullable()
     private val short = resolver.builtIns.shortType
     private val nullableShort = short.makeNullable()
-    private val localDate = resolver.getClassDeclarationByName("java.time.LocalDate")!!.asType(listOf())
-    private val localDateTime = resolver.getClassDeclarationByName("java.time.LocalDateTime")!!.asType(listOf())
-    private val offsetDateTime = resolver.getClassDeclarationByName("java.time.OffsetDateTime")!!.asType(listOf())
     private val uuid = resolver.getClassDeclarationByName("java.util.UUID")!!.asType(listOf())
     private val binary = resolver.getClassDeclarationByName("kotlin.ByteArray")!!.asType(listOf())
 
@@ -40,9 +37,6 @@ class KnownType(private val resolver: Resolver) {
             bigInteger, bigInteger.makeNullable() -> KnownTypesEnum.BIG_INTEGER
             bigDecimal, bigDecimal.makeNullable()-> KnownTypesEnum.BIG_DECIMAL
             boolean, nullableBoolean -> KnownTypesEnum.BOOLEAN
-            localDate, localDate.makeNullable() -> KnownTypesEnum.LOCAL_DATE
-            localDateTime, localDateTime.makeNullable() -> KnownTypesEnum.LOCAL_DATE_TIME
-            offsetDateTime, offsetDateTime.makeNullable() -> KnownTypesEnum.OFFSET_DATE_TIME
             binary, binary.makeNullable() -> KnownTypesEnum.BINARY
             uuid, uuid.makeNullable() -> KnownTypesEnum.UUID
             else -> null
@@ -60,9 +54,6 @@ class KnownType(private val resolver: Resolver) {
         LONG,
         SHORT,
         BINARY,
-        LOCAL_DATE,
-        LOCAL_DATE_TIME,
-        OFFSET_DATE_TIME,
         UUID
     }
 }

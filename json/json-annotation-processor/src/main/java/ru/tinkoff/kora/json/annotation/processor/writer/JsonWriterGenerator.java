@@ -189,7 +189,6 @@ public class JsonWriterGenerator {
             case INTEGER_OBJECT, BIG_INTEGER, BIG_DECIMAL, DOUBLE_OBJECT, FLOAT_OBJECT, LONG_OBJECT, SHORT_OBJECT,
                 INTEGER_PRIMITIVE, DOUBLE_PRIMITIVE, FLOAT_PRIMITIVE, LONG_PRIMITIVE, SHORT_PRIMITIVE -> CodeBlock.of("_gen.writeNumber($L);\n", value);
             case BINARY -> addNullable.apply("writeBinary");
-            case LOCAL_DATE, LOCAL_DATE_TIME, OFFSET_DATE_TIME -> CodeBlock.of("_gen.writeString($L.toString());", value);
             case UUID -> CodeBlock.of("_gen.writeString($L.toString());\n", value);
         };
     }

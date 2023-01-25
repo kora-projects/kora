@@ -424,24 +424,6 @@ class JsonReaderGenerator(val resolver: Resolver) {
                     }.build()
                 }
 
-                LOCAL_DATE -> {
-                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_STRING)", JsonToken::class).apply {
-                        addStatement("return %T.parse(_parser.text)", LocalDate::class)
-                    }.build()
-                }
-
-                LOCAL_DATE_TIME -> {
-                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_STRING) ", JsonToken::class).apply {
-                        addStatement("return %T.parse(_parser.text)", LocalDateTime::class)
-                    }.build()
-                }
-
-                OFFSET_DATE_TIME -> {
-                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_STRING) ", JsonToken::class).apply {
-                        addStatement("return %T.parse(_parser.text)", OffsetDateTime::class)
-                    }.build()
-                }
-
                 KnownTypesEnum.UUID -> {
                     CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_STRING)", JsonToken::class).apply {
                         addStatement("return %T.fromString(_parser.text)", UUID::class)
@@ -467,7 +449,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
 
     private fun expectedTokens(knownType: KnownTypesEnum, nullable: Boolean): Array<JsonToken> {
         var result = when (knownType) {
-            KnownTypesEnum.STRING, BINARY, LOCAL_DATE, LOCAL_DATE_TIME, OFFSET_DATE_TIME, KnownTypesEnum.UUID -> arrayOf(
+            KnownTypesEnum.STRING, BINARY, KnownTypesEnum.UUID -> arrayOf(
                 JsonToken.VALUE_STRING
             )
 
