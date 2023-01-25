@@ -1,12 +1,15 @@
 package ru.tinkoff.kora.database.common.annotation.processor.vertx;
 
+import io.vertx.sqlclient.Tuple;
 import org.intellij.lang.annotations.Language;
+import org.mockito.ArgumentMatcher;
+import org.mockito.ArgumentMatchers;
 import ru.tinkoff.kora.database.common.annotation.processor.AbstractRepositoryTest;
 
 import java.util.List;
 
 public abstract class AbstractVertxRepositoryTest extends AbstractRepositoryTest {
-    protected MockVertxExecutor executor;
+    protected MockVertxExecutor executor = new MockVertxExecutor();
 
     @Override
     protected String commonImports() {
@@ -25,5 +28,27 @@ public abstract class AbstractVertxRepositoryTest extends AbstractRepositoryTest
 
     protected TestRepository compileVertx(List<?> arguments, @Language("java") String... sources) {
         return this.compile(this.executor, arguments, sources);
+    }
+
+    protected Tuple tupleMatcher(Tuple tuple) {
+        return ArgumentMatchers.argThat(new ArgumentMatcher<>() {
+            @Override
+            public boolean matches(Tuple argument) {
+                if (argument.size() != tuple.size()) {
+                    return false;
+                }
+                for (int i = 0; i < tuple.size(); i++) {
+                    if (!tuple.getValue(i).equals(argument.getValue(i))) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            @Override
+            public String toString() {
+                return tuple.deepToString();
+            }
+        });
     }
 }

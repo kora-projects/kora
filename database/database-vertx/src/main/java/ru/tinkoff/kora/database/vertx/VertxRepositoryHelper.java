@@ -14,7 +14,6 @@ import ru.tinkoff.kora.database.vertx.mapper.result.VertxRowSetMapper;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
 public class VertxRepositoryHelper {
     public static <T> Mono<T> mono(VertxConnectionFactory connectionFactory, QueryContext query, Tuple params, VertxRowSetMapper<T> mapper) {
@@ -49,16 +48,16 @@ public class VertxRepositoryHelper {
         });
     }
 
-    public static <T> CompletionStage<T> completionStage(VertxConnectionFactory connectionFactory, QueryContext query, Tuple params, VertxRowSetMapper<T> mapper) {
+    public static <T> CompletableFuture<T> completionStage(VertxConnectionFactory connectionFactory, QueryContext query, Tuple params, VertxRowSetMapper<T> mapper) {
         var connection = connectionFactory.currentConnection();
         if (connection != null) {
             return completionStage(connection, connectionFactory.telemetry(), query, params, mapper);
         }
-        return connectionFactory.newConnection().thenCompose(con -> completionStage(con, connectionFactory.telemetry(), query, params, mapper)
+        return connectionFactory.newConnection().toCompletableFuture().thenCompose(con -> completionStage(con, connectionFactory.telemetry(), query, params, mapper)
             .whenComplete((t, throwable) -> con.close()));
     }
 
-    public static <T> CompletionStage<T> completionStage(SqlClient connection, DataBaseTelemetry t, QueryContext query, Tuple params, VertxRowSetMapper<T> mapper) {
+    public static <T> CompletableFuture<T> completionStage(SqlClient connection, DataBaseTelemetry t, QueryContext query, Tuple params, VertxRowSetMapper<T> mapper) {
         var ctx = Context.current();
         var telemetry = t.createContext(ctx, query);
         var future = new CompletableFuture<T>();
@@ -109,17 +108,17 @@ public class VertxRepositoryHelper {
         });
     }
 
-    public static CompletionStage<UpdateCount> batchCompletionStage(VertxConnectionFactory connectionFactory, QueryContext query, List<Tuple> params) {
+    public static CompletableFuture<UpdateCount> batchCompletionStage(VertxConnectionFactory connectionFactory, QueryContext query, List<Tuple> params) {
         var connection = connectionFactory.currentConnection();
         if (connection != null) {
             return batchCompletionStage(connection, connectionFactory.telemetry(), query, params);
         }
-        return connectionFactory.newConnection().thenCompose(con -> batchCompletionStage(con, connectionFactory.telemetry(), query, params)
+        return connectionFactory.newConnection().toCompletableFuture().thenCompose(con -> batchCompletionStage(con, connectionFactory.telemetry(), query, params)
             .whenComplete((t, throwable) -> con.close()));
 
     }
 
-    public static CompletionStage<UpdateCount> batchCompletionStage(SqlClient connection, DataBaseTelemetry t, QueryContext query, List<Tuple> params) {
+    public static CompletableFuture<UpdateCount> batchCompletionStage(SqlClient connection, DataBaseTelemetry t, QueryContext query, List<Tuple> params) {
         var ctx = Context.current();
         var telemetry = t.createContext(ctx, query);
         var future = new CompletableFuture<UpdateCount>();

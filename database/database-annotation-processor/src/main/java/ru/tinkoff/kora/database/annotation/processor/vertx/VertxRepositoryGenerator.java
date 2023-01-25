@@ -154,9 +154,6 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
         } else if (isMono) {
             b.addCode(";\n");
         } else if (isCompletionStage) {
-            if (isVoid) {
-                b.addCode("  .thenAccept(v -> {})");
-            }
             b.addCode(";\n");
         } else {
             b.addCode("  .toCompletableFuture().join();\n");
