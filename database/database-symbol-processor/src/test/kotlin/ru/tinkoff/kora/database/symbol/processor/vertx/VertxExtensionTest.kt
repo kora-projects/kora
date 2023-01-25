@@ -1,8 +1,6 @@
 package ru.tinkoff.kora.database.symbol.processor.vertx
 
 import org.junit.jupiter.api.Test
-import ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcResultColumnMapper
-import ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcRowMapper
 import ru.tinkoff.kora.database.symbol.processor.entity.TestEntity
 import ru.tinkoff.kora.database.vertx.mapper.result.VertxResultColumnMapper
 import ru.tinkoff.kora.database.vertx.mapper.result.VertxRowMapper
@@ -19,6 +17,8 @@ class VertxExtensionTest {
                 typeOf<VertxRowMapper<AllNativeTypesEntity>>(),
                 typeOf<VertxRowSetMapper<List<TestEntity>>>(),
                 typeOf<VertxRowSetMapper<List<AllNativeTypesEntity>>>(),
+                typeOf<VertxRowSetMapper<TestEntity>>(),
+                typeOf<VertxRowSetMapper<AllNativeTypesEntity>>(),
             ),
             typeOf<VertxResultColumnMapper<TestEntity.UnknownField>>(),
             typeOf<TestEntityFieldVertxResultColumnMapperNonFinal>(),
