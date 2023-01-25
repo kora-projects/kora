@@ -8,7 +8,6 @@ import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.ksp.writeTo
-import reactor.core.publisher.Flux
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 import ru.tinkoff.kora.ksp.common.exception.ProcessingError
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
@@ -47,9 +46,6 @@ class RepositorySymbolProcessor(
         }
         val typeSpec = repositoryBuilder.build(declaration) ?: return
         val fileSpec = FileSpec.builder(declaration.packageName.asString(), typeSpec.name!!).addType(typeSpec)
-            .addImport("kotlinx.coroutines.reactor", "awaitSingleOrNull")
-            .addImport("kotlinx.coroutines.reactor", "awaitSingle")
-            .addImport("kotlinx.coroutines.reactive", "asFlow")
         fileSpec.build().writeTo(codeGenerator, false)
     }
 }

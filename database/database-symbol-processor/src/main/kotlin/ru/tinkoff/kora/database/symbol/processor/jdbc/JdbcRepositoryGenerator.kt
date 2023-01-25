@@ -10,6 +10,8 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toTypeName
 import reactor.core.publisher.Mono
 import ru.tinkoff.kora.database.symbol.processor.DbUtils
+import ru.tinkoff.kora.database.symbol.processor.DbUtils.awaitSingle
+import ru.tinkoff.kora.database.symbol.processor.DbUtils.awaitSingleOrNull
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.findQueryMethods
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.parseExecutorTag
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.queryMethodBuilder
@@ -123,9 +125,9 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
             b.endControlFlow()
             b.addCode(")")
             if (methodType.returnType!!.isMarkedNullable) {
-                b.addCode(".awaitSingleOrNull()")
+                b.addCode(".%M()", awaitSingleOrNull)
             } else {
-                b.addCode(".awaitSingle()")
+                b.addCode(".%M()", awaitSingle)
             }
         }
         return b.build()

@@ -23,6 +23,10 @@ object DbUtils {
     val queryAnnotation = ClassName("ru.tinkoff.kora.database.common.annotation", "Query")
     val batchAnnotation = ClassName("ru.tinkoff.kora.database.common.annotation", "Batch")
 
+    val awaitSingleOrNull = MemberName("kotlinx.coroutines.reactor", "awaitSingleOrNull")
+    val awaitSingle = MemberName("kotlinx.coroutines.reactor", "awaitSingle")
+    val asFlow = MemberName("kotlinx.coroutines.reactive", "asFlow")
+
     fun addMappers(type: TypeSpec.Builder, constructor: FunSpec.Builder, mappers: List<Mapper>) {
         var companion = type.typeSpecs.asSequence().filter { it.isCompanion }.firstOrNull()?.toBuilder()
         for (mapper in mappers) {

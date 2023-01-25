@@ -11,6 +11,9 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import ru.tinkoff.kora.database.symbol.processor.DbUtils
+import ru.tinkoff.kora.database.symbol.processor.DbUtils.asFlow
+import ru.tinkoff.kora.database.symbol.processor.DbUtils.awaitSingle
+import ru.tinkoff.kora.database.symbol.processor.DbUtils.awaitSingleOrNull
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.findQueryMethods
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.parseExecutorTag
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.queryMethodBuilder
@@ -23,10 +26,10 @@ import ru.tinkoff.kora.database.symbol.processor.model.QueryParameterParser
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.CommonClassNames
-import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isList
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
+import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.parseMappingData
 
 
@@ -93,12 +96,12 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
 
         if (isSuspend) {
             if (returnType.isMarkedNullable) {
-                b.addCode(".awaitSingleOrNull()\n")
+                b.addCode(".%M()\n", awaitSingleOrNull)
             } else {
-                b.addCode(".awaitSingle()\n")
+                b.addCode(".%M()\n", awaitSingle)
             }
         } else if (isFlow) {
-            b.addCode(".asFlow()\n")
+            b.addCode(".%M()\n", asFlow)
         } else {
             if (returnType.isMarkedNullable) {
                 b.addCode(".block()")
