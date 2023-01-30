@@ -36,6 +36,6 @@ jobs:
         with:
           arguments: publish -Psigning.secretKeyRingFile=/tmp/secring.gpg
         env:
-          REPO_URL: https://oss.sonatype.org/content/repositories/snapshots
+          REPO_URL: https://s01.oss.sonatype.org/content/repositories/snapshots
           REPO_USER: ${{ secrets.SONATYPE_USERNAME }}
           REPO_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
