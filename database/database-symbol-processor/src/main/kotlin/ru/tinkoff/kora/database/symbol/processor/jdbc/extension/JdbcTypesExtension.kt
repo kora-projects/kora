@@ -52,36 +52,31 @@ class JdbcTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val c
         }
         if (type.declaration.qualifiedName!!.asString() == JdbcTypes.jdbcResultSetMapper.canonicalName) {
             val resultType = type.arguments[0].type!!.resolve()
-            if (resultType.isList()) {
-                val rowType = resultType.arguments[0].type!!.resolve()
-                val entity = DbEntity.parseEntity(rowType)
-                if (entity != null) {
-                    return this.entityListResultSetMapper(resolver, entity)
-                } else {
-                    return null
-                }
-            }
+            val rowType = if (resultType.isList()) resultType.arguments[0].type!!.resolve() else resultType
+            val entity = DbEntity.parseEntity(rowType) ?: return null
+            return this.entityResultSetMapper(resolver, entity, resultType)
         }
         return null
     }
 
-    private fun entityListResultSetMapper(resolver: Resolver, entity: DbEntity): (() -> ExtensionResult)? {
-        val mapperName = entity.type.declaration.getOuterClassesAsPrefix() + "${entity.type.declaration.simpleName.getShortName()}_JdbcListResultSetMapper"
+    private fun entityResultSetMapper(resolver: Resolver, entity: DbEntity, resultType: KSType): (() -> ExtensionResult)? {
+        val mapperName = entity.type.declaration.getOuterClassesAsPrefix() +
+            "${entity.type.declaration.simpleName.getShortName()}_Jdbc${if (resultType.isList()) "List" else ""}ResultSetMapper"
         val packageName = entity.type.declaration.packageName.asString()
+
         return lambda@{
             val maybeGenerated = resolver.getClassDeclarationByName("$packageName.$mapperName")
             if (maybeGenerated != null) {
-                val constructor = maybeGenerated.primaryConstructor
-                if (constructor == null) {
-                    throw IllegalStateException()
-                }
+                val constructor = maybeGenerated.primaryConstructor ?: throw IllegalStateException()
                 return@lambda ExtensionResult.fromConstructor(constructor, maybeGenerated)
             }
+
             val entityTypeName = entity.type.toTypeName()
-            val resultTypeName = List::class.asClassName().parameterizedBy(entityTypeName)
-            val type = TypeSpec.classBuilder(mapperName)
-                .generated(JdbcTypesExtension::class)
-                .addSuperinterface(JdbcTypes.jdbcResultSetMapper.parameterizedBy(resultTypeName))
+            val resultTypeName = if (resultType.isList()) {
+                List::class.asClassName().parameterizedBy(entityTypeName)
+            } else {
+                entityTypeName
+            }
 
             val constructor = FunSpec.constructorBuilder()
             val apply = FunSpec.builder("apply")
@@ -89,22 +84,30 @@ class JdbcTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val c
                 .addParameter("_rs", JdbcTypes.resultSet)
                 .returns(resultTypeName)
 
+            val type = TypeSpec.classBuilder(mapperName)
+                .generated(JdbcTypesExtension::class)
+                .addSuperinterface(JdbcTypes.jdbcResultSetMapper.parameterizedBy(resultTypeName))
+
             val read = this.entityReader.readEntity("_row", entity)
             read.enrich(type, constructor)
             apply.addCode(parseIndexes(entity, "_rs"))
-            apply.addStatement("val _result = ArrayList<%T>()", entityTypeName)
-            apply.controlFlow("while (_rs.next())") {
-                addCode(read.block)
-                addStatement("_result.add(_row)")
-            }
-            apply.addStatement("return _result")
 
+            if (resultType.isList()) {
+                apply.addStatement("val _result = ArrayList<%T>()", entityTypeName)
+                apply.controlFlow("while (_rs.next())") {
+                    addCode(read.block)
+                    addStatement("_result.add(_row)")
+                }
+                apply.addStatement("return _result")
+            } else {
+                apply.addCode(read.block)
+                apply.addStatement("return _row")
+            }
 
             type.primaryConstructor(constructor.build())
             type.addFunction(apply.build())
 
             FileSpec.get(packageName, type.build()).writeTo(codeGenerator, true, listOfNotNull(entity.type.declaration.containingFile))
-
             ExtensionResult.RequiresCompilingResult
         }
     }

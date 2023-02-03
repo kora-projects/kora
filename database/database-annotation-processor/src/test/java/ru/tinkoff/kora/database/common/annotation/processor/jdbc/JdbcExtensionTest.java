@@ -27,8 +27,10 @@ public class JdbcExtensionTest {
     private final ClassLoader cl = TestUtils.testKoraExtension(
         new TypeRef<?>[]{
             TypeRef.of(JdbcRowMapper.class, TestEntityRecord.class),
+            TypeRef.of(JdbcResultSetMapper.class, TestEntityRecord.class),
             TypeRef.of(JdbcResultSetMapper.class, TypeRef.of(List.class, TestEntityRecord.class)),
             TypeRef.of(JdbcRowMapper.class, TestEntityJavaBean.class),
+            TypeRef.of(JdbcResultSetMapper.class, TestEntityJavaBean.class),
             TypeRef.of(JdbcResultSetMapper.class, TypeRef.of(List.class, TestEntityJavaBean.class)),
             TypeRef.of(JdbcRowMapper.class, JdbcEntity.AllNativeTypesEntity.class),
             TypeRef.of(JdbcResultSetMapper.class, TypeRef.of(List.class, JdbcEntity.AllNativeTypesEntity.class)),
