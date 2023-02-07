@@ -15,7 +15,7 @@ if (hasProperty('buildScan')) {
 nexusStaging {
     username = System.getenv().getOrDefault("REPO_USER", "")
     password = System.getenv().getOrDefault("REPO_PASSWORD", "")
-    stagingProfileId = "ru.tinkoff"
+    packageGroup = "ru.tinkoff"
 }
 
 allprojects {
