@@ -161,7 +161,7 @@ public class ClientClassGenerator {
             ? Flux.class
             : Mono.class;
         var responseProcess = CodeBlock.builder();
-        if (methodData.responseMapper != null || httpResponseType.equals(methodData.returnType().publisherParameter())) {
+        if (methodData.responseMapper != null && methodData.responseMapper.mapperClass() != null || httpResponseType.equals(methodData.returnType().publisherParameter())) {
             var responseMapperName = method.getSimpleName() + "ResponseMapper";
             responseProcess.add("""
                       return this.$L.apply(_response);

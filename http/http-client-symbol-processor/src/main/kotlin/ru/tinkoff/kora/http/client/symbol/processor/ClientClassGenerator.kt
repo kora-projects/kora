@@ -234,7 +234,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
         b.addStatement("val _request = _requestBuilder.build()")
         val publisherType = if (methodData.returnType is ReturnType.FluxReturnType) Flux::class.java else Mono::class.java
         val responseProcess = CodeBlock.builder()
-        if (methodData.responseMapper != null || httpResponseType == methodData.returnType.publisherParameter()) {
+        if (methodData.responseMapper?.mapper != null || httpResponseType == methodData.returnType.publisherParameter()) {
             val responseMapperName: String = method.simpleName.asString() + "ResponseMapper"
             responseProcess.addStatement("%L.apply(_response)", responseMapperName)
         } else if (methodData.codeMappers.isEmpty()) {
