@@ -36,7 +36,7 @@ jobs:
         with:
           arguments: publish -Psigning.secretKeyRingFile=/tmp/secring.gpg
         env:
-          REPO_URL: https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/
+          REPO_URL: https://oss.sonatype.org/service/local/staging/deploy/maven2/
           REPO_USER: ${{ secrets.SONATYPE_USERNAME }}
           REPO_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
           KORA_VERSION: ${{ github.ref_name }}
@@ -46,7 +46,7 @@ jobs:
         with:
           arguments: closeAndReleaseRepository
         env:
-          REPO_URL: https://s01.oss.sonatype.org/service/local/
+          REPO_URL: https://oss.sonatype.org/service/local/
           REPO_USER: ${{ secrets.SONATYPE_USERNAME }}
           REPO_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
           KORA_VERSION: ${{ github.ref_name }}
