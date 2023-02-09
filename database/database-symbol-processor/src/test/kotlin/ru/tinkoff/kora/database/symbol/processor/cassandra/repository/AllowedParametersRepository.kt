@@ -2,8 +2,6 @@ package ru.tinkoff.kora.database.symbol.processor.cassandra.repository
 
 import com.datastax.oss.driver.api.core.CqlSession
 import kotlinx.coroutines.flow.Flow
-import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
 import ru.tinkoff.kora.database.cassandra.CassandraRepository
 import ru.tinkoff.kora.database.common.annotation.Batch
 import ru.tinkoff.kora.database.common.annotation.Query
@@ -24,7 +22,7 @@ interface AllowedParametersRepository : CassandraRepository {
     fun nativeParameter(value1: String?, value2: Int)
 
     @Query("INSERT INTO test(value1, value2) VALUES (:entity.field1, :entity.field2, :entity.field3, :entity.unknownTypeField, :entity.mappedField1, :entity.mappedField2)")
-    fun dtoJavaBeanParameter(entity: TestEntity?)
+    fun dataClassParameter(entity: TestEntity?)
 
     @Query("INSERT INTO test(value1, value2) VALUES (:unknownField)")
     fun unknownTypeFieldParameter(unknownField: TestEntity.UnknownField?)
