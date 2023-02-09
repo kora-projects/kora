@@ -2,11 +2,13 @@ package ru.tinkoff.kora.database.symbol.processor.cassandra
 
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.parameterMapperName
 import ru.tinkoff.kora.database.symbol.processor.QueryWithParameters
 import ru.tinkoff.kora.database.symbol.processor.model.QueryParameter
+import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 
 object StatementSetterGenerator {
     fun generate(
@@ -53,7 +55,7 @@ object StatementSetterGenerator {
                 val nativeType = CassandraNativeTypes.findNativeType(parameter.type.toTypeName());
                 if (nativeType != null) {
                     for (idx in sqlParameter.sqlIndexes) {
-                        b.addStatement("%L", nativeType.bind("_stmt", parameterName, idx));
+                        b.addStatement("%L", nativeType.bind("_stmt", CodeBlock.of("%N", parameterName), idx));
                     }
                 } else {
                     for (idx in sqlParameter.sqlIndexes) {
@@ -67,33 +69,39 @@ object StatementSetterGenerator {
             }
             if (parameter is QueryParameter.EntityParameter) {
                 for (field in parameter.entity.fields) {
-                    val isNullable = field.type.isMarkedNullable
-                    val sqlParameter = queryWithParameters.find(":$parameterName:${field.property.simpleName.getShortName()}")
+                    val parameterNullable = parameter.type.isMarkedNullable
+                    val fieldNullable = field.type.isMarkedNullable
+                    val sqlParameter = queryWithParameters.find("$parameterName.${field.property.simpleName.getShortName()}")
                     if (sqlParameter == null || sqlParameter.sqlIndexes.isEmpty()) {
                         continue
                     }
-                    if (isNullable) {
-                        b.beginControlFlow("if (%N == null)", parameterName)
-                        for (idx in sqlParameter.sqlIndexes) {
-                            b.addStatement("_stmt.setToNull(%L)", idx)
+
+                    b.addCode("%N", parameterName)
+                    if (parameterNullable) b.addCode("?")
+                    b.controlFlow(".%N.let {", field.property.simpleName.asString()) {
+                        if (parameterNullable || fieldNullable) {
+                            b.beginControlFlow("if (it == null)")
+                            for (idx in sqlParameter.sqlIndexes) {
+                                b.addStatement("_stmt.setToNull(%L)", idx)
+                            }
+                            b.nextControlFlow("else")
                         }
-                        b.nextControlFlow("else")
-                    }
-                    parameterName = "$parameterName.${field.property.simpleName.getShortName()}"
-                    val nativeType = CassandraNativeTypes.findNativeType(field.type.toTypeName());
-                    if (nativeType != null) {
-                        for (idx in sqlParameter.sqlIndexes) {
-                            b.addStatement("%L", nativeType.bind("_stmt", parameterName, idx))
+                        val nativeType = CassandraNativeTypes.findNativeType(field.type.toTypeName());
+                        if (nativeType != null) {
+                            for (idx in sqlParameter.sqlIndexes) {
+                                b.addStatement("%L", nativeType.bind("_stmt", CodeBlock.of("it"), idx))
+                            }
+                        } else {
+                            for (idx in sqlParameter.sqlIndexes) {
+                                val mapper = parameterMapperName(method, parameter.variable, field.property.simpleName.getShortName());
+                                b.addStatement("%N.apply(_stmt, %L, it);\n", mapper, idx)
+                            }
                         }
-                    } else {
-                        for (idx in sqlParameter.sqlIndexes) {
-                            val mapper = parameterMapperName(method, parameter.variable);
-                            b.addStatement("%N.apply(_stmt, %N, %N);\n", mapper, idx, parameter.variable.name!!.asString())
+                        if (parameterNullable || fieldNullable) {
+                            b.endControlFlow()
                         }
                     }
-                    if (isNullable) {
-                        b.endControlFlow()
-                    }
+
                 }
             }
         }

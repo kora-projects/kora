@@ -41,6 +41,21 @@ class CassandraParametersTest {
     }
 
     @Test
+    fun testDataClassParameter() {
+        repository.dataClassParameter(TestEntity(
+            "field1",
+            2,
+            null,
+            TestEntity.UnknownField(),
+            TestEntity.MappedField1(),
+            TestEntity.MappedField2()
+        ))
+        Mockito.verify(executor.boundStatementBuilder).setString(0, "field1")
+        Mockito.verify(executor.boundStatementBuilder).setInt(1, 2)
+        Mockito.verify(executor.boundStatementBuilder).setToNull(2)
+    }
+
+    @Test
     fun parametersWithSimilarNames() {
         repository.parametersWithSimilarNames("test", 42)
         Mockito.verify(executor.mockSession).prepare("INSERT INTO test(value1, value2) VALUES (?, ?)")
