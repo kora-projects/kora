@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.database.symbol.processor
 
-import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.isAbstract
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.ClassKind
@@ -13,7 +12,6 @@ import ru.tinkoff.kora.ksp.common.exception.ProcessingError
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.visitClass
 
-@KspExperimental
 class RepositorySymbolProcessor(
     environment: SymbolProcessorEnvironment
 ) : BaseSymbolProcessor(environment) {
@@ -50,7 +48,6 @@ class RepositorySymbolProcessor(
     }
 }
 
-@KspExperimental
 class RepositorySymbolProcessorProvider : SymbolProcessorProvider {
     override fun create(environment: SymbolProcessorEnvironment): SymbolProcessor {
         return RepositorySymbolProcessor(environment)

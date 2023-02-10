@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.database.symbol.processor.jdbc
 
-import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunction
@@ -31,7 +30,6 @@ import ru.tinkoff.kora.ksp.common.parseMappingData
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executor
 
-@KspExperimental
 class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenerator {
     private val repositoryInterface = resolver.getClassDeclarationByName(resolver.getKSNameFromString(JdbcTypes.jdbcRepository.canonicalName))?.asStarProjectedType()
     override fun repositoryInterface() = repositoryInterface

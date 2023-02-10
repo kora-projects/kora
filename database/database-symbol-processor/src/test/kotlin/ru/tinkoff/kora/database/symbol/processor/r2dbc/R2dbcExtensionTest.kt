@@ -15,7 +15,7 @@ class R2dbcExtensionTest {
                 typeOf<R2dbcRowMapper<TestEntity>>(),
                 typeOf<R2dbcRowMapper<AllNativeTypesEntity>>(),
             ),
-            typeOf<R2dbcResultColumnMapper<TestEntity.UnknownField>>(),
+            typeOf<R2dbcResultColumnMapper<TestEntity.UnknownField?>>(),
             typeOf<TestEntityFieldR2dbcResultColumnMapperNonFinal>(),
         )
     }

@@ -49,7 +49,7 @@ class DbEntityReader(
                 if (extractNative != null) {
                     b.addStatement("val %N = %L", fieldName, extractNative)
                 } else {
-                    val mapperType = this.fieldMapperName.parameterizedBy(mapperTypeParameter)
+                    val mapperType = this.fieldMapperName.parameterizedBy(mapperTypeParameter.copy(true))
                     mappers.add(Mapper(mapperType, mapperFieldName))
                     b.addStatement("val %N = %L", fieldName, this.mapperCallGenerator(fieldData))
                 }

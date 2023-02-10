@@ -18,7 +18,7 @@ class CassandraExtensionTest {
                 typeOf<CassandraResultSetMapper<List<AllNativeTypesEntity>>>(),
                 typeOf<CassandraResultSetMapper<List<TestEntity>>>(),
             ),
-            typeOf<CassandraRowColumnMapper<TestEntity.UnknownField>>(),
+            typeOf<CassandraRowColumnMapper<TestEntity.UnknownField?>>(),
             typeOf<TestEntityFieldCassandraResultColumnMapperNonFinal>(),
         )
     }

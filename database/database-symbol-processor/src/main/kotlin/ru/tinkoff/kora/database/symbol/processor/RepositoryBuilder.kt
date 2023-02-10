@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.database.symbol.processor
 
-import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.isProtected
 import com.google.devtools.ksp.processing.KSPLogger
@@ -21,7 +20,6 @@ import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 
-@KspExperimental
 class RepositoryBuilder(
     val resolver: Resolver,
     private val kspLogger: KSPLogger

@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.database.symbol.processor.cassandra
 
-import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunction
@@ -35,7 +34,6 @@ import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.parseMappingData
 
 
-@KspExperimental
 class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryGenerator {
     private val repositoryInterface = resolver.getClassDeclarationByName(resolver.getKSNameFromString(CassandraTypes.repository.canonicalName))?.asStarProjectedType()
 
