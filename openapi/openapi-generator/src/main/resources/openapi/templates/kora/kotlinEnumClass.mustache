@@ -68,7 +68,7 @@
         return this.delegate.read(parser)
       }
     }
-
+{{^isClient}}
     @ru.tinkoff.kora.common.Component
     class {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}StringParameterReader : ru.tinkoff.kora.http.server.common.handler.StringParameterReader<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> {
       private val delegate = ru.tinkoff.kora.http.server.common.handler.EnumStringParameterReader(
@@ -80,7 +80,8 @@
         return this.delegate.read(string)
       }
     }
-
+{{/isClient}}
+{{#isClient}}
     @ru.tinkoff.kora.common.Component
     class {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}StringParameterConverter : ru.tinkoff.kora.http.client.common.writer.StringParameterConverter<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> {
       private val delegate = ru.tinkoff.kora.http.client.common.writer.EnumStringParameterConverter(
@@ -92,4 +93,5 @@
         return this.delegate.convert(value)
       }
     }
+{{/isClient}}
   }

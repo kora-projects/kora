@@ -51,6 +51,7 @@
       }
     }
 
+{{^isClient}}
     @ru.tinkoff.kora.common.Component
     public static final class {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}StringParameterReader implements ru.tinkoff.kora.http.server.common.handler.StringParameterReader<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> {
       private final ru.tinkoff.kora.http.server.common.handler.EnumStringParameterReader<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> delegate = new ru.tinkoff.kora.http.server.common.handler.EnumStringParameterReader<>(
@@ -61,7 +62,8 @@
         return this.delegate.read(string);
       }
     }
-
+{{/isClient}}
+{{#isClient}}
     @ru.tinkoff.kora.common.Component
     public static final class {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}StringParameterConverter implements ru.tinkoff.kora.http.client.common.writer.StringParameterConverter<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> {
       private final ru.tinkoff.kora.http.client.common.writer.EnumStringParameterConverter<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> delegate = new ru.tinkoff.kora.http.client.common.writer.EnumStringParameterConverter<>(
@@ -73,4 +75,5 @@
         return this.delegate.convert(object);
       }
     }
+{{/isClient}}
   }
