@@ -50,5 +50,8 @@ public interface ParameterConvertersModule {
     default StringParameterConverter<java.time.LocalDateTime> javaTimeLocalDateTimeStringParameterConverter() {return DateTimeFormatter.ISO_LOCAL_DATE_TIME::format;}
 
     @DefaultComponent
+    default StringParameterConverter<java.time.LocalDate> javaTimeLocalDateStringParameterConverter() {return DateTimeFormatter.ISO_LOCAL_DATE::format;}
+
+    @DefaultComponent
     default StringParameterConverter<java.time.ZonedDateTime> javaTimeZonedDateTimeStringParameterConverter() {return DateTimeFormatter.ISO_ZONED_DATE_TIME::format;}
 }
