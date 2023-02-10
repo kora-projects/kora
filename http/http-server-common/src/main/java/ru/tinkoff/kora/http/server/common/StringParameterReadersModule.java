@@ -34,6 +34,11 @@ public interface StringParameterReadersModule {
     }
 
     @DefaultComponent
+    default StringParameterReader<java.time.LocalDate> javaTimeLocalDateStringParameterReader() {
+        return StringParameterReader.of(java.time.LocalDate::parse, "Parameter has incorrect value '%s'', expected format is '2007-12-03'"::formatted);
+    }
+
+    @DefaultComponent
     default StringParameterReader<java.time.ZonedDateTime> javaTimeZonedDateTimeStringParameterReader() {
         return StringParameterReader.of(java.time.ZonedDateTime::parse, "Parameter has incorrect value '%s'', expected format is '2007-12-03T10:15:30+01:00[Europe/Paris]'"::formatted);
     }
