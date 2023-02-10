@@ -15,6 +15,7 @@ import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
@@ -80,43 +81,34 @@ public class CassandraTypesExtension implements KoraExtension {
 
     private KoraExtensionDependencyGenerator generateRowColumnMapper(RoundEnvironment roundEnvironment, DeclaredType dt) {
         var entityType = dt.getTypeArguments().get(0);
-        var element = this.types.asElement(entityType);
-        if (CommonUtils.findDirectAnnotation(element, CassandraTypes.UDT_ANNOTATION) == null) {
-            return null;
+        var element = (TypeElement) this.types.asElement(entityType);
+        if (CommonUtils.findDirectAnnotation(element, CassandraTypes.UDT_ANNOTATION) != null) {
+            return KoraExtensionDependencyGenerator.generatedFrom(elements, element, "_CassandraRowColumnMapper");
         }
-        var mapperName = CommonUtils.getOuterClassesAsPrefix(element) + element.getSimpleName() + "_CassandraRowColumnMapper";
-        var packageElement = this.elements.getPackageOf(element);
-
-        return () -> {
-            var maybeGenerated = this.elements.getTypeElement(packageElement.getQualifiedName() + "." + mapperName);
-            if (maybeGenerated != null) {
-                var constructors = CommonUtils.findConstructors(maybeGenerated, m -> m.contains(Modifier.PUBLIC));
-                if (constructors.size() != 1) throw new IllegalStateException();
-                return ExtensionResult.fromExecutable(constructors.get(0));
+        if (element.getQualifiedName().contentEquals("java.util.List")) {
+            entityType = ((DeclaredType) entityType).getTypeArguments().get(0);
+            element = (TypeElement) this.types.asElement(entityType);
+            if (CommonUtils.findDirectAnnotation(element, CassandraTypes.UDT_ANNOTATION) != null) {
+                return KoraExtensionDependencyGenerator.generatedFrom(elements, element, "_CassandraRowColumnMapper");
             }
-            return ExtensionResult.nextRound();
-        };
+        }
+        return null;
     }
 
     private KoraExtensionDependencyGenerator generateParameterColumnMapper(RoundEnvironment roundEnvironment, DeclaredType dt) {
         var entityType = dt.getTypeArguments().get(0);
-        var element = this.types.asElement(entityType);
-        if (CommonUtils.findDirectAnnotation(element, CassandraTypes.UDT_ANNOTATION) == null) {
-            return null;
+        var element = (TypeElement) this.types.asElement(entityType);
+        if (CommonUtils.findDirectAnnotation(element, CassandraTypes.UDT_ANNOTATION) != null) {
+            return KoraExtensionDependencyGenerator.generatedFrom(elements, element, "_CassandraParameterColumnMapper");
         }
-        var mapperName = CommonUtils.getOuterClassesAsPrefix(element) + element.getSimpleName() + "_CassandraParameterColumnMapper";
-        var packageElement = this.elements.getPackageOf(element);
-
-        return () -> {
-            var maybeGenerated = this.elements.getTypeElement(packageElement.getQualifiedName() + "." + mapperName);
-            if (maybeGenerated != null) {
-                var constructors = CommonUtils.findConstructors(maybeGenerated, m -> m.contains(Modifier.PUBLIC));
-                if (constructors.size() != 1) throw new IllegalStateException();
-                return ExtensionResult.fromExecutable(constructors.get(0));
+        if (element.getQualifiedName().contentEquals("java.util.List")) {
+            entityType = ((DeclaredType) entityType).getTypeArguments().get(0);
+            element = (TypeElement) this.types.asElement(entityType);
+            if (CommonUtils.findDirectAnnotation(element, CassandraTypes.UDT_ANNOTATION) != null) {
+                return KoraExtensionDependencyGenerator.generatedFrom(elements, element, "_CassandraParameterColumnMapper");
             }
-            return ExtensionResult.nextRound();
-        };
-
+        }
+        return null;
     }
 
     @Nullable

@@ -30,5 +30,7 @@ public class CassandraTypes {
     public static final ClassName GETTABLE_BY_NAME = ClassName.get("com.datastax.oss.driver.api.core.data", "GettableByName");
 
     public static final ClassName USER_DEFINED_TYPE = ClassName.get("com.datastax.oss.driver.api.core.type", "UserDefinedType");
+    public static final ClassName LIST_TYPE = ClassName.get("com.datastax.oss.driver.api.core.type", "ListType");
+    public static final ClassName UDT_VALUE = ClassName.get("com.datastax.oss.driver.api.core.data", "UdtValue");
     public static final ClassName UDT_ANNOTATION = ClassName.get("ru.tinkoff.kora.database.cassandra", "UDT");
 }

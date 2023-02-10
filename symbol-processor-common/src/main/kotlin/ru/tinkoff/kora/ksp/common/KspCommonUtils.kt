@@ -158,7 +158,6 @@ data class MappingData(val mapper: KSType?, val tags: Set<String>) {
     }
 }
 
-@KspExperimental
 fun KSAnnotated.parseMappingData(): MappersData {
     val tags = TagUtils.parseTagValue(this)
     val mappingsAnnotation = this.findAnnotation(Mapping.Mappings::class)
@@ -195,7 +194,6 @@ fun <T> KSAnnotated.visitFunctionArgument(visitor: (KSValueParameter) -> T) = th
     }
 }, null)
 
-@KspExperimental
 fun parseAnnotationClassValue(target: KSAnnotated, annotationName: String): List<KSType> {
     val annotation = target.annotations.firstOrNull { it.annotationType.resolve().declaration.qualifiedName!!.asString() == annotationName }
 
@@ -270,6 +268,16 @@ fun KSAnnotated.getOuterClassesAsPrefix(): String {
         parent = parent.parent
     }
     return prefix.toString()
+}
+
+fun KSClassDeclaration.generatedClassName(postfix: String): String {
+    val prefix = StringBuilder("$")
+    var parent = this.parent
+    while (parent != null && parent is KSClassDeclaration) {
+        prefix.insert(1, parent.simpleName.asString() + "_")
+        parent = parent.parent
+    }
+    return prefix.toString() + this.simpleName.asString() + "_" + postfix
 }
 
 fun <T> measured(name: String, thunk: () -> T): T {

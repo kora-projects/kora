@@ -55,7 +55,7 @@ object StatementSetterGenerator {
                 val nativeType = CassandraNativeTypes.findNativeType(parameter.type.toTypeName());
                 if (nativeType != null) {
                     for (idx in sqlParameter.sqlIndexes) {
-                        b.addStatement("%L", nativeType.bind("_stmt", CodeBlock.of("%N", parameterName), idx));
+                        b.addStatement("%L", nativeType.bind("_stmt", CodeBlock.of("%N", parameterName), CodeBlock.of("%L", idx)));
                     }
                 } else {
                     for (idx in sqlParameter.sqlIndexes) {
@@ -89,7 +89,7 @@ object StatementSetterGenerator {
                         val nativeType = CassandraNativeTypes.findNativeType(field.type.toTypeName());
                         if (nativeType != null) {
                             for (idx in sqlParameter.sqlIndexes) {
-                                b.addStatement("%L", nativeType.bind("_stmt", CodeBlock.of("it"), idx))
+                                b.addStatement("%L", nativeType.bind("_stmt", CodeBlock.of("it"), CodeBlock.of("%L", idx)))
                             }
                         } else {
                             for (idx in sqlParameter.sqlIndexes) {

@@ -1,1 +1,2 @@
 ru.tinkoff.kora.database.symbol.processor.RepositorySymbolProcessorProvider
+ru.tinkoff.kora.database.symbol.processor.cassandra.udt.CassandraUdtSymbolProcessorProvider

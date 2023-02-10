@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.database.symbol.processor
 
-import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.isOpen
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
@@ -87,7 +86,6 @@ object DbUtils {
         .filter { it.isAbstract }
         .filter { it.findAnnotation(DbUtils.queryAnnotation) != null }
 
-    @KspExperimental
     fun parseParameterMappers(
         method: KSFunctionDeclaration,
         parameters: List<QueryParameter>,

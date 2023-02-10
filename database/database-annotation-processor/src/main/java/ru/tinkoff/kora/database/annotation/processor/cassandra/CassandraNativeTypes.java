@@ -7,6 +7,7 @@ import com.squareup.javapoet.TypeName;
 import javax.annotation.Nullable;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -65,6 +66,11 @@ public class CassandraNativeTypes {
             (rsName, i) -> CodeBlock.of("$L.getLocalDate($L)", rsName, i),
             (stmt, var, i) -> CodeBlock.of("$L.setLocalDate($L, $L)", stmt, i, var)
         );
+        var instant = CassandraNativeType.of(
+            TypeName.get(Instant.class),
+            (rsName, i) -> CodeBlock.of("$L.getInstant($L)", rsName, i),
+            (stmt, var, i) -> CodeBlock.of("$L.setInstant($L, $L)", stmt, i, var)
+        );
 
         nativeTypes = List.of(
             booleanPrimitive,
@@ -79,7 +85,8 @@ public class CassandraNativeTypes {
             bigDecimal,
             byteBuffer,
             localDateTime,
-            localDate
+            localDate,
+            instant
         );
     }
 

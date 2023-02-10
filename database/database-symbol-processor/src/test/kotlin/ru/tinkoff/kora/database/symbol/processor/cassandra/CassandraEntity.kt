@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.database.symbol.processor.cassandra
 
 import com.datastax.dse.driver.api.core.cql.reactive.ReactiveResultSet
-import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder
 import com.datastax.oss.driver.api.core.cql.Row
 import com.datastax.oss.driver.api.core.data.GettableByName
 import com.datastax.oss.driver.api.core.data.SettableByName
@@ -36,8 +35,8 @@ class TestEntityFieldCassandraResultColumnMapper : CassandraRowColumnMapper<Test
     }
 }
 
-open class TestEntityFieldCassandraResultColumnMapperNonFinal : CassandraRowColumnMapper<TestEntity.MappedField2> {
-    override fun apply(row: GettableByName, column: Int): TestEntity.MappedField2 {
+open class TestEntityFieldCassandraResultColumnMapperNonFinal : CassandraRowColumnMapper<TestEntity.MappedField2?> {
+    override fun apply(row: GettableByName, column: Int): TestEntity.MappedField2? {
         return TestEntity.MappedField2()
     }
 }

@@ -20,7 +20,7 @@ class JdbcExtensionTest {
                 typeOf<JdbcResultSetMapper<List<AllNativeTypesEntity>>>(),
                 typeOf<JdbcResultSetMapper<List<TestEntity>>>(),
             ),
-            typeOf<JdbcResultColumnMapper<TestEntity.UnknownField>>(),
+            typeOf<JdbcResultColumnMapper<TestEntity.UnknownField?>>(),
             typeOf<TestEntityFieldJdbcResultColumnMapperNonFinal>(),
         )
     }

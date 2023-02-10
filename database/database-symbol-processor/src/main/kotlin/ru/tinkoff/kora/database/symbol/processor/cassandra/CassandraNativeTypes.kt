@@ -5,6 +5,7 @@ import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.asTypeName
 import java.math.BigDecimal
 import java.nio.ByteBuffer
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -99,6 +100,16 @@ object CassandraNativeTypes {
             LocalDateTime::class.asTypeName().copy(true),
             { rsName, i -> CodeBlock.of("%N.get(%L, %T::class.java)", rsName, i, LocalDateTime::class) },
             { stmt, variableName, idx -> CodeBlock.of("%N.set(%L, %L, %T::class.java)", stmt, idx, variableName, LocalDateTime::class) },
+        ),
+        CassandraNativeType.of(
+            Instant::class.asTypeName(),
+            { rsName, i -> CodeBlock.of("%N.getInstant(%L)", rsName, i) },
+            { stmt, variableName, idx -> CodeBlock.of("%N.set(%L, %L, %T::class.java)", stmt, idx, variableName, LocalDateTime::class) },
+        ),
+        CassandraNativeType.of(
+            Instant::class.asTypeName().copy(true),
+            { rsName, i -> CodeBlock.of("%N.getInstant(%L)", rsName, i) },
+            { stmt, variableName, idx -> CodeBlock.of("%N.setInstant(%L, %L)", stmt, idx, variableName) },
         ),
     )
 

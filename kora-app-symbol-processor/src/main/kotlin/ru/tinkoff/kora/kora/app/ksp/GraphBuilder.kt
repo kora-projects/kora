@@ -111,7 +111,12 @@ object GraphBuilder {
                         try {
                             results.add(this.processProcessing(ctx, newProcessing, dependencyClaim))
                         } catch (e: NewRoundException) {
-                            results.add(e.resolving)
+                            results.add(ProcessingState.NewRoundRequired(
+                                e.source,
+                                e.type,
+                                e.tag,
+                                e.resolving
+                            ))
                         } catch (e: UnresolvedDependencyException) {
                             if (exception != null) {
                                 exception.addSuppressed(e)
@@ -126,6 +131,8 @@ object GraphBuilder {
                             stack = result.resolutionStack
                             processing = result
                             continue@frame
+                        } else {
+                            return result
                         }
                     }
                     if (results.size > 1) {

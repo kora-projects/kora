@@ -20,7 +20,7 @@ class VertxExtensionTest {
                 typeOf<VertxRowSetMapper<TestEntity>>(),
                 typeOf<VertxRowSetMapper<AllNativeTypesEntity>>(),
             ),
-            typeOf<VertxResultColumnMapper<TestEntity.UnknownField>>(),
+            typeOf<VertxResultColumnMapper<TestEntity.UnknownField?>>(),
             typeOf<TestEntityFieldVertxResultColumnMapperNonFinal>(),
         )
     }
