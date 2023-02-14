@@ -104,7 +104,7 @@ object CassandraNativeTypes {
         CassandraNativeType.of(
             Instant::class.asTypeName(),
             { rsName, i -> CodeBlock.of("%N.getInstant(%L)", rsName, i) },
-            { stmt, variableName, idx -> CodeBlock.of("%N.set(%L, %L, %T::class.java)", stmt, idx, variableName, LocalDateTime::class) },
+            { stmt, variableName, idx -> CodeBlock.of("%N.setInstant(%L, %L)", stmt, idx, variableName) },
         ),
         CassandraNativeType.of(
             Instant::class.asTypeName().copy(true),
