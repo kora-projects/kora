@@ -2,23 +2,28 @@ package ru.tinkoff.kora.database.symbol.processor.r2dbc
 
 import io.r2dbc.spi.*
 import org.mockito.Mockito
-import org.mockito.kotlin.any
 import org.mockito.invocation.InvocationOnMock
+import org.mockito.kotlin.any
 import org.reactivestreams.Publisher
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry
 import ru.tinkoff.kora.database.r2dbc.R2dbcConnectionFactory
-import java.util.function.*
+import java.util.function.BiFunction
 import java.util.function.Function
+import java.util.function.Predicate
 
-class MockR2dbcExecutor : R2dbcConnectionFactory {
+class MockR2dbcExecutor() : R2dbcConnectionFactory {
     val con: Connection = Mockito.mock(Connection::class.java)
     val statement: Statement = Mockito.mock(Statement::class.java)
     val telemetry = Mockito.mock(DataBaseTelemetry::class.java)!!
     val telemetryCtx = Mockito.mock(DataBaseTelemetry.DataBaseTelemetryContext::class.java)!!
 
     var rows = ArrayList<List<MockColumn>>()
+
+    init {
+        reset()
+    }
 
     fun reset() {
         rows.clear()

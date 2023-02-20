@@ -2,13 +2,16 @@ package ru.tinkoff.kora.database.common.annotation.processor;
 
 import org.assertj.core.api.Assertions;
 import org.intellij.lang.annotations.Language;
+import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest;
 import ru.tinkoff.kora.database.annotation.processor.RepositoryAnnotationProcessor;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
-public class AbstractRepositoryTest extends AbstractAnnotationProcessorTest {
+public abstract class AbstractRepositoryTest extends AbstractAnnotationProcessorTest {
     protected static class TestRepository {
         private final Class<?> repositoryClass;
         private final Object repositoryObject;
@@ -22,8 +25,15 @@ public class AbstractRepositoryTest extends AbstractAnnotationProcessorTest {
             for (var repositoryClassMethod : repositoryClass.getMethods()) {
                 if (repositoryClassMethod.getName().equals(method) && repositoryClassMethod.getParameters().length == args.length) {
                     try {
-                        return repositoryClassMethod.invoke(this.repositoryObject, args);
-                    } catch (IllegalAccessException | InvocationTargetException e) {
+                        var result = repositoryClassMethod.invoke(this.repositoryObject, args);
+                        if (result instanceof Mono<?> mono) {
+                            return mono.block();
+                        }
+                        if (result instanceof Future<?> future) {
+                            return future.get();
+                        }
+                        return result;
+                    } catch (IllegalAccessException | InvocationTargetException | ExecutionException | InterruptedException e) {
                         throw new RuntimeException(e);
                     }
                 }
@@ -32,6 +42,13 @@ public class AbstractRepositoryTest extends AbstractAnnotationProcessorTest {
         }
     }
 
+    @Override
+    protected String commonImports() {
+        return super.commonImports() + """
+            import ru.tinkoff.kora.database.common.annotation.*;
+            import ru.tinkoff.kora.database.common.*;
+            """;
+    }
 
     protected TestRepository compile(Object connectionFactory, List<?> arguments, @Language("java") String... sources) {
         var compileResult = compile(List.of(new RepositoryAnnotationProcessor()), sources);

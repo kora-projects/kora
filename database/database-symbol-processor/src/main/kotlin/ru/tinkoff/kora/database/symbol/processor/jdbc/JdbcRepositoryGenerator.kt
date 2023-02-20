@@ -145,15 +145,15 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         val returnTypeName = returnType.toTypeName().copy(false)
         val mapperType = JdbcTypes.jdbcResultSetMapper.parameterizedBy(returnTypeName)
         if (resultSetMapper != null) {
-            return Mapper(resultSetMapper.mapper!!, mapperType, mapperName)
+            return Mapper(resultSetMapper, mapperType, mapperName)
         }
         if (rowMapper != null) {
             if (returnType.isList()) {
-                return Mapper(rowMapper.mapper!!, mapperType, mapperName) {
+                return Mapper(rowMapper, mapperType, mapperName) {
                     CodeBlock.of("%T.listResultSetMapper(%L)", JdbcTypes.jdbcResultSetMapper, it)
                 }
             } else {
-                return Mapper(rowMapper.mapper!!, mapperType, mapperName) {
+                return Mapper(rowMapper, mapperType, mapperName) {
                     CodeBlock.of("%T.singleResultSetMapper(%L)", JdbcTypes.jdbcResultSetMapper, it)
                 }
             }

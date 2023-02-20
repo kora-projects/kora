@@ -27,6 +27,7 @@ class MockVertxExecutor : VertxConnectionFactory {
     }
 
     fun reset() {
+        org.mockito.kotlin.reset(connection, statement, query, rowSet, telemetry, telemetryCtx)
         whenever(telemetry.createContext(any(), any())).thenReturn(telemetryCtx)
         whenever(connection.preparedQuery(any())).thenReturn(query)
         whenever(statement.query()).thenReturn(query)

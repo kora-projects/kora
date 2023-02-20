@@ -38,16 +38,17 @@ public class R2dbcStatementSetterGenerator {
             if (parameter instanceof QueryParameter.SimpleParameter simpleParameter) {
                 var sqlParameter = Objects.requireNonNull(sqlWithParameters.find(i));
                 var nativeType = R2dbcNativeTypes.findAndBox(TypeName.get(simpleParameter.type()));
-                if (nativeType != null) {
+                var mapping = CommonUtils.parseMapping(simpleParameter.variable()).getMapping(R2dbcTypes.PARAMETER_COLUMN_MAPPER);
+                if (nativeType != null && mapping == null) {
                     for (var index : sqlParameter.sqlIndexes()) {
                         if (CommonUtils.isNullable(simpleParameter.variable())) {
                             b.addCode("""
-                                    if($L == null) {
-                                      _stmt.bindNull($L, $L.class);
-                                    } else {
-                                      _stmt.bind($L, $L);
-                                    }
-                                    """, parameterName, index, nativeType, index, parameterName);
+                                if($L == null) {
+                                  _stmt.bindNull($L, $L.class);
+                                } else {
+                                  _stmt.bind($L, $L);
+                                }
+                                """, parameterName, index, nativeType, index, parameterName);
                         } else {
                             b.addCode("_stmt.bind($L, $L);\n", index, parameterName);
                         }
@@ -68,7 +69,8 @@ public class R2dbcStatementSetterGenerator {
 
                     var sqlParameter = sqlWithParameters.find(entityParameter.name() + "." + field.element().getSimpleName());
                     var nativeType = R2dbcNativeTypes.findAndBox(TypeName.get(field.typeMirror()));
-                    if (nativeType != null) {
+                    var mapping = CommonUtils.parseMapping(field.element()).getMapping(R2dbcTypes.PARAMETER_COLUMN_MAPPER);
+                    if (nativeType != null && mapping == null) {
                         for (var index : sqlParameter.sqlIndexes()) {
                             if (CommonUtils.isNullable(field.element())) {
                                 b.addCode("""

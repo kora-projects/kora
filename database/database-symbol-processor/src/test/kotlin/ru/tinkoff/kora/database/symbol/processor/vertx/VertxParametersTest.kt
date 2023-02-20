@@ -1,198 +1,150 @@
 package ru.tinkoff.kora.database.symbol.processor.vertx
 
 import io.vertx.sqlclient.Tuple
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
-import org.mockito.ArgumentMatcher
-import org.mockito.kotlin.any
-import org.mockito.kotlin.argThat
-import org.mockito.kotlin.verify
-import org.mockito.kotlin.whenever
-import ru.tinkoff.kora.annotation.processor.common.TestContext
-import ru.tinkoff.kora.application.graph.TypeRef
-import ru.tinkoff.kora.database.symbol.processor.DbTestUtils
-import ru.tinkoff.kora.database.symbol.processor.entity.TestEntity
-import ru.tinkoff.kora.database.symbol.processor.vertx.repository.AllowedParametersRepository
-import ru.tinkoff.kora.database.vertx.VertxConnectionFactory
+import org.mockito.kotlin.*
 import ru.tinkoff.kora.database.vertx.mapper.parameter.VertxParameterColumnMapper
-import ru.tinkoff.kora.database.vertx.mapper.result.VertxRowMapper
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class VertxParametersTest {
-    private val executor = MockVertxExecutor()
-    private val ctx = TestContext()
-    private val repository: AllowedParametersRepository
-
-    init {
-        ctx.addContextElement(TypeRef.of(VertxConnectionFactory::class.java), executor)
-        ctx.addMock(TypeRef.of(VertxParameterColumnMapper::class.java, TestEntity.UnknownField::class.java))
-        ctx.addMock(TypeRef.of(VertxRowMapper::class.java, Int::class.javaObjectType))
-        whenever(ctx.findInstance(TypeRef.of(VertxRowMapper::class.java, Int::class.javaObjectType)).apply(any())).thenReturn(1)
-        ctx.addMock(TypeRef.of(TestEntityFieldVertxParameterColumnMapperNonFinal::class.java))
-        repository = ctx.newInstance(DbTestUtils.compileClass(AllowedParametersRepository::class).java)
-    }
-
-    @BeforeEach
-    internal fun setUp() {
-        executor.reset()
-        ctx.resetMocks()
-    }
-
-    private fun eq(tuple: Tuple): ArgumentMatcher<Tuple> {
-        return object : ArgumentMatcher<Tuple> {
-            override fun toString(): String {
-                return tuple.deepToString()
+class VertxParametersTest : AbstractVertxRepositoryTest() {
+    @Test
+    fun testConnectionParameter() {
+        val repository = compile(listOf<Any>(), """
+            @Repository
+            interface TestRepository : VertxRepository {
+                @Query("INSERT INTO test(test) VALUES ('test')")
+                fun test(session: io.vertx.sqlclient.SqlClient)
             }
-            override fun matches(argument: Tuple): Boolean {
-                if (argument.size() != tuple.size()) {
-                    return false
-                }
-                for (i in 0 until tuple.size()) {
-                    val o1 = tuple.getValue(i)
-                    val o2 = argument.getValue(i)
-                    if (o1 != o2) {
-                        return false
-                    }
-                }
-                return true
-            }
-        }
-    }
+            """.trimIndent())
 
-    private fun listMatches(tuple: List<Tuple>): List<Tuple> {
-        return argThat(listEq(tuple))
-    }
+        repository.invoke("test", executor.connection)
 
-    private fun listEq(tuples: List<Tuple>): ArgumentMatcher<List<Tuple>> {
-        return object : ArgumentMatcher<List<Tuple>> {
-            override fun matches(argument: List<Tuple>): Boolean {
-                if (argument.size != tuples.size) {
-                    return false
-                }
-                for (i in tuples.indices) {
-                    val t1 = tuples[i]
-                    val t2 = argument[i]
-                    if (t1.size() != t2.size()) {
-                        return false
-                    }
-                    for (j in 0 until t1.size()) {
-                        val o1 = t1.getValue(i)
-                        val o2 = t2.getValue(i)
-                        if (o1 != o2) {
-                            return false
-                        }
-                    }
-                }
-                return true
-            }
-
-            override fun toString(): String {
-                return tuples.toString()
-            }
-        }
-    }
-
-    private fun matches(tuple: Tuple): Tuple {
-        return argThat(eq(tuple))
+        verify(executor.query).execute(Tuple.tuple().matcher(), any())
     }
 
     @Test
     fun testNativeParameter() {
-        repository.nativeParameter(null, 1)
-        verify(executor.connection).preparedQuery(org.mockito.kotlin.eq("INSERT INTO test(value1, value2) VALUES ($1, $2)"))
-        verify(executor.query).execute(matches(Tuple.of(null, 1)), any())
+        val repository = compile(listOf<Any>(), """
+            @Repository
+            interface TestRepository : VertxRepository {
+                @Query("INSERT INTO test(value1, value2) VALUES (:value1, :value2)")
+                fun test(value1: String?, value2: Int)
+            }
+            
+        """.trimIndent())
+
+        repository.invoke("test", null, 1)
+        verify(executor.connection).preparedQuery("INSERT INTO test(value1, value2) VALUES ($1, $2)")
+        verify(executor.query).execute(Tuple.of(null, 1).matcher(), any())
+        executor.reset()
+
+        repository.invoke("test", "test", 1)
+        verify(executor.connection).preparedQuery("INSERT INTO test(value1, value2) VALUES ($1, $2)")
+        verify(executor.query).execute(Tuple.of("test", 1).matcher(), any())
+    }
+
+
+    @Test
+    fun testUnknownTypeParameter() {
+        val mapper = mock<VertxParameterColumnMapper<Any>>()
+        val repository = compile(listOf(mapper), """
+            @Repository
+            interface TestRepository : VertxRepository {
+                @Query("INSERT INTO test(test) VALUES (:value)")
+                fun test(value: CustomType)
+            }
+            """.trimIndent(), "class CustomType{}")
+        val value = new("CustomType")
+        whenever(mapper.apply(any())).thenReturn("test")
+
+        repository.invoke("test", value)
+
+        verify(executor.connection).preparedQuery("INSERT INTO test(test) VALUES ($1)")
+        verify(mapper).apply(same(value))
+        verify(executor.query).execute(Tuple.of("test").matcher(), any())
     }
 
     @Test
-    fun testUnknownTypeFieldParameter() {
-        val mapper = ctx.findInstance(TypeRef.of(VertxParameterColumnMapper::class.java, TestEntity.UnknownField::class.java)) as VertxParameterColumnMapper<TestEntity.UnknownField>
-        whenever(mapper.apply(any())).thenReturn(42)
+    fun testParametersWithSimilarNames() {
+        val repository = compile(listOf<Any>(), """
+            @Repository
+            interface TestRepository : VertxRepository {
+                @Query("INSERT INTO test(value1, value2) VALUES (:value, :valueTest)")
+                fun test(value: String?, valueTest: Int)
+            }
+            """.trimIndent())
 
-        repository.unknownTypeFieldParameter(TestEntity.UnknownField())
+        repository.invoke("test", "test", 42)
 
-        verify(mapper).apply(any())
-        verify(executor.query).execute(matches(Tuple.of(42)), any())
+        verify(executor.connection).preparedQuery("INSERT INTO test(value1, value2) VALUES ($1, $2)")
+        verify(executor.query).execute(Tuple.of("test", 42).matcher(), any())
     }
-//
-//    @Test
-//    fun testDtoParameter() {
-//        repository.dtoParameter(Entity("val1", 42)).block()
-//        Mockito.verify(executor.query).execute(matches(Tuple.of("val1", 42)))
-//    }
-//
-//    @Test
-//    fun testDtoFieldMapping() {
-//        repository.dtoFieldMapping(EntityWithMappedField("val1", EntityWithMappedField.Field("val2"))).block()
-//        Mockito.verify(executor.query).execute(matches(Tuple.of("val1", "val2")))
-//    }
-//
-//    @Test
-//    fun testDtoParameterMapping() {
-//        repository.dtoParameterMapping(
-//            MappedEntity(
-//                MappedEntity.Field1("val1"),
-//                MappedEntity.Field2("val2")
-//            )
-//        ).block()
-//        Mockito.verify(executor.query).execute(matches(Tuple.of("val1", "val2")))
-//    }
-//
-//    @Test
-//    fun testNativeBatch() {
-//        repository.nativeParameterBatch(listOf("test1", "test2"), 42).block()
-//        Mockito.verify(executor.query).executeBatch(
-//            listMatches(
-//                listOf(
-//                    Tuple.of("test1", 42),
-//                    Tuple.of("test2", 42)
-//                )
-//            )
-//        )
-//    }
-//
-//    @Test
-//    fun testDtoBatch() {
-//        repository.dtoBatch(
-//            listOf(
-//                Entity("test1", 42),
-//                Entity("test2", 43)
-//            )
-//        ).block()
-//        Mockito.verify(executor.query).executeBatch(
-//            listMatches(
-//                listOf(
-//                    Tuple.of("test1", 42),
-//                    Tuple.of("test2", 43)
-//                )
-//            )
-//        )
-//    }
-//
-//    @Test
-//    fun testMappedDtoBatch() {
-//        repository.mappedBatch(
-//            listOf(
-//                MappedEntity(MappedEntity.Field1("val1"), MappedEntity.Field2("val2")),
-//                MappedEntity(MappedEntity.Field1("val3"), MappedEntity.Field2("val4"))
-//            )
-//        ).block()
-//        Mockito.verify(executor.query).executeBatch(
-//            listMatches(
-//                listOf(
-//                    Tuple.of("val1", "val2"),
-//                    Tuple.of("val3", "val4")
-//                )
-//            )
-//        )
-//    }
-//
-//    @Test
-//    fun testParametersWithSimilarNames() {
-//        runBlocking {
-//            repository.parametersWithSimilarNames("test", 42)
-//        }
-//        verify(executor.connection).preparedQuery("INSERT INTO test(value1, value2) VALUES ($1, $2)")
-//        verify(executor.query).execute(matches(Tuple.of("test", 42)))
-//    }
+
+    @Test
+    fun testEntityFieldMapping() {
+        val repository = compile(listOf<Any>(), """
+            class StringToJsonbParameterMapper: VertxParameterColumnMapper<String?> {
+                override fun apply(value: String?): Any? {
+                    return mapOf("test" to value)
+                }
+            }
+            """.trimIndent(), """
+            public data class SomeEntity(val id: Long, @Mapping(StringToJsonbParameterMapper::class) val value: String)
+            """.trimIndent(), """
+            @Repository
+            interface TestRepository: VertxRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:entity.id, :entity.value)")
+                fun test(entity: SomeEntity)
+            }
+
+            """.trimIndent())
+
+        repository.invoke("test", new("SomeEntity", 42L, "test-value"))
+
+        verify(executor.connection).preparedQuery("INSERT INTO test(id, value) VALUES ($1, $2)")
+        verify(executor.query).execute(Tuple.of(42L, mapOf("test" to "test-value")).matcher(), any())
+    }
+
+    @Test
+    fun testNativeParameterWithMapping() {
+        val repository = compile(listOf<Any>(), """
+            class StringToJsonbParameterMapper: VertxParameterColumnMapper<String?> {
+                override fun apply(value: String?): Any? {
+                    return mapOf("test" to value)
+                }
+            }
+            """.trimIndent(), """
+            @Repository
+            interface TestRepository: VertxRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+                fun test(id: Long, @Mapping(StringToJsonbParameterMapper::class) value: String)
+            }
+            """.trimIndent())
+
+        repository.invoke("test", 42L, "test-value")
+
+        verify(executor.connection).preparedQuery("INSERT INTO test(id, value) VALUES ($1, $2)")
+        verify(executor.query).execute(Tuple.of(42L, mapOf("test" to "test-value")).matcher(), any())
+    }
+
+    @Test
+    fun testDataClassParameter() {
+        val repository = compile(listOf<Any>(), """
+        @Repository
+        interface TestRepository: VertxRepository {
+            @Query("INSERT INTO test(id, value) VALUES (:entity.id, :entity.value)")
+            fun test(entity: TestEntity)
+        }
+        """.trimIndent(), """
+        data class TestEntity(val id: Long, val value: String?)    
+        """.trimIndent())
+
+        repository.invoke("test", new("TestEntity", 42, null))
+        verify(executor.connection).preparedQuery("INSERT INTO test(id, value) VALUES ($1, $2)")
+        verify(executor.query).execute(Tuple.of(42L, null).matcher(), any())
+        executor.reset()
+
+        repository.invoke("test", new("TestEntity", 42, "test"))
+        verify(executor.connection).preparedQuery("INSERT INTO test(id, value) VALUES ($1, $2)")
+        verify(executor.query).execute(Tuple.of(42L, "test").matcher(), any())
+    }
 }

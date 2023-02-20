@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.database.common.annotation.processor.vertx.repository;
 
-import io.vertx.sqlclient.SqlConnection;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.database.common.annotation.Batch;
 import ru.tinkoff.kora.database.common.annotation.Query;
@@ -18,9 +17,6 @@ import java.util.List;
 
 @Repository
 public interface AllowedParametersRepository extends VertxRepository {
-    @Query("INSERT INTO test(test) VALUES ('test')")
-    Mono<Void> connectionParameter(SqlConnection connection);
-
     @Query("INSERT INTO test(value1, value2) VALUES (:value1, :value2)")
     Mono<Void> nativeParameter(String value1, int value2);
 
@@ -90,9 +86,4 @@ public interface AllowedParametersRepository extends VertxRepository {
         )
         """)
     Mono<Void> allNativeParametersDto(JdbcEntity.AllNativeTypesEntity entity);
-
-
-    @Query("INSERT INTO test(value1, value2) VALUES (:value, :valueTest)")
-    Mono<Void> parametersWithSimilarNames(String value, int valueTest);
-
 }

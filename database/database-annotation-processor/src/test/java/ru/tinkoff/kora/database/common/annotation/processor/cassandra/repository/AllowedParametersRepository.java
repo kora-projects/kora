@@ -28,9 +28,6 @@ public interface AllowedParametersRepository extends CassandraRepository {
     @Query("INSERT INTO test(value1, value2) VALUES (:entity.field1, :entity.field2, :entity.field3, :entity.unknownTypeField, :entity.mappedField1, :entity.mappedField2)")
     void dtoJavaBeanParameter(TestEntityJavaBean entity);
 
-    @Query("INSERT INTO test(value1, value2) VALUES (:unknownField)")
-    void unknownTypeFieldParameter(TestEntityRecord.TestUnknownType unknownField);
-
     @Query("INSERT INTO test(value1, value2) VALUES (:entity.field1, :entity.field2, :entity.field3, :entity.unknownTypeField, :entity.mappedField1, :entity.mappedField2)")
     Mono<Void> dtoJavaBeanParameterMono(TestEntityJavaBean entity);
 

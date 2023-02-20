@@ -11,6 +11,7 @@ import ru.tinkoff.kora.database.symbol.processor.model.QueryParameter
 import ru.tinkoff.kora.kora.app.ksp.overridingKeepAop
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
+import ru.tinkoff.kora.ksp.common.MappingData
 import ru.tinkoff.kora.ksp.common.parseMappingData
 
 object DbUtils {
@@ -108,7 +109,7 @@ object DbUtils {
             if (mapping != null) {
                 val mapperName = parameterMapperName(method, parameter.variable)
                 val mapperType = parameterColumnMapper.parameterizedBy(parameterType.toTypeName().copy(true))
-                mappers.add(Mapper(mapperType, mapperName))
+                mappers.add(Mapper(mapping, mapperType, mapperName))
                 continue
             }
             if (parameter is QueryParameter.SimpleParameter) {
@@ -130,7 +131,7 @@ object DbUtils {
                 val fieldMappings = entityField.mapping
                 val fieldMapping = fieldMappings.getMapping(parameterColumnMapper)
                 if (fieldMapping != null) {
-                    mappers.add(Mapper(fieldMapping.mapper!!, mapperType, mapperName))
+                    mappers.add(Mapper(fieldMapping, mapperType, mapperName))
                 } else if (!nativeTypePredicate(entityField.type)) {
                     mappers.add(Mapper(mapperType, mapperName))
                 }
@@ -166,9 +167,10 @@ object DbUtils {
 
 
 // todo tags
-data class Mapper(val mapperType: KSType?, val fieldTypeName: TypeName, val fieldName: String, val wrapper: ((CodeBlock) -> CodeBlock)?) {
-    constructor(typeName: TypeName, name: String) : this(null, typeName, name, null)
-    constructor(type: KSType, typeName: TypeName, name: String) : this(type, typeName, name, null)
+data class Mapper(val mapperType: KSType?, val tags: Set<String>, val fieldTypeName: TypeName, val fieldName: String, val wrapper: ((CodeBlock) -> CodeBlock)?) {
+    constructor(typeName: TypeName, name: String) : this(null, setOf(), typeName, name, null)
+    constructor(mapping: MappingData, typeName: TypeName, name: String) : this(mapping.mapper, mapping.tags, typeName, name, null)
+    constructor(mapping: MappingData, typeName: TypeName, name: String, wrapper: ((CodeBlock) -> CodeBlock)?) : this(mapping.mapper, mapping.tags, typeName, name, wrapper)
 }
 
 

@@ -40,7 +40,8 @@ public class StatementSetterGenerator {
                     b.addCode("} else {$>\n");
                 }
                 var nativeType = CassandraNativeTypes.findNativeType(ClassName.get(parameter.type()));
-                if (nativeType != null) {
+                var mapping = CommonUtils.parseMapping(parameter.variable()).getMapping(CassandraTypes.PARAMETER_COLUMN_MAPPER);
+                if (nativeType != null && mapping == null) {
                     for (var idx : sqlParameter.sqlIndexes()) {
                         b.addCode(nativeType.bind("_stmt", parameterName, idx)).addCode(";\n");
                     }
@@ -72,7 +73,8 @@ public class StatementSetterGenerator {
                         b.addCode("} else {$>\n");
                     }
                     var nativeType = CassandraNativeTypes.findNativeType(ClassName.get(field.typeMirror()));
-                    if (nativeType != null) {
+                    var mapping = CommonUtils.parseMapping(field.element()).getMapping(CassandraTypes.PARAMETER_COLUMN_MAPPER);
+                    if (nativeType != null && mapping == null) {
                         for (var idx : sqlParameter.sqlIndexes()) {
                             b.addCode(nativeType.bind("_stmt", fieldAccessor, idx)).addCode(";\n");
                         }

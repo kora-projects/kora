@@ -14,6 +14,7 @@ dependencies {
 
 
     testFixturesImplementation libs.kotlin.compile.testing
+    testFixturesImplementation libs.junit.jupiter
     testFixturesImplementation libs.kotlin.annotation.processing
     testFixturesImplementation libs.ksp
     testFixturesImplementation libs.ksp.api

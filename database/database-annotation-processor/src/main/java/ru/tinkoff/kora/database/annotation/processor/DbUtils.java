@@ -107,11 +107,8 @@ public class DbUtils {
         return sb.append("_parameterMapper").toString();
     }
 
-    public static String resultMapperName(ExecutableElement method, String... names) {
+    public static String resultMapperName(ExecutableElement method) {
         var sb = new StringBuilder("$" + method.getSimpleName());
-        for (var name : names) {
-            sb.append("_").append(name);
-        }
         return sb.append("_resultMapper").toString();
     }
 

@@ -150,15 +150,15 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
             val returnTypeName = returnType.toTypeName().copy(false)
             val mapperType = CassandraTypes.reactiveResultSetMapper.parameterizedBy(returnTypeName, mono.parameterizedBy(returnTypeName))
             if (reactiveResultSetMapper != null) {
-                return Mapper(reactiveResultSetMapper.mapper!!, mapperType, mapperName)
+                return Mapper(reactiveResultSetMapper, mapperType, mapperName)
             }
             if (rowMapper != null) {
                 if (returnType.isList()) {
-                    return Mapper(rowMapper.mapper!!, mapperType, mapperName) {
+                    return Mapper(rowMapper, mapperType, mapperName) {
                         CodeBlock.of("%T.monoList(%L)", CassandraTypes.reactiveResultSetMapper, it)
                     }
                 } else {
-                    return Mapper(rowMapper.mapper!!, mapperType, mapperName) {
+                    return Mapper(rowMapper, mapperType, mapperName) {
                         CodeBlock.of("%T.mono(%L)", CassandraTypes.reactiveResultSetMapper, it)
                     }
                 }
@@ -174,10 +174,10 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
             val flux = Flux::class.asClassName()
             val mapperType = CassandraTypes.reactiveResultSetMapper.parameterizedBy(returnTypeName, flux.parameterizedBy(returnTypeName))
             if (reactiveResultSetMapper != null) {
-                return Mapper(reactiveResultSetMapper.mapper!!, mapperType, mapperName)
+                return Mapper(reactiveResultSetMapper, mapperType, mapperName)
             }
             if (rowMapper != null) {
-                return Mapper(rowMapper.mapper!!, mapperType, mapperName) {
+                return Mapper(rowMapper, mapperType, mapperName) {
                     CodeBlock.of("%T.flux(%L)", CassandraTypes.reactiveResultSetMapper, it)
                 }
             }
@@ -185,15 +185,15 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         }
         val mapperType = CassandraTypes.resultSetMapper.parameterizedBy(returnType.toTypeName())
         if (resultSetMapper != null) {
-            return Mapper(resultSetMapper.mapper!!, mapperType, mapperName)
+            return Mapper(resultSetMapper, mapperType, mapperName)
         }
         if (rowMapper != null) {
             if (returnType.isList()) {
-                return Mapper(rowMapper.mapper!!, mapperType, mapperName) {
+                return Mapper(rowMapper, mapperType, mapperName) {
                     CodeBlock.of("%T.listResultSetMapper(%L)", CassandraTypes.resultSetMapper, it)
                 }
             } else {
-                return Mapper(rowMapper.mapper!!, mapperType, mapperName) {
+                return Mapper(rowMapper, mapperType, mapperName) {
                     CodeBlock.of("%T.singleResultSetMapper(%L)", CassandraTypes.resultSetMapper, it)
                 }
             }

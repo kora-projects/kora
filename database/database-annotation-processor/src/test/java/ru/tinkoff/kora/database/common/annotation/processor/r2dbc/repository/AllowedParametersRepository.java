@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.database.common.annotation.processor.r2dbc.repository;
 
-import io.r2dbc.spi.Connection;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.database.common.annotation.Batch;
 import ru.tinkoff.kora.database.common.annotation.Query;
@@ -18,9 +17,6 @@ import java.util.List;
 
 @Repository
 public interface AllowedParametersRepository extends R2dbcRepository {
-    @Query("INSERT INTO test(test) VALUES ('test')")
-    Mono<Void> connectionParameter(Connection connection);
-
     @Query("INSERT INTO test(value1, value2) VALUES (:value1, :value2)")
     Mono<Void> nativeParameter(String value1, int value2);
 
@@ -90,9 +86,4 @@ public interface AllowedParametersRepository extends R2dbcRepository {
         )
         """)
     Mono<Void> allNativeParametersDto(JdbcEntity.AllNativeTypesEntity entity);
-
-
-    @Query("INSERT INTO test(value1, value2) VALUES (:value, :valueTest)")
-    Mono<Void> parametersWithSimilarNames(String value, int valueTest);
-
 }

@@ -7,6 +7,7 @@ import ru.tinkoff.kora.database.symbol.processor.DbUtils.parameterMapperName
 import ru.tinkoff.kora.database.symbol.processor.QueryWithParameters
 import ru.tinkoff.kora.database.symbol.processor.model.QueryParameter
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.parseMappingData
 
 object StatementSetterGenerator {
 
@@ -33,8 +34,9 @@ object StatementSetterGenerator {
             }
             if (parameter is QueryParameter.SimpleParameter) {
                 val sqlParameter = queryWithParameters.find(i)!!
+                val mapping = parameter.variable.parseMappingData().getMapping(JdbcTypes.jdbcParameterColumnMapper)
                 val nativeType = JdbcNativeTypes.findNativeType(parameter.type.toTypeName())
-                if (nativeType != null) {
+                if (nativeType != null && mapping == null) {
                     if (parameter.type.isMarkedNullable) {
                         b.controlFlow("%L.let", parameterName) {
                             b.controlFlow("if (it == null)") {
@@ -67,7 +69,8 @@ object StatementSetterGenerator {
                         continue
                     }
                     val nativeType = JdbcNativeTypes.findNativeType(field.type.toTypeName())
-                    if (nativeType != null) {
+                    val mapping = field.mapping.getMapping(JdbcTypes.jdbcParameterColumnMapper)
+                    if (nativeType != null && mapping == null) {
                         if (parameter.type.isMarkedNullable || field.type.isMarkedNullable) {
                             b.controlFlow("%N?.%L.let", parameterName, fieldPropertyName) {
                                 b.controlFlow("if (it == null)") {

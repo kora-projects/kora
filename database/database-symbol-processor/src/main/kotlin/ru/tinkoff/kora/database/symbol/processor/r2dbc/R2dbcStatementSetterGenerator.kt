@@ -7,6 +7,7 @@ import ru.tinkoff.kora.database.symbol.processor.DbUtils
 import ru.tinkoff.kora.database.symbol.processor.QueryWithParameters
 import ru.tinkoff.kora.database.symbol.processor.model.QueryParameter
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.parseMappingData
 
 object R2dbcStatementSetterGenerator {
     fun generate(
@@ -38,7 +39,8 @@ object R2dbcStatementSetterGenerator {
             }
             if (parameter is QueryParameter.SimpleParameter) {
                 val nativeType = R2dbcNativeTypes.findNativeType(parameter.type.toTypeName())
-                if (nativeType != null) {
+                val mapper = parameter.variable.parseMappingData().getMapping(R2dbcTypes.parameterColumnMapper)
+                if (nativeType != null && mapper == null) {
                     if (parameter.type.isMarkedNullable) {
                         b.controlFlow("if (%L != null)", parameterName) {
                             addCode(nativeType.bind("_stmt", parameterName, sqlIndex)).addCode("\n")
@@ -48,6 +50,8 @@ object R2dbcStatementSetterGenerator {
                     } else {
                         b.addCode(nativeType.bind("_stmt", parameterName, sqlIndex)).addCode("\n")
                     }
+                } else {
+                    b.addCode("%N.apply(_stmt, %L, %N)\n", DbUtils.parameterMapperName(function, parameter.variable), sqlIndex, parameterName)
                 }
                 sqlIndex++
                 return@forEach
@@ -64,7 +68,8 @@ object R2dbcStatementSetterGenerator {
                     } else {
                         parameterName + "." + field.property.simpleName.getShortName()
                     }
-                    if (nativeType != null) {
+                    val mapper = field.mapping.getMapping(R2dbcTypes.parameterColumnMapper)
+                    if (nativeType != null && mapper == null) {
                         if (parameter.type.isMarkedNullable || field.type.isMarkedNullable) {
                             b.beginControlFlow("if (%L != null)", fieldValue)
                         }

@@ -13,6 +13,7 @@ pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
         sourceSets {
             testGenerated {
                 kotlin.srcDir("build/in-test-generated-ksp/ksp/sources/kotlin")
+                kotlin.srcDir("build/in-test-generated-ksp/sources")
             }
         }
     }

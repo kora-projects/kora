@@ -95,8 +95,4 @@ interface AllowedParametersRepository : CassandraRepository {
     """
     )
     fun allNativeParametersDto(entity: AllNativeTypesEntity?)
-
-    @Query("INSERT INTO test(value1, value2) VALUES (:value, :valueTest)")
-    fun parametersWithSimilarNames(value: String?, valueTest: Int)
-
 }

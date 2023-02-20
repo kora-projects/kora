@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.database.common.annotation.processor.r2dbc;
 
 import io.r2dbc.spi.*;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
@@ -24,6 +23,10 @@ public class MockR2dbcExecutor implements R2dbcConnectionFactory {
     public final DataBaseTelemetry telemetry = Mockito.mock(DataBaseTelemetry.class);
     public final DataBaseTelemetry.DataBaseTelemetryContext telemetryContext = Mockito.mock(DataBaseTelemetry.DataBaseTelemetryContext.class);
     public List<List<MockColumn>> rows = new ArrayList<>();
+
+    public MockR2dbcExecutor() {
+        reset();
+    }
 
     public void setRow(MockColumn mockColumn) {
         this.setRow(List.of(mockColumn));

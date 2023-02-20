@@ -1,19 +1,40 @@
 package ru.tinkoff.kora.database.symbol.processor.jdbc.repository
 
+import ru.tinkoff.kora.common.Mapping
 import ru.tinkoff.kora.database.common.annotation.Batch
 import ru.tinkoff.kora.database.common.annotation.Query
 import ru.tinkoff.kora.database.common.annotation.Repository
 import ru.tinkoff.kora.database.jdbc.JdbcRepository
+import ru.tinkoff.kora.database.jdbc.mapper.parameter.JdbcParameterColumnMapper
 import ru.tinkoff.kora.database.symbol.processor.entity.TestEntity
 import ru.tinkoff.kora.database.symbol.processor.jdbc.AllNativeTypesEntity
 import java.math.BigDecimal
 import java.sql.Connection
+import java.sql.PreparedStatement
 import java.time.LocalDate
 import java.time.LocalDateTime
 
 
 @Repository
 interface AllowedParametersRepository : JdbcRepository {
+    class StringToJsonbParameterMapper : JdbcParameterColumnMapper<String?> {
+
+        override fun set(stmt: PreparedStatement, index: Int, value: String?) {
+            stmt.setObject(index, mapOf("test" to value))
+        }
+    }
+
+    data class SomeEntity(
+        val id: Long,
+        @Mapping(StringToJsonbParameterMapper::class)
+        val value: String
+    )
+
+
+    @Query("INSERT INTO test(id, value) VALUES (:entity.id, :entity.value)")
+    fun test(entity: SomeEntity)
+
+
     @Query("INSERT INTO test(test) VALUES ('test')")
     fun connectionParameter(connection: Connection)
 
@@ -91,7 +112,4 @@ interface AllowedParametersRepository : JdbcRepository {
     """
     )
     fun allNativeParametersDto(entity: AllNativeTypesEntity?)
-
-    @Query("INSERT INTO test(value1, value2) VALUES (:value, :valueTest)")
-    fun parametersWithSimilarNames(value: String?, valueTest: Int)
 }

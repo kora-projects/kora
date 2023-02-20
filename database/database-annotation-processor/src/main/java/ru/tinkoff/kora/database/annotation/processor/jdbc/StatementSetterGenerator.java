@@ -39,8 +39,10 @@ public class StatementSetterGenerator {
                     .filter(p -> p.methodIndex() == _i)
                     .findFirst()
                     .get();
+                var mappingData = CommonUtils.parseMapping(parameter.variable());
+                var mapping = mappingData.getMapping(JdbcTypes.PARAMETER_COLUMN_MAPPER);
                 var nativeType = JdbcNativeTypes.findNativeType(TypeName.get(parameter.type()));
-                if (nativeType != null) {
+                if (mapping == null && nativeType != null) {
                     if (isNullable(parameter.variable())) {
                         b.add("if ($L != null) {$>", parameterName);
                         for (var idx : sqlParameter.sqlIndexes()) {
@@ -72,8 +74,10 @@ public class StatementSetterGenerator {
                     var name = entityParameter.entity().entityType() == DbEntity.EntityType.RECORD
                         ? parameterName + "." + field.element().getSimpleName() + "()"
                         : parameterName + ".get" + CommonUtils.capitalize(field.element().getSimpleName().toString()) + "()";
+                    var mappingData = CommonUtils.parseMapping(field.element());
+                    var mapping = mappingData.getMapping(JdbcTypes.PARAMETER_COLUMN_MAPPER);
                     var nativeType = JdbcNativeTypes.findNativeType(TypeName.get(field.typeMirror()));
-                    if (nativeType != null) {
+                    if (mapping == null && nativeType != null) {
                         if (isNullable(field.element())) {
                             b.add("if ($L != null) {$>", name);
                             for (var idx : sqlParameter.sqlIndexes()) {

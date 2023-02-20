@@ -24,7 +24,7 @@ import java.util.Locale;
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public abstract class AbstractAnnotationProcessorTest {
-    private TestInfo testInfo;
+    protected TestInfo testInfo;
     protected CompileResult compileResult;
 
     @BeforeEach
@@ -56,7 +56,11 @@ public abstract class AbstractAnnotationProcessorTest {
     }
 
     protected String commonImports() {
-        return "";
+        return """
+            import ru.tinkoff.kora.common.annotation.*;
+            import ru.tinkoff.kora.common.*;
+            import javax.annotation.Nullable;
+            """;
     }
 
     protected CompileResult compile(List<Processor> processors, @Language("java") String... sources) {
@@ -71,15 +75,27 @@ public abstract class AbstractAnnotationProcessorTest {
             .map(s -> {
                 var classStart = s.indexOf("public class ") + 13;
                 if (classStart < 13) {
-                    classStart = s.indexOf("public interface ") + 17;
+                    classStart = s.indexOf("public final class ") + 19;
+                    if (classStart < 19) {
+                        classStart = s.indexOf("public interface ") + 17;
+                        if (classStart < 17) {
+                            classStart = s.indexOf("public record ") + 14;
+                            if (classStart < 14) {
+                                classStart = s.indexOf("public enum ") + 12;
+                                if (classStart < 12) {
+                                    throw new IllegalArgumentException();
+                                }
+                            }
+                        }
+                    }
                 }
-                if (classStart < 17) {
-                    classStart = s.indexOf("public record ") + 14;
-                }
-                if (classStart < 14) {
-                    classStart = s.indexOf("public enum ") + 12;
-                }
-                var classEnd = s.indexOf(" ", classStart + 1);
+                var firstSpace = s.indexOf(" ", classStart + 1);
+                var firstBracket = s.indexOf("(", classStart + 1);
+                var firstSquareBracket = s.indexOf("{", classStart + 1);
+                var classEnd = Math.min(firstSpace >= 0 ? firstSpace : Integer.MAX_VALUE, Math.min(
+                    firstBracket >= 0 ? firstBracket : Integer.MAX_VALUE,
+                    firstSquareBracket >= 0 ? firstSquareBracket : Integer.MAX_VALUE
+                ));
                 var className = s.substring(classStart, classEnd);
                 return new ByteArrayJavaFileObject(JavaFileObject.Kind.SOURCE, testPackage + "." + className, s.getBytes(StandardCharsets.UTF_8));
             })
@@ -99,6 +115,16 @@ public abstract class AbstractAnnotationProcessorTest {
             task.call();
             return this.compileResult = new CompileResult(testPackage, diagnostic, manager);
         } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Object newRecord(String className, Object... params) {
+        try {
+            var clazz = this.compileResult.loadClass(className);
+            assert clazz.isRecord();
+            return clazz.getConstructors()[0].newInstance(params);
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
