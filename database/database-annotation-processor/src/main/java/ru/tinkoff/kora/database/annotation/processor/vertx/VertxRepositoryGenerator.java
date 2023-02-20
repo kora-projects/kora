@@ -241,6 +241,6 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
         if (isCompletionStage(tm) || CommonUtils.isMono(tm)) {
             tm = Visitors.visitDeclaredType(tm, dt -> dt.getTypeArguments().get(0));
         }
-        return tm.getKind() == TypeKind.NONE || tm.toString().equals("java.lang.Void");
+        return tm.getKind() == TypeKind.NONE || tm.toString().equals("java.lang.Void") || tm.getKind() == TypeKind.VOID;
     }
 }

@@ -130,21 +130,21 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
             val returnTypeName = flowParam.toTypeName().copy(false)
             val mapperType = VertxTypes.rowMapper.parameterizedBy(returnTypeName)
             if (rowMapper != null) {
-                return Mapper(rowMapper.mapper!!, mapperType, mapperName)
+                return Mapper(rowMapper, mapperType, mapperName)
             }
             return Mapper(mapperType, mapperName)
         }
         val mapperType = VertxTypes.rowSetMapper.parameterizedBy(returnType.toTypeName())
         if (resultSetMapper != null) {
-            return Mapper(resultSetMapper.mapper!!, mapperType, mapperName)
+            return Mapper(resultSetMapper, mapperType, mapperName)
         }
         if (rowMapper != null) {
             if (returnType.isList()) {
-                return Mapper(rowMapper.mapper!!, mapperType, mapperName) {
+                return Mapper(rowMapper, mapperType, mapperName) {
                     CodeBlock.of("%T.listRowSetMapper(%L)", VertxTypes.rowSetMapper, it)
                 }
             } else {
-                return Mapper(rowMapper.mapper!!, mapperType, mapperName) {
+                return Mapper(rowMapper, mapperType, mapperName) {
                     CodeBlock.of("%T.singleRowSetMapper(%L)", VertxTypes.rowSetMapper, it)
                 }
             }

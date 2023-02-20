@@ -42,8 +42,9 @@ public class ParametersToTupleBuilder {
             .<Param>mapMulti((e, sink) -> {
                 if (e.getValue() instanceof QueryParameter.SimpleParameter simpleParameter) {
                     var nativeType = VertxNativeTypes.find(TypeName.get(simpleParameter.type()));
+                    var mapping = CommonUtils.parseMapping(simpleParameter.variable()).getMapping(VertxTypes.PARAMETER_COLUMN_MAPPER);
                     var sqlParameter = Objects.requireNonNull(sqlWithParameters.find(simpleParameter.variable().getSimpleName().toString()));
-                    if (nativeType == null) {
+                    if (nativeType == null || mapping != null) {
                         sink.accept(new Param(
                             sqlParameter.sqlIndexes(),
                             simpleParameter.variable().getSimpleName().toString(),
@@ -68,7 +69,8 @@ public class ParametersToTupleBuilder {
                             ? e.getKey() + "." + field.element().getSimpleName() + "()"
                             : e.getKey() + ".get" + CommonUtils.capitalize(field.element().getSimpleName().toString()) + "()";
                         var nativeType = VertxNativeTypes.find(TypeName.get(field.typeMirror()));
-                        if (nativeType == null) {
+                        var mapping = CommonUtils.parseMapping(field.element()).getMapping(VertxTypes.PARAMETER_COLUMN_MAPPER);
+                        if (nativeType == null || mapping != null) {
                             sink.accept(new Param(
                                 sqlParameter.sqlIndexes(),
                                 variableName,

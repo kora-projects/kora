@@ -7,6 +7,7 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.parameterMapperName
 import ru.tinkoff.kora.database.symbol.processor.QueryWithParameters
 import ru.tinkoff.kora.database.symbol.processor.model.QueryParameter
+import ru.tinkoff.kora.ksp.common.parseMappingData
 
 object ParametersToTupleBuilder {
     fun generate(b: FunSpec.Builder, query: QueryWithParameters, method: KSFunctionDeclaration, parameters: List<QueryParameter>, batchParam: QueryParameter?) {
@@ -34,8 +35,9 @@ object ParametersToTupleBuilder {
                 val param = it.second
                 if (param is QueryParameter.SimpleParameter) {
                     val nativeType = VertxNativeTypes.findNativeType(it.second.type.toTypeName())
+                    val mapping = it.second.variable.parseMappingData().getMapping(VertxTypes.parameterColumnMapper)
                     val sqlParameter = query.find(param.name)!!
-                    if (nativeType == null) {
+                    if (nativeType == null || mapping != null) {
                         return@flatMap sequenceOf(Param(sqlParameter.sqlIndexes, param.name, CodeBlock.of("%N.apply(%N)", parameterMapperName(method, param.variable), it.first)))
                     } else {
                         return@flatMap sequenceOf(Param(sqlParameter.sqlIndexes, param.name, CodeBlock.of("%N", it.first)))
@@ -51,7 +53,8 @@ object ParametersToTupleBuilder {
                     val variableName = it.first + "_" + fieldName
                     val fieldAccessor = CodeBlock.of("%N?.%N", it.first, fieldName)
                     val nativeType = VertxNativeTypes.findNativeType(field.type.toTypeName())
-                    if (nativeType == null) {
+                    val mapping = field.mapping.getMapping(VertxTypes.parameterColumnMapper)
+                    if (nativeType == null || mapping != null) {
                         val mapperName = parameterMapperName(method, param.variable, fieldName)
                         return@mapNotNull Param(sqlParameter.sqlIndexes, variableName, CodeBlock.of("%N.apply(%L)", mapperName, fieldAccessor))
                     } else {

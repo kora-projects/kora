@@ -9,6 +9,7 @@ import ru.tinkoff.kora.database.symbol.processor.DbUtils.parameterMapperName
 import ru.tinkoff.kora.database.symbol.processor.QueryWithParameters
 import ru.tinkoff.kora.database.symbol.processor.model.QueryParameter
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.parseMappingData
 
 object StatementSetterGenerator {
     fun generate(
@@ -52,8 +53,9 @@ object StatementSetterGenerator {
                     }
                     b.nextControlFlow("else")
                 }
-                val nativeType = CassandraNativeTypes.findNativeType(parameter.type.toTypeName());
-                if (nativeType != null) {
+                val nativeType = CassandraNativeTypes.findNativeType(parameter.type.toTypeName())
+                val mapping = parameter.variable.parseMappingData().getMapping(CassandraTypes.parameterColumnMapper)
+                if (nativeType != null && mapping == null) {
                     for (idx in sqlParameter.sqlIndexes) {
                         b.addStatement("%L", nativeType.bind("_stmt", CodeBlock.of("%N", parameterName), CodeBlock.of("%L", idx)));
                     }
@@ -87,7 +89,8 @@ object StatementSetterGenerator {
                             b.nextControlFlow("else")
                         }
                         val nativeType = CassandraNativeTypes.findNativeType(field.type.toTypeName());
-                        if (nativeType != null) {
+                        val mapping = field.mapping.getMapping(CassandraTypes.parameterColumnMapper)
+                        if (nativeType != null && mapping == null) {
                             for (idx in sqlParameter.sqlIndexes) {
                                 b.addStatement("%L", nativeType.bind("_stmt", CodeBlock.of("it"), CodeBlock.of("%L", idx)))
                             }

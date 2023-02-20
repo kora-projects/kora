@@ -130,7 +130,7 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
             val flux = Flux::class.asClassName()
             val mapperType = R2dbcTypes.resultFluxMapper.parameterizedBy(returnTypeName, flux.parameterizedBy(returnTypeName))
             if (rowMapper != null) {
-                return Mapper(rowMapper.mapper!!, mapperType, mapperName) {
+                return Mapper(rowMapper, mapperType, mapperName) {
                     CodeBlock.of("%T.flux(%L)", R2dbcTypes.resultFluxMapper, it)
                 }
             }
@@ -139,15 +139,15 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
         val mono = Mono::class.asClassName()
         val mapperType = R2dbcTypes.resultFluxMapper.parameterizedBy(returnType.toTypeName(), mono.parameterizedBy(returnType.toTypeName()))
         if (resultSetMapper != null) {
-            return Mapper(resultSetMapper.mapper!!, mapperType, mapperName)
+            return Mapper(resultSetMapper, mapperType, mapperName)
         }
         if (rowMapper != null) {
             if (method.isList()) {
-                return Mapper(rowMapper.mapper!!, mapperType, mapperName) {
+                return Mapper(rowMapper, mapperType, mapperName) {
                     CodeBlock.of("%T.monoList(%L)", R2dbcTypes.resultFluxMapper, it)
                 }
             } else {
-                return Mapper(rowMapper.mapper!!, mapperType, mapperName) {
+                return Mapper(rowMapper, mapperType, mapperName) {
                     CodeBlock.of("%T.mono(%L)", R2dbcTypes.resultFluxMapper, it)
                 }
             }

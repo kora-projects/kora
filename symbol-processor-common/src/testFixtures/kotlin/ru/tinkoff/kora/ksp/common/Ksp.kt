@@ -1,12 +1,11 @@
-package ru.tinkoff.kora.annotation.processor.common
-
-import com.tschuchort.compiletesting.KotlinCompilation
+package ru.tinkoff.kora.ksp.common
 
 import com.google.devtools.ksp.AbstractKotlinSymbolProcessingExtension
 import com.google.devtools.ksp.KspOptions
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import com.google.devtools.ksp.processing.impl.MessageCollectorBasedKSPLogger
+import com.tschuchort.compiletesting.KotlinCompilation
 import org.jetbrains.kotlin.cli.common.CLIConfigurationKeys
 import org.jetbrains.kotlin.cli.common.messages.MessageRenderer
 import org.jetbrains.kotlin.cli.common.messages.PrintingMessageCollector
@@ -92,6 +91,7 @@ private class KspCompileTestingComponentRegistrar(
     var incremental: Boolean = false
     var incrementalLog: Boolean = false
     var allWarningsAsErrors: Boolean = false
+    var cleanupKsp: Boolean = true
 
     override fun registerProjectComponents(project: MockProject, configuration: CompilerConfiguration) {
         if (providers.isEmpty()) {

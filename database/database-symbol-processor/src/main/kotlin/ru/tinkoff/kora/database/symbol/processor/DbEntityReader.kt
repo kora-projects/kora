@@ -34,7 +34,7 @@ class DbEntityReader(
                 else
                     this.fieldMapperName.parameterizedBy(mapperTypeParameter)
                 if (mapper.mapper != null && mapper.tags.isEmpty()) {
-                    mappers.add(Mapper(mapper.mapper!!, mapperType, mapperFieldName))
+                    mappers.add(Mapper(mapper, mapperType, mapperFieldName))
                 } else {
                     val tag = mapper.toTagAnnotation()
                     val param = ParameterSpec.builder(mapperFieldName, mapperType)

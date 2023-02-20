@@ -13,9 +13,7 @@ public abstract class AbstractVertxRepositoryTest extends AbstractRepositoryTest
 
     @Override
     protected String commonImports() {
-        return """
-            import ru.tinkoff.kora.database.common.annotation.*;
-            import ru.tinkoff.kora.database.common.*;
+        return super.commonImports() + """
             import ru.tinkoff.kora.database.vertx.*;
             import ru.tinkoff.kora.database.vertx.mapper.result.*;
             import ru.tinkoff.kora.database.vertx.mapper.parameter.*;

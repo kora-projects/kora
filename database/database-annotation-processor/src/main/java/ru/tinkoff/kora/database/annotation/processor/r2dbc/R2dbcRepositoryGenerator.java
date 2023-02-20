@@ -26,7 +26,9 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-import java.util.*;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
 
 public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
     private final TypeMirror repositoryInterface;
@@ -84,10 +86,11 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
     private MethodSpec generate(ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters) {
         var sql = query.rawQuery();
         for (var parameter : query.parameters().stream().sorted(Comparator.<QueryWithParameters.QueryParameter>comparingInt(s -> s.sqlParameterName().length()).reversed()).toList()) {
-            for (Integer sqlIndex : parameter.sqlIndexes()) {
+            for (var sqlIndex : parameter.sqlIndexes()) {
                 sql = sql.replace(":" + parameter.sqlParameterName(), "$" + (sqlIndex + 1));
             }
         }
+        var connectionParameter = parameters.stream().filter(QueryParameter.ConnectionParameter.class::isInstance).findFirst().orElse(null);
 
         var b = DbUtils.queryMethodBuilder(method, methodType);
         b.addStatement(CodeBlock.of("var _query = new $T(\n  $S,\n  $S\n)", DbUtils.QUERY_CONTEXT, query.rawQuery(), sql));
@@ -102,13 +105,25 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
         b.addCode("var _result = ");
         b.addCode("$T.deferContextual(_reactorCtx -> {$>\n", isFlux ? Flux.class : Mono.class);
         b.addCode("var _telemetry = this._connectionFactory.telemetry().createContext($T.Reactor.current(_reactorCtx), _query);\n", Context.class);
-        b.addCode("return this._connectionFactory.withConnection$L(_con -> {$>\n", isFlux ? "Flux" : "");
-        b.addCode("var _stmt = _con.createStatement(_query.sql());\n");
+        var connectionName = "_con";
+        if (connectionParameter == null) {
+            b.addCode("return this._connectionFactory.withConnection$L(_con -> {$>\n", isFlux ? "Flux" : "");
+        } else {
+            connectionName = connectionParameter.name();
+        }
+        b.addCode("var _stmt = $N.createStatement(_query.sql());\n", connectionName);
 
         R2dbcStatementSetterGenerator.generate(b, method, query, parameters, batchParam);
         b.addCode("var _flux = $T.<$T>from(_stmt.execute());\n", Flux.class, R2dbcTypes.RESULT);
 
-        b.addCode("return $L.apply(_flux)\n", DbUtils.resultMapperName(method));
+        var mappings = CommonUtils.parseMapping(method);
+        var resultFluxMapper = mappings.getMapping(R2dbcTypes.RESULT_FLUX_MAPPER);
+        var rowMapper = mappings.getMapping(R2dbcTypes.ROW_MAPPER);
+        if (resultFluxMapper != null || rowMapper != null || !MethodUtils.isVoid(returnType)) {
+            b.addCode("return $L.apply(_flux)\n", DbUtils.resultMapperName(method));
+        } else {
+            b.addCode("return _flux.flatMap($T::getRowsUpdated).then()", R2dbcTypes.RESULT);
+        }
 
         b.addCode("""
               .doOnEach(_s -> {
@@ -119,7 +134,9 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
                 }
               });
             """);
-        b.addCode("\n$<\n});\n");
+        if (connectionParameter == null) {
+            b.addCode("\n$<\n});\n");
+        }
         b.addCode("\n$<\n});\n");
         if (isMono || isFlux) {
             b.addCode("return _result;\n");
@@ -138,7 +155,7 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
         var mapperName = DbUtils.resultMapperName(method);
         for (var parameter : parameters) {
             if (parameter instanceof QueryParameter.BatchParameter) {
-                if(MethodUtils.isVoid(parameter.type())) {
+                if (MethodUtils.isVoid(parameter.type())) {
                     return Optional.empty();
                 }
 
@@ -150,6 +167,11 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
         var mappings = CommonUtils.parseMapping(method);
         var resultFluxMapper = mappings.getMapping(R2dbcTypes.RESULT_FLUX_MAPPER);
         var rowMapper = mappings.getMapping(R2dbcTypes.ROW_MAPPER);
+        if (resultFluxMapper == null && rowMapper == null) {
+            if (MethodUtils.isVoid(returnType)) {
+                return Optional.empty();
+            }
+        }
 
         if (isMono || isFlux) {
             var publisherParam = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
@@ -201,6 +223,5 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
             constructorBuilder.addParameter(R2dbcTypes.CONNECTION_FACTORY, "_connectionFactory");
         }
         constructorBuilder.addStatement("this._connectionFactory = _connectionFactory");
-
     }
 }

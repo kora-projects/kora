@@ -3,7 +3,6 @@ package ru.tinkoff.kora.ksp.common
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.SourceFile
-import ru.tinkoff.kora.annotation.processor.common.symbolProcessorProviders
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
@@ -81,6 +80,10 @@ fun symbolProcessFiles(files: List<String>, annotationProcessorProviders: List<S
             SourceFile.kotlin(file.name, file.readText())
         }
     }
+    return symbolProcessFiles(srcFiles, annotationProcessorProviders)
+}
+
+fun symbolProcessFiles(srcFiles: List<SourceFile>, annotationProcessorProviders: List<SymbolProcessorProvider>): ClassLoader {
     val compilation = KotlinCompilation().apply {
         jvmDefault = "all"
         jvmTarget = "17"

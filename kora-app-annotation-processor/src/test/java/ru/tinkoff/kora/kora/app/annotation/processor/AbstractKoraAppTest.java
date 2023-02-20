@@ -13,11 +13,9 @@ public abstract class AbstractKoraAppTest extends AbstractAnnotationProcessorTes
 
     @Override
     protected String commonImports() {
-        return """
+        return super.commonImports() + """
             import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
             import ru.tinkoff.kora.application.graph.*;
-            import ru.tinkoff.kora.common.*;
-            import javax.annotation.Nullable;
             import java.util.Optional;
             """;
     }
