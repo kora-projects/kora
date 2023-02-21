@@ -15,12 +15,12 @@ import ru.tinkoff.kora.kora.app.ksp.isClassExists
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 import ru.tinkoff.kora.ksp.common.visitClass
 
-@KspExperimental
 class HttpClientSymbolProcessor(val environment: SymbolProcessorEnvironment) : BaseSymbolProcessor(environment) {
     private lateinit var clientGenerator: ClientClassGenerator
     private lateinit var configGenerator: ConfigClassGenerator
     private lateinit var configModuleGenerator: ConfigModuleGenerator
 
+    @KspExperimental
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
         clientGenerator = ClientClassGenerator(resolver)
         configGenerator = ConfigClassGenerator()
@@ -37,6 +37,7 @@ class HttpClientSymbolProcessor(val environment: SymbolProcessorEnvironment) : B
         return emptyList()
     }
 
+    @KspExperimental
     private fun generateClient(declaration: KSClassDeclaration, resolver: Resolver) {
         val packageName = declaration.packageName.asString()
         val client = clientGenerator.generate(declaration)
@@ -52,7 +53,6 @@ class HttpClientSymbolProcessor(val environment: SymbolProcessorEnvironment) : B
     }
 }
 
-@KspExperimental
 class HttpClientSymbolProcessorProvider : SymbolProcessorProvider {
     override fun create(environment: SymbolProcessorEnvironment): SymbolProcessor {
         return HttpClientSymbolProcessor(environment)

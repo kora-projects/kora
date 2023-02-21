@@ -61,7 +61,6 @@ public abstract class AbstractAnnotationProcessorTest {
             import ru.tinkoff.kora.common.*;
             import javax.annotation.Nullable;
             import java.util.Optional;
-                        
             """;
     }
 
@@ -75,17 +74,20 @@ public abstract class AbstractAnnotationProcessorTest {
         var commonImports = this.commonImports();
         var sourceList = Arrays.stream(sources).map(s -> "package %s;\n%s\n/**\n* @see %s#%s \n*/\n".formatted(testPackage, commonImports, testClass.getCanonicalName(), testMethod.getName()) + s)
             .map(s -> {
-                var classStart = s.indexOf("public class ") + 13;
-                if (classStart < 13) {
-                    classStart = s.indexOf("public final class ") + 19;
-                    if (classStart < 19) {
-                        classStart = s.indexOf("public interface ") + 17;
-                        if (classStart < 17) {
-                            classStart = s.indexOf("public record ") + 14;
-                            if (classStart < 14) {
-                                classStart = s.indexOf("public enum ") + 12;
-                                if (classStart < 12) {
-                                    throw new IllegalArgumentException();
+                var classStart = s.indexOf("public sealed interface ") + 24;
+                if (classStart < 24) {
+                    classStart = s.indexOf("public class ") + 13;
+                    if (classStart < 13) {
+                        classStart = s.indexOf("public final class ") + 19;
+                        if (classStart < 19) {
+                            classStart = s.indexOf("public interface ") + 17;
+                            if (classStart < 17) {
+                                classStart = s.indexOf("public record ") + 14;
+                                if (classStart < 14) {
+                                    classStart = s.indexOf("public enum ") + 12;
+                                    if (classStart < 12) {
+                                        throw new IllegalArgumentException();
+                                    }
                                 }
                             }
                         }
@@ -129,4 +131,13 @@ public abstract class AbstractAnnotationProcessorTest {
             throw new RuntimeException(e);
         }
     }
+
+    public GeneratedResultCallback<?> newGeneratedObject(String className, Object... params) {
+        return () -> newObject(className, params);
+    }
+
+    protected interface GeneratedResultCallback<T> {
+        T get();
+    }
+
 }

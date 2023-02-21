@@ -394,6 +394,7 @@ class HttpClientAnnotationProcessorTest {
         }
     }
 
+    @SuppressWarnings("uncheced")
     private <T> T client(Class<T> clazz, Object config, Object[] mappers) {
         var params = Arrays.copyOf(new Object[]{this.baseClient, config, this.telemetryFactory}, 3 + mappers.length);
         System.arraycopy(mappers, 0, params, 3, mappers.length);

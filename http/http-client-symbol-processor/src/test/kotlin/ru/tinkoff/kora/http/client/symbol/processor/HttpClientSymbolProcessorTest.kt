@@ -327,11 +327,8 @@ class HttpClientSymbolProcessorTest {
                 HttpClientOperationConfig(null),
                 HttpClientOperationConfig(null),
             ), arrayOf(
-                ClientWithMappers.ContributorListMapper(),
                 ClientWithMappers.IssueRequestMapper(),
-                ClientWithMappers.CustomUnitMapper(),
                 unitMono(),
-                ClientWithMappers.CustomUnitMapper(),
                 ClientWithMappers.IssueRequestMapper(),
                 unitMono(),
                 unitMono(),

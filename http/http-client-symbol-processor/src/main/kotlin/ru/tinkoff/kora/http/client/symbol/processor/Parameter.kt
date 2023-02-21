@@ -23,11 +23,11 @@ interface Parameter {
 
     data class BodyParameter(val parameter: KSValueParameter, val mapper: MappingData?) : Parameter
 
-    @KspExperimental
     class ParameterParser(private val resolver: Resolver) {
         private val requestMapperType: KSType? = resolver
             .getClassDeclarationByName(HttpClientRequestMapper::class.qualifiedName!!)?.asStarProjectedType()
 
+        @KspExperimental
         fun parseParameter(method: KSFunctionDeclaration, parameterIndex: Int): Parameter {
             val parameter = method.parameters[parameterIndex]
             val header = parameter.getAnnotationsByType(Header::class).firstOrNull()

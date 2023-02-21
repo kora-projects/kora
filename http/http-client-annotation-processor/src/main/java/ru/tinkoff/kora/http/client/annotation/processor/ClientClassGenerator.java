@@ -301,24 +301,18 @@ public class ClientClassGenerator {
             }
             if (methodData.codeMappers().isEmpty()) {
                 var responseMapperName = method.getSimpleName() + "ResponseMapper";
-                var responseMapperType = methodData.responseMapper() != null && methodData.responseMapper().mapperClass() != null
-                    ? TypeName.get(methodData.responseMapper().mapperClass())
-                    : methodData.returnType().responseMapperType();
+                if (methodData.responseMapper() != null && methodData.responseMapper().mapperClass() != null && CommonUtils.hasDefaultConstructorAndFinal(this.types, methodData.responseMapper().mapperClass())) {
+                    var mapperTypeName = TypeName.get(methodData.responseMapper().mapperClass());
+                    var responseMapperField = FieldSpec.builder(mapperTypeName, responseMapperName)
+                        .addModifiers(Modifier.STATIC)
+                        .initializer(CodeBlock.of("new $T()", mapperTypeName))
+                        .build();
+                    tb.addField(responseMapperField);
+                } else {
+                    var responseMapperType = methodData.responseMapper() != null && methodData.responseMapper().mapperClass() != null
+                        ? TypeName.get(methodData.responseMapper().mapperClass())
+                        : methodData.returnType().responseMapperType();
 
-                var responseMapperParameter = ParameterSpec.builder(responseMapperType, responseMapperName);
-                var responseMapperTags = methodData.responseMapper() != null
-                    ? methodData.responseMapper().toTagAnnotation()
-                    : null;
-                if (responseMapperTags != null) {
-                    responseMapperParameter.addAnnotation(responseMapperTags);
-                }
-                tb.addField(responseMapperType, responseMapperName, Modifier.PRIVATE, Modifier.FINAL);
-                builder.addParameter(responseMapperParameter.build());
-                builder.addStatement("this.$L = $L", responseMapperName, responseMapperName);
-            } else {
-                for (var codeMapper : methodData.codeMappers()) {
-                    var responseMapperName = "" + method.getSimpleName() + (codeMapper.code() > 0 ? codeMapper.code() : "Default") + "ResponseMapper";
-                    var responseMapperType = codeMapper.responseMapperType(methodData.returnType().publisherType());
                     var responseMapperParameter = ParameterSpec.builder(responseMapperType, responseMapperName);
                     var responseMapperTags = methodData.responseMapper() != null
                         ? methodData.responseMapper().toTagAnnotation()
@@ -329,6 +323,30 @@ public class ClientClassGenerator {
                     tb.addField(responseMapperType, responseMapperName, Modifier.PRIVATE, Modifier.FINAL);
                     builder.addParameter(responseMapperParameter.build());
                     builder.addStatement("this.$L = $L", responseMapperName, responseMapperName);
+                }
+            } else {
+                for (var codeMapper : methodData.codeMappers()) {
+                    var responseMapperName = "" + method.getSimpleName() + (codeMapper.code() > 0 ? codeMapper.code() : "Default") + "ResponseMapper";
+                    if (codeMapper.mapper() != null && CommonUtils.hasDefaultConstructorAndFinal(this.types, codeMapper.mapper())) {
+                        var mapperTypeName = TypeName.get(codeMapper.mapper());
+                        var responseMapperField = FieldSpec.builder(mapperTypeName, responseMapperName)
+                            .addModifiers(Modifier.STATIC)
+                            .initializer(CodeBlock.of("new $T()", mapperTypeName))
+                            .build();
+                        tb.addField(responseMapperField);
+                    } else {
+                        var responseMapperType = codeMapper.responseMapperType(methodData.returnType().publisherType());
+                        var responseMapperParameter = ParameterSpec.builder(responseMapperType, responseMapperName);
+                        var responseMapperTags = methodData.responseMapper() != null
+                            ? methodData.responseMapper().toTagAnnotation()
+                            : null;
+                        if (responseMapperTags != null) {
+                            responseMapperParameter.addAnnotation(responseMapperTags);
+                        }
+                        tb.addField(responseMapperType, responseMapperName, Modifier.PRIVATE, Modifier.FINAL);
+                        builder.addParameter(responseMapperParameter.build());
+                        builder.addStatement("this.$L = $L", responseMapperName, responseMapperName);
+                    }
                 }
             }
             var name = method.getSimpleName();

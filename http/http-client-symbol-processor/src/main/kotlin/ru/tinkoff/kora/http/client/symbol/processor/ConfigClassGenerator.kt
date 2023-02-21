@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.http.client.symbol.processor
 
-import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.*
@@ -9,7 +8,6 @@ import ru.tinkoff.kora.http.client.common.declarative.HttpClientOperationConfig
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import java.time.Duration
 
-@KspExperimental
 class ConfigClassGenerator {
     fun generate(declaration: KSClassDeclaration): TypeSpec {
         val functions = declaration.getDeclaredFunctions().map { it.simpleName.asString() }
