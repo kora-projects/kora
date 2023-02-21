@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.database.symbol.processor.vertx
 
-import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
@@ -15,6 +14,7 @@ import ru.tinkoff.kora.database.symbol.processor.DbUtils.findQueryMethods
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.parseExecutorTag
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.queryMethodBuilder
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.resultMapperName
+import ru.tinkoff.kora.database.symbol.processor.DbUtils.updateCount
 import ru.tinkoff.kora.database.symbol.processor.Mapper
 import ru.tinkoff.kora.database.symbol.processor.QueryWithParameters
 import ru.tinkoff.kora.database.symbol.processor.RepositoryGenerator
@@ -34,7 +34,6 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
     private val repositoryInterface = resolver.getClassDeclarationByName(resolver.getKSNameFromString(VertxTypes.repository.canonicalName))?.asStarProjectedType()
     override fun repositoryInterface() = repositoryInterface
 
-    @OptIn(KspExperimental::class)
     override fun generate(repositoryType: KSClassDeclaration, typeBuilder: TypeSpec.Builder, constructorBuilder: FunSpec.Builder): TypeSpec {
         this.enrichWithExecutor(repositoryType, typeBuilder, constructorBuilder)
         val repositoryResolvedType = repositoryType.asStarProjectedType()
@@ -98,9 +97,12 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
 
             if (function.returnType == resolver.builtIns.unitType) {
                 b.addCode(") {}\n")
+            } else if (function.returnType?.toTypeName() == updateCount) {
+                b.addCode(") { %T.extractUpdateCount(it) }\n", VertxTypes.rowSetMapper)
             } else {
                 b.addCode(", %N)\n", funDeclaration.resultMapperName())
             }
+
         }
         if (isSuspend) {
             b.addCode("  .%M()", await)
@@ -113,7 +115,6 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
         return b.build()
     }
 
-    @OptIn(KspExperimental::class)
     private fun parseResultMapper(method: KSFunctionDeclaration, parameters: List<QueryParameter>, methodType: KSFunction): Mapper? {
         for (parameter in parameters) {
             if (parameter is QueryParameter.BatchParameter) {
@@ -150,6 +151,9 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
             }
         }
         if (returnType == resolver.builtIns.unitType) {
+            return null
+        }
+        if (returnType.toTypeName() == updateCount) {
             return null
         }
         return Mapper(mapperType, mapperName)

@@ -41,18 +41,18 @@ class MockCassandraExecutor : CassandraConnectionFactory {
 
     fun reset() {
         Mockito.reset(resultSet, asyncResultSet, boundStatementBuilder, preparedStatement, boundStatement, mockSession, iterator, row, batchStatementBuilder, telemetry)
-        Mockito.`when`(boundStatementBuilder.build()).thenReturn(boundStatement)
-        Mockito.`when`<Iterator<Row>>(resultSet.iterator()).thenReturn(iterator)
-        Mockito.`when`(resultSet.one()).thenReturn(row)
-        Mockito.`when`(iterator.next()).thenReturn(row)
-        Mockito.`when`(mockSession.prepare(ArgumentMatchers.anyString())).thenReturn(preparedStatement)
-        Mockito.`when`(mockSession.prepareAsync(ArgumentMatchers.anyString())).thenReturn(CompletableFuture.completedFuture(preparedStatement))
-        Mockito.`when`(preparedStatement.boundStatementBuilder()).thenReturn(boundStatementBuilder)
-        Mockito.`when`(boundStatementBuilder.build()).thenReturn(boundStatement)
+        whenever(boundStatementBuilder.build()).thenReturn(boundStatement)
+        whenever<Iterator<Row>>(resultSet.iterator()).thenReturn(iterator)
+        whenever(resultSet.one()).thenReturn(row)
+        whenever(iterator.next()).thenReturn(row)
+        whenever(mockSession.prepare(ArgumentMatchers.anyString())).thenReturn(preparedStatement)
+        whenever(mockSession.prepareAsync(ArgumentMatchers.anyString())).thenReturn(CompletableFuture.completedFuture(preparedStatement))
+        whenever(preparedStatement.boundStatementBuilder()).thenReturn(boundStatementBuilder)
+        whenever(boundStatementBuilder.build()).thenReturn(boundStatement)
         Mockito.mockStatic(BatchStatement::class.java).use { ignored ->
-            Mockito.`when`(BatchStatement.builder(DefaultBatchType.UNLOGGED)).thenReturn(batchStatementBuilder)
+            whenever(BatchStatement.builder(DefaultBatchType.UNLOGGED)).thenReturn(batchStatementBuilder)
         }
-        Mockito.`when`(telemetry.createContext(any(), any())).thenReturn(telemetryCtx)
+        whenever(telemetry.createContext(any(), any())).thenReturn(telemetryCtx)
         whenever(mockSession.executeReactive(any<Statement<*>>())).thenReturn(MockReactiveResultSet(listOf()))
         whenever(mockSession.execute(any<Statement<*>>())).thenReturn(resultSet)
     }
@@ -73,7 +73,7 @@ class MockCassandraExecutor : CassandraConnectionFactory {
         Mockito.clearInvocations(resultSet, boundStatementBuilder, batchStatementBuilder, boundStatement)
         val sb = mockSession.prepare(query!!.sql()).boundStatementBuilder()
         val statement: Statement<out Statement<*>?> = statementSetter.apply(sb)
-        Mockito.`when`(mockSession.execute(statement)).thenReturn(resultSet)
+        whenever(mockSession.execute(statement)).thenReturn(resultSet)
         return resultExtractor!!.apply(resultSet)
     }
 

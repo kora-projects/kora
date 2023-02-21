@@ -30,8 +30,11 @@ public interface EntityRepository extends JdbcRepository {
 аннотацию `@EntityConstructor`
 
 ## Batch
+
 Kora поддерживает batch-запросы с помощью аннотации `@Batch`. Её использование выглядит следующим образом:
+
 ```java
+
 @Repository
 interface RepoWithBatch extends JdbcRepository {
     @Query("INSERT INTO test(value1, value2) VALUES (:entity.value1, :entity.value2)")
@@ -39,7 +42,22 @@ interface RepoWithBatch extends JdbcRepository {
 }
 ```
 
+## UpdateCount
+
+Так как kora не парсит содержимое запроса результат метода всегда считается производным из строк, которые вернула БД.
+Если необходимо получить в качестве результата количество обновленных строк нужно использовать специальный тип `UpdateCount`.
+
+```java
+
+@Repository
+interface RepoWithBatch extends JdbcRepository {
+    @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+    UpdateCount insert(long id, String value);
+}
+```
+
 ## Реализации:
+
 ### JDBC
 
 При подключении через `jdbc` следует добавить `JdbcDatabaseModule`. Внутри `JdbcDatabaseModule` создаются экземпляры классов `JdbcDataBaseConfig` и `JdbcDataBase`.

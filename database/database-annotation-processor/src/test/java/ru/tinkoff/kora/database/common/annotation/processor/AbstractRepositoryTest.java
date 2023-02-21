@@ -21,19 +21,26 @@ public abstract class AbstractRepositoryTest extends AbstractAnnotationProcessor
             this.repositoryObject = repositoryObject;
         }
 
-        public Object invoke(String method, Object... args) {
+        @SuppressWarnings("unchecked")
+        public <T> T invoke(String method, Object... args) {
             for (var repositoryClassMethod : repositoryClass.getMethods()) {
                 if (repositoryClassMethod.getName().equals(method) && repositoryClassMethod.getParameters().length == args.length) {
                     try {
                         var result = repositoryClassMethod.invoke(this.repositoryObject, args);
                         if (result instanceof Mono<?> mono) {
-                            return mono.block();
+                            return (T) mono.block();
                         }
                         if (result instanceof Future<?> future) {
-                            return future.get();
+                            return (T) future.get();
                         }
-                        return result;
-                    } catch (IllegalAccessException | InvocationTargetException | ExecutionException | InterruptedException e) {
+                        return (T) result;
+                    } catch (InvocationTargetException e) {
+                        if (e.getTargetException() instanceof RuntimeException re) {
+                            throw re;
+                        } else {
+                            throw new RuntimeException(e);
+                        }
+                    } catch (IllegalAccessException | ExecutionException | InterruptedException e) {
                         throw new RuntimeException(e);
                     }
                 }
@@ -63,10 +70,23 @@ public abstract class AbstractRepositoryTest extends AbstractAnnotationProcessor
             var realArgs = new Object[arguments.size() + 1];
             realArgs[0] = connectionFactory;
             System.arraycopy(arguments.toArray(), 0, realArgs, 1, arguments.size());
+            for (int i = 0; i < realArgs.length; i++) {
+                if (realArgs[i] instanceof GeneratedResultCallback<?> gr) {
+                    realArgs[i] = gr.get();
+                }
+            }
             var repository = repositoryClass.getConstructors()[0].newInstance(realArgs);
             return new TestRepository(repositoryClass, repository);
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public GeneratedResultCallback<?> newGeneratedObject(String className, Object... params) {
+        return () -> newObject(className, params);
+    }
+
+    protected interface GeneratedResultCallback<T> {
+        T get();
     }
 }

@@ -1,47 +1,306 @@
 package ru.tinkoff.kora.database.symbol.processor.jdbc
 
-import org.junit.jupiter.api.BeforeEach
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
-import ru.tinkoff.kora.annotation.processor.common.TestContext
-import ru.tinkoff.kora.application.graph.TypeRef
-import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory
+import org.mockito.ArgumentMatchers
+import org.mockito.Mockito
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
+import ru.tinkoff.kora.database.common.UpdateCount
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultSetMapper
-import ru.tinkoff.kora.database.symbol.processor.DbTestUtils
-import ru.tinkoff.kora.database.symbol.processor.jdbc.repository.AllowedResultsRepository
-import java.util.*
 import java.util.concurrent.Executor
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class JdbcResultsTest {
-    private val executor: MockJdbcExecutor = MockJdbcExecutor()
-    private val repository: AllowedResultsRepository
-    private val ctx = TestContext()
-
-    init {
-        ctx.addContextElement(
-            TypeRef.of(
-                JdbcConnectionFactory::class.java
-            ), executor
-        )
-        ctx.addContextElement(TypeRef.of(Executor::class.java),
-            Executor { obj: Runnable -> obj.run() })
-        ctx.addMock(TypeRef.of(TestEntityJdbcRowMapperNonFinal::class.java))
-        ctx.addMock(TypeRef.of(TestEntityFieldJdbcResultColumnMapperNonFinal::class.java))
-        ctx.addMock(TypeRef.of(JdbcResultSetMapper::class.java, Void::class.java))
-        ctx.addMock(TypeRef.of(JdbcResultSetMapper::class.java, Int::class.javaObjectType))
-        ctx.addMock(TypeRef.of(JdbcResultSetMapper::class.java, TypeRef.of(List::class.java, Int::class.javaObjectType)))
-        ctx.addMock(TypeRef.of(JdbcResultSetMapper::class.java, TypeRef.of(Optional::class.java, Int::class.javaObjectType)))
-        repository = ctx.newInstance(DbTestUtils.compileClass(AllowedResultsRepository::class).java)
-    }
-
-    @BeforeEach
-    internal fun setUp() {
-        executor.reset()
+class JdbcResultsTest : AbstractJdbcRepositoryTest() {
+    @Test
+    fun testReturnVoid() {
+        val repository = compile(listOf<Any>(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES ('value')")
+                fun test()
+            }
+            
+            """.trimIndent())
+        repository.invoke<Any>("test")
+        verify(executor.mockConnection).prepareStatement("INSERT INTO test(value) VALUES ('value')")
+        verify(executor.preparedStatement).execute()
     }
 
     @Test
-    fun testReturnVoid() {
-        repository.returnVoid()
+    fun testReturnObject() {
+        val mapper = Mockito.mock(JdbcResultSetMapper::class.java)
+        val repository = compile(listOf(mapper), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("SELECT count(*) FROM test")
+                fun test(): Int
+            }
+            
+            """.trimIndent())
+        whenever(mapper.apply(ArgumentMatchers.any())).thenReturn(42)
+        val result = repository.invoke<Any>("test")
+        Assertions.assertThat(result).isEqualTo(42)
+        verify(executor.mockConnection).prepareStatement("SELECT count(*) FROM test")
+        verify(executor.preparedStatement).executeQuery()
+        verify(mapper).apply(executor.resultSet)
+        executor.reset()
+        whenever(mapper.apply(ArgumentMatchers.any())).thenReturn(null)
+        Assertions.assertThatThrownBy { repository.invoke<Any>("test") }.isInstanceOf(NullPointerException::class.java)
+    }
+
+    @Test
+    fun testReturnNullableObject() {
+        val mapper = Mockito.mock(JdbcResultSetMapper::class.java)
+        val repository = compile(listOf(mapper), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Nullable
+                @Query("SELECT count(*) FROM test")
+                fun test(): Int?
+            }
+            
+            """.trimIndent())
+        whenever(mapper.apply(ArgumentMatchers.any())).thenReturn(42)
+        var result = repository.invoke<Any>("test")
+        Assertions.assertThat(result).isEqualTo(42)
+        verify(executor.mockConnection).prepareStatement("SELECT count(*) FROM test")
+        verify(executor.preparedStatement).executeQuery()
+        verify(mapper).apply(executor.resultSet)
+        executor.reset()
+
+        whenever(mapper.apply(ArgumentMatchers.any())).thenReturn(null)
+        result = repository.invoke<Any>("test")
+        Assertions.assertThat(result).isNull()
+    }
+
+    @Test
+    fun testReturnSuspendObject() {
+        val e = Executor { command -> command.run() }
+        val mapper = Mockito.mock(JdbcResultSetMapper::class.java)
+        val repository = compile(listOf(e, mapper), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("SELECT count(*) FROM test")
+                suspend fun test(): Int
+            }
+            
+            """.trimIndent())
+        whenever(mapper.apply(ArgumentMatchers.any())).thenReturn(42)
+        val result = repository.invoke<Any>("test")
+        Assertions.assertThat(result).isEqualTo(42)
+        verify(executor.mockConnection).prepareStatement("SELECT count(*) FROM test")
+        verify(executor.preparedStatement).executeQuery()
+        verify(mapper).apply(executor.resultSet)
+    }
+
+    @Test
+    fun testReturnSuspendVoid() {
+        val e = Executor { command -> command.run() }
+        val repository = compile(listOf<Any>(e), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("SELECT count(*) FROM test")
+                suspend fun test()
+            }
+            
+            """.trimIndent())
+        repository.invoke<Any>("test")
+        verify(executor.mockConnection).prepareStatement("SELECT count(*) FROM test")
+        verify(executor.preparedStatement).execute()
+    }
+
+    @Test
+    fun testReturnUpdateCount() {
+        val repository = compile(listOf<Any>(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES ('test')")
+                fun test(): UpdateCount
+            }
+            
+            """.trimIndent())
+        whenever(executor.preparedStatement.executeLargeUpdate()).thenReturn(42L)
+        val result = repository.invoke<UpdateCount>("test")
+        Assertions.assertThat(result?.value).isEqualTo(42)
+        verify(executor.mockConnection).prepareStatement("INSERT INTO test(value) VALUES ('test')")
+        verify(executor.preparedStatement).executeLargeUpdate()
+    }
+
+    @Test
+    fun testReturnBatchUpdateCount() {
+        val repository = compile(listOf<Any>(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                fun test(@Batch value: List<String>): UpdateCount
+            }
+            
+            """.trimIndent())
+        whenever(executor.preparedStatement.executeLargeBatch()).thenReturn(longArrayOf(42, 43))
+        val result = repository.invoke<UpdateCount>("test", listOf("test1", "test2"))
+        Assertions.assertThat(result?.value).isEqualTo(85)
+        verify(executor.mockConnection).prepareStatement("INSERT INTO test(value) VALUES (?)")
+        verify(executor.preparedStatement).executeLargeBatch()
+    }
+
+    @Test
+    fun testFinalResultSetMapper() {
+        val repository = compile(listOf<Any>(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestResultMapper::class)
+                fun test(): Int
+            }
+            
+            """.trimIndent(), """
+            class TestResultMapper : JdbcResultSetMapper<Int> {
+                override fun apply(rs: ResultSet): Int? {
+                  return 42
+                }
+            }
+            
+            """.trimIndent())
+        val result = repository.invoke<Int>("test")
+        Assertions.assertThat(result).isEqualTo(42)
+        verify(executor.mockConnection).prepareStatement("SELECT count(*) FROM test")
+        verify(executor.preparedStatement).executeQuery()
+    }
+
+    @Test
+    fun testNonFinalFinalResultSetMapper() {
+        val repository = compile(listOf(newGenerated("TestResultMapper")), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestResultMapper::class)
+                fun test(): Int
+            }
+            
+            """.trimIndent(), """
+            open class TestResultMapper : JdbcResultSetMapper<Int> {
+                override fun apply(rs: ResultSet): Int? {
+                  return 42
+                }
+            }
+            
+            """.trimIndent())
+        val result = repository.invoke<Int>("test")
+        Assertions.assertThat(result).isEqualTo(42)
+        verify(executor.mockConnection).prepareStatement("SELECT count(*) FROM test")
+        verify(executor.preparedStatement).executeQuery()
+    }
+
+    @Test
+    fun testOneWithFinalRowMapper() {
+        val repository = compile(listOf<Any>(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper::class)
+                fun test(): Int?
+            }
+            
+            """.trimIndent(), """
+            class TestRowMapper : JdbcRowMapper<Int> {
+                override fun apply(rs: ResultSet): Int? {
+                  return 42
+                }
+            }
+            
+            """.trimIndent())
+        whenever(executor.resultSet.next()).thenReturn(true, false)
+        var result = repository.invoke<Int>("test")
+        Assertions.assertThat(result).isEqualTo(42)
+        verify(executor.mockConnection).prepareStatement("SELECT count(*) FROM test")
+        verify(executor.preparedStatement).executeQuery()
+        executor.reset()
+        whenever(executor.resultSet.next()).thenReturn(false, false)
+        result = repository.invoke<Int>("test")
+        Assertions.assertThat(result).isNull()
+        verify(executor.mockConnection).prepareStatement("SELECT count(*) FROM test")
+        verify(executor.preparedStatement).executeQuery()
+    }
+
+    @Test
+    fun testOneWithNonFinalRowMapper() {
+        val repository = compile(listOf(newGenerated("TestRowMapper")), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper::class)
+                fun test(): Int?
+            }
+            
+            """.trimIndent(), """
+            open class TestRowMapper : JdbcRowMapper<Int> {
+                override fun apply(rs: ResultSet): Int? {
+                  return 42
+                }
+            }
+            
+            """.trimIndent())
+        whenever(executor.resultSet.next()).thenReturn(true, false)
+        var result = repository.invoke<Int>("test")
+        Assertions.assertThat(result).isEqualTo(42)
+        verify(executor.mockConnection).prepareStatement("SELECT count(*) FROM test")
+        verify(executor.preparedStatement).executeQuery()
+        executor.reset()
+        whenever(executor.resultSet.next()).thenReturn(false, false)
+        result = repository.invoke<Int>("test")
+        Assertions.assertThat(result).isNull()
+        verify(executor.mockConnection).prepareStatement("SELECT count(*) FROM test")
+        verify(executor.preparedStatement).executeQuery()
+    }
+
+    @Test
+    fun testListWithFinalRowMapper() {
+        val repository = compile(listOf<Any>(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper::class)
+                fun test(): List<Int>
+            }
+            
+            """.trimIndent(), """
+            class TestRowMapper : JdbcRowMapper<Int> {
+                override fun apply(rs: ResultSet): Int? {
+                  return 42
+                }
+            }
+            
+            """.trimIndent())
+        whenever(executor.resultSet.next()).thenReturn(true, true, false)
+        val result = repository.invoke<List<Int>>("test")
+        Assertions.assertThat(result).contains(42, 42)
+        verify(executor.mockConnection).prepareStatement("SELECT count(*) FROM test")
+        verify(executor.preparedStatement).executeQuery()
+    }
+
+    @Test
+    fun testListWithNonFinalRowMapper() {
+        val repository = compile(listOf(newGenerated("TestRowMapper")), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper::class)
+                fun test(): List<Int>
+            }
+            
+            """.trimIndent(), """
+            open class TestRowMapper : JdbcRowMapper<Int> {
+                override fun apply(rs: ResultSet): Int? {
+                  return 42
+                }
+            }
+            
+            """.trimIndent())
+        whenever(executor.resultSet.next()).thenReturn(true, true, false)
+        val result = repository.invoke<List<Int>>("test")
+        Assertions.assertThat(result).contains(42, 42)
+        verify(executor.mockConnection).prepareStatement("SELECT count(*) FROM test")
+        verify(executor.preparedStatement).executeQuery()
+        executor.reset()
     }
 }

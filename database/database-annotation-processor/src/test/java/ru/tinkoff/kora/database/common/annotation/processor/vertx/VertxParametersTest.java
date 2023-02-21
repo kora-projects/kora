@@ -85,7 +85,7 @@ public class VertxParametersTest extends AbstractVertxRepositoryTest {
             }
             """);
 
-        repository.invoke("test", newRecord("SomeEntity", 42L, "test-value"));
+        repository.invoke("test", newObject("SomeEntity", 42L, "test-value"));
 
         verify(executor.query).execute(tupleMatcher(Tuple.of(42L, Map.of("test", "test-value"))), any());
     }

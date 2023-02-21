@@ -1,21 +1,42 @@
 package ru.tinkoff.kora.database.symbol.processor
 
+import kotlinx.coroutines.runBlocking
 import org.intellij.lang.annotations.Language
 import reactor.core.publisher.Mono
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 import java.lang.reflect.InvocationTargetException
 import java.util.concurrent.Future
+import kotlin.reflect.KClass
+import kotlin.reflect.full.callSuspend
+import kotlin.reflect.full.memberFunctions
 
 abstract class AbstractRepositoryTest : AbstractSymbolProcessorTest() {
-    class TestRepository(private val repositoryClass: Class<*>, private val repositoryObject: Any) {
-        operator fun invoke(method: String, vararg args: Any?): Any? {
-            for (repositoryClassMethod in repositoryClass.methods) {
-                if (repositoryClassMethod.name == method && repositoryClassMethod.parameters.size == args.size) {
-                    val result = repositoryClassMethod.invoke(repositoryObject, *args)
-                    return when (result) {
-                        is Mono<*> -> result.block()
-                        is Future<*> -> result.get()
-                        else -> result
+    class TestRepository(private val repositoryClass: KClass<*>, private val repositoryObject: Any) {
+        @SuppressWarnings("unchecked")
+        fun <T> invoke(method: String, vararg args: Any?): T? {
+            for (repositoryClassMethod in repositoryClass.memberFunctions) {
+                if (repositoryClassMethod.name == method && repositoryClassMethod.parameters.size == args.size + 1) {
+                    try {
+                        val realArgs = Array(args.size + 1) {
+                            if (it == 0) {
+                                repositoryObject
+                            } else {
+                                args[it - 1]
+                            }
+                        }
+
+                        val result = if (repositoryClassMethod.isSuspend) {
+                            runBlocking { repositoryClassMethod.callSuspend(*realArgs) }
+                        } else {
+                            repositoryClassMethod.call(*realArgs)
+                        }
+                        return when (result) {
+                            is Mono<*> -> result.block()
+                            is Future<*> -> result.get()
+                            else -> result
+                        } as T?
+                    } catch (e: InvocationTargetException) {
+                        throw e.targetException
                     }
                 }
             }
@@ -42,8 +63,13 @@ abstract class AbstractRepositoryTest : AbstractSymbolProcessorTest() {
             val realArgs = arrayOfNulls<Any>(arguments.size + 1)
             realArgs[0] = connectionFactory
             System.arraycopy(arguments.toTypedArray(), 0, realArgs, 1, arguments.size)
+            for ((i, arg) in realArgs.withIndex()) {
+                if (arg is GeneratedObject<*>) {
+                    realArgs[i] = arg.invoke()
+                }
+            }
             val repository = repositoryClass.constructors[0].newInstance(*realArgs)
-            TestRepository(repositoryClass, repository)
+            TestRepository(repositoryClass.kotlin, repository)
         } catch (e: ClassNotFoundException) {
             throw RuntimeException(e)
         } catch (e: InstantiationException) {

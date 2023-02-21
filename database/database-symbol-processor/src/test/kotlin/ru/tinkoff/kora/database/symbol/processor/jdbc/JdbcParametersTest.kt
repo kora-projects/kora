@@ -18,7 +18,7 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             }
             """.trimIndent())
 
-        repository.invoke("test", executor.mockConnection)
+        repository.invoke<Any>("test", executor.mockConnection)
 
         verify(executor.preparedStatement).execute()
         verify(executor.preparedStatement).updateCount
@@ -34,7 +34,7 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             }
             """.trimIndent())
 
-        repository.invoke("test", 42)
+        repository.invoke<Any>("test", 42)
 
         verify(executor.preparedStatement).setInt(1, 42)
         verify(executor.preparedStatement).updateCount
@@ -52,7 +52,7 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             """.trimIndent(), "class CustomType{}")
         val value = new("CustomType")
 
-        repository.invoke("test", value)
+        repository.invoke<Any>("test", value)
 
         verify(mapper).set(same(executor.preparedStatement), eq(1), same(value))
         verify(executor.preparedStatement).updateCount
@@ -68,7 +68,7 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             }
             """.trimIndent())
 
-        repository.invoke("test", "test", 42)
+        repository.invoke<Any>("test", "test", 42)
 
         verify(executor.mockConnection).prepareStatement("INSERT INTO test(value1, value2) VALUES (?, ?)")
         verify(executor.preparedStatement).setString(1, "test")
@@ -94,7 +94,7 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
 
             """.trimIndent())
 
-        repository.invoke("test", new("SomeEntity", 42L, "test-value"))
+        repository.invoke<Any>("test", new("SomeEntity", 42L, "test-value"))
 
         verify(executor.preparedStatement).setLong(1, 42L)
         verify(executor.preparedStatement).setObject(2, mapOf("test" to "test-value"))
@@ -116,7 +116,7 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             }
             """.trimIndent())
 
-        repository.invoke("test", 42L, "test-value")
+        repository.invoke<Any>("test", 42L, "test-value")
 
         verify(executor.preparedStatement).setLong(1, 42L)
         verify(executor.preparedStatement).setObject(2, mapOf("test" to "test-value"))

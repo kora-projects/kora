@@ -3,7 +3,6 @@ package ru.tinkoff.kora.database.annotation.processor.jdbc;
 import com.squareup.javapoet.*;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
 import ru.tinkoff.kora.annotation.processor.common.Visitors;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
@@ -21,7 +20,6 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
-import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
@@ -32,6 +30,8 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.stream.IntStream;
+
+import static ru.tinkoff.kora.annotation.processor.common.MethodUtils.isVoid;
 
 public final class JdbcRepositoryGenerator implements RepositoryGenerator {
     private final TypeMirror repositoryInterface;
@@ -80,7 +80,10 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
 
     private Optional<Mapper> parseResultMappers(ExecutableElement method, ExecutableType methodType, List<QueryParameter> parameters) {
         var returnType = methodType.getReturnType();
-        if (returnType.getKind() == TypeKind.VOID) {
+        if (CommonUtils.isMono(returnType)) {
+            returnType = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
+        }
+        if (isVoid(returnType)) {
             return Optional.empty();
         }
         var batchParam = parameters.stream().filter(QueryParameter.BatchParameter.class::isInstance).findFirst().orElse(null);
@@ -90,10 +93,6 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         }
         if (returnType.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
             return Optional.empty();
-        }
-
-        if (CommonUtils.isMono(returnType)) {
-            returnType = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
         }
         var mapperName = DbUtils.resultMapperName(method);
         var mappings = CommonUtils.parseMapping(method);
@@ -155,7 +154,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             try (_conToClose; var _stmt = _conToUse.prepareStatement(_query.sql())) {$>
             """, connection, JdbcTypes.CONNECTION, DbUtils.QUERY_CONTEXT, query.rawQuery(), sql);
         b.addCode(StatementSetterGenerator.generate(method, query, parameters, batchParam));
-        if (MethodUtils.isVoid(method)) {
+        if (isVoid(method) || isMono && isVoid(((DeclaredType) methodType.getReturnType()).getTypeArguments().get(0))) {
             if (batchParam != null) {
                 b.addStatement("var _batchResult = _stmt.executeBatch()");
             } else {
@@ -171,7 +170,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             b.addStatement("var _batchResult = _stmt.executeBatch()");
             b.addStatement("_telemetry.close(null)");
             if (methodType.getReturnType().toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
-                b.addStatement("return $T.of_batchResult).sum()", IntStream.class);
+                b.addStatement("return new $T($T.of(_batchResult).sum())", DbUtils.UPDATE_COUNT, IntStream.class);
             } else {
                 b.addStatement("return _batchResult");
             }

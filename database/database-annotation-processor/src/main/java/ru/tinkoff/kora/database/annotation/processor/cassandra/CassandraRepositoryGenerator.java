@@ -3,6 +3,7 @@ package ru.tinkoff.kora.database.annotation.processor.cassandra;
 import com.squareup.javapoet.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.Visitors;
 import ru.tinkoff.kora.common.Tag;
@@ -24,10 +25,11 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+
+import static ru.tinkoff.kora.annotation.processor.common.MethodUtils.isVoid;
 
 public class CassandraRepositoryGenerator implements RepositoryGenerator {
     private final TypeMirror repositoryInterface;
@@ -120,7 +122,11 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
         StatementSetterGenerator.generate(b, method, query, parameters, batchParam);
         if (isMono || isFlux) {
             b.addStatement("var _rrs = _session.executeReactive(_s)");
-            b.addStatement("return $N.apply(_rrs)", DbUtils.resultMapperName(method));
+            if (isVoid(((DeclaredType) returnType).getTypeArguments().get(0))) {
+                b.addStatement("return $T.from(_rrs).then()", CommonClassNames.flux);
+            } else {
+                b.addStatement("return $N.apply(_rrs)", DbUtils.resultMapperName(method));
+            }
             b.endControlFlow().addCode(")\n");// flatMap Statement
             b.addCode("""
                   .doOnEach(_s -> {
@@ -165,6 +171,9 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
         var rowMapper = mappings.getMapping(CassandraTypes.ROW_MAPPER);
         if (CommonUtils.isFlux(returnType)) {
             var fluxParam = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
+            if (isVoid(fluxParam)) {
+                return Optional.empty();
+            }
             var mapperType = ParameterizedTypeName.get(CassandraTypes.REACTIVE_RESULT_SET_MAPPER, TypeName.get(fluxParam), TypeName.get(returnType));
             if (reactiveResultSetMapper != null) {
                 return Optional.of(new DbUtils.Mapper(reactiveResultSetMapper.mapperClass(), mapperType, mapperName));
@@ -177,6 +186,9 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
         if (CommonUtils.isMono(returnType)) {
             var monoParam = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
             var mapperType = ParameterizedTypeName.get(CassandraTypes.REACTIVE_RESULT_SET_MAPPER, TypeName.get(monoParam), TypeName.get(returnType));
+            if (isVoid(monoParam)) {
+                return Optional.empty();
+            }
             if (reactiveResultSetMapper != null) {
                 return Optional.of(new DbUtils.Mapper(reactiveResultSetMapper.mapperClass(), mapperType, mapperName));
             }

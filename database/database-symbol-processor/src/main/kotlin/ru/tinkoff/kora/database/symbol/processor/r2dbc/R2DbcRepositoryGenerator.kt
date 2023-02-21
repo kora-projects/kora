@@ -18,6 +18,7 @@ import ru.tinkoff.kora.database.symbol.processor.DbUtils.findQueryMethods
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.parseExecutorTag
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.queryMethodBuilder
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.resultMapperName
+import ru.tinkoff.kora.database.symbol.processor.DbUtils.updateCount
 import ru.tinkoff.kora.database.symbol.processor.Mapper
 import ru.tinkoff.kora.database.symbol.processor.QueryWithParameters
 import ru.tinkoff.kora.database.symbol.processor.RepositoryGenerator
@@ -81,6 +82,12 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
                 b.addStatement("val _flux = %T.from<%T>(_stmt.execute())", Flux::class, R2dbcTypes.result)
                 if (returnType == resolver.builtIns.unitType) {
                     b.addCode("_flux.flatMap { it.rowsUpdated }.then().thenReturn(Unit)")
+                } else if (returnType.toTypeName() == updateCount) {
+                    if (isFlow) {
+                        b.addCode("_flux.flatMap { it.rowsUpdated }.map { %T(it) }", updateCount)
+                    } else {
+                        b.addCode("_flux.flatMap { it.rowsUpdated }.reduce(0L) { v1, v2 -> v1 + v2 }.map { %T(it) }", updateCount)
+                    }
                 } else {
                     b.addCode("%N.apply(_flux)", funDeclaration.resultMapperName())
                 }
@@ -153,6 +160,9 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
             }
         }
         if (returnType == resolver.builtIns.unitType) {
+            return null
+        }
+        if (returnType.toTypeName() == updateCount) {
             return null
         }
         return Mapper(mapperType, mapperName)
