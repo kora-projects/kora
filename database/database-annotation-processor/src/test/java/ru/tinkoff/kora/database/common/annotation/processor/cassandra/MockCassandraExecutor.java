@@ -4,13 +4,17 @@ import com.datastax.dse.driver.api.core.cql.reactive.ReactiveResultSet;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.*;
 import org.mockito.Mockito;
+import org.reactivestreams.Subscriber;
+import reactor.core.publisher.Flux;
 import ru.tinkoff.kora.database.cassandra.CassandraConnectionFactory;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 
 import java.util.Iterator;
+import java.util.concurrent.CompletableFuture;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 
 public class MockCassandraExecutor implements CassandraConnectionFactory {
@@ -40,11 +44,16 @@ public class MockCassandraExecutor implements CassandraConnectionFactory {
         when(resultSet.one()).thenReturn(row);
         when(iterator.next()).thenReturn(row);
         when(mockSession.prepare(anyString())).thenReturn(preparedStatement);
+        when(mockSession.prepareAsync(anyString())).thenReturn(CompletableFuture.completedFuture(preparedStatement));
         when(preparedStatement.boundStatementBuilder()).thenReturn(boundStatementBuilder);
         when(boundStatementBuilder.setExecutionProfileName(any())).thenReturn(boundStatementBuilder);
         when(boundStatementBuilder.build()).thenReturn(boundStatement);
         when(telemetry.createContext(any(), any())).thenReturn(this.telemetryCtx);
         when(mockSession.executeReactive(any(Statement.class))).thenReturn(reactiveResultSet);
+        doAnswer(invocation -> {
+            Flux.just(row).subscribe(invocation.getArgument(0, Subscriber.class));
+            return null;
+        }).when(reactiveResultSet).subscribe(any());
     }
 
 

@@ -174,7 +174,7 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
             }
             """);
 
-        repository.invoke("test", newRecord("SomeEntity", 42L, "test-value"));
+        repository.invoke("test", newObject("SomeEntity", 42L, "test-value"));
 
         verify(executor.preparedStatement).setLong(1, 42L);
         verify(executor.preparedStatement).setObject(2, Map.of("test", "test-value"));

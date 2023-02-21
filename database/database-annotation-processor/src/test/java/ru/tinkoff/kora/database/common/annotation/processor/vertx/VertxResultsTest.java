@@ -1,182 +1,370 @@
 package ru.tinkoff.kora.database.common.annotation.processor.vertx;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import ru.tinkoff.kora.annotation.processor.common.TestContext;
-import ru.tinkoff.kora.application.graph.TypeRef;
-import ru.tinkoff.kora.database.common.annotation.processor.DbTestUtils;
-import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRecord;
-import ru.tinkoff.kora.database.common.annotation.processor.vertx.repository.AllowedResultsRepository;
-import ru.tinkoff.kora.database.vertx.VertxConnectionFactory;
+import org.mockito.Mockito;
+import ru.tinkoff.kora.database.common.UpdateCount;
 import ru.tinkoff.kora.database.vertx.mapper.result.VertxRowSetMapper;
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class VertxResultsTest {
-    private final MockVertxExecutor executor = new MockVertxExecutor();
-    private final TestContext ctx = new TestContext();
-    private final AllowedResultsRepository repository;
+import java.util.List;
+import java.util.Optional;
 
-    public VertxResultsTest() {
-        ctx.addContextElement(TypeRef.of(VertxConnectionFactory.class), executor);
-        ctx.addMock(TypeRef.of(VertxRowSetMapper.class, Void.class));
-        ctx.addMock(TypeRef.of(VertxRowSetMapper.class, TestEntityRecord.class));
-        ctx.addMock(TypeRef.of(VertxEntity.TestEntityVertxRowMapperNonFinal.class));
-        this.repository = ctx.newInstance(DbTestUtils.compileClass(AllowedResultsRepository.class));
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+public class VertxResultsTest extends AbstractVertxRepositoryTest {
+
+    @Test
+    public void testReturnCompletionStageObject() {
+        var mapper = Mockito.mock(VertxRowSetMapper.class);
+        var repository = compileVertx(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("SELECT count(*) FROM test")
+                CompletionStage<Integer> test();
+            }
+            """);
+
+        when(mapper.apply(any())).thenReturn(42);
+        var result = repository.invoke("test");
+
+        assertThat(result).isEqualTo(42);
+        verify(executor.connection).preparedQuery("SELECT count(*) FROM test");
+        verify(executor.query).execute(any(), any());
+        verify(mapper).apply(executor.rowSet);
     }
 
-    @BeforeEach
-    void setUp() {
+    @Test
+    public void testReturnCompletionStageVoid() {
+        var repository = compileVertx(List.of(), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("SELECT count(*) FROM test")
+                CompletionStage<Void> test();
+            }
+            """);
+
+        repository.invoke("test");
+
+        verify(executor.connection).preparedQuery("SELECT count(*) FROM test");
+        verify(executor.query).execute(any(), any());
+    }
+
+    @Test
+    public void testReturnCompletionStageUpdateCount() {
+        var repository = compileVertx(List.of(), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("INSERT INTO test(value) VALUES ('test')")
+                CompletionStage<UpdateCount> test();
+            }
+            """);
+        when(executor.rowSet.rowCount()).thenReturn(42);
+
+        var result = repository.<UpdateCount>invoke("test");
+
+        assertThat(result.value()).isEqualTo(42);
+        verify(executor.connection).preparedQuery("INSERT INTO test(value) VALUES ('test')");
+        verify(executor.query).execute(any(), any());
+    }
+
+    @Test
+    public void testReturnMonoObject() {
+        var mapper = Mockito.mock(VertxRowSetMapper.class);
+        var repository = compileVertx(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("SELECT count(*) FROM test")
+                Mono<Integer> test();
+            }
+            """);
+
+        when(mapper.apply(any())).thenReturn(42);
+        var result = repository.invoke("test");
+
+        assertThat(result).isEqualTo(42);
+        verify(executor.connection).preparedQuery("SELECT count(*) FROM test");
+        verify(executor.query).execute(any(), any());
+        verify(mapper).apply(executor.rowSet);
+    }
+
+    @Test
+    public void testReturnMonoVoid() {
+        var repository = compileVertx(List.of(), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("SELECT count(*) FROM test")
+                Mono<Void> test();
+            }
+            """);
+
+        repository.invoke("test");
+
+        verify(executor.connection).preparedQuery("SELECT count(*) FROM test");
+        verify(executor.query).execute(any(), any());
+    }
+
+    @Test
+    public void testReturnUpdateCount() {
+        var repository = compileVertx(List.of(), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("INSERT INTO test(value) VALUES ('test')")
+                Mono<UpdateCount> test();
+            }
+            """);
+        when(executor.rowSet.rowCount()).thenReturn(42);
+
+        var result = repository.<UpdateCount>invoke("test");
+
+        assertThat(result.value()).isEqualTo(42);
+        verify(executor.connection).preparedQuery("INSERT INTO test(value) VALUES ('test')");
+        verify(executor.query).execute(any(), any());
+    }
+
+    @Test
+    public void testReturnBatchUpdateCount() {
+        var repository = compileVertx(List.of(), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                Mono<UpdateCount> test(@Batch java.util.List<String> value);
+            }
+            """);
+        when(executor.rowSet.rowCount()).thenReturn(42);
+
+        var result = repository.<UpdateCount>invoke("test", List.of("test1", "test2"));
+
+        assertThat(result.value()).isEqualTo(42);
+        verify(executor.connection).preparedQuery("INSERT INTO test(value) VALUES ($1)");
+        verify(executor.query).executeBatch(any(), any());
+    }
+
+    @Test
+    public void testFinalResultSetMapper() {
+        var repository = compileVertx(List.of(), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestResultMapper.class)
+                Mono<Integer> test();
+            }
+            """, """
+            public final class TestResultMapper implements VertxRowSetMapper<Integer> {
+                public Integer apply(RowSet<Row> rs) {
+                  return 42;
+                }
+            }
+            """);
+
+        var result = repository.<Integer>invoke("test");
+
+        assertThat(result).isEqualTo(42);
+        verify(executor.connection).preparedQuery("SELECT count(*) FROM test");
+        verify(executor.query).execute(any(), any());
+    }
+
+    @Test
+    public void testNonFinalFinalResultSetMapper() {
+        var repository = compileVertx(List.of(newGeneratedObject("TestResultMapper")), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestResultMapper.class)
+                Mono<Integer> test();
+            }
+            """, """
+            public class TestResultMapper implements VertxRowSetMapper<Integer> {
+                public Integer apply(RowSet<Row> rs) {
+                  return 42;
+                }
+            }
+            """);
+
+        var result = repository.<Integer>invoke("test");
+
+        assertThat(result).isEqualTo(42);
+        verify(executor.connection).preparedQuery("SELECT count(*) FROM test");
+        verify(executor.query).execute(any(), any());
+    }
+
+    @Test
+    public void testOneWithFinalRowMapper() {
+        var repository = compileVertx(List.of(), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper.class)
+                Mono<Integer> test();
+            }
+            """, """
+            public final class TestRowMapper implements VertxRowMapper<Integer> {
+                public Integer apply(Row row) {
+                  return 42;
+                }
+            }
+            """);
+
+        executor.setRow(new MockVertxExecutor.MockColumn("count", 0));
+        var result = repository.<Integer>invoke("test");
+        assertThat(result).isEqualTo(42);
+        verify(executor.connection).preparedQuery("SELECT count(*) FROM test");
+        verify(executor.query).execute(any(), any());
+        executor.reset();
+
+        executor.setRows(List.of());
+        result = repository.<Integer>invoke("test");
+        assertThat(result).isNull();
+        verify(executor.connection).preparedQuery("SELECT count(*) FROM test");
+        verify(executor.query).execute(any(), any());
+    }
+
+    @Test
+    public void testOneWithNonFinalRowMapper() {
+        var repository = compileVertx(List.of(newGeneratedObject("TestRowMapper")), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper.class)
+                Mono<Integer> test();
+            }
+            """, """
+            public class TestRowMapper implements VertxRowMapper<Integer> {
+                public Integer apply(Row row) {
+                  return 42;
+                }
+            }
+            """);
+
+        executor.setRow(new MockVertxExecutor.MockColumn("count", 0));
+        var result = repository.<Integer>invoke("test");
+        assertThat(result).isEqualTo(42);
+        verify(executor.connection).preparedQuery("SELECT count(*) FROM test");
+        verify(executor.query).execute(any(), any());
+        executor.reset();
+
+        executor.setRows(List.of());
+        result = repository.<Integer>invoke("test");
+        assertThat(result).isNull();
+        verify(executor.connection).preparedQuery("SELECT count(*) FROM test");
+        verify(executor.query).execute(any(), any());
+    }
+
+    @Test
+    public void testOptionalWithFinalRowMapper() {
+        var repository = compileVertx(List.of(), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper.class)
+                Mono<Optional<Integer>> test();
+            }
+            """, """
+            public final class TestRowMapper implements VertxRowMapper<Integer> {
+                public Integer apply(Row row) {
+                  return 42;
+                }
+            }
+            """);
+
+        executor.setRow(new MockVertxExecutor.MockColumn("count", 0));
+        var result = repository.<Optional<Integer>>invoke("test");
+        assertThat(result).contains(42);
+        verify(executor.connection).preparedQuery("SELECT count(*) FROM test");
+        verify(executor.query).execute(any(), any());
+        executor.reset();
+
+        executor.setRows(List.of());
+        result = repository.invoke("test");
+        assertThat(result).isEmpty();
+        verify(executor.connection).preparedQuery("SELECT count(*) FROM test");
+        verify(executor.query).execute(any(), any());
+    }
+
+    @Test
+    public void testOptionalWithNonFinalRowMapper() {
+        var repository = compileVertx(List.of(newGeneratedObject("TestRowMapper")), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper.class)
+                Mono<Optional<Integer>> test();
+            }
+            """, """
+            public class TestRowMapper implements VertxRowMapper<Integer> {
+                public Integer apply(Row row) {
+                  return 42;
+                }
+            }
+            """);
+
+        executor.setRow(new MockVertxExecutor.MockColumn("count", 0));
+        var result = repository.<Optional<Integer>>invoke("test");
+        assertThat(result).contains(42);
+        verify(executor.connection).preparedQuery("SELECT count(*) FROM test");
+        verify(executor.query).execute(any(), any());
+        executor.reset();
+
+        executor.setRows(List.of());
+        result = repository.invoke("test");
+        assertThat(result).isEmpty();
+        verify(executor.connection).preparedQuery("SELECT count(*) FROM test");
+        verify(executor.query).execute(any(), any());
+    }
+
+    @Test
+    public void testListWithFinalRowMapper() {
+        var repository = compileVertx(List.of(), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper.class)
+                Mono<java.util.List<Integer>> test();
+            }
+            """, """
+            public final class TestRowMapper implements VertxRowMapper<Integer> {
+                public Integer apply(Row row) {
+                  return 42;
+                }
+            }
+            """);
+
+        executor.setRows(List.of(
+            List.of(new MockVertxExecutor.MockColumn("count", 0)),
+            List.of(new MockVertxExecutor.MockColumn("count", 0))
+        ));
+        var result = repository.<List<Integer>>invoke("test");
+        assertThat(result).contains(42, 42);
+        verify(executor.connection).preparedQuery("SELECT count(*) FROM test");
+        verify(executor.query).execute(any(), any());
+    }
+
+    @Test
+    public void testListWithNonFinalRowMapper() {
+        var repository = compileVertx(List.of(newGeneratedObject("TestRowMapper")), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper.class)
+                Mono<java.util.List<Integer>> test();
+            }
+            """, """
+            public class TestRowMapper implements VertxRowMapper<Integer> {
+                public Integer apply(Row row) {
+                  return 42;
+                }
+            }
+            """);
+
+        executor.setRows(List.of(
+            List.of(new MockVertxExecutor.MockColumn("count", 0)),
+            List.of(new MockVertxExecutor.MockColumn("count", 0))
+        ));
+        var result = repository.<List<Integer>>invoke("test");
+        assertThat(result).contains(42, 42);
+        verify(executor.connection).preparedQuery("SELECT count(*) FROM test");
+        verify(executor.query).execute(any(), any());
         executor.reset();
     }
-
-    @Test
-    void testReturnVoid() {
-        repository.returnVoid();
-    }
-    /*
-
-    @Test
-    void testReturnNativeType() {
-        executor.setRow(new MockColumn("test", 42));
-        assertThat(repository.returnNativeType().block()).isEqualTo(42);
-
-        executor.setRow(new MockColumn("test", null));
-        assertThatThrownBy(repository.returnNativeType()::block);
-
-        executor.setRows(List.of());
-        assertThat(repository.returnNativeType().block()).isNull();
-    }
-
-    @Test
-    void testReturnEntity() {
-        executor.setRow(List.of(
-            new MockColumn("param1", "test1"),
-            new MockColumn("param2", 42),
-            new MockColumn("param3", null)
-        ));
-        assertThat(repository.returnEntity().block()).isEqualTo(new Entity("test1", 42, null));
-
-        executor.setRows(List.of());
-        assertThat(repository.returnEntity().block()).isNull();
-
-        executor.setRow(List.of(
-            new MockColumn("param1", null),
-            new MockColumn("param2", 42),
-            new MockColumn("param3", null)
-        ));
-        assertThatThrownBy(repository.returnEntity()::block).isInstanceOf(NullPointerException.class);
-    }
-
-    @Test
-    void testReturnMutableEntity() {
-        executor.setRow(List.of(
-            new MockColumn("param1", "test1"),
-            new MockColumn("param2", 42),
-            new MockColumn("param3", null)
-        ));
-        assertThat(repository.returnMutableEntity().block())
-            .hasFieldOrPropertyWithValue("param1", "test1")
-            .hasFieldOrPropertyWithValue("param2", 42)
-            .hasFieldOrPropertyWithValue("param3", null);
-
-        executor.setRows(List.of());
-        assertThat(repository.returnMutableEntity().block()).isNull();
-
-        executor.setRow(List.of(
-            new MockColumn("param1", null),
-            new MockColumn("param2", 42),
-            new MockColumn("param3", null)
-        ));
-        assertThatThrownBy(repository.returnMutableEntity()::block).isInstanceOf(NullPointerException.class);
-    }
-
-    @Test
-    void testReturnEntityWithMappedRow() {
-        executor.setRow(List.of(
-            new MockColumn("param1", "test1"),
-            new MockColumn("param2", "test2")
-        ));
-
-        assertThat(repository.returnEntityWithMappedRow().block()).isEqualTo(new AllowedResultsRepository.EntityWithMappedColumn("test1", new AllowedResultsRepository.MappedEntityColumn("test2")));
-    }
-
-    @Test
-    void testReturnEntityRowMapper() {
-        executor.setRow(
-            new MockColumn("param1", "test1")
-        );
-        assertThat(repository.returnEntityRowMapper().block()).isEqualTo(new AllowedResultsRepository.MappedEntity("test1"));
-    }
-
-    @Test
-    void testReturnColumnMapper() {
-        executor.setRow(
-            new MockColumn("test_column", "test1")
-        );
-        assertThat(repository.returnColumnMapper().block()).isEqualTo(new AllowedResultsRepository.MappedEntityColumn("test1"));
-    }
-
-    @Test
-    void testReturnEntityRowSetMapper() {
-        executor.setRow(
-            new MockColumn("test_column", "test1")
-        );
-        assertThat(repository.returnEntityRowSetMapper().block()).isEqualTo(new AllowedResultsRepository.MappedEntity("test1"));
-    }
-
-
-    @Test
-    void testReturnNativeTypeList() {
-        executor.setRows(List.of(
-            List.of(new MockColumn("test_column", 42)),
-            List.of(new MockColumn("test_column", 43)),
-            List.of(new MockColumn("test_column", 44))
-        ));
-        assertThat(repository.returnNativeTypeList().block()).containsExactly(42, 43, 44);
-
-        executor.setRows(List.of());
-        assertThat(repository.returnNativeTypeList().block()).isEmpty();
-    }
-
-
-    @Test
-    void testReturnListEntity() {
-        executor.setRows(List.of(
-            List.of(new MockColumn("param1", "test1"), new MockColumn("param2", 42), new MockColumn("param3", null)),
-            List.of(new MockColumn("param1", "test2"), new MockColumn("param2", 43), new MockColumn("param3", null)),
-            List.of(new MockColumn("param1", "test3"), new MockColumn("param2", 44), new MockColumn("param3", null))
-        ));
-
-        assertThat(repository.returnListEntity().block()).containsExactly(
-            new Entity("test1", 42, null),
-            new Entity("test2", 43, null),
-            new Entity("test3", 44, null)
-        );
-
-        executor.setRows(List.of());
-        assertThat(repository.returnListEntity().block()).isEmpty();
-    }
-
-    @Test
-    void testReturnListWithRowMapper() {
-        executor.setRows(List.of(
-            List.of(new MockColumn("param1", "val1")),
-            List.of(new MockColumn("param1", "val2"))
-        ));
-
-        assertThat(repository.returnListWithRowMapper().block()).containsExactly(new AllowedResultsRepository.MappedEntity("val1"), new AllowedResultsRepository.MappedEntity("val2"));
-    }
-
-    @Test
-    void testReturnListWithRowSetMapper() {
-        executor.setRows(List.of(
-            List.of(new MockColumn("param1", "val1")),
-            List.of(new MockColumn("param1", "val2"))
-        ));
-        assertThat(repository.returnListWithRowSetMapper().block()).containsExactly(new AllowedResultsRepository.MappedEntity("val1"), new AllowedResultsRepository.MappedEntity("val2"));
-    }
-
-     */
-
 }

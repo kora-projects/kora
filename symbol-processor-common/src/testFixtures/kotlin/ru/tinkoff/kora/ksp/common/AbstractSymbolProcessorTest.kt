@@ -157,4 +157,10 @@ abstract class AbstractSymbolProcessorTest {
 
     protected fun new(name: String, vararg args: Any?) = compileResult.loadClass(name).constructors[0].newInstance(*args)!!
 
+    interface GeneratedObject<T> : () -> T
+
+    protected fun newGenerated(name: String, vararg args: Any?) = object : GeneratedObject<Any> {
+        override fun invoke() = compileResult.loadClass(name).constructors[0].newInstance(*args)!!
+    }
+
 }

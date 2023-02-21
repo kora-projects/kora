@@ -21,6 +21,9 @@ public abstract class AbstractVertxRepositoryTest extends AbstractRepositoryTest
             import reactor.core.publisher.*;
             import io.vertx.sqlclient.SqlConnection;
             import io.vertx.sqlclient.SqlClient;
+            import io.vertx.sqlclient.Row;
+            import io.vertx.sqlclient.RowSet;
+                        
             """;
     }
 

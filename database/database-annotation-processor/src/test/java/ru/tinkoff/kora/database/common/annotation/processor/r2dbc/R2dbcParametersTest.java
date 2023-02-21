@@ -82,7 +82,7 @@ public class R2dbcParametersTest extends AbstractR2dbcRepositoryTest {
             }
             """);
 
-        repository.invoke("test", newRecord("SomeEntity", 42L, "test-value"));
+        repository.invoke("test", newObject("SomeEntity", 42L, "test-value"));
 
         verify(executor.statement).bind(0, 42L);
         verify(executor.statement).bind(1, Map.of("test", "test-value"));

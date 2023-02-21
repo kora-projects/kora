@@ -1,218 +1,274 @@
 package ru.tinkoff.kora.database.symbol.processor.r2dbc
 
-import org.junit.jupiter.api.BeforeEach
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
-import reactor.core.publisher.Flux
+import org.mockito.Mockito
+import org.mockito.Mockito.any
+import org.mockito.Mockito.verify
+import org.mockito.kotlin.whenever
 import reactor.core.publisher.Mono
-import ru.tinkoff.kora.annotation.processor.common.TestContext
-import ru.tinkoff.kora.application.graph.TypeRef
-import ru.tinkoff.kora.database.r2dbc.R2dbcConnectionFactory
-import ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcResultColumnMapper
+import ru.tinkoff.kora.database.common.UpdateCount
 import ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcResultFluxMapper
-import ru.tinkoff.kora.database.symbol.processor.DbTestUtils
-import ru.tinkoff.kora.database.symbol.processor.entity.TestEntity
-import ru.tinkoff.kora.database.symbol.processor.r2dbc.repository.AllowedResultsRepository
-import ru.tinkoff.kora.database.symbol.processor.r2dbc.repository.AllowedSuspendResultsRepository
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class R2dbcResultsTest {
-    private val executor = MockR2dbcExecutor()
-    private val repository: AllowedResultsRepository
-    private val suspendRepository: AllowedSuspendResultsRepository
-    val ctx = TestContext()
-
-    init {
-        ctx.addContextElement(TypeRef.of(R2dbcConnectionFactory::class.java), executor)
-        ctx.addMock(TypeRef.of(TestEntityFieldR2dbcResultColumnMapperNonFinal::class.java))
-        ctx.addMock(TypeRef.of(TestEntityR2dbcRowMapperNonFinal::class.java))
-        ctx.addMock(TypeRef.of(R2dbcResultColumnMapper::class.java, TestEntity.UnknownField::class.java))
-        ctx.addMock(TypeRef.of(R2dbcResultFluxMapper::class.java, Int::class.javaObjectType, TypeRef.of(Mono::class.java, Int::class.javaObjectType)))
-        ctx.addMock(TypeRef.of(R2dbcResultFluxMapper::class.java, Int::class.javaObjectType, TypeRef.of(Flux::class.java, Int::class.javaObjectType)))
-        repository = ctx.newInstance(DbTestUtils.compileClass(AllowedResultsRepository::class).java)
-        suspendRepository = ctx.newInstance(DbTestUtils.compileClass(AllowedSuspendResultsRepository::class).java)
-    }
-
-    @BeforeEach
-    internal fun setUp() {
-        executor.reset()
-    }
-
+class R2dbcResultsTest : AbstractR2dbcTest() {
 
     @Test
-    fun testReturnVoid() {
-        repository.returnVoid()
+    fun testReturnSuspendObject() {
+        val mapper = Mockito.mock(R2dbcResultFluxMapper::class.java)
+        val repository = compile(listOf(mapper), """
+            @Repository
+            interface TestRepository : R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                suspend fun test(): Int
+            }
+            
+            """.trimIndent())
+        whenever(mapper.apply(any())).thenReturn(Mono.just(42))
+        val result = repository.invoke<Any>("test")
+        assertThat(result).isEqualTo(42)
+        verify(executor.con).createStatement("SELECT count(*) FROM test")
+        verify(executor.statement).execute()
+        verify(mapper).apply(any())
     }
-//
-//    @Test
-//    fun testReturnNativeType() {
-//        executor.setRow(MockColumn("test", 42))
-//        assertThat(repository.returnNativeType().block()).isEqualTo(42)
-//        executor.setRow(MockColumn("test", null))
-//        Assertions.assertThatThrownBy { repository.returnNativeType().block() }
-//        executor.setRows(listOf())
-//        assertThat(repository.returnNativeType().block()).isNull()
-//    }
-//
-//    @Test
-//    fun testReturnEntity() {
-//        executor.setRow(
-//            listOf(
-//                MockColumn("param1", "test1"),
-//                MockColumn("param2", 42),
-//                MockColumn("param3", null)
-//            )
-//        )
-//        assertThat(repository.returnEntity().block()).isEqualTo(Entity("test1", 42, null))
-//        executor.setRows(listOf())
-//        assertThat(repository.returnEntity().block()).isNull()
-//        executor.setRow(
-//            listOf(
-//                MockColumn("param1", null),
-//                MockColumn("param2", 42),
-//                MockColumn("param3", null)
-//            )
-//        )
-//        Assertions.assertThatThrownBy { repository.returnEntity().block() }.isInstanceOf(NullPointerException::class.java)
-//    }
-//
-//    @Test
-//    fun testReturnMutableEntity() {
-//        executor.setRow(
-//            listOf(
-//                MockColumn("param1", "test1"),
-//                MockColumn("param2", 42),
-//                MockColumn("param3", null)
-//            )
-//        )
-//        assertThat(repository.returnMutableEntity().block())
-//            .hasFieldOrPropertyWithValue("param1", "test1")
-//            .hasFieldOrPropertyWithValue("param2", 42)
-//            .hasFieldOrPropertyWithValue("param3", null)
-//        executor.setRows(listOf())
-//        assertThat(repository.returnMutableEntity().block()).isNull()
-//        executor.setRow(
-//            listOf(
-//                MockColumn("param1", null),
-//                MockColumn("param2", 42),
-//                MockColumn("param3", null)
-//            )
-//        )
-//        Assertions.assertThatThrownBy { repository.returnMutableEntity().block() }.isInstanceOf(NullPointerException::class.java)
-//    }
-//
-//    @Test
-//    fun testReturnEntityWithMappedRow() {
-//        executor.setRow(
-//            listOf(
-//                MockColumn("param1", "test1"),
-//                MockColumn("param2", "test2")
-//            )
-//        )
-//        assertThat(
-//            repository.returnEntityWithMappedRow().block()
-//        ).isEqualTo(
-//            EntityWithMappedColumn(
-//                "test1",
-//                MappedEntityColumn("test2")
-//            )
-//        )
-//    }
-//
-//    @Test
-//    fun testReturnEntityRowMapper() {
-//        executor.setRow(
-//            MockColumn("param1", "test1")
-//        )
-//        assertThat(repository.returnEntityRowMapper().block()).isEqualTo(MappedEntity("test1"))
-//    }
-//
-//    @Test
-//    fun testReturnColumnMapper() {
-//        executor.setRow(
-//            MockColumn("test_column", "test1")
-//        )
-//        assertThat(repository.returnColumnMapper().block()).isEqualTo(MappedEntityColumn("test1"))
-//    }
-//
-//    @Test
-//    fun testReturnEntityRowSetMapper() {
-//        executor.setRow(
-//            MockColumn("test_column", "test1")
-//        )
-//        assertThat(repository.returnEntityRowSetMapper().block()).isEqualTo(MappedEntity("test1"))
-//    }
-//
-//    @Test
-//    fun testReturnNativeTypeList() {
-//        executor.setRows(
-//            listOf(
-//                listOf(MockColumn("test_column", 42)),
-//                listOf(MockColumn("test_column", 43)),
-//                listOf(MockColumn("test_column", 44))
-//            )
-//        )
-//        assertThat(repository.returnNativeTypeList().block()).containsExactly(42, 43, 44)
-//        executor.setRows(listOf())
-//        assertThat(repository.returnNativeTypeList().block()).isEmpty()
-//    }
-//
-//
-//    @Test
-//    fun testReturnListEntity() {
-//        executor.setRows(
-//            listOf(
-//                listOf(
-//                    MockColumn("param1", "test1"),
-//                    MockColumn("param2", 42),
-//                    MockColumn("param3", null)
-//                ),
-//                listOf(
-//                    MockColumn("param1", "test2"),
-//                    MockColumn("param2", 43),
-//                    MockColumn("param3", null)
-//                ),
-//                listOf(
-//                    MockColumn("param1", "test3"),
-//                    MockColumn("param2", 44),
-//                    MockColumn("param3", null)
-//                )
-//            )
-//        )
-//        assertThat(repository.returnListEntity().block()).containsExactly(
-//            Entity("test1", 42, null),
-//            Entity("test2", 43, null),
-//            Entity("test3", 44, null)
-//        )
-//        executor.setRows(listOf())
-//        assertThat(repository.returnListEntity().block()).isEmpty()
-//    }
-//
-//    @Test
-//    fun testReturnListWithRowMapper() {
-//        executor.setRows(
-//            listOf(
-//                listOf(MockColumn("param1", "val1")),
-//                listOf(MockColumn("param1", "val2"))
-//            )
-//        )
-//        assertThat(repository.returnListWithRowMapper().block()).containsExactly(
-//            MappedEntity("val1"),
-//            MappedEntity("val2")
-//        )
-//    }
-//
-//    @Test
-//    fun testReturnListWithRowSetMapper() {
-//        executor.setRows(
-//            listOf(
-//                listOf(MockColumn("param1", "val1")),
-//                listOf(MockColumn("param1", "val2"))
-//            )
-//        )
-//        assertThat(repository.returnListWithRowSetMapper().block()).containsExactly(
-//            MappedEntity("val1"),
-//            MappedEntity("val2")
-//        )
-//    }
+
+    @Test
+    fun testReturnSuspendNullableObject() {
+        val mapper = Mockito.mock(R2dbcResultFluxMapper::class.java)
+        val repository = compile(listOf(mapper), """
+            @Repository
+            interface TestRepository : R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                suspend fun test(): Int?
+            }
+            
+            """.trimIndent())
+        whenever(mapper.apply(any())).thenReturn(Mono.just(42))
+        var result = repository.invoke<Int>("test")
+        assertThat(result).isEqualTo(42)
+        verify(executor.con).createStatement("SELECT count(*) FROM test")
+        verify(executor.statement).execute()
+        verify(mapper).apply(any())
+
+        whenever(mapper.apply(any())).thenReturn(Mono.empty<Any>())
+        executor.reset()
+        executor.setRows(listOf())
+        result = repository.invoke("test")
+        assertThat(result).isNull()
+    }
+
+    @Test
+    fun testReturnSuspendUnit() {
+        val repository = compile(listOf<Any>(), """
+            @Repository
+            interface TestRepository : R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                suspend fun test()
+            }
+            
+            """.trimIndent())
+        repository.invoke<Any>("test")
+        verify(executor.con).createStatement("SELECT count(*) FROM test")
+        verify(executor.statement).execute()
+    }
+
+    @Test
+    fun testReturnUpdateCount() {
+        val repository = compile(listOf<Any>(), """
+            @Repository
+            interface TestRepository : R2dbcRepository {
+                @Query("INSERT INTO test(value) VALUES ('test')")
+                suspend fun test(): UpdateCount
+            }
+            
+            """.trimIndent())
+        executor.setUpdateCountResult(42)
+        val result = repository.invoke<UpdateCount>("test")
+        assertThat(result?.value).isEqualTo(42)
+        verify(executor.con).createStatement("INSERT INTO test(value) VALUES ('test')")
+        verify(executor.statement).execute()
+    }
+
+    @Test
+    fun testReturnBatchUpdateCount() {
+        val repository = compile(listOf<Any>(), """
+            @Repository
+            interface TestRepository : R2dbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                suspend fun test(@ru.tinkoff.kora.database.common.annotation.Batch value: List<String>): UpdateCount
+            }
+            
+            """.trimIndent())
+        executor.setUpdateCountResult(42)
+        val result = repository.invoke<UpdateCount>("test", listOf("test1", "test2"))
+        assertThat(result?.value).isEqualTo(42)
+        verify(executor.con).createStatement("INSERT INTO test(value) VALUES ($1)")
+        verify(executor.statement).execute()
+    }
+
+    @Test
+    fun testFinalResultSetMapper() {
+        val repository = compile(listOf<Any>(), """
+            @Repository
+            interface TestRepository : R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestResultMapper::class)
+                suspend fun test(): Int
+            }
+            
+            """.trimIndent(), """
+            class TestResultMapper : R2dbcResultFluxMapper<Int, Mono<Int>> {
+                override fun apply(rs: Flux<Result>): Mono<Int> {
+                  return Mono.just(42);
+                }
+            }
+            
+            """.trimIndent())
+        val result = repository.invoke<Int>("test")
+        assertThat(result).isEqualTo(42)
+        verify(executor.con).createStatement("SELECT count(*) FROM test")
+        verify(executor.statement).execute()
+    }
+
+    @Test
+    fun testNonFinalFinalResultSetMapper() {
+        val repository = compile(listOf(newGenerated("TestResultMapper")), """
+            @Repository
+            interface TestRepository : R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestResultMapper::class)
+                suspend fun test(): Int
+            }
+            
+            """.trimIndent(), """
+            open class TestResultMapper : R2dbcResultFluxMapper<Int, Mono<Int>> {
+                override fun apply(rs: Flux<Result>): Mono<Int> {
+                  return Mono.just(42);
+                }
+            }
+            
+            """.trimIndent())
+        val result = repository.invoke<Int>("test")
+        assertThat(result).isEqualTo(42)
+        verify(executor.con).createStatement("SELECT count(*) FROM test")
+        verify(executor.statement).execute()
+    }
+
+    @Test
+    fun testOneWithFinalRowMapper() {
+        val repository = compile(listOf<Any>(), """
+            @Repository
+            interface TestRepository : R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper::class)
+                suspend fun test(): Int?
+            }
+            
+            """.trimIndent(), """
+            class TestRowMapper : R2dbcRowMapper<Int> {
+                override fun apply(row: Row): Int {
+                  return 42;
+                }
+            }
+            
+            """.trimIndent())
+        executor.setRow(MockR2dbcExecutor.MockColumn("count", 0))
+        var result = repository.invoke<Int>("test")
+        assertThat(result).isEqualTo(42)
+        verify(executor.con).createStatement("SELECT count(*) FROM test")
+        verify(executor.statement).execute()
+        executor.reset()
+        executor.setRows(listOf())
+        result = repository.invoke<Int>("test")
+        assertThat(result).isNull()
+        verify(executor.con).createStatement("SELECT count(*) FROM test")
+        verify(executor.statement).execute()
+    }
+
+    @Test
+    fun testOneWithNonFinalRowMapper() {
+        val repository = compile(listOf(newGenerated("TestRowMapper")), """
+            @Repository
+            interface TestRepository : R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper::class)
+                suspend fun test(): Int?
+            }
+            
+            """.trimIndent(), """
+            open class TestRowMapper : R2dbcRowMapper<Int> {
+                override fun apply(row: Row): Int {
+                  return 42;
+                }
+            }
+            
+            """.trimIndent())
+        executor.setRow(MockR2dbcExecutor.MockColumn("count", 0))
+        var result = repository.invoke<Int>("test")
+        assertThat(result).isEqualTo(42)
+        verify(executor.con).createStatement("SELECT count(*) FROM test")
+        verify(executor.statement).execute()
+        executor.reset()
+        executor.setRows(listOf())
+        result = repository.invoke<Int>("test")
+        assertThat(result).isNull()
+        verify(executor.con).createStatement("SELECT count(*) FROM test")
+        verify(executor.statement).execute()
+    }
+
+    @Test
+    fun testListWithFinalRowMapper() {
+        val repository = compile(listOf<Any>(), """
+            @Repository
+            interface TestRepository : R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper::class)
+                suspend fun test(): List<Int>
+            }
+            
+            """.trimIndent(), """
+            class TestRowMapper : R2dbcRowMapper<Int> {
+                override fun apply(row: Row) : Int {
+                  return 42;
+                }
+            }
+            
+            """.trimIndent())
+        executor.setRows(listOf(
+            listOf(MockR2dbcExecutor.MockColumn("count", 0)),
+            listOf(MockR2dbcExecutor.MockColumn("count", 0))
+        ))
+        val result = repository.invoke<List<Int>>("test")
+        assertThat(result).contains(42, 42)
+        verify(executor.con).createStatement("SELECT count(*) FROM test")
+        verify(executor.statement).execute()
+    }
+
+    @Test
+    fun testListWithNonFinalRowMapper() {
+        val repository = compile(listOf(newGenerated("TestRowMapper")), """
+            @Repository
+            interface TestRepository : R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper::class)
+                suspend fun test(): List<Int>
+            }
+            
+            """.trimIndent(), """
+            open class TestRowMapper : R2dbcRowMapper<Int> {
+                override fun apply(row: Row): Int {
+                  return 42;
+                }
+            }
+            
+            """.trimIndent())
+        executor.setRows(listOf(
+            listOf(MockR2dbcExecutor.MockColumn("count", 0)),
+            listOf(MockR2dbcExecutor.MockColumn("count", 0))
+        ))
+        val result = repository.invoke<List<Int>>("test")
+        assertThat(result).contains(42, 42)
+        verify(executor.con).createStatement("SELECT count(*) FROM test")
+        verify(executor.statement).execute()
+        executor.reset()
+    }
 }

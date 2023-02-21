@@ -3,7 +3,10 @@ package ru.tinkoff.kora.database.symbol.processor.vertx
 import io.vertx.core.AsyncResult
 import io.vertx.core.Future
 import io.vertx.core.Handler
+import io.vertx.pgclient.impl.RowImpl
 import io.vertx.sqlclient.*
+import io.vertx.sqlclient.desc.ColumnDescriptor
+import io.vertx.sqlclient.impl.RowDesc
 import org.mockito.Mockito
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
@@ -21,6 +24,7 @@ class MockVertxExecutor : VertxConnectionFactory {
     val rowSet: RowSet<Row> = Mockito.mock(RowSet::class.java) as RowSet<Row>
     val telemetry = Mockito.mock(DataBaseTelemetry::class.java)
     val telemetryCtx = Mockito.mock(DataBaseTelemetryContext::class.java)
+    val rows = arrayListOf<Row>()
 
     init {
         reset()
@@ -33,6 +37,26 @@ class MockVertxExecutor : VertxConnectionFactory {
         whenever(statement.query()).thenReturn(query)
         whenever(query.execute(any(), any())).thenAnswer {
             (it.arguments[1] as Handler<AsyncResult<RowSet<Row>>>).handle(Future.succeededFuture(rowSet))
+        }
+        whenever(query.executeBatch(any(), any())).thenAnswer {
+            (it.arguments[1] as Handler<AsyncResult<RowSet<Row>>>).handle(Future.succeededFuture(rowSet))
+        }
+        whenever(rowSet.size()).thenAnswer { rows.size }
+        whenever(rowSet.iterator()).thenAnswer {
+            object : RowIterator<Any?> {
+                private val i = rows.iterator()
+                override fun remove() {
+                    TODO("Not yet implemented")
+                }
+
+                override fun hasNext(): Boolean {
+                    return i.hasNext()
+                }
+
+                override fun next(): Row? {
+                    return i.next()
+                }
+            }
         }
     }
 
@@ -53,5 +77,37 @@ class MockVertxExecutor : VertxConnectionFactory {
         TODO("Not yet implemented")
     }
 
+
+    data class MockColumn(val label: String, val value: Any)
+
+    fun setRow(mockColumn: MockColumn) {
+        this.setRow(listOf(mockColumn))
+    }
+
+    fun setRow(mockColumns: List<MockColumn>) {
+        setRows(listOf(mockColumns))
+    }
+
+    fun setRows(mockRows: List<List<MockColumn>>) {
+        this.rows.clear()
+        for (mockRow in mockRows) {
+            val labels = mockRow.asSequence()
+                .map(MockColumn::label)
+                .map {
+                    Mockito.mock(ColumnDescriptor::class.java).also { d ->
+                        whenever(d.name()).thenReturn(it)
+                    }
+                }
+                .toList()
+                .toTypedArray()
+            val row = RowImpl(
+                object : RowDesc(labels) {}
+            )
+            for (value in mockRow) {
+                row.addValue(value)
+            }
+            this.rows.add(row)
+        }
+    }
 
 }

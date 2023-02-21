@@ -3,6 +3,7 @@ package ru.tinkoff.kora.database.vertx.mapper.result;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import ru.tinkoff.kora.common.Mapping;
+import ru.tinkoff.kora.database.common.UpdateCount;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,6 +11,15 @@ import java.util.Optional;
 
 public interface VertxRowSetMapper<T> extends Mapping.MappingFunction {
     T apply(RowSet<Row> rows);
+
+    static UpdateCount extractUpdateCount(RowSet<Row> rowSet) {
+        var result = 0L;
+        while (rowSet != null) {
+            result += rowSet.rowCount();
+            rowSet = rowSet.next();
+        }
+        return new UpdateCount(result);
+    }
 
     static <T> VertxRowSetMapper<Optional<T>> optionalRowSetMapper(VertxRowMapper<T> rowMapper) {
         return rows -> {

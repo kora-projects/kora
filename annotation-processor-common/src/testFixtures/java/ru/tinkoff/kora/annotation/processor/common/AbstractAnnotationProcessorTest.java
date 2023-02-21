@@ -60,6 +60,8 @@ public abstract class AbstractAnnotationProcessorTest {
             import ru.tinkoff.kora.common.annotation.*;
             import ru.tinkoff.kora.common.*;
             import javax.annotation.Nullable;
+            import java.util.Optional;
+                        
             """;
     }
 
@@ -119,10 +121,9 @@ public abstract class AbstractAnnotationProcessorTest {
         }
     }
 
-    public Object newRecord(String className, Object... params) {
+    public Object newObject(String className, Object... params) {
         try {
             var clazz = this.compileResult.loadClass(className);
-            assert clazz.isRecord();
             return clazz.getConstructors()[0].newInstance(params);
         } catch (Exception e) {
             throw new RuntimeException(e);

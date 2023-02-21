@@ -1,13 +1,13 @@
 package ru.tinkoff.kora.database.symbol.processor.jdbc
 
-import org.mockito.kotlin.any
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
-import ru.tinkoff.kora.database.common.QueryContext
+import org.mockito.kotlin.any
+import org.mockito.kotlin.whenever
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry.DataBaseTelemetryContext
-import ru.tinkoff.kora.database.jdbc.JdbcHelper.*
 import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory
+import ru.tinkoff.kora.database.jdbc.JdbcHelper.SqlFunction1
 import ru.tinkoff.kora.database.jdbc.RuntimeSqlException
 import java.sql.*
 
@@ -22,16 +22,16 @@ class MockJdbcExecutor : JdbcConnectionFactory {
 
     fun reset() {
         Mockito.reset(resultSet, preparedStatement, callableStatement, mockConnection, telemetry)
-        Mockito.`when`(mockConnection.prepareCall(ArgumentMatchers.anyString())).thenReturn(callableStatement)
-        Mockito.`when`(mockConnection.prepareStatement(ArgumentMatchers.anyString())).thenReturn(preparedStatement)
-        Mockito.`when`(telemetry.createContext(any(), any())).thenReturn(telemetryCtx)
+        whenever(mockConnection.prepareCall(ArgumentMatchers.anyString())).thenReturn(callableStatement)
+        whenever(mockConnection.prepareStatement(ArgumentMatchers.anyString())).thenReturn(preparedStatement)
+        whenever(telemetry.createContext(any(), any())).thenReturn(telemetryCtx)
+        whenever(preparedStatement.executeQuery()).thenReturn(resultSet)
     }
 
     init {
         reset()
     }
 
-    @Throws(RuntimeSqlException::class)
     override fun <T> withConnection(callback: SqlFunction1<Connection, T>): T {
         return try {
             callback.apply(mockConnection)

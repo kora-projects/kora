@@ -239,7 +239,7 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
             }
             """);
 
-        repository.invoke("test", newRecord("SomeEntity", 42L, "test-value"));
+        repository.invoke("test", newObject("SomeEntity", 42L, "test-value"));
 
         verify(executor.boundStatementBuilder).setLong(0, 42L);
         verify(executor.boundStatementBuilder).set(1, Map.of("test", "test-value"), Map.class);

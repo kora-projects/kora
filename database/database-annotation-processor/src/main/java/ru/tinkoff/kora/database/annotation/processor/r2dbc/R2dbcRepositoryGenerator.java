@@ -119,21 +119,22 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
         var mappings = CommonUtils.parseMapping(method);
         var resultFluxMapper = mappings.getMapping(R2dbcTypes.RESULT_FLUX_MAPPER);
         var rowMapper = mappings.getMapping(R2dbcTypes.ROW_MAPPER);
-        if (resultFluxMapper != null || rowMapper != null || !MethodUtils.isVoid(returnType)) {
+        if (returnType.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
+            b.addCode("return _flux.flatMap($T::getRowsUpdated).reduce(0L, Long::sum).map($T::new)", R2dbcTypes.RESULT, DbUtils.UPDATE_COUNT);
+        } else if (resultFluxMapper != null || rowMapper != null || !MethodUtils.isVoid(returnType)) {
             b.addCode("return $L.apply(_flux)\n", DbUtils.resultMapperName(method));
         } else {
             b.addCode("return _flux.flatMap($T::getRowsUpdated).then()", R2dbcTypes.RESULT);
         }
 
         b.addCode("""
-              .doOnEach(_s -> {
-                if (_s.isOnComplete()) {
-                  _telemetry.close(null);
-                } else if (_s.isOnError()) {
-                  _telemetry.close(_s.getThrowable());
-                }
-              });
-            """);
+            .doOnEach(_s -> {
+              if (_s.isOnComplete()) {
+                _telemetry.close(null);
+              } else if (_s.isOnError()) {
+                _telemetry.close(_s.getThrowable());
+              }
+            });""");
         if (connectionParameter == null) {
             b.addCode("\n$<\n});\n");
         }
@@ -155,11 +156,23 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
         var mapperName = DbUtils.resultMapperName(method);
         for (var parameter : parameters) {
             if (parameter instanceof QueryParameter.BatchParameter) {
+                if (isMono) {
+                    var resultType = ((DeclaredType) methodType.getReturnType()).getTypeArguments().get(0);
+                    if (resultType.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
+                        return Optional.empty();
+                    }
+                    if (MethodUtils.isVoid(resultType)) {
+                        return Optional.empty();
+                    }
+                    return Optional.empty();
+                }
                 if (MethodUtils.isVoid(parameter.type())) {
                     return Optional.empty();
                 }
-
-                var type = ParameterizedTypeName.get(R2dbcTypes.RESULT_FLUX_MAPPER, TypeName.get(Void.class), TypeName.get(methodType.getReturnType()));
+                if (methodType.getReturnType().toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
+                    return Optional.empty();
+                }
+                var type = ParameterizedTypeName.get(R2dbcTypes.RESULT_FLUX_MAPPER, TypeName.get(methodType.getReturnType()), TypeName.get(methodType.getReturnType()));
                 return Optional.of(new DbUtils.Mapper(type, mapperName));
             }
         }
@@ -172,18 +185,28 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
                 return Optional.empty();
             }
         }
-
         if (isMono || isFlux) {
             var publisherParam = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
+            if (MethodUtils.isVoid(publisherParam)) {
+                return Optional.empty();
+            }
             var mapperType = ParameterizedTypeName.get(R2dbcTypes.RESULT_FLUX_MAPPER, TypeName.get(publisherParam), TypeName.get(returnType));
+            if (resultFluxMapper != null) {
+                return Optional.of(new DbUtils.Mapper(resultFluxMapper.mapperClass(), mapperType, mapperName));
+            }
             if (rowMapper != null) {
                 if (isFlux) {
                     return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.flux($L)", R2dbcTypes.RESULT_FLUX_MAPPER, c)));
                 } else if (CommonUtils.isList(publisherParam)) {
                     return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.monoList($L)", R2dbcTypes.RESULT_FLUX_MAPPER, c)));
+                } else if (CommonUtils.isOptional(publisherParam)) {
+                    return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.monoOptional($L)", R2dbcTypes.RESULT_FLUX_MAPPER, c)));
                 } else {
                     return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.mono($L)", R2dbcTypes.RESULT_FLUX_MAPPER, c)));
                 }
+            }
+            if (publisherParam.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
+                return Optional.empty();
             }
             return Optional.of(new DbUtils.Mapper(mapperType, mapperName));
         }
@@ -196,13 +219,20 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
 
         if (rowMapper != null) {
             if (CommonUtils.isList(returnType)) {
-                return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.listResultFluxMapper($L)", R2dbcTypes.RESULT_FLUX_MAPPER, c)));
+                return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.monoList($L)", R2dbcTypes.RESULT_FLUX_MAPPER, c)));
             } else if (CommonUtils.isOptional(returnType)) {
-                return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.optionalResultSetMapper($L)", R2dbcTypes.RESULT_FLUX_MAPPER, c)));
+                return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.monoOptional($L)", R2dbcTypes.RESULT_FLUX_MAPPER, c)));
             } else {
-                return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.singleResultSetMapper($L)", R2dbcTypes.RESULT_FLUX_MAPPER, c)));
+                return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.mono($L)", R2dbcTypes.RESULT_FLUX_MAPPER, c)));
             }
         }
+        if (MethodUtils.isVoid(returnType)) {
+            return Optional.empty();
+        }
+        if (returnType.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
+            return Optional.empty();
+        }
+
         return Optional.of(new DbUtils.Mapper(mapperType, mapperName));
     }
 

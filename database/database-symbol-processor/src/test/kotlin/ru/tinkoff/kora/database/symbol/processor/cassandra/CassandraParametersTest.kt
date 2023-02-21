@@ -17,7 +17,7 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
             }
             """.trimIndent())
 
-        repository.invoke("test", executor.mockSession)
+        repository.invoke<Any>("test", executor.mockSession)
 
         verify(executor.mockSession).execute(any<Statement<*>>())
     }
@@ -32,7 +32,7 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
             }
             """.trimIndent())
 
-        repository.invoke("test", 42)
+        repository.invoke<Any>("test", 42)
 
         verify(executor.boundStatementBuilder).setInt(0, 42)
         verify(executor.mockSession).execute(any<Statement<*>>())
@@ -50,7 +50,7 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
             """.trimIndent(), "class CustomType{}")
         val value = new("CustomType")
 
-        repository.invoke("test", value)
+        repository.invoke<Any>("test", value)
 
         verify(mapper).apply(same(executor.boundStatementBuilder), eq(0), same(value))
         verify(executor.mockSession).execute(any<Statement<*>>())
@@ -66,7 +66,7 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
             }
             """.trimIndent())
 
-        repository.invoke("test", "test", 42)
+        repository.invoke<Any>("test", "test", 42)
 
         verify(executor.mockSession).prepare("INSERT INTO test(value1, value2) VALUES (?, ?)")
         verify(executor.boundStatementBuilder).setString(0, "test")
@@ -93,7 +93,7 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
 
             """.trimIndent())
 
-        repository.invoke("test", new("SomeEntity", 42L, "test-value"))
+        repository.invoke<Any>("test", new("SomeEntity", 42L, "test-value"))
 
         verify(executor.boundStatementBuilder).setLong(0, 42L)
         verify(executor.boundStatementBuilder).set(1, mapOf("test" to "test-value"), Map::class.java)
@@ -116,7 +116,7 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
             }
             """.trimIndent())
 
-        repository.invoke("test", 42L, "test-value")
+        repository.invoke<Any>("test", 42L, "test-value")
 
         verify(executor.boundStatementBuilder).setLong(0, 42L)
         verify(executor.boundStatementBuilder).set(1, mapOf("test" to "test-value"), Map::class.java)
@@ -135,12 +135,12 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
         data class TestEntity(val id: Long, val value: String?)    
         """.trimIndent())
 
-        repository.invoke("test", new("TestEntity", 42, null))
+        repository.invoke<Any>("test", new("TestEntity", 42, null))
         verify(executor.boundStatementBuilder).setLong(0, 42)
         verify(executor.boundStatementBuilder).setToNull(1)
         executor.reset()
 
-        repository.invoke("test", new("TestEntity", 42, "test"))
+        repository.invoke<Any>("test", new("TestEntity", 42, "test"))
         verify(executor.boundStatementBuilder).setLong(0, 42)
         verify(executor.boundStatementBuilder).setString(1, "test")
     }

@@ -104,9 +104,16 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
         var isVoid = isVoid(returnType);
 
         ParametersToTupleBuilder.generate(b, query, method, parameters, batchParam);
-        var resultMapper = isVoid
-            ? CodeBlock.of("(rs) -> null")
-            : CodeBlock.of("$L", DbUtils.resultMapperName(method));
+        CodeBlock resultMapper;
+        if (isVoid) {
+            resultMapper = CodeBlock.of("_rs -> null");
+        } else if ((isMono || isCompletionStage) && ((DeclaredType) returnType).getTypeArguments().get(0).toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
+            resultMapper = CodeBlock.of("$T::extractUpdateCount", VertxTypes.ROW_SET_MAPPER);
+        } else if (returnType.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
+            resultMapper = CodeBlock.of("$T::extractUpdateCount", VertxTypes.ROW_SET_MAPPER);
+        } else {
+            resultMapper = CodeBlock.of("$L", DbUtils.resultMapperName(method));
+        }
         if (returnType.getKind() != TypeKind.VOID) {
             b.addCode("return ");
         }
@@ -192,9 +199,14 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
             if (rowMapper != null) {
                 if (CommonUtils.isList(monoParam)) {
                     return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.listRowSetMapper($L)", VertxTypes.ROW_SET_MAPPER, c)));
+                } else if (CommonUtils.isOptional(monoParam)) {
+                    return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.optionalRowSetMapper($L)", VertxTypes.ROW_SET_MAPPER, c)));
                 } else {
                     return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.singleRowSetMapper($L)", VertxTypes.ROW_SET_MAPPER, c)));
                 }
+            }
+            if (monoParam.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
+                return Optional.empty();
             }
             return Optional.of(new DbUtils.Mapper(mapperType, mapperName));
         }
@@ -210,6 +222,9 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
             } else {
                 return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.singleRowSetMapper($L)", VertxTypes.ROW_SET_MAPPER, c)));
             }
+        }
+        if (returnType.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
+            return Optional.empty();
         }
         return Optional.of(new DbUtils.Mapper(mapperType, mapperName));
     }

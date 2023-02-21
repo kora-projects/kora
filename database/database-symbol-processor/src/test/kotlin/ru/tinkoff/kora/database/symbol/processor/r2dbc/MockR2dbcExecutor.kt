@@ -4,6 +4,7 @@ import io.r2dbc.spi.*
 import org.mockito.Mockito
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.kotlin.any
+import org.mockito.kotlin.whenever
 import org.reactivestreams.Publisher
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -20,6 +21,7 @@ class MockR2dbcExecutor() : R2dbcConnectionFactory {
     val telemetryCtx = Mockito.mock(DataBaseTelemetry.DataBaseTelemetryContext::class.java)!!
 
     var rows = ArrayList<List<MockColumn>>()
+    var updateCount = 0L
 
     init {
         reset()
@@ -28,9 +30,11 @@ class MockR2dbcExecutor() : R2dbcConnectionFactory {
     fun reset() {
         rows.clear()
         Mockito.reset(con, statement, telemetry, telemetryCtx)
-        Mockito.`when`(telemetry.createContext(any(), any())).thenReturn(telemetryCtx)
-        Mockito.`when`(con.createStatement(any())).thenReturn(statement)
-        Mockito.`when`(statement.execute()).thenReturn(Flux.just(MockResult(rows)))
+        whenever(telemetry.createContext(any(), any())).thenReturn(telemetryCtx)
+        whenever(con.createStatement(any())).thenReturn(statement)
+        whenever(statement.execute()).then {
+            Flux.just(MockResult(rows, updateCount))
+        }
     }
 
 
@@ -71,20 +75,24 @@ class MockR2dbcExecutor() : R2dbcConnectionFactory {
         TODO("Not yet implemented")
     }
 
+    fun setUpdateCountResult(i: Long) {
+        updateCount = i
+    }
 
-    private data class MockResult(val rows: List<List<MockColumn>>) : Result {
+
+    private data class MockResult(val rows: List<List<MockColumn>>, val updateCount: Long) : Result {
         override fun getRowsUpdated(): Publisher<Long> {
-            return Mono.just(0)
+            return Mono.just(updateCount)
         }
 
         override fun <T> map(mappingFunction: BiFunction<Row, RowMetadata, out T>): Publisher<T> {
             val mock = Mockito.mock(RowMetadata::class.java)
-            Mockito.`when`(mock.getColumnMetadata(Mockito.anyInt())).thenAnswer { invocation: InvocationOnMock ->
+            whenever(mock.getColumnMetadata(Mockito.anyInt())).thenAnswer { invocation: InvocationOnMock ->
                 val i = invocation.arguments[0] as Int
                 val row = rows[0]
                 val label: String = row[i].label
                 val meta = Mockito.mock(ColumnMetadata::class.java)
-                Mockito.`when`(meta.name).thenReturn(label)
+                whenever(meta.name).thenReturn(label)
                 meta
             }
             return Flux.fromIterable(

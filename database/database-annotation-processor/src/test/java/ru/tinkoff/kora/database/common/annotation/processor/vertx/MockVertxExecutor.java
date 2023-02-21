@@ -8,8 +8,6 @@ import io.vertx.sqlclient.*;
 import io.vertx.sqlclient.desc.ColumnDescriptor;
 import io.vertx.sqlclient.impl.RowDesc;
 import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 import ru.tinkoff.kora.database.vertx.VertxConnectionFactory;
@@ -41,22 +39,22 @@ public class MockVertxExecutor implements VertxConnectionFactory {
     public void reset() {
         Mockito.reset(connection, query, rowSet, telemetry, telemetryContext, stmt);
         when(connection.preparedQuery(anyString())).thenReturn(query);
-        doAnswer(invocation -> {
+        when(connection.prepare(anyString(), any(Handler.class))).thenAnswer(invocation -> {
             var handler = (Handler<AsyncResult<PreparedStatement>>) invocation.getArgument(1);
             handler.handle(Future.succeededFuture(stmt));
             return connection;
-        }).when(connection).prepare(anyString(), any(Handler.class));
+        });
         when(stmt.query()).thenReturn(query);
-        doAnswer(new Answer() {
-            @Override
-            public Object answer(InvocationOnMock invocation) throws Throwable {
-                var handler = (Handler<AsyncResult<RowSet<Row>>>) invocation.getArgument(1);
-                handler.handle(Future.succeededFuture(rowSet));
-                return null;
-            }
+        doAnswer(invocation -> {
+            var handler = (Handler<AsyncResult<RowSet<Row>>>) invocation.getArgument(1);
+            handler.handle(Future.succeededFuture(rowSet));
+            return null;
         }).when(query).execute(any(Tuple.class), any());
-        when(query.execute(any(Tuple.class))).thenReturn(Future.succeededFuture(rowSet));
-        when(query.executeBatch(any())).thenReturn(Future.succeededFuture());
+        doAnswer(invocation -> {
+            var handler = (Handler<AsyncResult<RowSet<Row>>>) invocation.getArgument(1);
+            handler.handle(Future.succeededFuture(rowSet));
+            return null;
+        }).when(query).executeBatch(any(), any());
         when(rowSet.iterator()).thenAnswer(invocation -> new RowIterator<>() {
             private final Iterator<Row> i = rows.iterator();
 

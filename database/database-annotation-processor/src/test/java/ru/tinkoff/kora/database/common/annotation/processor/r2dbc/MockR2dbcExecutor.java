@@ -5,18 +5,20 @@ import org.mockito.Mockito;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 import ru.tinkoff.kora.database.r2dbc.R2dbcConnectionFactory;
-import ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcResultFluxMapper;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.*;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+@SuppressWarnings("unchecked")
 public class MockR2dbcExecutor implements R2dbcConnectionFactory {
     public final Connection con = Mockito.mock(Connection.class);
     public final Statement statement = Mockito.mock(Statement.class);
@@ -38,39 +40,22 @@ public class MockR2dbcExecutor implements R2dbcConnectionFactory {
 
     public void setRows(List<List<MockColumn>> mockRows) {
         this.rows.clear();
-        this.rows = new ArrayList<>(mockRows);
+        this.rows.addAll(mockRows);
     }
 
     public void reset() {
         Mockito.reset(con, statement, telemetry, telemetryContext);
         rows = new ArrayList<>();
         when(con.createStatement(any())).thenReturn(statement);
-        when(statement.execute()).thenReturn((Publisher) Flux.defer(() -> Flux.just(new MockResult(this.rows))));
+        when(statement.execute()).thenReturn((Publisher) Flux.defer(() -> Flux.just(new MockResult(this.rows, null))));
         when(telemetry.createContext(any(), any())).thenReturn(telemetryContext);
     }
 
+    public void setUpdateCountResult(long updateCount) {
+        when(statement.execute()).thenReturn((Publisher) Flux.defer(() -> Flux.just(new MockResult(null, updateCount))));
+    }
+
     public record MockColumn(String label, Object value) {}
-
-    public <T> Mono<T> queryMono(Connection connection, QueryContext query, Consumer<Statement> statementSetter, R2dbcResultFluxMapper<T, Mono<T>> mapper) {
-        this.con.createStatement(query.sql());
-        statementSetter.accept(this.statement);
-        return mapper.apply(Flux.just(new MockResult(this.rows)));
-    }
-
-    public <T> Flux<T> queryFlux(Connection connection, QueryContext query, Consumer<Statement> statementSetter, R2dbcResultFluxMapper<T, Flux<T>> mapper) {
-        this.con.createStatement(query.sql());
-        statementSetter.accept(this.statement);
-        return mapper.apply(Flux.empty());
-    }
-
-    public Mono<Long> executeBatch(Connection connection, QueryContext query, int batchSize, BiConsumer<Integer, Statement> statementSetter) {
-        this.con.createStatement(query.sql());
-        for (int i = 0; i < batchSize; i++) {
-            statementSetter.accept(i, this.statement);
-            this.statement.add();
-        }
-        return Mono.just(0L);
-    }
 
     @Override
     public Mono<Connection> currentConnection() {
@@ -110,11 +95,11 @@ public class MockR2dbcExecutor implements R2dbcConnectionFactory {
         return callback.apply(connection);
     }
 
-    private record MockResult(List<List<MockColumn>> rows) implements Result {
+    private record MockResult(@Nullable List<List<MockColumn>> rows, @Nullable Long updateCount) implements Result {
 
         @Override
         public Publisher<Long> getRowsUpdated() {
-            return Mono.just(0L);
+            return Mono.justOrEmpty(updateCount);
         }
 
         @Override

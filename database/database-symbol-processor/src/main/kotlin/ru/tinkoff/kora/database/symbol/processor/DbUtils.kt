@@ -22,6 +22,7 @@ object DbUtils {
     val entityConstructorAnnotation = ClassName("ru.tinkoff.kora.database.common.annotation", "EntityConstructor")
     val queryAnnotation = ClassName("ru.tinkoff.kora.database.common.annotation", "Query")
     val batchAnnotation = ClassName("ru.tinkoff.kora.database.common.annotation", "Batch")
+    val updateCount = ClassName("ru.tinkoff.kora.database.common", "UpdateCount")
 
     val awaitSingleOrNull = MemberName("kotlinx.coroutines.reactor", "awaitSingleOrNull")
     val awaitSingle = MemberName("kotlinx.coroutines.reactor", "awaitSingle")
@@ -40,10 +41,11 @@ object DbUtils {
                 if (companion == null) {
                     companion = TypeSpec.companionObjectBuilder(null)
                 }
-                val property = PropertySpec.builder(mapper.fieldName, mapper.fieldTypeName, KModifier.PRIVATE)
                 if (mapper.wrapper == null) {
+                    val property = PropertySpec.builder(mapper.fieldName, mapper.mapperType.toTypeName(), KModifier.PRIVATE)
                     companion.addProperty(property.initializer("%T()", (mapper.mapperType.declaration as KSClassDeclaration).toClassName()).build())
                 } else {
+                    val property = PropertySpec.builder(mapper.fieldName, mapper.fieldTypeName, KModifier.PRIVATE)
                     companion.addProperty(property.initializer(mapper.wrapper.invoke(CodeBlock.of("%T()", mapper.mapperType.toTypeName()))).build())
                 }
             } else {

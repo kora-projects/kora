@@ -1,89 +1,403 @@
 package ru.tinkoff.kora.database.common.annotation.processor.r2dbc;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import reactor.core.publisher.Flux;
+import org.mockito.Mockito;
 import reactor.core.publisher.Mono;
-import ru.tinkoff.kora.annotation.processor.common.TestContext;
-import ru.tinkoff.kora.application.graph.TypeRef;
-import ru.tinkoff.kora.database.common.annotation.processor.DbTestUtils;
-import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRecord;
-import ru.tinkoff.kora.database.common.annotation.processor.r2dbc.repository.AllowedResultsRepository;
-import ru.tinkoff.kora.database.r2dbc.R2dbcConnectionFactory;
+import ru.tinkoff.kora.database.common.UpdateCount;
+import ru.tinkoff.kora.database.common.annotation.processor.r2dbc.MockR2dbcExecutor.MockColumn;
 import ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcResultFluxMapper;
 
-import java.util.concurrent.Executor;
+import java.util.List;
+import java.util.Optional;
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class R2dbcResultsTest {
-    private final MockR2dbcExecutor executor = new MockR2dbcExecutor();
-    private final AllowedResultsRepository repository;
-    private final TestContext ctx = new TestContext();
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-    public R2dbcResultsTest() {
-        ctx.addContextElement(TypeRef.of(R2dbcConnectionFactory.class), executor);
-        ctx.addContextElement(TypeRef.of(Executor.class), Runnable::run);
-        ctx.addMock(TypeRef.of(R2dbcEntity.TestEntityR2dbcRowMapperNonFinal.class));
-        ctx.addMock(TypeRef.of(R2dbcEntity.TestEntityFieldR2dbcParameterColumnMapperNonFinal.class));
-        ctx.addMock(TypeRef.of(R2dbcResultFluxMapper.class, Void.class, TypeRef.of(Mono.class, Void.class)));
-        ctx.addMock(TypeRef.of(R2dbcResultFluxMapper.class, TestEntityRecord.class, TypeRef.of(Mono.class, TestEntityRecord.class)));
-        ctx.addMock(TypeRef.of(R2dbcResultFluxMapper.class, TestEntityRecord.class, TypeRef.of(Flux.class, TestEntityRecord.class)));
-        repository = ctx.newInstance(DbTestUtils.compileClass(AllowedResultsRepository.class));
+public class R2dbcResultsTest extends AbstractR2dbcRepositoryTest {
+
+    @Test
+    public void testReturnMonoObject() {
+        var mapper = Mockito.mock(R2dbcResultFluxMapper.class);
+        var repository = compileR2dbc(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                Mono<Integer> test();
+            }
+            """);
+
+        when(mapper.apply(any())).thenReturn(Mono.just(42));
+        var result = repository.invoke("test");
+
+        assertThat(result).isEqualTo(42);
+        verify(executor.con).createStatement("SELECT count(*) FROM test");
+        verify(executor.statement).execute();
+        verify(mapper).apply(any());
     }
 
-    @BeforeEach
-    void setUp() {
+    @Test
+    public void testReturnMonoOptional() {
+        var mapper = Mockito.mock(R2dbcResultFluxMapper.class);
+        var repository = compileR2dbc(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                Mono<Optional<Integer>> test();
+            }
+            """);
+
+        when(mapper.apply(any())).thenReturn(Mono.just(Optional.of(42)));
+        var result = repository.<Optional<Integer>>invoke("test");
+
+        assertThat(result).contains(42);
+        verify(executor.con).createStatement("SELECT count(*) FROM test");
+        verify(executor.statement).execute();
+        verify(mapper).apply(any());
+
+        when(mapper.apply(any())).thenReturn(Mono.just(Optional.empty()));
+        executor.reset();
+        executor.setRows(List.of());
+        result = repository.invoke("test");
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    public void testReturnMonoVoid() {
+        var repository = compileR2dbc(List.of(), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                Mono<Void> test();
+            }
+            """);
+
+        repository.invoke("test");
+
+        verify(executor.con).createStatement("SELECT count(*) FROM test");
+        verify(executor.statement).execute();
+    }
+
+    @Test
+    public void testReturnUpdateCount() {
+        var repository = compileR2dbc(List.of(), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("INSERT INTO test(value) VALUES ('test')")
+                Mono<UpdateCount> test();
+            }
+            """);
+        executor.setUpdateCountResult(42);
+
+        var result = repository.<UpdateCount>invoke("test");
+
+        assertThat(result.value()).isEqualTo(42);
+        verify(executor.con).createStatement("INSERT INTO test(value) VALUES ('test')");
+        verify(executor.statement).execute();
+    }
+
+    @Test
+    public void testReturnBatchUpdateCount() {
+        var repository = compileR2dbc(List.of(), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                Mono<UpdateCount> test(@ru.tinkoff.kora.database.common.annotation.Batch java.util.List<String> value);
+            }
+            """);
+        executor.setUpdateCountResult(42);
+
+        var result = repository.<UpdateCount>invoke("test", List.of("test1", "test2"));
+
+        assertThat(result.value()).isEqualTo(42);
+        verify(executor.con).createStatement("INSERT INTO test(value) VALUES ($1)");
+        verify(executor.statement).execute();
+    }
+
+    @Test
+    public void testFinalResultSetMapper() {
+        var repository = compileR2dbc(List.of(), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestResultMapper.class)
+                Mono<Integer> test();
+            }
+            """, """
+            public final class TestResultMapper implements R2dbcResultFluxMapper<Integer, Mono<Integer>> {
+                public Mono<Integer> apply(Flux<Result> rs) {
+                  return Mono.just(42);
+                }
+            }
+            """);
+
+        var result = repository.<Integer>invoke("test");
+
+        assertThat(result).isEqualTo(42);
+        verify(executor.con).createStatement("SELECT count(*) FROM test");
+        verify(executor.statement).execute();
+    }
+
+    @Test
+    public void testNonFinalFinalResultSetMapper() {
+        var repository = compileR2dbc(List.of(newGeneratedObject("TestResultMapper")), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestResultMapper.class)
+                Mono<Integer> test();
+            }
+            """, """
+            public class TestResultMapper implements R2dbcResultFluxMapper<Integer, Mono<Integer>> {
+                public Mono<Integer> apply(Flux<Result> rs) {
+                  return Mono.just(42);
+                }
+            }
+            """);
+
+        var result = repository.<Integer>invoke("test");
+
+        assertThat(result).isEqualTo(42);
+        verify(executor.con).createStatement("SELECT count(*) FROM test");
+        verify(executor.statement).execute();
+    }
+
+    @Test
+    public void testOneWithFinalRowMapper() {
+        var repository = compileR2dbc(List.of(), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper.class)
+                Mono<Integer> test();
+            }
+            """, """
+            public final class TestRowMapper implements R2dbcRowMapper<Integer> {
+                public Integer apply(Row row) {
+                  return 42;
+                }
+            }
+            """);
+
+        executor.setRow(new MockColumn("count", 0));
+        var result = repository.<Integer>invoke("test");
+        assertThat(result).isEqualTo(42);
+        verify(executor.con).createStatement("SELECT count(*) FROM test");
+        verify(executor.statement).execute();
+        executor.reset();
+
+        executor.setRows(List.of());
+        result = repository.<Integer>invoke("test");
+        assertThat(result).isNull();
+        verify(executor.con).createStatement("SELECT count(*) FROM test");
+        verify(executor.statement).execute();
+    }
+
+    @Test
+    public void testOneWithNonFinalRowMapper() {
+        var repository = compileR2dbc(List.of(newGeneratedObject("TestRowMapper")), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper.class)
+                Mono<Integer> test();
+            }
+            """, """
+            public class TestRowMapper implements R2dbcRowMapper<Integer> {
+                public Integer apply(Row row) {
+                  return 42;
+                }
+            }
+            """);
+
+        executor.setRow(new MockColumn("count", 0));
+        var result = repository.<Integer>invoke("test");
+        assertThat(result).isEqualTo(42);
+        verify(executor.con).createStatement("SELECT count(*) FROM test");
+        verify(executor.statement).execute();
+        executor.reset();
+
+        executor.setRows(List.of());
+        result = repository.<Integer>invoke("test");
+        assertThat(result).isNull();
+        verify(executor.con).createStatement("SELECT count(*) FROM test");
+        verify(executor.statement).execute();
+    }
+
+    @Test
+    public void testOptionalWithFinalRowMapper() {
+        var repository = compileR2dbc(List.of(), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper.class)
+                Mono<Optional<Integer>> test();
+            }
+            """, """
+            public final class TestRowMapper implements R2dbcRowMapper<Integer> {
+                public Integer apply(Row row) {
+                  return 42;
+                }
+            }
+            """);
+
+        executor.setRow(new MockColumn("count", 0));
+        var result = repository.<Optional<Integer>>invoke("test");
+        assertThat(result).contains(42);
+        verify(executor.con).createStatement("SELECT count(*) FROM test");
+        verify(executor.statement).execute();
+        executor.reset();
+
+        executor.setRows(List.of());
+        result = repository.invoke("test");
+        assertThat(result).isEmpty();
+        verify(executor.con).createStatement("SELECT count(*) FROM test");
+        verify(executor.statement).execute();
+    }
+
+    @Test
+    public void testOptionalWithNonFinalRowMapper() {
+        var repository = compileR2dbc(List.of(newGeneratedObject("TestRowMapper")), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper.class)
+                Mono<Optional<Integer>> test();
+            }
+            """, """
+            public class TestRowMapper implements R2dbcRowMapper<Integer> {
+                public Integer apply(Row row) {
+                  return 42;
+                }
+            }
+            """);
+
+        executor.setRow(new MockColumn("count", 0));
+        var result = repository.<Optional<Integer>>invoke("test");
+        assertThat(result).contains(42);
+        verify(executor.con).createStatement("SELECT count(*) FROM test");
+        verify(executor.statement).execute();
+        executor.reset();
+
+        executor.setRows(List.of());
+        result = repository.invoke("test");
+        assertThat(result).isEmpty();
+        verify(executor.con).createStatement("SELECT count(*) FROM test");
+        verify(executor.statement).execute();
+    }
+
+    @Test
+    public void testListWithFinalRowMapper() {
+        var repository = compileR2dbc(List.of(), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper.class)
+                Mono<java.util.List<Integer>> test();
+            }
+            """, """
+            public final class TestRowMapper implements R2dbcRowMapper<Integer> {
+                public Integer apply(Row row) {
+                  return 42;
+                }
+            }
+            """);
+
+        executor.setRows(List.of(
+            List.of(new MockColumn("count", 0)),
+            List.of(new MockColumn("count", 0))
+        ));
+        var result = repository.<List<Integer>>invoke("test");
+        assertThat(result).contains(42, 42);
+        verify(executor.con).createStatement("SELECT count(*) FROM test");
+        verify(executor.statement).execute();
+    }
+
+    @Test
+    public void testListWithNonFinalRowMapper() {
+        var repository = compileR2dbc(List.of(newGeneratedObject("TestRowMapper")), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper.class)
+                Mono<java.util.List<Integer>> test();
+            }
+            """, """
+            public class TestRowMapper implements R2dbcRowMapper<Integer> {
+                public Integer apply(Row row) {
+                  return 42;
+                }
+            }
+            """);
+
+        executor.setRows(List.of(
+            List.of(new MockColumn("count", 0)),
+            List.of(new MockColumn("count", 0))
+        ));
+        var result = repository.<List<Integer>>invoke("test");
+        assertThat(result).contains(42, 42);
+        verify(executor.con).createStatement("SELECT count(*) FROM test");
+        verify(executor.statement).execute();
         executor.reset();
     }
 
-    @Test
-    void testReturnVoid() {
-        repository.returnVoid();
-//        Mockito.verify(executor.preparedStatement).execute();
-//        Mockito.verify(executor.preparedStatement).getUpdateCount();
-    }
-/*
+    /*
+    todo not supported yet
 
     @Test
-    void testReturnPrimitive() throws SQLException {
-        var rowMapper = ctx.findInstance(TypeRef.of(JdbcResultSetMapper.class, Integer.class));
-        when(rowMapper.apply(any())).thenReturn(42);
-        assertThat(repository.returnPrimitive()).isEqualTo(42);
-        verify(rowMapper).apply(any());
-    }
+    public void testReturnCompletionStageObject() {
+        var mapper = Mockito.mock(R2dbcResultFluxMapper.class);
+        var repository = compileR2dbc(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                CompletionStage<Integer> test();
+            }
+            """);
 
-    @Test
-    void testReturnObject() throws SQLException {
-        var rowMapper = ctx.findInstance(TypeRef.of(JdbcResultSetMapper.class, Integer.class));
-        reset(rowMapper);
-        when(rowMapper.apply(any())).thenReturn(42);
-        assertThat(repository.returnObject()).isEqualTo(42);
-        verify(rowMapper).apply(any());
+        when(mapper.apply(any())).thenReturn(Mono.just(42));
+        var result = repository.invoke("test");
+
+        assertThat(result).isEqualTo(42);
+        verify(executor.con).createStatement("SELECT count(*) FROM test");
+        verify(executor.statement).execute();
+        verify(mapper).apply(any());
     }
 
     @Test
-    void testReturnNullableObject() throws SQLException {
-        var rowMapper = ctx.findInstance(TypeRef.of(JdbcResultSetMapper.class, Integer.class));
-        reset(rowMapper);
-        when(rowMapper.apply(any())).thenReturn(42);
-        assertThat(repository.returnNullableObject()).isEqualTo(42);
-        verify(rowMapper).apply(any());
+    public void testReturnCompletionStageVoid() {
+        var repository = compileR2dbc(List.of(), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                CompletionStage<Void> test();
+            }
+            """);
 
-        reset(rowMapper);
-        when(rowMapper.apply(any())).thenReturn(null);
-        assertThat(repository.returnNullableObject()).isNull();
-        verify(rowMapper).apply(any());
+        repository.invoke("test");
+
+        verify(executor.con).createStatement("SELECT count(*) FROM test");
+        verify(executor.statement).execute();
     }
 
     @Test
-    void testReturnObjectWithRowMapper() throws SQLException {
-        var rowMapper = ctx.findInstance(TypeRef.of(JdbcEntity.TestEntityJdbcRowMapperNonFinal.class));
-        reset(rowMapper);
-        doReturn(true, false).when(executor.resultSet).next();
-        when(rowMapper.apply(any())).thenReturn(null);
-        assertThat(repository.returnObjectWithRowMapperNonFinal()).isEqualTo(null);
-        verify(rowMapper).apply(any());
+    public void testReturnCompletionStageUpdateCount() {
+        var repository = compileR2dbc(List.of(), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("INSERT INTO test(value) VALUES ('test')")
+                CompletionStage<UpdateCount> test();
+            }
+            """);
+        executor.setUpdateCountResult(42);
+
+        var result = repository.<UpdateCount>invoke("test");
+
+        assertThat(result.value()).isEqualTo(42);
+        verify(executor.con).createStatement("INSERT INTO test(value) VALUES ('test')");
+        verify(executor.statement).execute();
     }
 */
+
 }

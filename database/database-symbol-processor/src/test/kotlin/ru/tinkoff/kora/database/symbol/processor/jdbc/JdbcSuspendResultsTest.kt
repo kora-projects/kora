@@ -9,7 +9,6 @@ import ru.tinkoff.kora.application.graph.TypeRef
 import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultSetMapper
 import ru.tinkoff.kora.database.symbol.processor.DbTestUtils
-import ru.tinkoff.kora.database.symbol.processor.jdbc.repository.AllowedResultsRepository
 import ru.tinkoff.kora.database.symbol.processor.jdbc.repository.AllowedSuspendResultsRepository
 import java.util.*
 import java.util.concurrent.Executor

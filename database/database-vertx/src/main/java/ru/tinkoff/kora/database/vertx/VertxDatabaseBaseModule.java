@@ -2,7 +2,6 @@ package ru.tinkoff.kora.database.vertx;
 
 import io.vertx.core.buffer.Buffer;
 import ru.tinkoff.kora.database.common.DataBaseModule;
-import ru.tinkoff.kora.database.common.UpdateCount;
 import ru.tinkoff.kora.database.vertx.mapper.result.VertxRowMapper;
 import ru.tinkoff.kora.database.vertx.mapper.result.VertxRowSetMapper;
 import ru.tinkoff.kora.netty.common.NettyCommonModule;
@@ -23,10 +22,6 @@ public interface VertxDatabaseBaseModule extends NettyCommonModule, VertxCommonM
 
     default VertxRowSetMapper<Void> voidRowSetMapper() {
         return rows -> null;
-    }
-
-    default VertxRowSetMapper<UpdateCount> updateCountMapper() {
-        return rows -> new UpdateCount(rows.rowCount());
     }
 
     default VertxRowMapper<String> stringVertxRowMapper() {

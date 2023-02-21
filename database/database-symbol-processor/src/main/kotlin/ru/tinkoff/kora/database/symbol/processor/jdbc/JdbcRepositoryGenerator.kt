@@ -15,6 +15,7 @@ import ru.tinkoff.kora.database.symbol.processor.DbUtils.findQueryMethods
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.parseExecutorTag
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.queryMethodBuilder
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.resultMapperName
+import ru.tinkoff.kora.database.symbol.processor.DbUtils.updateCount
 import ru.tinkoff.kora.database.symbol.processor.Mapper
 import ru.tinkoff.kora.database.symbol.processor.QueryWithParameters
 import ru.tinkoff.kora.database.symbol.processor.RepositoryGenerator
@@ -68,6 +69,7 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
             b.beginControlFlow("return %T.fromCompletionStage({", Mono::class)
             b.beginControlFlow("%T.supplyAsync({", CompletableFuture::class)
         }
+        val returnTypeName = methodType.returnType?.toTypeName()
 
         val connection = parameters.firstOrNull { it is QueryParameter.ConnectionParameter }
             ?.let { CodeBlock.of("%L", it.variable) } ?: CodeBlock.of("this._jdbcConnectionFactory.currentConnection()")
@@ -93,6 +95,18 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
                             addStatement("_stmt.getUpdateCount()")
                         }
                         addStatement("_telemetry.close(null)")
+                    } else if (returnTypeName == updateCount) {
+                        if (batchParam != null) {
+                            addStatement("val _updateCount = _stmt.executeLargeBatch().sum()")
+                        } else {
+                            addStatement("val _updateCount = _stmt.executeLargeUpdate()")
+                        }
+                        addStatement("_telemetry.close(null)")
+                        addCode("return")
+                        if (method.isSuspend()) {
+                            addCode("@supplyAsync")
+                        }
+                        addCode(" %T(_updateCount)\n", updateCount)
                     } else {
                         controlFlow("_stmt.executeQuery().use { _rs ->") {
                             addStatement("val _result = %N.apply(_rs)", method.resultMapperName())
@@ -159,6 +173,9 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
             }
         }
         if (returnType == resolver.builtIns.unitType) {
+            return null
+        }
+        if (returnTypeName == updateCount) {
             return null
         }
         return Mapper(mapperType, mapperName)

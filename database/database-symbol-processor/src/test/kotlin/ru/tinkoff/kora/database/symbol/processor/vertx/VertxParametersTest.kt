@@ -16,7 +16,7 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
             }
             """.trimIndent())
 
-        repository.invoke("test", executor.connection)
+        repository.invoke<Any>("test", executor.connection)
 
         verify(executor.query).execute(Tuple.tuple().matcher(), any())
     }
@@ -32,12 +32,12 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
             
         """.trimIndent())
 
-        repository.invoke("test", null, 1)
+        repository.invoke<Any>("test", null, 1)
         verify(executor.connection).preparedQuery("INSERT INTO test(value1, value2) VALUES ($1, $2)")
         verify(executor.query).execute(Tuple.of(null, 1).matcher(), any())
         executor.reset()
 
-        repository.invoke("test", "test", 1)
+        repository.invoke<Any>("test", "test", 1)
         verify(executor.connection).preparedQuery("INSERT INTO test(value1, value2) VALUES ($1, $2)")
         verify(executor.query).execute(Tuple.of("test", 1).matcher(), any())
     }
@@ -56,7 +56,7 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
         val value = new("CustomType")
         whenever(mapper.apply(any())).thenReturn("test")
 
-        repository.invoke("test", value)
+        repository.invoke<Any>("test", value)
 
         verify(executor.connection).preparedQuery("INSERT INTO test(test) VALUES ($1)")
         verify(mapper).apply(same(value))
@@ -73,7 +73,7 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
             }
             """.trimIndent())
 
-        repository.invoke("test", "test", 42)
+        repository.invoke<Any>("test", "test", 42)
 
         verify(executor.connection).preparedQuery("INSERT INTO test(value1, value2) VALUES ($1, $2)")
         verify(executor.query).execute(Tuple.of("test", 42).matcher(), any())
@@ -98,7 +98,7 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
 
             """.trimIndent())
 
-        repository.invoke("test", new("SomeEntity", 42L, "test-value"))
+        repository.invoke<Any>("test", new("SomeEntity", 42L, "test-value"))
 
         verify(executor.connection).preparedQuery("INSERT INTO test(id, value) VALUES ($1, $2)")
         verify(executor.query).execute(Tuple.of(42L, mapOf("test" to "test-value")).matcher(), any())
@@ -120,7 +120,7 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
             }
             """.trimIndent())
 
-        repository.invoke("test", 42L, "test-value")
+        repository.invoke<Any>("test", 42L, "test-value")
 
         verify(executor.connection).preparedQuery("INSERT INTO test(id, value) VALUES ($1, $2)")
         verify(executor.query).execute(Tuple.of(42L, mapOf("test" to "test-value")).matcher(), any())
@@ -138,12 +138,12 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
         data class TestEntity(val id: Long, val value: String?)    
         """.trimIndent())
 
-        repository.invoke("test", new("TestEntity", 42, null))
+        repository.invoke<Any>("test", new("TestEntity", 42, null))
         verify(executor.connection).preparedQuery("INSERT INTO test(id, value) VALUES ($1, $2)")
         verify(executor.query).execute(Tuple.of(42L, null).matcher(), any())
         executor.reset()
 
-        repository.invoke("test", new("TestEntity", 42, "test"))
+        repository.invoke<Any>("test", new("TestEntity", 42, "test"))
         verify(executor.connection).preparedQuery("INSERT INTO test(id, value) VALUES ($1, $2)")
         verify(executor.query).execute(Tuple.of(42L, "test").matcher(), any())
     }

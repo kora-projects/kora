@@ -18,7 +18,7 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
             }
             """.trimIndent())
 
-        repository.invoke("test", executor.con)
+        repository.invoke<Any>("test", executor.con)
 
         verify(executor.statement).execute()
     }
@@ -33,13 +33,13 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
             }
         """.trimIndent())
 
-        repository.invoke("test", "test", 42)
+        repository.invoke<Any>("test", "test", 42)
         verify(executor.statement).bind(0, "test")
         verify(executor.statement).bind(1, 42)
         verify(executor.statement).execute()
         executor.reset()
 
-        repository.invoke("test", null, 42)
+        repository.invoke<Any>("test", null, 42)
         verify(executor.statement).bindNull(0, String::class.java)
         verify(executor.statement).bind(1, 42)
         verify(executor.statement).execute()
@@ -57,7 +57,7 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
             """.trimIndent(), "class CustomType{}")
         val value = new("CustomType")
 
-        repository.invoke("test", value)
+        repository.invoke<Any>("test", value)
 
         verify(mapper).apply(same(executor.statement), eq(0), same(value))
         verify(executor.statement).execute()
@@ -73,14 +73,14 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
             }
             """.trimIndent())
 
-        repository.invoke("test", "test", 42)
+        repository.invoke<Any>("test", "test", 42)
         verify(executor.con).createStatement("INSERT INTO test(value1, value2) VALUES ($1, $2)")
         verify(executor.statement).bind(0, "test")
         verify(executor.statement).bind(1, 42)
         verify(executor.statement).execute()
         executor.reset()
 
-        repository.invoke("test", null, 42)
+        repository.invoke<Any>("test", null, 42)
         verify(executor.con).createStatement("INSERT INTO test(value1, value2) VALUES ($1, $2)")
         verify(executor.statement).bindNull(0, String::class.java)
         verify(executor.statement).bind(1, 42)
@@ -107,7 +107,7 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
 
             """.trimIndent())
 
-        repository.invoke("test", new("SomeEntity", 42L, "test-value"))
+        repository.invoke<Any>("test", new("SomeEntity", 42L, "test-value"))
 
         verify(executor.statement).bind(0, 42L)
         verify(executor.statement).bind(1, mapOf("test" to "test-value"))
@@ -130,7 +130,7 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
             }
             """.trimIndent())
 
-        repository.invoke("test", 42L, "test-value")
+        repository.invoke<Any>("test", 42L, "test-value")
 
         verify(executor.statement).bind(0, 42L)
         verify(executor.statement).bind(1, mapOf("test" to "test-value"))
@@ -149,12 +149,12 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
         data class TestEntity(val id: Long, val value: String?)    
         """.trimIndent())
 
-        repository.invoke("test", new("TestEntity", 42L, null))
+        repository.invoke<Any>("test", new("TestEntity", 42L, null))
         verify(executor.statement).bind(0, 42L)
         verify(executor.statement).bindNull(1, String::class.java)
         executor.reset()
 
-        repository.invoke("test", new("TestEntity", 42L, "test"))
+        repository.invoke<Any>("test", new("TestEntity", 42L, "test"))
         verify(executor.statement).bind(0, 42L)
         verify(executor.statement).bind(1, "test")
     }
