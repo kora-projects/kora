@@ -79,26 +79,6 @@ public class DbUtils {
         }
     }
 
-    public static boolean hasDefaultConstructorAndFinal(Types types, TypeMirror typeMirror) {
-        var typeElement = (TypeElement) types.asElement(typeMirror);
-        if (!typeElement.getModifiers().contains(Modifier.FINAL)) {
-            return false;
-        }
-        for (var enclosedElement : typeElement.getEnclosedElements()) {
-            if (enclosedElement.getKind() != ElementKind.CONSTRUCTOR) {
-                continue;
-            }
-            var constructor = (ExecutableElement) enclosedElement;
-            if (!constructor.getModifiers().contains(Modifier.PUBLIC)) {
-                continue;
-            }
-            if (constructor.getParameters().isEmpty()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public static String parameterMapperName(ExecutableElement method, VariableElement parameter, String... names) {
         var sb = new StringBuilder("$" + method.getSimpleName() + "_" + parameter.getSimpleName());
         for (var name : names) {
@@ -130,7 +110,7 @@ public class DbUtils {
                 constructor.addParameter(mapper.typeName, mapper.name);
                 constructor.addCode("this.$L = $L;\n", mapper.name, CodeBlock.of("$L", mapper.name));
             } else {
-                if (DbUtils.hasDefaultConstructorAndFinal(types, mapper.typeMirror)) {
+                if (CommonUtils.hasDefaultConstructorAndFinal(types, mapper.typeMirror)) {
                     if (mapper.wrapper != null) {
                         type.addField(FieldSpec.builder(mapper.typeName, mapper.name, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
                             .initializer(mapper.wrapper.apply(CodeBlock.of("new $T()", mapper.typeMirror)))

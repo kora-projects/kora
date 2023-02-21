@@ -58,7 +58,7 @@ public class DbEntityReadHelper {
                     ? TypeName.get(mapper.mapperClass())
                     : ParameterizedTypeName.get(this.fieldMapperName, mapperTypeParameter);
                 if (mapper.mapperClass() != null && (mapper.mapperTags() == null || mapper.mapperTags().isEmpty())) {
-                    if (DbUtils.hasDefaultConstructorAndFinal(this.types, mapper.mapperClass())) {
+                    if (CommonUtils.hasDefaultConstructorAndFinal(this.types, mapper.mapperClass())) {
                         fields.add(new RequiredField(FieldSpec.builder(TypeName.get(mapper.mapperClass()), mapperFieldName, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
                             .initializer("new $T()", mapper.mapperClass())
                             .build(), null));

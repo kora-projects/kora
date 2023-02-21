@@ -81,12 +81,4 @@ public abstract class AbstractRepositoryTest extends AbstractAnnotationProcessor
             throw new RuntimeException(e);
         }
     }
-
-    public GeneratedResultCallback<?> newGeneratedObject(String className, Object... params) {
-        return () -> newObject(className, params);
-    }
-
-    protected interface GeneratedResultCallback<T> {
-        T get();
-    }
 }

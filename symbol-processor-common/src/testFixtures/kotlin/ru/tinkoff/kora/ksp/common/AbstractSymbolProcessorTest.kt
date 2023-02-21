@@ -76,10 +76,13 @@ abstract class AbstractSymbolProcessorTest {
                     if (classStart < 11) {
                         classStart = s.indexOf("interface ") + 10
                         if (classStart < 10) {
-                            classStart = s.indexOf("data class ") + 11
-                            if (classStart < 11) {
-                                classStart = s.indexOf("enum class ") + 11
-                                require(classStart >= 12)
+                            classStart = s.indexOf("sealed interface ") + 17
+                            if (classStart < 17) {
+                                classStart = s.indexOf("data class ") + 11
+                                if (classStart < 11) {
+                                    classStart = s.indexOf("enum class ") + 11
+                                    require(classStart >= 12)
+                                }
                             }
                         }
                     }

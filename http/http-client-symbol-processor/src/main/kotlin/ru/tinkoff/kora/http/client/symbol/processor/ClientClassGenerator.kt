@@ -38,7 +38,6 @@ import ru.tinkoff.kora.ksp.common.parseAnnotationValue
 import ru.tinkoff.kora.ksp.common.parseMappingData
 import java.util.*
 
-@KspExperimental
 class ClientClassGenerator(private val resolver: Resolver) {
     private val defaultMapperType = resolver.getClassDeclarationByName(ResponseCodeMapper.DefaultHttpClientResponseMapper::class.qualifiedName!!)?.asStarProjectedType()
     private val awaitSingle = MemberName("kotlinx.coroutines.reactor", "awaitSingle")
@@ -52,6 +51,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
     private val listType = resolver.getClassDeclarationByName(List::class.qualifiedName!!)!!.asStarProjectedType()
 
+    @KspExperimental
     fun generate(declaration: KSClassDeclaration): TypeSpec {
         val typeName = declaration.clientName()
         val methods: List<MethodData> = this.parseMethods(declaration)
@@ -135,6 +135,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
         return StringParameterConverter::class.asClassName().parameterizedBy(type.makeNotNullable().toTypeName())
     }
 
+    @OptIn(KspExperimental::class)
     private fun buildFunction(methodData: MethodData): FunSpec {
         val method = methodData.declaration
         val b = overridingKeepAop(method, resolver)
@@ -294,6 +295,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
     }
 
 
+    @KspExperimental
     private fun buildConstructor(tb: TypeSpec.Builder, declaration: KSClassDeclaration, methods: List<MethodData>): FunSpec {
         val parameterConverters = parseParametersConverters(methods)
         val packageName = declaration.packageName.asString()
@@ -363,13 +365,13 @@ class ClientClassGenerator(private val resolver: Resolver) {
             }
             if (methodData.codeMappers.isEmpty()) {
                 val responseMapperName: String = method.simpleName.asString() + "ResponseMapper"
-                val responseMapperType = if (methodData.responseMapper?.mapper != null) methodData.responseMapper.mapper!!.toTypeName() else methodData.returnType.responseMapperType()
-                addParameterMapper(responseMapperName, responseMapperType, methodData, tb, builder)
+                val responseMapperTypeName = if (methodData.responseMapper?.mapper != null) methodData.responseMapper.mapper!!.toTypeName() else methodData.returnType.responseMapperType()
+                addResponseMapper(responseMapperName, methodData.responseMapper?.mapper, responseMapperTypeName, methodData, tb, builder)
             } else {
                 for (codeMapper in methodData.codeMappers) {
                     val responseMapperName = method.simpleName.asString() + (if (codeMapper.code > 0) codeMapper.code else "Default").toString() + "ResponseMapper"
                     val responseMapperType = codeMapper.responseMapperType(methodData.returnType.publisherType(), defaultMapperType!!)
-                    addParameterMapper(responseMapperName, responseMapperType, methodData, tb, builder)
+                    addResponseMapper(responseMapperName, codeMapper.mapper, responseMapperType, methodData, tb, builder)
                 }
             }
             val name = method.simpleName.asString()
@@ -412,23 +414,29 @@ class ClientClassGenerator(private val resolver: Resolver) {
         return builder.build()
     }
 
-    private fun addParameterMapper(
-        responseMapperName: String,
-        responseMapperType: TypeName,
+    private fun addResponseMapper(
+        mapperName: String,
+        mapperType: KSType?,
+        mapperTypeName: TypeName,
         methodData: MethodData,
         tb: TypeSpec.Builder,
         builder: FunSpec.Builder
     ) {
-        val responseMapperParameter = ParameterSpec.builder(responseMapperName, responseMapperType)
-
+        val declaration = mapperType?.declaration
+        if (declaration is KSClassDeclaration && !declaration.isOpen() && declaration.getConstructors().count() == 1 && declaration.getConstructors().first().parameters.isEmpty()) {
+            tb.addProperty(PropertySpec.builder(mapperName, mapperTypeName, KModifier.PRIVATE).initializer("%T()", declaration.toClassName()).build())
+            return
+        }
+        val mapperParameter = ParameterSpec.builder(mapperName, mapperTypeName)
         val responseMapperTags = methodData.responseMapper?.toTagAnnotation()
         if (responseMapperTags != null) {
-            responseMapperParameter.addAnnotation(responseMapperTags)
+            mapperParameter.addAnnotation(responseMapperTags)
         }
-        tb.addProperty(PropertySpec.builder(responseMapperName, responseMapperType, KModifier.PRIVATE).initializer("%L", responseMapperName).build())
-        builder.addParameter(responseMapperParameter.build())
+        tb.addProperty(PropertySpec.builder(mapperName, mapperTypeName, KModifier.PRIVATE).initializer("%L", mapperName).build())
+        builder.addParameter(mapperParameter.build())
     }
 
+    @KspExperimental
     private fun parseMethods(declaration: KSClassDeclaration): List<MethodData> {
         val result = ArrayList<MethodData>()
         declaration.getDeclaredFunctions().forEach { function ->
@@ -439,12 +447,13 @@ class ClientClassGenerator(private val resolver: Resolver) {
             }
             val returnType: ReturnType = this.returnTypeParser.parseReturnType(function)
             val responseCodeMappers = this.parseMapperData(function)
-            val responseMapper = function.parseMappingData().getMapping(function.returnType!!.resolve())
+            val responseMapper = function.parseMappingData().getMapping(httpClientResponseMapper)
             result.add(MethodData(function, returnType, responseMapper, responseCodeMappers, parameters))
         }
         return result
     }
 
+    @KspExperimental
     private fun parseMapperData(declaration: KSFunctionDeclaration): List<ResponseCodeMapperData> {
         val mappers = declaration.getAnnotationsByType(ResponseCodeMappers::class).firstOrNull()
 

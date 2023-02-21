@@ -13,9 +13,9 @@ import ru.tinkoff.kora.http.client.common.annotation.HttpClient
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 
-@KspExperimental
 class ConfigModuleGenerator(val resolver: Resolver) {
 
+    @KspExperimental
     fun generate(declaration: KSClassDeclaration): FileSpec {
         val lowercaseName = StringBuilder(declaration.simpleName.asString())
         lowercaseName.setCharAt(0, lowercaseName[0].lowercaseChar())

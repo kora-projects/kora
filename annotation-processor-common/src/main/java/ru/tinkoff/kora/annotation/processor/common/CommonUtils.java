@@ -203,6 +203,26 @@ public class CommonUtils {
         return result;
     }
 
+    public static boolean hasDefaultConstructorAndFinal(Types types, TypeMirror typeMirror) {
+        var typeElement = (TypeElement) types.asElement(typeMirror);
+        if (!typeElement.getModifiers().contains(Modifier.FINAL)) {
+            return false;
+        }
+        for (var enclosedElement : typeElement.getEnclosedElements()) {
+            if (enclosedElement.getKind() != ElementKind.CONSTRUCTOR) {
+                continue;
+            }
+            var constructor = (ExecutableElement) enclosedElement;
+            if (!constructor.getModifiers().contains(Modifier.PUBLIC)) {
+                continue;
+            }
+            if (constructor.getParameters().isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static List<ExecutableElement> findMethods(TypeElement typeElement, Predicate<Set<Modifier>> modifiersFilter) {
         var result = new ArrayList<ExecutableElement>();
         for (var element : typeElement.getEnclosedElements()) {
