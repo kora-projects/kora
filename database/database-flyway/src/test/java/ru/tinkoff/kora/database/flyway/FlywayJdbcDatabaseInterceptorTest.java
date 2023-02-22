@@ -22,6 +22,7 @@ public class FlywayJdbcDatabaseInterceptorTest {
             params.password(),
             params.jdbcUrl(),
             "testPool",
+            null,
             1000L,
             1000L,
             1000L,
