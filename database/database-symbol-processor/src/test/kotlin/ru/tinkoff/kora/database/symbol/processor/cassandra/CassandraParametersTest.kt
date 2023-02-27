@@ -1,9 +1,18 @@
 package ru.tinkoff.kora.database.symbol.processor.cassandra
 
+import com.datastax.oss.driver.api.core.CqlIdentifier
+import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder
+import com.datastax.oss.driver.api.core.cql.ColumnDefinition
 import com.datastax.oss.driver.api.core.cql.Statement
+import com.datastax.oss.driver.api.core.type.codec.TypeCodec
+import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry
+import com.datastax.oss.driver.internal.core.cql.DefaultColumnDefinitions
 import org.junit.jupiter.api.Test
+import org.mockito.MockedConstruction
+import org.mockito.Mockito
 import org.mockito.kotlin.*
 import ru.tinkoff.kora.database.cassandra.mapper.parameter.CassandraParameterColumnMapper
+import java.util.List
 
 class CassandraParametersTest : AbstractCassandraRepositoryTest() {
 
@@ -143,5 +152,49 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
         repository.invoke<Any>("test", new("TestEntity", 42, "test"))
         verify(executor.boundStatementBuilder).setLong(0, 42)
         verify(executor.boundStatementBuilder).setString(1, "test")
+    }
+
+    @Test
+    fun testBatchDataClassParameter() {
+        val repository = compile(listOf<Any>(), """
+        @Repository
+        interface TestRepository: CassandraRepository {
+            @Query("INSERT INTO test(id, value) VALUES (:entity.id, :entity.value)")
+            fun test(@Batch entity: List<TestEntity>)
+        }
+        """.trimIndent(), """
+        data class TestEntity(val id: Long, val value: String?)    
+        """.trimIndent())
+
+
+        val columnDefinition = Mockito.mock(ColumnDefinition::class.java)
+        whenever(columnDefinition.name).thenReturn(CqlIdentifier.fromCql("test"))
+        val columnDefinitions = DefaultColumnDefinitions.valueOf(List.of(
+            columnDefinition, columnDefinition
+        ))
+        val codecRegistry = Mockito.mock(CodecRegistry::class.java)
+        whenever(executor.boundStatement.preparedStatement).thenReturn(executor.preparedStatement)
+        whenever(executor.boundStatement.codecRegistry()).thenReturn(codecRegistry)
+        whenever<TypeCodec<*>?>(codecRegistry.codecFor<Any>(Mockito.any(), Mockito.any(Class::class.java))).thenReturn(Mockito.mock(TypeCodec::class.java))
+        whenever(executor.preparedStatement.variableDefinitions).thenReturn(columnDefinitions)
+        var nextStmt: BoundStatementBuilder
+        val c = Mockito.mockConstruction(BoundStatementBuilder::class.java) { mock: BoundStatementBuilder, context: MockedConstruction.Context? -> whenever(mock.build()).thenReturn(executor.boundStatement) }
+
+        c.use {
+            repository.invoke<Any>("test", listOf(new("TestEntity", 42, null), new("TestEntity", 43, "test")))
+            nextStmt = c.constructed()[0]
+        }
+
+        val order = Mockito.inOrder(executor.boundStatementBuilder, nextStmt)
+
+        order.verify(executor.boundStatementBuilder).setLong(0, 42)
+        order.verify(executor.boundStatementBuilder).setToNull(1)
+        order.verify(executor.boundStatementBuilder).build()
+
+        order.verify(nextStmt).setLong(0, 43)
+        order.verify(nextStmt).setString(1, "test")
+        order.verify(nextStmt).build()
+
+        order.verifyNoMoreInteractions()
     }
 }

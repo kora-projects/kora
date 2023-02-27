@@ -73,7 +73,7 @@ object StatementSetterGenerator {
                 for (field in parameter.entity.fields) {
                     val parameterNullable = parameter.type.isMarkedNullable
                     val fieldNullable = field.type.isMarkedNullable
-                    val sqlParameter = queryWithParameters.find("$parameterName.${field.property.simpleName.getShortName()}")
+                    val sqlParameter = queryWithParameters.find("${parameter.name}.${field.property.simpleName.getShortName()}")
                     if (sqlParameter == null || sqlParameter.sqlIndexes.isEmpty()) {
                         continue
                     }
