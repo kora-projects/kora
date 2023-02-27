@@ -2,18 +2,18 @@ package ru.tinkoff.kora.scheduling.jdk;
 
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.Lifecycle;
-import ru.tinkoff.kora.application.graph.Wrapped;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class ScheduledExecutorServiceLifecycle implements Lifecycle, Wrapped<ScheduledExecutorService> {
+public class DefaultJdkSchedulingExecutor implements Lifecycle, JdkSchedulingExecutor {
     private final ScheduledExecutorServiceConfig config;
     private volatile ScheduledExecutorService service;
 
-    public ScheduledExecutorServiceLifecycle(ScheduledExecutorServiceConfig config) {
+    public DefaultJdkSchedulingExecutor(ScheduledExecutorServiceConfig config) {
         this.config = config;
     }
 
@@ -43,7 +43,17 @@ public class ScheduledExecutorServiceLifecycle implements Lifecycle, Wrapped<Sch
     }
 
     @Override
-    public ScheduledExecutorService value() {
-        return this.service;
+    public ScheduledFuture<?> scheduleWithFixedDelay(Runnable command, long initialDelay, long delay, TimeUnit milliseconds) {
+        return this.service.scheduleWithFixedDelay(command, initialDelay, delay, milliseconds);
+    }
+
+    @Override
+    public ScheduledFuture<?> scheduleAtFixedRate(Runnable command, long initialDelayMillis, long periodMillis, TimeUnit milliseconds) {
+        return this.service.scheduleAtFixedRate(command, initialDelayMillis, periodMillis, milliseconds);
+    }
+
+    @Override
+    public ScheduledFuture<?> schedule(Runnable command, long delay, TimeUnit timeUnit) {
+        return this.service.schedule(command, delay, timeUnit);
     }
 }

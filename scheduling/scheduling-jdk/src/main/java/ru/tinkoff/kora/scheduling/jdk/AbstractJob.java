@@ -6,18 +6,17 @@ import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.scheduling.common.telemetry.SchedulingTelemetry;
 
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class AbstractJob implements Lifecycle {
     private final SchedulingTelemetry telemetry;
-    private final ScheduledExecutorService service;
+    private final JdkSchedulingExecutor service;
     private final Runnable command;
     private final AtomicBoolean started = new AtomicBoolean(false);
     private volatile ScheduledFuture<?> scheduledFuture;
 
-    public AbstractJob(SchedulingTelemetry telemetry, ScheduledExecutorService service, Runnable command) {
+    public AbstractJob(SchedulingTelemetry telemetry, JdkSchedulingExecutor service, Runnable command) {
         this.telemetry = telemetry;
         this.service = service;
         this.command = command;
@@ -45,7 +44,7 @@ public abstract class AbstractJob implements Lifecycle {
         }
     }
 
-    protected abstract ScheduledFuture<?> schedule(ScheduledExecutorService service, Runnable command);
+    protected abstract ScheduledFuture<?> schedule(JdkSchedulingExecutor service, Runnable command);
 
     @Override
     public final Mono<?> release() {

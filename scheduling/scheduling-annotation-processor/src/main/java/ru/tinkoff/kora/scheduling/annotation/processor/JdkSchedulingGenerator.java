@@ -18,13 +18,13 @@ import javax.lang.model.util.Types;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
-import java.util.concurrent.ScheduledExecutorService;
 
 public class JdkSchedulingGenerator {
     private static final ClassName fixedDelayJobClassName = ClassName.get("ru.tinkoff.kora.scheduling.jdk", "FixedDelayJob");
     private static final ClassName fixedRateJobClassName = ClassName.get("ru.tinkoff.kora.scheduling.jdk", "FixedRateJob");
     private static final ClassName runOnceJobClassName = ClassName.get("ru.tinkoff.kora.scheduling.jdk", "RunOnceJob");
     private static final ClassName schedulingTelemetryFactoryClassName = ClassName.get("ru.tinkoff.kora.scheduling.common.telemetry", "SchedulingTelemetryFactory");
+    private static final ClassName jdkSchedulingExecutor = ClassName.get("ru.tinkoff.kora.scheduling.jdk", "JdkSchedulingExecutor");
     private final Elements elements;
     private final Types types;
     private final Messager messager;
@@ -72,7 +72,7 @@ public class JdkSchedulingGenerator {
         var componentMethod = MethodSpec.methodBuilder(jobMethodName)
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(schedulingTelemetryFactoryClassName, "telemetryFactory")
-            .addParameter(TypeName.get(ScheduledExecutorService.class), "service")
+            .addParameter(jdkSchedulingExecutor, "service")
             .addParameter(TypeName.get(type.asType()), "object")
             .returns(runOnceJobClassName)
             .addCode("var telemetry = telemetryFactory.get($T.class, $S);\n", type, method.getSimpleName());
@@ -116,7 +116,7 @@ public class JdkSchedulingGenerator {
         var componentMethod = MethodSpec.methodBuilder(jobMethodName)
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(schedulingTelemetryFactoryClassName, "telemetryFactory")
-            .addParameter(TypeName.get(ScheduledExecutorService.class), "service")
+            .addParameter(jdkSchedulingExecutor, "service")
             .addParameter(TypeName.get(type.asType()), "object")
             .returns(fixedDelayJobClassName)
             .addCode("var telemetry = telemetryFactory.get($T.class, $S);\n", type, method.getSimpleName());
@@ -167,7 +167,7 @@ public class JdkSchedulingGenerator {
         var componentMethod = MethodSpec.methodBuilder(jobMethodName)
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(schedulingTelemetryFactoryClassName, "telemetryFactory")
-            .addParameter(TypeName.get(ScheduledExecutorService.class), "service")
+            .addParameter(jdkSchedulingExecutor, "service")
             .addParameter(TypeName.get(type.asType()), "object")
             .returns(fixedRateJobClassName)
             .addCode("var telemetry = telemetryFactory.get($T.class, $S);\n", type, method.getSimpleName());

@@ -8,16 +8,31 @@ import kotlin.reflect.KClass
 
 internal class SchedulingKspTest {
     @Test
-    internal fun test() {
+    internal fun testScheduledJdkAtFixedDelayTest() {
         process(ScheduledJdkAtFixedDelayTest::class)
+    }
+
+    @Test
+    internal fun testScheduledJdkAtFixedRateTest() {
         process(ScheduledJdkAtFixedRateTest::class)
+    }
+
+    @Test
+    internal fun testScheduledJdkOnceTest() {
         process(ScheduledJdkOnceTest::class)
+    }
+
+    @Test
+    internal fun testScheduledWithCron() {
         process(ScheduledWithCron::class)
+    }
+
+    @Test
+    internal fun testScheduledWithTrigger() {
         process(ScheduledWithTrigger::class)
     }
 
-    @Throws(Exception::class)
-    fun <T : Any> process(type: KClass<T>) {
+    private fun <T : Any> process(type: KClass<T>) {
         val cl = symbolProcess(type, SchedulingKspProvider())
 
         val module = cl.loadClass(type.asClassName().packageName + ".$" + type.simpleName + "_SchedulingModule")

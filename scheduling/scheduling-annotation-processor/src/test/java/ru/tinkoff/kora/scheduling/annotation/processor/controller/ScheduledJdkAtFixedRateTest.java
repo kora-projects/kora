@@ -6,27 +6,17 @@ import java.time.temporal.ChronoUnit;
 
 public class ScheduledJdkAtFixedRateTest {
     @ScheduleAtFixedRate(initialDelay = 100, period = 1000, config = "baseline", unit = ChronoUnit.MILLIS)
-    public void baseline() {
-
-    }
+    public void baseline() {}
 
     @ScheduleAtFixedRate(initialDelay = 100, period = 1000, unit = ChronoUnit.MILLIS)
-    public void noConfig() {
-
-    }
+    public void noConfig() {}
 
     @ScheduleAtFixedRate(config = "onlyConfig")
-    public void onlyConfig() {
-
-    }
+    public void onlyConfig() {}
 
     @ScheduleAtFixedRate(period = 1000)
-    public void onlyRequired() {
-
-    }
+    public void onlyRequired() {}
 
     @ScheduleAtFixedRate(period = 1000, config = "onlyRequiredWithConfig")
-    public void onlyRequiredWithConfig() {
-
-    }
+    public void onlyRequiredWithConfig() {}
 }
