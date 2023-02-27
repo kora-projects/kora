@@ -2,6 +2,7 @@ package ru.tinkoff.kora.scheduling.jdk;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigValueFactory;
+import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.scheduling.common.SchedulingModule;
 
@@ -16,7 +17,8 @@ public interface SchedulingJdkModule extends SchedulingModule {
         }
     }
 
-    default ScheduledExecutorServiceLifecycle scheduledExecutorServiceLifecycle(ScheduledExecutorServiceConfig config) {
-        return new ScheduledExecutorServiceLifecycle(config);
+    @DefaultComponent
+    default JdkSchedulingExecutor scheduledExecutorServiceLifecycle(ScheduledExecutorServiceConfig config) {
+        return new DefaultJdkSchedulingExecutor(config);
     }
 }

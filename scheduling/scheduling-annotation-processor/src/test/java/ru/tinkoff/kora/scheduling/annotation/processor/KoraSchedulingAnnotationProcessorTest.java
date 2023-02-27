@@ -6,11 +6,27 @@ import ru.tinkoff.kora.scheduling.annotation.processor.controller.*;
 
 class KoraSchedulingAnnotationProcessorTest {
     @Test
-    void test() throws Exception {
+    void testScheduledJdkAtFixedRateTest() throws Exception {
         process(ScheduledJdkAtFixedRateTest.class);
+    }
+
+    @Test
+    void testScheduledJdkAtFixedDelayTest() throws Exception {
         process(ScheduledJdkAtFixedDelayTest.class);
+    }
+
+    @Test
+    void testScheduledJdkOnceTest() throws Exception {
         process(ScheduledJdkOnceTest.class);
+    }
+
+    @Test
+    void testScheduledWithTrigger() throws Exception {
         process(ScheduledWithTrigger.class);
+    }
+
+    @Test
+    void testScheduledWithCron() throws Exception {
         process(ScheduledWithCron.class);
     }
 

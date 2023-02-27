@@ -13,12 +13,12 @@ import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 import java.time.Duration
-import java.util.concurrent.ScheduledExecutorService
 
 class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
     private val fixedDelayJobClassName = ClassName("ru.tinkoff.kora.scheduling.jdk", "FixedDelayJob")
     private val fixedRateJobClassName = ClassName("ru.tinkoff.kora.scheduling.jdk", "FixedRateJob")
     private val runOnceJobClassName = ClassName("ru.tinkoff.kora.scheduling.jdk", "RunOnceJob")
+    private val jdkSchedulingExecutor = ClassName("ru.tinkoff.kora.scheduling.jdk", "JdkSchedulingExecutor")
     private val schedulingTelemetryFactoryClassName = ClassName("ru.tinkoff.kora.scheduling.common.telemetry", "SchedulingTelemetryFactory")
 
     fun generate(type: KSClassDeclaration, function: KSFunctionDeclaration, builder: TypeSpec.Builder, trigger: SchedulingTrigger) {
@@ -40,7 +40,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         val unit = trigger.annotation.findValue<KSType>("unit")!!.toClassName()
         val componentFunction = FunSpec.builder(jobFunName)
             .addParameter("telemetryFactory", schedulingTelemetryFactoryClassName)
-            .addParameter("service", ScheduledExecutorService::class.asClassName())
+            .addParameter("service", jdkSchedulingExecutor)
             .addParameter("target", typeClassName)
             .returns(fixedRateJobClassName)
             .addCode("val telemetry = telemetryFactory.get(%T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
@@ -81,7 +81,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         val unit = trigger.annotation.findValue<KSType>("unit")!!.toClassName()
         val componentFunction = FunSpec.builder(jobFunName)
             .addParameter("telemetryFactory", schedulingTelemetryFactoryClassName)
-            .addParameter("service", ScheduledExecutorService::class.asClassName())
+            .addParameter("service", jdkSchedulingExecutor)
             .addParameter("target", typeClassName)
             .returns(fixedDelayJobClassName)
             .addCode("val telemetry = telemetryFactory.get(%T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
@@ -121,7 +121,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         val unit = trigger.annotation.findValue<KSType>("unit")!!.toClassName()
         val componentFunction = FunSpec.builder(jobFunName)
             .addParameter("telemetryFactory", schedulingTelemetryFactoryClassName)
-            .addParameter("service", ScheduledExecutorService::class.asClassName())
+            .addParameter("service", jdkSchedulingExecutor)
             .addParameter("target", typeClassName)
             .returns(runOnceJobClassName)
             .addCode("val telemetry = telemetryFactory.get(%T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
