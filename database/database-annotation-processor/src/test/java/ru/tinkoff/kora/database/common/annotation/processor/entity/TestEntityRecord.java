@@ -9,6 +9,8 @@ import ru.tinkoff.kora.database.common.annotation.processor.r2dbc.R2dbcEntity;
 import ru.tinkoff.kora.database.common.annotation.processor.vertx.VertxEntity;
 
 import javax.annotation.Nullable;
+import java.util.HashMap;
+import java.util.Map;
 
 @NamingStrategy(SnakeCaseNameConverter.class)
 public record TestEntityRecord(
@@ -36,6 +38,8 @@ public record TestEntityRecord(
     @Mapping(VertxEntity.TestEntityFieldVertxParameterColumnMapperNonFinal.class)
     MappedField2 mappedField2
 ) {
+
+    public static final Map<String, String> initializedStaticField = new HashMap<>();
 
     public record UnknownTypeField() {}
     public record MappedField1() {}

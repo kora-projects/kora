@@ -7,6 +7,8 @@ import ru.tinkoff.kora.database.common.annotation.processor.r2dbc.R2dbcEntity;
 import ru.tinkoff.kora.database.common.annotation.processor.vertx.VertxEntity;
 
 import javax.annotation.Nullable;
+import java.util.HashMap;
+import java.util.Map;
 
 public class TestEntityJavaBean {
     private String field1;
@@ -32,6 +34,8 @@ public class TestEntityJavaBean {
     @Mapping(VertxEntity.TestEntityFieldVertxResultColumnMapperNonFinal.class)
     @Mapping(VertxEntity.TestEntityFieldVertxParameterColumnMapperNonFinal.class)
     private TestEntityRecord.MappedField2 mappedField2;
+
+    public static final Map<String, String> initializedStaticField = new HashMap<>();
 
     public static TestEntityJavaBean defaultJavaBean() {
         var v = new TestEntityJavaBean();
