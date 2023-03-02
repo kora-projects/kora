@@ -40,6 +40,7 @@ public record DbEntity(TypeMirror typeMirror, TypeElement typeElement, EntityTyp
         var nameConverter = CommonUtils.getNameConverter(typeElement);
         var fields = typeElement.getEnclosedElements().stream()
             .filter(e -> e.getKind() == ElementKind.FIELD)
+            .filter(DbEntity::isNotStaticField)
             .map(e -> {
                 var element = (VariableElement) e;
                 var type = element.asType();
@@ -70,6 +71,7 @@ public record DbEntity(TypeMirror typeMirror, TypeElement typeElement, EntityTyp
         var fields = typeElement.getEnclosedElements()
             .stream()
             .filter(e -> e.getKind() == ElementKind.FIELD)
+            .filter(DbEntity::isNotStaticField)
             .map(VariableElement.class::cast)
             .<DbEntity.EntityField>mapMulti((field, sink) -> {
                 var fieldType = field.asType();
@@ -101,6 +103,10 @@ public record DbEntity(TypeMirror typeMirror, TypeElement typeElement, EntityTyp
             return null;
         }
         return new DbEntity(typeMirror, typeElement, EntityType.BEAN, fields);
+    }
+
+    private static boolean isNotStaticField(Element element) {
+        return !element.getModifiers().contains(Modifier.STATIC);
     }
 
 }
