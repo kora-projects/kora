@@ -106,4 +106,61 @@ public class CassandraResultsTest extends AbstractCassandraRepositoryTest {
         verify(executor.mockSession).executeReactive(any(Statement.class));
     }
 
+    @Test
+    public void testMultipleMethodsWithSameReturnType() {
+        var mapper = Mockito.mock(CassandraResultSetMapper.class);
+        var repository = compileCassandra(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("SELECT count(*) FROM test")
+                Integer test1();
+                @Query("SELECT count(*) FROM test")
+                Integer test2();
+                @Query("SELECT count(*) FROM test")
+                Integer test3();
+            }
+            """);
+    }
+
+    @Test
+    public void testMultipleMethodsWithSameMapper() {
+        var repository = compileCassandra(List.of(newGeneratedObject("TestRowMapper")), """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper.class)
+                Integer test1();
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper.class)
+                Integer test2();
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper.class)
+                Integer test3();
+            }
+            """, """
+            public class TestRowMapper implements CassandraRowMapper<Integer> {
+                public Integer apply(Row row) {
+                  return 42;
+                }
+            }
+            """);
+    }
+
+    @Test
+    public void testMethodsWithSameName() {
+        var mapper1 = Mockito.mock(CassandraResultSetMapper.class);
+        var mapper2 = Mockito.mock(CassandraResultSetMapper.class);
+        var repository = compileCassandra(List.of(mapper1, mapper2), """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("SELECT count(*) FROM test WHERE test = :test")
+                Integer test(int test);
+                @Query("SELECT count(*) FROM test WHERE test = :test")
+                Integer test(long test);
+                @Query("SELECT count(*) FROM test WHERE test = :test")
+                Long test(String test);
+            }
+            """);
+
+    }
 }

@@ -367,4 +367,64 @@ public class VertxResultsTest extends AbstractVertxRepositoryTest {
         verify(executor.query).execute(any(), any());
         executor.reset();
     }
+
+
+    @Test
+    public void testMultipleMethodsWithSameReturnType() {
+        var mapper = Mockito.mock(VertxRowSetMapper.class);
+        var repository = compileVertx(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("SELECT count(*) FROM test")
+                Integer test1();
+                @Query("SELECT count(*) FROM test")
+                Integer test2();
+                @Query("SELECT count(*) FROM test")
+                Integer test3();
+            }
+            """);
+    }
+
+    @Test
+    public void testMultipleMethodsWithSameMapper() {
+        var repository = compileVertx(List.of(newGeneratedObject("TestRowMapper")), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper.class)
+                Integer test1();
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper.class)
+                Integer test2();
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper.class)
+                Integer test3();
+            }
+            """, """
+            public class TestRowMapper implements VertxRowMapper<Integer> {
+                public Integer apply(Row row) {
+                  return 42;
+                }
+            }
+            """);
+    }
+
+    @Test
+    public void testMethodsWithSameName() {
+        var mapper1 = Mockito.mock(VertxRowSetMapper.class);
+        var mapper2 = Mockito.mock(VertxRowSetMapper.class);
+        var repository = compileVertx(List.of(mapper1, mapper2), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("SELECT count(*) FROM test WHERE test = :test")
+                Integer test(int test);
+                @Query("SELECT count(*) FROM test WHERE test = :test")
+                Integer test(long test);
+                @Query("SELECT count(*) FROM test WHERE test = :test")
+                Long test(String test);
+            }
+            """);
+
+    }
+
 }

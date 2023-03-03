@@ -1,9 +1,8 @@
 package ru.tinkoff.kora.database.symbol.processor.jdbc
 
 import org.junit.jupiter.api.Test
-import org.mockito.kotlin.eq
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.same
+import org.mockito.ArgumentMatchers
+import org.mockito.Mockito
 import org.mockito.kotlin.verify
 import ru.tinkoff.kora.database.jdbc.mapper.parameter.JdbcParameterColumnMapper
 
@@ -37,24 +36,6 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
         repository.invoke<Any>("test", 42)
 
         verify(executor.preparedStatement).setInt(1, 42)
-        verify(executor.preparedStatement).updateCount
-    }
-
-    @Test
-    fun testUnknownTypeParameter() {
-        val mapper = mock<JdbcParameterColumnMapper<Any>>()
-        val repository = compile(listOf(mapper), """
-            @Repository
-            interface TestRepository : JdbcRepository {
-                @Query("INSERT INTO test(test) VALUES (:value)")
-                fun test(value: CustomType)
-            }
-            """.trimIndent(), "class CustomType{}")
-        val value = new("CustomType")
-
-        repository.invoke<Any>("test", value)
-
-        verify(mapper).set(same(executor.preparedStatement), eq(1), same(value))
         verify(executor.preparedStatement).updateCount
     }
 
@@ -120,5 +101,115 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
 
         verify(executor.preparedStatement).setLong(1, 42L)
         verify(executor.preparedStatement).setObject(2, mapOf("test" to "test-value"))
+    }
+
+    @Test
+    fun testUnknownTypeParameter() {
+        val mapper = Mockito.mock(JdbcParameterColumnMapper::class.java)
+        val repository = compile(listOf(mapper), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+                fun test(id: Long, value: UnknownType)
+            }
+            
+            """.trimIndent(), """
+            public class UnknownType {}
+            
+            """.trimIndent())
+
+        repository.invoke<Any>("test", 42L, new("UnknownType"))
+
+        verify(executor.preparedStatement).setLong(1, 42L)
+        verify(mapper).set(ArgumentMatchers.same(executor.preparedStatement), ArgumentMatchers.eq(2), ArgumentMatchers.any())
+    }
+
+    @Test
+    fun testUnknownTypeEntityField() {
+        val mapper = Mockito.mock(JdbcParameterColumnMapper::class.java)
+        val repository = compile(listOf(mapper), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value0.f)")
+                fun test(id: Long, value0: TestEntity)
+            }
+            
+            """.trimIndent(), """
+            class UnknownType {}
+            """.trimIndent(), """
+            data class TestEntity (val f: UnknownType)
+            """.trimIndent())
+
+        repository.invoke<Any>("test", 42L, new("TestEntity", new("UnknownType")))
+
+        verify(executor.preparedStatement).setLong(1, 42L)
+        verify(mapper).set(ArgumentMatchers.same(executor.preparedStatement), ArgumentMatchers.eq(2), ArgumentMatchers.any())
+    }
+
+    @Test
+    fun testNativeParameterNonFinalMapper() {
+        val repository = compile(listOf(newGenerated("TestMapper")), """
+            open class TestMapper : JdbcParameterColumnMapper<String> {
+                override fun set(stmt: PreparedStatement, index: Int, value0: String?) {
+                    stmt.setObject(index, mapOf("test" to value0))
+                }
+            }
+            
+            """.trimIndent(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value0)")
+                fun test(id: Long, @Mapping(TestMapper::class) value0: String);
+            }
+            
+            """.trimIndent())
+        repository.invoke<Any>("test", 42L, "test-value")
+        Mockito.verify(executor.preparedStatement).setLong(1, 42L)
+        Mockito.verify(executor.preparedStatement).setObject(2, mapOf("test" to "test-value"))
+    }
+
+    @Test
+    fun testMultipleParametersWithSameMapper() {
+        val repository = compile(listOf(newGenerated("TestMapper")), """
+            open class TestMapper : JdbcParameterColumnMapper<String> {
+                override fun set(stmt: PreparedStatement, index: Int, value0: String?) {
+                    stmt.setObject(index, mapOf("test" to value0))
+                }
+            }
+            """.trimIndent(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value0)")
+                fun test1(id: Long, @Mapping(TestMapper::class) value0: String);
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value0)")
+                fun test(id: Long, @Mapping(TestMapper::class) value0: String);
+            }
+            
+            """.trimIndent())
+    }
+
+    @Test
+    fun testMultipleParameterFieldsWithSameMapper() {
+        val repository = compile(listOf(newGenerated("TestMapper")), """
+            open class TestMapper : JdbcParameterColumnMapper<TestRecord> {
+                override fun set(stmt: PreparedStatement, index: Int, value0: TestRecord?) {
+                    stmt.setObject(index, mapOf("test" to value0.toString()))
+                }
+            }
+            """.trimIndent(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value0.f1)")
+                fun test1(id: Long, value0: TestRecord);
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value0.f1)")
+                fun test2(id: Long, value0: TestRecord);
+                @Query("INSERT INTO test(id, value1, value2) VALUES (:id, :value1.f1, :value2.f1)")
+                fun test2(id: Long, value1: TestRecord, value2: TestRecord);
+            }
+            
+            """.trimIndent(), """
+            data class TestRecord(@Mapping(TestMapper::class) val f1: TestRecord, @Mapping(TestMapper::class) val f2: TestRecord){}
+            
+            """.trimIndent())
     }
 }

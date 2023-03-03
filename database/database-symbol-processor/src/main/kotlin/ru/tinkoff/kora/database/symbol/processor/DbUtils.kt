@@ -11,6 +11,7 @@ import ru.tinkoff.kora.database.symbol.processor.model.QueryParameter
 import ru.tinkoff.kora.kora.app.ksp.overridingKeepAop
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
+import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.MappingData
 import ru.tinkoff.kora.ksp.common.parseMappingData
 
@@ -27,6 +28,18 @@ object DbUtils {
     val awaitSingleOrNull = MemberName("kotlinx.coroutines.reactor", "awaitSingleOrNull")
     val awaitSingle = MemberName("kotlinx.coroutines.reactor", "awaitSingle")
     val asFlow = MemberName("kotlinx.coroutines.reactive", "asFlow")
+
+    fun FieldFactory.addMapper(mapper: Mapper): String {
+        if (mapper.mapperType == null) {
+            return add(mapper.fieldTypeName, mapper.tags)
+        } else {
+            val name = add(mapper.mapperType, mapper.tags)
+            if (mapper.wrapper == null) {
+                return name
+            }
+            return add(mapper.fieldTypeName, mapper.wrapper.invoke(CodeBlock.of("%N", name)))
+        }
+    }
 
     fun addMappers(type: TypeSpec.Builder, constructor: FunSpec.Builder, mappers: List<Mapper>) {
         var companion = type.typeSpecs.asSequence().filter { it.isCompanion }.firstOrNull()?.toBuilder()
@@ -49,11 +62,13 @@ object DbUtils {
                     companion.addProperty(property.initializer(mapper.wrapper.invoke(CodeBlock.of("%T()", mapper.mapperType.toTypeName()))).build())
                 }
             } else {
-                constructor.addParameter(mapper.fieldName, mapper.mapperType.toTypeName())
-                type.addProperty(mapper.fieldName, mapper.fieldTypeName, KModifier.PRIVATE)
+                val mapperType = mapper.mapperType.toTypeName()
+                constructor.addParameter(mapper.fieldName, mapperType)
                 if (mapper.wrapper != null) {
+                    type.addProperty(mapper.fieldName, mapper.fieldTypeName, KModifier.PRIVATE)
                     constructor.addCode("this.%N = %L\n", mapper.fieldName, mapper.wrapper.invoke(CodeBlock.of("%N", mapper.fieldName)))
                 } else {
+                    type.addProperty(mapper.fieldName, mapperType, KModifier.PRIVATE)
                     constructor.addCode("this.%N = %N\n", mapper.fieldName, mapper.fieldName)
                 }
             }
@@ -110,14 +125,14 @@ object DbUtils {
             val mapping = mappings.getMapping(parameterColumnMapper)
             if (mapping != null) {
                 val mapperName = parameterMapperName(method, parameter.variable)
-                val mapperType = parameterColumnMapper.parameterizedBy(parameterType.toTypeName().copy(true))
+                val mapperType = parameterColumnMapper.parameterizedBy(parameterType.toTypeName().copy(false))
                 mappers.add(Mapper(mapping, mapperType, mapperName))
                 continue
             }
             if (parameter is QueryParameter.SimpleParameter) {
                 if (!nativeTypePredicate(parameter.type)) {
                     val mapperName = parameterMapperName(method, parameter.variable)
-                    val mapperType = parameterColumnMapper.parameterizedBy(parameterType.toTypeName().copy(true))
+                    val mapperType = parameterColumnMapper.parameterizedBy(parameterType.toTypeName().copy(false))
                     mappers.add(Mapper(mapperType, mapperName))
                 }
                 continue
@@ -129,7 +144,7 @@ object DbUtils {
                     continue
                 }
                 val mapperName = parameterMapperName(method, parameter.variable, entityField.property.simpleName.getShortName())
-                val mapperType = parameterColumnMapper.parameterizedBy(entityField.type.toTypeName().copy(true))
+                val mapperType = parameterColumnMapper.parameterizedBy(entityField.type.toTypeName().copy(false))
                 val fieldMappings = entityField.mapping
                 val fieldMapping = fieldMappings.getMapping(parameterColumnMapper)
                 if (fieldMapping != null) {

@@ -209,7 +209,6 @@ fun parseAnnotationClassValue(target: KSAnnotated, annotationName: String): List
 
 inline fun <reified T> parseAnnotationValue(target: KSAnnotation, name: String) = target.findValue<T>(name)
 
-@KspExperimental
 fun parseTagValue(target: KSAnnotated): List<KSType> {
     return parseAnnotationClassValue(target, CommonClassNames.tag.canonicalName)
 }

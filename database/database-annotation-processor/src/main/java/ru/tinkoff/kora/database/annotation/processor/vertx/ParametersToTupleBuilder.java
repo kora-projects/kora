@@ -4,7 +4,7 @@ import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeName;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.database.annotation.processor.DbUtils;
+import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
 import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
@@ -19,7 +19,7 @@ import java.util.function.Predicate;
 
 public class ParametersToTupleBuilder {
 
-    public static void generate(MethodSpec.Builder b, QueryWithParameters sqlWithParameters, ExecutableElement method, List<QueryParameter> parameters, @Nullable QueryParameter batchParam) {
+    public static void generate(MethodSpec.Builder b, QueryWithParameters sqlWithParameters, ExecutableElement method, List<QueryParameter> parameters, @Nullable QueryParameter batchParam, FieldFactory parameterMappers) {
         if (batchParam != null) {
             b.addCode("var _batchParams = new $T<$T>($L.size());\n", ArrayList.class, VertxTypes.TUPLE, batchParam.variable());
             b.addCode("for (var _i = 0; _i < $L.size(); _i++) {$>\n", batchParam.variable());
@@ -44,11 +44,19 @@ public class ParametersToTupleBuilder {
                     var nativeType = VertxNativeTypes.find(TypeName.get(simpleParameter.type()));
                     var mapping = CommonUtils.parseMapping(simpleParameter.variable()).getMapping(VertxTypes.PARAMETER_COLUMN_MAPPER);
                     var sqlParameter = Objects.requireNonNull(sqlWithParameters.find(simpleParameter.variable().getSimpleName().toString()));
-                    if (nativeType == null || mapping != null) {
+                    if (nativeType == null || mapping != null && mapping.mapperClass() == null) {
+                        var mapperName = parameterMappers.get(VertxTypes.PARAMETER_COLUMN_MAPPER, simpleParameter.type(), simpleParameter.variable());
                         sink.accept(new Param(
                             sqlParameter.sqlIndexes(),
                             simpleParameter.variable().getSimpleName().toString(),
-                            CodeBlock.of("$L.apply($L)", DbUtils.parameterMapperName(method, simpleParameter.variable()), e.getKey())
+                            CodeBlock.of("$N.apply($L)", mapperName, e.getKey())
+                        ));
+                    } else if (mapping != null) {
+                        var mapperName = parameterMappers.get(mapping.mapperClass(), mapping.mapperTags());
+                        sink.accept(new Param(
+                            sqlParameter.sqlIndexes(),
+                            simpleParameter.variable().getSimpleName().toString(),
+                            CodeBlock.of("$N.apply($L)", mapperName, e.getKey())
                         ));
                     } else {
                         sink.accept(new Param(
@@ -70,17 +78,25 @@ public class ParametersToTupleBuilder {
                             : e.getKey() + ".get" + CommonUtils.capitalize(field.element().getSimpleName().toString()) + "()";
                         var nativeType = VertxNativeTypes.find(TypeName.get(field.typeMirror()));
                         var mapping = CommonUtils.parseMapping(field.element()).getMapping(VertxTypes.PARAMETER_COLUMN_MAPPER);
-                        if (nativeType == null || mapping != null) {
-                            sink.accept(new Param(
-                                sqlParameter.sqlIndexes(),
-                                variableName,
-                                CodeBlock.of("$L.apply($L)", DbUtils.parameterMapperName(method, entityParam.variable(), field.element().getSimpleName().toString()), fieldAccessor)
-                            ));
-                        } else {
+                        if (nativeType != null && mapping == null) {
                             sink.accept(new Param(
                                 sqlParameter.sqlIndexes(),
                                 variableName,
                                 CodeBlock.of("$L", fieldAccessor)
+                            ));
+                        } else if (mapping != null && mapping.mapperClass() != null) {
+                            var mapperName = parameterMappers.get(mapping.mapperClass(), mapping.mapperTags());
+                            sink.accept(new Param(
+                                sqlParameter.sqlIndexes(),
+                                variableName,
+                                CodeBlock.of("$L.apply($L)", mapperName, fieldAccessor)
+                            ));
+                        } else {
+                            var mapperName = parameterMappers.get(VertxTypes.PARAMETER_COLUMN_MAPPER, field.typeMirror(), field.element());
+                            sink.accept(new Param(
+                                sqlParameter.sqlIndexes(),
+                                variableName,
+                                CodeBlock.of("$L.apply($L)", mapperName, fieldAccessor)
                             ));
                         }
                     }

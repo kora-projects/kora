@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
 
 public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
@@ -202,5 +203,115 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
 
         verify(executor.preparedStatement).setLong(1, 42L);
         verify(executor.preparedStatement).setObject(2, Map.of("test", "test-value"));
+    }
+
+    @Test
+    public void testUnknownTypeParameter() throws SQLException {
+        var mapper = Mockito.mock(JdbcParameterColumnMapper.class);
+        var repository = compileJdbc(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+                void test(long id, UnknownType value);
+            }
+            """, """
+            public class UnknownType {}
+            """);
+
+        repository.invoke("test", 42L, newObject("UnknownType"));
+
+        verify(executor.preparedStatement).setLong(1, 42L);
+        verify(mapper).set(same(executor.preparedStatement), eq(2), any());
+    }
+
+    @Test
+    public void testUnknownTypeEntityField() throws SQLException {
+        var mapper = Mockito.mock(JdbcParameterColumnMapper.class);
+        var repository = compileJdbc(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value.f)")
+                void test(long id, TestEntity value);
+            }
+            """, """
+            public class UnknownType {}
+            """, """
+            public record TestEntity(UnknownType f){}
+            """);
+
+        repository.invoke("test", 42L, newObject("TestEntity", newObject("UnknownType")));
+
+        verify(executor.preparedStatement).setLong(1, 42L);
+        verify(mapper).set(same(executor.preparedStatement), eq(2), any());
+    }
+
+    @Test
+    public void testNativeParameterNonFinalMapper() throws SQLException {
+        var repository = compileJdbc(List.of(newGeneratedObject("TestMapper")), """
+            public class TestMapper implements JdbcParameterColumnMapper<String> {
+                
+                @Override
+                public void set(PreparedStatement stmt, int index, String value) throws SQLException {
+                    stmt.setObject(index, java.util.Map.of("test", value));
+                }
+            }
+            """, """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+                void test(long id, @Mapping(TestMapper.class) String value);
+            }
+            """);
+
+        repository.invoke("test", 42L, "test-value");
+
+        verify(executor.preparedStatement).setLong(1, 42L);
+        verify(executor.preparedStatement).setObject(2, Map.of("test", "test-value"));
+    }
+
+    @Test
+    public void testMultipleParametersWithSameMapper() throws SQLException {
+        var repository = compileJdbc(List.of(newGeneratedObject("TestMapper")), """
+            public class TestMapper implements JdbcParameterColumnMapper<String> {
+                
+                @Override
+                public void set(PreparedStatement stmt, int index, String value) throws SQLException {
+                    stmt.setObject(index, java.util.Map.of("test", value));
+                }
+            }
+            """, """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+                void test1(long id, @Mapping(TestMapper.class) String value);
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+                void test(long id, @Mapping(TestMapper.class) String value);
+            }
+            """);
+    }
+
+    @Test
+    public void testMultipleParameterFieldsWithSameMapper() throws SQLException {
+        var repository = compileJdbc(List.of(newGeneratedObject("TestMapper")), """
+            public class TestMapper implements JdbcParameterColumnMapper<TestRecord> {
+                
+                @Override
+                public void set(PreparedStatement stmt, int index, TestRecord value) throws SQLException {
+                    stmt.setObject(index, java.util.Map.of("test", value.toString()));
+                }
+            }
+            """, """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value.f1)")
+                void test1(long id, TestRecord value);
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value.f1)")
+                void test2(long id, TestRecord value);
+                @Query("INSERT INTO test(id, value1, value2) VALUES (:id, :value1.f1, :value2.f1)")
+                void test2(long id, TestRecord value1, TestRecord value2);
+            }
+            """, """
+            public record TestRecord(@Mapping(TestMapper.class) TestRecord f1, @Mapping(TestMapper.class) TestRecord f2){}
+            """);
     }
 }

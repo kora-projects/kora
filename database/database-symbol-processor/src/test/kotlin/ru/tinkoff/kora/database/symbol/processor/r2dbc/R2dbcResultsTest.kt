@@ -271,4 +271,66 @@ class R2dbcResultsTest : AbstractR2dbcTest() {
         verify(executor.statement).execute()
         executor.reset()
     }
+
+
+    @Test
+    fun testMultipleMethodsWithSameReturnType() {
+        val mapper = Mockito.mock(R2dbcResultFluxMapper::class.java)
+        val repository = compile(listOf(mapper), """
+            @Repository
+            interface TestRepository : R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                fun test1(): Int
+                @Query("SELECT count(*) FROM test")
+                fun test2(): Int
+                @Query("SELECT count(*) FROM test")
+                fun test3(): Int
+            }
+            
+            """.trimIndent())
+    }
+
+    @Test
+    fun testMultipleMethodsWithSameMapper() {
+        val repository = compile(listOf(newGenerated("TestRowMapper")), """
+            @Repository
+            interface TestRepository : R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper::class)
+                fun test1(): Int
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper::class)
+                fun test2(): Int
+                @Query("SELECT count(*) FROM test")
+                @Mapping(TestRowMapper::class)
+                fun test3(): Int
+            }
+            
+            """.trimIndent(), """
+            open class TestRowMapper : R2dbcRowMapper<Int> {
+                override fun apply(row: Row): Int {
+                  return 42;
+                }
+            }
+            
+            """.trimIndent())
+    }
+
+    @Test
+    fun testMethodsWithSameName() {
+        val mapper1 = Mockito.mock(R2dbcResultFluxMapper::class.java)
+        val mapper2 = Mockito.mock(R2dbcResultFluxMapper::class.java)
+        val repository = compile(listOf(mapper1, mapper2), """
+            @Repository
+            interface TestRepository : R2dbcRepository {
+                @Query("SELECT count(*) FROM test WHERE test = :test")
+                fun test1(test: Int): Int
+                @Query("SELECT count(*) FROM test WHERE test = :test")
+                fun test1(test: Long): Int
+                @Query("SELECT count(*) FROM test WHERE test = :test")
+                fun test1(test: String): Long
+            }
+            
+            """.trimIndent())
+    }
 }

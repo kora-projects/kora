@@ -3,15 +3,15 @@ package ru.tinkoff.kora.database.symbol.processor.jdbc
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.ksp.toTypeName
-import ru.tinkoff.kora.database.symbol.processor.DbUtils.parameterMapperName
 import ru.tinkoff.kora.database.symbol.processor.QueryWithParameters
 import ru.tinkoff.kora.database.symbol.processor.model.QueryParameter
+import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.parseMappingData
 
 object StatementSetterGenerator {
 
-    fun generate(b: FunSpec.Builder, function: KSFunctionDeclaration, queryWithParameters: QueryWithParameters, parameters: List<QueryParameter>, batchParam: QueryParameter?) {
+    fun generate(b: FunSpec.Builder, function: KSFunctionDeclaration, queryWithParameters: QueryWithParameters, parameters: List<QueryParameter>, batchParam: QueryParameter?, parameterMappers: FieldFactory) {
         if (batchParam != null) {
             b.beginControlFlow("for (_batch_%L in %N)", batchParam.name, batchParam.name)
         }
@@ -24,13 +24,6 @@ object StatementSetterGenerator {
             if (parameter is QueryParameter.BatchParameter) {
                 parameter = parameter.parameter
                 parameterName = "_batch_${parameter.name}"
-            }
-            if (parameter is QueryParameter.ParameterWithMapper) {
-                val sqlParameter = queryWithParameters.find(i)!!
-                for (idx in sqlParameter.sqlIndexes) {
-                    b.addStatement("%N.set(_stmt, %L, %N)", parameterMapperName(function, parameter.variable), idx + 1, parameterName)
-                }
-                return@forEachIndexed
             }
             if (parameter is QueryParameter.SimpleParameter) {
                 val sqlParameter = queryWithParameters.find(i)!!
@@ -54,9 +47,15 @@ object StatementSetterGenerator {
                             b.addCode(nativeType.bind("_stmt", parameterName, idx + 1)).addCode("\n")
                         }
                     }
+                } else if (mapping?.mapper != null) {
+                    for (idx in sqlParameter.sqlIndexes) {
+                        val mapperName = parameterMappers.get(mapping.mapper!!, mapping.tags)
+                        b.addStatement("%N.set(_stmt, %L, %N)", mapperName, idx + 1, parameterName)
+                    }
                 } else {
                     for (idx in sqlParameter.sqlIndexes) {
-                        b.addStatement("%N.set(_stmt, %L, %N)", parameterMapperName(function, parameter.variable), idx + 1, parameterName)
+                        val mapperName = parameterMappers.get(JdbcTypes.jdbcParameterColumnMapper, parameter.type, parameter.variable)
+                        b.addStatement("%N.set(_stmt, %L, %N)", mapperName, idx + 1, parameterName)
                     }
                 }
             }
@@ -88,9 +87,15 @@ object StatementSetterGenerator {
                                 b.addCode(nativeType.bind("_stmt", "$parameterName.$fieldPropertyName", idx + 1)).addCode("\n")
                             }
                         }
-                    } else {
+                    } else if (mapping?.mapper != null) {
+                        val mapperName = parameterMappers.get(mapping.mapper!!, mapping.tags)
                         for (idx in sqlParameter.sqlIndexes) {
-                            b.addStatement("%N.set(_stmt, %L, %L)", parameterMapperName(function, parameter.variable, fieldPropertyName), idx + 1, fieldName)
+                            b.addStatement("%N.set(_stmt, %L, %L)", mapperName, idx + 1, fieldName)
+                        }
+                    } else {
+                        val mapperName = parameterMappers.get(JdbcTypes.jdbcParameterColumnMapper, field.type, field.property)
+                        for (idx in sqlParameter.sqlIndexes) {
+                            b.addStatement("%N.set(_stmt, %L, %L)", mapperName, idx + 1, fieldName)
                         }
                     }
                 }

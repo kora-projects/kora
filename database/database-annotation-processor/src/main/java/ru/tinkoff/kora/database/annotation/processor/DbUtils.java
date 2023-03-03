@@ -2,6 +2,7 @@ package ru.tinkoff.kora.database.annotation.processor;
 
 import com.squareup.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
 
@@ -79,62 +80,43 @@ public class DbUtils {
         }
     }
 
-    public static String parameterMapperName(ExecutableElement method, VariableElement parameter, String... names) {
-        var sb = new StringBuilder("$" + method.getSimpleName() + "_" + parameter.getSimpleName());
-        for (var name : names) {
-            sb.append("_").append(name);
-        }
-        return sb.append("_parameterMapper").toString();
-    }
-
-    public static String resultMapperName(ExecutableElement method) {
-        var sb = new StringBuilder("$" + method.getSimpleName());
-        return sb.append("_resultMapper").toString();
-    }
-
-
-    public record Mapper(@Nullable TypeMirror typeMirror, TypeName typeName, String name, @Nullable Function<CodeBlock, CodeBlock> wrapper) {
-        public Mapper(TypeName typeName, String name) {
-            this(null, typeName, name, null);
+    public record Mapper(@Nullable TypeMirror typeMirror, TypeName typeName, Set<String> tag, @Nullable Function<CodeBlock, CodeBlock> wrapper) {
+        public Mapper(TypeName typeName, Set<String> tag) {
+            this(null, typeName, tag, null);
         }
 
-        public Mapper(TypeMirror typeMirror, TypeName typeName, String name) {
-            this(typeMirror, typeName, name, null);
+        public Mapper(TypeMirror typeMirror, TypeName typeName, Set<String> tag) {
+            this(typeMirror, typeName, tag, null);
         }
     }
 
-    public static void addMappers(Types types, TypeSpec.Builder type, MethodSpec.Builder constructor, List<Mapper> mappers) {
+    public static void addMappers(FieldFactory factory, List<Mapper> mappers) {
         for (var mapper : mappers) {
             if (mapper.typeMirror == null) {
-                type.addField(mapper.typeName, mapper.name, Modifier.PRIVATE, Modifier.FINAL);
-                constructor.addParameter(mapper.typeName, mapper.name);
-                constructor.addCode("this.$L = $L;\n", mapper.name, CodeBlock.of("$L", mapper.name));
+                factory.add(mapper.typeName(), mapper.tag());
             } else {
-                if (CommonUtils.hasDefaultConstructorAndFinal(types, mapper.typeMirror)) {
-                    if (mapper.wrapper != null) {
-                        type.addField(FieldSpec.builder(mapper.typeName, mapper.name, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
-                            .initializer(mapper.wrapper.apply(CodeBlock.of("new $T()", mapper.typeMirror)))
-                            .build());
-                    } else {
-                        type.addField(FieldSpec.builder(TypeName.get(mapper.typeMirror), mapper.name, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
-                            .initializer(CodeBlock.of("new $T()", mapper.typeMirror))
-                            .build());
-                    }
-                } else {
-                    constructor.addParameter(TypeName.get(mapper.typeMirror), mapper.name);
-                    if (mapper.wrapper != null) {
-                        type.addField(mapper.typeName, mapper.name, Modifier.PRIVATE, Modifier.FINAL);
-                        constructor.addCode("this.$L = $L;\n", mapper.name, mapper.wrapper.apply(CodeBlock.of("$L", mapper.name)));
-                    } else {
-                        type.addField(TypeName.get(mapper.typeMirror), mapper.name, Modifier.PRIVATE, Modifier.FINAL);
-                        constructor.addCode("this.$L = $L;\n", mapper.name, CodeBlock.of("$L", mapper.name));
-                    }
+                var name = factory.add(mapper.typeMirror(), mapper.tag());
+                if (mapper.wrapper() != null) {
+                    factory.add(mapper.typeName(), mapper.wrapper().apply(CodeBlock.of("$N", name)));
                 }
             }
         }
     }
 
-    public static List<DbUtils.Mapper> parseParameterMappers(ExecutableElement method, List<QueryParameter> parameters, QueryWithParameters query, Predicate<TypeName> nativeTypePredicate, ClassName parameterColumnMapper) {
+    public static String addMapper(FieldFactory factory, Mapper mapper) {
+        if (mapper.typeMirror == null) {
+            return factory.add(mapper.typeName(), mapper.tag());
+        } else {
+            var name = factory.add(mapper.typeMirror(), mapper.tag());
+            if (mapper.wrapper() != null) {
+                return factory.add(mapper.typeName(), mapper.wrapper().apply(CodeBlock.of("$N", name)));
+            } else {
+                return name;
+            }
+        }
+    }
+
+    public static List<DbUtils.Mapper> parseParameterMappers(List<QueryParameter> parameters, QueryWithParameters query, Predicate<TypeName> nativeTypePredicate, ClassName parameterColumnMapper) {
         var mappers = new ArrayList<Mapper>();
         for (var parameter : parameters) {
             if (parameter instanceof QueryParameter.ConnectionParameter) {
@@ -147,16 +129,14 @@ public class DbUtils {
             var mappings = CommonUtils.parseMapping(parameter.variable());
             var mapping = mappings.getMapping(parameterColumnMapper);
             if (mapping != null) {
-                var mapperName = DbUtils.parameterMapperName(method, parameter.variable());
                 var mapperType = ParameterizedTypeName.get(parameterColumnMapper, TypeName.get(parameterType));
-                mappers.add(new DbUtils.Mapper(mapping.mapperClass(), mapperType, mapperName, c -> c));
+                mappers.add(new DbUtils.Mapper(mapping.mapperClass(), mapperType, mapping.mapperTags(), c -> c));
                 continue;
             }
             if (parameter instanceof QueryParameter.SimpleParameter sp) {
                 if (!nativeTypePredicate.test(TypeName.get(parameter.type()))) {
-                    var mapperName = DbUtils.parameterMapperName(method, parameter.variable());
                     var mapperType = ParameterizedTypeName.get(parameterColumnMapper, TypeName.get(parameterType));
-                    mappers.add(new DbUtils.Mapper(mapperType, mapperName));
+                    mappers.add(new DbUtils.Mapper(mapperType, Set.of()));
                 }
                 continue;
             }
@@ -166,16 +146,15 @@ public class DbUtils {
                     if (queryParam == null || queryParam.sqlIndexes().isEmpty()) {
                         continue;
                     }
-                    var mapperName = DbUtils.parameterMapperName(method, parameter.variable(), entityField.element().getSimpleName().toString());
                     var mapperType = ParameterizedTypeName.get(parameterColumnMapper, TypeName.get(entityField.typeMirror()).box());
                     var fieldMappings = CommonUtils.parseMapping(entityField.element());
                     var fieldMapping = fieldMappings.getMapping(parameterColumnMapper);
                     if (fieldMapping != null) {
-                        mappers.add(new DbUtils.Mapper(fieldMapping.mapperClass(), mapperType, mapperName));
+                        mappers.add(new DbUtils.Mapper(fieldMapping.mapperClass(), mapperType, fieldMapping.mapperTags()));
                         continue;
                     }
                     if (!nativeTypePredicate.test(TypeName.get(entityField.typeMirror()))) {
-                        mappers.add(new DbUtils.Mapper(mapperType, mapperName));
+                        mappers.add(new DbUtils.Mapper(mapperType, Set.of()));
                     }
                 }
                 continue;

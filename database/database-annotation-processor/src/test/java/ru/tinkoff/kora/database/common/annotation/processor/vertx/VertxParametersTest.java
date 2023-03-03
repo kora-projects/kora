@@ -112,4 +112,102 @@ public class VertxParametersTest extends AbstractVertxRepositoryTest {
 
         verify(executor.query).execute(tupleMatcher(Tuple.of(42L, Map.of("test", "test-value"))), any());
     }
+
+    @Test
+    public void testUnknownTypeParameter() {
+        var mapper = Mockito.mock(VertxParameterColumnMapper.class);
+        var repository = compileVertx(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+                void test(long id, UnknownType value);
+            }
+            """, """
+            public class UnknownType {}
+            """);
+
+        repository.invoke("test", 42L, newObject("UnknownType"));
+    }
+
+    @Test
+    public void testUnknownTypeEntityField() {
+        var mapper = Mockito.mock(VertxParameterColumnMapper.class);
+        var repository = compileVertx(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value.f)")
+                void test(long id, TestEntity value);
+            }
+            """, """
+            public class UnknownType {}
+            """, """
+            public record TestEntity(UnknownType f){}
+            """);
+
+        repository.invoke("test", 42L, newObject("TestEntity", newObject("UnknownType")));
+    }
+
+    @Test
+    public void testNativeParameterNonFinalMapper() {
+        var repository = compileVertx(List.of(newGeneratedObject("TestMapper")), """
+            public class TestMapper implements VertxParameterColumnMapper<String> {
+                @Override
+                public Object apply(String value) {
+                    return java.util.Map.of("test", value);
+                }
+            }
+            """, """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+                void test(long id, @Mapping(TestMapper.class) String value);
+            }
+            """);
+
+        repository.invoke("test", 42L, "test-value");
+    }
+
+    @Test
+    public void testMultipleParametersWithSameMapper() {
+        var repository = compileVertx(List.of(newGeneratedObject("TestMapper")), """
+            public class TestMapper implements VertxParameterColumnMapper<String> {
+                @Override
+                public Object apply(String value) {
+                    return java.util.Map.of("test", value);
+                }
+            }
+            """, """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+                void test1(long id, @Mapping(TestMapper.class) String value);
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+                void test(long id, @Mapping(TestMapper.class) String value);
+            }
+            """);
+    }
+
+    @Test
+    public void testMultipleParameterFieldsWithSameMapper() {
+        var repository = compileVertx(List.of(newGeneratedObject("TestMapper")), """
+            public class TestMapper implements VertxParameterColumnMapper<TestRecord> {
+                @Override
+                public Object apply(TestRecord value) {
+                    return java.util.Map.of("test", value.toString());
+                }
+            }
+            """, """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value.f1)")
+                void test1(long id, TestRecord value);
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value.f1)")
+                void test2(long id, TestRecord value);
+                @Query("INSERT INTO test(id, value1, value2) VALUES (:id, :value1.f1, :value2.f1)")
+                void test2(long id, TestRecord value1, TestRecord value2);
+            }
+            """, """
+            public record TestRecord(@Mapping(TestMapper.class) TestRecord f1, @Mapping(TestMapper.class) TestRecord f2){}
+            """);
+    }
 }

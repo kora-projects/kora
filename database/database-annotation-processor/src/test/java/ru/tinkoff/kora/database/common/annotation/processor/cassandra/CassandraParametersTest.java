@@ -269,4 +269,111 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
         verify(executor.boundStatementBuilder).set(1, Map.of("test", "test-value"), Map.class);
     }
 
+
+    @Test
+    public void testUnknownTypeParameter() {
+        var mapper = Mockito.mock(CassandraParameterColumnMapper.class);
+        var repository = compileCassandra(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+                void test(long id, UnknownType value);
+            }
+            """, """
+            public class UnknownType {}
+            """);
+
+        repository.invoke("test", 42L, newObject("UnknownType"));
+
+        verify(executor.boundStatementBuilder).setLong(0, 42L);
+        verify(mapper).apply(same(executor.boundStatementBuilder), eq(1), any());
+    }
+
+    @Test
+    public void testUnknownTypeEntityField() {
+        var mapper = Mockito.mock(CassandraParameterColumnMapper.class);
+        var repository = compileCassandra(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value.f)")
+                void test(long id, TestEntity value);
+            }
+            """, """
+            public class UnknownType {}
+            """, """
+            public record TestEntity(UnknownType f){}
+            """);
+
+        repository.invoke("test", 42L, newObject("TestEntity", newObject("UnknownType")));
+
+        verify(executor.boundStatementBuilder).setLong(0, 42L);
+        verify(mapper).apply(same(executor.boundStatementBuilder), eq(1), any());
+    }
+
+    @Test
+    public void testNativeParameterNonFinalMapper() {
+        var repository = compileCassandra(List.of(newGeneratedObject("TestMapper")), """
+            public class TestMapper implements CassandraParameterColumnMapper<String> {
+                @Override
+                public void apply(SettableByName<?> stmt, int index, String value) {
+                    stmt.set(index, java.util.Map.of("test", value), java.util.Map.class);
+                }
+            }
+            """, """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+                void test(long id, @Mapping(TestMapper.class) String value);
+            }
+            """);
+
+        repository.invoke("test", 42L, "test-value");
+
+        verify(executor.boundStatementBuilder).setLong(0, 42L);
+        verify(executor.boundStatementBuilder).set(1, Map.of("test", "test-value"), Map.class);
+    }
+
+    @Test
+    public void testMultipleParametersWithSameMapper() {
+        var repository = compileCassandra(List.of(newGeneratedObject("TestMapper")), """
+            public class TestMapper implements CassandraParameterColumnMapper<String> {
+                @Override
+                public void apply(SettableByName<?> stmt, int index, String value) {
+                    stmt.set(index, java.util.Map.of("test", value), java.util.Map.class);
+                }
+            }
+            """, """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+                void test1(long id, @Mapping(TestMapper.class) String value);
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+                void test(long id, @Mapping(TestMapper.class) String value);
+            }
+            """);
+    }
+
+    @Test
+    public void testMultipleParameterFieldsWithSameMapper() {
+        var repository = compileCassandra(List.of(newGeneratedObject("TestMapper")), """
+            public class TestMapper implements CassandraParameterColumnMapper<TestRecord> {
+                @Override
+                public void apply(SettableByName<?> stmt, int index, TestRecord value) {
+                    stmt.set(index, java.util.Map.of("test", value.toString()), java.util.Map.class);
+                }
+            }
+            """, """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value.f1)")
+                void test1(long id, TestRecord value);
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value.f1)")
+                void test2(long id, TestRecord value);
+                @Query("INSERT INTO test(id, value1, value2) VALUES (:id, :value1.f1, :value2.f1)")
+                void test2(long id, TestRecord value1, TestRecord value2);
+            }
+            """, """
+            public record TestRecord(@Mapping(TestMapper.class) TestRecord f1, @Mapping(TestMapper.class) TestRecord f2){}
+            """);
+    }
 }

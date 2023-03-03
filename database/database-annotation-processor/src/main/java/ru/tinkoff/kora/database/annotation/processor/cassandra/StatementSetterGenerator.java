@@ -3,7 +3,7 @@ package ru.tinkoff.kora.database.annotation.processor.cassandra;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.MethodSpec;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.database.annotation.processor.DbUtils;
+import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
 import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class StatementSetterGenerator {
-    public static void generate(MethodSpec.Builder b, ExecutableElement method, QueryWithParameters sqlWithParameters, List<QueryParameter> parameters, @Nullable QueryParameter batchParam) {
+    public static void generate(MethodSpec.Builder b, ExecutableElement method, QueryWithParameters sqlWithParameters, List<QueryParameter> parameters, @Nullable QueryParameter batchParam, FieldFactory parameterMappers) {
         if (batchParam != null) {
             b.addCode("var _batch = $T.builder($T.UNLOGGED);\n", CassandraTypes.BATCH_STATEMENT, CassandraTypes.DEFAULT_BATCH_TYPE);
             b.addCode("for (var _param_$L : $L) {$>\n", batchParam.name(), batchParam.name());
@@ -45,9 +45,14 @@ public class StatementSetterGenerator {
                     for (var idx : sqlParameter.sqlIndexes()) {
                         b.addCode(nativeType.bind("_stmt", parameterName, idx)).addCode(";\n");
                     }
+                } else if (mapping != null && mapping.mapperClass() != null) {
+                    for (var idx : sqlParameter.sqlIndexes()) {
+                        var mapper = parameterMappers.get(mapping.mapperClass(), mapping.mapperTags());
+                        b.addCode("$L.apply(_stmt, $L, $L);\n", mapper, idx, parameter.variable());
+                    }
                 } else {
                     for (var idx : sqlParameter.sqlIndexes()) {
-                        var mapper = DbUtils.parameterMapperName(method, parameter.variable());
+                        var mapper = parameterMappers.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, parameter.type(), parameter.variable());
                         b.addCode("$L.apply(_stmt, $L, $L);\n", mapper, idx, parameter.variable());
                     }
                 }
@@ -78,9 +83,14 @@ public class StatementSetterGenerator {
                         for (var idx : sqlParameter.sqlIndexes()) {
                             b.addCode(nativeType.bind("_stmt", fieldAccessor, idx)).addCode(";\n");
                         }
+                    } else if (mapping != null && mapping.mapperClass() != null) {
+                        for (var idx : sqlParameter.sqlIndexes()) {
+                            var mapper = parameterMappers.get(mapping.mapperClass(), mapping.mapperTags());
+                            b.addCode("$L.apply(_stmt, $L, $L);\n", mapper, idx, fieldAccessor);
+                        }
                     } else {
                         for (var idx : sqlParameter.sqlIndexes()) {
-                            var mapper = DbUtils.parameterMapperName(method, parameter.variable(), field.element().getSimpleName().toString());
+                            var mapper = parameterMappers.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, field.typeMirror(), field.element());
                             b.addCode("$L.apply(_stmt, $L, $L);\n", mapper, idx, fieldAccessor);
                         }
                     }

@@ -3,7 +3,7 @@ package ru.tinkoff.kora.database.annotation.processor.r2dbc;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeName;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.database.annotation.processor.DbUtils;
+import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
 import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
@@ -15,7 +15,7 @@ import java.util.Objects;
 
 public class R2dbcStatementSetterGenerator {
 
-    public static void generate(MethodSpec.Builder b, ExecutableElement method, QueryWithParameters sqlWithParameters, List<QueryParameter> parameters, @Nullable QueryParameter batchParam) {
+    public static void generate(MethodSpec.Builder b, ExecutableElement method, QueryWithParameters sqlWithParameters, List<QueryParameter> parameters, @Nullable QueryParameter batchParam, FieldFactory parameterMappers) {
         if (batchParam != null) {
             b.addCode("""
                 for (int i = 0; i < $L.size(); i++) {
@@ -53,8 +53,13 @@ public class R2dbcStatementSetterGenerator {
                             b.addCode("_stmt.bind($L, $L);\n", index, parameterName);
                         }
                     }
+                } else if (mapping != null && mapping.mapperClass() != null) {
+                    var mapper = parameterMappers.get(mapping.mapperClass(), mapping.mapperTags());
+                    for (var index : sqlParameter.sqlIndexes()) {
+                        b.addCode("$L.apply(_stmt, $L, $L);\n", mapper, index, parameterName);
+                    }
                 } else {
-                    var mapper = DbUtils.parameterMapperName(method, simpleParameter.variable());
+                    var mapper = parameterMappers.get(R2dbcTypes.PARAMETER_COLUMN_MAPPER, simpleParameter.type(), simpleParameter.variable());
                     for (var index : sqlParameter.sqlIndexes()) {
                         b.addCode("$L.apply(_stmt, $L, $L);\n", mapper, index, parameterName);
                     }
@@ -68,6 +73,9 @@ public class R2dbcStatementSetterGenerator {
                         : parameterName + ".get" + CommonUtils.capitalize(field.element().getSimpleName().toString()) + "()";
 
                     var sqlParameter = sqlWithParameters.find(entityParameter.name() + "." + field.element().getSimpleName());
+                    if (sqlParameter == null || sqlParameter.sqlIndexes().isEmpty()) {
+                        continue;
+                    }
                     var nativeType = R2dbcNativeTypes.findAndBox(TypeName.get(field.typeMirror()));
                     var mapping = CommonUtils.parseMapping(field.element()).getMapping(R2dbcTypes.PARAMETER_COLUMN_MAPPER);
                     if (nativeType != null && mapping == null) {
@@ -84,8 +92,13 @@ public class R2dbcStatementSetterGenerator {
                                 b.addCode("_stmt.bind($L, $L);\n", index, fieldAccessor);
                             }
                         }
+                    } else if (mapping != null && mapping.mapperClass() != null) {
+                        var mapper = parameterMappers.get(mapping.mapperClass(), mapping.mapperTags());
+                        for (var index : sqlParameter.sqlIndexes()) {
+                            b.addCode("$L.apply(_stmt, $L, $L);\n", mapper, index, fieldAccessor);
+                        }
                     } else {
-                        var mapper = DbUtils.parameterMapperName(method, parameter.variable(), field.element().getSimpleName().toString());
+                        var mapper = parameterMappers.get(R2dbcTypes.PARAMETER_COLUMN_MAPPER, field.typeMirror(), field.element());
                         for (var index : sqlParameter.sqlIndexes()) {
                             b.addCode("$L.apply(_stmt, $L, $L);\n", mapper, index, fieldAccessor);
                         }

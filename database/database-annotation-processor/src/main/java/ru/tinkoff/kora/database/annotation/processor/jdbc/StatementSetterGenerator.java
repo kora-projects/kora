@@ -3,7 +3,7 @@ package ru.tinkoff.kora.database.annotation.processor.jdbc;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.TypeName;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.database.annotation.processor.DbUtils;
+import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
 import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
@@ -16,7 +16,7 @@ import static ru.tinkoff.kora.annotation.processor.common.CommonUtils.isNullable
 
 public class StatementSetterGenerator {
 
-    public static CodeBlock generate(ExecutableElement method, QueryWithParameters sqlWithParameters, List<QueryParameter> parameters, @Nullable QueryParameter batchParam) {
+    public static CodeBlock generate(ExecutableElement method, QueryWithParameters sqlWithParameters, List<QueryParameter> parameters, @Nullable QueryParameter batchParam, FieldFactory parameterMappers) {
         var b = CodeBlock.builder();
         if (batchParam != null) {
             // one of Iterable<T>, Iterator<T>, Stream<T>
@@ -58,8 +58,13 @@ public class StatementSetterGenerator {
                             b.add(nativeType.bind("_stmt", parameterName, idx + 1)).add(";\n");
                         }
                     }
+                } else if (mapping != null && mapping.mapperClass() != null) {
+                    var mapper = parameterMappers.get(mapping.mapperClass(), mapping.mapperTags());
+                    for (var idx : sqlParameter.sqlIndexes()) {
+                        b.add("$L.set(_stmt, $L, $L);\n", mapper, idx + 1, parameterName);
+                    }
                 } else {
-                    var mapper = DbUtils.parameterMapperName(method, parameter.variable());
+                    var mapper = parameterMappers.get(JdbcTypes.PARAMETER_COLUMN_MAPPER, parameter.type(), parameter.variable());
                     for (var idx : sqlParameter.sqlIndexes()) {
                         b.add("$L.set(_stmt, $L, $L);\n", mapper, idx + 1, parameterName);
                     }
@@ -93,8 +98,13 @@ public class StatementSetterGenerator {
                                 b.add(nativeType.bind("_stmt", name, idx + 1)).add(";\n");
                             }
                         }
+                    } else if (mapping == null) {
+                        var mapper = parameterMappers.get(JdbcTypes.PARAMETER_COLUMN_MAPPER, field.typeMirror(), field.element());
+                        for (var idx : sqlParameter.sqlIndexes()) {
+                            b.add("$L.set(_stmt, $L, $L);\n", mapper, idx + 1, name);
+                        }
                     } else {
-                        var mapper = DbUtils.parameterMapperName(method, parameter.variable(), field.element().getSimpleName().toString());
+                        var mapper = parameterMappers.get(mapping.mapperClass(), mapping.mapperTags());
                         for (var idx : sqlParameter.sqlIndexes()) {
                             b.add("$L.set(_stmt, $L, $L);\n", mapper, idx + 1, name);
                         }
