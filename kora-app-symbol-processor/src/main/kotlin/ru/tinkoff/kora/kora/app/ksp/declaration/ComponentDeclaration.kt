@@ -92,6 +92,9 @@ sealed interface ComponentDeclaration {
         fun fromModule(ctx: ProcessingContext, module: ModuleDeclaration, method: KSFunctionDeclaration): FromModuleComponent {
             // modules can be written in java so we better fix platform nullability
             val type = method.returnType!!.resolve().fixPlatformType(ctx.resolver)
+            if (type.isError) {
+                throw ProcessingErrorException("Component type is not resolvable in the current round of processing", method)
+            }
             val tags = TagUtils.parseTagValue(method)
             val parameterTypes = method.parameters.map { it.type.resolve().fixPlatformType(ctx.resolver) }
             val typeParameters = method.typeParameters.map {
@@ -131,6 +134,9 @@ sealed interface ComponentDeclaration {
                 throw ProcessingErrorException("No primary constructor to parse component", classDeclaration)
             }
             val type = classDeclaration.asType(listOf())
+            if (type.isError) {
+                throw ProcessingErrorException("Component type is not resolvable in the current round of processing", classDeclaration)
+            }
 
             return DiscoveredAsDependencyComponent(type, classDeclaration, constructor)
         }
@@ -140,6 +146,9 @@ sealed interface ComponentDeclaration {
             val sourceType = extensionResult.type
             val parameterTypes = sourceType.parameterTypes.map { it!! }
             val type = sourceType.returnType!!
+            if (type.isError) {
+                throw ProcessingErrorException("Component type is not resolvable in the current round of processing", sourceMethod)
+            }
             return FromExtensionComponent(type, sourceMethod, parameterTypes)
         }
     }
