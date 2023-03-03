@@ -34,7 +34,6 @@ import java.util.function.Function
 import java.util.function.Supplier
 import javax.annotation.processing.SupportedOptions
 
-@KspExperimental
 @SupportedOptions("koraLogLevel")
 class KoraAppProcessor(
     environment: SymbolProcessorEnvironment
@@ -134,9 +133,12 @@ class KoraAppProcessor(
                 if (processingResult is ProcessingState.NewRoundRequired) {
                     processingResult = processingResult.processing
                 }
-                val processing = processingResult as ProcessingState.Processing
-                val result = this.processProcessing(processing)
-                results[actualKey] = declaration to result
+                if (processingResult !is ProcessingState.Processing) {
+                    results[actualKey] = declaration to processingResult
+                } else {
+                    val result = this.processProcessing(processingResult)
+                    results[actualKey] = declaration to result
+                }
             } catch (e: NewRoundException) {
                 unableToProcess.add(declaration)
                 results[actualKey] = declaration to ProcessingState.NewRoundRequired(

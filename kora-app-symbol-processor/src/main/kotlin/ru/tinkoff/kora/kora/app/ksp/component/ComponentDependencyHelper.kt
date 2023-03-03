@@ -1,11 +1,13 @@
 package ru.tinkoff.kora.kora.app.ksp.component
 
+import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.TagUtils
+import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
 object ComponentDependencyHelper {
     fun parseDependencyClaim(declaration: ComponentDeclaration): List<DependencyClaim> {
@@ -17,7 +19,7 @@ object ComponentDependencyHelper {
                     val parameterType = declaration.methodParameterTypes[i]
                     val parameterElement = element.parameters[i]
                     val tags = TagUtils.parseTagValue(parameterElement)
-                    result.add(parseClaim(parameterType, tags))
+                    result.add(parseClaim(parameterType, tags, declaration.method.parameters[i]))
                 }
                 return result
             }
@@ -28,7 +30,7 @@ object ComponentDependencyHelper {
                 for (i in 0 until declaration.methodParameterTypes.size) {
                     val parameterType = element.parameters[i].type.resolve()
                     val tags = TagUtils.parseTagValue(element.parameters[i])
-                    result.add(parseClaim(parameterType, tags))
+                    result.add(parseClaim(parameterType, tags, declaration.constructor.parameters[i]))
                 }
                 return result
             }
@@ -39,7 +41,7 @@ object ComponentDependencyHelper {
                 for (parameter in element.parameters) {
                     val type = parameter.type.resolve()
                     val tags = TagUtils.parseTagValue(parameter)
-                    result.add(parseClaim(type, tags))
+                    result.add(parseClaim(type, tags, element))
                 }
                 return result
             }
@@ -49,7 +51,7 @@ object ComponentDependencyHelper {
                 val result = ArrayList<DependencyClaim>(element.parameters.size)
                 for ((parameter, type) in element.parameters.zip(declaration.methodParameterTypes)) {
                     val tags = TagUtils.parseTagValue(parameter)
-                    result.add(parseClaim(type, tags))
+                    result.add(parseClaim(type, tags, parameter))
                 }
                 return result
             }
@@ -59,7 +61,10 @@ object ComponentDependencyHelper {
     }
 
 
-    private fun parseClaim(parameterType: KSType, tags: Set<String>): DependencyClaim {
+    private fun parseClaim(parameterType: KSType, tags: Set<String>, element: KSAnnotated): DependencyClaim {
+        if (parameterType.isError) {
+            throw ProcessingErrorException("Dependency type is not resolvable in the current round of processing", element)
+        }
         val typeName = parameterType.toTypeName()
         if (typeName is ParameterizedTypeName) {
             val firstTypeParam = parameterType.arguments[0].type!!.resolve()
