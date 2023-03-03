@@ -11,6 +11,7 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import ru.tinkoff.kora.database.symbol.processor.DbUtils
+import ru.tinkoff.kora.database.symbol.processor.DbUtils.addMapper
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.asFlow
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.awaitSingle
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.awaitSingleOrNull
@@ -27,6 +28,7 @@ import ru.tinkoff.kora.database.symbol.processor.model.QueryParameterParser
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isList
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
@@ -41,27 +43,25 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
     override fun generate(repositoryType: KSClassDeclaration, typeBuilder: TypeSpec.Builder, constructorBuilder: FunSpec.Builder): TypeSpec {
         this.enrichWithExecutor(repositoryType, typeBuilder, constructorBuilder)
         val repositoryResolvedType = repositoryType.asStarProjectedType()
+        val resultMappers = FieldFactory(typeBuilder, constructorBuilder, "_result_mapper_")
+        val parameterMappers = FieldFactory(typeBuilder, constructorBuilder, "_parameter_mapper_")
         for (method in repositoryType.findQueryMethods()) {
             val methodType = method.asMemberOf(repositoryResolvedType)
             val parameters = QueryParameterParser.parse(R2dbcTypes.connection, method, methodType)
             val queryAnnotation = method.findAnnotation(DbUtils.queryAnnotation)!!
             val queryString = queryAnnotation.findValue<String>("value")!!
             val query = QueryWithParameters.parse(queryString, parameters)
-            this.parseResultMapper(method, parameters, methodType)?.apply {
-                DbUtils.addMappers(typeBuilder, constructorBuilder, listOf(this))
-            }
-            val parameterMappers = DbUtils.parseParameterMappers(method, parameters, query, R2dbcTypes.parameterColumnMapper) {
-                R2dbcNativeTypes.findNativeType(it.toTypeName()) != null
-            }
-            DbUtils.addMappers(typeBuilder, constructorBuilder, parameterMappers)
-            val methodSpec = this.generate(method, methodType, query, parameters)
+            val resultMapper = this.parseResultMapper(method, parameters, methodType)?.let { resultMappers.addMapper(it) }
+            DbUtils.parseParameterMappers(method, parameters, query, R2dbcTypes.parameterColumnMapper) { R2dbcNativeTypes.findNativeType(it.toTypeName()) != null }
+                .forEach { parameterMappers.addMapper(it) }
+            val methodSpec = this.generate(method, methodType, query, parameters, resultMapper, parameterMappers)
             typeBuilder.addFunction(methodSpec)
         }
 
         return typeBuilder.primaryConstructor(constructorBuilder.build()).build()
     }
 
-    private fun generate(funDeclaration: KSFunctionDeclaration, function: KSFunction, query: QueryWithParameters, parameters: List<QueryParameter>): FunSpec {
+    private fun generate(funDeclaration: KSFunctionDeclaration, function: KSFunction, query: QueryWithParameters, parameters: List<QueryParameter>, resultMapperName: String?, parameterMappers: FieldFactory): FunSpec {
         var sql = query.rawQuery
         for (p in query.parameters.asSequence().withIndex().sortedByDescending { it.value.sqlParameterName.length }) {
             val parameter = p.value
@@ -78,7 +78,7 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
             b.addStatement("val _telemetry = this._r2dbcConnectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.Reactor.current(_reactorCtx), _query)")
             b.controlFlow("_r2dbcConnectionFactory.withConnection%L { _con ->", if (isFlow) "Flux" else "") {
                 b.addStatement("val _stmt = _con.createStatement(_query.sql())")
-                R2dbcStatementSetterGenerator.generate(b, funDeclaration, query, parameters, batchParam)
+                R2dbcStatementSetterGenerator.generate(b, query, parameters, batchParam, parameterMappers)
                 b.addStatement("val _flux = %T.from<%T>(_stmt.execute())", Flux::class, R2dbcTypes.result)
                 if (returnType == resolver.builtIns.unitType) {
                     b.addCode("_flux.flatMap { it.rowsUpdated }.then().thenReturn(Unit)")
@@ -89,7 +89,7 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
                         b.addCode("_flux.flatMap { it.rowsUpdated }.reduce(0L) { v1, v2 -> v1 + v2 }.map { %T(it) }", updateCount)
                     }
                 } else {
-                    b.addCode("%N.apply(_flux)", funDeclaration.resultMapperName())
+                    b.addCode("%N.apply(_flux)", resultMapperName)
                 }
                 b.controlFlow(".doOnEach { _s ->") {
                     b.controlFlow("if (_s.isOnComplete)") {

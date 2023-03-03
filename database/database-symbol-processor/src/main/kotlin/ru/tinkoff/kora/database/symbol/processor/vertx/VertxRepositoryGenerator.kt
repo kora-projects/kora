@@ -9,6 +9,7 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.database.symbol.processor.DbUtils
+import ru.tinkoff.kora.database.symbol.processor.DbUtils.addMapper
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.asFlow
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.findQueryMethods
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.parseExecutorTag
@@ -25,6 +26,7 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isFlow
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
+import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.parseMappingData
@@ -37,27 +39,25 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
     override fun generate(repositoryType: KSClassDeclaration, typeBuilder: TypeSpec.Builder, constructorBuilder: FunSpec.Builder): TypeSpec {
         this.enrichWithExecutor(repositoryType, typeBuilder, constructorBuilder)
         val repositoryResolvedType = repositoryType.asStarProjectedType()
+        val resultMappers = FieldFactory(typeBuilder, constructorBuilder, "_result_mapper_")
+        val parameterMappers = FieldFactory(typeBuilder, constructorBuilder, "_parameter_mapper_")
         for (method in repositoryType.findQueryMethods()) {
             val methodType = method.asMemberOf(repositoryResolvedType)
             val parameters = QueryParameterParser.parse(listOf(VertxTypes.sqlConnection, VertxTypes.sqlClient), method, methodType)
             val queryAnnotation = method.findAnnotation(DbUtils.queryAnnotation)!!
             val queryString = queryAnnotation.findValue<String>("value")!!
             val query = QueryWithParameters.parse(queryString, parameters)
-            this.parseResultMapper(method, parameters, methodType)?.apply {
-                DbUtils.addMappers(typeBuilder, constructorBuilder, listOf(this))
-            }
-            val parameterMappers = DbUtils.parseParameterMappers(method, parameters, query, VertxTypes.parameterColumnMapper) {
-                VertxNativeTypes.findNativeType(it.toTypeName()) != null
-            }
-            DbUtils.addMappers(typeBuilder, constructorBuilder, parameterMappers)
-            val methodSpec = this.generate(method, methodType, query, parameters)
+            val resultMapperName = this.parseResultMapper(method, parameters, methodType)?.let { resultMappers.addMapper(it) }
+            DbUtils.parseParameterMappers(method, parameters, query, VertxTypes.parameterColumnMapper) { VertxNativeTypes.findNativeType(it.toTypeName()) != null }
+                .forEach { parameterMappers.addMapper(it) }
+            val methodSpec = this.generate(method, methodType, query, parameters, resultMapperName, parameterMappers)
             typeBuilder.addFunction(methodSpec)
         }
 
         return typeBuilder.primaryConstructor(constructorBuilder.build()).build()
     }
 
-    private fun generate(funDeclaration: KSFunctionDeclaration, function: KSFunction, query: QueryWithParameters, parameters: List<QueryParameter>): FunSpec {
+    private fun generate(funDeclaration: KSFunctionDeclaration, function: KSFunction, query: QueryWithParameters, parameters: List<QueryParameter>, resultMapperName: String?, parameterMappers: FieldFactory): FunSpec {
         var sql = query.rawQuery
         query.parameters.indices.asSequence()
             .map { query.parameters[it].sqlParameterName to "$" + (it + 1) }
@@ -69,7 +69,7 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
         val batchParam = parameters.firstOrNull { it is QueryParameter.BatchParameter }
         val isSuspend = funDeclaration.isSuspend()
         val isFlow = funDeclaration.isFlow()
-        ParametersToTupleBuilder.generate(b, query, funDeclaration, parameters, batchParam)
+        ParametersToTupleBuilder.generate(b, query, funDeclaration, parameters, batchParam, parameterMappers)
         val connectionParameter = parameters.asSequence().filterIsInstance<QueryParameter.ConnectionParameter>().firstOrNull()?.variable?.name?.asString()
 
         b.addCode("return ")
@@ -84,9 +84,9 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
             }
         } else if (isFlow) {
             if (connectionParameter == null) {
-                b.addCode("%T.flux(this._vertxConnectionFactory, _query, _tuple, %N).%M()\n", VertxTypes.repositoryHelper, funDeclaration.resultMapperName(), asFlow)
+                b.addCode("%T.flux(this._vertxConnectionFactory, _query, _tuple, %N).%M()\n", VertxTypes.repositoryHelper, resultMapperName, asFlow)
             } else {
-                b.addCode("%T.flux(%N, this._vertxConnectionFactory.telemetry(), _query, _tuple, %N).%M()\n", VertxTypes.repositoryHelper, connectionParameter, funDeclaration.resultMapperName(), asFlow)
+                b.addCode("%T.flux(%N, this._vertxConnectionFactory.telemetry(), _query, _tuple, %N).%M()\n", VertxTypes.repositoryHelper, connectionParameter, resultMapperName, asFlow)
             }
         } else {
             if (connectionParameter == null) {
@@ -100,7 +100,7 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
             } else if (function.returnType?.toTypeName() == updateCount) {
                 b.addCode(") { %T.extractUpdateCount(it) }\n", VertxTypes.rowSetMapper)
             } else {
-                b.addCode(", %N)\n", funDeclaration.resultMapperName())
+                b.addCode(", %N)\n", resultMapperName)
             }
 
         }

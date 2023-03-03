@@ -1,27 +1,26 @@
 package ru.tinkoff.kora.database.symbol.processor.r2dbc
 
-import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.ksp.toTypeName
-import ru.tinkoff.kora.database.symbol.processor.DbUtils
 import ru.tinkoff.kora.database.symbol.processor.QueryWithParameters
 import ru.tinkoff.kora.database.symbol.processor.model.QueryParameter
+import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.parseMappingData
 
 object R2dbcStatementSetterGenerator {
     fun generate(
         b: FunSpec.Builder,
-        function: KSFunctionDeclaration,
         query: QueryWithParameters,
         parameters: List<QueryParameter>,
-        batchParam: QueryParameter?
+        batchParam: QueryParameter?,
+        parameterMappers: FieldFactory
     ) {
         if (batchParam != null) {
             b.beginControlFlow("for (_batch_%L in %N)", batchParam.name, batchParam.name)
         }
         var sqlIndex = 0
-        parameters.forEach {  p ->
+        parameters.forEach { p ->
             var parameter = p
             if (parameter is QueryParameter.ConnectionParameter) {
                 return@forEach
@@ -31,16 +30,10 @@ object R2dbcStatementSetterGenerator {
                 parameter = parameter.parameter
                 parameterName = "_batch_${parameterName}"
             }
-            if (parameter is QueryParameter.ParameterWithMapper) {
-                val mapper = DbUtils.parameterMapperName(function, parameter.variable)
-                b.addStatement("%N.apply(_stmt, %L, %N)", mapper, sqlIndex, parameterName)
-                sqlIndex++
-                return@forEach
-            }
             if (parameter is QueryParameter.SimpleParameter) {
                 val nativeType = R2dbcNativeTypes.findNativeType(parameter.type.toTypeName())
-                val mapper = parameter.variable.parseMappingData().getMapping(R2dbcTypes.parameterColumnMapper)
-                if (nativeType != null && mapper == null) {
+                val mapping = parameter.variable.parseMappingData().getMapping(R2dbcTypes.parameterColumnMapper)
+                if (nativeType != null && mapping == null) {
                     if (parameter.type.isMarkedNullable) {
                         b.controlFlow("if (%L != null)", parameterName) {
                             addCode(nativeType.bind("_stmt", parameterName, sqlIndex)).addCode("\n")
@@ -50,8 +43,12 @@ object R2dbcStatementSetterGenerator {
                     } else {
                         b.addCode(nativeType.bind("_stmt", parameterName, sqlIndex)).addCode("\n")
                     }
+                } else if (mapping?.mapper != null) {
+                    val mapper = parameterMappers.get(mapping.mapper!!, mapping.tags)
+                    b.addCode("%N.apply(_stmt, %L, %N)\n", mapper, sqlIndex, parameterName)
                 } else {
-                    b.addCode("%N.apply(_stmt, %L, %N)\n", DbUtils.parameterMapperName(function, parameter.variable), sqlIndex, parameterName)
+                    val mapper = parameterMappers.get(R2dbcTypes.parameterColumnMapper, parameter.type, parameter.variable)
+                    b.addCode("%N.apply(_stmt, %L, %N)\n", mapper, sqlIndex, parameterName)
                 }
                 sqlIndex++
                 return@forEach
@@ -68,8 +65,8 @@ object R2dbcStatementSetterGenerator {
                     } else {
                         parameterName + "." + field.property.simpleName.getShortName()
                     }
-                    val mapper = field.mapping.getMapping(R2dbcTypes.parameterColumnMapper)
-                    if (nativeType != null && mapper == null) {
+                    val mapping = field.mapping.getMapping(R2dbcTypes.parameterColumnMapper)
+                    if (nativeType != null && mapping == null) {
                         if (parameter.type.isMarkedNullable || field.type.isMarkedNullable) {
                             b.beginControlFlow("if (%L != null)", fieldValue)
                         }
@@ -79,8 +76,11 @@ object R2dbcStatementSetterGenerator {
                             b.addCode(nativeType.bindNull("_stmt", sqlIndex)).addCode("\n")
                             b.endControlFlow()
                         }
+                    } else if (mapping?.mapper != null) {
+                        val mapper = parameterMappers.get(mapping.mapper!!, mapping.tags)
+                        b.addStatement("%N.apply(_stmt, %L, %L)", mapper, sqlIndex, fieldValue)
                     } else {
-                        val mapper = DbUtils.parameterMapperName(function, parameter.variable, field.property.simpleName.getShortName())
+                        val mapper = parameterMappers.get(R2dbcTypes.parameterColumnMapper, field.type, field.property)
                         b.addStatement("%N.apply(_stmt, %L, %L)", mapper, sqlIndex, fieldValue)
                     }
                     sqlIndex++

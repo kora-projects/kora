@@ -3,6 +3,7 @@ package ru.tinkoff.kora.database.annotation.processor.jdbc;
 import com.squareup.javapoet.*;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
 import ru.tinkoff.kora.annotation.processor.common.Visitors;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
@@ -56,29 +57,30 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         var repositoryType = (DeclaredType) repositoryElement.asType();
         var queryMethods = DbUtils.findQueryMethods(this.types, this.elements, repositoryElement);
         this.enrichWithExecutor(repositoryElement, type, constructor, queryMethods);
+        var resultMappers = new FieldFactory(this.types, type, constructor, "_result_mapper_");
+        var parameterMappers = new FieldFactory(this.types, type, constructor, "_parameter_mapper_");
         for (var method : queryMethods) {
             var methodType = (ExecutableType) this.types.asMemberOf(repositoryType, method);
             var parameters = QueryParameterParser.parse(this.types, JdbcTypes.CONNECTION, method, methodType);
             var queryAnnotation = CommonUtils.findDirectAnnotation(method, DbUtils.QUERY_ANNOTATION);
             var queryString = CommonUtils.parseAnnotationValueWithoutDefault(queryAnnotation, "value").toString();
             var query = QueryWithParameters.parse(filer, queryString, parameters);
-            this.parseResultMappers(method, methodType, parameters)
-                .map(List::of)
-                .ifPresent(resultMapper -> DbUtils.addMappers(this.types, type, constructor, resultMapper));
-            DbUtils.addMappers(this.types, type, constructor, DbUtils.parseParameterMappers(
-                method,
+            var resultMapper = this.parseResultMapper(method, methodType, parameters)
+                .map(rm -> DbUtils.addMapper(resultMappers, rm))
+                .orElse(null);
+            DbUtils.addMappers(parameterMappers, DbUtils.parseParameterMappers(
                 parameters,
                 query,
                 tn -> JdbcNativeTypes.findNativeType(tn) != null,
                 JdbcTypes.PARAMETER_COLUMN_MAPPER
             ));
-            var methodSpec = this.generate(method, methodType, query, parameters);
+            var methodSpec = this.generate(method, methodType, query, parameters, resultMapper, parameterMappers);
             type.addMethod(methodSpec);
         }
         return type.addMethod(constructor.build()).build();
     }
 
-    private Optional<Mapper> parseResultMappers(ExecutableElement method, ExecutableType methodType, List<QueryParameter> parameters) {
+    private Optional<Mapper> parseResultMapper(ExecutableElement method, ExecutableType methodType, List<QueryParameter> parameters) {
         var returnType = methodType.getReturnType();
         if (CommonUtils.isMono(returnType)) {
             returnType = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
@@ -94,26 +96,25 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         if (returnType.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
             return Optional.empty();
         }
-        var mapperName = DbUtils.resultMapperName(method);
         var mappings = CommonUtils.parseMapping(method);
         var mapperType = ParameterizedTypeName.get(
             JdbcTypes.RESULT_SET_MAPPER, TypeName.get(returnType).box()
         );
         var resultSetMapper = mappings.getMapping(JdbcTypes.RESULT_SET_MAPPER);
         if (resultSetMapper != null) {
-            return Optional.of(new Mapper(resultSetMapper.mapperClass(), mapperType, mapperName));
+            return Optional.of(new Mapper(resultSetMapper.mapperClass(), mapperType, mappings.mapperTags()));
         }
         var rowMapper = mappings.getMapping(JdbcTypes.ROW_MAPPER);
         if (rowMapper != null) {
             if (CommonUtils.isList(returnType)) {
-                return Optional.of(new Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.listResultSetMapper($L)", JdbcTypes.RESULT_SET_MAPPER, c)));
+                return Optional.of(new Mapper(rowMapper.mapperClass(), mapperType, mappings.mapperTags(), c -> CodeBlock.of("$T.listResultSetMapper($L)", JdbcTypes.RESULT_SET_MAPPER, c)));
             } else if (CommonUtils.isOptional(returnType)) {
-                return Optional.of(new Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.optionalResultSetMapper($L)", JdbcTypes.RESULT_SET_MAPPER, c)));
+                return Optional.of(new Mapper(rowMapper.mapperClass(), mapperType, mappings.mapperTags(), c -> CodeBlock.of("$T.optionalResultSetMapper($L)", JdbcTypes.RESULT_SET_MAPPER, c)));
             } else {
-                return Optional.of(new Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.singleResultSetMapper($L)", JdbcTypes.RESULT_SET_MAPPER, c)));
+                return Optional.of(new Mapper(rowMapper.mapperClass(), mapperType, mappings.mapperTags(), c -> CodeBlock.of("$T.singleResultSetMapper($L)", JdbcTypes.RESULT_SET_MAPPER, c)));
             }
         }
-        return Optional.of(new Mapper(mapperType, mapperName));
+        return Optional.of(new Mapper(mapperType, mappings.mapperTags()));
     }
 
     @Override
@@ -122,7 +123,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         return this.repositoryInterface;
     }
 
-    public MethodSpec generate(ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters) {
+    public MethodSpec generate(ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters, @Nullable String resultMapperName, FieldFactory parameterMappers) {
         var batchParam = parameters.stream().filter(QueryParameter.BatchParameter.class::isInstance).findFirst().orElse(null);
         var sql = query.rawQuery();
         for (var parameter : query.parameters().stream().sorted(Comparator.<QueryWithParameters.QueryParameter>comparingInt(s -> s.sqlParameterName().length()).reversed()).toList()) {
@@ -153,7 +154,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             var _telemetry = this._connectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.current(), _query);
             try (_conToClose; var _stmt = _conToUse.prepareStatement(_query.sql())) {$>
             """, connection, JdbcTypes.CONNECTION, DbUtils.QUERY_CONTEXT, query.rawQuery(), sql);
-        b.addCode(StatementSetterGenerator.generate(method, query, parameters, batchParam));
+        b.addCode(StatementSetterGenerator.generate(method, query, parameters, batchParam, parameterMappers));
         if (isVoid(method) || isMono && isVoid(((DeclaredType) methodType.getReturnType()).getTypeArguments().get(0))) {
             if (batchParam != null) {
                 b.addStatement("var _batchResult = _stmt.executeBatch()");
@@ -184,7 +185,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                 ? CodeBlock.of("_result")
                 : CodeBlock.of("$T.requireNonNull(_result)", Objects.class);
             b.addCode("try (var _rs = _stmt.executeQuery()) {$>\n")
-                .addCode("var _result = $L.apply(_rs);\n", DbUtils.resultMapperName(method))
+                .addCode("var _result = $L.apply(_rs);\n", resultMapperName)
                 .addCode("_telemetry.close(null);\n")
                 .addCode("return $L;", result)
                 .addCode("$<\n}\n");

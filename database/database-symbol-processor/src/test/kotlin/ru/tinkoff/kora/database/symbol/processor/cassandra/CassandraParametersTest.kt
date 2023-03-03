@@ -8,9 +8,12 @@ import com.datastax.oss.driver.api.core.type.codec.TypeCodec
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry
 import com.datastax.oss.driver.internal.core.cql.DefaultColumnDefinitions
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers
 import org.mockito.MockedConstruction
 import org.mockito.Mockito
-import org.mockito.kotlin.*
+import org.mockito.kotlin.any
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 import ru.tinkoff.kora.database.cassandra.mapper.parameter.CassandraParameterColumnMapper
 import java.util.List
 
@@ -44,24 +47,6 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
         repository.invoke<Any>("test", 42)
 
         verify(executor.boundStatementBuilder).setInt(0, 42)
-        verify(executor.mockSession).execute(any<Statement<*>>())
-    }
-
-    @Test
-    fun testUnknownTypeParameter() {
-        val mapper = mock<CassandraParameterColumnMapper<Any>>()
-        val repository = compile(listOf(mapper), """
-            @Repository
-            interface TestRepository : CassandraRepository {
-                @Query("INSERT INTO test(test) VALUES (:value)")
-                fun test(value: CustomType)
-            }
-            """.trimIndent(), "class CustomType{}")
-        val value = new("CustomType")
-
-        repository.invoke<Any>("test", value)
-
-        verify(mapper).apply(same(executor.boundStatementBuilder), eq(0), same(value))
         verify(executor.mockSession).execute(any<Statement<*>>())
     }
 
@@ -196,5 +181,113 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
         order.verify(nextStmt).build()
 
         order.verifyNoMoreInteractions()
+    }
+
+    @Test
+    fun testUnknownTypeParameter() {
+        val mapper = Mockito.mock(CassandraParameterColumnMapper::class.java)
+        val repository = compile(listOf(mapper), """
+            @Repository
+            interface TestRepository : CassandraRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+                fun test(id: Long, value: UnknownType)
+            }
+            
+            """.trimIndent(), """
+            public class UnknownType {}
+            
+            """.trimIndent())
+        repository.invoke<Any>("test", 42L, new("UnknownType"))
+        verify(executor.boundStatementBuilder).setLong(0, 42L)
+        verify(mapper).apply(ArgumentMatchers.same(executor.boundStatementBuilder), ArgumentMatchers.eq(1), ArgumentMatchers.any())
+    }
+
+    @Test
+    fun testUnknownTypeEntityField() {
+        val mapper = Mockito.mock(CassandraParameterColumnMapper::class.java)
+        val repository = compile(listOf(mapper), """
+            @Repository
+            interface TestRepository : CassandraRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value0.f)")
+                fun test(id: Long, value0: TestEntity)
+            }
+            
+            """.trimIndent(), """
+            class UnknownType {}
+            """.trimIndent(), """
+            data class TestEntity (val f: UnknownType)
+            """.trimIndent())
+        repository.invoke<Any>("test", 42L, new("TestEntity", new("UnknownType")))
+        verify(executor.boundStatementBuilder).setLong(0, 42L)
+        verify(mapper).apply(ArgumentMatchers.same(executor.boundStatementBuilder), ArgumentMatchers.eq(1), ArgumentMatchers.any())
+    }
+
+    @Test
+    fun testNativeParameterNonFinalMapper() {
+        val repository = compile(listOf(newGenerated("TestMapper")), """
+            open class TestMapper : CassandraParameterColumnMapper<String> {
+                override fun apply(stmt: SettableByName<*>, index: Int, value0: String?) {
+                    stmt.set(index, mapOf("test" to value0), Map::class.java)
+                }
+            }
+            
+            """.trimIndent(), """
+            @Repository
+            interface TestRepository : CassandraRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value0)")
+                fun test(id: Long, @Mapping(TestMapper::class) value0: String);
+            }
+            
+            """.trimIndent())
+        repository.invoke<Any>("test", 42L, "test-value")
+        Mockito.verify(executor.boundStatementBuilder).setLong(0, 42L)
+        Mockito.verify(executor.boundStatementBuilder).set(1, mapOf("test" to "test-value"), Map::class.java)
+    }
+
+    @Test
+    fun testMultipleParametersWithSameMapper() {
+        val repository = compile(listOf(newGenerated("TestMapper")), """
+            open class TestMapper : CassandraParameterColumnMapper<String> {
+                override fun apply(stmt: SettableByName<*>, index: Int, value: String?) {
+                    stmt.set(index, mapOf("test" to value), Map::class.java)
+                }
+            }
+            
+            """.trimIndent(), """
+            @Repository
+            interface TestRepository : CassandraRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value0)")
+                fun test1(id: Long, @Mapping(TestMapper::class) value0: String);
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value0)")
+                fun test(id: Long, @Mapping(TestMapper::class) value0: String);
+            }
+            
+            """.trimIndent())
+    }
+
+    @Test
+    fun testMultipleParameterFieldsWithSameMapper() {
+        val repository = compile(listOf(newGenerated("TestMapper")), """
+            open class TestMapper : CassandraParameterColumnMapper<TestRecord> {
+                override fun apply(stmt: SettableByName<*>, index: Int, value: TestRecord?) {
+                    stmt.set(index, mapOf("test" to value.toString()), Map::class.java)
+                }
+            }
+            
+            """.trimIndent(), """
+            @Repository
+            interface TestRepository : CassandraRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value0.f1)")
+                fun test1(id: Long, value0: TestRecord);
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value0.f1)")
+                fun test2(id: Long, value0: TestRecord);
+                @Query("INSERT INTO test(id, value1, value2) VALUES (:id, :value1.f1, :value2.f1)")
+                fun test2(id: Long, value1: TestRecord, value2: TestRecord);
+            }
+            
+            """.trimIndent(), """
+            data class TestRecord(@Mapping(TestMapper::class) val f1: TestRecord, @Mapping(TestMapper::class) val f2: TestRecord){}
+            
+            """.trimIndent())
     }
 }

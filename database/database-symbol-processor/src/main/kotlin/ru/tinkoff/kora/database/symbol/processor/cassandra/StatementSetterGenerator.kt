@@ -1,23 +1,22 @@
 package ru.tinkoff.kora.database.symbol.processor.cassandra
 
-import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.ksp.toTypeName
-import ru.tinkoff.kora.database.symbol.processor.DbUtils.parameterMapperName
 import ru.tinkoff.kora.database.symbol.processor.QueryWithParameters
 import ru.tinkoff.kora.database.symbol.processor.model.QueryParameter
+import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.parseMappingData
 
 object StatementSetterGenerator {
     fun generate(
         b: FunSpec.Builder,
-        method: KSFunctionDeclaration,
         queryWithParameters: QueryWithParameters,
         parameters: List<QueryParameter>,
-        batchParam: QueryParameter?
+        batchParam: QueryParameter?,
+        parameterMappers: FieldFactory
     ) {
         if (batchParam != null) {
             b.addStatement("val _batch = %T.builder(%T.UNLOGGED)", CassandraTypes.batchStatement, CassandraTypes.defaultBatchType)
@@ -33,15 +32,6 @@ object StatementSetterGenerator {
             if (parameter is QueryParameter.BatchParameter) {
                 parameter = parameter.parameter
                 parameterName = "_param_${parameter.name}"
-            }
-            if (parameter is QueryParameter.ParameterWithMapper) {
-                val mapperName = parameterMapperName(method, parameter.variable)
-                b.addCode(
-                    "this.%N.apply(_stmt, %N)\n",
-                    mapperName,
-                    parameterName
-                )
-                continue
             }
             if (parameter is QueryParameter.SimpleParameter) {
                 val sqlParameter = queryWithParameters.find(i)!!
@@ -59,9 +49,14 @@ object StatementSetterGenerator {
                     for (idx in sqlParameter.sqlIndexes) {
                         b.addStatement("%L", nativeType.bind("_stmt", CodeBlock.of("%N", parameterName), CodeBlock.of("%L", idx)));
                     }
-                } else {
+                } else if (mapping?.mapper != null) {
+                    val mapper = parameterMappers.get(mapping.mapper!!, mapping.tags)
                     for (idx in sqlParameter.sqlIndexes) {
-                        val mapper = parameterMapperName(method, parameter.variable)
+                        b.addStatement("%N.apply(_stmt, %L, %N)", mapper, idx, parameter.variable.name!!.asString())
+                    }
+                } else {
+                    val mapper = parameterMappers.get(CassandraTypes.parameterColumnMapper, parameter.type, parameter.variable)
+                    for (idx in sqlParameter.sqlIndexes) {
                         b.addStatement("%N.apply(_stmt, %L, %N)", mapper, idx, parameter.variable.name!!.asString())
                     }
                 }
@@ -94,9 +89,14 @@ object StatementSetterGenerator {
                             for (idx in sqlParameter.sqlIndexes) {
                                 b.addStatement("%L", nativeType.bind("_stmt", CodeBlock.of("it"), CodeBlock.of("%L", idx)))
                             }
-                        } else {
+                        } else if (mapping?.mapper != null) {
+                            val mapper = parameterMappers.get(mapping.mapper!!, mapping.tags)
                             for (idx in sqlParameter.sqlIndexes) {
-                                val mapper = parameterMapperName(method, parameter.variable, field.property.simpleName.getShortName());
+                                b.addStatement("%N.apply(_stmt, %L, it);\n", mapper, idx)
+                            }
+                        } else {
+                            val mapper = parameterMappers.get(CassandraTypes.parameterColumnMapper, field.type, field.property);
+                            for (idx in sqlParameter.sqlIndexes) {
                                 b.addStatement("%N.apply(_stmt, %L, it);\n", mapper, idx)
                             }
                         }

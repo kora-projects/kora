@@ -315,21 +315,26 @@ public class CommonUtils {
     public record MappingData(@Nullable TypeMirror mapperClass, Set<String> mapperTags) {
         @Nullable
         public AnnotationSpec toTagAnnotation() {
-            if (this.mapperTags == null || this.mapperTags.isEmpty()) {
-                return null;
-            }
-
-            var tags = CodeBlock.builder().add("{");
-            for (var i = this.mapperTags.iterator(); i.hasNext(); ) {
-                var tag = i.next();
-                tags.add("$L.class", tag);
-                if (i.hasNext()) {
-                    tags.add(", ");
-                }
-            }
-            tags.add("}");
-            return AnnotationSpec.builder(Tag.class).addMember("value", tags.build()).build();
+            return CommonUtils.toTagAnnotation(mapperTags);
         }
+    }
+
+    @Nullable
+    public static AnnotationSpec toTagAnnotation(Set<String> t) {
+        if (t == null || t.isEmpty()) {
+            return null;
+        }
+
+        var tags = CodeBlock.builder().add("{");
+        for (var i = t.iterator(); i.hasNext(); ) {
+            var tag = i.next();
+            tags.add("$L.class", tag);
+            if (i.hasNext()) {
+                tags.add(", ");
+            }
+        }
+        tags.add("}");
+        return AnnotationSpec.builder(Tag.class).addMember("value", tags.build()).build();
     }
 
     public static MappersData parseMapping(Element element) {

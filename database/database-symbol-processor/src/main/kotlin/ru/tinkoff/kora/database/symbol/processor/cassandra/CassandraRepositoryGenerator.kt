@@ -11,6 +11,7 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import ru.tinkoff.kora.database.symbol.processor.DbUtils
+import ru.tinkoff.kora.database.symbol.processor.DbUtils.addMapper
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.asFlow
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.awaitSingle
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.awaitSingleOrNull
@@ -28,6 +29,7 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isFlow
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
+import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
@@ -40,27 +42,25 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
     override fun generate(repositoryType: KSClassDeclaration, typeBuilder: TypeSpec.Builder, constructorBuilder: FunSpec.Builder): TypeSpec {
         this.enrichWithExecutor(repositoryType, typeBuilder, constructorBuilder)
         val repositoryResolvedType = repositoryType.asStarProjectedType()
+        val resultMappers = FieldFactory(typeBuilder, constructorBuilder, "_result_mapper_")
+        val parameterMappers = FieldFactory(typeBuilder, constructorBuilder, "_parameter_mapper")
         for (method in repositoryType.findQueryMethods()) {
             val methodType = method.asMemberOf(repositoryResolvedType)
             val parameters = QueryParameterParser.parse(CassandraTypes.connection, method, methodType)
             val queryAnnotation = method.findAnnotation(DbUtils.queryAnnotation)!!
             val queryString = queryAnnotation.findValue<String>("value")!!
             val query = QueryWithParameters.parse(queryString, parameters)
-            this.parseResultMapper(method, parameters, methodType)?.apply {
-                DbUtils.addMappers(typeBuilder, constructorBuilder, listOf(this))
-            }
-            val parameterMappers = DbUtils.parseParameterMappers(method, parameters, query, CassandraTypes.parameterColumnMapper) {
-                CassandraNativeTypes.findNativeType(it.toTypeName()) != null
-            }
-            DbUtils.addMappers(typeBuilder, constructorBuilder, parameterMappers)
-            val methodSpec = this.generate(method, methodType, query, parameters)
+            val resultMapper = this.parseResultMapper(method, parameters, methodType)?.let { resultMappers.addMapper(it) }
+            DbUtils.parseParameterMappers(method, parameters, query, CassandraTypes.parameterColumnMapper) { CassandraNativeTypes.findNativeType(it.toTypeName()) != null }
+                .forEach { parameterMappers.addMapper(it) }
+            val methodSpec = this.generate(method, methodType, query, parameters, resultMapper, parameterMappers)
             typeBuilder.addFunction(methodSpec)
         }
 
         return typeBuilder.primaryConstructor(constructorBuilder.build()).build()
     }
 
-    private fun generate(funDeclaration: KSFunctionDeclaration, function: KSFunction, query: QueryWithParameters, parameters: List<QueryParameter>): FunSpec {
+    private fun generate(funDeclaration: KSFunctionDeclaration, function: KSFunction, query: QueryWithParameters, parameters: List<QueryParameter>, resultMapper: String?, parameterMappers: FieldFactory): FunSpec {
         var sql = query.rawQuery
         for (parameter in query.parameters.asSequence().sortedByDescending { it.sqlParameterName.length }) {
             sql = sql.replace(":" + parameter.sqlParameterName, "?")
@@ -83,12 +83,12 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
                     if (profile != null) {
                         b.addStatement("_stmt.setExecutionProfileName(%S)", profile)
                     }
-                    StatementSetterGenerator.generate(b, funDeclaration, query, parameters, batchParam)
+                    StatementSetterGenerator.generate(b, query, parameters, batchParam, parameterMappers)
                     b.addStatement("val _rrs = _session.executeReactive(_s)")
                     if (returnType == resolver.builtIns.unitType) {
                         b.addStatement("%T.from(_rrs).then().thenReturn(%T)", Flux::class, Unit::class)
                     } else {
-                        b.addStatement("%N.apply(_rrs)", funDeclaration.resultMapperName())
+                        b.addStatement("%N.apply(_rrs)", resultMapper!!)
                     }
                 }
                 b.controlFlow(".doOnEach { _s ->") {
@@ -115,13 +115,13 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
             if (profile != null) {
                 b.addStatement("_stmt.setExecutionProfileName(%S)", profile)
             }
-            StatementSetterGenerator.generate(b, funDeclaration, query, parameters, batchParam)
+            StatementSetterGenerator.generate(b, query, parameters, batchParam, parameterMappers)
             b.controlFlow("try") {
                 addStatement("val _rs = _session.execute(_s)")
                 if (returnType == resolver.builtIns.unitType) {
                     addStatement("_telemetry.close(null)")
                 } else {
-                    addStatement("val _result = %N.apply(_rs)", funDeclaration.resultMapperName())
+                    addStatement("val _result = %N.apply(_rs)", resultMapper!!)
                     addStatement("_telemetry.close(null)")
                     addStatement("return _result")
                 }

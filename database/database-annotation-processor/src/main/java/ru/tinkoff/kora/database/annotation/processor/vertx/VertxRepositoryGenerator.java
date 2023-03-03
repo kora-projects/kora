@@ -2,6 +2,7 @@ package ru.tinkoff.kora.database.annotation.processor.vertx;
 
 import com.squareup.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
 import ru.tinkoff.kora.annotation.processor.common.Visitors;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
@@ -59,29 +60,30 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
         var repositoryType = (DeclaredType) repositoryElement.asType();
         var queryMethods = DbUtils.findQueryMethods(this.types, this.elements, repositoryElement);
         this.enrichWithExecutor(repositoryElement, type, constructor, queryMethods);
+        var resultMappers = new FieldFactory(this.types, type, constructor, "_result_mapper_");
+        var parameterMappers = new FieldFactory(this.types, type, constructor, "_parameter_mapper_");
         for (var method : queryMethods) {
             var methodType = (ExecutableType) this.types.asMemberOf(repositoryType, method);
             var parameters = QueryParameterParser.parse(this.types, List.of(VertxTypes.CONNECTION, VertxTypes.SQL_CLIENT), method, methodType);
             var queryAnnotation = CommonUtils.findDirectAnnotation(method, DbUtils.QUERY_ANNOTATION);
             var queryString = CommonUtils.parseAnnotationValueWithoutDefault(queryAnnotation, "value").toString();
             var query = QueryWithParameters.parse(filer, queryString, parameters);
-            this.parseResultMappers(method, parameters, methodType)
-                .map(List::of)
-                .ifPresent(resultMapper -> DbUtils.addMappers(this.types, type, constructor, resultMapper));
-            DbUtils.addMappers(this.types, type, constructor, DbUtils.parseParameterMappers(
-                method,
+            var resultMapper = this.parseResultMapper(method, parameters, methodType)
+                .map(rm -> DbUtils.addMapper(resultMappers, rm))
+                .orElse(null);
+            DbUtils.addMappers(parameterMappers, DbUtils.parseParameterMappers(
                 parameters,
                 query,
                 tn -> VertxNativeTypes.find(tn) != null,
                 VertxTypes.PARAMETER_COLUMN_MAPPER
             ));
-            var methodSpec = this.generate(method, methodType, query, parameters);
+            var methodSpec = this.generate(method, methodType, query, parameters, resultMapper, parameterMappers);
             type.addMethod(methodSpec);
         }
         return type.addMethod(constructor.build()).build();
     }
 
-    private MethodSpec generate(ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters) {
+    private MethodSpec generate(ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters, @Nullable String resultMapperName, FieldFactory parameterMappers) {
         var sql = query.rawQuery();
         {
             var params = new ArrayList<Map.Entry<QueryWithParameters.QueryParameter, Integer>>(query.parameters().size());
@@ -103,7 +105,7 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
         var isCompletionStage = this.isCompletionStage(returnType);
         var isVoid = isVoid(returnType);
 
-        ParametersToTupleBuilder.generate(b, query, method, parameters, batchParam);
+        ParametersToTupleBuilder.generate(b, query, method, parameters, batchParam, parameterMappers);
         CodeBlock resultMapper;
         if (isVoid) {
             resultMapper = CodeBlock.of("_rs -> null");
@@ -112,7 +114,7 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
         } else if (returnType.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
             resultMapper = CodeBlock.of("$T::extractUpdateCount", VertxTypes.ROW_SET_MAPPER);
         } else {
-            resultMapper = CodeBlock.of("$L", DbUtils.resultMapperName(method));
+            resultMapper = CodeBlock.of("$N", resultMapperName);
         }
         if (returnType.getKind() != TypeKind.VOID) {
             b.addCode("return ");
@@ -139,9 +141,9 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
             }
         } else if (isFlux) {
             if (connectionParam == null) {
-                b.addCode("$T.flux(this._connectionFactory, _query, _tuple, $L)\n", VertxTypes.REPOSITORY_HELPER, DbUtils.resultMapperName(method));
+                b.addCode("$T.flux(this._connectionFactory, _query, _tuple, $L)\n", VertxTypes.REPOSITORY_HELPER, resultMapperName);
             } else {
-                b.addCode("$T.flux($N, this._connectionFactory.telemetry(), _query, _tuple, $L)\n", VertxTypes.REPOSITORY_HELPER, connectionParam.name(), DbUtils.resultMapperName(method));
+                b.addCode("$T.flux($N, this._connectionFactory.telemetry(), _query, _tuple, $L)\n", VertxTypes.REPOSITORY_HELPER, connectionParam.name(), resultMapperName);
             }
         } else if (isMono) {
             if (connectionParam == null) {
@@ -168,7 +170,7 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
         return b.build();
     }
 
-    private Optional<DbUtils.Mapper> parseResultMappers(ExecutableElement method, List<QueryParameter> parameters, ExecutableType methodType) {
+    private Optional<DbUtils.Mapper> parseResultMapper(ExecutableElement method, List<QueryParameter> parameters, ExecutableType methodType) {
         for (var parameter : parameters) {
             if (parameter instanceof QueryParameter.BatchParameter) {
                 return Optional.empty();
@@ -178,7 +180,6 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
         if (isVoid(returnType)) {
             return Optional.empty();
         }
-        var mapperName = DbUtils.resultMapperName(method);
         var mappings = CommonUtils.parseMapping(method);
         var rowSetMapper = mappings.getMapping(VertxTypes.ROW_SET_MAPPER);
         var rowMapper = mappings.getMapping(VertxTypes.ROW_MAPPER);
@@ -186,47 +187,47 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
             var fluxParam = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
             var mapperType = ParameterizedTypeName.get(VertxTypes.ROW_MAPPER, TypeName.get(fluxParam));
             if (rowMapper != null) {
-                return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName));
+                return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTags()));
             }
-            return Optional.of(new DbUtils.Mapper(mapperType, mapperName));
+            return Optional.of(new DbUtils.Mapper(mapperType, Set.of()));
         }
         if (CommonUtils.isMono(returnType) || this.isCompletionStage(returnType)) {
             var monoParam = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
             var mapperType = ParameterizedTypeName.get(VertxTypes.ROW_SET_MAPPER, TypeName.get(monoParam));
             if (rowSetMapper != null) {
-                return Optional.of(new DbUtils.Mapper(rowSetMapper.mapperClass(), mapperType, mapperName));
+                return Optional.of(new DbUtils.Mapper(rowSetMapper.mapperClass(), mapperType, rowSetMapper.mapperTags()));
             }
             if (rowMapper != null) {
                 if (CommonUtils.isList(monoParam)) {
-                    return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.listRowSetMapper($L)", VertxTypes.ROW_SET_MAPPER, c)));
+                    return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTags(), c -> CodeBlock.of("$T.listRowSetMapper($L)", VertxTypes.ROW_SET_MAPPER, c)));
                 } else if (CommonUtils.isOptional(monoParam)) {
-                    return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.optionalRowSetMapper($L)", VertxTypes.ROW_SET_MAPPER, c)));
+                    return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTags(), c -> CodeBlock.of("$T.optionalRowSetMapper($L)", VertxTypes.ROW_SET_MAPPER, c)));
                 } else {
-                    return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.singleRowSetMapper($L)", VertxTypes.ROW_SET_MAPPER, c)));
+                    return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTags(), c -> CodeBlock.of("$T.singleRowSetMapper($L)", VertxTypes.ROW_SET_MAPPER, c)));
                 }
             }
             if (monoParam.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
                 return Optional.empty();
             }
-            return Optional.of(new DbUtils.Mapper(mapperType, mapperName));
+            return Optional.of(new DbUtils.Mapper(mapperType, Set.of()));
         }
         var mapperType = ParameterizedTypeName.get(VertxTypes.ROW_SET_MAPPER, TypeName.get(returnType).box());
         if (rowSetMapper != null) {
-            return Optional.of(new DbUtils.Mapper(rowSetMapper.mapperClass(), mapperType, mapperName));
+            return Optional.of(new DbUtils.Mapper(rowSetMapper.mapperClass(), mapperType, rowSetMapper.mapperTags()));
         }
         if (rowMapper != null) {
             if (CommonUtils.isList(returnType)) {
-                return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.listRowSetMapper($L)", VertxTypes.ROW_SET_MAPPER, c)));
+                return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTags(), c -> CodeBlock.of("$T.listRowSetMapper($L)", VertxTypes.ROW_SET_MAPPER, c)));
             } else if (CommonUtils.isOptional(returnType)) {
-                return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.optionalRowSetMapper($L)", VertxTypes.ROW_SET_MAPPER, c)));
+                return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTags(), c -> CodeBlock.of("$T.optionalRowSetMapper($L)", VertxTypes.ROW_SET_MAPPER, c)));
             } else {
-                return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, mapperName, c -> CodeBlock.of("$T.singleRowSetMapper($L)", VertxTypes.ROW_SET_MAPPER, c)));
+                return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTags(), c -> CodeBlock.of("$T.singleRowSetMapper($L)", VertxTypes.ROW_SET_MAPPER, c)));
             }
         }
         if (returnType.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
             return Optional.empty();
         }
-        return Optional.of(new DbUtils.Mapper(mapperType, mapperName));
+        return Optional.of(new DbUtils.Mapper(mapperType, Set.of()));
     }
 
     public void enrichWithExecutor(TypeElement repositoryElement, TypeSpec.Builder builder, MethodSpec.Builder constructorBuilder, List<ExecutableElement> queryMethods) {
