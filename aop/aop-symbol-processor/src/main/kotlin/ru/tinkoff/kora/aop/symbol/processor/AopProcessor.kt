@@ -16,6 +16,7 @@ import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.findMethods
 import ru.tinkoff.kora.ksp.common.makeTagAnnotationSpec
 import ru.tinkoff.kora.ksp.common.parseTags
+import kotlin.reflect.KClass
 
 @KspExperimental
 class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: Resolver) {
@@ -104,10 +105,6 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
         val typeBuilder: TypeSpec.Builder = TypeSpec.classBuilder(aopProxyName(classDeclaration))
             .superclass(classDeclaration.toClassName())
             .addModifiers(KModifier.PUBLIC, KModifier.FINAL)
-            .generated(AopSymbolProcessor::class)
-        if (classDeclaration.isAnnotationPresent(Component::class)) {
-            typeBuilder.addAnnotation(Component::class)
-        }
 
         classDeclaration.parseTags().let { tags ->
             if (tags.isNotEmpty()) {
@@ -118,6 +115,8 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
         val classFunctions = findMethods(classDeclaration) { f ->
             !f.isConstructor() && (f.isPublic() || f.isProtected())
         }
+
+        val methodAspectsApplied = linkedSetOf<KoraAspect>()
         classFunctions.forEach { function ->
             val methodLevelTypeAspects = typeLevelAspects.toMutableList()
             val methodLevelAspects = mutableListOf<KoraAspect>()
@@ -159,6 +158,7 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
             val aspectsToApply = methodLevelTypeAspects.toMutableList()
             aspectsToApply.addAll(methodLevelAspects)
             aspectsToApply.addAll(methodParameterLevelAspects)
+
             var superCall = "super." + function.simpleName.asString()
             val overridenMethod = FunSpec.builder(function.simpleName.asString()).addModifiers(KModifier.OVERRIDE)
 
@@ -172,6 +172,7 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
                 if (result is KoraAspect.ApplyResult.Noop) {
                     continue
                 }
+
                 val methodBody: KoraAspect.ApplyResult.MethodBody = result as KoraAspect.ApplyResult.MethodBody
                 val methodName = "_" + function.simpleName.asString() + "_AopProxy_" + aspect::class.simpleName
                 superCall = methodName
@@ -197,23 +198,38 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
                 val returnType = function.returnType!!.resolve()
                 f.returns(returnType.toTypeName())
                 typeBuilder.addFunction(f.build())
+                methodAspectsApplied.add(aspect)
             }
-            val b = CodeBlock.builder()
-            if (function.returnType!!.resolve() != resolver.builtIns.unitType) {
-                b.add("return ")
-            }
-            b.add("%L(", superCall)
-            for (i in function.parameters.indices) {
-                if (i > 0) {
-                    b.add(", ")
+
+            if (methodAspectsApplied.isNotEmpty()) {
+                val b = CodeBlock.builder()
+                if (function.returnType!!.resolve() != resolver.builtIns.unitType) {
+                    b.add("return ")
                 }
-                val parameter = function.parameters[i]
-                b.add("%L", parameter)
+                b.add("%L(", superCall)
+                for (i in function.parameters.indices) {
+                    if (i > 0) {
+                        b.add(", ")
+                    }
+                    val parameter = function.parameters[i]
+                    b.add("%L", parameter)
+                }
+                b.add(")\n")
+                overridenMethod.addCode(b.build())
+                typeBuilder.addFunction(overridenMethod.build())
             }
-            b.add(")\n")
-            overridenMethod.addCode(b.build())
-            typeBuilder.addFunction(overridenMethod.build())
         }
+
+        val generatedClasses = mutableListOf<KClass<*>>()
+        generatedClasses.add(AopSymbolProcessor::class)
+        methodAspectsApplied.forEach { generatedClasses.add(it::class) }
+
+        typeBuilder.generated(generatedClasses)
+
+        if (classDeclaration.isAnnotationPresent(Component::class)) {
+            typeBuilder.addAnnotation(Component::class)
+        }
+
         val constructorBuilder = FunSpec.constructorBuilder()
         for (i in constructor.parameters.indices) {
             val parameter = constructor.parameters[i]

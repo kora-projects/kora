@@ -1,6 +1,8 @@
 package ru.tinkoff.kora.validation.common.constraint;
 
 import javax.annotation.Nonnull;
+
+import org.jetbrains.annotations.NotNull;
 import ru.tinkoff.kora.validation.common.ValidationContext;
 import ru.tinkoff.kora.validation.common.Validator;
 import ru.tinkoff.kora.validation.common.Violation;
@@ -12,7 +14,7 @@ final class NotBlankStringValidator<T extends CharSequence> implements Validator
 
     @Nonnull
     @Override
-    public List<Violation> validate(T value, @Nonnull ValidationContext context) {
+    public @NotNull List<Violation> validate(T value, @Nonnull ValidationContext context) {
         if (value == null) {
             return List.of(context.violates("Should be not blank, but was null"));
         } else if (value.isEmpty()) {

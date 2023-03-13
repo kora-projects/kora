@@ -1,6 +1,8 @@
 package ru.tinkoff.kora.validation.common.constraint;
 
 import javax.annotation.Nonnull;
+
+import org.jetbrains.annotations.NotNull;
 import ru.tinkoff.kora.validation.common.ValidationContext;
 import ru.tinkoff.kora.validation.common.Validator;
 import ru.tinkoff.kora.validation.common.Violation;
@@ -21,6 +23,9 @@ final class RangeLongNumberValidator<T extends Number> implements Validator<T> {
     private final Predicate<T> toPredicate;
 
     RangeLongNumberValidator(double fromDouble, double toDouble, Range.Boundary boundary) {
+        if(toDouble < fromDouble)
+            throw new IllegalArgumentException("From can't be less than To, but From was " + fromDouble + " and To was " + toDouble);
+
         this.from = BigDecimal.valueOf(fromDouble).longValue();
         this.to = BigDecimal.valueOf(toDouble).longValue();
         this.boundary = boundary;
@@ -37,7 +42,7 @@ final class RangeLongNumberValidator<T extends Number> implements Validator<T> {
 
     @Nonnull
     @Override
-    public List<Violation> validate(T value, @Nonnull ValidationContext context) {
+    public @NotNull List<Violation> validate(T value, @Nonnull ValidationContext context) {
         if (value == null) {
             return List.of(context.violates("Should be in range from '" + from + "' to '" + to + "', but was null"));
         }

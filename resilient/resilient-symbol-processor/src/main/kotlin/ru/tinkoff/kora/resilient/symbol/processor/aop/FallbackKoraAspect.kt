@@ -34,28 +34,14 @@ class FallbackKoraAspect(val resolver: Resolver) : KoraAspect {
 
     override fun apply(method: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
         if (method.isFuture()) {
-            throw ProcessingErrorException(
-                ProcessingError(
-                    "@Fallback can't be applied for types assignable from ${Future::class.java}", method, Diagnostic.Kind.NOTE
-                )
-            )
-        }
-        if (method.isMono()) {
-            throw ProcessingErrorException(
-                ProcessingError(
-                    "@Fallback can't be applied for types assignable from ${Mono::class.java}", method, Diagnostic.Kind.NOTE
-                )
-            )
-        }
-        if (method.isFlux()) {
-            throw ProcessingErrorException(
-                ProcessingError(
-                    "@Fallback can't be applied for types assignable from ${Flux::class.java}", method, Diagnostic.Kind.NOTE
-                )
-            )
+            throw ProcessingErrorException("@Fallback can't be applied for types assignable from ${Future::class.java}", method)
+        } else if (method.isMono()) {
+            throw ProcessingErrorException("@Fallback can't be applied for types assignable from ${Mono::class.java}", method)
+        } else if (method.isFlux()) {
+            throw ProcessingErrorException("@Fallback can't be applied for types assignable from ${Flux::class.java}", method)
         }
 
-        val annotation = method.annotations.asSequence().filter { a -> a.annotationType.resolve().toClassName().canonicalName == ANNOTATION_TYPE }.first()
+        val annotation = method.annotations.filter { a -> a.annotationType.resolve().toClassName().canonicalName == ANNOTATION_TYPE }.first()
         val fallbackName = annotation.arguments.asSequence().filter { arg -> arg.name!!.getShortName() == "value" }.map { arg -> arg.value.toString() }.first()
         val fallback = annotation.asFallback(method)
 

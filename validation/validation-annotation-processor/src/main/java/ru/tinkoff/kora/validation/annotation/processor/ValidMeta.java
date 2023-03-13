@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.validation.annotation.processor;
 
+import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 
@@ -13,13 +14,20 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public record ValidatorMeta(Type source, Validator validator, TypeElement sourceElement, List<Field> fields) {
+public record ValidMeta(Type source, Validator validator, TypeElement sourceElement, List<Field> fields) {
 
-    public ValidatorMeta(Type source, TypeElement sourceElement, List<Field> fields) {
+    public static final ClassName VALID_TYPE = ClassName.get("ru.tinkoff.kora.validation.common.annotation", "Valid");
+    public static final ClassName VALIDATED_BY_TYPE = ClassName.get("ru.tinkoff.kora.validation.common.annotation", "ValidatedBy");
+    public static final ClassName CONTEXT_TYPE = ClassName.get("ru.tinkoff.kora.validation.common", "ValidationContext");
+    public static final ClassName VALIDATOR_TYPE = ClassName.get("ru.tinkoff.kora.validation.common", "Validator");
+    public static final ClassName VIOLATION_TYPE = ClassName.get("ru.tinkoff.kora.validation.common", "Violation");
+    public static final ClassName EXCEPTION_TYPE = ClassName.get("ru.tinkoff.kora.validation.common", "ViolationException");
+
+    public ValidMeta(Type source, TypeElement sourceElement, List<Field> fields) {
         this(source,
             new Validator(
-                Type.ofName("ru.tinkoff.kora.validation.common.Validator", List.of(source)),
-                new Type(source.packageName, "$" + source.simpleName()  + "_Validator", List.of(source))
+                Type.ofName(VALIDATOR_TYPE.canonicalName(), List.of(source)),
+                new Type(source.packageName, "$" + source.simpleName() + "_Validator", List.of(source))
             ),
             sourceElement, fields);
     }
@@ -27,7 +35,7 @@ public record ValidatorMeta(Type source, Validator validator, TypeElement source
     public record Validated(Type target) {
 
         public Type validator() {
-            return Type.ofName("ru.tinkoff.kora.validation.common.Validator", List.of(target));
+            return Type.ofName(VALIDATOR_TYPE.canonicalName(), List.of(target));
         }
     }
 
@@ -51,7 +59,7 @@ public record ValidatorMeta(Type source, Validator validator, TypeElement source
         public record Factory(Type type, Map<String, Object> parameters) {
 
             public Type validator() {
-                return Type.ofName("ru.tinkoff.kora.validation.common.Validator", type.generic());
+                return Type.ofName(VALIDATOR_TYPE.canonicalName(), type.generic());
             }
         }
     }
@@ -116,6 +124,10 @@ public record ValidatorMeta(Type source, Validator validator, TypeElement source
 
         @Override
         public String toString() {
+            if (generic().isEmpty()) {
+                return canonicalName();
+            }
+
             final String generics = generic().stream()
                 .map(Type::toString)
                 .collect(Collectors.joining(", ", "<", ">"));

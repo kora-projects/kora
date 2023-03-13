@@ -42,9 +42,11 @@ public class CommonUtils {
         var isNullable = element.getAnnotationMirrors()
             .stream()
             .anyMatch(a -> a.getAnnotationType().toString().endsWith(".Nullable"));
+
         if (isNullable || element.getKind() != ElementKind.RECORD_COMPONENT) {
             return isNullable;
         }
+
         return element.getEnclosingElement().getEnclosedElements()
             .stream()
             .filter(e -> e.getKind() == ElementKind.FIELD)

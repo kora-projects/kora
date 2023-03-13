@@ -84,6 +84,15 @@ object KspCommonUtils {
 
     fun TypeSpec.Builder.generated(generator: KClass<*>) = addAnnotation(AnnotationSpec.builder(CommonClassNames.generated).addMember("%S", generator.java.canonicalName).build())
 
+    fun TypeSpec.Builder.generated(generated: List<KClass<*>>) {
+        val generatedValue = generated.asSequence()
+            .map { CodeBlock.of("%S", it.qualifiedName) }
+            .joinToString(", ", "value = [", "]")
+
+        addAnnotation(AnnotationSpec.builder(CommonClassNames.generated)
+            .addMember(generatedValue).build())
+    }
+
     fun KSFunctionDeclaration.parametrized(returnType: KSType, parameterTypes: List<KSType>): KSFunction {
         val typeParameters = this.typeParameters
         return object : KSFunction {

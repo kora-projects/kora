@@ -1,8 +1,9 @@
 dependencies {
     implementation project(":annotation-processor-common")
     implementation project(":kora-app-annotation-processor")
+    implementation project(":aop:aop-annotation-processor")
 
-    implementation libs.typesafe.config
+    implementation libs.reactor.core
 
     testImplementation testFixtures(project(":annotation-processor-common"))
     testImplementation project(":validation:validation-common")

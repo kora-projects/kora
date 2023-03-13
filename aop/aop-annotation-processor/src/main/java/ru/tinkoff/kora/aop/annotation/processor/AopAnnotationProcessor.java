@@ -42,22 +42,23 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
         super.init(processingEnv);
         this.aspects = ServiceLoader.load(KoraAspectFactory.class, this.getClass().getClassLoader()).stream()
             .map(ServiceLoader.Provider::get)
-            .<KoraAspect>mapMulti((t, sink) -> t.create(processingEnv).ifPresent(sink))
+            .<KoraAspect>mapMulti((factory, sink) -> factory.create(processingEnv).ifPresent(sink))
             .toList();
 
-        this.aopProcessor = new AopProcessor(
-            this.types, this.elements, this.aspects
-        );
+        this.aopProcessor = new AopProcessor( this.types, this.elements, this.aspects );
+
         var aspects = this.aspects.stream()
             .map(Object::getClass)
             .map(Class::getCanonicalName)
             .collect(Collectors.joining("\n\t", "\t", ""));
         log.debug("Discovered aspects:\n{}", aspects);
+
         this.annotations = this.aspects.stream()
             .<String>mapMulti((a, sink) -> a.getSupportedAnnotationTypes().forEach(sink))
             .map(c -> this.elements.getTypeElement(c))
             .filter(Objects::nonNull)
             .toArray(TypeElement[]::new);
+
         var noAopAnnotation = Arrays.stream(this.annotations)
             .filter(a -> a.getAnnotation(AopAnnotation.class) == null)
             .toList();
