@@ -1,6 +1,23 @@
 # Логирование
 
-В kora имеется поддержка структурированных логов.
+Модуль который позволяет добавить поддержку структурированных логов, конфигурации логов в `hocon`.
+
+### Dependency
+
+```groovy
+implementation "ru.tinkoff.kora:logging-logback"
+implementation "ch.qos.logback:logback-classic:1.4.5"
+```
+
+### Modules
+
+```java
+@KoraApp
+public interface ApplicationModules extends LogbackModule { }
+```
+
+### Description
+
 Передать структурированные данные в запись лога можно двумя способами:
 
 - Через Marker:
