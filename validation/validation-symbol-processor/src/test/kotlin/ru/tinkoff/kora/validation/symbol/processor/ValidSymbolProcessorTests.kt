@@ -4,23 +4,23 @@ import com.google.devtools.ksp.KspExperimental
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import ru.tinkoff.kora.validation.common.ValidationContext
-import ru.tinkoff.kora.validation.symbol.processor.testdata.Bar
-import ru.tinkoff.kora.validation.symbol.processor.testdata.Foo
-import ru.tinkoff.kora.validation.symbol.processor.testdata.Taz
+import ru.tinkoff.kora.validation.symbol.processor.testdata.ValidBar
+import ru.tinkoff.kora.validation.symbol.processor.testdata.ValidFoo
+import ru.tinkoff.kora.validation.symbol.processor.testdata.ValidTaz
 import java.time.OffsetDateTime
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @KspExperimental
-class ValidationSymbolProcessorTests : TestAppRunner() {
+class ValidSymbolProcessorTests : ValidRunner() {
 
     @Test
     fun validateSuccess() {
         // give
         val service = getBarValidator()
-        val bar = Bar()
+        val bar = ValidBar()
         bar.id = "1"
         bar.codes = listOf(1)
-        bar.tazs = listOf(Taz("1"))
+        bar.tazs = listOf(ValidTaz("1"))
 
         // then
         val violations = service.validate(bar);
@@ -31,7 +31,7 @@ class ValidationSymbolProcessorTests : TestAppRunner() {
     fun validateRangeFail() {
         // give
         val service = getFooValidator()
-        val value = Foo("1", 0, OffsetDateTime.now(), null)
+        val value = ValidFoo("1", 0, OffsetDateTime.now(), null)
 
         // then
         val violations = service.validate(value);
@@ -42,10 +42,10 @@ class ValidationSymbolProcessorTests : TestAppRunner() {
     fun validateInnerValidatorForListFail() {
         // give
         val service = getBarValidator()
-        val value = Bar()
+        val value = ValidBar()
         value.id = "1"
         value.codes = listOf(1)
-        value.tazs = listOf(Taz("a"))
+        value.tazs = listOf(ValidTaz("a"))
 
         // then
         val violations = service.validate(value);
@@ -56,11 +56,11 @@ class ValidationSymbolProcessorTests : TestAppRunner() {
     fun validateInnerValidatorForValueFail() {
         // give
         val service = getFooValidator()
-        val bar = Bar().apply {
+        val bar = ValidBar().apply {
             id = "1"
             codes = listOf()
         }
-        val value = Foo("1", 1, OffsetDateTime.now(), bar)
+        val value = ValidFoo("1", 1, OffsetDateTime.now(), bar)
 
         // then
         val violations = service.validate(value);
@@ -71,11 +71,11 @@ class ValidationSymbolProcessorTests : TestAppRunner() {
     fun validateFailFast() {
         // give
         val service = getFooValidator()
-        val bar = Bar().apply {
+        val bar = ValidBar().apply {
             id = "1"
             codes = listOf(1, 2, 3, 4, 5, 6)
         }
-        val value = Foo("1", 0, OffsetDateTime.now(), bar)
+        val value = ValidFoo("1", 0, OffsetDateTime.now(), bar)
 
         // then
         val violations = service.validate(value, ValidationContext.builder().failFast(true).build())
@@ -86,11 +86,11 @@ class ValidationSymbolProcessorTests : TestAppRunner() {
     fun validateFailSlow() {
         // give
         val service = getFooValidator()
-        val bar = Bar().apply {
+        val bar = ValidBar().apply {
             id = "1"
             codes = listOf(1, 2, 3, 4, 5, 6)
         }
-        val value = Foo("1", 0, OffsetDateTime.now(), bar)
+        val value = ValidFoo("1", 0, OffsetDateTime.now(), bar)
 
         // then
         val violations = service.validate(value, ValidationContext.builder().failFast(false).build())

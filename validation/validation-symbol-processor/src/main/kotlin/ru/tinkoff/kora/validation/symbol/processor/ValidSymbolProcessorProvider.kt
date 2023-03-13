@@ -6,9 +6,9 @@ import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
 
 @KspExperimental
-class ValidationSymbolProcessorProvider : SymbolProcessorProvider {
+class ValidSymbolProcessorProvider : SymbolProcessorProvider {
 
     override fun create(environment: SymbolProcessorEnvironment): SymbolProcessor {
-        return ValidationSymbolProcessor(environment)
+        return ValidSymbolProcessor(environment)
     }
 }

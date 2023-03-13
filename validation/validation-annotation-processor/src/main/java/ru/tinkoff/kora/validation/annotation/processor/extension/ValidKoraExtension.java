@@ -16,13 +16,13 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 
-public final class ValidationKoraExtension implements KoraExtension {
+public final class ValidKoraExtension implements KoraExtension {
 
     private final Types types;
     private final Elements elements;
     private final TypeMirror validatorType;
 
-    public ValidationKoraExtension(ProcessingEnvironment processingEnv) {
+    public ValidKoraExtension(ProcessingEnvironment processingEnv) {
         this.types = processingEnv.getTypeUtils();
         this.elements = processingEnv.getElementUtils();
         this.validatorType = types.erasure(elements.getTypeElement("ru.tinkoff.kora.validation.common.Validator").asType());

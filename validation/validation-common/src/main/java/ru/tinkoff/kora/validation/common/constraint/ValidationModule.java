@@ -65,7 +65,7 @@ public interface ValidationModule {
         return RangeLongNumberValidator::new;
     }
 
-    default RangeValidatorFactory<Integer> rangeIntConstraintFactory() {
+    default RangeValidatorFactory<Integer> rangeIntegerConstraintFactory() {
         return RangeLongNumberValidator::new;
     }
 

@@ -17,7 +17,7 @@ public interface Validator<T> {
      *
      * @param value   to validate
      * @param context context of validation and its options {@link ValidationContext}
-     * @return validation violations
+     * @return validation violations, if input value is null then fails with violation
      */
     @Nonnull
     List<Violation> validate(@Nullable T value, @Nonnull ValidationContext context);
@@ -26,11 +26,11 @@ public interface Validator<T> {
      * Validates value and return validation failures if occurred
      *
      * @param value to validate
-     * @return validation violations
+     * @return validation violations, if input value is null then fails with violation
      */
     @Nonnull
     default List<Violation> validate(@Nullable T value) {
-        return validate(value, new SimpleValidationContext(SimpleValidationContext.SimpleFieldPath.ROOT, false));
+        return validate(value, ValidationContext.builder().build());
     }
 
     /**
@@ -38,7 +38,7 @@ public interface Validator<T> {
      *
      * @param value   to validate
      * @param context context of validation and its options {@link ValidationContext}
-     * @throws ViolationException is thrown if any violations occur
+     * @throws ViolationException is thrown if any violations occur, if input value is null then fails with violation
      */
     default void validateAndThrow(@Nullable T value, @Nonnull ValidationContext context) throws ViolationException {
         final List<Violation> violations = validate(value, context);
@@ -51,7 +51,7 @@ public interface Validator<T> {
      * Validates value and return validation failures if occurred
      *
      * @param value to validate
-     * @throws ViolationException is thrown if any violations occur
+     * @throws ViolationException is thrown if any violations occur, if input value is null then fails with violation
      */
     default void validateAndThrow(@Nullable T value) throws ViolationException {
         final List<Violation> violations = validate(value);

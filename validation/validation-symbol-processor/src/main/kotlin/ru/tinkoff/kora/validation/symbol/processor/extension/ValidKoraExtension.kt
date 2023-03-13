@@ -2,15 +2,15 @@ package ru.tinkoff.kora.validation.symbol.processor.extension
 
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.getConstructors
-import com.google.devtools.ksp.isOpen
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
+import ru.tinkoff.kora.validation.symbol.processor.VALIDATOR_TYPE
 
-class ValidationKoraExtension(resolver: Resolver) : KoraExtension {
+class ValidKoraExtension(resolver: Resolver) : KoraExtension {
 
-    private val validatorType = resolver.getClassDeclarationByName("ru.tinkoff.kora.validation.common.Validator")!!.asStarProjectedType()
+    private val validatorType = resolver.getClassDeclarationByName(VALIDATOR_TYPE.canonicalName)!!.asStarProjectedType()
 
     override fun getDependencyGenerator(resolver: Resolver, type: KSType): (() -> ExtensionResult)? {
         val actualType = if (type.nullability == Nullability.PLATFORM) type.makeNotNullable() else type

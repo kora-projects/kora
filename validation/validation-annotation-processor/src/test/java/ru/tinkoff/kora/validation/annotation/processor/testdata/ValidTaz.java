@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.validation.annotation.processor.testdata;
 
 import ru.tinkoff.kora.validation.common.annotation.Pattern;
-import ru.tinkoff.kora.validation.common.annotation.Validated;
+import ru.tinkoff.kora.validation.common.annotation.Valid;
 
-@Validated
-public record Taz(@Pattern("\\d+") String number) {}
+@Valid
+public record ValidTaz(@Pattern("\\d+") String number) {}

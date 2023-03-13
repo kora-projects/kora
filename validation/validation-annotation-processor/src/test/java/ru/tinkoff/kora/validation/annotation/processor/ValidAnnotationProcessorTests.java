@@ -1,26 +1,28 @@
 package ru.tinkoff.kora.validation.annotation.processor;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import ru.tinkoff.kora.validation.common.ValidationContext;
 import ru.tinkoff.kora.validation.common.Violation;
-import ru.tinkoff.kora.validation.annotation.processor.testdata.Bar;
-import ru.tinkoff.kora.validation.annotation.processor.testdata.Foo;
-import ru.tinkoff.kora.validation.annotation.processor.testdata.Taz;
+import ru.tinkoff.kora.validation.annotation.processor.testdata.ValidBar;
+import ru.tinkoff.kora.validation.annotation.processor.testdata.ValidFoo;
+import ru.tinkoff.kora.validation.annotation.processor.testdata.ValidTaz;
 
 import java.time.OffsetDateTime;
 import java.util.List;
 
-class ValidationAnnotationProcessorTests extends TestAppRunner {
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+class ValidAnnotationProcessorTests extends ValidRunner {
 
     @Test
     void validateSuccess() {
         // given
         var service = getBarValidator();
-        final Bar value = new Bar()
+        final ValidBar value = new ValidBar()
             .setId("1")
             .setCodes(List.of(1))
             .setTazs(List.of(
-                new Taz("1")
+                new ValidTaz("1")
             ));
 
         // then
@@ -32,7 +34,7 @@ class ValidationAnnotationProcessorTests extends TestAppRunner {
     void validateRangeFail() {
         // given
         var service = getFooValidator();
-        var value = new Foo("1", 1111L, OffsetDateTime.now(), null);
+        var value = new ValidFoo("1", 1111L, OffsetDateTime.now(), null);
 
         // then
         final List<Violation> violations = service.validate(value);
@@ -43,11 +45,11 @@ class ValidationAnnotationProcessorTests extends TestAppRunner {
     void validateInnerValidatorForListFail() {
         // given
         var service = getBarValidator();
-        var value = new Bar()
+        var value = new ValidBar()
             .setId("1")
             .setCodes(List.of(1))
             .setTazs(List.of(
-                new Taz("a")
+                new ValidTaz("a")
             ));
 
         // then
@@ -59,7 +61,7 @@ class ValidationAnnotationProcessorTests extends TestAppRunner {
     void validateInnerValidatorForValueFail() {
         // given
         var service = getFooValidator();
-        var value = new Foo("1", 1L, OffsetDateTime.now(), new Bar()
+        var value = new ValidFoo("1", 1L, OffsetDateTime.now(), new ValidBar()
             .setId("1")
             .setCodes(List.of(1, 2, 3, 4, 5, 6)));
 
@@ -72,7 +74,7 @@ class ValidationAnnotationProcessorTests extends TestAppRunner {
     void validateFailFast() {
         // given
         var service = getFooValidator();
-        var value = new Foo("1", 0L, OffsetDateTime.now(), new Bar()
+        var value = new ValidFoo("1", 0L, OffsetDateTime.now(), new ValidBar()
             .setId("1")
             .setCodes(List.of(1, 2, 3, 4, 5, 6)));
 
@@ -85,8 +87,8 @@ class ValidationAnnotationProcessorTests extends TestAppRunner {
     void validateFailSlow() {
         // given
         var service = getFooValidator();
-        var value = new Foo("1", 0L, OffsetDateTime.now(),
-            new Bar()
+        var value = new ValidFoo("1", 0L, OffsetDateTime.now(),
+            new ValidBar()
                 .setId("1")
                 .setCodes(List.of(1, 2, 3, 4, 5, 6)));
 

@@ -1,27 +1,26 @@
 package ru.tinkoff.kora.validation.annotation.processor.testdata;
 
-import ru.tinkoff.kora.validation.common.annotation.Size;
-import ru.tinkoff.kora.validation.common.annotation.Validated;
+import ru.tinkoff.kora.validation.common.annotation.*;
 
 import javax.annotation.Nullable;
 import java.util.List;
 
-@Validated
-public class Bar {
+@Valid
+public class ValidBar {
     @Nullable
     private String id;
     @Size(min = 1, max = 5)
     private List<Integer> codes;
-    @Validated
+    @Valid
     @Nullable
-    private List<Taz> tazs;
+    private List<ValidTaz> tazs;
 
     @Nullable
     public String getId() {
         return id;
     }
 
-    public Bar setId(@Nullable String id) {
+    public ValidBar setId(String id) {
         this.id = id;
         return this;
     }
@@ -30,16 +29,16 @@ public class Bar {
         return codes;
     }
 
-    public Bar setCodes(List<Integer> codes) {
+    public ValidBar setCodes(List<Integer> codes) {
         this.codes = codes;
         return this;
     }
 
-    public List<Taz> getTazs() {
+    public List<ValidTaz> getTazs() {
         return tazs;
     }
 
-    public Bar setTazs(List<Taz> tazs) {
+    public ValidBar setTazs(List<ValidTaz> tazs) {
         this.tazs = tazs;
         return this;
     }

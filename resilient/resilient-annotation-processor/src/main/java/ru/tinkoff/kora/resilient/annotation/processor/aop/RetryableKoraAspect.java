@@ -35,7 +35,7 @@ public class RetryableKoraAspect implements KoraAspect {
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         if (MethodUtils.isFuture(method, env)) {
-            throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.NOTE, "@Retryable can't be applied for types assignable from " + Future.class, method));
+            throw new ProcessingErrorException("@Retryable can't be applied for types assignable from " + Future.class, method);
         }
 
         final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream().filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE)).findFirst();

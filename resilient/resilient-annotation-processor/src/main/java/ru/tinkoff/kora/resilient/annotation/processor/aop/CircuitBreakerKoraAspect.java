@@ -36,10 +36,10 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         if (MethodUtils.isFuture(method, env)) {
-            throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.NOTE, "@CircuitBreaker can't be applied for types assignable from " + Future.class, method));
+            throw new ProcessingErrorException("@CircuitBreaker can't be applied for types assignable from " + Future.class, method);
         }
         if (MethodUtils.isVoid(method)) {
-            throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.NOTE, "@CircuitBreaker can't be applied for types assignable from " + Void.class, method));
+            throw new ProcessingErrorException("@CircuitBreaker can't be applied for types assignable from " + Void.class, method);
         }
 
         final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream().filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE)).findFirst();

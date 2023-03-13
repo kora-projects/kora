@@ -6,6 +6,7 @@ plugins {
 dependencies {
     implementation project(":symbol-processor-common")
     implementation project(":kora-app-symbol-processor")
+    implementation project(":aop:aop-symbol-processor")
 
     implementation libs.ksp.api
     implementation libs.kotlin.reflect
@@ -19,6 +20,8 @@ dependencies {
     testImplementation project(":symbol-processor-common")
     testImplementation project(":config:config-symbol-processor")
     testImplementation project(":kora-app-symbol-processor")
+    testImplementation(libs.kotlin.stdlib.lib)
+    testImplementation(libs.kotlin.coroutines.reactor)
 }
 
 apply from: "${project.rootDir}/kotlin-plugin.gradle"

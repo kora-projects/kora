@@ -1,6 +1,7 @@
 dependencies {
     api project(":common")
     implementation project(":config:config-common")
+    implementation project(":aop:aop-annotation-processor")
 
     implementation "org.jetbrains:annotations:23.0.0"
     implementation libs.typesafe.config

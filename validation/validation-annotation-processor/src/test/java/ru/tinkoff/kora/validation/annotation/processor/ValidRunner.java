@@ -3,24 +3,23 @@ package ru.tinkoff.kora.validation.annotation.processor;
 import org.junit.jupiter.api.Assertions;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.application.graph.TypeRef;
-import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor;
-import ru.tinkoff.kora.validation.annotation.processor.testdata.Bar;
-import ru.tinkoff.kora.validation.annotation.processor.testdata.Foo;
-import ru.tinkoff.kora.validation.annotation.processor.testdata.Taz;
+import ru.tinkoff.kora.validation.annotation.processor.testdata.ValidBar;
+import ru.tinkoff.kora.validation.annotation.processor.testdata.ValidFoo;
+import ru.tinkoff.kora.validation.annotation.processor.testdata.ValidTaz;
 import ru.tinkoff.kora.validation.common.Validator;
 import ru.tinkoff.kora.validation.common.constraint.ValidationModule;
 
 import java.util.List;
 
-public abstract class TestAppRunner extends Assertions implements ValidationModule {
+public abstract class ValidRunner extends Assertions implements ValidationModule {
 
     private static ClassLoader classLoader = null;
 
-    protected Validator<Foo> getFooValidator() {
+    protected Validator<ValidFoo> getFooValidator() {
         try {
             final ClassLoader classLoader = getClassLoader();
-            final Class<?> clazz = classLoader.loadClass("ru.tinkoff.kora.validation.annotation.processor.testdata.$Foo_Validator");
-            return (Validator<Foo>) clazz.getConstructors()[0].newInstance(notEmptyStringConstraintFactory(),
+            final Class<?> clazz = classLoader.loadClass("ru.tinkoff.kora.validation.annotation.processor.testdata.$ValidFoo_Validator");
+            return (Validator<ValidFoo>) clazz.getConstructors()[0].newInstance(notEmptyStringConstraintFactory(),
                 patternStringConstraintFactory(),
                 rangeLongConstraintFactory(),
                 getBarValidator());
@@ -31,13 +30,13 @@ public abstract class TestAppRunner extends Assertions implements ValidationModu
         }
     }
 
-    protected Validator<Bar> getBarValidator() {
+    protected Validator<ValidBar> getBarValidator() {
         try {
             final ClassLoader classLoader = getClassLoader();
-            final Class<?> clazz = classLoader.loadClass("ru.tinkoff.kora.validation.annotation.processor.testdata.$Bar_Validator");
-            return (Validator<Bar>) clazz.getConstructors()[0].newInstance(
+            final Class<?> clazz = classLoader.loadClass("ru.tinkoff.kora.validation.annotation.processor.testdata.$ValidBar_Validator");
+            return (Validator<ValidBar>) clazz.getConstructors()[0].newInstance(
                 sizeListConstraintFactory(TypeRef.of(Integer.class)),
-                listValidator(getTazValidator(), TypeRef.of(Taz.class)));
+                listValidator(getTazValidator(), TypeRef.of(ValidTaz.class)));
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
@@ -45,11 +44,11 @@ public abstract class TestAppRunner extends Assertions implements ValidationModu
         }
     }
 
-    protected Validator<Taz> getTazValidator() {
+    protected Validator<ValidTaz> getTazValidator() {
         try {
             final ClassLoader classLoader = getClassLoader();
-            final Class<?> clazz = classLoader.loadClass("ru.tinkoff.kora.validation.annotation.processor.testdata.$Taz_Validator");
-            return (Validator<Taz>) clazz.getConstructors()[0].newInstance(patternStringConstraintFactory());
+            final Class<?> clazz = classLoader.loadClass("ru.tinkoff.kora.validation.annotation.processor.testdata.$ValidTaz_Validator");
+            return (Validator<ValidTaz>) clazz.getConstructors()[0].newInstance(patternStringConstraintFactory());
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
@@ -60,8 +59,8 @@ public abstract class TestAppRunner extends Assertions implements ValidationModu
     private ClassLoader getClassLoader() {
         try {
             if (classLoader == null) {
-                final List<Class<?>> classes = List.of(Foo.class, Bar.class, Taz.class);
-                classLoader = TestUtils.annotationProcess(classes, new ValidationAnnotationProcessor());
+                final List<Class<?>> classes = List.of(ValidFoo.class, ValidBar.class, ValidTaz.class);
+                classLoader = TestUtils.annotationProcess(classes, new ValidAnnotationProcessor());
             }
 
             return classLoader;
