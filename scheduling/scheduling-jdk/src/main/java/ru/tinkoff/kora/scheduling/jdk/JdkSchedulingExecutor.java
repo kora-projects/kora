@@ -13,7 +13,7 @@ public interface JdkSchedulingExecutor {
     /**
      * @see java.util.concurrent.ScheduledExecutorService#scheduleAtFixedRate(Runnable, long, long, TimeUnit)
      */
-    ScheduledFuture<?> scheduleAtFixedRate(Runnable command, long initialDelayMillis, long periodMillis, TimeUnit timeUnit);
+    ScheduledFuture<?> scheduleAtFixedRate(Runnable command, long initialDelay, long period, TimeUnit timeUnit);
 
 
     /**
