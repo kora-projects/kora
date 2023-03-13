@@ -1,5 +1,7 @@
 package ru.tinkoff.kora.scheduling.jdk;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.Lifecycle;
@@ -14,12 +16,14 @@ public abstract class AbstractJob implements Lifecycle {
     private final JdkSchedulingExecutor service;
     private final Runnable command;
     private final AtomicBoolean started = new AtomicBoolean(false);
+    private final Logger log;
     private volatile ScheduledFuture<?> scheduledFuture;
 
     public AbstractJob(SchedulingTelemetry telemetry, JdkSchedulingExecutor service, Runnable command) {
         this.telemetry = telemetry;
         this.service = service;
         this.command = command;
+        this.log = LoggerFactory.getLogger(telemetry.jobClass());
     }
 
     @Override
@@ -40,6 +44,7 @@ public abstract class AbstractJob implements Lifecycle {
             this.command.run();
             telemetryCtx.close(null);
         } catch (Exception e) {
+            this.log.warn("Uncaught exception while running job {}#{}", this.telemetry.jobClass().getCanonicalName(), this.telemetry.jobMethod());
             telemetryCtx.close(e);
         }
     }

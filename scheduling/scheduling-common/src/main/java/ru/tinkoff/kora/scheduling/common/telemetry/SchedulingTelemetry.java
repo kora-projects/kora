@@ -9,5 +9,9 @@ public interface SchedulingTelemetry {
         void close(@Nullable Throwable exception);
     }
 
+    Class<?> jobClass();
+
+    String jobMethod();
+
     SchedulingTelemetryContext get(Context ctx);
 }

@@ -21,6 +21,6 @@ public final class DefaultSchedulingTelemetryFactory implements SchedulingTeleme
         var metrics = this.metrics == null ? null : this.metrics.get(jobClass, jobMethod);
         var tracer = this.tracer == null ? null : this.tracer.get(jobClass, jobMethod);
         var logger = this.logger == null ? null : this.logger.get(jobClass, jobMethod);
-        return new DefaultSchedulingTelemetry(metrics, tracer, logger);
+        return new DefaultSchedulingTelemetry(jobClass, jobMethod, metrics, tracer, logger);
     }
 }
