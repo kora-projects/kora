@@ -15,6 +15,7 @@ import ru.tinkoff.kora.test.postgres.PostgresTestContainer;
 import ru.tinkoff.kora.vertx.common.VertxUtil;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -43,10 +44,11 @@ class VertxConnectionFactoryTest {
             params.port(),
             params.db(),
             "test",
-            1000,
-            1000,
-            1000,
-            1
+            Duration.ofMillis(1000),
+            Duration.ofMillis(1000),
+            Duration.ofMillis(1000),
+            1,
+            true
         );
         var db = new VertxDatabase(config, eventLoopGroup, new DefaultDataBaseTelemetryFactory(null, null, null));
         db.init().block();

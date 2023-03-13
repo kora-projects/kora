@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface R2dbcModule extends DataBaseModule {
+
     default <T> R2dbcResultFluxMapper<T, Mono<T>> monoR2dbcResultFluxMapper(R2dbcRowMapper<T> rowMapper) {
         return R2dbcResultFluxMapper.mono(rowMapper);
     }

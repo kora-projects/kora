@@ -4,12 +4,13 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import ru.tinkoff.kora.database.common.telemetry.DefaultDataBaseTelemetryFactory;
-import ru.tinkoff.kora.database.jdbc.JdbcDataBase;
-import ru.tinkoff.kora.database.jdbc.JdbcDataBaseConfig;
+import ru.tinkoff.kora.database.jdbc.JdbcDatabase;
+import ru.tinkoff.kora.database.jdbc.JdbcDatabaseConfig;
 import ru.tinkoff.kora.test.postgres.PostgresParams;
 import ru.tinkoff.kora.test.postgres.PostgresTestContainer;
 
 import java.sql.Connection;
+import java.time.Duration;
 import java.util.Properties;
 
 @ExtendWith({PostgresTestContainer.class})
@@ -17,22 +18,22 @@ public class FlywayJdbcDatabaseInterceptorTest {
 
     @Test
     public void testFlywayInterceptor(PostgresParams params) {
-        var config = new JdbcDataBaseConfig(
+        var config = new JdbcDatabaseConfig(
             params.user(),
             params.password(),
             params.jdbcUrl(),
             "testPool",
             null,
-            1000L,
-            1000L,
-            1000L,
-            1000L,
-            1000L,
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
             2, // flyway uses two connections for migration and schema management
             0,
             new Properties()
         );
-        var dataBase = new JdbcDataBase(config, new DefaultDataBaseTelemetryFactory(null, null, null));
+        var dataBase = new JdbcDatabase(config, new DefaultDataBaseTelemetryFactory(null, null, null));
         dataBase.init().block();
         try {
 

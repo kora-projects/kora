@@ -157,7 +157,6 @@ public class DbUtils {
                         mappers.add(new DbUtils.Mapper(mapperType, Set.of()));
                     }
                 }
-                continue;
             }
         }
         return mappers;

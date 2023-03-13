@@ -15,25 +15,26 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-public class JdbcDataBase implements Lifecycle, Wrapped<DataSource>, JdbcConnectionFactory {
+public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnectionFactory {
     private final Context.Key<Connection> connectionKey = new Context.Key<>() {
         @Override
         protected Connection copy(Connection object) {
             return null;
         }
     };
-    private final JdbcDataBaseConfig dataBaseConfig;
+
+    private final JdbcDatabaseConfig databaseConfig;
     private final HikariDataSource dataSource;
     private final DataBaseTelemetry telemetry;
 
-    public JdbcDataBase(JdbcDataBaseConfig dataBaseConfig, DataBaseTelemetryFactory telemetryFactory) {
-        this(dataBaseConfig, telemetryFactory == null ? null : telemetryFactory.get(dataBaseConfig.poolName(), "", dataBaseConfig.username()));
+    public JdbcDatabase(JdbcDatabaseConfig databaseConfig, DataBaseTelemetryFactory telemetryFactory) {
+        this(databaseConfig, telemetryFactory == null ? null : telemetryFactory.get(databaseConfig.poolName(), "", databaseConfig.username()));
     }
 
-    public JdbcDataBase(JdbcDataBaseConfig dataBaseConfig, DataBaseTelemetry telemetry) {
-        this.dataBaseConfig = dataBaseConfig;
+    public JdbcDatabase(JdbcDatabaseConfig databaseConfig, DataBaseTelemetry telemetry) {
+        this.databaseConfig = databaseConfig;
         this.telemetry = telemetry;
-        this.dataSource = new HikariDataSource(this.dataBaseConfig.toHikariConfig());
+        this.dataSource = new HikariDataSource(this.databaseConfig.toHikariConfig());
         if (telemetry != null) this.dataSource.setMetricRegistry(telemetry.getMetricRegistry());
     }
 

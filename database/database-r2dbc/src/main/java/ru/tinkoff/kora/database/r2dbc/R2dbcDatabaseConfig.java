@@ -1,43 +1,55 @@
 package ru.tinkoff.kora.database.r2dbc;
 
+import io.r2dbc.pool.ConnectionPoolConfiguration;
+
 import javax.annotation.Nullable;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.Map;
 
 public record R2dbcDatabaseConfig(
-    String url,
+    String r2dbcUrl,
     String username,
     String password,
     String poolName,
-    long connectionTimeout,
+    Duration connectionTimeout,
+    Duration connectionCreateTimeout,
+    Duration statementTimeout,
+    Duration idleTimeout,
+    Duration maxLifetime,
     int acquireRetry,
-    long idleTimeout,
-    long maxLifetime,
     int maxPoolSize,
-    int minIdle
-
-) {
+    int minIdle,
+    Map<String, String> options) {
 
     public R2dbcDatabaseConfig(
-        String url,
+        String r2dbcUrl,
         String username,
         String password,
         String poolName,
-        @Nullable Long connectionTimeout,
+        @Nullable Duration connectionTimeout,
+        @Nullable Duration connectionCreateTimeout,
+        @Nullable Duration statementTimeout,
+        @Nullable Duration idleTimeout,
+        @Nullable Duration maxLifetime,
         @Nullable Integer acquireRetry,
-        @Nullable Long idleTimeout,
-        @Nullable Long maxLifetime,
         @Nullable Integer maxPoolSize,
-        @Nullable Integer minPoolSize) {
+        @Nullable Integer minPoolSize,
+        @Nullable Map<String, String> options) {
         this(
-            url,
+            r2dbcUrl,
             username,
             password,
             poolName,
-            connectionTimeout != null ? connectionTimeout : 30000L,
-            acquireRetry != null ? acquireRetry : 1,
-            idleTimeout != null ? idleTimeout : 10 * 60 * 1000L,
-            maxLifetime != null ? maxLifetime : 0L,
+            connectionTimeout != null ? connectionTimeout : Duration.ofSeconds(30),
+            connectionCreateTimeout != null ? connectionCreateTimeout : Duration.ofSeconds(30),
+            statementTimeout,
+            idleTimeout != null ? idleTimeout : Duration.ofMinutes(10),
+            maxLifetime != null ? maxLifetime : ConnectionPoolConfiguration.NO_TIMEOUT,
+            acquireRetry != null ? acquireRetry : 3,
             maxPoolSize != null ? maxPoolSize : 10,
-            minPoolSize != null ? minPoolSize : 0
+            minPoolSize != null ? minPoolSize : 0,
+            options != null ? options : Collections.emptyMap()
         );
     }
 }

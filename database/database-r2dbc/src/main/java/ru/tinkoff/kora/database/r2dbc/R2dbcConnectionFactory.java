@@ -13,6 +13,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 public interface R2dbcConnectionFactory {
+
     Mono<Connection> currentConnection();
 
     Mono<Connection> newConnection();
@@ -24,7 +25,6 @@ public interface R2dbcConnectionFactory {
     <T> Mono<T> withConnection(Function<Connection, Mono<T>> callback);
 
     <T> Flux<T> withConnectionFlux(Function<Connection, Flux<T>> callback);
-
 
     default <T> Mono<T> query(QueryContext queryContext, Consumer<Statement> statementSetter, Function<Flux<Result>, Mono<T>> resultFluxConsumer) {
         return Mono.deferContextual(ctx -> {

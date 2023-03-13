@@ -11,13 +11,14 @@ import ru.tinkoff.kora.test.postgres.PostgresParams;
 import ru.tinkoff.kora.test.postgres.PostgresTestContainer;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.function.Consumer;
 
 @ExtendWith({PostgresTestContainer.class})
-class JdbcDataBaseTest {
+class JdbcDatabaseTest {
     static {
         if (LoggerFactory.getLogger("ROOT") instanceof Logger log) {
             log.setLevel(Level.INFO);
@@ -27,23 +28,23 @@ class JdbcDataBaseTest {
         }
     }
 
-    private static void withDb(PostgresParams params, Consumer<JdbcDataBase> consumer) {
-        var config = new JdbcDataBaseConfig(
+    private static void withDb(PostgresParams params, Consumer<JdbcDatabase> consumer) {
+        var config = new JdbcDatabaseConfig(
             params.user(),
             params.password(),
             params.jdbcUrl(),
             "testPool",
             null,
-            1000L,
-            1000L,
-            1000L,
-            1000L,
-            1000L,
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
             1,
             0,
             new Properties()
         );
-        var db = new JdbcDataBase(config, new DefaultDataBaseTelemetryFactory(null, null, null));
+        var db = new JdbcDatabase(config, new DefaultDataBaseTelemetryFactory(null, null, null));
         db.init().block();
         try {
             consumer.accept(db);

@@ -4,6 +4,8 @@ import com.squareup.javapoet.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.*;
+import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
+import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
@@ -127,7 +129,6 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
         } else {
             b.addCode("return _flux.flatMap($T::getRowsUpdated).then()", R2dbcTypes.RESULT);
         }
-
         b.addCode("""
             .doOnEach(_s -> {
               if (_s.isOnComplete()) {
