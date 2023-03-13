@@ -2,12 +2,17 @@
 
 Kora использует micrometer для записи метрик приложения.
 
-## Подключение
-
-Для подключения метрик необходимо в Application примешать `ru.tinkoff.kora.micrometer.module.MetricsModule` из `micrometer-module` и добавить зависимость в Gradle:
+### Dependency
 
 ```groovy
-    implementation "ru.tinkoff.kora:micrometer-module"
+implementation "ru.tinkoff.kora:micrometer-module"
+```
+
+### Module
+
+```java
+@KoraApp
+public interface ApplicationModules extends MetricsModule { }
 ```
 
 После этого в Metrics.globalRegistry будет зарегистрирован `PrometheusMeterRegistry`, который будет использоваться во всех компонентах, собирающих метрики.
