@@ -10,7 +10,9 @@ import ru.tinkoff.kora.test.postgres.PostgresParams;
 import ru.tinkoff.kora.test.postgres.PostgresTestContainer;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -25,12 +27,15 @@ class R2dbcDatabaseTest {
             params.user(),
             params.password(),
             "test",
-            1000L,
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(10000L),
+            Duration.ofMillis(10000L),
             3,
-            1000L,
-            10000L,
             2,
-            0
+            0,
+            Collections.emptyMap()
         );
         var db = new R2dbcDatabase(config, List.of(), new DefaultDataBaseTelemetryFactory(null, null, null));
         db.init();

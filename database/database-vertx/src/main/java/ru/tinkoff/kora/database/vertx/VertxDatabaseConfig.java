@@ -4,6 +4,7 @@ import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.sqlclient.PoolOptions;
 
 import javax.annotation.Nullable;
+import java.time.Duration;
 
 public record VertxDatabaseConfig(
     String username,
@@ -12,10 +13,11 @@ public record VertxDatabaseConfig(
     int port,
     String database,
     String poolName,
-    int connectionTimeout,
-    int idleTimeout,
-    int acquireTimeout,
-    int maxPoolSize) {
+    Duration connectionTimeout,
+    Duration idleTimeout,
+    Duration acquireTimeout,
+    int maxPoolSize,
+    boolean cachePreparedStatements) {
 
     public VertxDatabaseConfig(
         String username,
@@ -24,10 +26,11 @@ public record VertxDatabaseConfig(
         int port,
         String database,
         String poolName,
-        @Nullable Integer connectionTimeout,
-        @Nullable Integer idleTimeout,
-        @Nullable Integer acquireTimeout,
-        @Nullable Integer maxPoolSize) {
+        @Nullable Duration connectionTimeout,
+        @Nullable Duration idleTimeout,
+        @Nullable Duration acquireTimeout,
+        @Nullable Integer maxPoolSize,
+        @Nullable Boolean cachePreparedStatements) {
         this(
             username,
             password,
@@ -36,14 +39,15 @@ public record VertxDatabaseConfig(
             database,
             poolName,
             defaultConnectionTimeout(connectionTimeout),
-            idleTimeout != null ? idleTimeout : 10 * 60 * 1000,
+            idleTimeout != null ? idleTimeout : Duration.ofMinutes(10),
             acquireTimeout != null ? acquireTimeout : defaultConnectionTimeout(connectionTimeout),
-            maxPoolSize != null ? maxPoolSize : 10
+            maxPoolSize != null ? maxPoolSize : 10,
+            cachePreparedStatements != null ? cachePreparedStatements : true
         );
     }
 
-    private static int defaultConnectionTimeout(Integer connectionTimeout) {
-        return connectionTimeout != null ? connectionTimeout : 30000;
+    private static Duration defaultConnectionTimeout(Duration connectionTimeout) {
+        return connectionTimeout != null ? connectionTimeout : Duration.ofSeconds(30);
     }
 
     public PgConnectOptions toPgConnectOptions() {
@@ -54,15 +58,15 @@ public record VertxDatabaseConfig(
             .setDatabase(this.database)
             .setUser(this.username)
             .setPassword(this.password)
-            .setConnectTimeout(this.connectionTimeout)
-            .setIdleTimeout(this.idleTimeout)
-            .setCachePreparedStatements(true);
+            .setConnectTimeout(Math.toIntExact(this.connectionTimeout.toMillis()))
+            .setIdleTimeout(Math.toIntExact(this.idleTimeout.toMillis()))
+            .setCachePreparedStatements(this.cachePreparedStatements);
     }
 
     public PoolOptions toPgPoolOptions() {
         return new PoolOptions()
-            .setIdleTimeout(this.idleTimeout)
-            .setConnectionTimeout(this.connectionTimeout)
+            .setIdleTimeout(Math.toIntExact(this.idleTimeout.toMillis()))
+            .setConnectionTimeout(Math.toIntExact(this.connectionTimeout.toMillis()))
             .setName(this.poolName)
             .setMaxSize(this.maxPoolSize);
     }

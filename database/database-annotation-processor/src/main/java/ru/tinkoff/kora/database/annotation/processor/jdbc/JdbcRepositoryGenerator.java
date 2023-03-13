@@ -3,6 +3,7 @@ package ru.tinkoff.kora.database.annotation.processor.jdbc;
 import com.squareup.javapoet.*;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
 import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
 import ru.tinkoff.kora.annotation.processor.common.Visitors;
 import ru.tinkoff.kora.common.Tag;
@@ -68,6 +69,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             var resultMapper = this.parseResultMapper(method, methodType, parameters)
                 .map(rm -> DbUtils.addMapper(resultMappers, rm))
                 .orElse(null);
+
             DbUtils.addMappers(parameterMappers, DbUtils.parseParameterMappers(
                 parameters,
                 query,
@@ -135,9 +137,11 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         if (isMono) {
             b.addCode("return $T.fromCompletionStage(() -> $T.supplyAsync(() -> {$>\n", Mono.class, CompletableFuture.class);
         }
+
         var connection = parameters.stream().filter(QueryParameter.ConnectionParameter.class::isInstance).findFirst()
             .map(p -> CodeBlock.of("$L", p.variable()))
             .orElse(CodeBlock.of("this._connectionFactory.currentConnection()"));
+
         b.addCode("""
             var _conToUse = $L;
             $T _conToClose;

@@ -2,10 +2,9 @@ package ru.tinkoff.kora.database.r2dbc;
 
 import io.r2dbc.pool.ConnectionPool;
 import io.r2dbc.pool.ConnectionPoolConfiguration;
-import io.r2dbc.spi.Connection;
-import io.r2dbc.spi.ConnectionFactories;
-import io.r2dbc.spi.ConnectionFactoryOptions;
-import io.r2dbc.spi.ValidationDepth;
+import io.r2dbc.spi.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.Lifecycle;
@@ -13,11 +12,16 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory;
 
-import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 public class R2dbcDatabase implements R2dbcConnectionFactory, Lifecycle {
+
+    private static final Logger logger = LoggerFactory.getLogger(R2dbcDatabase.class);
+
+    private static final Option<Map<String, String>> OPTIONS = Option.valueOf("options");
+
     private final Context.Key<Connection> connectionKey = new Context.Key<>() {
         @Override
         protected Connection copy(Connection object) {
@@ -35,7 +39,7 @@ public class R2dbcDatabase implements R2dbcConnectionFactory, Lifecycle {
 
     public R2dbcDatabase(R2dbcDatabaseConfig config, List<Function<ConnectionFactoryOptions.Builder, ConnectionFactoryOptions.Builder>> customizers, DataBaseTelemetryFactory telemetryFactory) {
         this.connectionFactory = r2dbcConnectionFactory(config, customizers);
-        this.telemetry = telemetryFactory.get(config.poolName(), config.url().substring(5, config.url().indexOf(":", 6)), config.username());
+        this.telemetry = telemetryFactory.get(config.poolName(), config.r2dbcUrl().substring(5, config.r2dbcUrl().indexOf(":", 6)), config.username());
     }
 
     @Override
@@ -143,7 +147,9 @@ public class R2dbcDatabase implements R2dbcConnectionFactory, Lifecycle {
                 c -> {
                     ctx.remove(this.connectionKey);
                     return Mono.fromRunnable(() -> {
-                        Mono.from(c.close()).subscribe();// todo maybe we should log errors here
+                        Mono.from(c.close())
+                            .doOnError(e -> logger.warn(e.getMessage()))
+                            .subscribe();
                     });
                 }
             );
@@ -151,24 +157,31 @@ public class R2dbcDatabase implements R2dbcConnectionFactory, Lifecycle {
     }
 
     private static ConnectionPool r2dbcConnectionFactory(R2dbcDatabaseConfig config, List<Function<ConnectionFactoryOptions.Builder, ConnectionFactoryOptions.Builder>> customizers) {
-        var connectionFactoryOptions = ConnectionFactoryOptions.parse(config.url())
+        var connectionFactoryOptions = ConnectionFactoryOptions.parse(config.r2dbcUrl())
             .mutate()
             .option(ConnectionFactoryOptions.USER, config.username())
             .option(ConnectionFactoryOptions.PASSWORD, config.password())
-            .option(ConnectionFactoryOptions.CONNECT_TIMEOUT, Duration.ofMillis(config.connectionTimeout()));
+            .option(ConnectionFactoryOptions.CONNECT_TIMEOUT, config.connectionTimeout());
+
+        if (config.statementTimeout() != null) {
+            connectionFactoryOptions.option(ConnectionFactoryOptions.STATEMENT_TIMEOUT, config.statementTimeout());
+        }
+
+        connectionFactoryOptions.option(OPTIONS, config.options());
+
         for (var customizer : customizers) {
             connectionFactoryOptions = customizer.apply(connectionFactoryOptions);
         }
 
         var connectionFactory = ConnectionFactories.get(connectionFactoryOptions.build());
-
         return new ConnectionPool(ConnectionPoolConfiguration.builder()
             .name(config.poolName())
+            .maxLifeTime(config.maxLifetime())
+            .maxIdleTime(config.idleTimeout())
+            .maxAcquireTime(config.connectionTimeout())
+            .maxCreateConnectionTime(config.connectionCreateTimeout())
             .maxSize(config.maxPoolSize())
-            .maxLifeTime(Duration.ofMillis(config.maxLifetime()))
-            .maxAcquireTime(Duration.ofMillis(config.connectionTimeout()))
             .acquireRetry(config.acquireRetry())
-            .maxIdleTime(Duration.ofMillis(config.idleTimeout()))
             .validationQuery("SELECT 1")
             .validationDepth(ValidationDepth.REMOTE)
             .connectionFactory(connectionFactory)
@@ -177,8 +190,7 @@ public class R2dbcDatabase implements R2dbcConnectionFactory, Lifecycle {
 
     @Override
     public Mono<Void> init() {
-        return this.connectionFactory.warmup()
-            .then();
+        return this.connectionFactory.warmup().then();
     }
 
     @Override

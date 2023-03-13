@@ -312,7 +312,7 @@ import org.flywaydb.core.Flyway;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.GraphInterceptor;
 import ru.tinkoff.kora.common.util.ReactorUtils;
-import ru.tinkoff.kora.database.jdbc.JdbcDataBase;
+import ru.tinkoff.kora.database.jdbc.JdbcDatabase;
 
 public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<JdbcDataBase> {
     @Override

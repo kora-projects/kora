@@ -29,19 +29,14 @@ public record CassandraConfig(
         if (obj == null || obj.getClass() != this.getClass()) return false;
         var that = (CassandraConfig) obj;
         return Objects.equals(this.profiles, that.profiles) &&
-            Objects.equals(this.basic, that.basic) &&
-            Objects.equals(this.advanced, that.advanced) &&
-            Objects.equals(this.auth, that.auth);
+               Objects.equals(this.basic, that.basic) &&
+               Objects.equals(this.advanced, that.advanced) &&
+               Objects.equals(this.auth, that.auth);
     }
 
-    public record CassandraCredentials(
-        String login,
-        String password
-    ) {
-    }
+    public record CassandraCredentials(String login, String password) {}
 
-    public record Profile(Basic basic, Advanced advanced) {
-    }
+    public record Profile(Basic basic, Advanced advanced) {}
 
     public record Basic(
         @Nullable BasicRequestConfig request,
