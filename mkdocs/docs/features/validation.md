@@ -7,15 +7,15 @@
 **Java**:
 
 ```groovy
-annotationProcessor "ru.tinkoff.kora:validation-annotation-processor"
-implementation "ru.tinkoff.kora:validation-common"
+annotationProcessor "ru.tinkoff.kora:annotation-processors"
+implementation "ru.tinkoff.kora:validation:validation-common"
 ```
 
 **Kotlin**:
 
 ```groovy
-ksp "ru.tinkoff.kora:validation-symbol-processor"
-implementation "ru.tinkoff.kora:validation-common"
+ksp "ru.tinkoff.kora:symbol-processors"
+implementation "ru.tinkoff.kora:validation:validation-common"
 ```
 
 ## Validation
@@ -336,3 +336,16 @@ public @interface MyValid { }
 @Valid
 public record Foo(@MyValid String number) { }
 ```
+
+## Supported Types
+
+Поддерживаемые типы возвращаемых методов для AOP:
+
+Java:
+* Обычный метод
+* Project Reactor (Mono & Flux)
+
+Kotlin:
+* Обычный метод
+* Suspend
+* Flow

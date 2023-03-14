@@ -1,18 +1,11 @@
-# Description
+# Cache
 
 Модуль предоставляет AOP реализацию Cache'ей.
-
-Поддерживаются обычные **синхронные** и **Reactor Mono** операции.
 
 # Getting Started
 
 Допустим имеется класс:
 ```java
-import ru.tinkoff.kora.common.Component;
-
-import java.util.concurrent.ThreadLocalRandom;
-import java.math.BigDecimal;
-
 @Component
 public class CacheableTargetSync {
 
@@ -49,12 +42,6 @@ public class CacheableTargetSync {
 Реализация указывается в *tags* либо используется дефолтная если подключен дефолтный модуль (пример модуля *DefaultCaffeineCacheModule*/*DefaultRedisCacheModule*).
 
 ```java
-import ru.tinkoff.kora.cache.annotation.Cacheable;
-import ru.tinkoff.kora.common.Component;
-
-import java.util.concurrent.ThreadLocalRandom;
-import java.math.BigDecimal;
-
 @Component
 public class CacheableTargetSync {
 
@@ -91,13 +78,6 @@ public class CacheableTargetSync {
 Реализация указывается в *tags* либо используется дефолтная если подключен дефолтный модуль (пример модуля *DefaultCaffeineCacheModule*/*DefaultRedisCacheModule*).
 
 ```java
-import ru.tinkoff.kora.cache.annotation.CachePut;
-import ru.tinkoff.kora.cache.annotation.Cacheable;
-import ru.tinkoff.kora.common.Component;
-
-import java.util.concurrent.ThreadLocalRandom;
-import java.math.BigDecimal;
-
 @Component
 public class CacheableTargetSync {
 
@@ -135,15 +115,6 @@ public class CacheableTargetSync {
 Реализация указывается в *tags* либо используется дефолтная если подключен дефолтный модуль (пример модуля *DefaultCaffeineCacheModule*/*DefaultRedisCacheModule*).
 
 ```java
-import ru.tinkoff.kora.cache.annotation.CacheInvalidate;
-import ru.tinkoff.kora.cache.annotation.CachePut;
-import ru.tinkoff.kora.cache.annotation.Cacheable;
-import ru.tinkoff.kora.cache.caffeine.CaffeineCacheManager;
-import ru.tinkoff.kora.common.Component;
-
-import java.util.concurrent.ThreadLocalRandom;
-import java.math.BigDecimal;
-
 @Component
 public class CacheableTargetSync {
 
@@ -180,14 +151,6 @@ public class CacheableTargetSync {
 Реализация указывается в *tags* либо используется дефолтная если подключен дефолтный модуль (пример модуля *DefaultCaffeineCacheModule*/*DefaultRedisCacheModule*).
 
 ```java
-import ru.tinkoff.kora.cache.annotation.CacheInvalidate;
-import ru.tinkoff.kora.cache.annotation.CachePut;
-import ru.tinkoff.kora.cache.annotation.Cacheable;
-import ru.tinkoff.kora.common.Component;
-
-import java.util.concurrent.ThreadLocalRandom;
-import java.math.BigDecimal;
-
 @Component
 public class CacheableTargetSync {
 
@@ -218,16 +181,6 @@ public class CacheableTargetSync {
 Все примеры были бы аналогичны и поддерживаются для Reactor Mono, пример такого класса:
 
 ```java
-package ru.tinkoff.kora.cache.redis.testdata;
-
-import reactor.core.publisher.Mono;
-import ru.tinkoff.kora.cache.annotation.CacheInvalidate;
-import ru.tinkoff.kora.cache.annotation.CachePut;
-import ru.tinkoff.kora.cache.annotation.Cacheable;
-import ru.tinkoff.kora.common.Component;
-
-import java.math.BigDecimal;
-
 @Component
 public class CacheableTargetMono {
 
@@ -292,12 +245,6 @@ public class CacheableTargetMono {
 В случае если в каком либо месте у вас будет не соответствие ключа по сигнатуре аргументов метода, вы получите ошибку на этапе компиляции.
 
 ```java
-import ru.tinkoff.kora.cache.annotation.Cacheable;
-import ru.tinkoff.kora.common.Component;
-
-import java.util.concurrent.ThreadLocalRandom;
-import java.math.BigDecimal;
-
 @Component
 public class CacheableTargetSync {
 
@@ -321,25 +268,43 @@ public class CacheableTargetSync {
 
 ## Caffeine
 
+Описание конфигурации:
+* `expireAfterWrite` - Время по истечении которого значение для ключа будет удалено, отчитывается после добавления значения. *(Optional)*
+* `expireAfterAccess` - Время по истечении которого значение для ключа будет удалено, отчитывается после операции чтения. *(Optional)*
+* `initialSize` - Начальный размер кэша (помогает избежать ресазинга в случае активного набухания кэша) *(Optional)*
+* `maximumSize` - Максимальный размер кэша (При достижении границы **или чуть ранее** будет исключать из кэша наименее актуальные значения) *(Optional)*
+
 Предоставляет модули *DefaultCaffeineCacheModule* для использования Caffeine как дефолт реализацию кеша для приложения,
 также *CaffeineCacheModule* для использования Caffeine кеша только где указаны соответсвующее теги в аннотации.
 
-Пример конфигурации для *my_cache* кэша.
-
+Пример конфигурации для *my_cache* кэша:
 ```hocon
 cache {
   caffeine {
     my_cache { 
-      expireAfterWrite = 10s    # Duration. Время по истечении которого значение для данного ключа будет удалено, отчитывается после добавления значения.
-      expireAfterAccess = 10s   # Duration. Время по истечении которого значение для данного ключа будет удалено, отчитывается после добавления значения, время сбрасывается при операциях чтения/записи.
-      initialSize = 10          # Начальный размер кэша (помогает избежать ресазинга в случае активного набухани кэша)
-      maximumSize = 10          # Максимальный размер кэша (При достижении границы **или чуть ранее** будет исключать из кэша значения которые наименее вероятно будут использованы)
+      expireAfterWrite = 10s
+      expireAfterAccess = 10s
+      initialSize = 10
+      maximumSize = 10
     }
   }
 }
 ```
 
 ## Redis
+
+Описание конфигурации подключения к Redis (Lettuce клиент):
+* uri - URI редиса
+* user - Юзер *(Optional)*
+* password - Пароль юзера *(Optional)*
+* database - Номер базы *(Optional)*
+* protocol - Протокол *(Optional)*
+* socketTimeout - Время таймаута коннекта *(Optional)*
+* commandTimeout - Время таймаута команды *(Optional)*
+
+Описание конфигурации Redis Cache:
+* expireAfterWrite - При записи устанавливает время expiration (см. https://redis.io/commands/psetex/)
+* expireAfterAccess - При чтении устанавливает время expiration (см. https://redis.io/commands/getex/)
 
 Предоставляет модули *DefaultRedisCacheModule* для использования Redis как дефолт реализацию кеша для приложения,
 также *RedisCacheModule* для использования Redis кеша только где указаны соответсвующее теги в аннотации.
@@ -349,20 +314,20 @@ cache {
 Требуется обязательно сконфигурировать клиент Lettuce для доступа в Redis.
 
 ```hocon
-lettuce {                           # Default Клиент редиса для кеша
-  uri = "redis://locahost:6379"     # URI редиса
-  user = "admin"                    # Юзер              (Optional)
-  password = "12345"                # Пароль юзера      (Optional)
-  database = 1                      # Номер базы        (Optional)
-  protocol = "REP3"                 # Протокол          (Optional)
-  socketTimeout = 15s               # Duration. Время таймаута коннекта     (Optional)
-  commandTimeout = 15s              # Duration. Время таймаута команды      (Optional)
+lettuce {
+  uri = "redis://locahost:6379"
+  user = "admin"
+  password = "12345"
+  database = 1
+  protocol = "REP3"
+  socketTimeout = 15s
+  commandTimeout = 15s
 }
 cache {
   redis {
     my_cache {
-      expireAfterWrite = 10s          # Duration. При записи устанавлиет время expiration (см. https://redis.io/commands/psetex/)
-      expireAfterAccess = 10s         # Duration. При чтении устанавлиет время expiration (см. https://redis.io/commands/getex/)
+      expireAfterWrite = 10s
+      expireAfterAccess = 10s
     }
   }
 }
@@ -399,3 +364,15 @@ class OtherService {
 ### Кеширование неблокирующих операций
 
 По аналогии с методом `LoadableCache.blocking`, существуют фабричные методы `LoadableCache.nonBlocking` и `LoadableCache.async`, которые просто умеют кешировать результат переданной функции без  
+
+## Supported Types
+
+Поддерживаемые типы возвращаемых методов для AOP:
+
+Java:
+* Обычный метод
+* Project Reactor (Mono)
+
+Kotlin:
+* Обычный метод
+* Suspend

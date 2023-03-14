@@ -56,13 +56,13 @@ record SimpleRetrier(String name,
     }
 
     private <T> T internalRetry(Function<ExecutorService, Future<T>> consumer, @Nullable Supplier<T> fallback) throws RetryException {
-        var counter = asState();
+        var retryState = asState();
         for (int i = 0; i < attempts; i++) {
             try {
                 return consumer.apply(executor).get(24, TimeUnit.HOURS);
             } catch (Throwable e) {
-                counter.checkRetry(e);
-                counter.doDelay();
+                retryState.checkRetry(e);
+                retryState.doDelay();
             }
         }
 
