@@ -30,12 +30,16 @@ class VertxTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val 
         { CodeBlock.of("%N.apply(_row, %N)", it.mapperFieldName, "_idx_${it.fieldName}") },
         { VertxNativeTypes.findNativeType(it.type.toTypeName())?.extract("_row", "_idx_${it.fieldName}") },
         {
-            CodeBlock.of(
-                "if (%N == null) {\n  throw %T(%S);\n}\n",
-                it.fieldName,
-                NullPointerException::class.asClassName(),
-                "Required field ${it.columnName} is not nullable but row has null"
-            )
+            if (it.isNullable) {
+                CodeBlock.of("")
+            } else {
+                CodeBlock.of(
+                    "if (%N == null) {\n  throw %T(%S);\n}\n",
+                    it.fieldName,
+                    NullPointerException::class.asClassName(),
+                    "Required field ${it.columnName} is not nullable but row has null"
+                )
+            }
         }
     )
 
@@ -81,8 +85,8 @@ class VertxTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val 
                 .addParameter("_row", VertxTypes.row)
                 .returns(entity.type.toTypeName())
 
-            for (field in entity.fields) {
-                apply.addCode("val %N = _row.getColumnIndex(%S);\n", "_idx_" + field.property.simpleName.getShortName(), field.columnName)
+            for (field in entity.columns) {
+                apply.addCode("val %N = _row.getColumnIndex(%S);\n", "_idx_${field.variableName}", field.columnName)
             }
 
             val read = this.entityReader.readEntity("_result", entity)
@@ -131,8 +135,8 @@ class VertxTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val 
                 .returns(rowSetArg.type!!.toTypeName())
                 .addParameter("_rs", VertxTypes.rowSet)
 
-            for (field in entity.fields) {
-                apply.addCode("val %N = _rs.columnsNames().indexOf(%S);\n", "_idx_" + field.property.simpleName.getShortName(), field.columnName)
+            for (field in entity.columns) {
+                apply.addCode("val %N = _rs.columnsNames().indexOf(%S);\n", "_idx_${field.variableName}", field.columnName)
             }
             apply.addStatement("val _result = %T<%T>(_rs.rowCount())", ArrayList::class, rowType.toTypeName())
             apply.controlFlow("for (_row in _rs)") {

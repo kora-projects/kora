@@ -41,7 +41,7 @@ public class CassandraTypesExtension implements KoraExtension {
         this.rowMapperGenerator = new DbEntityReadHelper(
             CassandraTypes.RESULT_COLUMN_MAPPER,
             this.types,
-            fd -> CodeBlock.of("this.$L.apply(_row, _idx_$L)", fd.mapperFieldName(), fd.fieldName()),
+            fd -> CodeBlock.of("this.$L.apply(_row, _idx_$L);", fd.mapperFieldName(), fd.fieldName()),
             fd -> {
                 var nativeType = CassandraNativeTypes.findNativeType(TypeName.get(fd.type()));
                 if (nativeType != null) {
@@ -50,11 +50,14 @@ public class CassandraTypesExtension implements KoraExtension {
                     return null;
                 }
             },
-            fd -> CodeBlock.of("""
-                if (_row.isNull($S)) {
-                  throw new $T($S);
-                }
-                """, fd.columnName(), NullPointerException.class, "Result field %s is not nullable but row has null".formatted(fd.fieldName()))
+            fd -> CodeBlock.builder()
+                .beginControlFlow("if (_row.isNull($S))", fd.fieldName())
+                .add(fd.nullable()
+                    ? CodeBlock.of("$N = null;\n", fd.fieldName())
+                    : CodeBlock.of("throw new $T($S);\n", NullPointerException.class, "Result field %s is not nullable but row has null".formatted(fd.fieldName()))
+                )
+                .endControlFlow()
+                .build()
         );
     }
 
@@ -143,8 +146,8 @@ public class CassandraTypesExtension implements KoraExtension {
                 .returns(TypeName.get(entity.typeMirror()));
             var read = this.rowMapperGenerator.readEntity("_result", entity);
             read.enrich(type, constructor);
-            for (var field : entity.entityFields()) {
-                apply.addCode("var _idx_$L = _row.firstIndexOf($S);\n", field.element().getSimpleName(), field.columnName());
+            for (var field : entity.columns()) {
+                apply.addCode("var _idx_$L = _row.firstIndexOf($S);\n", field.variableName(), field.columnName());
             }
             apply.addCode(read.block());
             apply.addCode("return _result;\n");
@@ -205,8 +208,8 @@ public class CassandraTypesExtension implements KoraExtension {
                 .addParameter(RESULT_SET, "_rs");
             var read = this.rowMapperGenerator.readEntity("_rowValue", entity);
             read.enrich(type, constructor);
-            for (var field : entity.entityFields()) {
-                apply.addCode("var _idx_$L = _rs.getColumnDefinitions().firstIndexOf($S);\n", field.element().getSimpleName(), field.columnName());
+            for (var field : entity.columns()) {
+                apply.addCode("var _idx_$L = _rs.getColumnDefinitions().firstIndexOf($S);\n", field.variableName(), field.columnName());
             }
             apply.addCode("var _result = new $T<$T>(_rs.getAvailableWithoutFetching());\n", ArrayList.class, rowTypeMirror);
             apply.beginControlFlow("for (var _row : _rs)");

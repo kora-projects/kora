@@ -46,13 +46,14 @@ public class DbEntityReadHelper {
     public ReadEntityCodeBlock readEntity(String variableName, DbEntity entity) {
         var b = CodeBlock.builder();
         var fields = new ArrayList<RequiredField>();
-        for (var entityField : entity.entityFields()) {
+        for (var entityField : entity.columns()) {
             var mapping = CommonUtils.parseMapping(entityField.element());
             var mapper = mapping.getMapping(this.fieldMapperName);
-            var fieldName = entityField.element().getSimpleName().toString();
+            var fieldName = entityField.variableName();
             var mapperFieldName = "_" + fieldName + "Mapper";
-            var fieldData = new FieldData(entityField.typeMirror(), mapperFieldName, entityField.columnName(), fieldName, CommonUtils.isNullable(entityField.element()));
-            var mapperTypeParameter = TypeName.get(entityField.typeMirror()).box();
+            var fieldData = new FieldData(entityField.type(), mapperFieldName, entityField.columnName(), fieldName, entityField.isNullable());
+            var mapperTypeParameter = TypeName.get(entityField.type()).box();
+            var type = entityField.isNullable() ? TypeName.get(fieldData.type()).box() : TypeName.get(fieldData.type());
             if (mapper != null) {
                 var mapperType = mapper.mapperClass() != null
                     ? TypeName.get(mapper.mapperClass())
@@ -74,46 +75,24 @@ public class DbEntityReadHelper {
                         ));
                     }
                 }
-                b.add("$T $L = $L;\n", fieldData.type(), fieldName, this.mapperCallGenerator.apply(fieldData));
+                b.add("$T $L = $L;\n", type, fieldName, this.mapperCallGenerator.apply(fieldData));
             } else {
                 var extractNative = this.nativeTypeExtractGenerator.apply(fieldData);
                 if (extractNative != null) {
-                    b.add("$T $L = $L;\n", fieldData.type(), fieldName, extractNative);
+                    b.add("$T $L = $L;\n", type, fieldName, extractNative);
                 } else {
                     var mapperType = ParameterizedTypeName.get(this.fieldMapperName, mapperTypeParameter);
                     fields.add(new RequiredField(
                         FieldSpec.builder(mapperType, mapperFieldName, Modifier.PRIVATE, Modifier.FINAL).build(),
                         ParameterSpec.builder(mapperType, mapperFieldName).build()
                     ));
-                    b.add("$T $L = $L;\n", fieldData.type(), fieldName, this.mapperCallGenerator.apply(fieldData));
+                    b.add("$T $L = $L;\n", type, fieldName, this.mapperCallGenerator.apply(fieldData));
                 }
             }
-            if (!CommonUtils.isNullable(entityField.element()) || entityField.typeMirror().getKind().isPrimitive()) {
-                b.add(this.nullCheckGenerator.apply(fieldData));
-            }
-
+            b.add(this.nullCheckGenerator.apply(fieldData));
         }
-        switch (entity.entityType()) {
-            case RECORD, DATA_CLASS -> {
-                b.add("var $L = new $T(", variableName, entity.typeMirror());
-                for (int i = 0; i < entity.entityFields().size(); i++) {
-                    var field = entity.entityFields().get(i);
-                    if (i > 0) {
-                        b.add(", ");
-                    }
-                    b.add(field.element().getSimpleName().toString());
-                }
-                b.add(");\n");
-            }
-            case BEAN -> {
-                b.add("var $L = new $T();\n", variableName, entity.typeMirror());
-                for (int i = 0; i < entity.entityFields().size(); i++) {
-                    var field = entity.entityFields().get(i);
-                    var fieldName = field.element().getSimpleName().toString();
-                    b.add("$L.set$L($L);\n", variableName, CommonUtils.capitalize(fieldName), fieldName);
-                }
-            }
-        }
+        b.add(entity.buildEmbeddedFields());
+        b.add(entity.buildInstance(variableName));
         return new ReadEntityCodeBlock(b.build(), fields);
     }
 

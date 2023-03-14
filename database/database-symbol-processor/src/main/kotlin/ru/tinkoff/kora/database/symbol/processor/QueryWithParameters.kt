@@ -55,8 +55,8 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
                     }
                 }
                 if (parameter is ru.tinkoff.kora.database.symbol.processor.model.QueryParameter.EntityParameter) {
-                    for (field in parameter.entity.fields) {
-                        parseSimpleParameter(rawSql, i, parameterName + "." + field.property.simpleName.getShortName()).let {
+                    for (field in parameter.entity.columns) {
+                        parseSimpleParameter(rawSql, i, field.queryParameterName(parameterName)).let {
                             if (it.sqlIndexes.isNotEmpty()) {
                                 params.add(it)
                             }

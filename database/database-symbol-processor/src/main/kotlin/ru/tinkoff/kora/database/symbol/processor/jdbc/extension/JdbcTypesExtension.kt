@@ -31,12 +31,14 @@ class JdbcTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val c
         { CodeBlock.of("%N.apply(_rs, _idx_%L)", it.mapperFieldName, it.fieldName) },
         { JdbcNativeTypes.findNativeType(it.type.toTypeName())?.extract("_rs", CodeBlock.of("_idx_%L", it.fieldName)) },
         {
-            CodeBlock.of(
-                "if (_rs.wasNull() || %N == null) {\n  throw %T(%S);\n}\n",
-                it.fieldName,
-                NullPointerException::class.asClassName(),
-                "Required field ${it.columnName} is not nullable but row has null"
-            )
+            CodeBlock.builder().controlFlow("if (_rs.wasNull() || %N == null)", it.fieldName) {
+                if (it.isNullable) {
+                    addStatement("%N = null", it.fieldName)
+                } else {
+                    addStatement("throw %T(%S)", NullPointerException::class.asClassName(), "Required field ${it.columnName} is not nullable but row has null")
+                }
+            }
+                .build()
         }
     )
 
@@ -173,8 +175,8 @@ class JdbcTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val c
 
     private fun parseIndexes(entity: DbEntity, rsName: String): CodeBlock {
         val cb = CodeBlock.builder()
-        for (field in entity.fields) {
-            cb.add("val _idx_%L = %N.findColumn(%S);\n", field.property.simpleName.getShortName(), rsName, field.columnName)
+        for (field in entity.columns) {
+            cb.add("val _idx_%L = %N.findColumn(%S);\n", field.variableName, rsName, field.columnName)
         }
         return cb.build()
     }

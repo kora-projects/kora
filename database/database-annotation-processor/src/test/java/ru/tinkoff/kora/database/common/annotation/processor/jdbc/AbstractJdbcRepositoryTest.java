@@ -11,12 +11,15 @@ public abstract class AbstractJdbcRepositoryTest extends AbstractRepositoryTest 
     @Override
     protected String commonImports() {
         return super.commonImports() + """
+            import ru.tinkoff.kora.database.common.annotation.*;
+            import ru.tinkoff.kora.database.common.*;
             import ru.tinkoff.kora.database.jdbc.*;
             import ru.tinkoff.kora.database.jdbc.mapper.result.*;
             import ru.tinkoff.kora.database.jdbc.mapper.parameter.*;
             import ru.tinkoff.kora.common.Mapping;
 
             import java.sql.*;
+            import javax.annotation.Nullable;
             """;
     }
 

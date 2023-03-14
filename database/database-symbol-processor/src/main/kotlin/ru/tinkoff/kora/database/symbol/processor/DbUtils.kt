@@ -23,6 +23,7 @@ object DbUtils {
     val entityConstructorAnnotation = ClassName("ru.tinkoff.kora.database.common.annotation", "EntityConstructor")
     val queryAnnotation = ClassName("ru.tinkoff.kora.database.common.annotation", "Query")
     val batchAnnotation = ClassName("ru.tinkoff.kora.database.common.annotation", "Batch")
+    val embeddedAnnotation = ClassName("ru.tinkoff.kora.database.common.annotation", "Embedded")
     val updateCount = ClassName("ru.tinkoff.kora.database.common", "UpdateCount")
 
     val awaitSingleOrNull = MemberName("kotlinx.coroutines.reactor", "awaitSingleOrNull")
@@ -138,7 +139,7 @@ object DbUtils {
                 continue
             }
             parameter = parameter as QueryParameter.EntityParameter
-            for (entityField in parameter.entity.fields) {
+            for (entityField in parameter.entity.columns) {
                 val queryParam = query.find(parameter.name + "." + entityField.property.simpleName.getShortName())
                 if (queryParam == null || queryParam.sqlIndexes.isEmpty()) {
                     continue

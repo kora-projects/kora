@@ -65,17 +65,17 @@ object StatementSetterGenerator {
                 }
             }
             if (parameter is QueryParameter.EntityParameter) {
-                for (field in parameter.entity.fields) {
+                for (field in parameter.entity.columns) {
                     val parameterNullable = parameter.type.isMarkedNullable
-                    val fieldNullable = field.type.isMarkedNullable
-                    val sqlParameter = queryWithParameters.find("${parameter.name}.${field.property.simpleName.getShortName()}")
+                    val fieldNullable = field.isNullable
+                    val sqlParameter = queryWithParameters.find(field.queryParameterName(parameter.name))
                     if (sqlParameter == null || sqlParameter.sqlIndexes.isEmpty()) {
                         continue
                     }
 
                     b.addCode("%N", parameterName)
                     if (parameterNullable) b.addCode("?")
-                    b.controlFlow(".%N.let {", field.property.simpleName.asString()) {
+                    b.controlFlow(".%L.let {", field.accessor(parameterNullable || fieldNullable)) {
                         if (parameterNullable || fieldNullable) {
                             b.beginControlFlow("if (it == null)")
                             for (idx in sqlParameter.sqlIndexes) {

@@ -11,6 +11,7 @@ public class CommonClassNames {
     public static final ClassName flux = ClassName.get("reactor.core.publisher", "Flux");
     public static final ClassName synchronousSink = ClassName.get("reactor.core.publisher", "SynchronousSink");
 
+    public static final ClassName root = ClassName.get("ru.tinkoff.kora.common.annotation", "Root");
     public static final ClassName aopAnnotation = ClassName.get("ru.tinkoff.kora.common", "AopAnnotation");
     public static final ClassName mapping = ClassName.get("ru.tinkoff.kora.common", "Mapping");
     public static final ClassName mappings = ClassName.get("ru.tinkoff.kora.common", "Mapping", "Mappings");

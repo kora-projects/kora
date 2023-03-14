@@ -16,6 +16,7 @@ import ru.tinkoff.kora.database.symbol.processor.r2dbc.R2dbcNativeTypes
 import ru.tinkoff.kora.database.symbol.processor.r2dbc.R2dbcTypes
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
+import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 
@@ -26,12 +27,14 @@ class R2dbcTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val 
         { CodeBlock.of("%N.apply(_row, %S)", it.mapperFieldName, it.columnName) },
         { R2dbcNativeTypes.findNativeType(it.type.toTypeName())?.extract("_row", CodeBlock.of("%S", it.columnName)) },
         {
-            CodeBlock.of(
-                "if (%N == null) {\n  throw %T(%S);\n}\n",
-                it.fieldName,
-                NullPointerException::class.asClassName(),
-                "Required field ${it.columnName} is not nullable but row has null"
-            )
+            if (it.isNullable) {
+                CodeBlock.of("")
+            } else {
+                CodeBlock.builder().controlFlow("if (%N == null)", it.fieldName) {
+                    addStatement("throw %T(%S)", NullPointerException::class.asClassName(), "Required field ${it.columnName} is not nullable but row has null")
+                }
+                    .build()
+            }
         }
     )
 

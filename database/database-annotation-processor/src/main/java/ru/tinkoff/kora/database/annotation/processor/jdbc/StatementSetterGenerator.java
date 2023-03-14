@@ -2,10 +2,10 @@ package ru.tinkoff.kora.database.annotation.processor.jdbc;
 
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.TypeName;
+import ru.tinkoff.kora.database.annotation.processor.DbUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
 import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
-import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
 
 import javax.annotation.Nullable;
@@ -71,22 +71,20 @@ public class StatementSetterGenerator {
                 }
             }
             if (parameter instanceof QueryParameter.EntityParameter entityParameter) {
-                for (var field : entityParameter.entity().entityFields()) {
-                    var sqlParameter = sqlWithParameters.find(entityParameter.name() + "." + field.element().getSimpleName());
+                for (var field : entityParameter.entity().columns()) {
+                    var sqlParameter = sqlWithParameters.find(field.queryParameterName(entityParameter.name()));
                     if (sqlParameter == null || sqlParameter.sqlIndexes().isEmpty()) {
                         continue;
                     }
-                    var name = entityParameter.entity().entityType() == DbEntity.EntityType.RECORD
-                        ? parameterName + "." + field.element().getSimpleName() + "()"
-                        : parameterName + ".get" + CommonUtils.capitalize(field.element().getSimpleName().toString()) + "()";
+                    var accessor = CodeBlock.of("$N.$N()", parameterName, field.accessor()).toString();
                     var mappingData = CommonUtils.parseMapping(field.element());
                     var mapping = mappingData.getMapping(JdbcTypes.PARAMETER_COLUMN_MAPPER);
-                    var nativeType = JdbcNativeTypes.findNativeType(TypeName.get(field.typeMirror()));
+                    var nativeType = JdbcNativeTypes.findNativeType(TypeName.get(field.type()));
                     if (mapping == null && nativeType != null) {
                         if (isNullable(field.element())) {
-                            b.add("if ($L != null) {$>", name);
+                            b.add("if ($L != null) {$>", accessor);
                             for (var idx : sqlParameter.sqlIndexes()) {
-                                b.add("\n").add(nativeType.bind("_stmt", name, idx + 1)).add(";");
+                                b.add("\n").add(nativeType.bind("_stmt", accessor, idx + 1)).add(";");
                             }
                             b.add("$<\n} else {$>");
                             for (var idx : sqlParameter.sqlIndexes()) {
@@ -95,18 +93,18 @@ public class StatementSetterGenerator {
                             b.add("$<\n}\n");
                         } else {
                             for (var idx : sqlParameter.sqlIndexes()) {
-                                b.add(nativeType.bind("_stmt", name, idx + 1)).add(";\n");
+                                b.add(nativeType.bind("_stmt", accessor, idx + 1)).add(";\n");
                             }
                         }
                     } else if (mapping == null) {
-                        var mapper = parameterMappers.get(JdbcTypes.PARAMETER_COLUMN_MAPPER, field.typeMirror(), field.element());
+                        var mapper = parameterMappers.get(JdbcTypes.PARAMETER_COLUMN_MAPPER, field.type(), field.element());
                         for (var idx : sqlParameter.sqlIndexes()) {
-                            b.add("$L.set(_stmt, $L, $L);\n", mapper, idx + 1, name);
+                            b.add("$L.set(_stmt, $L, $L);\n", mapper, idx + 1, accessor);
                         }
                     } else {
                         var mapper = parameterMappers.get(mapping.mapperClass(), mapping.mapperTags());
                         for (var idx : sqlParameter.sqlIndexes()) {
-                            b.add("$L.set(_stmt, $L, $L);\n", mapper, idx + 1, name);
+                            b.add("$L.set(_stmt, $L, $L);\n", mapper, idx + 1, accessor);
                         }
                     }
                 }

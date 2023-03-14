@@ -53,17 +53,12 @@ public class VertxTypesExtension implements KoraExtension {
                 }
                 return null;
             },
-            fd -> {
-                if (fd.type().getKind().isPrimitive()) {
-                    return CodeBlock.of("");
-                } else {
-                    return CodeBlock.of("""
-                        if ($L == null) {
-                          throw new $T($S);
-                        }
-                        """, fd.fieldName(), NullPointerException.class, "Result field %s is not nullable but row has null".formatted(fd.fieldName()));
-                }
-            }
+            fd -> fd.nullable() || fd.type().getKind().isPrimitive()
+                ? CodeBlock.of("")
+                : CodeBlock.builder().beginControlFlow("if ($N == null)", fd.fieldName())
+                .add("throw new $T($S);\n", NullPointerException.class, "Result field %s is not nullable but row %s has null".formatted(fd.fieldName(), fd.columnName()))
+                .endControlFlow()
+                .build()
         );
     }
 
@@ -261,8 +256,8 @@ public class VertxTypesExtension implements KoraExtension {
 
     private CodeBlock readColumnIds(DbEntity entity, String findCode) {
         var b = CodeBlock.builder();
-        for (var entityField : entity.entityFields()) {
-            var fieldName = entityField.element().getSimpleName().toString();
+        for (var entityField : entity.columns()) {
+            var fieldName = entityField.variableName();
             b.add("var _$LColumn = $L($S);\n", fieldName, findCode, entityField.columnName());
         }
         return b.build();

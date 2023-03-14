@@ -4,6 +4,7 @@ import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.database.symbol.processor.model.DbEntity
 
 class DbEntityReader(
@@ -12,7 +13,7 @@ class DbEntityReader(
     private val nativeTypeExtractGenerator: (FieldData) -> CodeBlock?,
     private val nullCheckGenerator: (FieldData) -> CodeBlock,
 ) {
-    data class FieldData(val type: KSType, val mapperFieldName: String, val columnName: String, val fieldName: String)
+    data class FieldData(val type: KSType, val mapperFieldName: String, val columnName: String, val fieldName: String, val isNullable: Boolean)
     data class ReadEntityCodeBlock(val block: CodeBlock, val requiredMappers: List<Mapper>) {
         fun enrich(type: TypeSpec.Builder, constructor: FunSpec.Builder) {
             DbUtils.addMappers(type, constructor, requiredMappers)
@@ -22,12 +23,14 @@ class DbEntityReader(
     fun readEntity(variableName: String, entity: DbEntity): ReadEntityCodeBlock {
         val b = CodeBlock.builder()
         val mappers = ArrayList<Mapper>()
-        for (entityField in entity.fields) {
+        for (entityField in entity.columns) {
+
             val mapper = entityField.mapping.getMapping(this.fieldMapperName)
-            val fieldName = entityField.property.simpleName.getShortName()
+            val fieldName = entityField.variableName
             val mapperFieldName = "\$${fieldName}Mapper"
-            val fieldData = FieldData(entityField.type, mapperFieldName, entityField.columnName, fieldName)
+            val fieldData = FieldData(entityField.type, mapperFieldName, entityField.columnName, fieldName, entityField.isNullable)
             val mapperTypeParameter = entityField.type.toClassName()
+            val fieldType = entityField.type.toTypeName().copy(true)
             if (mapper != null) {
                 val mapperType = if (mapper.mapper != null)
                     mapper.mapper!!.toClassName()
@@ -43,21 +46,21 @@ class DbEntityReader(
                     }
                     mappers.add(Mapper(mapperType, mapperFieldName))
                 }
-                b.addStatement("val %N = %L", fieldName, mapperCallGenerator(fieldData))
+                b.add("var %N: %T = %L", fieldName, fieldType, mapperCallGenerator(fieldData))
             } else {
                 val extractNative = this.nativeTypeExtractGenerator(fieldData)
                 if (extractNative != null) {
-                    b.addStatement("val %N = %L", fieldName, extractNative)
+                    b.add("var %N: %T = %L", fieldName, fieldType, extractNative)
                 } else {
                     val mapperType = this.fieldMapperName.parameterizedBy(mapperTypeParameter.copy(true))
                     mappers.add(Mapper(mapperType, mapperFieldName))
-                    b.addStatement("val %N = %L", fieldName, this.mapperCallGenerator(fieldData))
+                    b.add("var %N: %T = %L", fieldName, fieldType, this.mapperCallGenerator(fieldData))
                 }
             }
-            if (!entityField.type.isMarkedNullable) {
-                b.add(this.nullCheckGenerator(fieldData))
-            }
+            b.add("\n")
+            b.add(this.nullCheckGenerator(fieldData))
         }
+        b.add(entity.buildEmbeddedFields())
         b.add("val %N = %T(", variableName, entity.type.toClassName())
         entity.fields.forEachIndexed { i, field ->
             if (i > 0) {

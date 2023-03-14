@@ -6,12 +6,14 @@ import org.mockito.kotlin.*
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultColumnMapper
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultSetMapper
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcRowMapper
+import ru.tinkoff.kora.database.symbol.processor.entity.EntityWithEmbedded
 import ru.tinkoff.kora.database.symbol.processor.entity.TestEntity
 import ru.tinkoff.kora.ksp.common.TestUtils
 import java.sql.ResultSet
 import kotlin.reflect.typeOf
 
 class JdbcExtensionTest {
+
     @Test
     fun testEntity() {
         TestUtils.testKoraExtension(
@@ -22,6 +24,8 @@ class JdbcExtensionTest {
                 typeOf<JdbcResultSetMapper<TestEntity>>(),
                 typeOf<JdbcResultSetMapper<List<AllNativeTypesEntity>>>(),
                 typeOf<JdbcResultSetMapper<List<TestEntity>>>(),
+                typeOf<JdbcResultSetMapper<EntityWithEmbedded>>(),
+                typeOf<JdbcResultSetMapper<List<EntityWithEmbedded>>>(),
             ),
             typeOf<JdbcResultColumnMapper<TestEntity.UnknownField?>>(),
             typeOf<TestEntityFieldJdbcResultColumnMapperNonFinal>(),

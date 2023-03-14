@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraResultSetMapper
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowColumnMapper
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowMapper
+import ru.tinkoff.kora.database.symbol.processor.entity.EntityWithEmbedded
 import ru.tinkoff.kora.database.symbol.processor.entity.TestEntity
 import ru.tinkoff.kora.ksp.common.TestUtils
 import kotlin.reflect.typeOf
@@ -17,6 +18,8 @@ class CassandraExtensionTest {
                 typeOf<CassandraRowMapper<AllNativeTypesEntity>>(),
                 typeOf<CassandraResultSetMapper<List<AllNativeTypesEntity>>>(),
                 typeOf<CassandraResultSetMapper<List<TestEntity>>>(),
+                typeOf<CassandraRowMapper<EntityWithEmbedded>>(),
+                typeOf<CassandraResultSetMapper<List<EntityWithEmbedded>>>(),
             ),
             typeOf<CassandraRowColumnMapper<TestEntity.UnknownField?>>(),
             typeOf<TestEntityFieldCassandraResultColumnMapperNonFinal>(),

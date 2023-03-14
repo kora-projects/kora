@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.Flow
 import ru.tinkoff.kora.database.common.annotation.Batch
 import ru.tinkoff.kora.database.common.annotation.Query
 import ru.tinkoff.kora.database.common.annotation.Repository
+import ru.tinkoff.kora.database.symbol.processor.entity.EntityWithEmbedded
 import ru.tinkoff.kora.database.symbol.processor.entity.TestEntity
 import ru.tinkoff.kora.database.symbol.processor.vertx.AllNativeTypesEntity
 import ru.tinkoff.kora.database.vertx.VertxRepository
@@ -105,4 +106,7 @@ interface AllowedParametersRepository : VertxRepository {
 
     @Query("UPDATE table SET test = 'test' WHERE id = :param")
     fun sqlClientParamWithBatch(sqlClient: SqlClient, @Batch param: List<String>)
+
+    @Query("INSERT INTO test(value1, value2, value3, value4) VALUES (:value.f1.f1, :value.f1.f2, :value.f2.f1, :value.f2.f2)")
+    fun parameterWithEmbedded(value: EntityWithEmbedded)
 }

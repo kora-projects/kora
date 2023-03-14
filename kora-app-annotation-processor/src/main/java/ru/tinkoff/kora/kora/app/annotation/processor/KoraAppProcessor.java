@@ -3,10 +3,7 @@ package ru.tinkoff.kora.kora.app.annotation.processor;
 import com.squareup.javapoet.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
-import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
-import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
+import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ComponentDependency;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponent;
@@ -253,7 +250,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 
             var sourceDescriptors = components.nonTemplates;
             var rootSet = sourceDescriptors.stream()
-                .filter(cd -> this.ctx.serviceTypeHelper.isLifecycle(cd.type()))
+                .filter(cd -> AnnotationUtils.findAnnotation(cd.source(), CommonClassNames.root) != null || this.ctx.serviceTypeHelper.isLifecycle(cd.type()))
                 .toList();
             return new ProcessingState.None(type, allModules, sourceDescriptors, components.templates, rootSet);
         } catch (ProcessingErrorException e) {
