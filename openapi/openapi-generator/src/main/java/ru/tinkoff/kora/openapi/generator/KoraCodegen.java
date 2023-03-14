@@ -48,7 +48,14 @@ public class KoraCodegen extends DefaultCodegen {
     private final Logger LOGGER = LoggerFactory.getLogger(KoraCodegen.class);
 
     private enum Mode {
-        JAVA_CLIENT, JAVA_SERVER, REACTIVE_CLIENT, REACTIVE_SERVER, KOTLIN_CLIENT, KOTLIN_SERVER
+        JAVA_CLIENT, JAVA_SERVER, REACTIVE_CLIENT, REACTIVE_SERVER, KOTLIN_CLIENT, KOTLIN_SERVER;
+
+        public boolean isServer() {
+            return switch (this) {
+                case JAVA_CLIENT, REACTIVE_CLIENT, KOTLIN_CLIENT -> false;
+                case JAVA_SERVER, REACTIVE_SERVER, KOTLIN_SERVER -> true;
+            };
+        }
     }
 
     record TagData(@Nullable String httpClientTag, @Nullable String telemetryTag) {}
@@ -60,6 +67,7 @@ public class KoraCodegen extends DefaultCodegen {
 
     public static final String CODEGEN_MODE = "mode";
     public static final String JSON_ANNOTATION = "jsonAnnotation";
+    public static final String ENABLE_VALIDATION = "enableServerValidation";
     public static final String OBJECT_TYPE = "objectType";
     public static final String DISABLE_HTML_ESCAPING = "disableHtmlEscaping";
     public static final String IGNORE_ANYOF_IN_ENUM = "ignoreAnyOfInEnum";
@@ -85,6 +93,7 @@ public class KoraCodegen extends DefaultCodegen {
     private String objectType = "java.lang.Object";
     protected List<String> additionalModelTypeAnnotations = new LinkedList<>();
     protected List<String> additionalEnumTypeAnnotations = new LinkedList<>();
+    private boolean enableValidation = false;
 
     public KoraCodegen() {
         super();
@@ -165,6 +174,7 @@ public class KoraCodegen extends DefaultCodegen {
         cliOptions.add(CliOption.newString(CLIENT_CONFIG_PREFIX, "Generated client config prefix"));
         cliOptions.add(new CliOption("tags", "Json containing http client tags configuration for apis", "string"));
         cliOptions.add(CliOption.newString(JSON_ANNOTATION, "Json annotation tag to place on body and other json related params"));
+        cliOptions.add(CliOption.newBoolean(ENABLE_VALIDATION, "Generate validation related annotation on models and controllers"));
     }
 
     @Override
@@ -258,6 +268,13 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("kotlinServerResponseMappers.mustache", "ServerResponseMappers.kt");
             }
         }
+        if (additionalProperties.containsKey(ENABLE_VALIDATION) && this.codegenMode.isServer()) {
+            this.enableValidation = Boolean.parseBoolean(additionalProperties.get(ENABLE_VALIDATION).toString());
+            this.vendorExtensions.put("enableValidation", this.enableValidation);
+        } else {
+            this.enableValidation = false;
+        }
+
         embeddedTemplateDir = templateDir = "openapi/templates/kora";
         if (this.codegenMode == Mode.KOTLIN_CLIENT || this.codegenMode == Mode.KOTLIN_SERVER) {
             languageSpecificPrimitives = new HashSet<>(
@@ -381,7 +398,13 @@ public class KoraCodegen extends DefaultCodegen {
     public Map<String, ModelsMap> updateAllModels(Map<String, ModelsMap> objs) {
         objs = super.updateAllModels(objs);
         Map<String, CodegenModel> allModels = getAllModels(objs);
-        for (CodegenModel model : allModels.values()) {
+        for (var model : allModels.values()) {
+            model.vendorExtensions.put("x-enable-validation", this.enableValidation);
+            if (this.enableValidation) {
+                for (var variable : model.allVars) {
+                    this.visitVariableValidation(variable, variable.openApiType, variable.dataFormat, variable.vendorExtensions);
+                }
+            }
             if (model.discriminator != null) {
                 for (CodegenDiscriminator.MappedModel mappedModel : model.discriminator.getMappedModels()) {
                     CodegenModel childModel = allModels.get(mappedModel.getModelName());
@@ -392,6 +415,74 @@ public class KoraCodegen extends DefaultCodegen {
             }
         }
         return objs;
+    }
+
+    private <T extends IJsonSchemaValidationProperties> void visitVariableValidation(T variable, @Nullable String type, @Nullable String dataFormat, Map<String, Object> vendorExtensions) {
+        dataFormat = Objects.requireNonNullElse(dataFormat, "");
+        if (variable.getMinimum() != null || variable.getMaximum() != null) {
+            vendorExtensions.put("x-has-min-max", true);
+            if (variable.getMinimum() != null) {
+                if (!variable.getMinimum().contains(".")) {
+                    variable.setMinimum(variable.getMinimum() + ".0");
+                }
+            } else {
+                switch (type) {
+                    case "integer" -> {
+                        switch (dataFormat) {
+                            case "int64", "" -> variable.setMinimum(Long.MIN_VALUE + ".0");
+                            case "int32" -> variable.setMinimum(Integer.MIN_VALUE + ".0");
+                        }
+                    }
+                    case "number" -> {
+                        switch (dataFormat) {
+                            case "double", "" -> variable.setMinimum("Double.MIN_VALUE");
+                            case "float" -> variable.setMinimum("Float.MIN_VALUE");
+                        }
+                    }
+                }
+            }
+            if (variable.getMaximum() != null) {
+                if (!variable.getMaximum().contains(".")) {
+                    variable.setMaximum(variable.getMaximum() + ".0");
+                }
+            } else {
+                switch (type) {
+                    case "integer" -> {
+                        switch (dataFormat) {
+                            case "int64", "" -> variable.setMaximum(Long.MAX_VALUE + ".0");
+                            case "int32" -> variable.setMaximum(Integer.MAX_VALUE + ".0");
+                        }
+                    }
+                    case "number" -> {
+                        switch (dataFormat) {
+                            case "double", "" -> variable.setMaximum("Double.MAX_VALUE");
+                            case "float" -> variable.setMaximum("Float.MAX_VALUE");
+                        }
+                    }
+                }
+            }
+        }
+        if (variable.getMinLength() != null || variable.getMaxLength() != null) {
+            vendorExtensions.put("x-has-min-max-length", true);
+            if (variable.getMinLength() == null) {
+                variable.setMinLength(0);
+            }
+            if (variable.getMaxLength() == null) {
+                variable.setMaxLength(Integer.MAX_VALUE);
+            }
+        }
+        if (variable.getMaxItems() != null || variable.getMinItems() != null) {
+            vendorExtensions.put("x-has-min-max-items", true);
+            if (variable.getMinItems() == null) {
+                variable.setMinItems(0);
+            }
+            if (variable.getMaxItems() == null) {
+                variable.setMaxItems(Integer.MAX_VALUE);
+            }
+        }
+        if (variable.getPattern() != null) {
+            vendorExtensions.put("x-has-pattern", true);
+        }
     }
 
     @Override
@@ -1193,6 +1284,31 @@ public class KoraCodegen extends DefaultCodegen {
                         tags.add(upperCase(authName));
                         op.vendorExtensions.put("authInterceptorTag", authName);
                     }
+                }
+            }
+            if (this.enableValidation) for (var p : op.allParams) {
+                var validation = false;
+                if (p.isModel) {
+                    for (var variable : p.vars) {
+                        if (variable.hasValidation) {
+                            validation = true;
+                            break;
+                        }
+                    }
+                } else if (p.isArray) {
+                    if (p.hasValidation) {
+                        validation = true;
+                    }
+                } else {
+                    if (p.hasValidation) {
+                        validation = true;
+                    }
+                }
+                if (validation) {
+                    p.vendorExtensions.put("x-validate", true);
+                    op.vendorExtensions.put("x-validate", true);
+                    var type = p.getSchema() != null ? p.getSchema().openApiType : null;
+                    visitVariableValidation(p, type, p.dataFormat, p.vendorExtensions);
                 }
             }
         }

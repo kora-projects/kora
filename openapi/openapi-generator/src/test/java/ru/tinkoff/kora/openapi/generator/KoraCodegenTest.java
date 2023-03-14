@@ -14,9 +14,11 @@ import org.openapitools.codegen.DefaultGenerator;
 import org.openapitools.codegen.config.CodegenConfigurator;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
+import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
 import ru.tinkoff.kora.http.client.annotation.processor.HttpClientAnnotationProcessor;
 import ru.tinkoff.kora.http.server.annotation.processor.HttpControllerProcessor;
 import ru.tinkoff.kora.json.annotation.processor.JsonAnnotationProcessor;
+import ru.tinkoff.kora.validation.annotation.processor.ValidAnnotationProcessor;
 
 import javax.annotation.processing.Processor;
 import java.io.ByteArrayOutputStream;
@@ -50,6 +52,7 @@ class KoraCodegenTest {
             "kotlin_server"
         };
         var files = new String[]{
+            "/example/petstoreV3_validation.yaml",
             "/example/petstoreV3_single_response.yaml",
             "/example/petstoreV3_security_api_key.yaml",
             "/example/petstoreV3_security_basic.yaml",
@@ -89,8 +92,9 @@ class KoraCodegenTest {
             .setApiPackage(dir.replace('/', '.') + ".api")
             .setModelPackage(dir.replace('/', '.') + ".model")
             .addAdditionalProperty("mode", mode)
+            .addAdditionalProperty("enableServerValidation", name.contains("validation"))
             .addAdditionalProperty("clientConfigPrefix", "test");
-        var processors = new Processor[]{new JsonAnnotationProcessor(), new HttpClientAnnotationProcessor(), new HttpControllerProcessor()};
+        var processors = new Processor[]{new JsonAnnotationProcessor(), new HttpClientAnnotationProcessor(), new HttpControllerProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()};
 
         var clientOptInput = configurator.toClientOptInput();
         var generator = new DefaultGenerator();

@@ -31,12 +31,16 @@ public sealed interface {{classname}} permits {{#mappedModels}}{{modelName}}{{^-
 {{/additionalConstructor}}@ru.tinkoff.kora.json.common.annotation.JsonWriter
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
 {{#vendorExtensions.x-discriminator-value}}@JsonDiscriminatorValue("{{vendorExtensions.x-discriminator-value}}"){{/vendorExtensions.x-discriminator-value}}
+{{#vendorExtensions.x-enable-validation}}@ru.tinkoff.kora.validation.common.annotation.Valid{{/vendorExtensions.x-enable-validation}}
 public record {{classname}} (
 {{#allVars}}
   @JsonField("{{baseName}}"){{^required}}
   @javax.annotation.Nullable{{/required}}
-  {{{datatypeWithEnum}}} {{name}}{{^-last}},{{/-last}}
-
+  {{#vendorExtensions.x-has-min-max}}@ru.tinkoff.kora.validation.common.annotation.Range(from = {{minimum}}, to = {{maximum}}, boundary = ru.tinkoff.kora.validation.common.annotation.Range.Boundary.{{#exclusiveMinimum}}EXCLUSIVE{{/exclusiveMinimum}}{{^exclusiveMinimum}}INCLUSIVE{{/exclusiveMinimum}}_{{#exclusiveMaximum}}EXCLUSIVE{{/exclusiveMaximum}}{{^exclusiveMaximum}}INCLUSIVE{{/exclusiveMaximum}})
+  {{/vendorExtensions.x-has-min-max}}{{#vendorExtensions.x-has-min-max-items}}@ru.tinkoff.kora.validation.common.annotation.Size(min = {{minItems}}, max = {{maxItems}})
+  {{/vendorExtensions.x-has-min-max-items}}{{#vendorExtensions.x-has-min-max-length}}@ru.tinkoff.kora.validation.common.annotation.Size(min = {{minLength}}, max = {{maxLength}})
+  {{/vendorExtensions.x-has-min-max-length}}{{#vendorExtensions.x-has-pattern}}@ru.tinkoff.kora.validation.common.annotation.Pattern("{{{pattern}}}")
+  {{/vendorExtensions.x-has-pattern}}{{{datatypeWithEnum}}} {{name}}{{^-last}},{{/-last}}
 {{/allVars}}){{#vendorExtensions.x-discriminator-value}} implements {{parent}} {{/vendorExtensions.x-discriminator-value}}{
 {{#isArray}}
 public static String schema = """

@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public interface ValidationModule {
+public interface ValidatorModule {
 
     default <T> Validator<List<T>> listValidator(Validator<T> validator, TypeRef<T> valueRef) {
         return new IterableValidator<>(validator);

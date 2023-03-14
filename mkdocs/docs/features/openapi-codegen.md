@@ -84,13 +84,37 @@ Maven:
 Gradle:
 ```groovy
     configOptions = [
-        mode: "java_client",
-        tags: """
+    mode: "java_client",
+    tags: """
           "common": {
             "httpClientTag": "some.tag.CanonicalName.class",
             "telemetryTag": "some.tag.CanonicalName.class"
           }
         """
-    ]
+]
 ```
+
 Значение - json объект, ключем которого выступает тег апи из контракта, а значением объект с полями `httpClientTag` и `telemetryTag`.
+
+#### Валидация на стороне сервера
+
+Для генерации моделей и контроллеров с аннотациями из модуля валидации необходимо установить опцию `enableServerValidation`:
+
+Maven:
+
+```xml
+
+<configOptions>
+    <mode>java_server</mode>
+    <enableServerValidation>true</enableServerValidation>
+</configOptions>
+```
+
+Gradle:
+
+```groovy
+    configOptions = [
+    mode                  : "java_server",
+    enableServerValidation: true
+]
+```

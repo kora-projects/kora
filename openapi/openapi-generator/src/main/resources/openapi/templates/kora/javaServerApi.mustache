@@ -12,17 +12,29 @@ import java.util.List;
 import java.util.Map;
 import ru.tinkoff.kora.http.server.common.annotation.HttpController;
 import ru.tinkoff.kora.http.common.annotation.HttpRoute;
+import ru.tinkoff.kora.http.common.annotation.Path;
+import ru.tinkoff.kora.http.common.annotation.Header;
+import ru.tinkoff.kora.http.common.annotation.Query;
 import ru.tinkoff.kora.common.Mapping;
+import javax.annotation.Nullable;
 {{#hasAuthMethods}}
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.http.common.annotation.InterceptWith;
 import ru.tinkoff.kora.http.server.common.HttpServerInterceptor;
-{{/hasAuthMethods}}
+{{/hasAuthMethods}}{{#vendorExtensions.enableValidation}}
+import ru.tinkoff.kora.http.common.annotation.InterceptWith;
+import ru.tinkoff.kora.validation.common.annotation.Validate;
+import ru.tinkoff.kora.validation.common.annotation.Valid;
+import ru.tinkoff.kora.validation.common.annotation.Size;
+import ru.tinkoff.kora.validation.common.annotation.Pattern;
+import ru.tinkoff.kora.validation.common.annotation.Range;
+{{/vendorExtensions.enableValidation}}
 
 
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
-@HttpController
-public final class {{classname}}Controller {
+@HttpController{{#vendorExtensions.enableValidation}}
+@ru.tinkoff.kora.common.Component{{/vendorExtensions.enableValidation}}
+public{{^vendorExtensions.enableValidation}} final{{/vendorExtensions.enableValidation}} class {{classname}}Controller {
     private final {{classname}}Delegate delegate;
 
     public {{classname}}Controller({{classname}}Delegate delegate) {
@@ -57,7 +69,10 @@ public final class {{classname}}Controller {
     {{>implicitHeader}}
     {{/headerParams}}
     }){{/implicitHeaders}}{{#hasAuthMethods}}
-    @InterceptWith(tag = @Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}.class), value = HttpServerInterceptor.class){{/hasAuthMethods}}
+    @InterceptWith(tag = @Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}.class), value = HttpServerInterceptor.class){{/hasAuthMethods}}{{#vendorExtensions.x-validate}}
+    @InterceptWith(ru.tinkoff.kora.validation.module.http.server.ValidationHttpServerInterceptor.class)
+    @Validate
+    {{/vendorExtensions.x-validate}}
     @Mapping({{classname}}ServerResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponseMapper.class)
     public {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {{operationId}}({{>javaAnnotatedParams}}) {
       return this.delegate.{{operationId}}(

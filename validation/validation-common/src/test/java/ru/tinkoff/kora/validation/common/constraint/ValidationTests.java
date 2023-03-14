@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-class ValidationTests extends Assertions implements ValidationModule {
+class ValidationTests extends Assertions implements ValidatorModule {
 
     private static Stream<Arguments> source() {
         return Stream.of(

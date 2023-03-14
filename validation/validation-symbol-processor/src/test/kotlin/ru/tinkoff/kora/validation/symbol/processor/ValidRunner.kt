@@ -5,13 +5,13 @@ import org.junit.jupiter.api.Assertions
 import ru.tinkoff.kora.application.graph.TypeRef
 import ru.tinkoff.kora.ksp.common.symbolProcess
 import ru.tinkoff.kora.validation.common.Validator
-import ru.tinkoff.kora.validation.common.constraint.ValidationModule
+import ru.tinkoff.kora.validation.common.constraint.ValidatorModule
 import ru.tinkoff.kora.validation.symbol.processor.testdata.ValidBar
 import ru.tinkoff.kora.validation.symbol.processor.testdata.ValidFoo
 import ru.tinkoff.kora.validation.symbol.processor.testdata.ValidTaz
 
 @KspExperimental
-open class ValidRunner : Assertions(), ValidationModule {
+open class ValidRunner : Assertions(), ValidatorModule {
 
     companion object {
         private var classLoader: ClassLoader? = null
