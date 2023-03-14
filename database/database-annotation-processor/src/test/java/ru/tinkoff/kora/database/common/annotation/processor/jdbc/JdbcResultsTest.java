@@ -164,13 +164,45 @@ public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
                 UpdateCount test(@Batch java.util.List<String> value);
             }
             """);
-        when(executor.preparedStatement.executeBatch()).thenReturn(new int[]{42, 43});
+        when(executor.preparedStatement.executeLargeBatch()).thenReturn(new long[]{42, 43});
 
         var result = repository.<UpdateCount>invoke("test", List.of("test1", "test2"));
 
         assertThat(result.value()).isEqualTo(85);
         verify(executor.mockConnection).prepareStatement("INSERT INTO test(value) VALUES (?)");
+        verify(executor.preparedStatement).executeLargeBatch();
+    }
+
+    @Test
+    public void returnIntArrayBatch() throws SQLException {
+        var repository = compileJdbc(List.of(), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(test) VALUES (:someint)")
+                int[] returnVoidBatch(@Batch java.util.List<Integer> someint);
+            }
+            """);
+        when(executor.preparedStatement.executeBatch()).thenReturn(new int[]{1, 2, 3});
+        var result = (int[]) repository.invoke("returnVoidBatch", List.of(1, 2, 3));
+
         verify(executor.preparedStatement).executeBatch();
+        assertThat(result).containsExactly(1, 2, 3);
+    }
+
+    @Test
+    public void returnLongArrayBatch() throws SQLException {
+        var repository = compileJdbc(List.of(), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(test) VALUES (:someint)")
+                long[] returnVoidBatch(@Batch java.util.List<Integer> someint);
+            }
+            """);
+        when(executor.preparedStatement.executeLargeBatch()).thenReturn(new long[]{1, 2, 3});
+        var result = (long[]) repository.invoke("returnVoidBatch", List.of(1, 2, 3));
+
+        verify(executor.preparedStatement).executeLargeBatch();
+        assertThat(result).containsExactly(1, 2, 3);
     }
 
     @Test

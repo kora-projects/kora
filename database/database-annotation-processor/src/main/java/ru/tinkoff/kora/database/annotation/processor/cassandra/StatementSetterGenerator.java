@@ -1,11 +1,12 @@
 package ru.tinkoff.kora.database.annotation.processor.cassandra;
 
 import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.MethodSpec;
+import com.squareup.javapoet.TypeName;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
 import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
-import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
 
 import javax.annotation.Nullable;
@@ -61,15 +62,13 @@ public class StatementSetterGenerator {
                 }
             }
             if (parameter instanceof QueryParameter.EntityParameter dtoParameter) {
-                for (var field : dtoParameter.entity().entityFields()) {
-                    var isNullable = CommonUtils.isNullable(field.element());
-                    var sqlParameter = sqlWithParameters.find(dtoParameter.name() + "." + field.element().getSimpleName());
+                for (var field : dtoParameter.entity().columns()) {
+                    var isNullable = field.isNullable();
+                    var sqlParameter = sqlWithParameters.find(field.queryParameterName(dtoParameter.name()));
                     if (sqlParameter == null || sqlParameter.sqlIndexes().isEmpty()) {
                         continue;
                     }
-                    var fieldAccessor = dtoParameter.entity().entityType() == DbEntity.EntityType.RECORD
-                        ? parameterName + "." + field.element().getSimpleName() + "()"
-                        : parameterName + ".get" + CommonUtils.capitalize(field.element().getSimpleName().toString()) + "()";
+                    var fieldAccessor = CodeBlock.of("$N.$N()", parameterName, field.accessor()).toString();
                     if (isNullable) {
                         b.addCode("if ($L == null) {\n", fieldAccessor);
                         for (var idx : sqlParameter.sqlIndexes()) {
@@ -77,7 +76,7 @@ public class StatementSetterGenerator {
                         }
                         b.addCode("} else {$>\n");
                     }
-                    var nativeType = CassandraNativeTypes.findNativeType(ClassName.get(field.typeMirror()));
+                    var nativeType = CassandraNativeTypes.findNativeType(TypeName.get(field.type()));
                     var mapping = CommonUtils.parseMapping(field.element()).getMapping(CassandraTypes.PARAMETER_COLUMN_MAPPER);
                     if (nativeType != null && mapping == null) {
                         for (var idx : sqlParameter.sqlIndexes()) {
@@ -90,7 +89,7 @@ public class StatementSetterGenerator {
                         }
                     } else {
                         for (var idx : sqlParameter.sqlIndexes()) {
-                            var mapper = parameterMappers.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, field.typeMirror(), field.element());
+                            var mapper = parameterMappers.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, field.type(), field.element());
                             b.addCode("$L.apply(_stmt, $L, $L);\n", mapper, idx, fieldAccessor);
                         }
                     }

@@ -53,23 +53,17 @@ public class JdbcTypesExtension implements KoraExtension {
             fd -> {
                 var nativeType = JdbcNativeTypes.findNativeType(TypeName.get(fd.type()));
                 if (nativeType != null) {
-                    var cb = CodeBlock.builder().add(nativeType.extract("_rs", CodeBlock.of("_$LColumn", fd.fieldName())));
-                    if (fd.nullable()) {
-                        cb.add(";\n");
-                        cb.beginControlFlow("if (_rs.wasNull())");
-                        cb.addStatement("$L = null", fd.fieldName());
-                        cb.endControlFlow();
-                    }
-                    return cb.build();
+                    return nativeType.extract("_rs", CodeBlock.of("_$LColumn", fd.fieldName()));
                 } else {
                     return null;
                 }
             },
-            fd -> CodeBlock.of("""
-                if (_rs.wasNull()) {
-                  throw new $T($S);
-                }
-                """, NullPointerException.class, "Result field %s is not nullable but row has null".formatted(fd.fieldName()))
+            fd -> CodeBlock.builder().beginControlFlow("if (_rs.wasNull())")
+                .add(fd.nullable()
+                    ? CodeBlock.of("$N = null;\n", fd.fieldName())
+                    : CodeBlock.of("throw new $T($S);\n", NullPointerException.class, "Result field %s is not nullable but row %s has null".formatted(fd.fieldName(), fd.columnName())))
+                .endControlFlow()
+                .build()
         );
 
     }
@@ -213,8 +207,8 @@ public class JdbcTypesExtension implements KoraExtension {
 
     private CodeBlock readColumnIds(DbEntity entity) {
         var b = CodeBlock.builder();
-        for (var entityField : entity.entityFields()) {
-            var fieldName = entityField.element().getSimpleName().toString();
+        for (var entityField : entity.columns()) {
+            var fieldName = entityField.variableName();
             b.add("var _$LColumn = _rs.findColumn($S);\n", fieldName, entityField.columnName());
         }
         return b.build();

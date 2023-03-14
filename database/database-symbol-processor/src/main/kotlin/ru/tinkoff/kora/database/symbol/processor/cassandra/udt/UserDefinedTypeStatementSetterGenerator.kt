@@ -111,7 +111,7 @@ class UserDefinedTypeStatementSetterGenerator(private val environment: SymbolPro
     }
 
     fun getIndexes(entity: DbEntity, apply: FunSpec.Builder) {
-        for (field in entity.fields) {
+        for (field in entity.columns) {
             val fieldName = field.property.simpleName.asString()
             apply.addStatement("val %N = _type.firstIndexOf(%S)", "_index_of_$fieldName", field.columnName)
         }

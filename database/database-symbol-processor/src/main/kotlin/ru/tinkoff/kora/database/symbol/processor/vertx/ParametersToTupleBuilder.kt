@@ -48,14 +48,14 @@ object ParametersToTupleBuilder {
                     }
                 }
                 param as QueryParameter.EntityParameter
-                return@flatMap param.entity.fields.asSequence().mapNotNull { field ->
-                    val sqlParameter = query.find(param.name + "." + field.property.simpleName.asString())
+                return@flatMap param.entity.columns.asSequence().mapNotNull { field ->
+                    val sqlParameter = query.find(param.name + "." + field.sqlParameterName)
                     if (sqlParameter == null || sqlParameter.sqlIndexes.isEmpty()) {
                         return@mapNotNull null
                     }
                     val fieldName = field.property.simpleName.asString()
-                    val variableName = it.first + "_" + fieldName
-                    val fieldAccessor = CodeBlock.of("%N?.%N", it.first, fieldName)
+                    val variableName = it.first + "_" + field.variableName
+                    val fieldAccessor = CodeBlock.of("%N?.%L", it.first, field.accessor(true))
                     val nativeType = VertxNativeTypes.findNativeType(field.type.toTypeName())
                     val mapping = field.mapping.getMapping(VertxTypes.parameterColumnMapper)
                     if (nativeType != null && mapping == null) {

@@ -19,6 +19,7 @@ import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
+import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.generatedClassName
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
@@ -31,13 +32,14 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
         { CodeBlock.of("%N.apply(_row, _idx_%L)", it.mapperFieldName, it.fieldName) },
         { CassandraNativeTypes.findNativeType(it.type.toTypeName())?.extract("_row", CodeBlock.of("_idx_%L", it.fieldName)) },
         {
-            CodeBlock.of(
-                "if (_row.isNull(_idx_%L) || %N == null) {\n  throw %T(%S);\n}\n",
-                it.fieldName,
-                it.fieldName,
-                NullPointerException::class.asClassName(),
-                "Required field ${it.columnName} is not nullable but row has null"
-            )
+            CodeBlock.builder().controlFlow("if (_row.isNull(%N) || %N == null)", "_idx_${it.fieldName}", it.fieldName) {
+                if (it.isNullable) {
+                    addStatement("%N = null", it.fieldName)
+                } else {
+                    addStatement("throw %T(%S)", NullPointerException::class.asClassName(), "Required field ${it.columnName} is not nullable but row has null")
+                }
+            }
+                .build()
         }
     )
 
@@ -194,8 +196,8 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
 
     private fun parseIndexes(entity: DbEntity, rsName: String): CodeBlock {
         val cb = CodeBlock.builder()
-        for (field in entity.fields) {
-            cb.add("val _idx_%L = %N.columnDefinitions.firstIndexOf(%S);\n", field.property.simpleName.getShortName(), rsName, field.columnName)
+        for (field in entity.columns) {
+            cb.add("val %N = %N.columnDefinitions.firstIndexOf(%S)\n", "_idx_${field.variableName}", rsName, field.columnName)
         }
         return cb.build()
     }

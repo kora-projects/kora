@@ -49,10 +49,10 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
                 packageName = "";
                 resourceName = path;
             }
-            try (var is = filer.getResource(StandardLocation.SOURCE_PATH, packageName, resourceName).openInputStream()){
+            try (var is = filer.getResource(StandardLocation.SOURCE_PATH, packageName, resourceName).openInputStream()) {
                 rawSql = new String(is.readAllBytes(), StandardCharsets.UTF_8);
             } catch (IOException e) {
-                try (var is = filer.getResource(StandardLocation.CLASS_PATH, packageName, resourceName).openInputStream()){
+                try (var is = filer.getResource(StandardLocation.CLASS_PATH, packageName, resourceName).openInputStream()) {
                     rawSql = new String(is.readAllBytes(), StandardCharsets.UTF_8);
                 } catch (IOException e1) {
                     e.addSuppressed(e1);
@@ -77,8 +77,8 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
                 parseSimpleParameter(rawSql, i, parameterName).ifPresent(params::add);
             }
             if (parameter instanceof ru.tinkoff.kora.database.annotation.processor.model.QueryParameter.EntityParameter entityParameter) {
-                for (var field : entityParameter.entity().entityFields()) {
-                    parseSimpleParameter(rawSql, i, parameterName + "." + field.element().getSimpleName()).ifPresent(params::add);
+                for (var field : entityParameter.entity().columns()) {
+                    parseSimpleParameter(rawSql, i, field.queryParameterName(parameterName)).ifPresent(params::add);
                 }
             }
             if (params.size() == size) {

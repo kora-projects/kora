@@ -108,42 +108,34 @@ public class UserDefinedTypeStatementSetterGenerator {
     }
 
     private void readIndexes(MethodSpec.Builder apply, DbEntity entity) {
-        for (var entityField : entity.entityFields()) {
+        for (var entityField : entity.columns()) {
             var fieldName = entityField.element().getSimpleName().toString();
             apply.addStatement("var $N = _type.firstIndexOf($S)", "_index_of_" + fieldName, entityField.columnName());
         }
     }
 
     private void setFields(MethodSpec.Builder apply, DbEntity entity) {
-        for (var entityField : entity.entityFields()) {
+        for (var entityField : entity.columns()) {
             var fieldName = entityField.element().getSimpleName().toString();
             var index = CodeBlock.of("$N", "_index_of_" + fieldName);
-            var nativeType = CassandraNativeTypes.findNativeType(TypeName.get(entityField.typeMirror()));
+            var nativeType = CassandraNativeTypes.findNativeType(TypeName.get(entityField.type()));
             if (nativeType != null) {
-                if (entity.entityType() == DbEntity.EntityType.RECORD) {
-                    apply.addStatement(nativeType.bind("_object", "_value." + fieldName + "()", index));
-                } else {
-                    apply.addStatement(nativeType.bind("_object", "_value.get" + CommonUtils.capitalize(fieldName) + "()", index));
-                }
+                apply.addStatement(nativeType.bind("_object", "_value.%s()".formatted(entityField.accessor()), index));
             } else {
                 var mapperName = "_" + fieldName + "_mapper";
-                if (entity.entityType() == DbEntity.EntityType.RECORD) {
-                    apply.addStatement("this.$N.apply(_object, $L, _value.$N())", mapperName, index, fieldName);
-                } else {
-                    apply.addStatement("this.$N.apply(_object, $L, _value.get$N())", mapperName, index, CommonUtils.capitalize(fieldName));
-                }
+                apply.addStatement("this.$N.apply(_object, $L, _value.$N())", mapperName, index, entityField.accessor());
             }
         }
     }
 
     private void addMappers(TypeSpec.Builder typeSpec, MethodSpec.Builder constructor, DbEntity entity) {
-        for (var entityField : entity.entityFields()) {
+        for (var entityField : entity.columns()) {
             var fieldName = entityField.element().getSimpleName().toString();
-            var nativeType = CassandraNativeTypes.findNativeType(TypeName.get(entityField.typeMirror()));
+            var nativeType = CassandraNativeTypes.findNativeType(TypeName.get(entityField.type()));
             if (nativeType == null) {
                 var mapperName = "_" + fieldName + "_mapper";
                 // todo mapping annotation support?
-                var mapperType = ParameterizedTypeName.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, TypeName.get(entityField.typeMirror()));
+                var mapperType = ParameterizedTypeName.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, TypeName.get(entityField.type()));
                 constructor.addParameter(mapperType, mapperName);
                 constructor.addStatement("this.$N = $N", mapperName, mapperName);
                 typeSpec.addField(mapperType, mapperName, Modifier.PRIVATE, Modifier.FINAL);

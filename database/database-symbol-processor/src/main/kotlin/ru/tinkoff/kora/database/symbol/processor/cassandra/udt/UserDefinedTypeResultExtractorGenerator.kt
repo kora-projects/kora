@@ -88,7 +88,7 @@ class UserDefinedTypeResultExtractorGenerator(private val environment: SymbolPro
     }
 
     private fun readIndexes(apply: FunSpec.Builder, entity: DbEntity) {
-        for (entityField in entity.fields) {
+        for (entityField in entity.columns) {
             val fieldName = entityField.property.simpleName.asString()
             apply.addStatement("val %N = _type.firstIndexOf(%S)", "_index_of_$fieldName", entityField.columnName)
         }
@@ -96,7 +96,7 @@ class UserDefinedTypeResultExtractorGenerator(private val environment: SymbolPro
     }
 
     private fun readFields(apply: FunSpec.Builder, entity: DbEntity) {
-        for (entityField in entity.fields) {
+        for (entityField in entity.columns) {
             val fieldName = entityField.property.simpleName.asString()
             val fieldTypeName = entityField.type.toTypeName()
             val nativeType = CassandraNativeTypes.findNativeType(fieldTypeName)

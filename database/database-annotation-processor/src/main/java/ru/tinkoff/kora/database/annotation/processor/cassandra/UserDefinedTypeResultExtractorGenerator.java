@@ -52,7 +52,7 @@ public class UserDefinedTypeResultExtractorGenerator {
         apply.addStatement("var _type = ($T) _row.getType(_index)", CassandraTypes.USER_DEFINED_TYPE);
         this.readIndexes(apply, entity);
         this.readFields(apply, entity);
-        apply.addCode(this.buildEntity(entity));
+        apply.addCode(entity.buildInstance("_result"));
         apply.addStatement("return _result");
 
         typeSpec.addMethod(apply.build());
@@ -91,7 +91,7 @@ public class UserDefinedTypeResultExtractorGenerator {
         apply.addStatement("var _resultList = new $T<$T>(_list.size())", ArrayList.class, typeName);
         apply.beginControlFlow("for (var _object : _list)");
         this.readFields(apply, entity);
-        apply.addCode(this.buildEntity(entity));
+        apply.addCode(entity.buildInstance("_result"));
         apply.addStatement("_resultList.add(_result)");
         apply.endControlFlow();
         apply.addStatement("return _resultList");
@@ -107,36 +107,12 @@ public class UserDefinedTypeResultExtractorGenerator {
         }
     }
 
-    private CodeBlock buildEntity(DbEntity entity) {
-        var b = CodeBlock.builder();
-        var typeName = TypeName.get(entity.typeMirror());
-        if (entity.entityType() == DbEntity.EntityType.RECORD) {
-            b.add("var _result = new $T(", typeName);
-            for (int i = 0; i < entity.entityFields().size(); i++) {
-                if (i > 0) {
-                    b.add(", ");
-                }
-                var entityField = entity.entityFields().get(i);
-                var fieldName = entityField.element().getSimpleName().toString();
-                b.add("$N", fieldName);
-            }
-            b.add(");\n");
-
-        } else {
-            b.addStatement("var _result = new $T()", typeName);
-            for (var entityField : entity.entityFields()) {
-                var fieldName = entityField.element().getSimpleName().toString();
-                b.addStatement("_result.set$L($N)", CommonUtils.capitalize(fieldName), fieldName);
-            }
-        }
-        return b.build();
-    }
 
     private void readFields(MethodSpec.Builder apply, DbEntity entity) {
-        for (var entityField : entity.entityFields()) {
+        for (var entityField : entity.columns()) {
             var fieldName = entityField.element().getSimpleName().toString();
             var index = CodeBlock.of("$N", "_index_of_" + entityField.element().getSimpleName());
-            var nativeType = CassandraNativeTypes.findNativeType(TypeName.get(entityField.typeMirror()));
+            var nativeType = CassandraNativeTypes.findNativeType(TypeName.get(entityField.type()));
             if (nativeType != null) {
                 apply.addStatement("var $N = $L", fieldName, nativeType.extract("_object", index));
             } else {
@@ -148,12 +124,12 @@ public class UserDefinedTypeResultExtractorGenerator {
     }
 
     private void addMappers(TypeSpec.Builder typeSpec, MethodSpec.Builder constructor, DbEntity entity) {
-        for (var entityField : entity.entityFields()) {
-            var nativeType = CassandraNativeTypes.findNativeType(TypeName.get(entityField.typeMirror()));
+        for (var entityField : entity.columns()) {
+            var nativeType = CassandraNativeTypes.findNativeType(TypeName.get(entityField.type()));
             if (nativeType == null) {
                 var mapperName = "_" + entityField.element().getSimpleName() + "_mapper";
                 // todo mapping annotation support?
-                var mapperType = ParameterizedTypeName.get(CassandraTypes.RESULT_COLUMN_MAPPER, TypeName.get(entityField.typeMirror()));
+                var mapperType = ParameterizedTypeName.get(CassandraTypes.RESULT_COLUMN_MAPPER, TypeName.get(entityField.type()));
                 constructor.addParameter(mapperType, mapperName);
                 constructor.addStatement("this.$N = $N", mapperName, mapperName);
                 typeSpec.addField(mapperType, mapperName, Modifier.PRIVATE, Modifier.FINAL);
@@ -162,7 +138,7 @@ public class UserDefinedTypeResultExtractorGenerator {
     }
 
     private void readIndexes(MethodSpec.Builder apply, DbEntity entity) {
-        for (var entityField : entity.entityFields()) {
+        for (var entityField : entity.columns()) {
             apply.addStatement("var $N = _type.firstIndexOf($S)", "_index_of_" + entityField.element().getSimpleName(), entityField.columnName());
         }
         apply.addCode("\n");

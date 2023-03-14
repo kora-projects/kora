@@ -31,7 +31,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
-import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 
 import static ru.tinkoff.kora.annotation.processor.common.MethodUtils.isVoid;
 
@@ -133,15 +133,15 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         }
 
         var b = DbUtils.queryMethodBuilder(method, methodType);
-        final boolean isMono = CommonUtils.isMono(methodType.getReturnType());
+        var returnType = methodType.getReturnType();
+        final boolean isMono = CommonUtils.isMono(returnType);
         if (isMono) {
             b.addCode("return $T.fromCompletionStage(() -> $T.supplyAsync(() -> {$>\n", Mono.class, CompletableFuture.class);
+            returnType = ((DeclaredType) returnType).getTypeArguments().get(0);
         }
-
         var connection = parameters.stream().filter(QueryParameter.ConnectionParameter.class::isInstance).findFirst()
             .map(p -> CodeBlock.of("$L", p.variable()))
             .orElse(CodeBlock.of("this._connectionFactory.currentConnection()"));
-
         b.addCode("""
             var _conToUse = $L;
             $T _conToClose;
@@ -172,14 +172,23 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                 b.addStatement("return null");
             }
         } else if (batchParam != null) {
-            b.addStatement("var _batchResult = _stmt.executeBatch()");
-            b.addStatement("_telemetry.close(null)");
-            if (methodType.getReturnType().toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
-                b.addStatement("return new $T($T.of(_batchResult).sum())", DbUtils.UPDATE_COUNT, IntStream.class);
-            } else {
+            if (returnType.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
+                b.addStatement("var _batchResult = _stmt.executeLargeBatch()");
+                b.addStatement("_telemetry.close(null)");
+                b.addStatement("return new $T($T.of(_batchResult).sum())", DbUtils.UPDATE_COUNT, LongStream.class);
+            } else if (returnType.toString().equals("long[]")) {
+                b.addStatement("var _batchResult = _stmt.executeLargeBatch()");
+                b.addStatement("_telemetry.close(null)");
                 b.addStatement("return _batchResult");
+            } else if (returnType.toString().equals("int[]")) {
+                b.addStatement("var _batchResult = _stmt.executeBatch()");
+                b.addStatement("_telemetry.close(null)");
+                b.addStatement("return _batchResult");
+            } else {
+                b.addStatement("var _batchResult = _stmt.executeBatch()");
+                b.addStatement("_telemetry.close(null)");
             }
-        } else if (methodType.getReturnType().toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
+        } else if (returnType.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
             b
                 .addStatement("var _updateCount = _stmt.executeLargeUpdate()")
                 .addStatement("_telemetry.close(null)")

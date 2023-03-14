@@ -25,6 +25,7 @@ public class DbUtils {
     public static final ClassName COLUMN_ANNOTATION = ClassName.get("ru.tinkoff.kora.database.common.annotation", "Column");
     public static final ClassName ID_ANNOTATION = ClassName.get("ru.tinkoff.kora.database.common.annotation", "Id");
     public static final ClassName TABLE_ANNOTATION = ClassName.get("ru.tinkoff.kora.database.common.annotation", "Table");
+    public static final ClassName EMBEDDED_ANNOTATION = ClassName.get("ru.tinkoff.kora.database.common.annotation", "Embedded");
     public static final ClassName SUB_ENTITY_OF_ANNOTATION = ClassName.get("ru.tinkoff.kora.database.common.annotation", "SubEntityOf");
     public static final ClassName ENTITY_CONSTRUCTOR_ANNOTATION = ClassName.get("ru.tinkoff.kora.database.common.annotation", "EntityConstructor");
     public static final ClassName QUERY_CONTEXT = ClassName.get("ru.tinkoff.kora.database.common", "QueryContext");
@@ -141,19 +142,20 @@ public class DbUtils {
                 continue;
             }
             if (parameter instanceof QueryParameter.EntityParameter ep) {
-                for (var entityField : ep.entity().entityFields()) {
-                    var queryParam = query.find(parameter.name() + "." + entityField.element().getSimpleName());
+                for (var entityField : ep.entity().columns()) {
+                    var queryParam = query.find(entityField.queryParameterName(parameter.name()));
                     if (queryParam == null || queryParam.sqlIndexes().isEmpty()) {
                         continue;
                     }
-                    var mapperType = ParameterizedTypeName.get(parameterColumnMapper, TypeName.get(entityField.typeMirror()).box());
+                    var mapperType = ParameterizedTypeName.get(parameterColumnMapper, TypeName.get(entityField.type()).box());
+                    var entityTypeName = TypeName.get(entityField.type());
                     var fieldMappings = CommonUtils.parseMapping(entityField.element());
                     var fieldMapping = fieldMappings.getMapping(parameterColumnMapper);
                     if (fieldMapping != null) {
                         mappers.add(new DbUtils.Mapper(fieldMapping.mapperClass(), mapperType, fieldMapping.mapperTags()));
                         continue;
                     }
-                    if (!nativeTypePredicate.test(TypeName.get(entityField.typeMirror()))) {
+                    if (!nativeTypePredicate.test(entityTypeName)) {
                         mappers.add(new DbUtils.Mapper(mapperType, Set.of()));
                     }
                 }

@@ -8,20 +8,10 @@ import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRec
 import ru.tinkoff.kora.database.common.annotation.processor.jdbc.JdbcEntity;
 import ru.tinkoff.kora.database.jdbc.JdbcRepository;
 
-import javax.annotation.Nullable;
-import java.math.BigDecimal;
-import java.sql.Connection;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
 public interface AllowedParametersRepository extends JdbcRepository {
-    @Query("INSERT INTO test(test) VALUES ('test')")
-    void connectionParameter(Connection connection);
-
-    @Query("INSERT INTO test(value1, value2) VALUES (:value1, :value2)")
-    void nativeParameter(String value1, int value2);
 
     @Query("INSERT INTO test(value1, value2) VALUES (:entity.field1, :entity.field2, :entity.field3, :entity.unknownTypeField, :entity.mappedField1, :entity.mappedField2)")
     void dtoJavaBeanParameter(TestEntityJavaBean entity);
@@ -37,39 +27,6 @@ public interface AllowedParametersRepository extends JdbcRepository {
 
     @Query("INSERT INTO test(value1, value2) VALUES (:entity.field1, :entity.field2, :entity.field3, :entity.unknownTypeField, :entity.mappedField1, :entity.mappedField2)")
     void mappedBatch(@Batch List<TestEntityJavaBean> entity);
-
-    @Query("""
-        INSERT INTO test(...) VALUES (
-          :booleanPrimitive,
-          :booleanBoxed,
-          :integerPrimitive,
-          :integerBoxed,
-          :longPrimitive,
-          :longBoxed,
-          :doublePrimitive,
-          :doubleBoxed,
-          :string,
-          :bigDecimal,
-          :byteArray,
-          :localDateTime,
-          :localDate
-         )
-        """)
-    void allNativeParameters(
-        boolean booleanPrimitive,
-        @Nullable Boolean booleanBoxed,
-        int integerPrimitive,
-        @Nullable Integer integerBoxed,
-        long longPrimitive,
-        @Nullable Long longBoxed,
-        double doublePrimitive,
-        @Nullable Double doubleBoxed,
-        String string,
-        BigDecimal bigDecimal,
-        byte[] byteArray,
-        LocalDateTime localDateTime,
-        LocalDate localDate
-    );
 
     @Query("""
         INSERT INTO test(...) VALUES (

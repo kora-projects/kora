@@ -54,23 +54,23 @@ object R2dbcStatementSetterGenerator {
                 return@forEach
             }
             if (parameter is QueryParameter.EntityParameter) {
-                for (field in parameter.entity.fields) {
-                    val sqlParam = query.find(parameter.name + "." + field.property.simpleName.getShortName())
+                for (field in parameter.entity.columns) {
+                    val sqlParam = query.find(field.queryParameterName(parameter.name))
                     if (sqlParam?.sqlIndexes.isNullOrEmpty()) {
                         continue
                     }
                     val nativeType = R2dbcNativeTypes.findNativeType(field.type.toTypeName())
-                    val fieldValue = if (parameter.type.isMarkedNullable) {
-                        parameterName + "?." + field.property.simpleName.getShortName()
+                    val accessor = if (parameter.type.isMarkedNullable || field.isNullable) {
+                        parameterName + "?." + field.accessor(true)
                     } else {
-                        parameterName + "." + field.property.simpleName.getShortName()
+                        parameterName + "." + field.accessor(false)
                     }
                     val mapping = field.mapping.getMapping(R2dbcTypes.parameterColumnMapper)
                     if (nativeType != null && mapping == null) {
                         if (parameter.type.isMarkedNullable || field.type.isMarkedNullable) {
-                            b.beginControlFlow("if (%L != null)", fieldValue)
+                            b.beginControlFlow("if (%L != null)", accessor)
                         }
-                        b.addCode(nativeType.bind("_stmt", fieldValue, sqlIndex)).addCode("\n")
+                        b.addCode(nativeType.bind("_stmt", accessor, sqlIndex)).addCode("\n")
                         if (parameter.type.isMarkedNullable || field.type.isMarkedNullable) {
                             b.nextControlFlow("else")
                             b.addCode(nativeType.bindNull("_stmt", sqlIndex)).addCode("\n")
@@ -78,10 +78,10 @@ object R2dbcStatementSetterGenerator {
                         }
                     } else if (mapping?.mapper != null) {
                         val mapper = parameterMappers.get(mapping.mapper!!, mapping.tags)
-                        b.addStatement("%N.apply(_stmt, %L, %L)", mapper, sqlIndex, fieldValue)
+                        b.addStatement("%N.apply(_stmt, %L, %L)", mapper, sqlIndex, accessor)
                     } else {
                         val mapper = parameterMappers.get(R2dbcTypes.parameterColumnMapper, field.type, field.property)
-                        b.addStatement("%N.apply(_stmt, %L, %L)", mapper, sqlIndex, fieldValue)
+                        b.addStatement("%N.apply(_stmt, %L, %L)", mapper, sqlIndex, accessor)
                     }
                     sqlIndex++
                 }

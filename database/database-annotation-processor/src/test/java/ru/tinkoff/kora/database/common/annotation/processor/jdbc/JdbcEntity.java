@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Optional;
 
 public class JdbcEntity {
+
     public record AllNativeTypesEntity(
         boolean booleanPrimitive,
         @Nullable Boolean booleanBoxed,
@@ -32,6 +33,7 @@ public class JdbcEntity {
         LocalDateTime localDateTime,
         LocalDate localDate
     ) {}
+
 
     public static final class TestEntityFieldJdbcResultColumnMapper implements JdbcResultColumnMapper<TestEntityRecord.MappedField1> {
         @Override
