@@ -140,7 +140,11 @@ public class PublicApiHandler implements RefreshListener {
         responseSender.send(response).subscribe(result -> {
             if (result instanceof HttpServerResponseSender.Success success) {
                 var resultCode = HttpResultCode.fromStatusCode(success.code());
-                ctx.close(success.code(), resultCode, exception);
+                var ex = exception;
+                if (ex == null && response instanceof Throwable throwableResponse) {
+                    ex = throwableResponse;
+                }
+                ctx.close(success.code(), resultCode, ex);
             } else if (result instanceof HttpServerResponseSender.ResponseBodyErrorBeforeCommit responseBodyError) {
                 var newResponse = new SimpleHttpServerResponse(500, "text/plain", HttpHeaders.of(), StandardCharsets.UTF_8.encode(
                     Objects.requireNonNullElse(responseBodyError.error().getMessage(), "Unknown error")

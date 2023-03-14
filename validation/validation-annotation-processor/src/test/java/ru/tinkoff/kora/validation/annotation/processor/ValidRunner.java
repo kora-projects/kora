@@ -7,11 +7,11 @@ import ru.tinkoff.kora.validation.annotation.processor.testdata.ValidBar;
 import ru.tinkoff.kora.validation.annotation.processor.testdata.ValidFoo;
 import ru.tinkoff.kora.validation.annotation.processor.testdata.ValidTaz;
 import ru.tinkoff.kora.validation.common.Validator;
-import ru.tinkoff.kora.validation.common.constraint.ValidationModule;
+import ru.tinkoff.kora.validation.common.constraint.ValidatorModule;
 
 import java.util.List;
 
-public abstract class ValidRunner extends Assertions implements ValidationModule {
+public abstract class ValidRunner extends Assertions implements ValidatorModule {
 
     private static ClassLoader classLoader = null;
 

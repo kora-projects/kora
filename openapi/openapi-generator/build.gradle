@@ -19,6 +19,10 @@ dependencies {
     testImplementation(project(":http:http-client-annotation-processor"))
     testImplementation(project(":http:http-server-common"))
     testImplementation(project(":http:http-server-annotation-processor"))
+    testImplementation(project(":validation:validation-module"))
+    testImplementation(project(":validation:validation-annotation-processor"))
+    testImplementation(project(":validation:validation-symbol-processor"))
+    testImplementation(project(":aop:aop-annotation-processor"))
     testImplementation(testFixtures(project(":annotation-processor-common")))
 
     testImplementation libs.kotlin.annotation.processing
@@ -56,7 +60,7 @@ javaPlugin.sourceSets {
             addOpenapiDir("petstoreV3_security_basic")
             addOpenapiDir("petstoreV3_security_bearer")
             addOpenapiDir("petstoreV3_security_oauth")
-            addOpenapiDir("statist")
+            addOpenapiDir("petstoreV3_validation")
         }
     }
 }

@@ -90,6 +90,7 @@ include(
     'cache:cache-caffeine',
     'cache:cache-redis',
     'validation:validation-common',
+    'validation:validation-module',
     'validation:validation-annotation-processor',
     'validation:validation-symbol-processor',
 )

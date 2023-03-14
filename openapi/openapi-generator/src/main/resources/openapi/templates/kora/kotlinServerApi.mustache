@@ -7,6 +7,10 @@ package {{package}}
 
 import ru.tinkoff.kora.common.Mapping;
 import ru.tinkoff.kora.http.common.annotation.HttpRoute;
+import ru.tinkoff.kora.http.common.annotation.Path;
+import ru.tinkoff.kora.http.common.annotation.Header;
+import ru.tinkoff.kora.http.common.annotation.Query;
+import javax.annotation.Nullable;
 import ru.tinkoff.kora.http.client.common.annotation.ResponseCodeMapper;
 import ru.tinkoff.kora.http.server.common.annotation.HttpController;
 
@@ -16,7 +20,15 @@ import ru.tinkoff.kora.http.server.common.annotation.HttpController;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.http.common.annotation.InterceptWith;
 import ru.tinkoff.kora.http.server.common.HttpServerInterceptor;
-{{/hasAuthMethods}}
+{{/hasAuthMethods}}{{#vendorExtensions.enableValidation}}
+import ru.tinkoff.kora.http.common.annotation.InterceptWith;
+import ru.tinkoff.kora.validation.common.annotation.Validate;
+import ru.tinkoff.kora.validation.common.annotation.Valid;
+import ru.tinkoff.kora.validation.common.annotation.Size;
+import ru.tinkoff.kora.validation.common.annotation.Pattern;
+import ru.tinkoff.kora.validation.common.annotation.Range;
+{{/vendorExtensions.enableValidation}}
+
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
 @HttpController
 class {{classname}}Controller(private val delegate: {{classname}}Delegate) {
@@ -41,17 +53,19 @@ class {{classname}}Controller(private val delegate: {{classname}}Delegate) {
      * @see <a href="{{url}}">{{summary}} Documentation</a>
     {{/externalDocs}}
      */
-    @HttpRoute(method = "{{httpMethod}}", path = "{{path}}")
-    {{#implicitHeaders}}
+    @HttpRoute(method = "{{httpMethod}}", path = "{{path}}"){{#implicitHeaders}}
     @ApiImplicitParams({
     {{#headerParams}}
      TODO implicit header
     {{>implicitHeader}}
     {{/headerParams}}
     })
-    {{/implicitHeaders}}
-    @Mapping({{classname}}ServerResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ResponseMapper::class){{#hasAuthMethods}}
-    @InterceptWith(tag = Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}::class), value = HttpServerInterceptor::class){{/hasAuthMethods}}
+    {{/implicitHeaders}}{{#hasAuthMethods}}
+    @InterceptWith(tag = Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}::class), value = HttpServerInterceptor::class){{/hasAuthMethods}}{{#vendorExtensions.x-validate}}
+    @InterceptWith(ru.tinkoff.kora.validation.module.http.server.ValidationHttpServerInterceptor::class)
+    @Validate
+    {{/vendorExtensions.x-validate}}
+    @Mapping({{classname}}ServerResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ResponseMapper::class)
     suspend fun {{operationId}}({{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {
       return this.delegate.{{operationId}}(
         {{#allParams}}{{#lambda.trim}}

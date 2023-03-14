@@ -4,13 +4,16 @@ import org.junit.jupiter.api.Assertions;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
 import ru.tinkoff.kora.application.graph.TypeRef;
-import ru.tinkoff.kora.validation.annotation.processor.testdata.*;
+import ru.tinkoff.kora.validation.annotation.processor.testdata.ValidTaz;
+import ru.tinkoff.kora.validation.annotation.processor.testdata.ValidateFlux;
+import ru.tinkoff.kora.validation.annotation.processor.testdata.ValidateMono;
+import ru.tinkoff.kora.validation.annotation.processor.testdata.ValidateSync;
 import ru.tinkoff.kora.validation.common.Validator;
-import ru.tinkoff.kora.validation.common.constraint.ValidationModule;
+import ru.tinkoff.kora.validation.common.constraint.ValidatorModule;
 
 import java.util.List;
 
-public abstract class ValidateRunner extends Assertions implements ValidationModule {
+public abstract class ValidateRunner extends Assertions implements ValidatorModule {
 
     private static ClassLoader classLoader = null;
 
