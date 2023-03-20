@@ -83,7 +83,7 @@ public interface ApiSecurity {
     @Tag({{name}}.class)
     @DefaultComponent
     default {{name}}HttpServerInterceptor {{name}}HttpServerInterceptor({{#methods}}
-      HttpServerPrincipalExtractor<{{#isOAuth}}PrincipalWithScopes{{/isOAuth}}{{^isOAuth}}Principal{{/isOAuth}}> {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}{{^vendorExtensions.isLast}},
+      @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class) HttpServerPrincipalExtractor<{{#isOAuth}}PrincipalWithScopes{{/isOAuth}}{{^isOAuth}}Principal{{/isOAuth}}> {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}{{^vendorExtensions.isLast}},
       {{/vendorExtensions.isLast}}{{/methods}}) {
         return new {{name}}HttpServerInterceptor({{#methods}}{{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}{{^vendorExtensions.isLast}}, {{/vendorExtensions.isLast}}{{/methods}});
     }
