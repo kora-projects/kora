@@ -49,9 +49,9 @@ public interface HttpHeaders extends Iterable<Map.Entry<String, List<String>>> {
         @SuppressWarnings({"unchecked"})
         Map.Entry<String, List<String>>[] entries = new Map.Entry[this.size() - 1];
         var i = 0;
-        String keyLower = key.toLowerCase();
+        var keyLower = key.toLowerCase();
         for (var stringListEntry : this) {
-            if (stringListEntry.getKey().equals(keyLower)) {
+            if (stringListEntry.getKey().equalsIgnoreCase(keyLower)) {
                 continue;
             }
             entries[i++] = stringListEntry;
