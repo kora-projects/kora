@@ -30,8 +30,9 @@ import ru.tinkoff.kora.validation.common.annotation.Range;
 {{/vendorExtensions.enableValidation}}
 
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
-@HttpController
-class {{classname}}Controller(private val delegate: {{classname}}Delegate) {
+@HttpController{{#vendorExtensions.enableValidation}}
+@ru.tinkoff.kora.common.Component{{/vendorExtensions.enableValidation}}
+{{#vendorExtensions.enableValidation}}open{{/vendorExtensions.enableValidation}} class {{classname}}Controller(private val delegate: {{classname}}Delegate) {
 {{#operations}}
 {{#operation}}
     /**

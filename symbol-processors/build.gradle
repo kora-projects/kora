@@ -13,4 +13,5 @@ dependencies {
     api project(':scheduling:scheduling-ksp')
     api project(':resilient:resilient-symbol-processor')
     api project(':cache:cache-symbol-processor')
+    api project(':validation:validation-symbol-processor')
 }
