@@ -11,4 +11,5 @@ dependencies {
     api project(':scheduling:scheduling-annotation-processor')
     api project(':resilient:resilient-annotation-processor')
     api project(':cache:cache-annotation-processor')
+    api project(':validation:validation-annotation-processor')
 }
