@@ -137,14 +137,14 @@ public class CacheKeyAnnotationProcessor extends AbstractKoraProcessor {
             } catch (IOException e) {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, e.getMessage(), method);
                 e.printStackTrace();
-                return true;
+                return false;
             } catch (IllegalArgumentException | IllegalStateException e) {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, e.getMessage(), method);
-                return true;
+                return false;
             }
         }
 
-        return true;
+        return false;
     }
 
     public void writeTo(String packageName, String recordName, String recordClass, Filer filer) throws IOException {

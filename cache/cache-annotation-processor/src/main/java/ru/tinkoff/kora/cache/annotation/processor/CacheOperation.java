@@ -2,9 +2,6 @@ package ru.tinkoff.kora.cache.annotation.processor;
 
 import javax.annotation.Nullable;
 
-/**
- * Please add Description Here.
- */
 public record CacheOperation(CacheMeta meta, Key key, Value value) {
 
     public record Value(@Nullable String canonicalName) {}
