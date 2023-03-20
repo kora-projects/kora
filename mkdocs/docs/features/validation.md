@@ -18,6 +18,12 @@ ksp "ru.tinkoff.kora:symbol-processors"
 implementation "ru.tinkoff.kora:validation:validation-common"
 ```
 
+Module:
+```java
+@KoraApp
+public interface ApplicationModules extends ValidatorModule { }
+```
+
 ## Validation
 
 Для валидации используются предоставленные фреймворком аннотации, также есть возможность создавать на базе этого свои собственные [аннотации валидации](#create-custom-annotation).
@@ -342,10 +348,12 @@ public record Foo(@MyValid String number) { }
 Поддерживаемые типы возвращаемых методов для AOP:
 
 Java:
-* Обычный метод
-* Project Reactor (Mono & Flux)
+
+- Обычный метод
+- Project Reactor (Mono & Flux)
 
 Kotlin:
-* Обычный метод
-* Suspend
-* Flow
+
+- Обычный метод
+- Suspend
+- Flow
