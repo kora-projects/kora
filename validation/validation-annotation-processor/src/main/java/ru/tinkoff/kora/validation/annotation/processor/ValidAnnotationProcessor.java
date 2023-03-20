@@ -10,6 +10,7 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.*;
 import javax.lang.model.type.PrimitiveType;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 import java.io.IOException;
@@ -28,179 +29,175 @@ public final class ValidAnnotationProcessor extends AbstractKoraProcessor {
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         final List<TypeElement> validatedElements = getValidatedTypeElements(processingEnv, roundEnv);
-        final List<ValidMeta> validMetas = getValidatorMetas(validatedElements);
-        final List<ValidatorSpec> validatorSpecs = getValidatorSpecs(validMetas);
-        for (ValidatorSpec validator : validatorSpecs) {
-            final PackageElement packageElement = elements.getPackageOf(validator.meta().sourceElement());
-            final JavaFile javaFile = JavaFile.builder(packageElement.getQualifiedName().toString(), validator.spec()).build();
+        for (var validatedElement : validatedElements) {
             try {
-                javaFile.writeTo(processingEnv.getFiler());
-                processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, "Generated Validator for: " + validator.meta().source());
-            } catch (IOException e) {
-                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Error on writing file: " + e.getMessage(), validator.meta().sourceElement());
+                var validMeta = getValidatorMetas(validatedElement);
+                var validator = getValidatorSpecs(validMeta);
+                final PackageElement packageElement = elements.getPackageOf(validator.meta().sourceElement());
+                final JavaFile javaFile = JavaFile.builder(packageElement.getQualifiedName().toString(), validator.spec()).build();
+                try {
+                    javaFile.writeTo(processingEnv.getFiler());
+                    processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, "Generated Validator for: " + validator.meta().source());
+                } catch (IOException e) {
+                    processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Error on writing file: " + e.getMessage(), validator.meta().sourceElement());
+                }
+            } catch (ProcessingErrorException e) {
+                e.printError(this.processingEnv);
             }
         }
+
 
         return false;
     }
 
-    private List<ValidatorSpec> getValidatorSpecs(List<ValidMeta> metas) {
-        final List<ValidatorSpec> specs = new ArrayList<>();
-        for (ValidMeta meta : metas) {
-            final List<ParameterSpec> parameterSpecs = new ArrayList<>();
+    private ValidatorSpec getValidatorSpecs(ValidMeta meta) {
+        final List<ParameterSpec> parameterSpecs = new ArrayList<>();
 
-            final TypeName typeName = meta.validator().contract().asPoetType(processingEnv);
-            final TypeSpec.Builder validatorSpecBuilder = TypeSpec.classBuilder(meta.validator().implementation().simpleName())
-                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                .addSuperinterface(typeName)
-                .addAnnotation(AnnotationSpec.builder(ClassName.get(Generated.class))
-                    .addMember("value", "$S", this.getClass().getCanonicalName())
-                    .build());
+        final TypeName typeName = meta.validator().contract().asPoetType(processingEnv);
+        final TypeSpec.Builder validatorSpecBuilder = TypeSpec.classBuilder(meta.validator().implementation().simpleName())
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addSuperinterface(typeName)
+            .addAnnotation(AnnotationSpec.builder(ClassName.get(Generated.class))
+                .addMember("value", "$S", this.getClass().getCanonicalName())
+                .build());
 
-            final Map<ValidMeta.Constraint.Factory, String> constraintToFieldName = new HashMap<>();
-            final Map<ValidMeta.Validated, String> validatedToFieldName = new HashMap<>();
-            final List<CodeBlock> contextBuilder = new ArrayList<>();
-            final List<CodeBlock> constraintBuilder = new ArrayList<>();
-            for (int i = 0; i < meta.fields().size(); i++) {
-                final ValidMeta.Field field = meta.fields().get(i);
-                final String contextField = "_context" + i;
-                contextBuilder.add(CodeBlock.of("var $L = context.addPath($S);", contextField, field.name()));
+        final Map<ValidMeta.Constraint.Factory, String> constraintToFieldName = new HashMap<>();
+        final Map<ValidMeta.Validated, String> validatedToFieldName = new HashMap<>();
+        final List<CodeBlock> contextBuilder = new ArrayList<>();
+        final List<CodeBlock> constraintBuilder = new ArrayList<>();
+        for (int i = 0; i < meta.fields().size(); i++) {
+            final ValidMeta.Field field = meta.fields().get(i);
+            final String contextField = "_context" + i;
+            contextBuilder.add(CodeBlock.of("var $L = context.addPath($S);", contextField, field.name()));
 
-                if (field.isNotNull() && !field.isPrimitive()) {
-                    contextBuilder.add(CodeBlock.of("""
-                        if(value.$L == null) {
-                            _violations.add($L.violates(\"Should be not null, but was null\"));
-                            if(context.isFailFast()) {
-                                return _violations;
-                            }
-                        }""", field.accessor(), contextField));
-                }
-
-                for (int j = 0; j < field.constraint().size(); j++) {
-                    final ValidMeta.Constraint constraint = field.constraint().get(j);
-                    final String suffix = i + "_" + j;
-                    final String constraintField = constraintToFieldName.computeIfAbsent(constraint.factory(), (k) -> "_constraint" + suffix);
-
-                    constraintBuilder.add(CodeBlock.of("""
-                        _violations.addAll($L.validate(value.$L, $L));
-                        if(context.isFailFast() && !_violations.isEmpty()) {
+            if (field.isNotNull() && !field.isPrimitive()) {
+                contextBuilder.add(CodeBlock.of("""
+                    if(value.$L == null) {
+                        _violations.add($L.violates(\"Should be not null, but was null\"));
+                        if(context.isFailFast()) {
                             return _violations;
-                        }""", constraintField, field.accessor(), contextField));
-                }
-
-                for (int j = 0; j < field.validates().size(); j++) {
-                    final ValidMeta.Validated validated = field.validates().get(j);
-                    final String suffix = i + "_" + j;
-                    final String validatorField = validatedToFieldName.computeIfAbsent(validated, (k) -> "_validator" + suffix);
-
-                    constraintBuilder.add(CodeBlock.of("""
-                        if(value.$L != null) {
-                            _violations.addAll($L.validate(value.$L, $L));
-                            if(context.isFailFast()) {
-                                return _violations;
-                            }
-                        }""", field.accessor(), validatorField, field.accessor(), contextField));
-                }
+                        }
+                    }""", field.accessor(), contextField));
             }
 
-            final MethodSpec.Builder constructorSpecBuilder = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
-            for (var factoryToField : constraintToFieldName.entrySet()) {
-                var factory = factoryToField.getKey();
-                final String fieldName = factoryToField.getValue();
-                final String createParameters = factory.parameters().values().stream()
-                    .map(Object::toString)
-                    .collect(Collectors.joining(", "));
+            for (int j = 0; j < field.constraint().size(); j++) {
+                final ValidMeta.Constraint constraint = field.constraint().get(j);
+                final String suffix = i + "_" + j;
+                final String constraintField = constraintToFieldName.computeIfAbsent(constraint.factory(), (k) -> "_constraint" + suffix);
 
-                validatorSpecBuilder.addField(FieldSpec.builder(
-                    factory.validator().asPoetType(processingEnv),
-                    fieldName,
-                    Modifier.PRIVATE, Modifier.FINAL).build());
-
-                final ParameterSpec parameterSpec = ParameterSpec.builder(factory.type().asPoetType(processingEnv), fieldName).build();
-                parameterSpecs.add(parameterSpec);
-                constructorSpecBuilder
-                    .addParameter(parameterSpec)
-                    .addStatement("this.$L = $L.create($L)", fieldName, fieldName, createParameters);
+                constraintBuilder.add(CodeBlock.of("""
+                    _violations.addAll($L.validate(value.$L, $L));
+                    if(context.isFailFast() && !_violations.isEmpty()) {
+                        return _violations;
+                    }""", constraintField, field.accessor(), contextField));
             }
 
-            for (var validatedToField : validatedToFieldName.entrySet()) {
-                final String fieldName = validatedToField.getValue();
-                final TypeName fieldType = validatedToField.getKey().validator().asPoetType(processingEnv);
-                validatorSpecBuilder.addField(FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL).build());
+            for (int j = 0; j < field.validates().size(); j++) {
+                final ValidMeta.Validated validated = field.validates().get(j);
+                final String suffix = i + "_" + j;
+                final String validatorField = validatedToFieldName.computeIfAbsent(validated, (k) -> "_validator" + suffix);
 
-                final ParameterSpec parameterSpec = ParameterSpec.builder(fieldType, fieldName).build();
-                parameterSpecs.add(parameterSpec);
-                constructorSpecBuilder
-                    .addParameter(parameterSpec)
-                    .addStatement("this.$L = $L", fieldName, fieldName);
+                constraintBuilder.add(CodeBlock.of("""
+                    if(value.$L != null) {
+                        _violations.addAll($L.validate(value.$L, $L));
+                        if(context.isFailFast()) {
+                            return _violations;
+                        }
+                    }""", field.accessor(), validatorField, field.accessor(), contextField));
             }
-
-            final MethodSpec.Builder validateMethodSpecBuilder = MethodSpec.methodBuilder("validate")
-                .addAnnotation(Override.class)
-                .addModifiers(Modifier.PUBLIC)
-                .returns(ValidMeta.Type.ofClass(List.class, List.of(ValidMeta.Type.ofName(ValidMeta.VIOLATION_TYPE.canonicalName()))).asPoetType(processingEnv))
-                .addParameter(ParameterSpec.builder(meta.source().asPoetType(processingEnv), "value").build())
-                .addParameter(ParameterSpec.builder(ValidMeta.Type.ofName(ValidMeta.CONTEXT_TYPE.canonicalName()).asPoetType(processingEnv), "context").build())
-                .addCode(CodeBlock.join(List.of(
-                        CodeBlock.of("""
-                                if(value == null) {
-                                    return $T.of(context.violates(\"$L input value should be not null, but was null\"));
-                                }
-                                                                
-                                final $T<Violation> _violations = new $T<>();""",
-                            List.class, meta.source().simpleName(), List.class, ArrayList.class),
-                        CodeBlock.join(contextBuilder, "\n"),
-                        CodeBlock.join(constraintBuilder, "\n"),
-                        CodeBlock.of("return _violations;")),
-                    "\n\n"));
-
-            final TypeSpec validatorSpec = validatorSpecBuilder
-                .addMethod(constructorSpecBuilder.build())
-                .addMethod(validateMethodSpecBuilder.build())
-                .build();
-
-            specs.add(new ValidatorSpec(meta, validatorSpec, parameterSpecs));
         }
 
-        return specs;
+        final MethodSpec.Builder constructorSpecBuilder = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
+        for (var factoryToField : constraintToFieldName.entrySet()) {
+            var factory = factoryToField.getKey();
+            final String fieldName = factoryToField.getValue();
+            final String createParameters = factory.parameters().values().stream()
+                .map(Object::toString)
+                .collect(Collectors.joining(", "));
+
+            validatorSpecBuilder.addField(FieldSpec.builder(
+                factory.validator().asPoetType(processingEnv),
+                fieldName,
+                Modifier.PRIVATE, Modifier.FINAL).build());
+
+            final ParameterSpec parameterSpec = ParameterSpec.builder(factory.type().asPoetType(processingEnv), fieldName).build();
+            parameterSpecs.add(parameterSpec);
+            constructorSpecBuilder
+                .addParameter(parameterSpec)
+                .addStatement("this.$L = $L.create($L)", fieldName, fieldName, createParameters);
+        }
+
+        for (var validatedToField : validatedToFieldName.entrySet()) {
+            final String fieldName = validatedToField.getValue();
+            final TypeName fieldType = validatedToField.getKey().validator().asPoetType(processingEnv);
+            validatorSpecBuilder.addField(FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL).build());
+
+            final ParameterSpec parameterSpec = ParameterSpec.builder(fieldType, fieldName).build();
+            parameterSpecs.add(parameterSpec);
+            constructorSpecBuilder
+                .addParameter(parameterSpec)
+                .addStatement("this.$L = $L", fieldName, fieldName);
+        }
+
+        final MethodSpec.Builder validateMethodSpecBuilder = MethodSpec.methodBuilder("validate")
+            .addAnnotation(Override.class)
+            .addModifiers(Modifier.PUBLIC)
+            .returns(ValidMeta.Type.ofClass(List.class, List.of(ValidMeta.Type.ofName(ValidMeta.VIOLATION_TYPE.canonicalName()))).asPoetType(processingEnv))
+            .addParameter(ParameterSpec.builder(meta.source().asPoetType(processingEnv), "value").build())
+            .addParameter(ParameterSpec.builder(ValidMeta.Type.ofName(ValidMeta.CONTEXT_TYPE.canonicalName()).asPoetType(processingEnv), "context").build())
+            .addCode(CodeBlock.join(List.of(
+                    CodeBlock.of("""
+                            if(value == null) {
+                                return $T.of(context.violates(\"$L input value should be not null, but was null\"));
+                            }
+                                                            
+                            final $T<Violation> _violations = new $T<>();""",
+                        List.class, meta.source().simpleName(), List.class, ArrayList.class),
+                    CodeBlock.join(contextBuilder, "\n"),
+                    CodeBlock.join(constraintBuilder, "\n"),
+                    CodeBlock.of("return _violations;")),
+                "\n\n"));
+
+        final TypeSpec validatorSpec = validatorSpecBuilder
+            .addMethod(constructorSpecBuilder.build())
+            .addMethod(validateMethodSpecBuilder.build())
+            .build();
+
+        return new ValidatorSpec(meta, validatorSpec, parameterSpecs);
     }
 
-    private List<ValidMeta> getValidatorMetas(List<TypeElement> typeElements) {
-        final List<ValidMeta> validMetas = new ArrayList<>();
-        for (TypeElement element : typeElements) {
-            final List<VariableElement> elementFields = getFields(element);
-            final List<ValidMeta.Field> fields = new ArrayList<>();
-            for (VariableElement fieldElement : elementFields) {
-                final List<ValidMeta.Constraint> constraints = getValidatedByConstraints(processingEnv, fieldElement);
-                final List<ValidMeta.Validated> validateds = getValidated(fieldElement);
+    private ValidMeta getValidatorMetas(TypeElement element) {
+        final List<VariableElement> elementFields = getFields(element);
+        final List<ValidMeta.Field> fields = new ArrayList<>();
+        for (VariableElement fieldElement : elementFields) {
+            final List<ValidMeta.Constraint> constraints = getValidatedByConstraints(processingEnv, fieldElement);
+            final List<ValidMeta.Validated> validateds = getValidated(fieldElement);
 
-                final boolean isNullable = CommonUtils.isNullable(fieldElement);
-                if (!isNullable || !constraints.isEmpty() || !validateds.isEmpty()) {
-                    final boolean isPrimitive = fieldElement.asType() instanceof PrimitiveType;
-                    final boolean isRecord = element.getKind() == ElementKind.RECORD;
-                    final TypeMirror fieldType = ValidUtils.getBoxType(fieldElement.asType(), processingEnv);
+            final boolean isNullable = CommonUtils.isNullable(fieldElement);
+            if (!isNullable || !constraints.isEmpty() || !validateds.isEmpty()) {
+                final boolean isPrimitive = fieldElement.asType() instanceof PrimitiveType;
+                final boolean isRecord = element.getKind() == ElementKind.RECORD;
+                final TypeMirror fieldType = ValidUtils.getBoxType(fieldElement.asType(), processingEnv);
 
-                    final ValidMeta.Field fieldMeta = new ValidMeta.Field(
-                        ValidMeta.Type.ofType(fieldType),
-                        fieldElement.getSimpleName().toString(),
-                        isRecord,
-                        isNullable,
-                        isPrimitive,
-                        constraints,
-                        validateds);
+                final ValidMeta.Field fieldMeta = new ValidMeta.Field(
+                    ValidMeta.Type.ofType(fieldType),
+                    fieldElement.getSimpleName().toString(),
+                    isRecord,
+                    isNullable,
+                    isPrimitive,
+                    constraints,
+                    validateds);
 
-                    fields.add(fieldMeta);
-                }
+                fields.add(fieldMeta);
             }
-
-            final ValidMeta meta = new ValidMeta(ValidMeta.Type.ofType(element.asType()), element, fields);
-            validMetas.add(meta);
         }
-
-        return validMetas;
+        return new ValidMeta(ValidMeta.Type.ofType(element.asType()), element, fields);
     }
 
     private static List<ValidMeta.Constraint> getValidatedByConstraints(ProcessingEnvironment env, VariableElement field) {
+        if (field.asType().getKind() == TypeKind.ERROR) {
+            throw new ProcessingErrorException("Type is error in this round", field);
+        }
         return ValidUtils.getValidatedByConstraints(env, field.asType(), field.getAnnotationMirrors());
     }
 

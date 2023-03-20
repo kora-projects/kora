@@ -18,6 +18,12 @@ public record CompileResult(String testPackage, List<Diagnostic<? extends JavaFi
             .anyMatch(d -> d.getKind() == Diagnostic.Kind.ERROR);
     }
 
+    public void assertSuccess() {
+        if (isFailed()) {
+            throw compilationException();
+        }
+    }
+
     public List<Diagnostic<? extends JavaFileObject>> warnings() {
         return this.diagnostic.stream()
             .filter(d -> d.getKind() == Diagnostic.Kind.WARNING)
