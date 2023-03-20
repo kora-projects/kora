@@ -2,7 +2,12 @@
 
 Модуль предоставляет AOP реализацию Cache'ей.
 
-# Getting Started
+## Implementations
+
+- [Caffeine](#caffeine)
+- [Redis](#redis)
+
+## Examples
 
 Допустим имеется класс:
 ```java
@@ -27,7 +32,7 @@ public class CacheableTargetSync {
 }
 ```
 
-## Get
+### Get
 
 Для кэширования и получения значения из кэша для метода *getValue()* следует проаннотировать его аннотацией *@Cacheable*.
 
@@ -64,7 +69,7 @@ public class CacheableTargetSync {
 }
 ```
 
-## Put
+### Put
 
 Для добавления значений в кэш через метод *putValue()* следует проаннотировать его аннотацией *@CachePut*.
 
@@ -101,7 +106,7 @@ public class CacheableTargetSync {
 }
 ```
 
-## Invalidate
+### Invalidate
 
 Для удаления значения по ключу из кэша через метод *evictValue()* следует проаннотировать его аннотацией *@CacheInvalidate*.
 
@@ -139,7 +144,7 @@ public class CacheableTargetSync {
 }
 ```
 
-### InvalidateAll
+#### InvalidateAll
 
 Для удаления всех значений из кэша через метод *evictAll()* следует проаннотировать его аннотацией *@CacheInvalidate* и указать параметр *invalidateAll = true*.
 
@@ -176,7 +181,7 @@ public class CacheableTargetSync {
 }
 ```
 
-## Reactor Mono
+### Reactor Mono
 
 Все примеры были бы аналогичны и поддерживаются для Reactor Mono, пример такого класса:
 
@@ -206,7 +211,7 @@ public class CacheableTargetMono {
 }
 ```
 
-## Несколько кешей
+### Несколько кешей
 
 В случае если у вас есть несколько кешей требуется использовать для базового и самого распространенного кеша модуль *Default* конфигурации, а 
 кэш другой имплементации размечать в аннотации в поле *tags*, подставляя туда нужную имплементацию *CacheManager*.
@@ -214,7 +219,7 @@ public class CacheableTargetMono {
 Конфигурация будет выглядеть следующим образом:
 ```java
 @KoraApp
-public interface AppWithConfig
+public interface ApplicationModules
     extends RedisCacheModule,     // Только размеченные в аннотации
     DefaultCaffeineCacheModule {  // Дефолтый кэш
 }
@@ -235,7 +240,7 @@ public class CacheableTargetMono {
 
 Порядок вызова кэшей соответствует порядку в котором объявлены аннотации.
 
-## Порядок аргументов для ключа
+### Порядок аргументов для ключа
 
 В случае если метод принимает не нужные аргументы, которые не хочется использовать как часть ключа для кэша либо же порядок аргументов не соответствует порядку аргументов для ключа кэша, 
 следует использовать атрибут аннотации *parameters* в котором определить какие именно аргументы использовать и в каком порядке.
@@ -260,19 +265,21 @@ public class CacheableTargetSync {
 }
 ```
 
-# Конфигурации
+## Конфигурации
 
 В текущий момент реализованы две имплементации для кешей:
+
 - [Caffeine](https://github.com/ben-manes/caffeine)
 - [Redis](https://github.com/lettuce-io/lettuce-core)
 
-## Caffeine
+### Caffeine
 
 Описание конфигурации:
-* `expireAfterWrite` - Время по истечении которого значение для ключа будет удалено, отчитывается после добавления значения. *(Optional)*
-* `expireAfterAccess` - Время по истечении которого значение для ключа будет удалено, отчитывается после операции чтения. *(Optional)*
-* `initialSize` - Начальный размер кэша (помогает избежать ресазинга в случае активного набухания кэша) *(Optional)*
-* `maximumSize` - Максимальный размер кэша (При достижении границы **или чуть ранее** будет исключать из кэша наименее актуальные значения) *(Optional)*
+
+- `expireAfterWrite` - Время по истечении которого значение для ключа будет удалено, отчитывается после добавления значения. *(Optional)*
+- `expireAfterAccess` - Время по истечении которого значение для ключа будет удалено, отчитывается после операции чтения. *(Optional)*
+- `initialSize` - Начальный размер кэша (помогает избежать ресазинга в случае активного набухания кэша) *(Optional)*
+- `maximumSize` - Максимальный размер кэша (При достижении границы **или чуть ранее** будет исключать из кэша наименее актуальные значения) *(Optional)*
 
 Предоставляет модули *DefaultCaffeineCacheModule* для использования Caffeine как дефолт реализацию кеша для приложения,
 также *CaffeineCacheModule* для использования Caffeine кеша только где указаны соответсвующее теги в аннотации.
@@ -291,20 +298,48 @@ cache {
 }
 ```
 
-## Redis
+### Dependencies
+
+**Java**:
+```groovy
+annotationProcessor "ru.tinkoff.kora:annotation-processors"
+implementation "ru.tinkoff.kora:cache-caffeine"
+```
+
+**Kotlin**:
+```groovy
+ksp "ru.tinkoff.kora:annotation-processors"
+implementation "ru.tinkoff.kora:cache-caffeine"
+```
+
+[Default Module](#несколько-кешей):
+```java
+@KoraApp
+public interface ApplicationModules extends DefaultCaffeineCacheModule { }
+```
+
+Module для кеша с тэгом:
+```java
+@KoraApp
+public interface ApplicationModules extends CaffeineCacheModule { }
+```
+
+### Redis
 
 Описание конфигурации подключения к Redis (Lettuce клиент):
-* uri - URI редиса
-* user - Юзер *(Optional)*
-* password - Пароль юзера *(Optional)*
-* database - Номер базы *(Optional)*
-* protocol - Протокол *(Optional)*
-* socketTimeout - Время таймаута коннекта *(Optional)*
-* commandTimeout - Время таймаута команды *(Optional)*
+
+- uri - URI редиса
+- user - Юзер *(Optional)*
+- password - Пароль юзера *(Optional)*
+- database - Номер базы *(Optional)*
+- protocol - Протокол *(Optional)*
+- socketTimeout - Время таймаута коннекта *(Optional)*
+- commandTimeout - Время таймаута команды *(Optional)*
 
 Описание конфигурации Redis Cache:
-* expireAfterWrite - При записи устанавливает время expiration (см. https://redis.io/commands/psetex/)
-* expireAfterAccess - При чтении устанавливает время expiration (см. https://redis.io/commands/getex/)
+
+- expireAfterWrite - При записи устанавливает время [expiration](https://redis.io/commands/psetex/)
+- expireAfterAccess - При чтении устанавливает время [expiration](https://redis.io/commands/getex/)
 
 Предоставляет модули *DefaultRedisCacheModule* для использования Redis как дефолт реализацию кеша для приложения,
 также *RedisCacheModule* для использования Redis кеша только где указаны соответсвующее теги в аннотации.
@@ -333,11 +368,37 @@ cache {
 }
 ```
 
-## Loadable cache
+#### Dependencies
+
+**Java**:
+```groovy
+annotationProcessor "ru.tinkoff.kora:annotation-processors"
+implementation "ru.tinkoff.kora:cache-redis"
+```
+
+**Kotlin**:
+```groovy
+ksp "ru.tinkoff.kora:annotation-processors"
+implementation "ru.tinkoff.kora:cache-redis"
+```
+
+[Default Module](#несколько-кешей):
+```java
+@KoraApp
+public interface ApplicationModules extends DefaultRedisCacheModule { }
+```
+
+Module для кеша с тэгом:
+```java
+@KoraApp
+public interface ApplicationModules extends RedisCacheModule { }
+```
+
+### Loadable cache
 
 Библиотека предоставляет компонент для построения сущности, которая объединяет операции GET и PUT, без использования AOP аннотаций - `LoadableCache`
 
-### Кеширование блокирующих операций
+#### Кеширование блокирующих операций
 
 Иногда у нас есть долгая операция, которую бы мы хотели кешировать и запускать на отдельном потоке исполнения при использовании асинхронного апи.   
 Для создания такого `LoadableCache` можно воспользоваться фабричным методом `LoadableCache.blocking`, он создаёт такой cache, который при вызове `LoadableCache.getAsync` вызовет метод `load`, из примера ниже, на переданном `ExecutorService`.
@@ -361,7 +422,7 @@ class OtherService {
 }
 ```
 
-### Кеширование неблокирующих операций
+#### Кеширование неблокирующих операций
 
 По аналогии с методом `LoadableCache.blocking`, существуют фабричные методы `LoadableCache.nonBlocking` и `LoadableCache.async`, которые просто умеют кешировать результат переданной функции без  
 
@@ -370,9 +431,11 @@ class OtherService {
 Поддерживаемые типы возвращаемых методов для AOP:
 
 Java:
-* Обычный метод
-* Project Reactor (Mono)
+
+- Обычный метод
+- Project Reactor (Mono)
 
 Kotlin:
-* Обычный метод
-* Suspend
+
+- Обычный метод
+- Suspend

@@ -3,6 +3,7 @@
 Предоставляет модули позволяющие использовать такие компоненты как: *CircuitBreaker, Fallback, Timeout, Retryable*.
 
 Оглавление:
+
 - [CircuitBreaker](#circuitbreaker)
 - [Retryable](#retryable)
 - [Timeout](#timeout)
@@ -49,7 +50,7 @@ implementation "ru.tinkoff.kora:resilient-circuitbreaker"
 
 ```java
 @KoraApp
-public interface AppWithConfig extends CircuitBreakerModule { }
+public interface ApplicationModules extends CircuitBreakerModule { }
 ```
 
 #### Example
@@ -68,12 +69,13 @@ public class Target {
 #### Конфигурация
 
 Описание конфигурации:
-* `slidingWindowSize` - Предельное кол-во запросов в рамках которых рассчитывается *failureRateThreshold* для определения состояния CircuitBreaker
-* `minimumRequiredCalls` - Минимальное кол-во запросов необходимое для начала расчета состояния CircuitBreaker
-* `failureRateThreshold` - Процент неуспешных запросов который необходим для перехода в состояния **OPEN** (имеет значения от *1 до 100*)
-* `waitDurationInOpenState` - Время ожидания в статусе **OPEN**, после которого осуществляется переход в статус **HALF-OPEN**
-* `permittedCallsInHalfOpenState` - Необходимое кол-во запросов в статусе **HALF-OPEN** которые должны завершится успехом для перехода в **CLOSED**
-* `failurePredicateName` - Имя предиката который будет регистрировать ошибки подходящие под требования CircuitBreaker *(Optional)*
+
+- `slidingWindowSize` - Предельное кол-во запросов в рамках которых рассчитывается *failureRateThreshold* для определения состояния CircuitBreaker
+- `minimumRequiredCalls` - Минимальное кол-во запросов необходимое для начала расчета состояния CircuitBreaker
+- `failureRateThreshold` - Процент неуспешных запросов который необходим для перехода в состояния **OPEN** (имеет значения от *1 до 100*)
+- `waitDurationInOpenState` - Время ожидания в статусе **OPEN**, после которого осуществляется переход в статус **HALF-OPEN**
+- `permittedCallsInHalfOpenState` - Необходимое кол-во запросов в статусе **HALF-OPEN** которые должны завершится успехом для перехода в **CLOSED**
+- `failurePredicateName` - Имя предиката который будет регистрировать ошибки подходящие под требования CircuitBreaker *(Optional)*
 
 Существует *default* конфигурация, которая применяется к CircuitBreaker при создании
 и затем применяются именованные настройки конкретного CircuitBreaker для переопределения дефолтов.
@@ -162,7 +164,7 @@ implementation "ru.tinkoff.kora:resilient-retry"
 
 ```java
 @KoraApp
-public interface AppWithConfig extends RetryableModule { }
+public interface ApplicationModules extends RetryableModule { }
 ```
 
 #### Example
@@ -181,10 +183,11 @@ public class RetryableTarget {
 #### Конфигурация
 
 Описание конфигурации:
-* `delay` - Начальное время задержки для операции при Retry
-* `delayStep` - Шаг задержки который аккумулируется в следствии последующих попыток Retry
-* `attempts` - Кол-во попыток Retry для операции
-* `failurePredicateName` - Имя предиката который будет регистрировать ошибки подходящие под требования Retryable *(Optional)*
+
+- `delay` - Начальное время задержки для операции при Retry
+- `delayStep` - Шаг задержки который аккумулируется в следствии последующих попыток Retry
+- `attempts` - Кол-во попыток Retry для операции
+- `failurePredicateName` - Имя предиката который будет регистрировать ошибки подходящие под требования Retryable *(Optional)*
 
 Существует *default* конфигурация, которая применяется к Retryable при создании
 и затем применяются именованные настройки конкретного Retryable для переопределения дефолтов.
@@ -259,7 +262,7 @@ implementation "ru.tinkoff.kora:resilient-timeout"
 
 ```java
 @KoraApp
-public interface AppWithConfig extends TimeoutModule { }
+public interface ApplicationModules extends TimeoutModule { }
 ```
 
 #### Example
@@ -283,7 +286,8 @@ public class Target {
 #### Конфигурация
 
 Описание конфигурации:
-* duration - Предельное время работы операции после которого будет брошен TimeoutException.
+
+- duration - Предельное время работы операции после которого будет брошен TimeoutException.
 
 Существует *default* конфигурация, которая применяется к Timeout при создании
 и затем применяются именованные настройки конкретного Timeout для переопределения дефолтов.
@@ -325,7 +329,7 @@ implementation "ru.tinkoff.kora:resilient-fallback"
 
 ```java
 @KoraApp
-public interface AppWithConfig extends FallbackModule { }
+public interface ApplicationModules extends FallbackModule { }
 ```
 
 #### Example
@@ -365,7 +369,8 @@ public class Target {
 #### Конфигурация
 
 Описание конфигурации:
-* `failurePredicateName` - Имя предиката который будет регистрировать ошибки подходящие под требования Fallback *(Optional)*
+
+- `failurePredicateName` - Имя предиката который будет регистрировать ошибки подходящие под требования Fallback *(Optional)*
 
 Существует *default* конфигурация, которая применяется к Fallback при создании
 и затем применяются именованные настройки конкретного Fallback для переопределения дефолтов.
@@ -427,10 +432,11 @@ public class ResilientExample {
 ```
 
 В примере выше:
-* 1) Применяется *@Timeout* который говорит что метод не должен выполняться дольше времени указанного в конфигурации
-* 2) Применяется *Retryable* который будет пытаться повторить выполнение метода указанное в конфигурации кол-во раз в случае если метод бросил исключение по цепочке (включая *@Timeout*)
-* 3) Применяется *@CircuitBreaker* который будет работать согласно конфигурации и [состоянию](#circuitbreaker) в зависимости успешного результата метода или если метод бросил исключение по цепочке (включая *@Timeout* & *@Retryable*)
-* 4) Применяется *@Fallback* который будет вызвать *getFallback* метод с аргументом *arg1* в случае если метод бросил исключение по цепочке (включая *@Timeout* & *@Retryable* & *@CircuitBreaker*)
+
+1) Применяется *@Timeout* который говорит что метод не должен выполняться дольше времени указанного в конфигурации
+2) Применяется *Retryable* который будет пытаться повторить выполнение метода указанное в конфигурации кол-во раз в случае если метод бросил исключение по цепочке (включая *@Timeout*)
+3) Применяется *@CircuitBreaker* который будет работать согласно конфигурации и [состоянию](#circuitbreaker) в зависимости успешного результата метода или если метод бросил исключение по цепочке (включая *@Timeout* & *@Retryable*)
+4) Применяется *@Fallback* который будет вызвать *getFallback* метод с аргументом *arg1* в случае если метод бросил исключение по цепочке (включая *@Timeout* & *@Retryable* & *@CircuitBreaker*)
 
 Пример конфигурации:
 ```hocon
@@ -463,10 +469,12 @@ resilient {
 Поддерживаемые типы возвращаемых методов для AOP:
 
 Java:
-* Обычный метод
-* Project Reactor (Mono & Flux)
+
+- Обычный метод
+- Project Reactor (Mono & Flux)
 
 Kotlin:
-* Обычный метод
-* Suspend
-* Flow
+
+- Обычный метод
+- Suspend
+- Flow
