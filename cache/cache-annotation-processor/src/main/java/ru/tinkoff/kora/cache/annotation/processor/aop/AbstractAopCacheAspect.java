@@ -29,12 +29,12 @@ abstract class AbstractAopCacheAspect implements KoraAspect {
     CacheMirrors getCacheMirrors(CacheOperation operation, ExecutableElement method, ProcessingEnvironment env) {
         final TypeElement keyElement = env.getElementUtils().getTypeElement(operation.key().canonicalName());
         if (keyElement == null) {
-            throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.NOTE, "Cache Key is not yet generated, will try next round...", method));
+            throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.WARNING, "Cache Key is not yet generated, will try next round...", method));
         }
 
         final TypeElement valueElement = env.getElementUtils().getTypeElement(operation.value().canonicalName());
         if (valueElement == null) {
-            throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.NOTE, "Cache Return type is not yet known, will try next round...", method));
+            throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.WARNING, "Cache Return type is not yet known, will try next round...", method));
         }
 
         final TypeMirror managerType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement(CacheManager.class.getCanonicalName()),

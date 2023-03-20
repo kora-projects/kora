@@ -31,7 +31,7 @@ abstract class AbstractAopCacheAspect : KoraAspect {
                 ProcessingError(
                     "Cache Key is not yet generated, will try next round...",
                     method,
-                    Diagnostic.Kind.NOTE,
+                    Diagnostic.Kind.WARNING,
                 )
             )
 
@@ -40,7 +40,7 @@ abstract class AbstractAopCacheAspect : KoraAspect {
                 ProcessingError(
                     "Cache Return type is not yet known, will try next round...",
                     method,
-                    Diagnostic.Kind.NOTE,
+                    Diagnostic.Kind.WARNING,
                 )
             )
         }
