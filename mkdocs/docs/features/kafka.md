@@ -3,7 +3,7 @@
 ## Подключение
 
 ```groovy
-implemenation 'ru.tinkoff.kora:kafka'
+implementation 'ru.tinkoff.kora:kafka'
 ```
 
 ## Контейнер для KafkaConsumer
