@@ -31,7 +31,7 @@ public final class ViolationException extends RuntimeException {
     private static String buildViolationMessage(List<Violation> violations) {
         final StringBuilder builder = new StringBuilder("Validation failed with violations:\n");
         for (int i = 1; i <= violations.size(); i++) {
-            final Violation violation = violations.get(i);
+            final Violation violation = violations.get(i - 1);
             builder.append(i)
                 .append(") Path '")
                 .append(violation.path().full())
