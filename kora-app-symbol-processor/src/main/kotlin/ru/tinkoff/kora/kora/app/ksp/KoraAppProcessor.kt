@@ -227,7 +227,7 @@ class KoraAppProcessor(
                     components.add(component)
                 }
             }
-            val rootSet = components.filter { ctx!!.serviceTypesHelper.isLifecycle(it.type) }
+            val rootSet = components.filter { it.source.findAnnotation(CommonClassNames.root) != null || ctx!!.serviceTypesHelper.isLifecycle(it.type) }
             return ProcessingState.None(declaration, allModules, components, templateComponents, rootSet)
         } catch (e: ProcessingErrorException) {
             return ProcessingState.Failed(e)

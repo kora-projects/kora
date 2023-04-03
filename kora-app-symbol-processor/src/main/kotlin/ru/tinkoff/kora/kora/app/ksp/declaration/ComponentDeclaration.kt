@@ -4,6 +4,7 @@ import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.TypeName
 import ru.tinkoff.kora.kora.app.ksp.ProcessingContext
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.fixPlatformType
 import ru.tinkoff.kora.ksp.common.TagUtils
@@ -36,6 +37,9 @@ sealed interface ComponentDeclaration {
         val typeVariables: List<KSTypeArgument>
     ) : ComponentDeclaration {
         override val source get() = this.method
+        override fun isDefault(): Boolean {
+            return method.findAnnotation(CommonClassNames.defaultComponent) != null
+        }
     }
 
     data class AnnotatedComponent(
