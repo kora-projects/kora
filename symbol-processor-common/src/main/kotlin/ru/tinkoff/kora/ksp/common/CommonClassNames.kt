@@ -29,6 +29,7 @@ object CommonClassNames {
     val module = ClassName("ru.tinkoff.kora.common", "Module")
     val component = ClassName("ru.tinkoff.kora.common", "Component")
     val defaultComponent = ClassName("ru.tinkoff.kora.common", "DefaultComponent")
+    val root = ClassName("ru.tinkoff.kora.common.annotation", "Root")
 
     val node = ClassName("ru.tinkoff.kora.application.graph", "Node")
     val lifecycle = ClassName("ru.tinkoff.kora.application.graph", "Lifecycle")
