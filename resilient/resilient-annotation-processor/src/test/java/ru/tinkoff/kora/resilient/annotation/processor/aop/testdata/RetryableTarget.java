@@ -8,6 +8,8 @@ import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
 import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.resilient.retry.annotation.Retryable;
 
+import java.io.IOException;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
@@ -19,6 +21,14 @@ public class RetryableTarget implements MockLifecycle {
     @Retryable("custom1")
     public void retrySyncVoid(String arg) {
         logger.info("Retry Void executed for: {}", arg);
+        if (retryAttempts.getAndDecrement() > 0) {
+            throw new IllegalStateException("Ops");
+        }
+    }
+
+    @Retryable("custom1")
+    public void retrySyncCheckedException(String arg) throws IOException, TimeoutException {
+        logger.info("Retry retrySyncCheckedException executed for: {}", arg);
         if (retryAttempts.getAndDecrement() > 0) {
             throw new IllegalStateException("Ops");
         }

@@ -5,6 +5,8 @@ import org.junit.jupiter.api.TestInstance;
 import ru.tinkoff.kora.resilient.annotation.processor.aop.testdata.*;
 import ru.tinkoff.kora.resilient.timeout.TimeoutException;
 
+import java.io.IOException;
+
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class TimeoutTests extends AppRunner {
 
@@ -27,12 +29,45 @@ class TimeoutTests extends AppRunner {
     }
 
     @Test
+    void syncTimeoutVoid() {
+        // given
+        var service = getService();
+
+        assertThrows(TimeoutException.class, service::getValueSyncVoid);
+    }
+
+    @Test
+    void syncTimeoutCheckedException() {
+        // given
+        var service = getService();
+
+        assertThrows(TimeoutException.class, service::getValueSyncCheckedException);
+    }
+
+    @Test
+    void syncTimeoutCheckedExceptionVoid() {
+        // given
+        var service = getService();
+
+        assertThrows(TimeoutException.class, service::getValueSyncCheckedExceptionVoid);
+    }
+
+    @Test
+    void syncTimeoutCheckedExceptionVoidFailed() {
+        // given
+        var service = getService();
+
+        var ex = assertThrows(IOException.class, service::getValueSyncCheckedExceptionVoidFailed);
+        assertEquals("OPS", ex.getMessage());
+    }
+
+    @Test
     void monoTimeout() {
         // given
         var service = getService();
 
         // then
-        assertThrows(RuntimeException.class, () -> service.getValueMono().block());
+        assertThrows(TimeoutException.class, () -> service.getValueMono().block());
     }
 
     @Test
@@ -41,6 +76,6 @@ class TimeoutTests extends AppRunner {
         var service = getService();
 
         // when
-        assertThrows(RuntimeException.class, () -> service.getValueFlux().blockFirst());
+        assertThrows(TimeoutException.class, () -> service.getValueFlux().blockFirst());
     }
 }

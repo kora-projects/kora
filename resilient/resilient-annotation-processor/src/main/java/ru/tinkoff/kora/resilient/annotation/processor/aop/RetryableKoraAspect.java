@@ -1,15 +1,14 @@
 package ru.tinkoff.kora.resilient.annotation.processor.aop;
 
+import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
-import ru.tinkoff.kora.annotation.processor.common.ProcessingError;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
-import javax.tools.Diagnostic;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -19,6 +18,8 @@ import static com.squareup.javapoet.CodeBlock.joining;
 
 public class RetryableKoraAspect implements KoraAspect {
 
+    private static final ClassName RETRY_STATUS = ClassName.get("ru.tinkoff.kora.resilient.retry", "Retrier", "RetryState", "RetryStatus");
+    private static final ClassName RETRY_EXCEPTION = ClassName.get("ru.tinkoff.kora.resilient.retry", "RetryAttemptException");
     private static final String ANNOTATION_TYPE = "ru.tinkoff.kora.resilient.retry.annotation.Retryable";
 
     private final ProcessingEnvironment env;
@@ -63,17 +64,48 @@ public class RetryableKoraAspect implements KoraAspect {
     }
 
     private CodeBlock buildBodySync(ExecutableElement method, String superCall, String fieldRetry) {
-        final CodeBlock retrierExecution = CodeBlock.of("retry($L)", buildMethodCallable(method, superCall));
+        var builder = CodeBlock.builder()
+            .addStatement("var _cause = (Exception) null")
+            .beginControlFlow("try (var _state = $L.asState())", fieldRetry)
+            .beginControlFlow("while (true)")
+            .beginControlFlow("try");
 
         if (MethodUtils.isVoid(method)) {
-            return CodeBlock.builder().add("""
-                $L.$L;
-                """, fieldRetry, retrierExecution).build();
+            builder.addStatement(buildMethodCall(method, superCall));
+            builder.addStatement("return");
         } else {
-            return CodeBlock.builder().add("""
-                return $L.$L;
-                """, fieldRetry, retrierExecution).build();
+            builder.add("return ").addStatement(buildMethodCall(method, superCall));
         }
+
+        builder.nextControlFlow("catch (Exception _e)");
+        builder.addStatement("var _status = _state.onException(_e)");
+        builder.beginControlFlow("if ($T.REJECTED == _status)", RETRY_STATUS)
+            .addStatement("throw _e")
+            .nextControlFlow("else if($T.ACCEPTED == _status)", RETRY_STATUS)
+            .add("""
+                if (_cause == null) {
+                    _cause = _e;
+                } else {
+                    _cause.addSuppressed(_e);
+                }
+                _state.doDelay();
+                """)
+            .nextControlFlow("else if($T.EXHAUSTED  == _status)", RETRY_STATUS)
+            .add("""
+                var _exhaustedException = new $T(_state.getAttempts());
+                if (_cause != null) {
+                    _exhaustedException.addSuppressed(_cause);
+                }
+                throw _exhaustedException;
+                """, RETRY_EXCEPTION)
+            .endControlFlow();
+
+        builder
+            .endControlFlow()   // try
+            .endControlFlow()   // while
+            .endControlFlow();  // try retry state
+
+        return builder.build();
     }
 
     private CodeBlock buildBodyMono(ExecutableElement method, String superCall, String fieldRetry) {

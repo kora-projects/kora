@@ -1,11 +1,11 @@
 package ru.tinkoff.kora.resilient.retry;
 
 /**
- * Exception that indicates all Retry attempts exceeded
+ * Exception that indicates all Retry attempts exhausted
  */
-public class RetryAttemptException extends RetryException {
+public final class RetryAttemptException extends RuntimeException {
 
-    public RetryAttemptException(String message) {
-        super(message);
+    public RetryAttemptException(int attempts) {
+        super("All '" + attempts + "' attempts exhausted during retry");
     }
 }

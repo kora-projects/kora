@@ -6,6 +6,8 @@ import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
 import ru.tinkoff.kora.resilient.annotation.processor.aop.testdata.*;
 
+import java.io.IOException;
+
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class FallbackTests extends AppRunner {
 
@@ -41,6 +43,56 @@ class FallbackTests extends AppRunner {
 
         // then
         assertEquals(FallbackTarget.FALLBACK, service.getValueSync());
+    }
+
+    @Test
+    void syncFallbackVoid() {
+        // given
+        var service = getService();
+        service.alwaysFail = false;
+
+        // when
+        service.getValueSyncVoid();
+        service.alwaysFail = true;
+
+        // then
+        service.getValueSyncVoid();
+    }
+
+    @Test
+    void syncFallbackCheckedException() {
+        // given
+        var service = getService();
+        service.alwaysFail = false;
+
+        // when
+        try {
+            assertEquals(FallbackTarget.VALUE, service.getValueSyncCheckedException());
+            service.alwaysFail = true;
+
+            // then
+            assertEquals(FallbackTarget.FALLBACK, service.getValueSyncCheckedException());
+        } catch (IOException e) {
+            fail(e);
+        }
+    }
+
+    @Test
+    void syncFallbackCheckedExceptionVoid() {
+        // given
+        var service = getService();
+        service.alwaysFail = false;
+
+        // when
+        try {
+            service.getValueSyncCheckedExceptionVoid();
+            service.alwaysFail = true;
+
+            // then
+            service.getValueSyncCheckedExceptionVoid();
+        } catch (IOException e) {
+            fail(e);
+        }
     }
 
     @Test

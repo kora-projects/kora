@@ -10,7 +10,7 @@ import ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreakerFailurePredicate;
 import javax.annotation.Nonnull;
 import java.time.Duration;
 
-class FastCircuitBreakerTests extends Assertions {
+class SimpleCircuitBreakerTests extends Assertions {
 
     private static final Duration WAIT_IN_OPEN = Duration.ofMillis(10);
 
@@ -35,9 +35,9 @@ class FastCircuitBreakerTests extends Assertions {
     @Test
     void switchFromClosedToOpen() {
         // given
-        final FastCircuitBreakerConfig.NamedConfig config = new FastCircuitBreakerConfig.NamedConfig(
-            30, WAIT_IN_OPEN, 3, 10L, 8L, FastCircuitBreakerFailurePredicate.class.getCanonicalName());
-        final FastCircuitBreaker circuitBreaker = new FastCircuitBreaker("default", config, new FastCircuitBreakerFailurePredicate(), new NoopCircuitBreakerMetrics());
+        final SimpleCircuitBreakerConfig.NamedConfig config = new SimpleCircuitBreakerConfig.NamedConfig(
+            30, WAIT_IN_OPEN, 3, 10L, 8L, SimpleCircuitBreakerFailurePredicate.class.getCanonicalName());
+        final SimpleCircuitBreaker circuitBreaker = new SimpleCircuitBreaker("default", config, new SimpleCircuitBreakerFailurePredicate(), new NoopCircuitBreakerMetrics());
 
         // when
         assertEquals(State.CLOSED, circuitBreaker.getState());
@@ -71,9 +71,9 @@ class FastCircuitBreakerTests extends Assertions {
     @Test
     void switchFromClosedToOpenForMinimumNumberOfCalls() {
         // given
-        final FastCircuitBreakerConfig.NamedConfig config = new FastCircuitBreakerConfig.NamedConfig(
-            100, WAIT_IN_OPEN, 1, 2L, 2L, FastCircuitBreakerFailurePredicate.class.getCanonicalName());
-        final FastCircuitBreaker circuitBreaker = new FastCircuitBreaker("default", config, new FastCircuitBreakerFailurePredicate(), new NoopCircuitBreakerMetrics());
+        final SimpleCircuitBreakerConfig.NamedConfig config = new SimpleCircuitBreakerConfig.NamedConfig(
+            100, WAIT_IN_OPEN, 1, 2L, 2L, SimpleCircuitBreakerFailurePredicate.class.getCanonicalName());
+        final SimpleCircuitBreaker circuitBreaker = new SimpleCircuitBreaker("default", config, new SimpleCircuitBreakerFailurePredicate(), new NoopCircuitBreakerMetrics());
 
         // when
         assertEquals(State.CLOSED, circuitBreaker.getState());
@@ -92,9 +92,9 @@ class FastCircuitBreakerTests extends Assertions {
     @Test
     void switchFromOpenToHalfOpenToOpen() {
         // given
-        final FastCircuitBreakerConfig.NamedConfig config = new FastCircuitBreakerConfig.NamedConfig(
-            100, WAIT_IN_OPEN, 1, 1L, 1L, FastCircuitBreakerFailurePredicate.class.getCanonicalName());
-        final FastCircuitBreaker circuitBreaker = new FastCircuitBreaker("default", config, new FastCircuitBreakerFailurePredicate(), new NoopCircuitBreakerMetrics());
+        final SimpleCircuitBreakerConfig.NamedConfig config = new SimpleCircuitBreakerConfig.NamedConfig(
+            100, WAIT_IN_OPEN, 1, 1L, 1L, SimpleCircuitBreakerFailurePredicate.class.getCanonicalName());
+        final SimpleCircuitBreaker circuitBreaker = new SimpleCircuitBreaker("default", config, new SimpleCircuitBreakerFailurePredicate(), new NoopCircuitBreakerMetrics());
 
         // when
         assertEquals(State.CLOSED, circuitBreaker.getState());
@@ -114,9 +114,9 @@ class FastCircuitBreakerTests extends Assertions {
     @Test
     void switchFromOpenToHalfOpenToClosed() {
         // given
-        final FastCircuitBreakerConfig.NamedConfig config = new FastCircuitBreakerConfig.NamedConfig(
-            100, WAIT_IN_OPEN, 1, 1L, 1L, FastCircuitBreakerFailurePredicate.class.getCanonicalName());
-        final FastCircuitBreaker circuitBreaker = new FastCircuitBreaker("default", config, new FastCircuitBreakerFailurePredicate(), new NoopCircuitBreakerMetrics());
+        final SimpleCircuitBreakerConfig.NamedConfig config = new SimpleCircuitBreakerConfig.NamedConfig(
+            100, WAIT_IN_OPEN, 1, 1L, 1L, SimpleCircuitBreakerFailurePredicate.class.getCanonicalName());
+        final SimpleCircuitBreaker circuitBreaker = new SimpleCircuitBreaker("default", config, new SimpleCircuitBreakerFailurePredicate(), new NoopCircuitBreakerMetrics());
 
         // when
         assertEquals(State.CLOSED, circuitBreaker.getState());
@@ -136,9 +136,9 @@ class FastCircuitBreakerTests extends Assertions {
     @Test
     void switchFromOpenToHalfOpenAndValidateAcquireCalls() {
         // given
-        final FastCircuitBreakerConfig.NamedConfig config = new FastCircuitBreakerConfig.NamedConfig(
-            100, WAIT_IN_OPEN, 1, 1L, 1L, FastCircuitBreakerFailurePredicate.class.getCanonicalName());
-        final FastCircuitBreaker circuitBreaker = new FastCircuitBreaker("default", config, new FastCircuitBreakerFailurePredicate(), new NoopCircuitBreakerMetrics());
+        final SimpleCircuitBreakerConfig.NamedConfig config = new SimpleCircuitBreakerConfig.NamedConfig(
+            100, WAIT_IN_OPEN, 1, 1L, 1L, SimpleCircuitBreakerFailurePredicate.class.getCanonicalName());
+        final SimpleCircuitBreaker circuitBreaker = new SimpleCircuitBreaker("default", config, new SimpleCircuitBreakerFailurePredicate(), new NoopCircuitBreakerMetrics());
 
         // when
         assertEquals(State.CLOSED, circuitBreaker.getState());
@@ -160,9 +160,9 @@ class FastCircuitBreakerTests extends Assertions {
     @Test
     void switchFromClosedToOpenForCustomFailurePredicate() {
         // given
-        final FastCircuitBreakerConfig.NamedConfig config = new FastCircuitBreakerConfig.NamedConfig(
+        final SimpleCircuitBreakerConfig.NamedConfig config = new SimpleCircuitBreakerConfig.NamedConfig(
             100, WAIT_IN_OPEN, 1, 1L, 1L, "custom");
-        final FastCircuitBreaker circuitBreaker = new FastCircuitBreaker("default", config, new CustomFailurePredicate(), new NoopCircuitBreakerMetrics());
+        final SimpleCircuitBreaker circuitBreaker = new SimpleCircuitBreaker("default", config, new CustomFailurePredicate(), new NoopCircuitBreakerMetrics());
 
         // when
         assertEquals(State.CLOSED, circuitBreaker.getState());

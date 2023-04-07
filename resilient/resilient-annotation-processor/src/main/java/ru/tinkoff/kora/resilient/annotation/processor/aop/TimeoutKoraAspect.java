@@ -3,7 +3,6 @@ package ru.tinkoff.kora.resilient.annotation.processor.aop;
 import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.CodeBlock;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
-import ru.tinkoff.kora.annotation.processor.common.ProcessingError;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 
@@ -11,11 +10,12 @@ import javax.annotation.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
-import javax.tools.Diagnostic;
+import javax.lang.model.type.DeclaredType;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeoutException;
 
 import static com.squareup.javapoet.CodeBlock.joining;
 
@@ -68,9 +68,13 @@ public class TimeoutKoraAspect implements KoraAspect {
 
     private CodeBlock buildBodySync(ExecutableElement method, String superCall, String timeoutName) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
+
         if (MethodUtils.isVoid(method)) {
             return CodeBlock.builder().add("""
-                $L.execute(() -> $L);
+                $L.execute(() -> {
+                    $L;
+                    return null;
+                });
                 """, timeoutName, superMethod.toString()).build();
         } else {
             return CodeBlock.builder().add("""
@@ -81,28 +85,36 @@ public class TimeoutKoraAspect implements KoraAspect {
 
     private CodeBlock buildBodyMono(ExecutableElement method, String superCall, String timeoutName, String fieldTimeout, String fieldMetrics) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
+        final DeclaredType timeoutException = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.timeout.TimeoutException"));
+
         return CodeBlock.builder().add("""
             return $L
                 .timeout($L.timeout())
+                .onErrorMap(e -> e instanceof $T, e -> new $T("Timeout exceeded " + $L.timeout()))
                 .doOnError(e -> {
-                    if(e instanceof java.util.concurrent.TimeoutException && $L != null) {
+                    if(e instanceof $T && $L != null) {
                         $L.recordTimeout($S, $L.timeout().toNanos());
                     }
                 });
-                """, superMethod.toString(), fieldTimeout, fieldMetrics, fieldMetrics, timeoutName, fieldTimeout).build();
+                """, superMethod.toString(), fieldTimeout, TimeoutException.class, timeoutException,
+            fieldTimeout, timeoutException, fieldMetrics, fieldMetrics, timeoutName, fieldTimeout).build();
     }
 
     private CodeBlock buildBodyFlux(ExecutableElement method, String superCall, String timeoutName, String fieldTimeout, String fieldMetrics) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
+        final DeclaredType timeoutException = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.timeout.TimeoutException"));
+
         return CodeBlock.builder().add("""
             return $L
                 .timeout($L.timeout())
+                .onErrorMap(e -> e instanceof $T, e -> new $T("Timeout exceeded " + $L.timeout()))
                 .doOnError(e -> {
-                    if(e instanceof java.util.concurrent.TimeoutException && $L != null) {
+                    if(e instanceof $T && $L != null) {
                         $L.recordTimeout($S, $L.timeout().toNanos());
                     }
                 });
-            """, superMethod.toString(), fieldTimeout, fieldMetrics, fieldMetrics, timeoutName, fieldTimeout).build();
+                """, superMethod.toString(), fieldTimeout, TimeoutException.class, timeoutException,
+            fieldTimeout, timeoutException, fieldMetrics, fieldMetrics, timeoutName, fieldTimeout).build();
     }
 
     private CodeBlock buildMethodCall(ExecutableElement method, String call) {

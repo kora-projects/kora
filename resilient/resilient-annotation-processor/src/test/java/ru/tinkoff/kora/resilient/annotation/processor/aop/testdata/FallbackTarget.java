@@ -5,6 +5,10 @@ import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
 import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.resilient.fallback.annotation.Fallback;
+import ru.tinkoff.kora.resilient.retry.annotation.Retryable;
+
+import java.io.IOException;
+import java.util.concurrent.TimeoutException;
 
 @Component
 public class FallbackTarget implements MockLifecycle {
@@ -24,6 +28,38 @@ public class FallbackTarget implements MockLifecycle {
 
     protected String getFallbackSync() {
         return FALLBACK;
+    }
+
+    @Fallback(value = "custom_fallback1", method = "getFallbackSyncVoid()")
+    public void getValueSyncVoid() {
+        if (alwaysFail)
+            throw new IllegalStateException("Failed");
+    }
+
+    protected void getFallbackSyncVoid() {
+
+    }
+
+    @Fallback(value = "custom_fallback1", method = "getFallbackSyncCheckedException()")
+    public String getValueSyncCheckedException() throws IOException {
+        if (alwaysFail)
+            throw new IllegalStateException("Failed");
+
+        return VALUE;
+    }
+
+    protected String getFallbackSyncCheckedException() throws IOException {
+        return FALLBACK;
+    }
+
+    @Fallback(value = "custom_fallback1", method = "getFallbackSyncCheckedExceptionVoid()")
+    public void getValueSyncCheckedExceptionVoid() throws IOException {
+        if (alwaysFail)
+            throw new IllegalStateException("Failed");
+    }
+
+    protected void getFallbackSyncCheckedExceptionVoid() throws IOException {
+
     }
 
     @Fallback(value = "custom_fallback2", method = "getFallbackMono()")

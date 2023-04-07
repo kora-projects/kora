@@ -73,13 +73,29 @@ public class FallbackKoraAspect implements KoraAspect {
         if (MethodUtils.isVoid(method)) {
             final CodeBlock superMethod = buildMethodCall(method, superCall);
             return CodeBlock.builder().add("""
-                $L.fallback(() -> $L, () -> $L);
-                """, fieldFallback, superMethod.toString(), fallbackMethod).build();
+                try {
+                    $L;
+                } catch (Exception e) {
+                    if ($L.canFallback(e)) {
+                        $L;
+                    } else {
+                        throw e;
+                    }
+                }
+                """, superMethod.toString(), fieldFallback, fallbackMethod).build();
         } else {
-            final CodeBlock superMethod = buildMethodSupplier(method, superCall);
+            final CodeBlock superMethod = buildMethodCall(method, superCall);
             return CodeBlock.builder().add("""
-                return $L.fallback($L, () -> $L);
-                """, fieldFallback, superMethod.toString(), fallbackMethod).build();
+                try {
+                    return $L;
+                } catch (Exception e) {
+                    if ($L.canFallback(e)) {
+                        return $L;
+                    } else {
+                        throw e;
+                    }
+                }
+                """, superMethod.toString(), fieldFallback, fallbackMethod).build();
         }
     }
 

@@ -2,7 +2,7 @@ package ru.tinkoff.kora.resilient.fallback;
 
 
 import javax.annotation.Nonnull;
-import java.util.concurrent.Callable;
+import java.util.function.Supplier;
 
 public interface Fallbacker {
 
@@ -10,5 +10,5 @@ public interface Fallbacker {
 
     void fallback(@Nonnull Runnable runnable, @Nonnull Runnable fallback);
 
-    <T> T fallback(@Nonnull Callable<T> supplier, @Nonnull Callable<T> fallback);
+    <T> T fallback(@Nonnull Supplier<T> supplier, @Nonnull Supplier<T> fallback);
 }

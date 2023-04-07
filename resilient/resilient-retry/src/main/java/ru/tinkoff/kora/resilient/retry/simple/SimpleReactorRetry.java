@@ -1,9 +1,10 @@
 package ru.tinkoff.kora.resilient.retry.simple;
 
 import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 import reactor.util.retry.Retry;
 import ru.tinkoff.kora.resilient.retry.RetrierFailurePredicate;
 import ru.tinkoff.kora.resilient.retry.RetryAttemptException;
@@ -12,6 +13,8 @@ import ru.tinkoff.kora.resilient.retry.telemetry.RetryMetrics;
 import java.time.Duration;
 
 final class SimpleReactorRetry extends Retry {
+
+    private static final Logger logger = LoggerFactory.getLogger(SimpleRetryState.class);
 
     private final String name;
     private final long delayNanos;
@@ -41,17 +44,23 @@ final class SimpleReactorRetry extends Retry {
                 }
 
                 if (!failurePredicate.test(currentFailure)) {
+                    logger.trace("RetryReactor '{}' rejected throwable: {}", name, currentFailure.getClass().getCanonicalName());
                     return Mono.error(currentFailure);
                 }
 
                 if (signal.totalRetries() >= attempts) {
+                    logger.trace("RetryReactor '{}' exhausted all '{}' attempts", name, signal.totalRetries());
                     metrics.recordExhaustedAttempts(name, attempts);
-                    return Mono.error(new RetryAttemptException("All '" + attempts + "' attempts elapsed during retry"));
+                    return Mono.error(new RetryAttemptException(attempts));
                 }
 
                 final long nextDelayNanos = delayNanos + (delayStepNanos * (signal.totalRetries() - 1));
+                final Duration delayDuration = Duration.ofNanos(nextDelayNanos);
+                logger.trace("RetryState '{}' initiating '{}' retry for '{}' due to throwable: {}",
+                    name, signal.totalRetries(), delayDuration, currentFailure.getClass().getCanonicalName());
+
                 metrics.recordAttempt(name, nextDelayNanos);
-                return Mono.delay(Duration.ofNanos(nextDelayNanos), Schedulers.parallel());
+                return Mono.delay(delayDuration);
             });
     }
 }

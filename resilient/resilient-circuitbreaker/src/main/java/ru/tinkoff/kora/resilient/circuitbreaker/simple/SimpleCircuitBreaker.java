@@ -29,17 +29,17 @@ import java.util.concurrent.atomic.AtomicLong;
  * --------------------------------------------------------------------------------------------------
  */
 @SuppressWarnings("ConstantConditions")
-record FastCircuitBreaker(
+record SimpleCircuitBreaker(
     AtomicLong state,
     String name,
-    FastCircuitBreakerConfig.NamedConfig config,
+    SimpleCircuitBreakerConfig.NamedConfig config,
     CircuitBreakerFailurePredicate failurePredicate,
     CircuitBreakerMetrics metrics,
     long waitDurationInOpenStateInMillis,
     Clock clock
 ) implements CircuitBreaker {
 
-    private static final Logger logger = LoggerFactory.getLogger(FastCircuitBreaker.class);
+    private static final Logger logger = LoggerFactory.getLogger(SimpleCircuitBreaker.class);
 
     private static final long CLOSED_COUNTER_MASK = 0x7FFF_FFFFL;
     private static final long CLOSED_STATE = 1L << 63;
@@ -53,7 +53,7 @@ record FastCircuitBreaker(
     private static final long ERR_COUNTER_INC = 1L << 31;
     private static final long BOTH_COUNTERS_INC = ERR_COUNTER_INC + COUNTER_INC;
 
-    FastCircuitBreaker(String name, FastCircuitBreakerConfig.NamedConfig config, CircuitBreakerFailurePredicate failurePredicate, CircuitBreakerMetrics metrics) {
+    SimpleCircuitBreaker(String name, SimpleCircuitBreakerConfig.NamedConfig config, CircuitBreakerFailurePredicate failurePredicate, CircuitBreakerMetrics metrics) {
         this(new AtomicLong(CLOSED_STATE), name, config, failurePredicate, metrics, config.waitDurationInOpenState().toMillis(), config.clock());
         this.metrics.recordState(name, State.CLOSED);
     }

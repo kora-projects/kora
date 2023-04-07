@@ -6,6 +6,8 @@ import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
 import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.resilient.circuitbreaker.annotation.CircuitBreaker;
 
+import java.io.IOException;
+
 @Component
 public class CircuitBreakerTarget implements MockLifecycle {
 
@@ -13,6 +15,14 @@ public class CircuitBreakerTarget implements MockLifecycle {
 
     @CircuitBreaker("custom1")
     public String getValueSync() {
+        if (alwaysFail)
+            throw new IllegalStateException("Failed");
+
+        return "OK";
+    }
+
+    @CircuitBreaker("custom1")
+    public String getValueSyncCheckedException() throws IOException {
         if (alwaysFail)
             throw new IllegalStateException("Failed");
 

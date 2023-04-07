@@ -12,16 +12,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-final class FastCircuitBreakerManager implements CircuitBreakerManager {
+final class SimpleCircuitBreakerManager implements CircuitBreakerManager {
 
-    private static final Logger logger = LoggerFactory.getLogger(FastCircuitBreakerManager.class);
+    private static final Logger logger = LoggerFactory.getLogger(SimpleCircuitBreakerManager.class);
 
     private final Map<String, CircuitBreaker> circuitBreakerMap = new ConcurrentHashMap<>();
-    private final FastCircuitBreakerConfig config;
+    private final SimpleCircuitBreakerConfig config;
     private final List<CircuitBreakerFailurePredicate> failurePredicates;
     private final CircuitBreakerMetrics metrics;
 
-    FastCircuitBreakerManager(FastCircuitBreakerConfig config, List<CircuitBreakerFailurePredicate> failurePredicates, CircuitBreakerMetrics metrics) {
+    SimpleCircuitBreakerManager(SimpleCircuitBreakerConfig config, List<CircuitBreakerFailurePredicate> failurePredicates, CircuitBreakerMetrics metrics) {
         this.config = config;
         this.failurePredicates = failurePredicates;
         this.metrics = metrics;
@@ -36,11 +36,11 @@ final class FastCircuitBreakerManager implements CircuitBreakerManager {
             logger.debug("Creating CircuitBreaker named '{}' with failure predicate '{}' and config {}",
                 name, failurePredicate.name(), config);
 
-            return new FastCircuitBreaker(name, config, failurePredicate, metrics);
+            return new SimpleCircuitBreaker(name, config, failurePredicate, metrics);
         });
     }
 
-    private CircuitBreakerFailurePredicate getFailurePredicate(FastCircuitBreakerConfig.NamedConfig config) {
+    private CircuitBreakerFailurePredicate getFailurePredicate(SimpleCircuitBreakerConfig.NamedConfig config) {
         return failurePredicates.stream()
             .filter(p -> p.name().equals(config.failurePredicateName()))
             .findFirst()

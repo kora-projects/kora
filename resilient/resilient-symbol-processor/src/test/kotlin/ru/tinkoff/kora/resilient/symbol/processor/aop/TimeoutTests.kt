@@ -40,7 +40,7 @@ class TimeoutTests : AppRunner() {
         val service = getService<TimeoutTarget>()
 
         // then
-        assertThrows(TimeoutCancellationException::class.java) { runBlocking { service.getValueSuspend() } }
+        assertThrows(TimeoutException::class.java) { runBlocking { service.getValueSuspend() } }
     }
 
     @Test

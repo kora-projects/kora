@@ -12,35 +12,35 @@ import javax.annotation.Nullable;
 import java.util.Map;
 
 public interface CircuitBreakerModule {
-    default ConfigValueExtractor<FastCircuitBreakerConfig> fastCircuitBreakerConfigValueExtractor(ConfigValueExtractor<Map<String, FastCircuitBreakerConfig.NamedConfig>> extractor) {
+    default ConfigValueExtractor<SimpleCircuitBreakerConfig> fastCircuitBreakerConfigValueExtractor(ConfigValueExtractor<Map<String, SimpleCircuitBreakerConfig.NamedConfig>> extractor) {
         return new ObjectConfigValueExtractor<>() {
             @Override
-            protected FastCircuitBreakerConfig extract(Config config) {
-                var fast = Map.<String, FastCircuitBreakerConfig.NamedConfig>of();
+            protected SimpleCircuitBreakerConfig extract(Config config) {
+                var fast = Map.<String, SimpleCircuitBreakerConfig.NamedConfig>of();
                 if (config.hasPath("circuitbreaker")) {
                     fast = extractor.extract(config.getValue("circuitbreaker"));
                 }
-                return new FastCircuitBreakerConfig(fast);
+                return new SimpleCircuitBreakerConfig(fast);
             }
         };
     }
 
-    default FastCircuitBreakerConfig fastCircuitBreakerConfig(Config config, ConfigValueExtractor<FastCircuitBreakerConfig> extractor) {
+    default SimpleCircuitBreakerConfig fastCircuitBreakerConfig(Config config, ConfigValueExtractor<SimpleCircuitBreakerConfig> extractor) {
         return !config.hasPath("resilient")
-            ? new FastCircuitBreakerConfig(Map.of())
+            ? new SimpleCircuitBreakerConfig(Map.of())
             : extractor.extract(config.getValue("resilient"));
     }
 
-    default CircuitBreakerManager fastCircuitBreakerManager(FastCircuitBreakerConfig config,
+    default CircuitBreakerManager fastCircuitBreakerManager(SimpleCircuitBreakerConfig config,
                                                             All<CircuitBreakerFailurePredicate> failurePredicates,
                                                             @Nullable CircuitBreakerMetrics metrics) {
-        return new FastCircuitBreakerManager(config, failurePredicates,
+        return new SimpleCircuitBreakerManager(config, failurePredicates,
             (metrics == null)
                 ? new NoopCircuitBreakerMetrics()
                 : metrics);
     }
 
     default CircuitBreakerFailurePredicate fastDefaultCircuitBreakerFailurePredicate() {
-        return new FastCircuitBreakerFailurePredicate();
+        return new SimpleCircuitBreakerFailurePredicate();
     }
 }
