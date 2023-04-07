@@ -17,6 +17,11 @@ open class TimeoutTarget : MockLifecycle {
     }
 
     @Timeout("custom1")
+    open fun getValueSyncVoid() {
+        Thread.sleep(2000)
+    }
+
+    @Timeout("custom1")
     open suspend fun getValueSuspend(): String {
         delay(2000)
         return "OK"

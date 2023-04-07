@@ -2,19 +2,14 @@ package ru.tinkoff.kora.resilient.retry.simple;
 
 import com.typesafe.config.Config;
 import ru.tinkoff.kora.application.graph.All;
-import ru.tinkoff.kora.common.DefaultComponent;
-import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.config.common.extractor.ObjectConfigValueExtractor;
 import ru.tinkoff.kora.resilient.retry.RetrierFailurePredicate;
 import ru.tinkoff.kora.resilient.retry.RetrierManager;
-import ru.tinkoff.kora.resilient.retry.annotation.Retryable;
 import ru.tinkoff.kora.resilient.retry.telemetry.RetryMetrics;
 
 import javax.annotation.Nullable;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public interface RetryableModule {
 
@@ -37,20 +32,13 @@ public interface RetryableModule {
             : extractor.extract(config.getValue("resilient"));
     }
 
-    default RetrierManager simpleRetryableManager(@Tag(Retryable.class) ExecutorService executorService,
-                                                  All<RetrierFailurePredicate> failurePredicates,
+    default RetrierManager simpleRetryableManager(All<RetrierFailurePredicate> failurePredicates,
                                                   SimpleRetrierConfig config,
                                                   @Nullable RetryMetrics metrics) {
-        return new SimpleRetrierManager(executorService, config, failurePredicates,
+        return new SimpleRetrierManager(config, failurePredicates,
             metrics == null
                 ? new NoopRetryMetrics()
                 : metrics);
-    }
-
-    @DefaultComponent
-    @Tag(Retryable.class)
-    default ExecutorService simpleRetryableExecutorService() {
-        return Executors.newCachedThreadPool();
     }
 
     default RetrierFailurePredicate simpleRetrierFailurePredicate() {

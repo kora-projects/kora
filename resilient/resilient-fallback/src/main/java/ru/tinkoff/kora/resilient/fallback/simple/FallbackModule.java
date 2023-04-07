@@ -33,8 +33,8 @@ public interface FallbackModule {
     }
 
     default FallbackerManager simpleFallbackManager(SimpleFallbackConfig config,
-                                                        All<FallbackFailurePredicate> failurePredicates,
-                                                        @Nullable FallbackMetrics metrics) {
+                                                    All<FallbackFailurePredicate> failurePredicates,
+                                                    @Nullable FallbackMetrics metrics) {
         return new SimpleFallbackerManager(config, failurePredicates,
             (metrics == null)
                 ? NoopFallbackMetrics.INSTANCE

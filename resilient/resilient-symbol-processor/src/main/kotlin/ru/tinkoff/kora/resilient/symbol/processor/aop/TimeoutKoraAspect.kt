@@ -15,16 +15,25 @@ import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
-import ru.tinkoff.kora.ksp.common.exception.ProcessingError
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import java.util.concurrent.Future
-import javax.tools.Diagnostic
 
 @KspExperimental
 class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
 
     companion object {
         const val ANNOTATION_TYPE: String = "ru.tinkoff.kora.resilient.timeout.annotation.Timeout"
+        val MEMBER_CALLABLE = MemberName("java.util.concurrent", "Callable")
+        val timeoutMember = MemberName("kotlinx.coroutines", "withTimeout")
+        val timeoutCancelMember = MemberName("kotlinx.coroutines", "TimeoutCancellationException")
+        val flowMember = MemberName("kotlinx.coroutines.flow", "flow")
+        val emitMember = MemberName("kotlinx.coroutines.flow", "emitAll")
+        val startMember = MemberName("kotlinx.coroutines.flow", "onStart")
+        val whileMember = MemberName("kotlinx.coroutines.flow", "takeWhile")
+        val systemMember = MemberName("java.lang", "System")
+        val atomicMember = MemberName("java.util.concurrent.atomic", "AtomicLong")
+        val timeoutKoraMember = MemberName("ru.tinkoff.kora.resilient.timeout", "TimeoutException")
     }
 
     override fun getSupportedAnnotationTypes(): Set<String> {
@@ -69,43 +78,43 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
         method: KSFunctionDeclaration, superCall: String, timeoutName: String
     ): CodeBlock {
         val superMethod = buildMethodCall(method, superCall)
-        val supplierMember = MemberName("java.util.function", "Supplier")
-        return CodeBlock.builder().add(
-            """
-            return %L.execute(%M { %L })
-            """.trimIndent(), timeoutName, supplierMember, superMethod.toString()
-        ).build()
+        return if (method.isVoid()) {
+            CodeBlock.builder().add(
+                """
+                    %L.execute( %M { %L })
+                    """.trimIndent(), timeoutName, MEMBER_CALLABLE, superMethod.toString()
+            ).build()
+        } else {
+            CodeBlock.builder().add(
+                """
+                    return %L.execute( %M { %L })
+                    """.trimIndent(), timeoutName, MEMBER_CALLABLE, superMethod.toString()
+            ).build()
+        }
     }
 
     private fun buildBodySuspend(
         method: KSFunctionDeclaration, superCall: String, timeoutName: String, fieldTimeout: String, fieldMetric: String
     ): CodeBlock {
         val superMethod = buildMethodCall(method, superCall)
-        val timeoutMember = MemberName("kotlinx.coroutines", "withTimeout")
         return CodeBlock.builder().add(
             """
             try {
                   return %M(%L.timeout().toMillis()) {
                       %L
                   }
-            } catch (e: Exception) {
+            } catch (e: %M) {
                 %L?.recordTimeout(%S, %L.timeout().toNanos())
-                throw e
+                throw %M("Timeout exceeded " + %L.timeout())
             }
-          """.trimIndent(), timeoutMember, fieldTimeout, superMethod.toString(), fieldMetric, timeoutName, fieldTimeout
+          """.trimIndent(), timeoutMember, fieldTimeout, superMethod.toString(), timeoutCancelMember,
+            fieldMetric, timeoutName, fieldTimeout, timeoutKoraMember, fieldTimeout
         ).build()
     }
 
     private fun buildBodyFlow(
         method: KSFunctionDeclaration, superCall: String, timeoutName: String, fieldTimeout: String, fieldMetric: String
     ): CodeBlock {
-        val flowMember = MemberName("kotlinx.coroutines.flow", "flow")
-        val emitMember = MemberName("kotlinx.coroutines.flow", "emitAll")
-        val startMember = MemberName("kotlinx.coroutines.flow", "onStart")
-        val whileMember = MemberName("kotlinx.coroutines.flow", "takeWhile")
-        val systemMember = MemberName("java.lang", "System")
-        val atomicMember = MemberName("java.util.concurrent.atomic", "AtomicLong")
-        val timeoutMember = MemberName("ru.tinkoff.kora.resilient.timeout", "TimeoutException")
         val superMethod = buildMethodCall(method, superCall)
         return CodeBlock.builder().add(
             """
@@ -123,7 +132,7 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
                 }
             """.trimIndent(),
             atomicMember, flowMember, emitMember, superMethod.toString(), startMember, systemMember,
-            fieldTimeout, whileMember, systemMember, fieldMetric, timeoutName, fieldTimeout, timeoutMember, fieldTimeout,
+            fieldTimeout, whileMember, systemMember, fieldMetric, timeoutName, fieldTimeout, timeoutKoraMember, fieldTimeout,
         ).build()
     }
 

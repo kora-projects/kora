@@ -13,15 +13,25 @@ public interface Retrier {
     /**
      * Retry State implementation for manual retry execution handling
      */
-    interface RetryState {
+    interface RetryState extends AutoCloseable {
 
-        boolean canRetry(@Nonnull Throwable throwable);
+        enum RetryStatus {
+            ACCEPTED,
+            REJECTED,
+            EXHAUSTED
+        }
 
-        void checkRetry(@Nonnull Throwable throwable) throws RetryException;
+        @Nonnull
+        RetryStatus onException(@Nonnull Throwable throwable);
+
+        int getAttempts();
 
         long getDelayNanos();
 
         void doDelay();
+
+        @Override
+        void close();
     }
 
     /**
@@ -36,9 +46,9 @@ public interface Retrier {
     @Nonnull
     Retry asReactor();
 
-    void retry(@Nonnull Runnable runnable) throws RetryException;
+    void retry(@Nonnull Runnable runnable) throws RetryAttemptException;
 
-    <T> T retry(@Nonnull Supplier<T> supplier) throws RetryException;
+    <T> T retry(@Nonnull Supplier<T> supplier) throws RetryAttemptException;
 
-    <T> T retry(@Nonnull Supplier<T> supplier, Supplier<T> fallback) throws RetryException;
+    <T> T retry(@Nonnull Supplier<T> supplier, Supplier<T> fallback) throws RetryAttemptException;
 }

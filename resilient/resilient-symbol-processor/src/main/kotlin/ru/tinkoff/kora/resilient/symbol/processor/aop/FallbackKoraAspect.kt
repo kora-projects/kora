@@ -56,7 +56,7 @@ class FallbackKoraAspect(val resolver: Resolver) : KoraAspect {
         val body = if (method.isFlow()) {
             buildBodyFlow(method, fallback, superCall, fieldFallback)
         } else if (method.isSuspend()) {
-            buildBodySuspend(method, fallback, superCall, fieldFallback)
+            buildBodySync(method, fallback, superCall, fieldFallback)
         } else {
             buildBodySync(method, fallback, superCall, fieldFallback)
         }
@@ -67,31 +67,8 @@ class FallbackKoraAspect(val resolver: Resolver) : KoraAspect {
     private fun buildBodySync(
         method: KSFunctionDeclaration, fallbackCall: FallbackMeta, superCall: String, fieldFallback: String
     ): CodeBlock {
-        if (method.isVoid()) {
-            val runnableMember = MemberName("java.lang", "Runnable")
-            val superMethod = buildMethodCall(method, superCall)
-            return CodeBlock.builder().add(
-                """
-                return %L.fallback(%M { %L }, %M { %L })
-                """.trimIndent(), fieldFallback, runnableMember, superMethod.toString(), runnableMember, fallbackCall.call()
-            ).build()
-        }
-
-        val callableMember = MemberName("java.util.concurrent", "Callable")
-        val superMethod = buildMethodCallable(method, superCall)
-        val fallbackCallable = CodeBlock.of("%M { %L }", callableMember, fallbackCall.call())
-        return CodeBlock.builder().add(
-            """
-            return %L.fallback(%L, %L)
-            """.trimIndent(), fieldFallback, superMethod.toString(), fallbackCallable
-        ).build()
-    }
-
-    private fun buildBodySuspend(
-        method: KSFunctionDeclaration, fallbackCall: FallbackMeta, superCall: String, fieldFallback: String
-    ): CodeBlock {
-        val superMethod = buildMethodCall(method, superCall)
         val prefix = if (method.isVoid()) "" else "return "
+        val superMethod = buildMethodCall(method, superCall)
         return CodeBlock.builder().add(
             """
             ${prefix}try {

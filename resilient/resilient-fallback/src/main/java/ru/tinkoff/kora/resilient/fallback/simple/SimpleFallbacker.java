@@ -2,13 +2,12 @@ package ru.tinkoff.kora.resilient.fallback.simple;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.tinkoff.kora.resilient.fallback.FallbackException;
 import ru.tinkoff.kora.resilient.fallback.FallbackFailurePredicate;
 import ru.tinkoff.kora.resilient.fallback.Fallbacker;
 import ru.tinkoff.kora.resilient.fallback.telemetry.FallbackMetrics;
 
 import javax.annotation.Nonnull;
-import java.util.concurrent.Callable;
+import java.util.function.Supplier;
 
 final class SimpleFallbacker implements Fallbacker {
 
@@ -27,11 +26,10 @@ final class SimpleFallbacker implements Fallbacker {
     @Override
     public boolean canFallback(Throwable throwable) {
         if (failurePredicate.test(throwable)) {
-            logger.trace("Recorded possible Fallback named: {}", name);
+            logger.trace("Initiating Fallback '{}' due to: {}", name, throwable.getClass().getCanonicalName());
             metrics.recordExecute(name, throwable);
             return true;
         } else {
-            logger.trace("Recorded possible Fallback named '{}' failure predicate didn't pass exception for: {}", name, throwable);
             return false;
         }
     }
@@ -50,18 +48,14 @@ final class SimpleFallbacker implements Fallbacker {
     }
 
     @Override
-    public <T> T fallback(@Nonnull Callable<T> supplier, @Nonnull Callable<T> fallback) {
+    public <T> T fallback(@Nonnull Supplier<T> supplier, @Nonnull Supplier<T> fallback) {
         try {
-            return supplier.call();
+            return supplier.get();
         } catch (Throwable e) {
             if (canFallback(e)) {
-                try {
-                    return fallback.call();
-                } catch (Exception ex) {
-                    throw new FallbackException(ex, name);
-                }
+                return fallback.get();
             } else {
-                throw new FallbackException(e, name);
+                throw e;
             }
         }
     }

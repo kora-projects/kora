@@ -8,7 +8,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.Map;
 
-public record FastCircuitBreakerConfig(@Nullable Map<String, NamedConfig> circuitbreaker) {
+public record SimpleCircuitBreakerConfig(@Nullable Map<String, NamedConfig> circuitbreaker) {
 
     public static final String DEFAULT = "default";
 
@@ -69,7 +69,7 @@ public record FastCircuitBreakerConfig(@Nullable Map<String, NamedConfig> circui
      * {@link #permittedCallsInHalfOpenState} Configures the number of permitted calls that must succeed when the CircuitBreaker is half open.
      * {@link #slidingWindowSize} Configures the sliding window which is used to record the outcome of calls when the CircuitBreaker is closed.
      * {@link #minimumRequiredCalls} Configures the minimum number of calls which are required (per sliding window period) before the CircuitBreaker can calculate the error rate.
-     * {@link #failurePredicateName} {@link CircuitBreakerFailurePredicate#name()} default is {@link FastCircuitBreakerFailurePredicate}
+     * {@link #failurePredicateName} {@link CircuitBreakerFailurePredicate#name()} default is {@link SimpleCircuitBreakerFailurePredicate}
      */
     public record NamedConfig(@Nullable Integer failureRateThreshold,
                               @Nullable Duration waitDurationInOpenState,
@@ -84,7 +84,7 @@ public record FastCircuitBreakerConfig(@Nullable Map<String, NamedConfig> circui
             this.permittedCallsInHalfOpenState = permittedCallsInHalfOpenState;
             this.slidingWindowSize = slidingWindowSize;
             this.minimumRequiredCalls = minimumRequiredCalls;
-            this.failurePredicateName = (failurePredicateName == null) ? FastCircuitBreakerFailurePredicate.class.getCanonicalName() : failurePredicateName;
+            this.failurePredicateName = (failurePredicateName == null) ? SimpleCircuitBreakerFailurePredicate.class.getCanonicalName() : failurePredicateName;
         }
 
         public Clock clock() {

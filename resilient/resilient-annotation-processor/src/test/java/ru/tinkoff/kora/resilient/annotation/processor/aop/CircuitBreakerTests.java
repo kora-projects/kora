@@ -5,6 +5,7 @@ import org.junit.jupiter.api.TestInstance;
 import ru.tinkoff.kora.resilient.annotation.processor.aop.testdata.*;
 import ru.tinkoff.kora.resilient.circuitbreaker.CallNotPermittedException;
 
+import java.io.IOException;
 import java.time.Duration;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -39,6 +40,32 @@ class CircuitBreakerTests extends AppRunner {
             fail("Should not happen");
         } catch (CallNotPermittedException ex) {
             assertNotNull(ex.getMessage());
+        }
+    }
+
+    @Test
+    void syncCircuitBreakerCheckedException() {
+        // given
+        final CircuitBreakerTarget service = getService();
+
+        // when
+        try {
+            service.getValueSyncCheckedException();
+            fail("Should not happen");
+        } catch (IllegalStateException e) {
+            assertNotNull(e.getMessage());
+        } catch (IOException e) {
+            fail(e);
+        }
+
+        // then
+        try {
+            service.getValueSyncCheckedException();
+            fail("Should not happen");
+        } catch (CallNotPermittedException ex) {
+            assertNotNull(ex.getMessage());
+        } catch (IOException e) {
+            fail(e);
         }
     }
 
