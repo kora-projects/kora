@@ -86,12 +86,14 @@ public final class HelloWorldController {
 #### Преобразование ответа
 
 Давайте рассмотрим следующий пример. Тут мы возвращаем record `HelloWorldResponse` из метода `helloWorld`.
+Аннотация `@Json` на методе контроллера указывает на необходимость преобразования возвращаемого объекта с помощью `JsonWriter` сгенерированного модулем `JsonModule`.
 
 ```java
 import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.http.common.HttpMethod;
 import ru.tinkoff.kora.http.common.annotation.HttpRoute;
 import ru.tinkoff.kora.http.server.common.annotation.HttpController;
+import ru.tinkoff.kora.json.common.annotation.Json;
 
 @HttpController
 @Component
@@ -99,6 +101,7 @@ public final class HelloWorldController {
     public record HelloWorldResponse(String greeting) {}
 
     @HttpRoute(method = HttpMethod.GET, path = "/hello/world")
+    @Json
     public HelloWorldResponse helloWorld() {
         return new HelloWorldResponse("Hello world");
     }
@@ -108,24 +111,24 @@ public final class HelloWorldController {
 Теперь взглянем на сгенерированный код, чтобы лучше понять, как это всё работает.
 
 ```java
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.common.Module;
-import ru.tinkoff.kora.http.server.common.HttpServerRequest;
+import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.http.server.common.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandlerImpl;
-import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper;
 
 @Module
 public interface HelloWorldControllerModule {
     default HttpServerRequestHandler get_hello_world(HelloWorldController _controller,
-                                                     HttpServerRequestMapper<HttpServerRequest> _requestMapper,
-                                                     HttpServerResponseMapper<HelloWorldController.HelloWorldResponse> _responseMapper,
-                                                     BlockingRequestExecutor _executor) {
-        return HttpServerRequestHandlerImpl.get("/hello/world", _request -> Mono.deferContextual(_ctx -> _requestMapper.apply(_request)
-            .flatMap(_mappedRequest -> _executor.execute(() -> _controller.helloWorld()))
-            .flatMap(_response -> _responseMapper.apply(_response))));
+            @Tag({ru.tinkoff.kora.json.common.annotation.Json.class}) HttpServerResponseMapper<HelloWorldController.HelloWorldResponse> _responseMapper,
+            BlockingRequestExecutor _executor) {
+        return HttpServerRequestHandlerImpl.get("/hello/world", _request -> {
+
+            return _executor.execute(() -> _controller.helloWorld())
+                .flatMap(_response -> _responseMapper.apply(_response));
+
+        });
     }
 }
 ```
@@ -136,8 +139,8 @@ public interface HelloWorldControllerModule {
 
 На данный момент есть два модуля которые можно подключить для простого преобразования ответа в json с кодом 200:
 
-* JsonHttpServerModule - предоставляет фабричную функцию для преобразования ответа при помощи наших оптимальных кодогенерированных сериализаторов
-* JacksonHttpServerModule - предоставляет фабричную функцию для преобразования ответа при помощи jackson object mapper
+* `JsonModule` - предоставляет фабричную функцию для преобразования ответа при помощи наших оптимальных кодогенерированных сериализаторов
+* `JacksonModule` - предоставляет фабричную функцию для преобразования ответа при помощи jackson object mapper
 
 По аналогии с этими конверторами, можно реализовать любой API с нужным вам поведением, связанным со статус-кодами и хедерами в ответе.
 
