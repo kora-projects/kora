@@ -311,12 +311,14 @@ package ru.tinkoff.kora.database.flyway;
 import org.flywaydb.core.Flyway;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.GraphInterceptor;
+import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.common.util.ReactorUtils;
 import ru.tinkoff.kora.database.jdbc.JdbcDatabase;
 
-public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<JdbcDataBase> {
+@Component
+public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<JdbcDatabase> {
     @Override
-    public Mono<JdbcDataBase> init(JdbcDataBase value) {
+    public Mono<JdbcDatabase> init(JdbcDatabase value) {
         return ReactorUtils
             .ioMono(() -> Flyway.configure()
                 .dataSource(value.value())
@@ -326,7 +328,7 @@ public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<Jdb
     }
 
     @Override
-    public Mono<JdbcDataBase> release(JdbcDataBase value) {
+    public Mono<JdbcDatabase> release(JdbcDatabase value) {
         return Mono.just(value);
     }
 }
