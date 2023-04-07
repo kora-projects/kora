@@ -60,9 +60,9 @@ interface RepoWithBatch extends JdbcRepository {
 
 ### JDBC
 
-При подключении через `jdbc` следует добавить `JdbcDatabaseModule`. Внутри `JdbcDatabaseModule` создаются экземпляры классов `JdbcDataBaseConfig` и `JdbcDataBase`.
+При подключении через `jdbc` следует добавить `JdbcDatabaseModule`. Внутри `JdbcDatabaseModule` создаются экземпляры классов `JdbcDatabaseConfig` и `JdbcDatabase`.
 
-Параметры, описанные в классе `JdbcDataBaseConfig`:
+Параметры, описанные в классе `JdbcDatabaseConfig`:
 
 * **username** - имя пользователя
 * **password** - пароль
