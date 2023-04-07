@@ -4,4 +4,9 @@ import ru.tinkoff.kora.validation.common.annotation.Pattern
 import ru.tinkoff.kora.validation.common.annotation.Valid
 
 @Valid
-data class ValidTaz(@Pattern("\\d+") val number: String)
+data class ValidTaz(@Pattern("\\d+") val number: String) {
+
+    companion object {
+        const val ignored: String = "ops"
+    }
+}

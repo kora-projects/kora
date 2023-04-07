@@ -7,6 +7,10 @@ import ru.tinkoff.kora.validation.common.annotation.Valid
 @Valid
 class ValidBar {
 
+    companion object {
+        const val ignored: String = "ops"
+    }
+
     @NotEmpty
     var id: String? = null
         get() = field

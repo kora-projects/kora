@@ -63,15 +63,14 @@ public final class ValidAnnotationProcessor extends AbstractKoraProcessor {
 
         final Map<ValidMeta.Constraint.Factory, String> constraintToFieldName = new HashMap<>();
         final Map<ValidMeta.Validated, String> validatedToFieldName = new HashMap<>();
-        final List<CodeBlock> contextBuilder = new ArrayList<>();
-        final List<CodeBlock> constraintBuilder = new ArrayList<>();
+        final List<CodeBlock> fieldConstraintBuilder = new ArrayList<>();
         for (int i = 0; i < meta.fields().size(); i++) {
             final ValidMeta.Field field = meta.fields().get(i);
             final String contextField = "_context" + i;
-            contextBuilder.add(CodeBlock.of("var $L = context.addPath($S);", contextField, field.name()));
+            fieldConstraintBuilder.add(CodeBlock.of("\nvar $L = context.addPath($S);", contextField, field.name()));
 
             if (field.isNotNull() && !field.isPrimitive()) {
-                contextBuilder.add(CodeBlock.of("""
+                fieldConstraintBuilder.add(CodeBlock.of("""
                     if(value.$L == null) {
                         _violations.add($L.violates(\"Should be not null, but was null\"));
                         if(context.isFailFast()) {
@@ -80,12 +79,16 @@ public final class ValidAnnotationProcessor extends AbstractKoraProcessor {
                     }""", field.accessor(), contextField));
             }
 
+            if (!field.isPrimitive()) {
+                fieldConstraintBuilder.add(CodeBlock.of("if(value.$L != null) {$>", field.accessor()));
+            }
+
             for (int j = 0; j < field.constraint().size(); j++) {
                 final ValidMeta.Constraint constraint = field.constraint().get(j);
                 final String suffix = i + "_" + j;
                 final String constraintField = constraintToFieldName.computeIfAbsent(constraint.factory(), (k) -> "_constraint" + suffix);
 
-                constraintBuilder.add(CodeBlock.of("""
+                fieldConstraintBuilder.add(CodeBlock.of("""
                     _violations.addAll($L.validate(value.$L, $L));
                     if(context.isFailFast() && !_violations.isEmpty()) {
                         return _violations;
@@ -97,13 +100,15 @@ public final class ValidAnnotationProcessor extends AbstractKoraProcessor {
                 final String suffix = i + "_" + j;
                 final String validatorField = validatedToFieldName.computeIfAbsent(validated, (k) -> "_validator" + suffix);
 
-                constraintBuilder.add(CodeBlock.of("""
-                    if(value.$L != null) {
-                        _violations.addAll($L.validate(value.$L, $L));
-                        if(context.isFailFast()) {
-                            return _violations;
-                        }
-                    }""", field.accessor(), validatorField, field.accessor(), contextField));
+                fieldConstraintBuilder.add(CodeBlock.of("""
+                    _violations.addAll($L.validate(value.$L, $L));
+                    if(context.isFailFast() && !_violations.isEmpty()) {
+                        return _violations;
+                    }""", validatorField, field.accessor(), contextField));
+            }
+
+            if (!field.isPrimitive()) {
+                fieldConstraintBuilder.add(CodeBlock.of("$<}"));
             }
         }
 
@@ -153,8 +158,7 @@ public final class ValidAnnotationProcessor extends AbstractKoraProcessor {
                                                             
                             final $T<Violation> _violations = new $T<>();""",
                         List.class, meta.source().simpleName(), List.class, ArrayList.class),
-                    CodeBlock.join(contextBuilder, "\n"),
-                    CodeBlock.join(constraintBuilder, "\n"),
+                    CodeBlock.join(fieldConstraintBuilder, "\n"),
                     CodeBlock.of("return _violations;")),
                 "\n\n"));
 
@@ -206,6 +210,7 @@ public final class ValidAnnotationProcessor extends AbstractKoraProcessor {
             .filter(e -> e.getKind() == ElementKind.FIELD)
             .filter(e -> e instanceof VariableElement)
             .map(e -> ((VariableElement) e))
+            .filter(e -> !e.getModifiers().contains(Modifier.STATIC))
             .toList();
     }
 

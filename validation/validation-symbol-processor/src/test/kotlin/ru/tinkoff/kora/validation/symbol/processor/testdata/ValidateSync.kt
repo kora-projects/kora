@@ -6,6 +6,10 @@ import ru.tinkoff.kora.validation.common.annotation.*
 @Component
 open class ValidateSync {
 
+    companion object {
+        const val ignored: String = "ops"
+    }
+
     @Validate
     open fun validatedInput(
         @Range(from = 1.0, to = 5.0) c1: Int,

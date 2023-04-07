@@ -36,6 +36,7 @@ public abstract class ValidRunner extends Assertions implements ValidatorModule 
             final Class<?> clazz = classLoader.loadClass("ru.tinkoff.kora.validation.annotation.processor.testdata.$ValidBar_Validator");
             return (Validator<ValidBar>) clazz.getConstructors()[0].newInstance(
                 sizeListConstraintFactory(TypeRef.of(Integer.class)),
+                notBlankStringConstraintFactory(),
                 listValidator(getTazValidator(), TypeRef.of(ValidTaz.class)));
         } catch (RuntimeException e) {
             throw e;
