@@ -122,7 +122,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
 
             var constraintField = aspectContext.fieldFactory().constructorInitialized(constraintType, createExec);
             builder.addStatement("_returnValueViolations.addAll($N.validate(_result, _returnValueContext))", constraintField);
-            if(isFailFast) {
+            if (isFailFast) {
                 builder.beginControlFlow("if (!_returnValueViolations.isEmpty())")
                     .addStatement("throw new $T(_returnValueViolations)", EXCEPTION_TYPE)
                     .endControlFlow();
@@ -133,14 +133,14 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             var validatorType = validated.validator().asMirror(env);
             var validatorField = aspectContext.fieldFactory().constructorParam(validatorType, List.of());
             builder.addStatement("_returnValueViolations.addAll($N.validate(_result, _returnValueContext))", validatorField);
-            if(isFailFast) {
+            if (isFailFast) {
                 builder.beginControlFlow("if (!_returnValueViolations.isEmpty())")
                     .addStatement("throw new $T(_returnValueViolations)", EXCEPTION_TYPE)
                     .endControlFlow();
             }
         }
 
-        if(!isFailFast) {
+        if (!isFailFast) {
             builder.beginControlFlow("if (!_returnValueViolations.isEmpty())")
                 .addStatement("throw new $T(_returnValueViolations)", EXCEPTION_TYPE)
                 .endControlFlow();
@@ -198,7 +198,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                         builder.addStatement("_argumentsViolations.addAll($N.validate($N, _argumentsContext))", constraintField, parameter.getSimpleName());
                     }
 
-                    if(isFailFast) {
+                    if (isFailFast) {
                         builder.beginControlFlow("if (!_argumentsViolations.isEmpty())")
                             .addStatement("throw new $T(_argumentsViolations)", EXCEPTION_TYPE)
                             .endControlFlow();
@@ -217,7 +217,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                         builder.addStatement("_argumentsViolations.addAll($N.validate($N, _argumentsContext))", validatorField, parameter.getSimpleName());
                     }
 
-                    if(isFailFast) {
+                    if (isFailFast) {
                         builder.beginControlFlow("if (!_argumentsViolations.isEmpty())")
                             .addStatement("throw new $T(_argumentsViolations)", EXCEPTION_TYPE)
                             .endControlFlow();
@@ -226,7 +226,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             }
         }
 
-        if(!isFailFast) {
+        if (!isFailFast) {
             builder.beginControlFlow("if (!_argumentsViolations.isEmpty())")
                 .addStatement("throw new $T(_argumentsViolations)", EXCEPTION_TYPE)
                 .endControlFlow();

@@ -15,6 +15,9 @@ class ValidateAspectTests extends ValidateRunner {
 
         // then
         assertDoesNotThrow(() -> service.validatedInput(1, "1", new ValidTaz("1")));
+        assertDoesNotThrow(() -> service.validatedInput(1, null, new ValidTaz("1")));
+        assertDoesNotThrow(() -> service.validatedInputVoid(1, "1", new ValidTaz("1")));
+        assertDoesNotThrow(() -> service.validatedInputVoid(1, null, new ValidTaz("1")));
     }
 
     @Test
@@ -37,6 +40,7 @@ class ValidateAspectTests extends ValidateRunner {
 
         // then
         assertDoesNotThrow(() -> service.validatedOutput(new ValidTaz("1"), null));
+        assertDoesNotThrow(() -> service.validatedOutputSimple(new ValidTaz("1")));
     }
 
     @Test
@@ -47,6 +51,7 @@ class ValidateAspectTests extends ValidateRunner {
         // then
         assertThrows(ViolationException.class, () -> service.validatedOutput(new ValidTaz("A"), null));
         assertThrows(ViolationException.class, () -> service.validatedOutput(new ValidTaz("1"), new ValidTaz("1")));
+        assertThrows(ViolationException.class, () -> service.validatedOutputSimple(null));
     }
 
     @Test
@@ -108,6 +113,7 @@ class ValidateAspectTests extends ValidateRunner {
 
         // then
         assertDoesNotThrow(() -> service.validatedInput(1, "1", new ValidTaz("1")).block());
+        assertDoesNotThrow(() -> service.validatedInput(1, null, new ValidTaz("1")).block());
     }
 
     @Test
@@ -131,6 +137,7 @@ class ValidateAspectTests extends ValidateRunner {
 
         // then
         assertDoesNotThrow(() -> service.validatedOutput(new ValidTaz("1"), null).block());
+        assertDoesNotThrow(() -> service.validatedOutputSimple(new ValidTaz("1")).block());
     }
 
     @Test
@@ -141,6 +148,7 @@ class ValidateAspectTests extends ValidateRunner {
         // then
         assertThrows(ViolationException.class, () -> service.validatedOutput(new ValidTaz("A"), null).block());
         assertThrows(ViolationException.class, () -> service.validatedOutput(new ValidTaz("1"), new ValidTaz("1")).block());
+        assertThrows(ViolationException.class, () -> service.validatedOutputSimple(null).block());
     }
 
     @Test
@@ -183,6 +191,7 @@ class ValidateAspectTests extends ValidateRunner {
 
         // then
         assertDoesNotThrow(() -> service.validatedInput(1, "1", new ValidTaz("1")).collectList().block());
+        assertDoesNotThrow(() -> service.validatedInput(1, null, new ValidTaz("1")).collectList().block());
     }
 
     @Test
@@ -206,6 +215,7 @@ class ValidateAspectTests extends ValidateRunner {
 
         // then
         assertDoesNotThrow(() -> service.validatedOutput(new ValidTaz("1"), null).collectList().block());
+        assertDoesNotThrow(() -> service.validatedOutputSimple(new ValidTaz("1")).collectList().block());
     }
 
     @Test
@@ -216,6 +226,7 @@ class ValidateAspectTests extends ValidateRunner {
         // then
         assertThrows(ViolationException.class, () -> service.validatedOutput(new ValidTaz("A"), null).collectList().block());
         assertThrows(ViolationException.class, () -> service.validatedOutput(new ValidTaz("1"), new ValidTaz("1")).collectList().block());
+        assertThrows(ViolationException.class, () -> service.validatedOutputSimple(null).collectList().block());
     }
 
     @Test

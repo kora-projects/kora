@@ -15,4 +15,9 @@ data class ValidFoo(
     val timestamp: OffsetDateTime,
     @Valid
     val bar: ValidBar?
-)
+) {
+
+    companion object {
+        const val ignored: String = "ops"
+    }
+}

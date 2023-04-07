@@ -198,7 +198,11 @@ class ValidSymbolProcessor(private val environment: SymbolProcessorEnvironment) 
             throw ProcessingErrorException("Validation can't be generated for: ${declaration.classKind}", declaration)
         }
 
-        val elementFields = declaration.getAllProperties().toList()
+        val elementFields = declaration.getAllProperties()
+            .filter { p -> !p.modifiers.contains(Modifier.JAVA_STATIC) }
+            .filter { p -> !p.modifiers.contains(Modifier.CONST) }
+            .toList()
+
         val fields = ArrayList<Field>()
         for (fieldProperty in elementFields) {
             val constraints = getConstraints(fieldProperty)
