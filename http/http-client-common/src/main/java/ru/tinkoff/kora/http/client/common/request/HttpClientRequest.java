@@ -4,6 +4,7 @@ import reactor.core.publisher.Flux;
 import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.HttpMethod;
 
+import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.util.List;
 
@@ -30,7 +31,7 @@ public interface HttpClientRequest {
 
     record TemplateParam(String name, String value) {}
 
-    record QueryParam(String name, String value) {}
+    record QueryParam(String name, @Nullable String value) {}
 
     default HttpClientRequestBuilder toBuilder() {
         return new HttpClientRequestBuilder(this);

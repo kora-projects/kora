@@ -66,7 +66,7 @@ public class HttpClientRequestBuilder {
     }
 
     public HttpClientRequestBuilder queryParam(String name, String value) {
-        this.queryParams.add(new HttpClientRequest.QueryParam(name, value));
+        this.queryParams.add(new HttpClientRequest.QueryParam(name, Objects.requireNonNull(value)));
 
         return this;
     }
@@ -77,10 +77,18 @@ public class HttpClientRequestBuilder {
         return this;
     }
 
-    public HttpClientRequestBuilder queryParam(String name, List<String> value) {
+    public HttpClientRequestBuilder queryParam(String name, Collection<String> value) {
+        if (value.isEmpty()) {
+            return this.queryParam(name);
+        }
         for (var val : value) {
             this.queryParams.add(new HttpClientRequest.QueryParam(name, val));
         }
+        return this;
+    }
+
+    public HttpClientRequestBuilder queryParam(String name) {
+        this.queryParams.add(new HttpClientRequest.QueryParam(name, null));
         return this;
     }
 
@@ -179,10 +187,16 @@ public class HttpClientRequestBuilder {
         var sb = new StringBuilder(template)
             .append(delimeter);
         var firstEntry = queryParams.get(0);
-        sb.append(URLEncoder.encode(firstEntry.name(), UTF_8)).append('=').append(URLEncoder.encode(firstEntry.value(), UTF_8));
+        sb.append(URLEncoder.encode(firstEntry.name(), UTF_8));
+        if (firstEntry.value() != null) {
+            sb.append('=').append(URLEncoder.encode(firstEntry.value(), UTF_8));
+        }
         for (var i = 1; i < queryParams.size(); i++) {
             var entry = queryParams.get(i);
-            sb.append('&').append(URLEncoder.encode(entry.name(), UTF_8)).append('=').append(URLEncoder.encode(entry.value(), UTF_8));
+            sb.append('&').append(URLEncoder.encode(entry.name(), UTF_8));
+            if (entry.value() != null) {
+                sb.append('=').append(URLEncoder.encode(entry.value(), UTF_8));
+            }
         }
         return sb.toString();
     }
