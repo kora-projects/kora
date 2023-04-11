@@ -105,7 +105,14 @@ public class CassandraSessionBuilder {
             applyNettyConfig(builder, config.netty());
         }
 
-        if (config.coalescer() != null && config.coalescer().rescheduleInterval() != null) builder.withDuration(COALESCER_INTERVAL, config.coalescer().rescheduleInterval());
+        if (config.throttler() != null) {
+            var throttler = config.throttler();
+            if (throttler.throttlerClass() != null) builder.withString(REQUEST_THROTTLER_CLASS, throttler.throttlerClass());
+            if (throttler.maxConcurrentRequests() != null) builder.withInt(REQUEST_THROTTLER_MAX_CONCURRENT_REQUESTS, throttler.maxConcurrentRequests());
+            if (throttler.maxRequestsPerSecond() != null) builder.withInt(REQUEST_THROTTLER_MAX_REQUESTS_PER_SECOND, throttler.maxRequestsPerSecond());
+            if (throttler.maxQueueSize() != null) builder.withInt(REQUEST_THROTTLER_MAX_QUEUE_SIZE, throttler.maxQueueSize());
+            if (throttler.drainInterval() != null) builder.withDuration(REQUEST_THROTTLER_DRAIN_INTERVAL, throttler.drainInterval());
+        }
     }
 
     private void applyMetricsNodeConfig(DefaultProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.MetricsConfig.NodeConfig node) {
