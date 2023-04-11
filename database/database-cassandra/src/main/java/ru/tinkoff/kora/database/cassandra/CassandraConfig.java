@@ -85,7 +85,8 @@ public record CassandraConfig(
         @Nullable PreparedStatementsConfig preparedStatements,
         @Nullable NettyConfig netty,
         @Nullable CoalescerConfig coalescer,
-        @Nullable Boolean resolveContactPoints
+        @Nullable Boolean resolveContactPoints,
+        @Nullable ThrottlerConfig throttler
     ) {
         public record SessionLeakConfig(
             @Nullable Integer threshold
@@ -299,7 +300,16 @@ public record CassandraConfig(
 
         public record CoalescerConfig(
             @Nullable Duration rescheduleInterval
-        ) {
-        }
+        ) {}
+
+        public record ThrottlerConfig(
+            @Nullable String throttlerClass,
+            @Nullable Integer maxConcurrentRequests,
+            @Nullable Integer maxRequestsPerSecond,
+            @Nullable Integer maxQueueSize,
+            @Nullable Duration drainInterval
+        ) {}
+
+
     }
 }
