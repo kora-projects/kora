@@ -21,7 +21,7 @@ public interface BlockingRequestExecutor {
             T result;
             try {
                 result = handler.call();
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 sink.error(e);
                 Context.clear();
                 return;
@@ -33,7 +33,7 @@ public interface BlockingRequestExecutor {
             }
             try {
                 sink.success(result);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 Operators.onErrorDropped(e, reactor.util.context.Context.of(reactorCtx));
             } finally {
                 Context.clear();

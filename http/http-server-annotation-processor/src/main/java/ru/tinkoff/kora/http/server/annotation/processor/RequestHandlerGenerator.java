@@ -454,11 +454,11 @@ public class RequestHandlerGenerator {
 
                     if (isNullable(parameter)) {
                         methodBuilder.addParameter(TypeName.get(parameterReaderType), readerParameterName);
-                        code.add("var $L = $T.parseStringListQueryParameter(_request, $S).stream().map($L::read).toList();", parameter.variableElement, RequestHandlerUtils.class, parameter.name, readerParameterName);
-                    } else {
-                        methodBuilder.addParameter(TypeName.get(parameterReaderType), readerParameterName);
                         code.add("var $L = $T.ofNullable($T.parseOptionalStringListQueryParameter(_request, $S)).map(_var_$L -> _var_$L.stream().map($L::read).toList()).orElse(null);",
                             parameter.variableElement, Optional.class, RequestHandlerUtils.class, parameter.name, parameter.variableElement, parameter.variableElement, readerParameterName);
+                    } else {
+                        methodBuilder.addParameter(TypeName.get(parameterReaderType), readerParameterName);
+                        code.add("var $L = $T.parseStringListQueryParameter(_request, $S).stream().map($L::read).toList();", parameter.variableElement, RequestHandlerUtils.class, parameter.name, readerParameterName);
                     }
 
                     return code.build();

@@ -2,6 +2,7 @@ plugins {
     id "java-test-fixtures"
 }
 apply from: "${project.rootDir}/kotlin-plugin.gradle"
+apply from: "${project.rootDir}/in-test-generated.gradle"
 
 dependencies {
     api project(':annotation-processor-common')
