@@ -106,6 +106,17 @@ class HttpControllerProcessorTest {
     @Test
     void testQueryParameters() {
         var server = TestHttpServer.fromController(TestControllerQueryParameters.class);
+
+        server.invoke(GET, "/queryEnumList?value=VAL1&value=VAL2", new byte[0])
+            .verifyStatus(200)
+        ;
+        server.invoke(GET, "/queryNullableEnumList", new byte[0])
+            .verifyStatus(200)
+        ;
+        server.invoke(GET, "/queryNullableEnumList?value=VAL1&value=VAL2", new byte[0])
+            .verifyStatus(200)
+        ;
+
     }
 
     @Test
