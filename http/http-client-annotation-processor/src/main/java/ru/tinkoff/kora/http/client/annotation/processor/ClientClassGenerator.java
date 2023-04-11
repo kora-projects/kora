@@ -130,7 +130,10 @@ public class ClientClassGenerator {
                 if (isList) {
                     type = ((DeclaredType) type).getTypeArguments().get(0);
                     var paramName = "_" + targetLiteral + "_element";
-                    b.beginControlFlow("for (var $L : $L)", paramName, targetLiteral);
+                    b.beginControlFlow("if ($N.isEmpty())", targetLiteral)
+                        .addStatement("_requestBuilder.queryParam($S)", query.queryParameterName())
+                        .nextControlFlow("else")
+                        .beginControlFlow("for (var $L : $L)", paramName, targetLiteral);
                     targetLiteral = paramName;
                 }
 
@@ -141,7 +144,8 @@ public class ClientClassGenerator {
                 }
 
                 if (isList) {
-                    b.endControlFlow();
+                    b.endControlFlow()
+                        .endControlFlow();
                 }
                 if (nullable) {
                     b.endControlFlow();

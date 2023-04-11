@@ -149,7 +149,6 @@ class HttpClientSymbolProcessorTest {
     }
 
     @Test
-    @Throws(java.lang.Exception::class)
     fun testQuery() {
         val client: ClientWithQueryParams = this.client(
             ClientWithQueryParams::class, arrayOf(

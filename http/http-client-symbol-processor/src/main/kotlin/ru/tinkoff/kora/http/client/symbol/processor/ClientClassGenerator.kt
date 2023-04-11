@@ -185,15 +185,20 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 val nullable = parameterType.isMarkedNullable
 
                 if (nullable) {
-                    b.beginControlFlow("if (%L != null)", literalName)
+                    b.beginControlFlow("if (%N != null)", literalName)
                 }
 
 
                 if (iterable) {
                     val argType = parameterType.arguments[0].type?.resolve()
-
+                    val iteratorName = literalName + "_iterator"
                     val paramName = "_" + literalName + "_element"
-                    b.beginControlFlow("for (%L in %L)", paramName, literalName)
+                    b.addStatement("val %N = %N.iterator()", iteratorName, literalName)
+                        .beginControlFlow("if (!%N.hasNext())", iteratorName)
+                        .addStatement("_requestBuilder.queryParam(%S)", parameter.queryParameterName)
+                        .nextControlFlow("else")
+                        .addCode("do {").addCode(CodeBlock.builder().indent().add("\n").build())
+                        .addStatement("val %N = %N.next()", paramName, iteratorName)
                     literalName = paramName
 
                     if (argType != null) {
@@ -216,6 +221,8 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 }
 
                 if (iterable) {
+                    b.addCode(CodeBlock.builder().unindent().build()).addCode("\n")
+                        .addCode("} while (%N.hasNext())", parameter.parameter.name!!.asString() + "_iterator")
                     b.endControlFlow()
                 }
                 if (nullable) {
