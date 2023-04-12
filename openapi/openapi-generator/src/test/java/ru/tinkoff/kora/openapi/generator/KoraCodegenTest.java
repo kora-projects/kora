@@ -28,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static ru.tinkoff.kora.annotation.processor.common.TestUtils.classpath;
@@ -52,6 +53,7 @@ class KoraCodegenTest {
             "kotlin_server"
         };
         var files = new String[]{
+            "/example/petstoreV3_form.yaml",
             "/example/petstoreV3_validation.yaml",
             "/example/petstoreV3_single_response.yaml",
             "/example/petstoreV3_security_api_key.yaml",
@@ -91,6 +93,9 @@ class KoraCodegenTest {
             .setOutputDir(dir)
             .setApiPackage(dir.replace('/', '.') + ".api")
             .setModelPackage(dir.replace('/', '.') + ".model")
+            .setGlobalProperties(Map.of(
+                "skipFormModel", "false"
+            ))
             .addAdditionalProperty("mode", mode)
             .addAdditionalProperty("enableServerValidation", name.contains("validation"))
             .addAdditionalProperty("clientConfigPrefix", "test");

@@ -12,16 +12,21 @@ interface {{classname}}ClientRequestMappers {
 {{#operation}}
 {{#hasFormParams}}
 
-  class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper: HttpClientRequestMapper<{{classname}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> {
+  class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper{{#vendorExtensions.requiresFormParamMappers}}({{#vendorExtensions.formParamMappers}}
+    private val {{paramName}}Converter: ru.tinkoff.kora.http.client.common.writer.StringParameterConverter<{{paramType}}>,
+{{/vendorExtensions.formParamMappers}}  ){{/vendorExtensions.requiresFormParamMappers}}: HttpClientRequestMapper<{{classname}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> {
     override fun apply(request: HttpClientRequestMapper.Request<{{classname}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam>): HttpClientRequestBuilder {
       {{#vendorExtensions.urlEncodedForm}}
       val b = UrlEncodedWriter(){{#formParams}}
-      if (request.parameter().{{paramName}} != null) {
-        b.add("{{baseName}}", "${request.parameter().{{paramName}}}")
+      request.parameter().{{paramName}}?.let { {{#vendorExtensions.requiresMapper}}
+        b.add("{{baseName}}", {{paramName}}Converter.convert(it))
+{{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}
+        b.add("{{baseName}}", "${it}")
+{{/vendorExtensions.requiresMapper}}
       }
-      {{/formParams}}
+{{/formParams}}
       return b.write(request.builder())
-      {{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
+{{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
       val l = mutableListOf<ru.tinkoff.kora.http.common.form.FormMultipart.FormPart>(){{#formParams}}
               if (request.parameter().{{paramName}} != null) {
           {{#isFile}}
@@ -35,7 +40,7 @@ interface {{classname}}ClientRequestMappers {
               }
       {{/formParams}}
       return MultipartWriter.write(request.builder(), l)
-      {{/vendorExtensions.multipartForm}}
+{{/vendorExtensions.multipartForm}}
     }
   }
 {{/hasFormParams}}

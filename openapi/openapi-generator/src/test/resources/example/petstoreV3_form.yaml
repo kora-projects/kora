@@ -1,0 +1,58 @@
+openapi: 3.0.3
+
+info:
+  title: Petstore with discriminator
+  version: 1.0.0
+
+paths:
+  /form-urlencoded:
+    patch:
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              properties:
+                pet:
+                  type: string
+      responses:
+        '200':
+          description: Updated
+  /form-urlencoded-with-json-schema:
+    patch:
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              properties:
+                pet:
+                  $ref: '#/components/schemas/Pet'
+            encoding:
+              pet:
+                contentType: 'application/json'
+      responses:
+        '200':
+          description: Updated
+  /form-urlencoded-with-unknown-schema:
+    patch:
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              properties:
+                pet:
+                  $ref: '#/components/schemas/Pet'
+            encoding:
+              pet:
+                contentType: 'text/xml'
+      responses:
+        '200':
+          description: Updated
+components:
+  schemas:
+    Pet:
+      type: object
+      required:
+        - pet_type
+      properties:
+        pet_type:
+          type: string

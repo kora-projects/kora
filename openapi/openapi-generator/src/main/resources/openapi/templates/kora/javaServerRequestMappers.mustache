@@ -12,6 +12,22 @@ public interface {{classname}}ServerRequestMappers {
 {{#hasFormParams}}
 
   public static final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper implements HttpServerRequestMapper<{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> {
+{{#vendorExtensions.requiresFormParamMappers}}
+    {{#vendorExtensions.formParamMappers}}
+    private ru.tinkoff.kora.http.server.common.handler.StringParameterReader<{{paramType}}> {{paramName}}Converter;
+    {{/vendorExtensions.formParamMappers}}
+
+    public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper({{#vendorExtensions.formParamMappers}}{{#requireTag}}
+      @{{mapperTag}}{{/requireTag}}
+      ru.tinkoff.kora.http.server.common.handler.StringParameterReader<{{paramType}}> {{paramName}}Converter{{^last}},{{/last}}
+    {{/vendorExtensions.formParamMappers}}) {
+    {{#vendorExtensions.formParamMappers}}
+       this.{{paramName}}Converter = {{paramName}}Converter;
+    {{/vendorExtensions.formParamMappers}}
+    }
+
+{{/vendorExtensions.requiresFormParamMappers}}
+
     @Override
     public Mono<{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> apply(HttpServerRequest request) {
       {{#vendorExtensions.urlEncodedForm}}
@@ -27,9 +43,17 @@ public interface {{classname}}ServerRequestMappers {
                           sink.error(ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form field '{{baseName}}' is required"));
                           return;
                           }
+                          {{#vendorExtensions.requiresMapper}}
+                          var {{paramName}} = {{paramName}}Converter.read({{paramName}}Part.values().get(0));
+                          {{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}
                           var {{paramName}} = {{paramName}}Part.values().get(0);
+                          {{/vendorExtensions.requiresMapper}}
                   {{/required}}{{^required}}
+                          {{#vendorExtensions.requiresMapper}}
+                          var {{paramName}} = ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) ? null : {{paramName}}Converter.read({{paramName}}Part.values().get(0));
+                          {{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}
                           var {{paramName}} = ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) ? null : {{paramName}}Part.values().get(0);
+                          {{/vendorExtensions.requiresMapper}}
                   {{/required}}
         {{/isArray}}
         {{/formParams}}

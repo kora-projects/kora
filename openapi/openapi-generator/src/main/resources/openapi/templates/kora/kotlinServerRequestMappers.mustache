@@ -10,25 +10,28 @@ interface {{classname}}ServerRequestMappers {
 {{#operations}}
 {{#operation}}
 {{#hasFormParams}}
-  class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper: HttpServerRequestMapper<{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> {
+  class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper{{#vendorExtensions.requiresFormParamMappers}}({{#vendorExtensions.formParamMappers}}
+    private val {{paramName}}Converter: ru.tinkoff.kora.http.server.common.handler.StringParameterReader<{{paramType}}>,
+{{/vendorExtensions.formParamMappers}}
+  ){{/vendorExtensions.requiresFormParamMappers}}: HttpServerRequestMapper<{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> {
     override fun apply(request: HttpServerRequest): Mono<{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> {
-      {{#vendorExtensions.urlEncodedForm}}
-              return ru.tinkoff.kora.common.util.ReactorUtils.toByteArrayMono(request.body()).handle { bytes, sink ->
-              val bodyString = bytes.decodeToString()
-              val formData = ru.tinkoff.kora.http.server.common.form.FormUrlEncodedServerRequestMapper.read(bodyString)
-          {{#formParams}}
-                  val {{paramName}}Part = formData.get("{{baseName}}"){{#isArray}}
-                      val {{paramName}} = if ({{paramName}}Part == null) emptyList() else {{paramName}}Part.values()
-              {{/isArray}}{{^isArray}}
-                      val {{paramName}} = if ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) null else {{paramName}}Part.values().first()
-                  {{#required}}
-                          if ({{paramName}} == null) {
-                          sink.error(ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form field '{{baseName}}' is required"))
-                          return@handle
-                          }
-                  {{/required}}
-              {{/isArray}}
-        {{/formParams}}
+{{#vendorExtensions.urlEncodedForm}}
+      return ru.tinkoff.kora.common.util.ReactorUtils.toByteArrayMono(request.body()).handle { bytes, sink ->
+        val bodyString = bytes.decodeToString()
+        val formData = ru.tinkoff.kora.http.server.common.form.FormUrlEncodedServerRequestMapper.read(bodyString)
+{{#formParams}}
+        val {{paramName}}Part = formData.get("{{baseName}}"){{#isArray}}
+        val {{paramName}} = if ({{paramName}}Part == null) emptyList() else {{paramName}}Part.values()
+{{/isArray}}{{^isArray}}{{#vendorExtensions.requiresMapper}}
+        val {{paramName}} = if ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) null else {{paramName}}Converter.read({{paramName}}Part.values().first())
+{{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}
+        val {{paramName}} = if ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) null else {{paramName}}Part.values().first()
+{{/vendorExtensions.requiresMapper}}{{#required}}
+        if ({{paramName}} == null) {
+          sink.error(ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form field '{{baseName}}' is required"))
+          return@handle
+        }
+{{/required}}{{/isArray}}{{/formParams}}
         sink.next({{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(
           {{#formParams}}{{paramName}}{{^-last}}, {{/-last}}{{/formParams}}
         ))

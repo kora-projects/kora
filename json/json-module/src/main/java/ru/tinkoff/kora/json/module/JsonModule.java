@@ -6,7 +6,9 @@ import ru.tinkoff.kora.json.common.JsonWriter;
 import ru.tinkoff.kora.json.common.annotation.Json;
 import ru.tinkoff.kora.json.module.http.client.JsonHttpClientRequestMapper;
 import ru.tinkoff.kora.json.module.http.client.JsonHttpClientResponseMapper;
+import ru.tinkoff.kora.json.module.http.client.JsonStringParameterConverter;
 import ru.tinkoff.kora.json.module.http.server.JsonReaderHttpServerRequestMapper;
+import ru.tinkoff.kora.json.module.http.server.JsonStringParameterReader;
 import ru.tinkoff.kora.json.module.http.server.JsonWriterHttpServerResponseMapper;
 
 public interface JsonModule extends JsonCommonModule {
@@ -28,5 +30,15 @@ public interface JsonModule extends JsonCommonModule {
     @Json
     default <T> JsonHttpClientResponseMapper<T> jsonHttpClientResponseMapper(JsonReader<T> jsonReader) {
         return new JsonHttpClientResponseMapper<>(jsonReader);
+    }
+
+    @Json
+    default <T> JsonStringParameterConverter<T> jsonStringParameterConverter(JsonWriter<T> writer) {
+        return new JsonStringParameterConverter<>(writer);
+    }
+
+    @Json
+    default <T> JsonStringParameterReader<T> jsonStringParameterReader(JsonReader<T> reader) {
+        return new JsonStringParameterReader<>(reader);
     }
 }
