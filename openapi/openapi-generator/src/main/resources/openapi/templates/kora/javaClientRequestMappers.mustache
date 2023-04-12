@@ -12,13 +12,32 @@ public interface {{classname}}ClientRequestMappers {
 {{#operation}}
 {{#hasFormParams}}
 
-  public static final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper implements HttpClientRequestMapper<{{classname}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> {
+  final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper implements HttpClientRequestMapper<{{classname}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> { {{#vendorExtensions.requiresFormParamMappers}}
+    {{#vendorExtensions.formParamMappers}}
+    private ru.tinkoff.kora.http.client.common.writer.StringParameterConverter<{{paramType}}> {{paramName}}Converter;
+    {{/vendorExtensions.formParamMappers}}
+
+    public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper({{#vendorExtensions.formParamMappers}}{{#requireTag}}
+      @{{mapperTag}}{{/requireTag}}
+      ru.tinkoff.kora.http.client.common.writer.StringParameterConverter<{{paramType}}> {{paramName}}Converter{{^last}},{{/last}}
+    {{/vendorExtensions.formParamMappers}}) {
+    {{#vendorExtensions.formParamMappers}}
+       this.{{paramName}}Converter = {{paramName}}Converter;
+    {{/vendorExtensions.formParamMappers}}
+    }
+
+{{/vendorExtensions.requiresFormParamMappers}}
+
     @Override
     public HttpClientRequestBuilder apply(HttpClientRequestMapper.Request<{{classname}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> request) {
       {{#vendorExtensions.urlEncodedForm}}
       var b = new UrlEncodedWriter();{{#formParams}}
       if (request.parameter().{{paramName}}() != null) {
+        {{#vendorExtensions.requiresMapper}}
+        b.add("{{baseName}}", {{paramName}}Converter.convert(request.parameter().{{paramName}}()));
+        {{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}
         b.add("{{baseName}}", java.util.Objects.toString(request.parameter().{{paramName}}()));
+        {{/vendorExtensions.requiresMapper}}
       }
       {{/formParams}}
       return b.write(request.builder());

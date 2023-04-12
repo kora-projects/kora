@@ -103,7 +103,7 @@ public class KoraCodegen extends DefaultCodegen {
 
         modifyFeatureSet(features -> features
             .wireFormatFeatures(EnumSet.of(WireFormatFeature.JSON))
-            .securityFeatures(EnumSet.noneOf(SecurityFeature.class))
+            .securityFeatures(EnumSet.of(SecurityFeature.ApiKey, SecurityFeature.BasicAuth, SecurityFeature.BearerToken, SecurityFeature.OAuth2_AuthorizationCode))
             .excludeGlobalFeatures(
                 GlobalFeature.XMLStructureDefinitions,
                 GlobalFeature.Callbacks,
@@ -1206,7 +1206,39 @@ public class KoraCodegen extends DefaultCodegen {
                     }
                 }
             }
-
+            var formParamsWithMappers = new ArrayList<Map<String, Object>>();
+            for (var formParam : op.formParams) {
+                if (formParam.isModel) {
+                    formParam.vendorExtensions.put("requiresMapper", true);
+                    var type = allModels.stream()
+                        .filter(m -> m.getModel().name.equals(formParam.dataType))
+                        .findFirst()
+                        .map(m -> m.get("importPath").toString())
+                        .get();
+                    if (formParam.contentType != null && formParam.contentType.equals("application/json")) {
+                        formParam.vendorExtensions.put("mapperTag", this.jsonAnnotation);
+                        formParamsWithMappers.add(new HashMap<>(Map.of(
+                            "paramName", formParam.paramName,
+                            "requireTag", true,
+                            "mapperTag", this.jsonAnnotation,
+                            "paramType", type,
+                            "last", false
+                        )));
+                    } else {
+                        formParamsWithMappers.add(new HashMap<>(Map.of(
+                            "paramName", formParam.paramName,
+                            "requireTag", false,
+                            "paramType", type,
+                            "last", false
+                        )));
+                    }
+                }
+            }
+            if (!formParamsWithMappers.isEmpty()) {
+                formParamsWithMappers.get(formParamsWithMappers.size() - 1).put("last", true);
+                op.vendorExtensions.put("requiresFormParamMappers", true);
+                op.vendorExtensions.put("formParamMappers", formParamsWithMappers);
+            }
             for (var response : op.responses) {
                 if (response.getContent() != null && response.getContent().containsKey("application/json")) {
                     response.vendorExtensions.put("hasMapperTag", true);
@@ -1319,7 +1351,6 @@ public class KoraCodegen extends DefaultCodegen {
                 .collect(Collectors.joining(", ", "(", ")"));
             objs.put("annotationParams", annotationParams);
         }
-        Thread.onSpinWait();
         return objs;
     }
 

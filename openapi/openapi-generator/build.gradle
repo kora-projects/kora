@@ -61,6 +61,7 @@ javaPlugin.sourceSets {
             addOpenapiDir("petstoreV3_security_bearer")
             addOpenapiDir("petstoreV3_security_oauth")
             addOpenapiDir("petstoreV3_validation")
+            addOpenapiDir("petstoreV3_form")
         }
     }
 }
