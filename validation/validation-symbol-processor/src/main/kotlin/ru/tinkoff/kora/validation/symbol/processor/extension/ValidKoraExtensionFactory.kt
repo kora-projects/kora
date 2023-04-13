@@ -14,7 +14,7 @@ class ValidKoraExtensionFactory : ExtensionFactory {
         return if (json == null) {
             null
         } else {
-            ValidKoraExtension(resolver)
+            ValidKoraExtension(resolver, codeGenerator)
         }
     }
 }

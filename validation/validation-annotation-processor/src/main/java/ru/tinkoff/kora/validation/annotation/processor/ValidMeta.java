@@ -3,6 +3,7 @@ package ru.tinkoff.kora.validation.annotation.processor;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
+import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.TypeElement;
@@ -27,7 +28,7 @@ public record ValidMeta(Type source, Validator validator, TypeElement sourceElem
         this(source,
             new Validator(
                 Type.ofName(VALIDATOR_TYPE.canonicalName(), List.of(source)),
-                new Type(source.packageName, "$" + source.simpleName() + "_Validator", List.of(source))
+                new Type(source.packageName, CommonUtils.getOuterClassesAsPrefix(sourceElement) + sourceElement.getSimpleName() + "_Validator", List.of(source))
             ),
             sourceElement, fields);
     }

@@ -1,10 +1,9 @@
 package ru.tinkoff.kora.validation.symbol.processor
 
-import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSAnnotation
-import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeReference
+import com.squareup.kotlinpoet.ksp.toClassName
 
 class ValidUtils {
 
@@ -14,7 +13,7 @@ class ValidUtils {
             return annotation
                 .mapNotNull { origin ->
                     origin.annotationType.resolve().declaration.annotations
-                        .filter { a -> a.annotationType.asType().canonicalName() == VALIDATED_BY_TYPE.canonicalName }
+                        .filter { a -> a.annotationType.resolve().toClassName() == VALIDATED_BY_TYPE }
                         .map { validatedBy ->
                             val parameters = origin.arguments.associate { a -> Pair(a.name!!.asString(), a.value!!) }
                             val factory = validatedBy.arguments
@@ -24,7 +23,7 @@ class ValidUtils {
 
                             Constraint(
                                 origin.annotationType.asType(),
-                                Constraint.Factory(factory.declaration.qualifiedName!!.asString().asType(listOf(type.resolve().makeNullable().asType())), parameters)
+                                Constraint.Factory(factory.declaration.qualifiedName!!.asString().asType(listOf(type.resolve().makeNotNullable().asType())), parameters)
                             )
                         }
                         .firstOrNull()

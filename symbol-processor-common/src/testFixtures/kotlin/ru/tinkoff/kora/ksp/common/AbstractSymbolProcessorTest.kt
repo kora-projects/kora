@@ -73,32 +73,23 @@ abstract class AbstractSymbolProcessorTest {
         val sourceList: List<SourceFile> =
             Arrays.stream(sources).map { s: String -> "package %s;\n%s\n/**\n* @see %s.%s \n*/\n".formatted(testPackage, commonImports, testClass.canonicalName, testMethod.name) + s }
                 .map { s ->
-                    var classStart = s.indexOf("\nclass ") + 7
-                    if (classStart < 7) {
-                        classStart = s.indexOf("\nopen class ") + 12
-                        if (classStart < 12) {
-                            classStart = s.indexOf("\ninterface ") + 11
-                            if (classStart < 11) {
-                                classStart = s.indexOf("\nsealed interface ") + 18
-                                if (classStart < 18) {
-                                    classStart = s.indexOf("data class ") + 11
-                                    if (classStart < 11) {
-                                        classStart = s.indexOf("enum class ") + 11
-                                        require(classStart >= 12)
-                                    }
-                                }
-                            }
+                    val firstClass = s.indexOf("class ") to "class ".length
+                    val firstInterface = s.indexOf("interface ") to "interface ".length
+                    val classNameLocation = sequenceOf(firstClass, firstInterface)
+                        .filter { it.first >= 0 }
+                        .map { it.first + it.second }
+                        .flatMap {
+                            sequenceOf(
+                                s.indexOf(" ", it + 1),
+                                s.indexOf("(", it + 1),
+                                s.indexOf("{", it + 1),
+                                s.indexOf(":", it + 1),
+                            )
+                                .map { it1 -> it to it1 }
                         }
-                    }
-                    val classEnd = sequenceOf(
-                        s.indexOf(" ", classStart + 1),
-                        s.indexOf("(", classStart + 1),
-                        s.indexOf("{", classStart + 1),
-                        s.indexOf(":", classStart + 1),
-                    )
-                        .filter { it >= 0 }
-                        .min()
-                    val className = s.substring(classStart, classEnd)
+                        .filter { it.second >= 0 }
+                        .minBy { it.second }
+                    val className = s.substring(classNameLocation.first - 1, classNameLocation.second)
                     val fileName = "build/in-test-generated-ksp/sources/${testPackage.replace('.', '/')}/$className.kt"
                     Files.createDirectories(File(fileName).toPath().parent)
                     Files.deleteIfExists(Paths.get(fileName))
@@ -140,6 +131,12 @@ abstract class AbstractSymbolProcessorTest {
                 }
             }
             throw RuntimeException(errorMessages.joinToString("\n"))
+        }
+
+        fun assertSuccess() {
+            if (isFailed()) {
+                throw compilationException()
+            }
         }
 
     }

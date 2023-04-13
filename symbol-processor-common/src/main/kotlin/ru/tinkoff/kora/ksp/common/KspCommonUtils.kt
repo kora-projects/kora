@@ -298,6 +298,10 @@ fun KSAnnotated.getOuterClassesAsPrefix(): String {
     return prefix.toString()
 }
 
+fun KSDeclaration.generatedClass(suffix: String): String {
+    return this.getOuterClassesAsPrefix() + this.simpleName.asString() + "_" + suffix
+}
+
 fun KSClassDeclaration.generatedClassName(postfix: String): String {
     val prefix = StringBuilder("$")
     var parent = this.parent
