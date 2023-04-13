@@ -19,11 +19,10 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
+import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.IntStream;
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public abstract class AbstractAnnotationProcessorTest {
@@ -77,37 +76,25 @@ public abstract class AbstractAnnotationProcessorTest {
         var commonImports = this.commonImports();
         var sourceList = Arrays.stream(sources).map(s -> "package %s;\n%s\n/**\n* @see %s#%s \n*/\n".formatted(testPackage, commonImports, testClass.getCanonicalName(), testMethod.getName()) + s)
             .map(s -> {
-                var classStart = s.indexOf("public sealed interface ") + 24;
-                if (classStart < 24) {
-                    classStart = s.indexOf("public class ") + 13;
-                    if (classStart < 13) {
-                        classStart = s.indexOf("public final class ") + 19;
-                        if (classStart < 19) {
-                            classStart = s.indexOf("public interface ") + 17;
-                            if (classStart < 17) {
-                                classStart = s.indexOf("public @interface ") + 18;
-                                if (classStart < 18) {
-                                    classStart = s.indexOf("public record ") + 14;
-                                    if (classStart < 14) {
-                                        classStart = s.indexOf("public enum ") + 12;
-                                        if (classStart < 12) {
-                                            throw new IllegalArgumentException();
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                var firstSpace = s.indexOf(" ", classStart + 1);
-                var firstBracket = s.indexOf("(", classStart + 1);
-                var firstSquareBracket = s.indexOf("{", classStart + 1);
-                var classEnd = Math.min(firstSpace >= 0 ? firstSpace : Integer.MAX_VALUE, Math.min(
-                    firstBracket >= 0 ? firstBracket : Integer.MAX_VALUE,
-                    firstSquareBracket >= 0 ? firstSquareBracket : Integer.MAX_VALUE
-                ));
-                var className = s.substring(classStart, classEnd);
-                return new ByteArrayJavaFileObject(JavaFileObject.Kind.SOURCE, testPackage + "." + className, s.getBytes(StandardCharsets.UTF_8));
+                var prefixes = List.of("class ", "interface ", "@interface ", "record ", "enum ");
+                var firstClass = prefixes.stream()
+                    .map(p -> Map.entry(s.indexOf(p), p.length()))
+                    .filter(e -> e.getKey() >= 0)
+                    .map(e -> e.getKey() + e.getValue())
+                    .min(Comparator.comparing(Function.identity()))
+                    .map(classStart -> {
+                        var firstSpace = s.indexOf(" ", classStart + 1);
+                        var firstBracket = s.indexOf("(", classStart + 1);
+                        var firstSquareBracket = s.indexOf("{", classStart + 1);
+                        var classEnd = IntStream.of(firstSpace, firstBracket, firstSquareBracket)
+                            .filter(i -> i >= 0)
+                            .min()
+                            .getAsInt();
+                        return s.substring(classStart, classEnd).trim();
+                    })
+                    .get();
+
+                return new ByteArrayJavaFileObject(JavaFileObject.Kind.SOURCE, testPackage + "." + firstClass, s.getBytes(StandardCharsets.UTF_8));
             })
             .toList();
         try (var delegate = javaCompiler.getStandardFileManager(diagnostic::add, Locale.US, StandardCharsets.UTF_8);

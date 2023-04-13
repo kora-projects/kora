@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.validation.symbol.processor
 
-import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
@@ -9,16 +8,16 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeName
 import java.util.stream.Collectors
 
-val VALID_TYPE = ClassName.bestGuess("ru.tinkoff.kora.validation.common.annotation.Valid")
-val VALIDATE_TYPE = ClassName.bestGuess("ru.tinkoff.kora.validation.common.annotation.Validate")
-val VALIDATED_BY_TYPE = ClassName.bestGuess("ru.tinkoff.kora.validation.common.annotation.ValidatedBy")
-val CONTEXT_TYPE = ClassName.bestGuess("ru.tinkoff.kora.validation.common.ValidationContext")
-val VALIDATOR_TYPE = ClassName.bestGuess("ru.tinkoff.kora.validation.common.Validator")
-val VIOLATION_TYPE = ClassName.bestGuess("ru.tinkoff.kora.validation.common.Violation")
-val EXCEPTION_TYPE = ClassName.bestGuess("ru.tinkoff.kora.validation.common.ViolationException")
+val VALID_TYPE = ClassName("ru.tinkoff.kora.validation.common.annotation", "Valid")
+val VALIDATE_TYPE = ClassName("ru.tinkoff.kora.validation.common.annotation", "Validate")
+val VALIDATED_BY_TYPE = ClassName("ru.tinkoff.kora.validation.common.annotation", "ValidatedBy")
+val CONTEXT_TYPE = ClassName("ru.tinkoff.kora.validation.common", "ValidationContext")
+val VALIDATOR_TYPE = ClassName("ru.tinkoff.kora.validation.common", "Validator")
+val VIOLATION_TYPE = ClassName("ru.tinkoff.kora.validation.common", "Violation")
+val EXCEPTION_TYPE = ClassName("ru.tinkoff.kora.validation.common", "ViolationException")
 
 data class ValidatorMeta(
-    val source: Type,
+    val source: TypeName,
     val sourceDeclaration: KSClassDeclaration,
     val validator: ValidatorType,
     val fields: List<Field>
@@ -28,7 +27,7 @@ data class Validated(val target: Type) {
     fun validator(): Type = VALIDATOR_TYPE.canonicalName.asType(listOf(target))
 }
 
-data class ValidatorType(val contract: Type, val implementation: Type)
+data class ValidatorType(val contract: TypeName)
 
 data class Field(
     val type: Type,
@@ -88,18 +87,16 @@ data class Type(private val reference: KSTypeReference?, private val isNullable:
         }
     }
 
-    @KspExperimental
     fun asPoetType(): TypeName = asPoetType(isNullable)
 
-    @KspExperimental
     fun asPoetType(nullable: Boolean): TypeName {
         return if (generic.isEmpty()) {
-            ClassName.bestGuess(canonicalName()).copy(nullable)
+            ClassName(packageName, simpleName).copy(nullable)
         } else {
             val genericPoetTypes = generic.asSequence()
                 .map { t -> t.asPoetType() }
                 .toList()
-            ClassName.bestGuess(canonicalName()).parameterizedBy(genericPoetTypes).copy(nullable)
+            ClassName(packageName, simpleName).parameterizedBy(genericPoetTypes).copy(nullable)
         }
     }
 
@@ -152,7 +149,7 @@ fun KSType.asType(): Type {
         emptyList()
 
     val asType = this.declaration.qualifiedName!!.asString().asType()
-    return Type(null, this.isMarkedNullable, asType.packageName, asType.simpleName, generic)
+    return Type(null, this.isMarkedNullable, this.declaration.packageName.asString(), asType.simpleName, generic)
 }
 
 fun String.asType(nullable: Boolean = false): Type = this.asType(emptyList(), nullable)
