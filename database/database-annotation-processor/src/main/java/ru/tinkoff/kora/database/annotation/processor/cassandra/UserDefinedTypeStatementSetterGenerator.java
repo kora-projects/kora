@@ -11,7 +11,6 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Objects;
 
@@ -59,12 +58,9 @@ public class UserDefinedTypeStatementSetterGenerator {
 
         typeSpec.addMethod(apply.build());
         typeSpec.addMethod(constructor.build());
-        try {
-            var javaFile = JavaFile.builder(packageName.getQualifiedName().toString(), typeSpec.build()).build();
-            CommonUtils.safeWriteTo(this.processingEnv, javaFile);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+
+        var javaFile = JavaFile.builder(packageName.getQualifiedName().toString(), typeSpec.build()).build();
+        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
     }
 
     public void generateListMapper(TypeMirror typeMirror) {
@@ -99,12 +95,9 @@ public class UserDefinedTypeStatementSetterGenerator {
 
         typeSpec.addMethod(apply.build());
         typeSpec.addMethod(constructor.build());
-        try {
-            var javaFile = JavaFile.builder(packageName.getQualifiedName().toString(), typeSpec.build()).build();
-            CommonUtils.safeWriteTo(this.processingEnv, javaFile);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+
+        var javaFile = JavaFile.builder(packageName.getQualifiedName().toString(), typeSpec.build()).build();
+        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
     }
 
     private void readIndexes(MethodSpec.Builder apply, DbEntity entity) {

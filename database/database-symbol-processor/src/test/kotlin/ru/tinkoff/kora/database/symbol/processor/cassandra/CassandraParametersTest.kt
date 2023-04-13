@@ -194,7 +194,7 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
             }
             
             """.trimIndent(), """
-            public class UnknownType {}
+            class UnknownType {}
             
             """.trimIndent())
         repository.invoke<Any>("test", 42L, new("UnknownType"))

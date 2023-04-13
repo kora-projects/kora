@@ -1,5 +1,9 @@
+apply from: "${project.rootDir}/kotlin-plugin.gradle"
+
 dependencies {
     api project(':common')
     api libs.jackson.core
+
+    compileOnly libs.kotlin.stdlib.lib
 }
 

@@ -1,10 +1,9 @@
 package ru.tinkoff.kora.json.annotation.processor.writer;
 
-import com.fasterxml.jackson.core.JsonGenerator;
 import com.squareup.javapoet.*;
-import ru.tinkoff.kora.common.annotation.Generated;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
+import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
 import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
-import ru.tinkoff.kora.json.common.JsonWriter;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -23,23 +22,18 @@ import static ru.tinkoff.kora.annotation.processor.common.CommonUtils.decapitali
 public class SealedInterfaceWriterGenerator {
     private final Types types;
     private final Elements elements;
-    private final TypeElement writerErasure;
 
     public SealedInterfaceWriterGenerator(ProcessingEnvironment processingEnvironment) {
         this.types = processingEnvironment.getTypeUtils();
         this.elements = processingEnvironment.getElementUtils();
-        this.writerErasure = (TypeElement) this.types.asElement(
-            this.types.erasure(this.elements.getTypeElement(JsonWriter.class.getCanonicalName()).asType())
-        );
     }
 
     public TypeSpec generateSealedWriter(TypeElement jsonElement, List<? extends Element> jsonElements) {
-        var writerInterface = this.types.getDeclaredType(this.writerErasure, jsonElement.asType());
         var typeBuilder = TypeSpec.classBuilder(JsonUtils.jsonWriterName(jsonElement))
-            .addAnnotation(AnnotationSpec.builder(Generated.class)
+            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
                 .addMember("value", CodeBlock.of("$S", SealedInterfaceWriterGenerator.class.getCanonicalName()))
                 .build())
-            .addSuperinterface(writerInterface)
+            .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonWriter, TypeName.get(jsonElement.asType())))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addOriginatingElement(jsonElement);
         this.addWriters(typeBuilder, jsonElements);
@@ -53,10 +47,9 @@ public class SealedInterfaceWriterGenerator {
         var method = MethodSpec.methodBuilder("write")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addException(IOException.class)
-            .addParameter(TypeName.get(JsonGenerator.class), "_gen")
+            .addParameter(JsonTypes.jsonGenerator, "_gen")
             .addParameter(ParameterSpec.builder(TypeName.get(jsonElement.asType()), "_object").addAnnotation(Nullable.class).build())
-            .addAnnotation(Override.class)
-            .addAnnotation(Nullable.class);
+            .addAnnotation(Override.class);
         method.beginControlFlow("if (_object == null)")
             .addStatement("_gen.writeNull()");
         for (var elem : jsonElements) {
@@ -77,7 +70,7 @@ public class SealedInterfaceWriterGenerator {
             .addModifiers(Modifier.PUBLIC);
         jsonElements.forEach(elem -> {
             var fieldName = getWriterFieldName(elem);
-            var fieldType = ParameterizedTypeName.get(ClassName.get(JsonWriter.class), TypeName.get(elem.asType()));
+            var fieldType = ParameterizedTypeName.get(JsonTypes.jsonWriter, TypeName.get(elem.asType()));
             var readerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
             constructor.addParameter(fieldType, fieldName);
             constructor.addStatement("this.$L = $L", fieldName, fieldName);

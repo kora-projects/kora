@@ -1,59 +1,44 @@
 package ru.tinkoff.kora.json.ksp.writer
 
-import com.fasterxml.jackson.core.JsonGenerator
-import com.fasterxml.jackson.core.io.SerializedString
-import com.google.devtools.ksp.KspExperimental
-import com.google.devtools.ksp.getAnnotationsByType
-import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.*
-import ru.tinkoff.kora.json.common.EnumJsonWriter
-import ru.tinkoff.kora.json.common.JsonWriter
-import ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorValue
+import ru.tinkoff.kora.json.ksp.JsonTypes
 import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum
 import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum.*
+import ru.tinkoff.kora.json.ksp.discriminatorField
+import ru.tinkoff.kora.json.ksp.discriminatorValue
 import ru.tinkoff.kora.json.ksp.jsonWriterName
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 
-@KspExperimental
 class JsonWriterGenerator(
     private val resolver: Resolver
 ) {
-    private val writerErasure = resolver.getClassDeclarationByName(JsonWriter::class.qualifiedName!!)!!.asStarProjectedType()
-    private val enumType = resolver.getClassDeclarationByName<Enum<*>>()!!.asStarProjectedType().makeNotNullable()
 
     fun generate(meta: JsonClassWriterMeta): TypeSpec {
-        val jsonClassDeclaration = meta.type.declaration as KSClassDeclaration
+        val jsonClassDeclaration = meta.classDeclaration
         val typeParameterResolver = jsonClassDeclaration.typeParameters.toTypeParameterResolver()
-        val writedType = if (meta.type.declaration.typeParameters.isEmpty()) {
-            meta.type.toTypeName(typeParameterResolver)
-        } else {
-            meta.type.toClassName().parameterizedBy(meta.type.declaration.typeParameters.map { it.toTypeVariableName(typeParameterResolver) })
-        }
-        val writerInterface = writerErasure.toClassName().parameterizedBy(writedType)
-        val typeBuilder = TypeSpec.classBuilder(jsonWriterName(meta.type))
+        val typeName = meta.classDeclaration.toTypeName()
+        val writerInterface = JsonTypes.jsonWriter.parameterizedBy(typeName)
+        val typeBuilder = TypeSpec.classBuilder(meta.classDeclaration.jsonWriterName())
             .generated(JsonWriterGenerator::class)
         jsonClassDeclaration.containingFile?.let { typeBuilder.addOriginatingKSFile(it) }
-
-        if (enumType.isAssignableFrom(meta.type)) {
-            return this.generateForEnum(meta, typeBuilder, typeParameterResolver)
-        }
         typeBuilder.addSuperinterface(writerInterface)
 
-        meta.type.declaration.typeParameters.forEach {
+        meta.classDeclaration.typeParameters.forEach {
             typeBuilder.addTypeVariable(it.toTypeVariableName())
         }
 
         this.addWriters(typeBuilder, meta, typeParameterResolver)
         for (field in meta.fields) {
             typeBuilder.addProperty(
-                PropertySpec.builder(this.jsonNameStaticName(field), SerializedString::class, KModifier.PRIVATE)
-                    .initializer(CodeBlock.of("%T(%S)", SerializedString::class.java, field.jsonName))
+                PropertySpec.builder(this.jsonNameStaticName(field), JsonTypes.serializedString, KModifier.PRIVATE)
+                    .initializer(CodeBlock.of("%T(%S)", JsonTypes.serializedString, field.jsonName))
                     .build()
             )
         }
@@ -63,10 +48,11 @@ class JsonWriterGenerator(
             addStatement("return")
         }
         functionBody.addStatement("_gen.writeStartObject(_object)")
-        if (meta.discriminatorField != null) {
-            val discriminatorValueAnnotation = jsonClassDeclaration.getAnnotationsByType(JsonDiscriminatorValue::class).firstOrNull()
-            val discriminatorValue = discriminatorValueAnnotation?.value ?: jsonClassDeclaration.simpleName.asString()
-            functionBody.addStatement("_gen.writeFieldName(%S)", meta.discriminatorField)
+
+        val discriminatorField = meta.classDeclaration.discriminatorField(resolver)
+        if (discriminatorField != null) {
+            val discriminatorValue = meta.classDeclaration.discriminatorValue()
+            functionBody.addStatement("_gen.writeFieldName(%S)", discriminatorField)
             functionBody.addStatement("_gen.writeString(%S)", discriminatorValue)
         }
         for (field in meta.fields) {
@@ -77,18 +63,12 @@ class JsonWriterGenerator(
         typeBuilder.addFunction(
             FunSpec.builder("write")
                 .addModifiers(KModifier.PUBLIC, KModifier.OVERRIDE)
-                .addParameter("_gen", JsonGenerator::class)
-                .addParameter("_object", writedType.copy(true))
+                .addParameter("_gen", JsonTypes.jsonGenerator)
+                .addParameter("_object", typeName.copy(nullable = true))
                 .addCode(functionBody.build())
                 .build()
         )
 
-        return typeBuilder.build()
-    }
-
-    private fun generateForEnum(meta: JsonClassWriterMeta, typeBuilder: TypeSpec.Builder, typeParameterResolver: TypeParameterResolver): TypeSpec {
-        val writerInterface = writerErasure.toClassName().parameterizedBy(meta.type.makeNotNullable().toTypeName(typeParameterResolver))
-        typeBuilder.addSuperinterface(writerInterface, CodeBlock.of("%T(%T.values(), { it.toString() })", EnumJsonWriter::class, meta.type.toClassName()))
         return typeBuilder.build()
     }
 
@@ -113,7 +93,7 @@ class JsonWriterGenerator(
                 constructor.addStatement("this.%L = %L", fieldName, fieldName)
             } else if (field.typeMeta is WriterFieldType.UnknownWriterFieldType) {
                 val fieldName: String = this.writerFieldName(field)
-                val fieldType = JsonWriter::class.asClassName().parameterizedBy(
+                val fieldType = JsonTypes.jsonWriter.parameterizedBy(
                     field.typeMeta.type.toTypeName(typeParameterResolver).copy(nullable = false)
                 )
                 val writerField = PropertySpec.builder(fieldName, fieldType, KModifier.PRIVATE)
@@ -163,6 +143,7 @@ class JsonWriterGenerator(
                 nullableCodeBlock,
                 value
             )
+
             BINARY -> CodeBlock.of("%L_gen.writeBinary(%L)\n", nullableCodeBlock, value)
             UUID -> CodeBlock.of("%L_gen.writeString(%L.toString())\n", nullableCodeBlock, value)
         }

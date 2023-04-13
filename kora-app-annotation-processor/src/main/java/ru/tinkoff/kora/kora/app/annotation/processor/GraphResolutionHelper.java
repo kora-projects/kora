@@ -7,12 +7,8 @@ import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponent
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclaration;
 
 import javax.annotation.Nullable;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
+import javax.lang.model.element.*;
+import javax.lang.model.type.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -201,6 +197,20 @@ public class GraphResolutionHelper {
                 ));
             } else if (sourceDeclaration instanceof ComponentDeclaration.FromExtensionComponent extensionComponent) {
                 var realParams = new ArrayList<TypeMirror>();
+                // idk what's happening here, but somehow we've got some different identity tpe that can't be replaced
+                for (var tpe : collectTypeVariables(extensionComponent.source())) {
+                    var tv = (TypeVariable) tpe.asType();
+                    var realType = map.get(tv);
+                    if (realType == null) {
+                        var keys = new ArrayList<>(map.keySet());
+                        for (var typeVariable : keys) {
+                            var typeVariableElement = typeVariable.asElement();
+                            if (tpe.getSimpleName().contentEquals(typeVariable.asElement().getSimpleName()) && typeVariableElement.getEnclosingElement().equals(tpe.getEnclosingElement())) {
+                                map.put(tv, map.get(typeVariable));
+                            }
+                        }
+                    }
+                }
                 for (var methodParameterType : extensionComponent.methodParameterTypes()) {
                     realParams.add(ComponentTemplateHelper.replace(types, methodParameterType, map));
                 }
@@ -297,6 +307,128 @@ public class GraphResolutionHelper {
                 result.add(sourceDeclaration);
             }
         }
+        return result;
+    }
+
+    private static List<TypeParameterElement> collectTypeVariables(Element element) {
+        var result = new ArrayList<TypeParameterElement>();
+        element.accept(new ElementVisitor<Object, Object>() {
+            @Override
+            public Object visit(Element e, Object o) {
+                return e.accept(this, o);
+            }
+
+            @Override
+            public Object visitPackage(PackageElement e, Object o) {
+                return null;
+            }
+
+            @Override
+            public Object visitType(TypeElement e, Object o) {
+                result.addAll(e.getTypeParameters());
+                return null;
+            }
+
+            @Override
+            public Object visitVariable(VariableElement e, Object o) {
+                e.asType().accept(new TypeVisitor<Object, Object>() {
+                    @Override
+                    public Object visit(TypeMirror t, Object o) {
+                        return null;
+                    }
+
+                    @Override
+                    public Object visitPrimitive(PrimitiveType t, Object o) {
+                        return null;
+                    }
+
+                    @Override
+                    public Object visitNull(NullType t, Object o) {
+                        return null;
+                    }
+
+                    @Override
+                    public Object visitArray(ArrayType t, Object o) {
+                        t.getComponentType().accept(this, o);
+                        return null;
+                    }
+
+                    @Override
+                    public Object visitDeclared(DeclaredType t, Object o) {
+                        for (var typeArgument : t.getTypeArguments()) {
+                            typeArgument.accept(this, o);
+                        }
+                        return null;
+                    }
+
+                    @Override
+                    public Object visitError(ErrorType t, Object o) {
+                        return null;
+                    }
+
+                    @Override
+                    public Object visitTypeVariable(TypeVariable t, Object o) {
+                        result.add((TypeParameterElement) t.asElement());
+                        return null;
+                    }
+
+                    @Override
+                    public Object visitWildcard(WildcardType t, Object o) {
+                        return null;
+                    }
+
+                    @Override
+                    public Object visitExecutable(ExecutableType t, Object o) {
+                        return null;
+                    }
+
+                    @Override
+                    public Object visitNoType(NoType t, Object o) {
+                        return null;
+                    }
+
+                    @Override
+                    public Object visitUnknown(TypeMirror t, Object o) {
+                        return null;
+                    }
+
+                    @Override
+                    public Object visitUnion(UnionType t, Object o) {
+                        return null;
+                    }
+
+                    @Override
+                    public Object visitIntersection(IntersectionType t, Object o) {
+                        return null;
+                    }
+                }, null);
+                return null;
+            }
+
+            @Override
+            public Object visitExecutable(ExecutableElement e, Object o) {
+                result.addAll(e.getTypeParameters());
+                if (!e.getModifiers().contains(Modifier.STATIC)) {
+                    e.getEnclosingElement().accept(this, o);
+                }
+                for (var parameter : e.getParameters()) {
+                    parameter.accept(this, o);
+                }
+
+                return null;
+            }
+
+            @Override
+            public Object visitTypeParameter(TypeParameterElement e, Object o) {
+                result.add(e);
+                return null;
+            }
+
+            @Override
+            public Object visitUnknown(Element e, Object o) {
+                return null;
+            }
+        }, null);
         return result;
     }
 

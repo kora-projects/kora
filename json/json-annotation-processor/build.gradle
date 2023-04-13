@@ -5,7 +5,6 @@ apply from: "${project.rootDir}/kotlin-plugin.gradle"
 
 dependencies {
     api project(':annotation-processor-common')
-    api project(':json:json-common')
     api project(':kora-app-annotation-processor')
 
     jmh 'com.fasterxml.jackson.module:jackson-module-blackbird:2.12.3'
@@ -13,7 +12,7 @@ dependencies {
     jmh 'org.apache.commons:commons-lang3:3.11'
     jmhAnnotationProcessor project(':json:json-annotation-processor')
 
-
+    testImplementation project(':json:json-common')
     testImplementation testFixtures(project(':annotation-processor-common'))
 }
 

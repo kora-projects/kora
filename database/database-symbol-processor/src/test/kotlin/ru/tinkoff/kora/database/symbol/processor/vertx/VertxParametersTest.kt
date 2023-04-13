@@ -143,8 +143,7 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
             }
             
             """.trimIndent(), """
-            public class UnknownType {}
-            
+            class UnknownType {}
             """.trimIndent())
         val o = new("UnknownType")
 

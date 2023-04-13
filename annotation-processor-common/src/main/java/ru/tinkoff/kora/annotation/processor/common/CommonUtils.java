@@ -8,13 +8,11 @@ import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.naming.NameConverter;
 
 import javax.annotation.Nullable;
-import javax.annotation.processing.FilerException;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-import javax.tools.StandardLocation;
 import java.io.IOException;
 import java.util.*;
 import java.util.function.Predicate;
@@ -54,36 +52,11 @@ public class CommonUtils {
             .anyMatch(CommonUtils::isNullable);
     }
 
-    public static void safeWriteTo(ProcessingEnvironment processingEnv, JavaFile file) throws IOException {
-        var fullClassName = file.packageName.isEmpty()
-            ? file.typeSpec.name
-            : file.packageName + "." + file.typeSpec.name;
-        if (!isClassExists(processingEnv, fullClassName)) {
-            file.writeTo(processingEnv.getFiler());
-        }
-    }
-
-    public static boolean isClassExists(ProcessingEnvironment processingEnv, String fullClassName) throws IOException {
-        var typeElement = processingEnv.getElementUtils().getTypeElement(fullClassName);
-
-        if (typeElement != null) {
-            return true;
-        }
-
-        var fileName = fullClassName.replace('.', '/') + ".java";
-
+    public static void safeWriteTo(ProcessingEnvironment processingEnv, JavaFile file) {
         try {
-            processingEnv.getFiler().getResource(
-                StandardLocation.SOURCE_OUTPUT,
-                "",
-                fileName
-            );
-            return false;
-        } catch (FilerException e) {
-            if (e.getMessage().startsWith("Attempt to reopen a file for path")) {
-                return true;
-            }
-            throw e;
+            file.writeTo(processingEnv.getFiler());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -207,6 +180,10 @@ public class CommonUtils {
 
     public static boolean hasDefaultConstructorAndFinal(Types types, TypeMirror typeMirror) {
         var typeElement = (TypeElement) types.asElement(typeMirror);
+        return hasDefaultConstructorAndFinal(typeElement);
+    }
+
+    public static boolean hasDefaultConstructorAndFinal(TypeElement typeElement) {
         if (!typeElement.getModifiers().contains(Modifier.FINAL)) {
             return false;
         }

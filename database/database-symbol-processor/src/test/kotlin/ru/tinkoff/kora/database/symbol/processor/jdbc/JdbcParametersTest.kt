@@ -114,7 +114,7 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             }
             
             """.trimIndent(), """
-            public class UnknownType {}
+            class UnknownType {}
             
             """.trimIndent())
 

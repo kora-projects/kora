@@ -11,7 +11,6 @@ import ru.tinkoff.kora.config.common.ConfigRoot;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.TypeElement;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -72,8 +71,6 @@ public class ConfigRootAnnotationProcessor extends AbstractKoraProcessor {
                 CommonUtils.safeWriteTo(this.processingEnv, module);
             } catch (NewRoundWantedException e) {
                 previouslyUnprocessedElements.add(e.getElement());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
             }
         }
         return false;

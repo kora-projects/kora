@@ -5,115 +5,135 @@ import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
-import ru.tinkoff.kora.json.common.JsonReader
-import ru.tinkoff.kora.json.common.JsonWriter
-import ru.tinkoff.kora.json.common.annotation.Json
-import ru.tinkoff.kora.json.ksp.JsonProcessor
-import ru.tinkoff.kora.json.ksp.KnownType
-import ru.tinkoff.kora.json.ksp.jsonReaderName
-import ru.tinkoff.kora.json.ksp.jsonWriterName
-import ru.tinkoff.kora.json.ksp.reader.JsonReaderGenerator
+import ru.tinkoff.kora.json.ksp.*
 import ru.tinkoff.kora.json.ksp.reader.ReaderTypeMetaParser
-import ru.tinkoff.kora.json.ksp.reader.SealedInterfaceReaderGenerator
-import ru.tinkoff.kora.json.ksp.writer.JsonWriterGenerator
-import ru.tinkoff.kora.json.ksp.writer.SealedInterfaceWriterGenerator
 import ru.tinkoff.kora.json.ksp.writer.WriterTypeMetaParser
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.parametrized
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
-@OptIn(KspExperimental::class)
 class JsonKoraExtension(
     private val resolver: Resolver,
     private val kspLogger: KSPLogger,
     codeGenerator: CodeGenerator
 ) : KoraExtension {
-    private val jsonWriterErasure = resolver.getClassDeclarationByName(JsonWriter::class.qualifiedName!!)!!.asStarProjectedType()
-    private val jsonReaderErasure = resolver.getClassDeclarationByName(JsonReader::class.qualifiedName!!)!!.asStarProjectedType()
+    private val jsonWriterErasure = resolver.getClassDeclarationByName(JsonTypes.jsonWriter.canonicalName)!!.asStarProjectedType()
+    private val jsonReaderErasure = resolver.getClassDeclarationByName(JsonTypes.jsonReader.canonicalName)!!.asStarProjectedType()
     private val knownTypes = KnownType(resolver)
-    private val readerTypeMetaParser: ReaderTypeMetaParser = ReaderTypeMetaParser(resolver, knownTypes, kspLogger)
-    private val writerTypeMetaParser: WriterTypeMetaParser = WriterTypeMetaParser(resolver, kspLogger)
-    private val writerGenerator = JsonWriterGenerator(resolver)
-    private val readerGenerator = JsonReaderGenerator(resolver)
-    private val sealedReaderGenerator = SealedInterfaceReaderGenerator(resolver, kspLogger)
-    private val sealedWriterGenerator = SealedInterfaceWriterGenerator(resolver, kspLogger)
-    private val processor: JsonProcessor = JsonProcessor(
-        resolver,
-        readerTypeMetaParser,
-        writerTypeMetaParser,
-        writerGenerator,
-        readerGenerator,
-        sealedReaderGenerator,
-        sealedWriterGenerator,
-        codeGenerator
-    )
+    private val readerTypeMetaParser: ReaderTypeMetaParser = ReaderTypeMetaParser(knownTypes, kspLogger)
+    private val writerTypeMetaParser: WriterTypeMetaParser = WriterTypeMetaParser(resolver)
+    private val processor: JsonProcessor = JsonProcessor(resolver, kspLogger, codeGenerator, knownTypes)
 
     override fun getDependencyGenerator(resolver: Resolver, type: KSType): (() -> ExtensionResult)? {
-        val actualType = if (type.nullability == Nullability.PLATFORM) type.makeNotNullable() else type
+        val actualType = type.makeNotNullable()
         val erasure = actualType.starProjection()
         if (erasure == jsonWriterErasure) {
-            val possibleJsonClass = type.arguments[0]
-            val writerMeta = writerTypeMetaParser.parse(possibleJsonClass.type!!)
-            if (writerMeta != null && (writerMeta.isSealedStructure || isProcessableType(writerMeta.type))) {
-                return { generateWriter(resolver, possibleJsonClass) }
+            val possibleJsonClass = type.arguments[0].type!!.resolve()
+            if (possibleJsonClass.isMarkedNullable) {
+                val jsonWriterDecl = resolver.getClassDeclarationByName(JsonTypes.jsonWriter.canonicalName)!!
+                val functionDecl = resolver.getFunctionDeclarationsByName("ru.tinkoff.kora.json.common.JsonKotlin.writerForNullable").first()
+                val writerType = jsonWriterDecl.asType(
+                    listOf(
+                        resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(possibleJsonClass), Variance.INVARIANT)
+                    )
+                )
+                val delegateType = jsonWriterDecl.asType(
+                    listOf(
+                        resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(possibleJsonClass.makeNotNullable()), Variance.INVARIANT)
+                    )
+                )
+                val functionType = functionDecl.parametrized(writerType, listOf(delegateType))
+                return { ExtensionResult.fromExecutable(functionDecl, functionType) }
+            }
+            val possibleJsonClassDeclaration = possibleJsonClass.declaration
+            if (possibleJsonClassDeclaration !is KSClassDeclaration) {
+                return null
+            }
+            if (possibleJsonClassDeclaration.isAnnotationPresent(JsonTypes.json) || possibleJsonClassDeclaration.isAnnotationPresent(JsonTypes.jsonWriter)) {
+                return generatedByProcessor(resolver, possibleJsonClassDeclaration, "JsonWriter")
+            }
+            if (possibleJsonClassDeclaration.modifiers.contains(Modifier.ENUM) || possibleJsonClassDeclaration.modifiers.contains(Modifier.SEALED)) {
+                return { generateWriter(resolver, possibleJsonClassDeclaration) }
+            }
+            try {
+                writerTypeMetaParser.parse(possibleJsonClassDeclaration)
+                return { generateWriter(resolver, possibleJsonClassDeclaration) }
+            } catch (e: ProcessingErrorException) {
+                return null
             }
         }
         if (erasure == jsonReaderErasure) {
-            val possibleJsonClass = type.arguments[0]
-            val readerMeta = readerTypeMetaParser.parse(possibleJsonClass.type!!)
-            if (readerMeta == null) {
+            val possibleJsonClass = type.arguments[0].type!!.resolve()
+            if (possibleJsonClass.isMarkedNullable) {
+                val jsonReaderDecl = resolver.getClassDeclarationByName(JsonTypes.jsonReader.canonicalName)!!
+                val functionDecl = resolver.getFunctionDeclarationsByName("ru.tinkoff.kora.json.common.JsonKotlin.readerForNullable").first()
+                val readerType = jsonReaderDecl.asType(
+                    listOf(
+                        resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(possibleJsonClass), Variance.INVARIANT)
+                    )
+                )
+                val delegateType = jsonReaderDecl.asType(
+                    listOf(
+                        resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(possibleJsonClass.makeNotNullable()), Variance.INVARIANT)
+                    )
+                )
+                val functionType = functionDecl.parametrized(readerType, listOf(delegateType))
+                return { ExtensionResult.fromExecutable(functionDecl, functionType) }
+            }
+            val possibleJsonClassDeclaration = possibleJsonClass.declaration
+            if (possibleJsonClassDeclaration !is KSClassDeclaration) {
                 return null
             }
-            if (readerMeta.isSealedStructure) {
-                if (readerMeta.discriminatorField != null) {
-                    return { generateReader(resolver, possibleJsonClass) }
-                } else {
-                    throw ProcessingErrorException(
-                        "Unspecified discriminator field for sealed interface, please use @JsonDiscriminatorField annotation",
-                        readerMeta.type.declaration
-                    )
-                }
+            if (possibleJsonClassDeclaration.isAnnotationPresent(JsonTypes.json)
+                || possibleJsonClassDeclaration.isAnnotationPresent(JsonTypes.jsonReader)
+                || possibleJsonClassDeclaration.primaryConstructor?.isAnnotationPresent(JsonTypes.jsonReader) == true
+            ) {
+                return generatedByProcessor(resolver, possibleJsonClassDeclaration, "JsonReader")
             }
-            if (isProcessableType(readerMeta.type)) {
-                return { generateReader(resolver, possibleJsonClass) }
+            if (possibleJsonClassDeclaration.modifiers.contains(Modifier.ENUM) || possibleJsonClassDeclaration.modifiers.contains(Modifier.SEALED)) {
+                return { generateReader(resolver, possibleJsonClassDeclaration) }
             }
-            return null
+
+            try {
+                readerTypeMetaParser.parse(possibleJsonClassDeclaration)
+                return { generateReader(resolver, possibleJsonClassDeclaration) }
+            } catch (e: ProcessingErrorException) {
+                return null
+            }
         }
         return null
     }
 
-    private fun generateReader(resolver: Resolver, jsonTypeArgument: KSTypeArgument): ExtensionResult {
-        val jsonType = jsonTypeArgument.type!!.resolve()
-        val jsonClass = jsonType.declaration as KSClassDeclaration
+    private fun generateReader(resolver: Resolver, jsonClass: KSClassDeclaration): ExtensionResult {
         val packageElement = jsonClass.packageName.asString()
-        val resultClassName = jsonReaderName(jsonType)
+        val resultClassName = jsonClass.jsonReaderName()
         val resultDeclaration = resolver.getClassDeclarationByName("$packageElement.$resultClassName")
         if (resultDeclaration != null) {
             return ExtensionResult.fromConstructor(findDefaultConstructor(resultDeclaration), resultDeclaration)
         }
-        val hasJsonConstructor: Boolean = jsonClass.getConstructors().filter { !it.isPrivate() }.any { it.isAnnotationPresent(ru.tinkoff.kora.json.common.annotation.JsonReader::class) }
-        if (hasJsonConstructor || jsonClass.isAnnotationPresent(ru.tinkoff.kora.json.common.annotation.JsonReader::class)) {
+        val hasJsonConstructor = jsonClass.getConstructors().filter { !it.isPrivate() }.any { it.isAnnotationPresent(JsonTypes.jsonReaderAnnotation) }
+        if (hasJsonConstructor || jsonClass.isAnnotationPresent(JsonTypes.jsonReaderAnnotation)) {
             // annotation processor will handle that
             return ExtensionResult.RequiresCompilingResult
         }
-        processor.tryGenerateReader(jsonTypeArgument.type!!)
+        processor.generateReader(jsonClass)
         return ExtensionResult.RequiresCompilingResult
     }
 
-    private fun generateWriter(resolver: Resolver, jsonTypeArgument: KSTypeArgument): ExtensionResult {
-        val jsonType = jsonTypeArgument.type!!.resolve()
-        val jsonClass = jsonType.declaration as KSClassDeclaration
+    private fun generateWriter(resolver: Resolver, jsonClass: KSClassDeclaration): ExtensionResult {
         val packageElement = jsonClass.packageName.asString()
-        val resultClassName = jsonWriterName(jsonType)
+        val resultClassName = jsonClass.jsonWriterName()
         val resultDeclaration = resolver.getClassDeclarationByName("$packageElement.$resultClassName")
         if (resultDeclaration != null) {
             return ExtensionResult.fromConstructor(findDefaultConstructor(resultDeclaration), resultDeclaration)
         }
-        if (jsonClass.isAnnotationPresent(Json::class) || jsonClass.isAnnotationPresent(ru.tinkoff.kora.json.common.annotation.JsonWriter::class)) {
+        if (jsonClass.isAnnotationPresent(JsonTypes.json) || jsonClass.isAnnotationPresent(JsonTypes.jsonWriterAnnotation)) {
             // annotation processor will handle that
             return ExtensionResult.RequiresCompilingResult
         }
-        processor.tryGenerateWriter(jsonTypeArgument.type!!)
+        processor.generateWriter(jsonClass)
         return ExtensionResult.RequiresCompilingResult
     }
 

@@ -67,6 +67,10 @@ public sealed interface ComponentDeclaration {
     }
 
     record FromExtensionComponent(TypeMirror type, ExecutableElement sourceMethod, List<TypeMirror> methodParameterTypes) implements ComponentDeclaration {
+        public FromExtensionComponent {
+            System.out.println(methodParameterTypes);
+        }
+
         @Override
         public Element source() {
             return this.sourceMethod;

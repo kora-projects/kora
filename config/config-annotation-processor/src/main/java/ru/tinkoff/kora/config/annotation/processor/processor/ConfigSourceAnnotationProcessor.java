@@ -13,7 +13,6 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import java.io.IOException;
 import java.util.Set;
 
 public class ConfigSourceAnnotationProcessor extends AbstractKoraProcessor {
@@ -56,11 +55,7 @@ public class ConfigSourceAnnotationProcessor extends AbstractKoraProcessor {
 
             var javaFile = JavaFile.builder(packageElement.getQualifiedName().toString(), type).build();
 
-            try {
-                CommonUtils.safeWriteTo(this.processingEnv, javaFile);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            CommonUtils.safeWriteTo(this.processingEnv, javaFile);
         }
 
         return false;

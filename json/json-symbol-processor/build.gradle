@@ -6,7 +6,6 @@ plugins {
 apply from: "${project.rootDir}/kotlin-plugin.gradle"
 
 dependencies {
-    api project(':json:json-common')
     api project(':symbol-processor-common')
     api project(':kora-app-symbol-processor')
 
@@ -15,6 +14,7 @@ dependencies {
     implementation libs.kotlinpoet
     implementation libs.kotlinpoet.ksp
 
+    testImplementation project(':json:json-common')
     testImplementation testFixtures(project(':symbol-processor-common'))
 }
 

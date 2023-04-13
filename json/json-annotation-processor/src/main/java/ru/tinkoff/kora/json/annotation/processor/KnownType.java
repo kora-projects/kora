@@ -67,6 +67,9 @@ public class KnownType {
 
     @Nullable
     public KnownTypesEnum detect(TypeMirror typeMirror) {
+        if (typeMirror.getKind() == TypeKind.ERROR) {
+            return null;
+        }
         if (this.types.isSameType(typeMirror, string)) {
             return KnownTypesEnum.STRING;
         }

@@ -1,106 +1,86 @@
 package ru.tinkoff.kora.json.ksp.reader
 
-import com.fasterxml.jackson.core.JsonParseException
-import com.fasterxml.jackson.core.JsonParser
-import com.google.devtools.ksp.KspExperimental
-import com.google.devtools.ksp.getAnnotationsByType
-import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSDeclaration
-import com.google.devtools.ksp.symbol.KSType
-import com.google.devtools.ksp.symbol.KSTypeReference
+import com.google.devtools.ksp.symbol.KSTypeParameter
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import com.squareup.kotlinpoet.ksp.*
-import ru.tinkoff.kora.json.common.BufferedParserWithDiscriminator
-import ru.tinkoff.kora.json.common.JsonReader
-import ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorValue
-import ru.tinkoff.kora.json.ksp.KnownType
+import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
+import com.squareup.kotlinpoet.ksp.toClassName
+import ru.tinkoff.kora.json.ksp.JsonTypes
+import ru.tinkoff.kora.json.ksp.detectSealedHierarchyTypeVariables
+import ru.tinkoff.kora.json.ksp.discriminatorField
 import ru.tinkoff.kora.json.ksp.jsonReaderName
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.collectFinalSealedSubtypes
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
+import java.util.*
 
-@KspExperimental
 class SealedInterfaceReaderGenerator(private val resolver: Resolver, logger: KSPLogger) {
-    private val readerErasure: KSType = resolver.getClassDeclarationByName(JsonReader::class.qualifiedName!!)!!.asStarProjectedType()
-    private val readerTypeMetaParser = ReaderTypeMetaParser(resolver, KnownType(resolver), logger)
+    fun generateSealedReader(jsonClassDeclaration: KSClassDeclaration): TypeSpec {
+        val subclasses = jsonClassDeclaration.collectFinalSealedSubtypes().toList()
+        val (typeArgMap, readerTypeVariables) = detectSealedHierarchyTypeVariables(jsonClassDeclaration, subclasses)
 
-    fun generateSealedReader(jsonElement: KSTypeReference, jsonElements: List<KSDeclaration>): List<TypeSpec> {
-        val meta = readerTypeMetaParser.parse(jsonElement, true) ?: throw ProcessingErrorException("Can't parse json meta", jsonElement)
+        val typeName = if (jsonClassDeclaration.typeParameters.isEmpty())
+            jsonClassDeclaration.toClassName() else
+            jsonClassDeclaration.toClassName().parameterizedBy(readerTypeVariables)
 
-        val typesToProcess = mutableSetOf(meta)
-        if (meta.type.isMarkedNullable) {
-            typesToProcess.add(meta.copy(type = meta.type.makeNotNullable()))
-        } else {
-            typesToProcess.add(meta.copy(type = meta.type.makeNullable()))
-        }
-        return typesToProcess.map { m -> generateSealedReaderTypeSpec(m, jsonElements) }
-    }
+        val readerInterface = JsonTypes.jsonReader.parameterizedBy(typeName)
 
-    private fun generateSealedReaderTypeSpec(
-        meta: JsonClassReaderMeta,
-        jsonElements: List<KSDeclaration>
-    ): TypeSpec {
-        val readerInterface = readerErasure.toClassName().parameterizedBy(meta.type.toTypeName())
-        val typeName = jsonReaderName(meta.type)
-        val typeParameterResolver = meta.type.declaration.typeParameters.toTypeParameterResolver()
-        val typeBuilder = TypeSpec.classBuilder(typeName)
+        val typeBuilder = TypeSpec.classBuilder(jsonClassDeclaration.jsonReaderName())
             .generated(SealedInterfaceReaderGenerator::class)
             .addSuperinterface(readerInterface)
             .addModifiers(KModifier.PUBLIC)
-            .addOriginatingKSFile(meta.type.declaration.containingFile!!)
+        jsonClassDeclaration.containingFile?.let { typeBuilder.addOriginatingKSFile(it) }
 
-        meta.type.declaration.typeParameters.forEach {
-            typeBuilder.addTypeVariable(it.toTypeVariableName())
+        readerTypeVariables.forEach {
+            if (it is TypeVariableName) {
+                typeBuilder.addTypeVariable(it)
+            }
         }
 
-        addReaders(meta, typeBuilder, jsonElements, typeParameterResolver)
-        val discriminatorField = meta.discriminatorField ?: throw ProcessingErrorException(
-            "Unspecified discriminator field for sealed interface, please use @JsonDiscriminatorField annotation",
-            meta.type.declaration
-        )
+        addReaders(typeBuilder, subclasses, typeArgMap)
+
+        val discriminatorField = jsonClassDeclaration.discriminatorField(resolver)
+            ?: throw ProcessingErrorException("Sealed interface should have @JsonDiscriminatorField annotation", jsonClassDeclaration)
         val function = FunSpec.builder("read")
             .addModifiers(KModifier.PUBLIC, KModifier.OVERRIDE)
-            .addParameter("_parser", JsonParser::class)
-            .returns(meta.type.toTypeName())
-        function.addCode("val bufferedParser = %T(_parser)\n", BufferedParserWithDiscriminator::class)
+            .addParameter("_parser", JsonTypes.jsonParser)
+            .returns(typeName.copy(nullable = true))
+        function.addCode("val bufferedParser = %T(_parser)\n", JsonTypes.bufferedParserWithDiscriminator)
         function.addCode("val discriminator = bufferedParser.getDiscriminator(%S) ", discriminatorField)
-        function.addCode("?: throw %T(_parser, %S)\n", JsonParseException::class, "Discriminator required, but not provided")
+        function.addCode("?: throw %T(_parser, %S)\n", JsonTypes.jsonParseException, "Discriminator required, but not provided")
         function.addCode("bufferedParser.resetPosition()\n")
         function.beginControlFlow("return when(discriminator) {")
-        jsonElements.forEach { elem ->
+        subclasses.forEach { elem ->
             val readerName = getReaderFieldName(elem)
-            val discriminatorValueAnnotation = elem.getAnnotationsByType(JsonDiscriminatorValue::class).firstOrNull()
-            val requiredDiscriminatorValue = discriminatorValueAnnotation?.value ?: elem.simpleName.asString()
+            val requiredDiscriminatorValue = elem.findAnnotation(JsonTypes.jsonDiscriminatorValue)
+                ?.findValue<String>("value")
+                ?: elem.simpleName.asString()
             function.addCode(
-                "%S -> %L.read(bufferedParser)%L\n",
+                "%S -> %L.read(bufferedParser)\n",
                 requiredDiscriminatorValue,
-                readerName,
-                if (meta.type.isMarkedNullable) "" else "!!"
+                readerName
             )
         }
-        function.addCode("else -> throw %T(_parser, %S)", JsonParseException::class.java, "Unknown discriminator")
+        function.addCode("else -> throw %T(_parser, %S)", JsonTypes.jsonParseException, "Unknown discriminator")
         function.endControlFlow()
         typeBuilder.addFunction(function.build())
         return typeBuilder.build()
     }
 
-    private fun addReaders(meta: JsonClassReaderMeta, typeBuilder: TypeSpec.Builder, jsonElements: List<KSDeclaration>, typeParameterResolver: TypeParameterResolver) {
-        val constructor = FunSpec.constructorBuilder()
-        jsonElements.forEach { elem ->
-            val elementType = if (meta.type.isMarkedNullable) {
-                (elem as KSClassDeclaration).asStarProjectedType().makeNullable()
-            } else {
-                (elem as KSClassDeclaration).asStarProjectedType().makeNotNullable()
-            }
-            val fieldName = getReaderFieldName(elem)
-            val fieldType = ClassName(
-                JsonReader::class.java.packageName,
-                JsonReader::class.simpleName!!
-            ).parameterizedBy(elementType.toTypeName(typeParameterResolver))
 
+    private fun addReaders(typeBuilder: TypeSpec.Builder, jsonElements: List<KSClassDeclaration>, typeArgMap: IdentityHashMap<KSTypeParameter, TypeName>) {
+        val constructor = FunSpec.constructorBuilder()
+        jsonElements.forEach { sealedSub ->
+            val fieldName = getReaderFieldName(sealedSub)
+            val subtypeTypeName = sealedSub.toTypeName(sealedSub.typeParameters.map { typeArgMap[it] ?: STAR })
+            val fieldType = JsonTypes.jsonReader.parameterizedBy(subtypeTypeName)
             val readerField = PropertySpec.builder(fieldName, fieldType, KModifier.PRIVATE)
             constructor.addParameter(fieldName, fieldType)
             constructor.addStatement("this.%L = %L", fieldName, fieldName)

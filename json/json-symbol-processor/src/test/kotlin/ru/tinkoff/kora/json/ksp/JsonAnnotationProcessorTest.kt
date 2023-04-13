@@ -7,6 +7,10 @@ import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.json.common.*
+import ru.tinkoff.kora.json.ksp.AbstractJsonSymbolProcessorTest.Companion.reader
+import ru.tinkoff.kora.json.ksp.AbstractJsonSymbolProcessorTest.Companion.readerClass
+import ru.tinkoff.kora.json.ksp.AbstractJsonSymbolProcessorTest.Companion.writer
+import ru.tinkoff.kora.json.ksp.AbstractJsonSymbolProcessorTest.Companion.writerClass
 import ru.tinkoff.kora.json.ksp.dto.*
 import ru.tinkoff.kora.ksp.common.symbolProcess
 import ru.tinkoff.kora.ksp.common.symbolProcessJava
@@ -14,7 +18,6 @@ import java.io.IOException
 import java.io.StringWriter
 import java.math.BigDecimal
 import java.math.BigInteger
-import java.time.LocalDate
 import kotlin.reflect.KClass
 
 @KspExperimental
@@ -61,95 +64,6 @@ internal class JsonAnnotationProcessorTest {
         return JsonClassLoader(kspCl)
     }
 
-    @Test
-    fun testDtoWithTypeParams() {
-        val intReader = JsonReader<Int> {
-            it.intValue
-        }
-        val stringJsonReader: JsonReader<String> = JsonReader { parser: JsonParser -> parser.text }
-        val cl = jsonClassLoader(DtoWithTypeParam::class)
-        val secondReader = cl.reader(DtoWithTypeParam.SecondTpe::class.java, intReader)
-        val reader = cl.reader(
-            DtoWithTypeParam::class.java,
-            cl.reader(DtoWithTypeParam.FirstTpe::class.java, intReader, stringJsonReader),
-            cl.reader(DtoWithTypeParam.SecondTpe::class.java, intReader),
-            cl.reader(DtoWithTypeParam.ThirdTpe::class.java, stringJsonReader)
-        )
-
-
-        val intWriter = JsonWriter { gen: JsonGenerator, obj: Int? -> gen.writeNumber(obj!!) }
-        val stringWriter = JsonWriter { gen: JsonGenerator, obj: String? -> gen.writeString(obj) }
-        val writer = cl.writer(
-            DtoWithTypeParam::class.java,
-            cl.writer(
-                DtoWithTypeParam.FirstTpe::class.java, intWriter, stringWriter
-            ),
-            cl.writer(DtoWithTypeParam.SecondTpe::class.java, intWriter),
-            cl.writer(DtoWithTypeParam.ThirdTpe::class.java, stringWriter)
-        )
-
-        val expected1 = DtoWithTypeParam.FirstTpe(1, "a", 2)
-        assertThat(expected1).isEqualTo(fromJson(reader, toJson(writer, expected1)))
-
-        val expected2 = DtoWithTypeParam.SecondTpe(1)
-        assertThat(expected2).isEqualTo(fromJson(reader, toJson(writer, expected2)))
-
-        val expected3 = DtoWithTypeParam.ThirdTpe("a")
-        assertThat(expected3).isEqualTo(fromJson(reader, toJson(writer, expected3)))
-    }
-
-    @Test
-    fun testSealedClassDto() {
-        val cl1 = jsonClassLoader(SealedClassDto::class)
-        val reader: JsonReader<SealedClassDto?> = cl1.reader(
-            SealedClassDto::class.java, cl1.reader(
-                SealedClassDto.FirstDto::class.java, cl1.reader(SealedClassDto.FirstDto.InnerDto::class.java)
-            ), cl1.reader(
-                SealedClassDto.SecondDto::class.java
-            )
-        )
-        val writer: JsonWriter<SealedClassDto?> = cl1.writer(
-            SealedClassDto::class.java, cl1.writer(
-                SealedClassDto.FirstDto::class.java, cl1.writer(SealedClassDto.FirstDto.InnerDto::class.java)
-            ), cl1.writer(
-                SealedClassDto.SecondDto::class.java
-            )
-        )
-        val firstJson = """
-            {
-              "innerDto" : { "innerValue" : "val" },
-              "@type" : "FirstDto",
-              "commonValue" : "value1",
-              "firstValue" : "value2"    
-            }
-           """.trimIndent()
-        val secondJson = """
-            {
-              "@type" : "SecondDto",
-              "firstValue" : "value",
-              "secondValue" : 23,
-              "commonValue" : "second"
-            }""".trimIndent()
-
-        val firstDto: SealedClassDto.FirstDto = SealedClassDto.FirstDto("value1", "value2", SealedClassDto.FirstDto.InnerDto("val"))
-        val secondDto: SealedClassDto.SecondDto = SealedClassDto.SecondDto("value", 23)
-        val firstParsed: SealedClassDto = fromJson(reader, firstJson)!!
-        val secondParsed: SealedClassDto = fromJson(reader, secondJson)!!
-        val firstWrittenJson: String = """
-            {
-              "@type" : "FirstDto",
-              "commonValue" : "value1",
-              "firstValue" : "value2",
-              "innerDto" : {
-                "innerValue" : "val"
-              }
-            }""".trimIndent()
-        assertThat(firstDto).isEqualTo(firstParsed)
-        assertThat(secondDto).isEqualTo(secondParsed)
-        assertThat(toJson(writer, firstDto)).isEqualTo(firstWrittenJson)
-        assertThat(toJson(writer, secondDto)).isEqualTo(secondJson)
-    }
-
     //
     @Test
     fun testNamingStrategy() {
@@ -167,27 +81,6 @@ internal class JsonAnnotationProcessorTest {
         assertThat(toJson(writer, dto)).isEqualTo(json)
     }
 
-
-    @Test
-    fun testKotlinSealedInterfaceDto() {
-        val cl1 = jsonClassLoader(KotlinSealedInterfaceDto::class)
-        val reader: JsonReader<KotlinSealedInterfaceDto?> = cl1.reader(
-            KotlinSealedInterfaceDto::class.java, cl1.reader(
-                KotlinSealedInterfaceDto.FirstDto::class.java
-            ), cl1.reader(KotlinSealedInterfaceDto.SecondDto::class.java)
-        )
-        val writer: JsonWriter<KotlinSealedInterfaceDto?> = cl1.writer(
-            KotlinSealedInterfaceDto::class.java, cl1.writer(
-                KotlinSealedInterfaceDto.FirstDto::class.java
-            ), cl1.writer(KotlinSealedInterfaceDto.SecondDto::class.java)
-        )
-        val firstDto: KotlinSealedInterfaceDto.FirstDto = KotlinSealedInterfaceDto.FirstDto("common", "first")
-        val secondDto: KotlinSealedInterfaceDto.SecondDto = KotlinSealedInterfaceDto.SecondDto("s", 22)
-        val firstParsed = toJson(writer, firstDto)
-        val secondParsed = toJson(writer, secondDto)
-        assertThat(firstDto).isEqualTo(fromJson(reader, firstParsed))
-        assertThat(secondDto).isEqualTo(fromJson(reader, secondParsed))
-    }
 
     private fun toStringExcludeBinary(o: Any): String {
         val str = o.toString()
@@ -547,17 +440,14 @@ internal class JsonAnnotationProcessorTest {
         val writer: JsonWriter<T?>?,
         val reader: JsonReader<T?>?
     ) : JsonWriter<T?>, JsonReader<T?> {
-        @Throws(IOException::class)
         override fun read(parser: JsonParser): T? {
             return this.reader?.read(parser)
         }
 
-        @Throws(IOException::class)
         override fun write(gen: JsonGenerator, `object`: T?) {
             this.writer?.write(gen, `object`)
         }
     }
-
 
     private fun <T : Any> processClass(type: KClass<T>): WriterAndReader<T> {
         val cl = jsonClassLoader(type)
@@ -568,7 +458,7 @@ internal class JsonAnnotationProcessorTest {
         }
         val reader: JsonReader<T?>? = try {
             cl.reader(type.java)
-        } catch (e: RuntimeException) {
+        } catch (e: Exception) {
             null
         }
         return WriterAndReader(writer, reader)
@@ -577,60 +467,21 @@ internal class JsonAnnotationProcessorTest {
     //
     @Suppress("UNCHECKED_CAST")
     private class JsonClassLoader(private val cl: ClassLoader) {
-        fun <T> writer(type: Class<T>, vararg args: Any?): JsonWriter<T?> {
-            return try {
-                val writerType = loadWriter(type)
-                writerType.constructors[0].newInstance(*args) as JsonWriter<T?>
-            } catch (e: InstantiationException) {
-                throw RuntimeException(e)
-            } catch (e: IllegalAccessException) {
-                throw RuntimeException(e)
-            }
-        }
+        fun <T> writer(type: Class<T>, vararg args: Any?) = cl.writer(type.packageName, fullName(type), *args) as JsonWriter<T?>
+        fun <T> reader(type: Class<T>, vararg args: Any?) = cl.reader(type.packageName, fullName(type), *args) as JsonReader<T?>
 
-        fun <T> reader(type: Class<T>, vararg args: Any?): JsonReader<T?> {
-            return try {
-                val readerType = loadReader(type)
-                val constructor = readerType.constructors[0]
-                constructor.newInstance(*args) as JsonReader<T?>
-            } catch (e: InstantiationException) {
-                throw RuntimeException(e)
-            } catch (e: IllegalAccessException) {
-                throw RuntimeException(e)
-            }
-        }
+        fun <T> loadWriter(type: Class<T>) = cl.writerClass(type.packageName, fullName(type)) as Class<JsonWriter<T>>
+        fun <T> loadReader(type: Class<T>) = cl.readerClass(type.packageName, fullName(type)) as Class<JsonWriter<T>>
 
-        fun <T> loadWriter(type: Class<T>): Class<JsonWriter<T>> {
-            return try {
-                val packageName = type.packageName
-                val name = packageName + "." + prefix(type) + type.simpleName + "JsonWriter"
-                cl.loadClass(name) as Class<JsonWriter<T>>
-            } catch (e: ClassNotFoundException) {
-                throw RuntimeException(e)
-            }
-        }
-
-        fun <T> loadReader(type: Class<T>): Class<JsonReader<T>> {
-            return try {
-                val packageName = type.packageName
-                val name = packageName + "." + prefix(type) + type.simpleName + "JsonReader"
-                cl.loadClass(name) as Class<JsonReader<T>>
-            } catch (e: ClassNotFoundException) {
-                throw RuntimeException(e)
-            }
-        }
-
-        private fun prefix(type: Class<*>): StringBuilder {
-            val name = StringBuilder("$")
+        private fun fullName(type: Class<*>): String {
+            val name = StringBuilder(type.simpleName)
             var parent = type.declaringClass
             while (parent != null) {
-                name.insert(1, parent.simpleName + "_")
+                name.insert(0, parent.simpleName + "_")
                 parent = parent.declaringClass
             }
             return name
+                .toString()
         }
-
     }
-
-
 }

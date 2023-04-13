@@ -1,8 +1,7 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorField;
-import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppUtils;
 
 import javax.annotation.Nullable;
 import javax.lang.model.element.Element;
@@ -19,7 +18,7 @@ public class JsonUtils {
     }
 
     public static String jsonWriterName(Element typeElement) {
-        return CommonUtils.getOuterClassesAsPrefix(typeElement) + typeElement.getSimpleName() +  "JsonWriter";
+        return CommonUtils.getOuterClassesAsPrefix(typeElement) + typeElement.getSimpleName() + "JsonWriter";
     }
 
     public static String jsonWriterName(Types types, TypeMirror typeMirror) {
@@ -38,31 +37,43 @@ public class JsonUtils {
         return jsonReaderName((TypeElement) typeElement);
     }
 
-    @Nullable
-    public static String discriminator(Types types, TypeElement element) {
-        var discriminatorElement = findSealedSupertype(types, element);
-
-        if (discriminatorElement == null) return null;
-
-        var discriminatorFieldNameAnnotation = discriminatorElement.getAnnotation(JsonDiscriminatorField.class);
-        return discriminatorFieldNameAnnotation == null ? null : discriminatorFieldNameAnnotation.value();
-    }
 
     @Nullable
-    public static TypeElement findSealedSupertype(Types types, TypeElement element) {
+    public static String discriminatorField(Types types, TypeElement element) {
         if (element.getModifiers().contains(Modifier.SEALED)) {
-            return element;
+            var annotation = AnnotationUtils.findAnnotation(element, JsonTypes.jsonDiscriminatorField);
+            if (annotation != null) {
+                return AnnotationUtils.parseAnnotationValueWithoutDefault(annotation, "value");
+            }
         }
         var superClass = types.asElement(element.getSuperclass());
-        if (superClass instanceof TypeElement && superClass.getModifiers().contains(Modifier.SEALED)) return (TypeElement) superClass;
+        if (superClass instanceof TypeElement && superClass.getModifiers().contains(Modifier.SEALED)) {
+            var annotation = AnnotationUtils.findAnnotation(superClass, JsonTypes.jsonDiscriminatorField);
+            if (annotation != null) {
+                return AnnotationUtils.parseAnnotationValueWithoutDefault(annotation, "value");
+            }
+        }
+        for (var directSupertype : types.directSupertypes(element.asType())) {
+            if (directSupertype.toString().equals("java.lang.Object")) {
+                continue;
+            }
+            var superelement = types.asElement(directSupertype);
+            var discriminator = discriminatorField(types, (TypeElement) superelement);
+            if (discriminator != null) {
+                return discriminator;
+            }
+        }
+        return null;
+    }
 
-        return types.directSupertypes(element.asType())
-            .stream()
-            .map(types::asElement)
-            .filter(e -> e instanceof TypeElement)
-            .map(e -> (TypeElement) e)
-            .filter(t -> t.getModifiers().contains(Modifier.SEALED))
-            .findFirst()
-            .orElse(null);
+    public static String discriminatorValue(TypeElement element) {
+        var annotation = AnnotationUtils.findAnnotation(element, JsonTypes.jsonDiscriminatorValue);
+        if (annotation != null) {
+            var value = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(annotation, "value");
+            if (value != null) {
+                return value;
+            }
+        }
+        return element.getSimpleName().toString();
     }
 }

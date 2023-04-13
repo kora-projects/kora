@@ -48,6 +48,8 @@ abstract class AbstractSymbolProcessorTest {
         }
     }
 
+    protected fun loadClass(className: String) = this.compileResult.loadClass(className)
+
     protected fun testPackage(): String {
         val testClass: Class<*> = testInfo.testClass.get()
         val testMethod: Method = testInfo.testMethod.get()
@@ -68,41 +70,42 @@ abstract class AbstractSymbolProcessorTest {
         val testClass: Class<*> = testInfo.testClass.get()
         val testMethod: Method = testInfo.testMethod.get()
         val commonImports = commonImports()
-        val sourceList: List<SourceFile> = Arrays.stream(sources).map { s: String -> "package %s;\n%s\n/**\n* @see %s.%s \n*/\n".formatted(testPackage, commonImports, testClass.canonicalName, testMethod.name) + s }
-            .map { s ->
-                var classStart = s.indexOf("class ") + 6
-                if (classStart < 6) {
-                    classStart = s.indexOf("open class ") + 11
-                    if (classStart < 11) {
-                        classStart = s.indexOf("interface ") + 10
-                        if (classStart < 10) {
-                            classStart = s.indexOf("sealed interface ") + 17
-                            if (classStart < 17) {
-                                classStart = s.indexOf("data class ") + 11
-                                if (classStart < 11) {
-                                    classStart = s.indexOf("enum class ") + 11
-                                    require(classStart >= 12)
+        val sourceList: List<SourceFile> =
+            Arrays.stream(sources).map { s: String -> "package %s;\n%s\n/**\n* @see %s.%s \n*/\n".formatted(testPackage, commonImports, testClass.canonicalName, testMethod.name) + s }
+                .map { s ->
+                    var classStart = s.indexOf("\nclass ") + 7
+                    if (classStart < 7) {
+                        classStart = s.indexOf("\nopen class ") + 12
+                        if (classStart < 12) {
+                            classStart = s.indexOf("\ninterface ") + 11
+                            if (classStart < 11) {
+                                classStart = s.indexOf("\nsealed interface ") + 18
+                                if (classStart < 18) {
+                                    classStart = s.indexOf("data class ") + 11
+                                    if (classStart < 11) {
+                                        classStart = s.indexOf("enum class ") + 11
+                                        require(classStart >= 12)
+                                    }
                                 }
                             }
                         }
                     }
+                    val classEnd = sequenceOf(
+                        s.indexOf(" ", classStart + 1),
+                        s.indexOf("(", classStart + 1),
+                        s.indexOf("{", classStart + 1),
+                        s.indexOf(":", classStart + 1),
+                    )
+                        .filter { it >= 0 }
+                        .min()
+                    val className = s.substring(classStart, classEnd)
+                    val fileName = "build/in-test-generated-ksp/sources/${testPackage.replace('.', '/')}/$className.kt"
+                    Files.createDirectories(File(fileName).toPath().parent)
+                    Files.deleteIfExists(Paths.get(fileName))
+                    Files.writeString(Paths.get(fileName), s, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW)
+                    SourceFile.kotlin(fileName.replace("build/in-test-generated-ksp/sources/", ""), s)
                 }
-                val classEnd = sequenceOf(
-                    s.indexOf(" ", classStart + 1),
-                    s.indexOf("(", classStart + 1),
-                    s.indexOf("{", classStart + 1),
-                    s.indexOf(":", classStart + 1),
-                )
-                    .filter { it >= 0 }
-                    .min()
-                val className = s.substring(classStart, classEnd)
-                val fileName = "build/in-test-generated-ksp/sources/${testPackage.replace('.', '/')}/$className.kt"
-                Files.createDirectories(File(fileName).toPath().parent)
-                Files.deleteIfExists(Paths.get(fileName))
-                Files.writeString(Paths.get(fileName), s, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW)
-                SourceFile.kotlin(fileName.replace("build/in-test-generated-ksp/sources/", ""), s)
-            }
-            .toList()
+                .toList()
         return this.symbolProcessFiles(sourceList, processors)
     }
 

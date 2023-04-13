@@ -7,7 +7,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 import java.util.List;
 
-public record JsonClassWriterMeta(TypeMirror typeMirror, TypeElement typeElement, List<FieldMeta> fields, @Nullable String discriminatorField, boolean isSealedStructure) {
+public record JsonClassWriterMeta(TypeMirror typeMirror, TypeElement typeElement, List<FieldMeta> fields) {
 
     record FieldMeta(
         VariableElement field,

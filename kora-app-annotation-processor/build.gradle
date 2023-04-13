@@ -2,6 +2,7 @@ import java.nio.file.Files
 
 dependencies {
     api project(':annotation-processor-common')
+    implementation libs.jackson.core
 
     testImplementation testFixtures(project(':annotation-processor-common'))
 }
