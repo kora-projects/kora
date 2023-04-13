@@ -4,7 +4,6 @@ dependencies {
     api project(":application-graph")
 
     api libs.slf4j.api
-    api libs.jackson.core
 
     api libs.reactor.core
     compileOnly(libs.kotlin.stdlib.lib)

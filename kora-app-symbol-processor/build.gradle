@@ -15,6 +15,7 @@ dependencies {
     implementation libs.kotlin.reflect
     implementation libs.kotlinpoet
     implementation libs.kotlinpoet.ksp
+    implementation libs.jackson.core
 
     testImplementation testFixtures(project(':annotation-processor-common'))
     testImplementation testFixtures(project(':symbol-processor-common'))

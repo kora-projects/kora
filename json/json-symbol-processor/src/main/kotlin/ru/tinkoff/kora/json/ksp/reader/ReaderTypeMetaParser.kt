@@ -1,79 +1,43 @@
 package ru.tinkoff.kora.json.ksp.reader
 
-import com.google.devtools.ksp.*
+import com.google.devtools.ksp.isConstructor
+import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.processing.KSPLogger
-import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
+import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.toTypeName
+import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import ru.tinkoff.kora.common.naming.NameConverter
-import ru.tinkoff.kora.json.common.annotation.Json
-import ru.tinkoff.kora.json.common.annotation.JsonField
-import ru.tinkoff.kora.json.common.annotation.JsonReader
+import ru.tinkoff.kora.json.ksp.JsonTypes
 import ru.tinkoff.kora.json.ksp.KnownType
-import ru.tinkoff.kora.json.ksp.discriminator
-import ru.tinkoff.kora.json.ksp.isSealed
-import ru.tinkoff.kora.json.ksp.writer.JsonClassWriterMeta
+import ru.tinkoff.kora.json.ksp.findJsonField
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
+import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.getNameConverter
-import ru.tinkoff.kora.ksp.common.isJavaRecord
 import ru.tinkoff.kora.ksp.common.parseAnnotationValue
 
-@KspExperimental
 class ReaderTypeMetaParser(
-    resolver: Resolver,
     private val knownType: KnownType,
     private val logger: KSPLogger
 ) {
 
-    private val defaultReader = resolver.getClassDeclarationByName(JsonField.DefaultReader::class.qualifiedName!!)!!.asType(listOf())
-    private val jsonFieldAnnotation = resolver.getClassDeclarationByName(JsonField::class.qualifiedName!!)!!
-    private val enumType = resolver.getClassDeclarationByName<Enum<*>>()!!.asStarProjectedType()
-
-    fun parse(typeReference: KSTypeReference, discriminatorRequired: Boolean = false): JsonClassReaderMeta? {
-        val type = typeReference.resolve()
-        val declaration = when (type.declaration) {
-            is KSTypeAlias -> (type.declaration as KSTypeAlias).type.resolve().declaration as KSClassDeclaration
-            is KSClassDeclaration -> type.declaration as KSClassDeclaration
-            else -> return null
-        }
-        val discriminator = if (discriminatorRequired) {
-            discriminator(declaration)
-        } else {
-            null
-        }
-        if (isSealed(declaration)) {
-            return JsonClassReaderMeta(
-                type,
-                typeReference,
-                emptyList(),
-                discriminator,
-                true,
-            )
-        }
-        if (enumType.isAssignableFrom(type)) {
-            return JsonClassReaderMeta(type, typeReference, emptyList(), null, false)
-        }
-
+    fun parse(declaration: KSClassDeclaration): JsonClassReaderMeta {
         val jsonConstructor = this.findJsonConstructor(declaration)
-        if (jsonConstructor == null) {
-            logger.error(
+            ?: throw ProcessingErrorException(
                 "Class: %s\nTo generate json reader class must have one public constructor or constructor annotated with any of @Json/@JsonReader".format(declaration.toClassName()),
-                typeReference
+                declaration
             )
-            return null
-        }
         val fields = mutableListOf<JsonClassReaderMeta.FieldMeta>()
 
         val nameConverter = declaration.getNameConverter()
         for (parameter in jsonConstructor.parameters) {
-            val fieldMeta: JsonClassReaderMeta.FieldMeta? = parseField(declaration, parameter, nameConverter)
-            if (fieldMeta == null) {
-                return null
-            } else {
-                fields.add(fieldMeta)
-            }
+            val fieldMeta = parseField(declaration, parameter, nameConverter)
+            fields.add(fieldMeta)
         }
 
-        return JsonClassReaderMeta(type, typeReference, fields, discriminator, false)
+        return JsonClassReaderMeta(declaration, fields)
     }
 
     private fun findJsonConstructor(classDeclaration: KSClassDeclaration): KSFunctionDeclaration? {
@@ -90,7 +54,7 @@ class ReaderTypeMetaParser(
             return constructors[0]
         }
         val jsonConstructors = constructors
-            .filter { it.isAnnotationPresent(JsonReader::class) || it.isAnnotationPresent(Json::class) }
+            .filter { it.findAnnotation(JsonTypes.jsonReaderAnnotation) != null || it.findAnnotation(JsonTypes.json) != null }
             .toList()
         if (jsonConstructors.size == 1) {
             return jsonConstructors[0]
@@ -104,48 +68,25 @@ class ReaderTypeMetaParser(
         return null
     }
 
-    private fun parseField(jsonClass: KSClassDeclaration, parameter: KSValueParameter, nameConverter: NameConverter?): JsonClassReaderMeta.FieldMeta? {
-        val jsonField = this.findJsonField(parameter, jsonClass)
-        val resolvedParameterType = parameter.type.resolve()
-        if (resolvedParameterType.isError) {
-            logger.error("Field %s.%s is ERROR".format(jsonClass, parameter.name!!.asString()), parameter)
-            return null
-        }
+    private fun parseField(jsonClass: KSClassDeclaration, parameter: KSValueParameter, nameConverter: NameConverter?): JsonClassReaderMeta.FieldMeta {
+        val jsonField = findJsonField(parameter, jsonClass)
         val jsonName = parseJsonName(parameter, jsonField, nameConverter)
-
-
-        val reader = when (val rdr = jsonField?.let { parseAnnotationValue<KSType>(it, "reader") }) {
-            null -> {
-                null
-            }
-            defaultReader -> {
-                null
-            }
-            else -> {
-                rdr
-            }
-        }
-        val typeMeta: ReaderFieldType = this.parseReaderFieldType(parameter.type)
-        return JsonClassReaderMeta.FieldMeta(parameter, jsonName, resolvedParameterType, typeMeta, reader)
+        val fieldType = parameter.type.resolve()
+        val typeName = parameter.type.toTypeName(jsonClass.typeParameters.toTypeParameterResolver())
+        val reader = jsonField?.findValueNoDefault<KSType>("reader")
+        val typeMeta = this.parseReaderFieldType(fieldType, typeName)
+        return JsonClassReaderMeta.FieldMeta(parameter, jsonName, typeName, typeMeta, reader)
     }
 
-    private fun parseReaderFieldType(fieldType: KSTypeReference): ReaderFieldType {
-        val resolvedFieldType = fieldType.resolve()
+    private fun parseReaderFieldType(resolvedFieldType: KSType, resolvedFieldTypeName: TypeName): ReaderFieldType {
         val knownType = knownType.detect(resolvedFieldType)
         return if (knownType != null) {
-            ReaderFieldType.KnownTypeReaderMeta(knownType, fieldType)
+            ReaderFieldType.KnownTypeReaderMeta(knownType, resolvedFieldTypeName)
         } else {
-            ReaderFieldType.UnknownTypeReaderMeta(fieldType)
+            ReaderFieldType.UnknownTypeReaderMeta(resolvedFieldTypeName)
         }
     }
 
-    private fun findJsonField(param: KSValueParameter, jsonClass: KSClassDeclaration): KSAnnotation? {
-        if (jsonClass.isJavaRecord()) {
-            val relatedGetter = jsonClass.getAllFunctions().firstOrNull { it.simpleName.asString() == param.name!!.asString() }
-            return relatedGetter?.annotations?.firstOrNull { it.annotationType.resolve() == jsonFieldAnnotation.asStarProjectedType() }
-        }
-        return param.annotations.firstOrNull { it.annotationType.resolve() == jsonFieldAnnotation.asStarProjectedType() }
-    }
 
     private fun parseJsonName(param: KSValueParameter, jsonField: KSAnnotation?, nameConverter: NameConverter?): String {
         if (jsonField == null) {
@@ -156,9 +97,11 @@ class ReaderTypeMetaParser(
             }
         }
         val jsonFieldValue = parseAnnotationValue<String>(jsonField, "value")
-        return if (jsonFieldValue != null && jsonFieldValue.isNotBlank()) {
-            jsonFieldValue
-        } else param.name!!.asString()
+        if (jsonFieldValue != null && jsonFieldValue.isNotBlank()) {
+            return jsonFieldValue
+        } else {
+            return param.name!!.asString()
+        }
     }
 
 }

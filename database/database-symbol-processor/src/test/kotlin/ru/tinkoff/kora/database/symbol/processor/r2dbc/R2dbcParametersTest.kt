@@ -152,7 +152,7 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
             }
             
             """.trimIndent(), """
-            public class UnknownType {}
+            class UnknownType {}
             
             """.trimIndent())
 

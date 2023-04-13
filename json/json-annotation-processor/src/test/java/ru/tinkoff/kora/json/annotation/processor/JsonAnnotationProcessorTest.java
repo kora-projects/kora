@@ -15,7 +15,6 @@ import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -79,59 +78,6 @@ class JsonAnnotationProcessorTest {
     }
 
     @Test
-    void testSealedDto() throws Exception {
-        var cl1 = processClass0(SealedDto.class);
-        var reader = cl1.reader(SealedDto.class, cl1.reader(SealedDto.FirstDto.class, cl1.reader(SealedDto.FirstDto.InnerDto.class)), cl1.reader(SealedDto.SecondDto.class), cl1.reader(SealedDto.ThirdDto.class));
-        var writer = cl1.writer(SealedDto.class, cl1.writer(SealedDto.FirstDto.class, cl1.writer(SealedDto.FirstDto.InnerDto.class)), cl1.writer(SealedDto.SecondDto.class), cl1.writer(SealedDto.ThirdDto.class));
-
-        var firstJson = """
-            {
-              "someInnerObject" : {"v": "val", "@type" : "discr"},
-              "@type" : "FirstDto",
-              "firstValue" : "value"
-            }""";
-        var secondJson = """
-            {
-              "@type" : "SecondDto",
-              "firstValue" : "value",
-              "secondValue" : 23
-            }""";
-        var thirdJson = """
-            {
-              "@type" : "ThirdDto",
-              "firstValue" : "value",
-              "secondValue" : 41,
-              "thirdValue" : false
-            }""";
-
-
-        var firstDto = new SealedDto.FirstDto(new SealedDto.FirstDto.InnerDto("val"), "value");
-        var secondDto = new SealedDto.SecondDto("value", 23);
-        var thirdDto = new SealedDto.ThirdDto("value", 41, false);
-
-        var thirdParsed = fromJson(reader, thirdJson);
-        var firstParsed = fromJson(reader, firstJson);
-        var secondParsed = fromJson(reader, secondJson);
-
-        var firstWritedJson = """
-            {
-              "@type" : "FirstDto",
-              "someInnerObject" : {
-                "v" : "val"
-              },
-              "firstValue" : "value"
-            }""";
-
-        assertThat(thirdDto).isEqualTo(thirdParsed);
-        assertThat(firstDto).isEqualTo(firstParsed);
-        assertThat(secondDto).isEqualTo(secondParsed);
-
-        assertThat(toJson(writer, firstDto)).isEqualTo(firstWritedJson);
-        assertThat(toJson(writer, secondDto)).isEqualTo(secondJson);
-        assertThat(toJson(writer, thirdDto)).isEqualTo(thirdJson);
-    }
-
-    @Test
     void testNamingStrategy() throws Exception {
         var cl1 = processClass0(DtoWithSnakeCaseNaming.class);
         var reader = cl1.reader(DtoWithSnakeCaseNaming.class);
@@ -150,37 +96,6 @@ class JsonAnnotationProcessorTest {
         assertThat(dto).isEqualTo(parsed);
 
         assertThat(toJson(writer, dto)).isEqualTo(json);
-    }
-
-    @Test
-    void testAnnotatedSealedDto() throws Exception {
-        var cl1 = processClass0(AnnotatedSealedDto.class);
-        var reader = cl1.reader(AnnotatedSealedDto.class, cl1.reader(AnnotatedSealedDto.FirstDto.class), cl1.reader(AnnotatedSealedDto.SecondDto.class));
-        var writer = cl1.writer(AnnotatedSealedDto.class, cl1.writer(AnnotatedSealedDto.FirstDto.class), cl1.writer(AnnotatedSealedDto.SecondDto.class));
-
-        var firstJson = """
-            {
-              "type" : "first_dto",
-              "value" : "value"
-            }""";
-        var secondJson = """
-            {
-              "type" : "SecondDto",
-              "val" : "value",
-              "dig" : 23
-            }""";
-
-        var firstDto = new AnnotatedSealedDto.FirstDto("value");
-        var secondDto = new AnnotatedSealedDto.SecondDto("value", 23);
-
-        var firstParsed = fromJson(reader, firstJson);
-        var secondParsed = fromJson(reader, secondJson);
-
-        assertThat(firstDto).isEqualTo(firstParsed);
-        assertThat(secondDto).isEqualTo(secondParsed);
-
-        assertThat(toJson(writer, firstDto)).isEqualTo(firstJson);
-        assertThat(toJson(writer, secondDto)).isEqualTo(secondJson);
     }
 
     private String toStringExcludeBinary(Object o) {

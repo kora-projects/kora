@@ -26,6 +26,8 @@ object AnnotationUtils {
     }
 
 
+    fun KSAnnotated.isAnnotationPresent(type: ClassName) = this.findAnnotations(type).firstOrNull() != null
+
     fun KSAnnotated.findAnnotation(type: ClassName) = this.findAnnotations(type).firstOrNull()
 
     fun KSAnnotated.findAnnotations(type: ClassName) = this.annotations
@@ -46,4 +48,14 @@ object AnnotationUtils {
         .map { it.value!! }
         .map { it as T }
         .firstOrNull()
+
+    inline fun <reified T> KSAnnotation.findValueNoDefault(name: String): T? {
+        val defaultValues = defaultArguments
+        return this.arguments.asSequence()
+            .filter { it.name!!.asString() == name }
+            .filter { !defaultValues.contains(it) }
+            .map { it.value!! }
+            .map { it as T }
+            .firstOrNull()
+    }
 }

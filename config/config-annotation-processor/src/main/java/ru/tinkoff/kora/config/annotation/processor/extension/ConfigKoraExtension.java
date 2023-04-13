@@ -15,7 +15,6 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-import java.io.IOException;
 
 public final class ConfigKoraExtension implements KoraExtension {
     private final Elements elements;
@@ -73,11 +72,7 @@ public final class ConfigKoraExtension implements KoraExtension {
 
         var javaFile = this.configParserGenerator.generate(roundEnvironment, targetType);
 
-        try {
-            CommonUtils.safeWriteTo(this.processingEnv, javaFile);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
 
         return ExtensionResult.RequiresCompilingResult.INSTANCE;
     }

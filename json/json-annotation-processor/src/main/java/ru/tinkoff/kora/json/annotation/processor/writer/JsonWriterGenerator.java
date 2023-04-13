@@ -1,62 +1,38 @@
 package ru.tinkoff.kora.json.annotation.processor.writer;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.io.SerializedString;
 import com.squareup.javapoet.*;
-import ru.tinkoff.kora.common.annotation.Generated;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
+import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
 import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
 import ru.tinkoff.kora.json.annotation.processor.KnownType;
 import ru.tinkoff.kora.json.annotation.processor.writer.JsonClassWriterMeta.FieldMeta;
-import ru.tinkoff.kora.json.common.EnumJsonWriter;
-import ru.tinkoff.kora.json.common.JsonWriter;
-import ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorValue;
 
 import javax.annotation.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.DeclaredType;
-import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.io.IOException;
 import java.util.function.Function;
 
 public class JsonWriterGenerator {
-    private final ProcessingEnvironment processingEnvironment;
     private final Types types;
-    private final Elements elements;
-    private final TypeElement writerErasure;
-    private final DeclaredType enumType;
 
     public JsonWriterGenerator(ProcessingEnvironment processingEnvironment) {
-        this.processingEnvironment = processingEnvironment;
         this.types = processingEnvironment.getTypeUtils();
-        this.elements = processingEnvironment.getElementUtils();
-        this.writerErasure = (TypeElement) this.types.asElement(
-            this.types.erasure(this.elements.getTypeElement(JsonWriter.class.getCanonicalName()).asType())
-        );
-        this.enumType = this.types.getDeclaredType(
-            this.elements.getTypeElement(Enum.class.getCanonicalName()),
-            this.types.getWildcardType(null, null)
-        );
     }
 
     @Nullable
     public TypeSpec generate(JsonClassWriterMeta meta) {
-        var writerInterface = this.types.getDeclaredType(this.writerErasure, meta.typeMirror());
 
         var typeBuilder = TypeSpec.classBuilder(JsonUtils.jsonWriterName(meta.typeElement()))
-            .addAnnotation(AnnotationSpec.builder(Generated.class)
+            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
                 .addMember("value", CodeBlock.of("$S", JsonWriterGenerator.class.getCanonicalName()))
                 .build())
-            .addSuperinterface(writerInterface)
+            .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonWriter, TypeName.get(meta.typeElement().asType())))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addOriginatingElement(meta.typeElement());
-        if (this.types.isAssignable(meta.typeMirror(), this.enumType)) {
-            return this.generateEnumWriter(meta, typeBuilder);
-        }
-
 
         for (var typeParameter : meta.typeElement().getTypeParameters()) {
             typeBuilder.addTypeVariable(TypeVariableName.get(typeParameter));
@@ -65,24 +41,24 @@ public class JsonWriterGenerator {
 
         this.addWriters(typeBuilder, meta);
         for (var field : meta.fields()) {
-            typeBuilder.addField(FieldSpec.builder(SerializedString.class, this.jsonNameStaticName(field), Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
-                .initializer(CodeBlock.of("new $T($S)", SerializedString.class, field.jsonName()))
+            typeBuilder.addField(FieldSpec.builder(JsonTypes.serializedString, this.jsonNameStaticName(field), Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+                .initializer(CodeBlock.of("new $T($S)", JsonTypes.serializedString, field.jsonName()))
                 .build());
         }
 
         var method = MethodSpec.methodBuilder("write")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addException(IOException.class)
-            .addParameter(TypeName.get(JsonGenerator.class), "_gen")
+            .addParameter(JsonTypes.jsonGenerator, "_gen")
             .addParameter(ParameterSpec.builder(TypeName.get(meta.typeMirror()), "_object").addAnnotation(Nullable.class).build())
             .addAnnotation(Override.class);
         method.addCode("if (_object == null) {$>\n_gen.writeNull();\nreturn;$<\n}\n");
         method.addStatement("_gen.writeStartObject(_object)");
 
-        if (meta.discriminatorField() != null) {
-            var discriminatorValueAnnotation = meta.typeElement().getAnnotation(JsonDiscriminatorValue.class);
-            var discriminatorFieldValue = discriminatorValueAnnotation == null ? meta.typeElement().getSimpleName().toString() : discriminatorValueAnnotation.value();
-            method.addCode("_gen.writeFieldName($S);\n", meta.discriminatorField());
+        var discriminatorField = JsonUtils.discriminatorField(types, meta.typeElement());
+        if (discriminatorField != null) {
+            var discriminatorFieldValue = JsonUtils.discriminatorValue(meta.typeElement());
+            method.addCode("_gen.writeFieldName($S);\n", discriminatorField);
             method.addStatement("_gen.writeString($S);", discriminatorFieldValue);
         }
         for (var field : meta.fields()) {
@@ -94,25 +70,6 @@ public class JsonWriterGenerator {
         return typeBuilder.build();
     }
 
-    private TypeSpec generateEnumWriter(JsonClassWriterMeta meta, TypeSpec.Builder typeBuilder) {
-        var delegateType = ParameterizedTypeName.get(ClassName.get(EnumJsonWriter.class), TypeName.get(meta.typeMirror()));
-
-        typeBuilder.addField(delegateType, "delegate", Modifier.PRIVATE, Modifier.FINAL);
-        typeBuilder.addMethod(MethodSpec.constructorBuilder()
-            .addModifiers(Modifier.PUBLIC)
-            .addCode("this.delegate = new $T<>($T.values(), v -> v.toString());\n", EnumJsonWriter.class, meta.typeMirror())
-            .build());
-        typeBuilder.addMethod(MethodSpec.methodBuilder("write")
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addException(IOException.class)
-            .addParameter(TypeName.get(JsonGenerator.class), "_gen")
-            .addParameter(ParameterSpec.builder(TypeName.get(meta.typeMirror()), "_object").addAnnotation(Nullable.class).build())
-            .addAnnotation(Override.class)
-                .addCode("this.delegate.write(_gen, _object);\n")
-            .build()
-        );
-        return typeBuilder.build();
-    }
 
     private void addWriters(TypeSpec.Builder typeBuilder, JsonClassWriterMeta classMeta) {
         var constructor = MethodSpec.constructorBuilder()
@@ -140,7 +97,7 @@ public class JsonWriterGenerator {
                 constructor.addStatement("this.$L = $L", fieldName, fieldName);
             } else if (field.writerTypeMeta() instanceof WriterFieldType.UnknownWriterFieldType) {
                 var fieldName = this.writerFieldName(field);
-                var fieldType = ParameterizedTypeName.get(ClassName.get(JsonWriter.class), TypeName.get(field.typeMirror()));
+                var fieldType = ParameterizedTypeName.get(JsonTypes.jsonWriter, TypeName.get(field.typeMirror()));
                 var writerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
 
                 typeBuilder.addField(writerField.build());

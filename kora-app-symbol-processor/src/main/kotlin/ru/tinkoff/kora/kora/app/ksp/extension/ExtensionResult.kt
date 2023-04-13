@@ -13,7 +13,7 @@ sealed interface ExtensionResult {
         fun fromConstructor(constructor: KSFunctionDeclaration, type: KSClassDeclaration): ExtensionResult {
             return GeneratedResult(
                 constructor,
-                constructor.asMemberOf(type.asStarProjectedType())
+                constructor.asMemberOf(type.asType(listOf()))
             )
         }
 

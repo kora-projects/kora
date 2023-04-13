@@ -1,9 +1,7 @@
-@file:OptIn(KspExperimental::class)
 @file:Suppress("RECEIVER_NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
 
 package ru.tinkoff.kora.kora.app.ksp
 
-import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.SoftAssertions
@@ -23,8 +21,6 @@ import java.util.function.Supplier
 import java.util.stream.Collectors
 import kotlin.reflect.KClass
 
-
-@KspExperimental
 class KoraAppKspTest {
 
     @Test
@@ -209,7 +205,8 @@ class KoraAppKspTest {
         Assertions.assertThatThrownBy { testClass(AppWithUnresolvedDependency::class) }
             .isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
                 SoftAssertions.assertSoftly { s: SoftAssertions ->
-                    s.assertThat(e.messages).anyMatch { it.contains("Required dependency was not found and candidate class ru.tinkoff.kora.kora.app.ksp.app.AppWithUnresolvedDependency.Class3 is not final") }
+                    s.assertThat(e.messages)
+                        .anyMatch { it.contains("Required dependency was not found and candidate class ru.tinkoff.kora.kora.app.ksp.app.AppWithUnresolvedDependency.Class3 is not final") }
                 }
             }
     }
@@ -303,7 +300,8 @@ class KoraAppKspTest {
         }
             .isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
                 SoftAssertions.assertSoftly { s: SoftAssertions ->
-                    s.assertThat(e.messages).anyMatch { it.contains("More than one component matches dependency claim ru.tinkoff.kora.kora.app.ksp.app.AppWithComponentCollisionAndDirect.Class1 tag=[]:") }
+                    s.assertThat(e.messages)
+                        .anyMatch { it.contains("More than one component matches dependency claim ru.tinkoff.kora.kora.app.ksp.app.AppWithComponentCollisionAndDirect.Class1 tag=[]:") }
                 }
             }
     }
@@ -458,8 +456,6 @@ class KoraAppKspTest {
             .toList()
     }
 
-    @KspExperimental
-    @Throws(Exception::class)
     fun testClass(targetClass: KClass<*>, processorProviders: List<SymbolProcessorProvider> = listOf()): ApplicationGraphDraw {
         return try {
             val graphClass = targetClass.qualifiedName + "Graph"

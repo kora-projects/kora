@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonGenerator
 import ru.tinkoff.kora.json.common.annotation.JsonField
 import ru.tinkoff.kora.json.common.annotation.JsonSkip
 import ru.tinkoff.kora.json.common.annotation.JsonWriter
-import java.io.IOException
 
 @JsonWriter
 data class DtoOnlyWriter(
@@ -14,7 +13,6 @@ data class DtoOnlyWriter(
     @JsonSkip val field4: String
 ) {
     class FieldWriter : ru.tinkoff.kora.json.common.JsonWriter<Inner?> {
-        @Throws(IOException::class)
         override fun write(gen: JsonGenerator, obj: Inner?) {
             if (obj == null) {
                 gen.writeNull()

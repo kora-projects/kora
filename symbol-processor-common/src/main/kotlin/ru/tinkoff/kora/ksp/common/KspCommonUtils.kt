@@ -1,15 +1,14 @@
 package ru.tinkoff.kora.ksp.common
 
-import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import com.google.devtools.ksp.visitor.KSEmptyVisitor
-import com.squareup.kotlinpoet.AnnotationSpec
-import com.squareup.kotlinpoet.ClassName
-import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.TypeSpec
+import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
+import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import ru.tinkoff.kora.common.Mapping
 import ru.tinkoff.kora.common.naming.NameConverter
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
@@ -89,8 +88,10 @@ object KspCommonUtils {
             .map { CodeBlock.of("%S", it.qualifiedName) }
             .joinToString(", ", "value = [", "]")
 
-        addAnnotation(AnnotationSpec.builder(CommonClassNames.generated)
-            .addMember(generatedValue).build())
+        addAnnotation(
+            AnnotationSpec.builder(CommonClassNames.generated)
+                .addMember(generatedValue).build()
+        )
     }
 
     fun KSFunctionDeclaration.parametrized(returnType: KSType, parameterTypes: List<KSType>): KSFunction {
@@ -104,6 +105,27 @@ object KspCommonUtils {
             override val isError get() = TODO("Not yet implemented")
         }
     }
+
+    fun KSClassDeclaration.toTypeName(): TypeName {
+        val className = this.toClassName()
+        if (this.typeParameters.isEmpty()) {
+            return className
+        }
+        val resolver = this.typeParameters.toTypeParameterResolver()
+        val typeVariables = this.typeParameters.map { it.toTypeVariableName(resolver) }
+        return className.parameterizedBy(typeVariables)
+    }
+
+    fun KSClassDeclaration.toTypeName(typeParameters: List<TypeName>): TypeName {
+        val className = this.toClassName()
+        if (this.typeParameters.isEmpty()) {
+            return className
+        }
+        return className.parameterizedBy(typeParameters)
+    }
+
+    fun KSClassDeclaration.collectFinalSealedSubtypes(): Sequence<KSClassDeclaration> = this.getSealedSubclasses()
+        .flatMap { if (it.modifiers.contains(Modifier.SEALED)) it.collectFinalSealedSubtypes() else sequenceOf(it) }
 }
 
 
@@ -236,7 +258,6 @@ fun findMethods(ksAnnotated: KSAnnotated, functionFilter: (KSFunctionDeclaration
     return result
 }
 
-@KspExperimental
 fun KSClassDeclaration.getNameConverter(): NameConverter? {
     val namingStrategy = this.findAnnotation(CommonClassNames.namingStrategy)
     return if (namingStrategy != null) {
@@ -252,7 +273,6 @@ fun KSClassDeclaration.getNameConverter(): NameConverter? {
     } else null
 }
 
-@KspExperimental
 fun getNamingStrategyConverterClass(declaration: KSClassDeclaration): KClass<*>? {
     val annotationValues = parseAnnotationClassValue(declaration, CommonClassNames.namingStrategy.canonicalName)
     if (annotationValues.isEmpty()) return null

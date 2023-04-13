@@ -1,108 +1,59 @@
 package ru.tinkoff.kora.json.annotation.processor.reader;
 
+import com.squareup.javapoet.TypeName;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.common.naming.NameConverter;
-import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
+import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
 import ru.tinkoff.kora.json.annotation.processor.KnownType;
 import ru.tinkoff.kora.json.annotation.processor.reader.JsonClassReaderMeta.FieldMeta;
 import ru.tinkoff.kora.json.annotation.processor.reader.ReaderFieldType.KnownTypeReaderMeta;
-import ru.tinkoff.kora.json.common.annotation.Json;
-import ru.tinkoff.kora.json.common.annotation.JsonField;
-import ru.tinkoff.kora.json.common.annotation.JsonReader;
 
 import javax.annotation.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.*;
-import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
-import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 import static ru.tinkoff.kora.annotation.processor.common.CommonUtils.getNameConverter;
 
 public class ReaderTypeMetaParser {
     private final ProcessingEnvironment env;
     private final Elements elements;
-    private final Types types;
     private final KnownType knownTypes;
-    private final TypeMirror jsonFieldAnnotation;
-    private final Map<String, ExecutableElement> jsonFieldMethods;
-    private final TypeMirror defaultReader;
-    private final DeclaredType enumType;
 
     public ReaderTypeMetaParser(ProcessingEnvironment env, KnownType knownTypes) {
         this.env = env;
         this.elements = env.getElementUtils();
-        this.types = env.getTypeUtils();
         this.knownTypes = knownTypes;
-        var jsonFieldElement = this.elements.getTypeElement(JsonField.class.getCanonicalName());
-        this.jsonFieldAnnotation = jsonFieldElement.asType();
-        this.jsonFieldMethods = jsonFieldValues(jsonFieldElement);
-        this.defaultReader = this.elements.getTypeElement(JsonField.DefaultReader.class.getCanonicalName()).asType();
-        this.enumType = this.types.getDeclaredType(
-            this.elements.getTypeElement(Enum.class.getCanonicalName()),
-            this.types.getWildcardType(null, null)
-        );
-
     }
 
-    private static Map<String, ExecutableElement> jsonFieldValues(TypeElement jsonField) {
-        return jsonField.getEnclosedElements()
-            .stream()
-            .filter(e -> e.getKind() == ElementKind.METHOD)
-            .map(ExecutableElement.class::cast)
-            .collect(Collectors.toMap(e -> e.getSimpleName().toString(), e -> e));
-    }
-
-
-    @Nullable
-    public JsonClassReaderMeta parse(TypeMirror typeMirror) {
-        var jsonClass = (TypeElement) this.types.asElement(typeMirror);
-        if (jsonClass == null) {
-            return null;
+    public JsonClassReaderMeta parse(TypeElement jsonClass, TypeMirror typeMirror) throws ProcessingErrorException {
+        if (jsonClass.getKind() != ElementKind.CLASS && jsonClass.getKind() != ElementKind.RECORD) {
+            throw new IllegalArgumentException("Should not be called for non class elements");
         }
-        if (this.types.isAssignable(typeMirror, this.enumType)) {
-            return new JsonClassReaderMeta(typeMirror, jsonClass, List.of(), null, false);
-        }
-
-        var discriminatorField = JsonUtils.discriminator(this.types, jsonClass);
-
-        if (jsonClass.getKind().isInterface() && (jsonClass.getModifiers().contains(Modifier.SEALED))) {
-            return new JsonClassReaderMeta(typeMirror, jsonClass, Collections.emptyList(), discriminatorField, true);
+        if (jsonClass.getModifiers().contains(Modifier.ABSTRACT)) {
+            throw new IllegalArgumentException("Should not be called for abstract elements");
         }
         var jsonConstructor = this.findJsonConstructor(jsonClass);
         if (jsonConstructor == null) {
-            this.env.getMessager().printMessage(Diagnostic.Kind.ERROR, "Class: %s\nTo generate json reader class must have one public constructor or constructor annotated with any of @Json/@JsonReader"
-                    .formatted(jsonClass),
+            throw new ProcessingErrorException("Class: %s\nTo generate json reader class must have one public constructor or constructor annotated with any of @Json/@JsonReader"
+                .formatted(jsonClass),
                 jsonClass
             );
-            return null;
         }
 
         var fields = new ArrayList<FieldMeta>(jsonConstructor.getParameters().size());
-        var error = false;
-
         var nameConverter = getNameConverter(jsonClass);
 
         for (var parameter : jsonConstructor.getParameters()) {
             var fieldMeta = this.parseField(jsonClass, parameter, nameConverter);
-            if (fieldMeta == null) {
-                error = true;
-            } else {
-                fields.add(fieldMeta);
-            }
+            fields.add(fieldMeta);
         }
-        if (error) {
-            return null;
-        }
-        return new JsonClassReaderMeta(typeMirror, jsonClass, fields, discriminatorField, false);
+        return new JsonClassReaderMeta(typeMirror, jsonClass, fields);
     }
 
     @Nullable
@@ -132,7 +83,7 @@ public class ReaderTypeMetaParser {
         }
 
         var jsonConstructors = constructors.stream()
-            .filter(e -> e.getAnnotation(JsonReader.class) != null || e.getAnnotation(Json.class) != null)
+            .filter(e -> AnnotationUtils.findAnnotation(e, JsonTypes.jsonReaderAnnotation) != null || AnnotationUtils.findAnnotation(e, JsonTypes.json) != null)
             .toList();
         if (jsonConstructors.size() == 1) {
             return jsonConstructors.get(0);
@@ -149,30 +100,17 @@ public class ReaderTypeMetaParser {
 
     }
 
-
     private FieldMeta parseField(TypeElement jsonClass, VariableElement parameter, NameConverter nameConverter) {
         var jsonField = this.findJsonField(jsonClass, parameter);
-        if (parameter.asType().getKind() == TypeKind.ERROR) {
-            env.getMessager().printMessage(Diagnostic.Kind.ERROR, "Field %s.%s is ERROR".formatted(jsonClass, parameter.getSimpleName()), parameter);
-            return null;
-        }
-
         var jsonName = this.parseJsonName(parameter, jsonField, nameConverter);
-        var readerFieldValue = (TypeMirror) CommonUtils.parseAnnotationValue(this.elements, jsonField, "reader");
-
-        var reader = readerFieldValue == null ? null
-            : this.types.isSameType(readerFieldValue, this.defaultReader) ? null
-            : readerFieldValue;
-
+        var reader = CommonUtils.<TypeMirror>parseAnnotationValueWithoutDefault(jsonField, "reader");
         var typeMeta = this.parseReaderFieldType(parameter.asType());
-
-
-        return new FieldMeta(parameter, jsonName, parameter.asType(), typeMeta, reader);
+        return new FieldMeta(parameter, jsonName, TypeName.get(parameter.asType()), typeMeta, reader);
     }
 
     @Nullable
     private AnnotationMirror findJsonField(TypeElement jsonClass, VariableElement param) {
-        var paramJsonField = CommonUtils.findAnnotation(this.elements, this.types, param, this.jsonFieldAnnotation);
+        var paramJsonField = CommonUtils.findAnnotation(this.elements, param, JsonTypes.jsonFieldAnnotation);
         if (paramJsonField != null) {
             return paramJsonField;
         }
@@ -184,10 +122,7 @@ public class ReaderTypeMetaParser {
             if (!e.getSimpleName().toString().equals(param.getSimpleName().toString())) {
                 continue;
             }
-            var variableElement = (VariableElement) e;
-            if (types.isSameType(variableElement.asType(), param.asType())) {
-                return CommonUtils.findAnnotation(this.elements, this.types, variableElement, this.jsonFieldAnnotation);
-            }
+            return CommonUtils.findAnnotation(this.elements, e, JsonTypes.jsonFieldAnnotation);
         }
         return null;
     }
