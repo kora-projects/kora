@@ -3,12 +3,13 @@ package ru.tinkoff.kora.database.cassandra.mapper.result;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import ru.tinkoff.kora.common.Mapping;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 public interface CassandraResultSetMapper<T> extends Mapping.MappingFunction {
-
+    @Nullable
     T apply(ResultSet rs);
 
     static <T> CassandraResultSetMapper<T> singleResultSetMapper(CassandraRowMapper<T> rowMapper) {

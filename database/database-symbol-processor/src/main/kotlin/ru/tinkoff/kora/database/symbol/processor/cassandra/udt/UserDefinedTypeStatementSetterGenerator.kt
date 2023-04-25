@@ -22,7 +22,7 @@ class UserDefinedTypeStatementSetterGenerator(private val environment: SymbolPro
 
     private fun generateSetter(resolver: Resolver, classDeclaration: KSClassDeclaration) {
         val type = classDeclaration.asType(listOf())
-        val typeName = type.toTypeName().copy(true)
+        val typeName = type.toTypeName().copy(false)
         val entity = DbEntity.parseEntity(type)!!
         val typeSpec = TypeSpec.classBuilder(classDeclaration.generatedClassName("CassandraParameterColumnMapper"))
             .addModifiers(KModifier.PUBLIC, KModifier.FINAL)
@@ -32,7 +32,7 @@ class UserDefinedTypeStatementSetterGenerator(private val environment: SymbolPro
             .addModifiers(KModifier.OVERRIDE)
             .addParameter("_stmt", CassandraTypes.settableByName)
             .addParameter("_index", Int::class.javaPrimitiveType!!.asTypeName())
-            .addParameter("_value", typeName)
+            .addParameter("_value", typeName.copy(true))
         apply.controlFlow("if (_value == null)") {
             addStatement("_stmt.setToNull(_index)")
             addStatement("return")
@@ -124,7 +124,7 @@ class UserDefinedTypeStatementSetterGenerator(private val environment: SymbolPro
             val nativeType = CassandraNativeTypes.findNativeType(fieldTypeName)
             if (nativeType == null) {
                 val mapperName = "_${fieldName}_mapper"
-                val mapperType = CassandraTypes.parameterColumnMapper.parameterizedBy(fieldTypeName.copy(true))
+                val mapperType = CassandraTypes.parameterColumnMapper.parameterizedBy(fieldTypeName.copy(false))
                 constructor.addParameter(mapperName, mapperType)
                 constructor.addStatement("this.%N = %N", mapperName, mapperName)
 

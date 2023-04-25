@@ -88,7 +88,11 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
                     if (returnType == resolver.builtIns.unitType) {
                         b.addStatement("%T.from(_rrs).then().thenReturn(%T)", Flux::class, Unit::class)
                     } else {
-                        b.addStatement("%N.apply(_rrs)", resultMapper!!)
+                        b.addCode("%N.apply(_rrs)", resultMapper!!)
+                        if (!function.returnType!!.isMarkedNullable) {
+                            addCode("!!")
+                        }
+                        addCode("\n")
                     }
                 }
                 b.controlFlow(".doOnEach { _s ->") {
@@ -123,7 +127,11 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
                 } else {
                     addStatement("val _result = %N.apply(_rs)", resultMapper!!)
                     addStatement("_telemetry.close(null)")
-                    addStatement("return _result")
+                    addCode("return _result")
+                    if (!function.returnType!!.isMarkedNullable) {
+                        addCode("!!")
+                    }
+                    addCode("\n")
                 }
                 nextControlFlow("catch (_e: Exception)")
                 addStatement("_telemetry.close(_e)")
