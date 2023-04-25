@@ -29,8 +29,8 @@ class DbEntityReader(
             val fieldName = entityField.variableName
             val mapperFieldName = "\$${fieldName}Mapper"
             val fieldData = FieldData(entityField.type, mapperFieldName, entityField.columnName, fieldName, entityField.isNullable)
-            val mapperTypeParameter = entityField.type.toClassName()
-            val fieldType = entityField.type.toTypeName().copy(true)
+            val mapperTypeParameter = entityField.type.toTypeName().copy(false)
+            val fieldType = mapperTypeParameter.copy(true)
             if (mapper != null) {
                 val mapperType = if (mapper.mapper != null)
                     mapper.mapper!!.toClassName()
@@ -52,7 +52,7 @@ class DbEntityReader(
                 if (extractNative != null) {
                     b.add("var %N: %T = %L", fieldName, fieldType, extractNative)
                 } else {
-                    val mapperType = this.fieldMapperName.parameterizedBy(mapperTypeParameter.copy(true))
+                    val mapperType = this.fieldMapperName.parameterizedBy(mapperTypeParameter)
                     mappers.add(Mapper(mapperType, mapperFieldName))
                     b.add("var %N: %T = %L", fieldName, fieldType, this.mapperCallGenerator(fieldData))
                 }

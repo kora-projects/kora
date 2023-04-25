@@ -21,7 +21,7 @@ class CassandraExtensionTest {
                 typeOf<CassandraRowMapper<EntityWithEmbedded>>(),
                 typeOf<CassandraResultSetMapper<List<EntityWithEmbedded>>>(),
             ),
-            typeOf<CassandraRowColumnMapper<TestEntity.UnknownField?>>(),
+            typeOf<CassandraRowColumnMapper<TestEntity.UnknownField>>(),
             typeOf<TestEntityFieldCassandraResultColumnMapperNonFinal>(),
         )
     }

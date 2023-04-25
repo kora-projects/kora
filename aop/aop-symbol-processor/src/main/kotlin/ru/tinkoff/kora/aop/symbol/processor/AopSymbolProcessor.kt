@@ -25,16 +25,11 @@ class AopSymbolProcessor(
 
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
         val aspectsFactories = ServiceLoader.load(KoraAspectFactory::class.java, KoraAspectFactory::class.java.classLoader)
-        KoraSymbolProcessingEnv.logger.logging("Aspect factories: ${aspectsFactories.joinToString { it.toString() }}")
         aspects = aspectsFactories
             .mapNotNull { it.create(resolver) }
 
 
         aopProcessor = AopProcessor(aspects, resolver)
-        val aspectsNames = aspects
-            .map { obj: KoraAspect -> obj.javaClass }
-            .joinToString("\n\t", "\t", "") { obj -> obj.canonicalName }
-        KoraSymbolProcessingEnv.logger.logging("Discovered aspects:\n$aspectsNames")
         annotations = aspects.asSequence().map { it.getSupportedAnnotationTypes() }.flatten().mapNotNull { resolver.getClassDeclarationByName(it) }.toList()
 
         val noAopAnnotation = annotations.filter { !it.isAnnotationPresent(AopAnnotation::class) }

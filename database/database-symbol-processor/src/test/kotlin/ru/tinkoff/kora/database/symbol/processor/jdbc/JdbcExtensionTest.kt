@@ -27,7 +27,7 @@ class JdbcExtensionTest {
                 typeOf<JdbcResultSetMapper<EntityWithEmbedded>>(),
                 typeOf<JdbcResultSetMapper<List<EntityWithEmbedded>>>(),
             ),
-            typeOf<JdbcResultColumnMapper<TestEntity.UnknownField?>>(),
+            typeOf<JdbcResultColumnMapper<TestEntity.UnknownField>>(),
             typeOf<TestEntityFieldJdbcResultColumnMapperNonFinal>(),
         )
     }

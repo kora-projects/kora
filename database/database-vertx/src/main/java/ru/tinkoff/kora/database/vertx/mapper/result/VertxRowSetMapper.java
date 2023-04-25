@@ -5,11 +5,13 @@ import io.vertx.sqlclient.RowSet;
 import ru.tinkoff.kora.common.Mapping;
 import ru.tinkoff.kora.database.common.UpdateCount;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 public interface VertxRowSetMapper<T> extends Mapping.MappingFunction {
+    @Nullable
     T apply(RowSet<Row> rows);
 
     static UpdateCount extractUpdateCount(RowSet<Row> rowSet) {

@@ -22,7 +22,7 @@ class UserDefinedTypeResultExtractorGenerator(private val environment: SymbolPro
 
     private fun generateRowColumnMapper(resolver: Resolver, classDeclaration: KSClassDeclaration) {
         val type = classDeclaration.asType(listOf())
-        val typeName = type.toTypeName().copy(true)
+        val typeName = type.toTypeName().copy(false)
         val typeSpec = TypeSpec.classBuilder(classDeclaration.generatedClassName("CassandraRowColumnMapper"))
             .addModifiers(KModifier.PUBLIC, KModifier.FINAL)
             .addSuperinterface(CassandraTypes.rowColumnMapper.parameterizedBy(typeName))
@@ -35,7 +35,7 @@ class UserDefinedTypeResultExtractorGenerator(private val environment: SymbolPro
             .addModifiers(KModifier.OVERRIDE)
             .addParameter("_row", CassandraTypes.gettableByName)
             .addParameter("_index", Int::class.javaPrimitiveType!!.asTypeName())
-            .returns(typeName)
+            .returns(typeName.copy(true))
         apply.addStatement("val _type = _row.getType(_index) as %T", CassandraTypes.userDefinedType)
         apply.addStatement("val _object = _row.getUdtValue(_index)")
         apply.controlFlow("if (_object == null)") {
@@ -53,8 +53,8 @@ class UserDefinedTypeResultExtractorGenerator(private val environment: SymbolPro
 
     private fun generateListRowColumnMapper(resolver: Resolver, classDeclaration: KSClassDeclaration) {
         val type = classDeclaration.asType(listOf())
-        val typeName = type.toTypeName()
-        val listTypeName = LIST.parameterizedBy(typeName.copy(false)).copy(true)
+        val typeName = type.toTypeName().copy(false)
+        val listTypeName = LIST.parameterizedBy(typeName).copy(false)
         val typeSpec = TypeSpec.classBuilder(classDeclaration.generatedClassName("List_CassandraRowColumnMapper"))
             .addModifiers(KModifier.PUBLIC, KModifier.FINAL)
             .addSuperinterface(CassandraTypes.rowColumnMapper.parameterizedBy(listTypeName))
@@ -67,7 +67,7 @@ class UserDefinedTypeResultExtractorGenerator(private val environment: SymbolPro
             .addModifiers(KModifier.OVERRIDE)
             .addParameter("_row", CassandraTypes.gettableByName)
             .addParameter("_index", Int::class.javaPrimitiveType!!.asTypeName())
-            .returns(listTypeName)
+            .returns(listTypeName.copy(true))
         apply.addStatement("val _listType = _row.getType(_index) as %T", CassandraTypes.listType)
         apply.addStatement("val _type = _listType.getElementType() as %T", CassandraTypes.userDefinedType)
         apply.addStatement("val _list = _row.getList(_index, %T::class.java)", CassandraTypes.udtValue)
@@ -127,7 +127,7 @@ class UserDefinedTypeResultExtractorGenerator(private val environment: SymbolPro
                 continue
             }
             val mapperName = "_${fieldName}_mapper"
-            val mapperType = CassandraTypes.rowColumnMapper.parameterizedBy(fieldTypeName.copy(true))
+            val mapperType = CassandraTypes.rowColumnMapper.parameterizedBy(fieldTypeName.copy(false))
             constructor.addParameter(mapperName, mapperType)
             constructor.addStatement("this.%N = %N", mapperName, mapperName)
 
