@@ -35,8 +35,6 @@ class CircuitBreakerKoraAspect(val resolver: Resolver) : KoraAspect {
     override fun apply(method: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
         if (method.isFuture()) {
             throw ProcessingErrorException("@CircuitBreaker can't be applied for types assignable from ${Future::class.java}", method)
-        } else if (method.isVoid()) {
-            throw ProcessingErrorException("@CircuitBreaker can't be applied for types assignable from ${Void::class.java}", method)
         } else if (method.isMono()) {
             throw ProcessingErrorException("@CircuitBreaker can't be applied for types assignable from ${Mono::class.java}", method)
         } else if (method.isFlux()) {
@@ -57,7 +55,7 @@ class CircuitBreakerKoraAspect(val resolver: Resolver) : KoraAspect {
         val body = if (method.isFlow()) {
             buildBodyFlow(method, superCall, fieldCircuit)
         } else if (method.isSuspend()) {
-            buildBodySuspend(method, superCall, fieldCircuit)
+            buildBodySync(method, superCall, fieldCircuit)
         } else {
             buildBodySync(method, superCall, fieldCircuit)
         }
@@ -69,37 +67,23 @@ class CircuitBreakerKoraAspect(val resolver: Resolver) : KoraAspect {
         method: KSFunctionDeclaration, superCall: String, fieldCircuitBreaker: String
     ): CodeBlock {
         val superMethod = buildMethodCall(method, superCall)
-        return CodeBlock.builder().add(
-            """
-            return try {
-                %L.acquire()
-                val t = %L;
-                %L.releaseOnSuccess()
-                t
-            } catch (e: java.lang.Exception) {
-                %L.releaseOnError(e)
-                throw e
-            }
-            """.trimIndent(), fieldCircuitBreaker, superMethod.toString(), fieldCircuitBreaker, fieldCircuitBreaker
-        ).build()
-    }
+        val methodCall = if(method.isVoid()) superMethod else CodeBlock.of("val t = %L", superMethod)
+        val returnCall = if(method.isVoid()) CodeBlock.of("") else CodeBlock.of("t")
 
-    private fun buildBodySuspend(
-        method: KSFunctionDeclaration, superCall: String, fieldCircuitBreaker: String
-    ): CodeBlock {
-        val superMethod = buildMethodCall(method, superCall)
         return CodeBlock.builder().add(
             """
             return try {
                 %L.acquire()
-                val t = %L;
+                %L
                 %L.releaseOnSuccess()
-                t
+                %L
+            } catch (e: ru.tinkoff.kora.resilient.circuitbreaker.CallNotPermittedException) {
+                throw e
             } catch (e: java.lang.Exception) {
                 %L.releaseOnError(e)
                 throw e
             }
-            """.trimIndent(), fieldCircuitBreaker, superMethod.toString(), fieldCircuitBreaker, fieldCircuitBreaker
+            """.trimIndent(), fieldCircuitBreaker, methodCall, fieldCircuitBreaker, returnCall, fieldCircuitBreaker
         ).build()
     }
 
@@ -116,6 +100,8 @@ class CircuitBreakerKoraAspect(val resolver: Resolver) : KoraAspect {
                     %L.acquire()
                     %M(%L)
                     %L.releaseOnSuccess()
+                } catch (e: ru.tinkoff.kora.resilient.circuitbreaker.CallNotPermittedException) {
+                    throw e
                 } catch (e: java.lang.Exception) {
                     %L.releaseOnError(e)
                     throw e

@@ -44,6 +44,50 @@ class CircuitBreakerTests extends AppRunner {
     }
 
     @Test
+    void voidCircuitBreaker() {
+        // given
+        final CircuitBreakerTarget service = getService();
+
+        // when
+        try {
+            service.getValueSyncVoid();
+            fail("Should not happen");
+        } catch (IllegalStateException e) {
+            assertNotNull(e.getMessage());
+        }
+
+        // then
+        try {
+            service.getValueSyncVoid();
+            fail("Should not happen");
+        } catch (CallNotPermittedException ex) {
+            assertNotNull(ex.getMessage());
+        }
+    }
+
+    @Test
+    void voidCircuitBreakerCheckedException() throws Exception {
+        // given
+        final CircuitBreakerTarget service = getService();
+
+        // when
+        try {
+            service.getValueSyncVoidCheckedException();
+            fail("Should not happen");
+        } catch (IllegalStateException e) {
+            assertNotNull(e.getMessage());
+        }
+
+        // then
+        try {
+            service.getValueSyncVoidCheckedException();
+            fail("Should not happen");
+        } catch (CallNotPermittedException ex) {
+            assertNotNull(ex.getMessage());
+        }
+    }
+
+    @Test
     void syncCircuitBreakerCheckedException() {
         // given
         final CircuitBreakerTarget service = getService();

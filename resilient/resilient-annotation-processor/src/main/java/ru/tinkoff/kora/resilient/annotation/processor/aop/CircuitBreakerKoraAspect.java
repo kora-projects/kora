@@ -38,9 +38,6 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
         if (MethodUtils.isFuture(method, env)) {
             throw new ProcessingErrorException("@CircuitBreaker can't be applied for types assignable from " + Future.class, method);
         }
-        if (MethodUtils.isVoid(method)) {
-            throw new ProcessingErrorException("@CircuitBreaker can't be applied for types assignable from " + Void.class, method);
-        }
 
         final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream().filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE)).findFirst();
         final String circuitBreakerName = mirror.flatMap(a -> a.getElementValues().entrySet().stream()
@@ -68,23 +65,30 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
 
     private CodeBlock buildBodySync(ExecutableElement method, String superCall, String circuitBreakerField) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
-        final CodeBlock fallbackMethod = CodeBlock.of("throw e;");
         final String returnType = method.getReturnType().toString();
+
+        final CodeBlock methodCall = MethodUtils.isVoid(method)
+            ? superMethod
+            : CodeBlock.of("var t = $L", superMethod.toString());
+
+        final CodeBlock returnCall = MethodUtils.isVoid(method)
+            ? CodeBlock.of("return")
+            : CodeBlock.of("return t", superMethod.toString());
 
         return CodeBlock.builder().add("""
             var _circuitBreaker = $L;
             try {
                 _circuitBreaker.acquire();
-                final $L t = $L;
+                $L;
                 _circuitBreaker.releaseOnSuccess();
-                return t;
+                $L;
             } catch (ru.tinkoff.kora.resilient.circuitbreaker.CallNotPermittedException e) {
-                $L
+                throw e;
             } catch (Exception e) {
                 _circuitBreaker.releaseOnError(e);
                 throw e;
             }
-            """, circuitBreakerField, returnType, superMethod.toString(), fallbackMethod.toString()).build();
+            """, circuitBreakerField, methodCall.toString(), returnCall.toString()).build();
     }
 
     private CodeBlock buildBodyMono(ExecutableElement method, String superCall, String circuitBreakerField) {
