@@ -15,7 +15,7 @@ public final class LettuceReactiveRedisClient implements ReactiveRedisClient {
     private final RedisServerReactiveCommands<byte[], byte[]> serverCommands;
     private final RedisKeyReactiveCommands<byte[], byte[]> keyCommands;
 
-    LettuceReactiveRedisClient(LettuceBasicCommands commands) {
+    LettuceReactiveRedisClient(LettuceCommander commands) {
         this.stringCommands = commands.reactive().stringCommands();
         this.serverCommands = commands.reactive().serverCommands();
         this.keyCommands = commands.reactive().keyCommands();

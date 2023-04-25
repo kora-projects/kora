@@ -22,29 +22,15 @@ public interface LettuceModule {
         return factory.build(config);
     }
 
-    default LettuceBasicCommands lettuceBasicCommands(AbstractRedisClient redisClient) {
-        if (redisClient instanceof RedisClient) {
-            var connection = ((RedisClient) redisClient).connect(new ByteArrayCodec());
-            var syncCommands = connection.sync();
-            var reactiveCommands = connection.reactive();
-            return new LettuceBasicCommands(new LettuceBasicCommands.Sync(syncCommands, syncCommands, syncCommands),
-                new LettuceBasicCommands.Reactive(reactiveCommands, reactiveCommands, reactiveCommands), connection);
-        } else if (redisClient instanceof RedisClusterClient) {
-            var connection = ((RedisClusterClient) redisClient).connect(new ByteArrayCodec());
-            var syncCommands = connection.sync();
-            var reactiveCommands = connection.reactive();
-            return new LettuceBasicCommands(new LettuceBasicCommands.Sync(syncCommands, syncCommands, syncCommands),
-                new LettuceBasicCommands.Reactive(reactiveCommands, reactiveCommands, reactiveCommands), connection);
-        } else {
-            throw new UnsupportedOperationException("Unknown Redis Client: " + redisClient.getClass());
-        }
+    default LettuceCommander lettuceCommander(AbstractRedisClient redisClient) {
+        return new DefaultLettuceCommander(redisClient);
     }
 
-    default SyncRedisClient lettuceCacheRedisClient(LettuceBasicCommands commands) {
+    default SyncRedisClient lettuceCacheRedisClient(LettuceCommander commands) {
         return new LettuceSyncRedisClient(commands);
     }
 
-    default ReactiveRedisClient lettuceReactiveCacheRedisClient(LettuceBasicCommands commands) {
+    default ReactiveRedisClient lettuceReactiveCacheRedisClient(LettuceCommander commands) {
         return new LettuceReactiveRedisClient(commands);
     }
 }
