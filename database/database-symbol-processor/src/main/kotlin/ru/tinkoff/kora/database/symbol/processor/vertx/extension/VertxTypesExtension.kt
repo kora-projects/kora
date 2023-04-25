@@ -104,10 +104,30 @@ class VertxTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val 
     }
 
     private fun generateListRowSetMapper(resolver: Resolver, ksType: KSType): (() -> ExtensionResult)? {
-        val rowSetArg = ksType.arguments[0]
-        val rowType = rowSetArg.type!!.resolve().arguments[0].type!!.resolve()
+        val rowSetArg = ksType.arguments[0].type!!.resolve()
+        val rowType = rowSetArg.arguments[0].type!!.resolve()
         val entity = DbEntity.parseEntity(rowType)
         if (entity == null) {
+            val resultSetMapperDecl = resolver.getClassDeclarationByName(VertxTypes.rowSetMapper.canonicalName)!!
+            val rowMapperDecl = resolver.getClassDeclarationByName(VertxTypes.rowMapper.canonicalName)!!
+
+            val resultSetMapperType = resultSetMapperDecl.asType(
+                listOf(
+                    resolver.getTypeArgument(ksType.arguments[0].type!!, Variance.INVARIANT),
+                )
+            )
+            val rowMapperType = rowMapperDecl.asType(
+                listOf(
+                    resolver.getTypeArgument(rowSetArg.arguments[0].type!!, Variance.INVARIANT)
+                )
+            )
+
+            val functionDecl = resolver.getFunctionDeclarationsByName(VertxTypes.rowSetMapper.canonicalName + ".listRowSetMapper").first()
+            val functionType = functionDecl.parametrized(resultSetMapperType, listOf(rowMapperType))
+            return {
+                ExtensionResult.fromExecutable(functionDecl, functionType)
+            }
+
             return null
         }
         val mapperName = entity.classDeclaration.getOuterClassesAsPrefix() + entity.classDeclaration.simpleName.getShortName() + "_VertxListRowSetMapper"
@@ -124,7 +144,7 @@ class VertxTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val 
             }
             val type = TypeSpec.classBuilder(mapperName)
                 .generated(VertxTypesExtension::class)
-                .addSuperinterface(VertxTypes.rowSetMapper.parameterizedBy(rowSetArg.type!!.toTypeName()))
+                .addSuperinterface(VertxTypes.rowSetMapper.parameterizedBy(rowSetArg.toTypeName()))
 
             val readEntity = entityReader.readEntity("_rowValue", entity)
 
@@ -132,7 +152,7 @@ class VertxTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val 
             readEntity.enrich(type, constructor)
             val apply = FunSpec.builder("apply")
                 .addModifiers(KModifier.OVERRIDE)
-                .returns(rowSetArg.type!!.toTypeName())
+                .returns(rowSetArg.toTypeName())
                 .addParameter("_rs", VertxTypes.rowSet)
 
             for (field in entity.columns) {

@@ -28,9 +28,11 @@ public class JdbcExtensionTest {
                 TypeRef.of(JdbcResultSetMapper.class, TypeRef.of(List.class, TestEntityJavaBean.class)),
                 TypeRef.of(JdbcRowMapper.class, JdbcEntity.AllNativeTypesEntity.class),
                 TypeRef.of(JdbcResultSetMapper.class, TypeRef.of(List.class, JdbcEntity.AllNativeTypesEntity.class)),
+                TypeRef.of(JdbcResultSetMapper.class, TypeRef.of(List.class, String.class)),
             },
             TypeRef.of(JdbcResultColumnMapper.class, TestEntityRecord.UnknownTypeField.class),
-            TypeRef.of(JdbcEntity.TestEntityFieldJdbcResultColumnMapperNonFinal.class)
+            TypeRef.of(JdbcEntity.TestEntityFieldJdbcResultColumnMapperNonFinal.class),
+            TypeRef.of(JdbcRowMapper.class, String.class)
         );
     }
 

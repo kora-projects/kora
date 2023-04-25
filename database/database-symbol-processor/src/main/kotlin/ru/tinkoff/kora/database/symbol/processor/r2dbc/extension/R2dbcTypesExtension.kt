@@ -1,10 +1,12 @@
 package ru.tinkoff.kora.database.symbol.processor.r2dbc.extension
 
 import com.google.devtools.ksp.getClassDeclarationByName
+import com.google.devtools.ksp.getFunctionDeclarationsByName
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.Variance
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
@@ -16,8 +18,12 @@ import ru.tinkoff.kora.database.symbol.processor.r2dbc.R2dbcNativeTypes
 import ru.tinkoff.kora.database.symbol.processor.r2dbc.R2dbcTypes
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
+import ru.tinkoff.kora.ksp.common.CommonClassNames.isFlux
+import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
+import ru.tinkoff.kora.ksp.common.CommonClassNames.isMono
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.parametrized
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 
 //R2dbcRowMapper<T>
@@ -42,7 +48,67 @@ class R2dbcTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val 
         if (type.declaration.qualifiedName?.asString()?.equals(R2dbcTypes.rowMapper.canonicalName) == true) {
             return this.generateRowMapper(resolver, type)
         }
+        if (type.declaration.qualifiedName?.asString()?.equals(R2dbcTypes.resultFluxMapper.canonicalName) == true) {
+            val resultPublisher = type.arguments[1].type!!.resolve()
+            if (resultPublisher.isFlux()) {
+                return this.generateResultFluxMapperForFlux(resolver, type, resultPublisher)
+            }
+            if (resultPublisher.isMono()) {
+                return this.generateResultFluxMapperForMono(resolver, type, resultPublisher)
+            }
+        }
         return null
+    }
+
+    private fun generateResultFluxMapperForFlux(resolver: Resolver, type: KSType, resultPublisher: KSType): (() -> ExtensionResult)? {
+        val rowType = resultPublisher.arguments[0].type!!
+        val resultSetMapperDecl = resolver.getClassDeclarationByName(R2dbcTypes.resultFluxMapper.canonicalName)!!
+        val rowMapperDecl = resolver.getClassDeclarationByName(R2dbcTypes.rowMapper.canonicalName)!!
+
+        val resultSetMapperType = resultSetMapperDecl.asType(
+            listOf(
+                resolver.getTypeArgument(type.arguments[0].type!!, Variance.INVARIANT),
+                resolver.getTypeArgument(type.arguments[1].type!!, Variance.INVARIANT)
+            )
+        )
+        val rowMapperType = rowMapperDecl.asType(
+            listOf(
+                resolver.getTypeArgument(rowType, Variance.INVARIANT)
+            )
+        )
+
+        val functionDecl = resolver.getFunctionDeclarationsByName(R2dbcTypes.resultFluxMapper.canonicalName + ".flux").first()
+        val functionType = functionDecl.parametrized(resultSetMapperType, listOf(rowMapperType))
+        return {
+            ExtensionResult.fromExecutable(functionDecl, functionType)
+        }
+    }
+
+    private fun generateResultFluxMapperForMono(resolver: Resolver, type: KSType, resultPublisher: KSType): (() -> ExtensionResult)? {
+        val resultType = resultPublisher.arguments[0].type!!.resolve()
+        if (!resultType.isList()) {
+            return null
+        }
+        val resultSetMapperDecl = resolver.getClassDeclarationByName(R2dbcTypes.resultFluxMapper.canonicalName)!!
+        val rowMapperDecl = resolver.getClassDeclarationByName(R2dbcTypes.rowMapper.canonicalName)!!
+
+        val resultSetMapperType = resultSetMapperDecl.asType(
+            listOf(
+                resolver.getTypeArgument(type.arguments[0].type!!, Variance.INVARIANT),
+                resolver.getTypeArgument(type.arguments[1].type!!, Variance.INVARIANT)
+            )
+        )
+        val rowMapperType = rowMapperDecl.asType(
+            listOf(
+                resolver.getTypeArgument(resultType.arguments[0].type!!, Variance.INVARIANT)
+            )
+        )
+
+        val functionDecl = resolver.getFunctionDeclarationsByName(R2dbcTypes.resultFluxMapper.canonicalName + ".monoList").first()
+        val functionType = functionDecl.parametrized(resultSetMapperType, listOf(rowMapperType))
+        return {
+            ExtensionResult.fromExecutable(functionDecl, functionType)
+        }
     }
 
     private fun generateRowMapper(resolver: Resolver, rowKSType: KSType): (() -> ExtensionResult)? {

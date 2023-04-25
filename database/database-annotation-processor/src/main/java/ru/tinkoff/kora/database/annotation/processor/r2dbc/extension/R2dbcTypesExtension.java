@@ -2,6 +2,7 @@ package ru.tinkoff.kora.database.annotation.processor.r2dbc.extension;
 
 import com.squareup.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.GenericTypeResolver;
 import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.database.annotation.processor.DbEntityReadHelper;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
@@ -14,11 +15,16 @@ import javax.annotation.Nullable;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.TypeVariable;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
+import java.util.Map;
 
 //R2dbcRowMapper<T>
 
@@ -62,7 +68,31 @@ public class R2dbcTypesExtension implements KoraExtension {
         if (typeMirror.toString().startsWith("ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcRowMapper<")) {
             return this.generateResultRowMapper(roundEnvironment, dt);
         }
+        if (typeMirror.toString().startsWith("ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcResultFluxMapper<")) {
+            return this.generateResultFluxMapper(roundEnvironment, dt);
+        }
         return null;
+    }
+
+    @Nullable
+    private KoraExtensionDependencyGenerator generateResultFluxMapper(RoundEnvironment roundEnvironment, DeclaredType dt) {
+        var publisherType = dt.getTypeArguments().get(1);
+        if (!publisherType.toString().startsWith("reactor.core.publisher.Mono<")) {
+            return null;
+        }
+        var resultType = dt.getTypeArguments().get(0);
+        var rowType = ((DeclaredType) resultType).getTypeArguments().get(0);
+
+        var listResultSetMapper = this.elements.getTypeElement(R2dbcTypes.RESULT_FLUX_MAPPER.canonicalName()).getEnclosedElements()
+            .stream()
+            .filter(e -> e.getKind() == ElementKind.METHOD && e.getModifiers().contains(Modifier.STATIC))
+            .map(ExecutableElement.class::cast)
+            .filter(m -> m.getSimpleName().contentEquals("monoList"))
+            .findFirst()
+            .orElseThrow();
+        var tp = (TypeVariable) listResultSetMapper.getTypeParameters().get(0).asType();
+        var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, rowType), listResultSetMapper.asType());
+        return () -> ExtensionResult.fromExecutable(listResultSetMapper, executableType);
     }
 
     @Nullable

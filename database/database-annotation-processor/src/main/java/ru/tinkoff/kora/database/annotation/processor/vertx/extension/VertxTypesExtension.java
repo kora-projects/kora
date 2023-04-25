@@ -136,7 +136,7 @@ public class VertxTypesExtension implements KoraExtension {
                         .stream()
                         .filter(e -> e.getKind() == ElementKind.METHOD && e.getModifiers().contains(Modifier.STATIC))
                         .map(ExecutableElement.class::cast)
-                        .filter(m -> m.getSimpleName().contentEquals("listResultSetMapper"))
+                        .filter(m -> m.getSimpleName().contentEquals("listRowSetMapper"))
                         .findFirst()
                         .orElseThrow();
                     var tp = (TypeVariable) listResultSetMapper.getTypeParameters().get(0).asType();

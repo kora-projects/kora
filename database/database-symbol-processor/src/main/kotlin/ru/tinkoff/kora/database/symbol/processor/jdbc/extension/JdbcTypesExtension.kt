@@ -63,7 +63,25 @@ class JdbcTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val c
                 if (entity != null) {
                     return this.entityListResultSetMapper(resolver, entity)
                 } else {
-                    return null
+                    val resultSetMapperDecl = resolver.getClassDeclarationByName(JdbcTypes.jdbcResultSetMapper.canonicalName)!!
+                    val rowMapperDecl = resolver.getClassDeclarationByName(JdbcTypes.jdbcRowMapper.canonicalName)!!
+
+                    val resultSetMapperType = resultSetMapperDecl.asType(
+                        listOf(
+                            resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(resultType), Variance.INVARIANT)
+                        )
+                    )
+                    val rowMapperType = rowMapperDecl.asType(
+                        listOf(
+                            resolver.getTypeArgument(resultType.arguments[0].type!!, Variance.INVARIANT)
+                        )
+                    )
+
+                    val functionDecl = resolver.getFunctionDeclarationsByName(JdbcTypes.jdbcResultSetMapper.canonicalName + ".listResultSetMapper").first()
+                    val functionType = functionDecl.parametrized(resultSetMapperType, listOf(rowMapperType))
+                    return {
+                        ExtensionResult.fromExecutable(functionDecl, functionType)
+                    }
                 }
             } else {
                 return {
@@ -116,12 +134,14 @@ class JdbcTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val c
             read.enrich(type, constructor)
             apply.addCode(parseIndexes(entity, "_rs"))
             apply.addStatement("val _result = ArrayList<%T>()", entityTypeName)
-            apply.addCode(CodeBlock.builder()
-                .add("do {").indent().add("\n")
-                .add(read.block)
-                .add("_result.add(_row)")
-                .unindent().add("\n} while(_rs.next())\n")
-                .build())
+            apply.addCode(
+                CodeBlock.builder()
+                    .add("do {").indent().add("\n")
+                    .add(read.block)
+                    .add("_result.add(_row)")
+                    .unindent().add("\n} while(_rs.next())\n")
+                    .build()
+            )
             apply.addStatement("return _result")
 
 

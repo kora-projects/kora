@@ -23,9 +23,11 @@ class VertxExtensionTest {
                 typeOf<VertxRowMapper<EntityWithEmbedded>>(),
                 typeOf<VertxRowSetMapper<List<EntityWithEmbedded>>>(),
                 typeOf<VertxRowSetMapper<EntityWithEmbedded>>(),
+                typeOf<VertxRowSetMapper<List<String>>>(),
             ),
             typeOf<VertxResultColumnMapper<TestEntity.UnknownField>>(),
             typeOf<TestEntityFieldVertxResultColumnMapperNonFinal>(),
+            typeOf<VertxRowMapper<String>>(),
         )
     }
 }
