@@ -10,7 +10,6 @@ import ru.tinkoff.kora.database.common.telemetry.DataBaseTracer;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 
 import javax.annotation.Nullable;
-import java.util.concurrent.TimeUnit;
 
 public final class OpentelemetryDataBaseTracer implements DataBaseTracer {
     private final Tracer tracer;
@@ -55,11 +54,11 @@ public final class OpentelemetryDataBaseTracer implements DataBaseTracer {
         }
         var span = builder.startSpan();
         OpentelemetryContext.set(ctx, otctx.add(span));
-        return (duration, ex) -> {
+        return (ex) -> {
             if (ex != null) {
                 span.setStatus(StatusCode.ERROR);
             }
-            span.end(duration, TimeUnit.NANOSECONDS);
+            span.end();
             OpentelemetryContext.set(ctx, otctx);
         };
     }
@@ -80,11 +79,11 @@ public final class OpentelemetryDataBaseTracer implements DataBaseTracer {
         }
         var span = builder.startSpan();
         OpentelemetryContext.set(ctx, otctx.add(span));
-        return (duration, ex) -> {
+        return (ex) -> {
             if (ex != null) {
                 span.setStatus(StatusCode.ERROR);
             }
-            span.end(duration, TimeUnit.NANOSECONDS);
+            span.end();
             OpentelemetryContext.set(ctx, otctx);
         };
     }

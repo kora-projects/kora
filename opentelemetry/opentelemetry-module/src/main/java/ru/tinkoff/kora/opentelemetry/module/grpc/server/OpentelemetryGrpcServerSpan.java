@@ -8,7 +8,6 @@ import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
 import ru.tinkoff.kora.grpc.telemetry.GrpcServerTracer;
 
 import javax.annotation.Nullable;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 public final class OpentelemetryGrpcServerSpan implements GrpcServerTracer.GrpcServerSpan {
@@ -21,11 +20,11 @@ public final class OpentelemetryGrpcServerSpan implements GrpcServerTracer.GrpcS
     }
 
     @Override
-    public void close(Status status, @Nullable Throwable exception, long processingTime) {
+    public void close(Status status, @Nullable Throwable exception) {
         if (exception != null) {
             this.span.setStatus(StatusCode.ERROR);
         }
-        this.span.end(processingTime, TimeUnit.NANOSECONDS);
+        this.span.end();
     }
 
     @Override

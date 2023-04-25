@@ -7,6 +7,6 @@ public interface JmsConsumerTracer {
     JmsConsumerSpan get(Message message) throws JMSException;
 
     interface JmsConsumerSpan {
-        void close(long duration, Exception e);
+        void close(Exception e);
     }
 }

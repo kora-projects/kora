@@ -7,7 +7,7 @@ import javax.annotation.Nullable;
 
 public interface DataBaseTracer {
     interface DataBaseSpan {
-        void close(long duration, @Nullable Throwable ex);
+        void close(@Nullable Throwable ex);
     }
 
     DataBaseSpan createQuerySpan(Context ctx, QueryContext queryContext);

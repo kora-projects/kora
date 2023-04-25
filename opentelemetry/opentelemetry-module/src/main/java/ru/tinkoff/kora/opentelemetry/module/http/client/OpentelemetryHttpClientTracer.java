@@ -30,7 +30,7 @@ public final class OpentelemetryHttpClientTracer implements HttpClientTracer {
             .setSpanKind(SpanKind.CLIENT)
             .setParent(otctx.getContext());
         builder.setAttribute(SemanticAttributes.HTTP_METHOD, request.method());
-        builder.setAttribute(SemanticAttributes.HTTP_URL, request.resolvedUri());
+        builder.setAttribute(SemanticAttributes.HTTP_URL, request.uriTemplate());
         var span = builder.startSpan();
         OpentelemetryContext.set(ctx, otctx.add(span));
         var processedRequest = inject(request.toBuilder(), span).build();

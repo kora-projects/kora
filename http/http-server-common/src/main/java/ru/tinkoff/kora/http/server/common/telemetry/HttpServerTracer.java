@@ -8,7 +8,7 @@ import javax.annotation.Nullable;
 
 public interface HttpServerTracer {
     interface HttpServerSpan {
-        void close(int statusCode, HttpResultCode resultCode, long processingTime, @Nullable Throwable exception);
+        void close(int statusCode, HttpResultCode resultCode, @Nullable Throwable exception);
     }
 
 
