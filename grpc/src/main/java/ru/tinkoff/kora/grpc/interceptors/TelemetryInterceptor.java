@@ -3,8 +3,6 @@ package ru.tinkoff.kora.grpc.interceptors;
 import io.grpc.*;
 import ru.tinkoff.kora.grpc.telemetry.GrpcServerTelemetry;
 
-import java.util.concurrent.CancellationException;
-
 public class TelemetryInterceptor implements ServerInterceptor {
     private final GrpcServerTelemetry telemetry;
 
@@ -79,7 +77,6 @@ public class TelemetryInterceptor implements ServerInterceptor {
                 this.telemetryContext.close(null, e);
                 throw e;
             }
-            this.telemetryContext.close(null, new CancellationException());
         }
 
         @Override
