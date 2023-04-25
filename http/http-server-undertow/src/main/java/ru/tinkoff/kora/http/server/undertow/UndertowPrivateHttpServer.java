@@ -16,7 +16,8 @@ import java.net.InetSocketAddress;
 import java.time.Duration;
 
 public class UndertowPrivateHttpServer implements PrivateHttpServer {
-    private static final Logger log = LoggerFactory.getLogger(UndertowPrivateHttpServer.class);
+
+    private static final Logger logger = LoggerFactory.getLogger(UndertowPrivateHttpServer.class);
 
     private final ValueOf<HttpServerConfig> config;
     private final ValueOf<UndertowPrivateApiHandler> privateApiHandler;
@@ -33,12 +34,13 @@ public class UndertowPrivateHttpServer implements PrivateHttpServer {
     public Mono<Void> release() {
         return Mono.delay(Duration.ofMillis(this.config.get().shutdownWait()))
             .then(ReactorUtils.ioMono(() -> {
-                log.info("Stopping undertow");
+                logger.debug("Stopping Private HTTP Server (Undertow)...");
+                final long started = System.nanoTime();
                 if (this.undertow != null) {
                     this.undertow.stop();
                     this.undertow = null;
                 }
-                log.debug("Undertow stopped");
+                logger.info("Stopped Private HTTP Server (Undertow) took {}", Duration.ofNanos(System.nanoTime() - started));
             }));
     }
 
@@ -47,14 +49,13 @@ public class UndertowPrivateHttpServer implements PrivateHttpServer {
         return Mono.create(sink -> {
             // dirty hack to start undertow thread as non daemon
             var t = new Thread(() -> {
-                log.info("Starting undertow private api");
+                logger.debug("Starting Private HTTP Server (Undertow)...");
+                final long started = System.nanoTime();
                 try {
                     this.undertow = this.createServer();
                     this.undertow.start();
-                    var data = StructuredArgument.marker(
-                        "port", this.port()
-                    );
-                    log.info(data, "Private api undertow started");
+                    var data = StructuredArgument.marker( "port", this.port() );
+                    logger.info(data, "Started Private HTTP Server (Undertow) took {}", Duration.ofNanos(System.nanoTime() - started));
                     sink.success();
                 } catch (Throwable e) {
                     sink.error(e);
@@ -81,5 +82,4 @@ public class UndertowPrivateHttpServer implements PrivateHttpServer {
         var address = (InetSocketAddress) info.getAddress();
         return address.getPort();
     }
-
 }

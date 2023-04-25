@@ -6,6 +6,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.concurrent.Queues;
 
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Semaphore;
@@ -86,21 +87,23 @@ final class GraphImpl implements RefreshableGraph, Lifecycle {
             var root = new BitSet(this.objects.length());
             root.set(fromNode.index);
             this.semaphore.acquireUninterruptibly();
-            log.debug("Refreshing graph from node {} of class {}", fromNode.index, this.objects.get(fromNode.index).getClass());
+
+            log.debug("Refreshing Graph from node {} of class {}", fromNode.index, this.objects.get(fromNode.index).getClass());
+            final long started = System.nanoTime();
             return this.initializeSubgraph(root)
                 .doOnEach(s -> {
                     switch (s.getType()) {
                         case CANCEL -> {
                             this.semaphore.release();
-                            log.debug("Refreshing graph cancelled");
+                            log.debug("Refreshing Graph cancelled");
                         }
                         case ON_ERROR -> {
                             this.semaphore.release();
-                            log.debug("Refreshing graph error", s.getThrowable());
+                            log.debug("Refreshing Graph error", s.getThrowable());
                         }
                         case ON_COMPLETE -> {
                             this.semaphore.release();
-                            log.debug("Refreshing graph completed");
+                            log.debug("Refreshing Graph completed took {}", Duration.ofNanos(System.nanoTime() - started));
                         }
                         default -> {}
                     }
@@ -114,21 +117,23 @@ final class GraphImpl implements RefreshableGraph, Lifecycle {
             var root = new BitSet(this.objects.length());
             root.set(0, this.objects.length());
             this.semaphore.acquireUninterruptibly();
-            log.debug("Initializing graph");
+
+            log.debug("Initializing Graph...");
+            final long started = System.nanoTime();
             return this.initializeSubgraph(root)
                 .doOnEach(s -> {
                     switch (s.getType()) {
                         case CANCEL -> {
                             this.semaphore.release();
-                            log.debug("Initializing graph cancelled");
+                            log.debug("Initializing Graph cancelled");
                         }
                         case ON_ERROR -> {
                             this.semaphore.release();
-                            log.debug("Initializing graph error", s.getThrowable());
+                            log.debug("Initializing Graph error", s.getThrowable());
                         }
                         case ON_COMPLETE -> {
                             this.semaphore.release();
-                            log.debug("Initializing graph completed");
+                            log.debug("Initializing Graph completed took {}", Duration.ofNanos(System.nanoTime() - started));
                         }
                         default -> {}
                     }
@@ -142,7 +147,8 @@ final class GraphImpl implements RefreshableGraph, Lifecycle {
             var root = new BitSet(this.objects.length());
             root.set(0, this.objects.length());
             this.semaphore.acquireUninterruptibly();
-            log.debug("Releasing graph");
+            log.debug("Releasing Graph...");
+            final long started = System.nanoTime();
             return this.releaseNodes(this.objects, root)
                 .doOnEach(s -> {
                     switch (s.getType()) {
@@ -156,14 +162,13 @@ final class GraphImpl implements RefreshableGraph, Lifecycle {
                         }
                         case ON_COMPLETE -> {
                             this.semaphore.release();
-                            log.debug("Releasing graph completed");
+                            log.debug("Releasing graph completed took {}", Duration.ofNanos(System.nanoTime() - started));
                         }
                         default -> {}
                     }
                 });
         });
     }
-
 
     private Mono<Void> initializeSubgraph(BitSet root) {
         log.trace("Materializing graph objects {}", root);

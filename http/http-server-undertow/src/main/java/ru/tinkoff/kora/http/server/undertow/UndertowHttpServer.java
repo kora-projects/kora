@@ -20,7 +20,8 @@ import java.time.Duration;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class UndertowHttpServer implements HttpServer, ReadinessProbe {
-    private static final Logger log = LoggerFactory.getLogger(UndertowHttpServer.class);
+
+    private static final Logger logger = LoggerFactory.getLogger(UndertowHttpServer.class);
 
     private final AtomicReference<HttpServerState> state = new AtomicReference<>(HttpServerState.INIT);
     private final ValueOf<HttpServerConfig> config;
@@ -41,19 +42,20 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
         return Mono.fromRunnable(() -> this.state.set(HttpServerState.SHUTDOWN))
             .then(Mono.delay(Duration.ofMillis(this.config.get().shutdownWait())))
             .then(ReactorUtils.ioMono(() -> {
-                log.info("Stopping undertow");
+                logger.debug("Stopping Public HTTP Server (Undertow)...");
+                final long started = System.nanoTime();
                 this.gracefulShutdown.shutdown();
                 try {
                     this.gracefulShutdown.awaitShutdown();
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                log.debug("Graceful shutdown awaited");
+                logger.debug("Awaiting Public HTTP Server (Undertow) graceful shutdown...");
                 if (this.undertow != null) {
                     this.undertow.stop();
                     this.undertow = null;
                 }
-                log.debug("Undertow stopped");
+                logger.info("Stopped Public HTTP Server (Undertow) took {}", Duration.ofNanos(System.nanoTime() - started));
             }));
     }
 
@@ -62,16 +64,15 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
         return Mono.create(sink -> {
             // dirty hack to start undertow thread as non daemon
             var t = new Thread(() -> {
-                log.info("Starting undertow");
+                logger.debug("Starting Public HTTP Server (Undertow)...");
+                final long started = System.nanoTime();
                 try {
                     this.gracefulShutdown.start();
                     this.undertow = this.createServer();
                     this.undertow.start();
                     this.state.set(HttpServerState.RUN);
-                    var data = StructuredArgument.marker(
-                        "port", this.port()
-                    );
-                    log.info(data, "Undertow started");
+                    var data = StructuredArgument.marker( "port", this.port() );
+                    logger.info(data, "Started Public HTTP Server (Undertow) took {}", Duration.ofNanos(System.nanoTime() - started));
                     sink.success();
                 } catch (Throwable e) {
                     sink.error(e);
@@ -102,9 +103,9 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
     @Override
     public Mono<ReadinessProbeFailure> probe() {
         return switch (this.state.get()) {
-            case INIT -> Mono.just(new ReadinessProbeFailure("Public http server init"));
+            case INIT -> Mono.just(new ReadinessProbeFailure("Public HTTP Server (Undertow) init"));
             case RUN -> Mono.empty();
-            case SHUTDOWN -> Mono.just(new ReadinessProbeFailure("Public http server shutdown"));
+            case SHUTDOWN -> Mono.just(new ReadinessProbeFailure("Public HTTP Server (Undertow) shutdown"));
         };
     }
 
