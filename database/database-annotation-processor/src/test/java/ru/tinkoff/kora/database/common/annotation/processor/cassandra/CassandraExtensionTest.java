@@ -34,9 +34,11 @@ public class CassandraExtensionTest {
             TypeRef.of(CassandraRowMapper.class, TestEntityJavaBean.class),
             TypeRef.of(CassandraResultSetMapper.class, TypeRef.of(List.class, AllNativeTypesEntity.class)),
             TypeRef.of(CassandraRowMapper.class, AllNativeTypesEntity.class),
+            TypeRef.of(CassandraResultSetMapper.class, TypeRef.of(List.class, String.class)),
         },
         TypeRef.of(CassandraRowColumnMapper.class, TestEntityRecord.UnknownTypeField.class),
-        TypeRef.of(CassandraEntity.TestEntityFieldCassandraResultColumnMapperNonFinal.class)
+        TypeRef.of(CassandraEntity.TestEntityFieldCassandraResultColumnMapperNonFinal.class),
+        TypeRef.of(CassandraRowMapper.class, String.class)
     );
 
 

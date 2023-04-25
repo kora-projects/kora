@@ -22,9 +22,11 @@ public class VertxExtensionTest {
                 TypeRef.of(VertxRowMapper.class, TestEntityJavaBean.class),
                 TypeRef.of(VertxRowSetMapper.class, TypeRef.of(List.class, AllNativeTypesEntity.class)),
                 TypeRef.of(VertxRowMapper.class, AllNativeTypesEntity.class),
+                TypeRef.of(VertxRowSetMapper.class, TypeRef.of(List.class, String.class)),
             },
             TypeRef.of(VertxResultColumnMapper.class, TestEntityRecord.UnknownTypeField.class),
-            TypeRef.of(VertxEntity.TestEntityFieldVertxResultColumnMapperNonFinal.class)
+            TypeRef.of(VertxEntity.TestEntityFieldVertxResultColumnMapperNonFinal.class),
+            TypeRef.of(VertxRowMapper.class, TypeRef.of(String.class))
         );
     }
 }

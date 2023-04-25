@@ -20,9 +20,11 @@ class CassandraExtensionTest {
                 typeOf<CassandraResultSetMapper<List<TestEntity>>>(),
                 typeOf<CassandraRowMapper<EntityWithEmbedded>>(),
                 typeOf<CassandraResultSetMapper<List<EntityWithEmbedded>>>(),
+                typeOf<CassandraResultSetMapper<List<String>>>(),
             ),
             typeOf<CassandraRowColumnMapper<TestEntity.UnknownField>>(),
             typeOf<TestEntityFieldCassandraResultColumnMapperNonFinal>(),
+            typeOf<CassandraRowMapper<String>>(),
         )
     }
 }

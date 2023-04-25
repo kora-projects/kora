@@ -2,6 +2,7 @@ package ru.tinkoff.kora.database.annotation.processor.cassandra.extension;
 
 import com.squareup.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.GenericTypeResolver;
 import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.database.annotation.processor.DbEntityReadHelper;
 import ru.tinkoff.kora.database.annotation.processor.cassandra.CassandraNativeTypes;
@@ -14,13 +15,18 @@ import javax.annotation.Nullable;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.TypeVariable;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.ArrayList;
+import java.util.Map;
 
 import static ru.tinkoff.kora.database.annotation.processor.cassandra.CassandraTypes.RESULT_SET;
 
@@ -181,7 +187,18 @@ public class CassandraTypesExtension implements KoraExtension {
         var rowType = TypeName.get(rowTypeMirror);
         var entity = DbEntity.parseEntity(this.types, rowTypeMirror);
         if (entity == null) {
-            return null;
+            return () -> {
+                var listResultSetMapper = this.elements.getTypeElement(CassandraTypes.RESULT_SET_MAPPER.canonicalName()).getEnclosedElements()
+                    .stream()
+                    .filter(e -> e.getKind() == ElementKind.METHOD && e.getModifiers().contains(Modifier.STATIC))
+                    .map(ExecutableElement.class::cast)
+                    .filter(m -> m.getSimpleName().contentEquals("listResultSetMapper"))
+                    .findFirst()
+                    .orElseThrow();
+                var tp = (TypeVariable) listResultSetMapper.getTypeParameters().get(0).asType();
+                var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, rowTypeMirror), listResultSetMapper.asType());
+                return ExtensionResult.fromExecutable(listResultSetMapper, executableType);
+            };
         }
         var rowTypeElement = this.types.asElement(rowTypeMirror);
         var mapperName = CommonUtils.getOuterClassesAsPrefix(rowTypeElement) + ((ClassName) rowType).simpleName() + "_ListCassandraResultSetMapper";

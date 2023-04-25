@@ -1,11 +1,13 @@
 package ru.tinkoff.kora.database.symbol.processor.cassandra.extension
 
 import com.google.devtools.ksp.getClassDeclarationByName
+import com.google.devtools.ksp.getFunctionDeclarationsByName
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.Variance
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
@@ -21,6 +23,7 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.parametrized
 import ru.tinkoff.kora.ksp.common.generatedClassName
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 
@@ -69,7 +72,25 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
         val rowResolvedType = rowType.type!!.resolve()
         val entity = DbEntity.parseEntity(rowResolvedType)
         if (entity == null) {
-            return null
+            val resultSetMapperDecl = resolver.getClassDeclarationByName(CassandraTypes.resultSetMapper.canonicalName)!!
+            val rowMapperDecl = resolver.getClassDeclarationByName(CassandraTypes.rowMapper.canonicalName)!!
+
+            val resultSetMapperType = resultSetMapperDecl.asType(
+                listOf(
+                    resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(rowSetParam), Variance.INVARIANT)
+                )
+            )
+            val rowMapperType = rowMapperDecl.asType(
+                listOf(
+                    resolver.getTypeArgument(rowSetParam.arguments[0].type!!, Variance.INVARIANT)
+                )
+            )
+
+            val functionDecl = resolver.getFunctionDeclarationsByName(CassandraTypes.resultSetMapper.canonicalName + ".listResultSetMapper").first()
+            val functionType = functionDecl.parametrized(resultSetMapperType, listOf(rowMapperType))
+            return {
+                ExtensionResult.fromExecutable(functionDecl, functionType)
+            }
         }
         val typeName = rowResolvedType.toClassName().simpleName
         val mapperName = rowResolvedType.declaration.getOuterClassesAsPrefix() + "${typeName}_CassandraListRowSetMapper"
