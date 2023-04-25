@@ -8,29 +8,37 @@ import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.scheduling.common.telemetry.SchedulingTelemetry;
 
+import java.time.Duration;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class AbstractJob implements Lifecycle {
+
+    private final Logger logger;
     private final SchedulingTelemetry telemetry;
     private final JdkSchedulingExecutor service;
     private final Runnable command;
     private final AtomicBoolean started = new AtomicBoolean(false);
-    private final Logger log;
     private volatile ScheduledFuture<?> scheduledFuture;
 
     public AbstractJob(SchedulingTelemetry telemetry, JdkSchedulingExecutor service, Runnable command) {
         this.telemetry = telemetry;
         this.service = service;
         this.command = command;
-        this.log = LoggerFactory.getLogger(telemetry.jobClass());
+        this.logger = LoggerFactory.getLogger(telemetry.jobClass());
     }
 
     @Override
     public final Mono<?> init() {
         return Mono.fromRunnable(() -> {
             if (this.started.compareAndSet(false, true)) {
+                logger.debug("Starting Scheduled Job '{}#{}'...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
+                final long started = System.nanoTime();
+
                 this.scheduledFuture = this.schedule(this.service, this::runJob);
+
+                logger.info("Started Scheduled Job '{}#{}' took {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(),
+                    Duration.ofNanos(System.nanoTime() - started));
             }
         });
     }
@@ -44,7 +52,7 @@ public abstract class AbstractJob implements Lifecycle {
             this.command.run();
             telemetryCtx.close(null);
         } catch (Exception e) {
-            this.log.warn("Uncaught exception while running job {}#{}", this.telemetry.jobClass().getCanonicalName(), this.telemetry.jobMethod());
+            logger.warn("Uncaught exception while running job: {}#{}", this.telemetry.jobClass().getCanonicalName(), this.telemetry.jobMethod());
             telemetryCtx.close(e);
         }
     }
@@ -55,9 +63,15 @@ public abstract class AbstractJob implements Lifecycle {
     public final Mono<?> release() {
         return Mono.fromRunnable(() -> {
             if (this.started.compareAndSet(true, false)) {
+                logger.debug("Stopping Scheduled Job '{}#{}'...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
+                final long started = System.nanoTime();
+
                 var f = this.scheduledFuture;
                 this.scheduledFuture = null;
                 f.cancel(true);
+
+                logger.info("Stopped Scheduled Job '{}#{}' took {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(),
+                    Duration.ofNanos(System.nanoTime() - started));
             }
         });
     }

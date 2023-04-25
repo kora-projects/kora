@@ -1,12 +1,18 @@
 package ru.tinkoff.kora.scheduling.quartz;
 
 import org.quartz.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 
+import java.time.Duration;
 import java.util.List;
 
 public class KoraQuartzJobRegistrar implements Lifecycle {
+
+    private static final Logger logger = LoggerFactory.getLogger(KoraQuartzJobRegistrar.class);
+
     private final List<KoraQuartzJob> quartzJobList;
     private final Scheduler scheduler;
 
@@ -18,10 +24,18 @@ public class KoraQuartzJobRegistrar implements Lifecycle {
     @Override
     public final Mono<?> init() {
         return Mono.fromCallable(() -> {
+            final List<String> quartzJobsNames = quartzJobList.stream()
+                .map(q -> q.getClass().getCanonicalName())
+                .toList();
+
+            logger.debug("Starting Quartz Jobs {}...", quartzJobsNames);
+            final long started = System.nanoTime();
+
             for (var koraQuartzJob : this.quartzJobList) {
                 var job = JobBuilder.newJob(koraQuartzJob.getClass())
                     .withIdentity(koraQuartzJob.getClass().getCanonicalName())
                     .build();
+
                 if (this.scheduler.checkExists(job.getKey())) {
                     var newTrigger = koraQuartzJob.getTrigger();
                     var existsTrigger = this.scheduler.getTrigger(newTrigger.getKey());
@@ -32,6 +46,8 @@ public class KoraQuartzJobRegistrar implements Lifecycle {
                 }
                 this.scheduler.scheduleJob(job, koraQuartzJob.getTrigger());
             }
+
+            logger.info("Started Quartz Jobs {} took {}", quartzJobsNames, Duration.ofNanos(System.nanoTime() - started));
             return null;
         });
     }

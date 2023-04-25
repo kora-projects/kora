@@ -9,14 +9,11 @@ import ru.tinkoff.kora.application.graph.Wrapped;
 import java.util.Properties;
 
 public final class KafkaProducerContainer<K,V> implements Lifecycle, Wrapped<KafkaProducer<K,V>> {
+
     private KafkaProducer<K, V> producer;
     private final Properties properties;
     private final Serializer<K> keySerializer;
     private final Serializer<V> valueSerializer;
-
-    public KafkaProducer<K, V> producer() {
-        return this.producer;
-    }
 
     public KafkaProducerContainer(Properties properties, Serializer<K> keySerializer, Serializer<V> valueSerializer) {
         this.properties = properties;
@@ -34,8 +31,12 @@ public final class KafkaProducerContainer<K,V> implements Lifecycle, Wrapped<Kaf
         return Mono.fromRunnable(() -> producer.close());
     }
 
+    public KafkaProducer<K, V> producer() {
+        return this.producer;
+    }
+
     @Override
     public KafkaProducer<K, V> value() {
-        return producer;
+        return this.producer;
     }
 }
