@@ -14,7 +14,7 @@ public final class LettuceSyncRedisClient implements SyncRedisClient {
     private final RedisServerCommands<byte[], byte[]> serverCommands;
     private final RedisKeyCommands<byte[], byte[]> keyCommands;
 
-    LettuceSyncRedisClient(LettuceBasicCommands commands) {
+    LettuceSyncRedisClient(LettuceCommander commands) {
         this.stringCommands = commands.sync().stringCommands();
         this.serverCommands = commands.sync().serverCommands();
         this.keyCommands = commands.sync().keyCommands();

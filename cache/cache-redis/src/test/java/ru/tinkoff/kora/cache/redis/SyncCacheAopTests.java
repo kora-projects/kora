@@ -1,11 +1,9 @@
 package ru.tinkoff.kora.cache.redis;
 
 import io.lettuce.core.FlushMode;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import ru.tinkoff.kora.cache.redis.client.LettuceBasicCommands;
 import ru.tinkoff.kora.cache.redis.client.SyncRedisClient;
 import ru.tinkoff.kora.cache.redis.testdata.Box;
 import ru.tinkoff.kora.cache.redis.testdata.CacheableMockLifecycle;
@@ -19,7 +17,6 @@ import java.math.BigDecimal;
 @RedisTestContainer
 class SyncCacheAopTests extends CacheRunner {
 
-    private static LettuceBasicCommands commands = null;
     private SyncRedisClient syncRedisClient = null;
     private CacheableTargetSync service = null;
 
@@ -41,11 +38,6 @@ class SyncCacheAopTests extends CacheRunner {
                 .map(a1 -> ((SyncRedisClient) a1))
                 .findFirst().orElseThrow();
 
-            commands = values.stream()
-                .filter(a1 -> a1 instanceof LettuceBasicCommands)
-                .map(a1 -> ((LettuceBasicCommands) a1))
-                .findFirst().orElseThrow();
-
             service = values.stream()
                 .filter(a -> a instanceof CacheableMockLifecycle)
                 .map(a -> ((CacheableMockLifecycle) a).sync())
@@ -60,13 +52,6 @@ class SyncCacheAopTests extends CacheRunner {
     void setupRedis(RedisParams redisParams) {
         CacheRunner.redisUri = redisParams.uri();
         redisParams.execute(cmd -> cmd.flushall(FlushMode.SYNC));
-    }
-
-    @AfterAll
-    static void cleanup() {
-        if (commands != null) {
-            commands.close();
-        }
     }
 
     @Test
