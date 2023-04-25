@@ -48,6 +48,28 @@ class CircuitBreakerTests : AppRunner() {
     }
 
     @Test
+    fun voidCircuitBreaker() {
+        // given
+        val service = getService<CircuitBreakerTarget>()
+
+        // when
+        try {
+            service.getValueSyncVoid()
+            fail("Should not happen")
+        } catch (e: IllegalStateException) {
+            assertNotNull(e.message)
+        }
+
+        // then
+        try {
+            service.getValueSyncVoid()
+            fail("Should not happen")
+        } catch (ex: CallNotPermittedException) {
+            assertNotNull(ex.message)
+        }
+    }
+
+    @Test
     fun suspendCircuitBreaker() {
         // given
         val service = getService<CircuitBreakerTarget>()

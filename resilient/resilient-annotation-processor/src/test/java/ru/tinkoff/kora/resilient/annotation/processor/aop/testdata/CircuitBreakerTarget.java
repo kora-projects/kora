@@ -22,6 +22,18 @@ public class CircuitBreakerTarget implements MockLifecycle {
     }
 
     @CircuitBreaker("custom1")
+    public void getValueSyncVoid() {
+        if (alwaysFail)
+            throw new IllegalStateException("Failed");
+    }
+
+    @CircuitBreaker("custom1")
+    public void getValueSyncVoidCheckedException() throws IOException {
+        if (alwaysFail)
+            throw new IllegalStateException("Failed");
+    }
+
+    @CircuitBreaker("custom1")
     public String getValueSyncCheckedException() throws IOException {
         if (alwaysFail)
             throw new IllegalStateException("Failed");

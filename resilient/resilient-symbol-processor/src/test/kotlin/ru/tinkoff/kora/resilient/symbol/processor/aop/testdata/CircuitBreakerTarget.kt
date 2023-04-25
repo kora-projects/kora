@@ -17,6 +17,11 @@ open class CircuitBreakerTarget : MockLifecycle {
         return "OK"
     }
 
+    @CircuitBreaker("custom1")
+    open fun getValueSyncVoid() {
+        check(!alwaysFail) { "Failed" }
+    }
+
     @CircuitBreaker("custom2")
     open suspend fun getValueSuspend(): String {
         check(!alwaysFail) { "Failed" }
