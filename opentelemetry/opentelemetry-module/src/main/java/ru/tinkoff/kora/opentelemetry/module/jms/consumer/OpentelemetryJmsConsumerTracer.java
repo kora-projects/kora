@@ -17,7 +17,6 @@ import javax.jms.Queue;
 import javax.jms.Topic;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class OpentelemetryJmsConsumerTracer implements JmsConsumerTracer {
     private final Tracer tracer;
@@ -56,11 +55,11 @@ public class OpentelemetryJmsConsumerTracer implements JmsConsumerTracer {
         var span = recordSpanBuilder.startSpan();
         OpentelemetryContext.set(context, OpentelemetryContext.get(context).add(span));
 
-        return (duration, e) -> {
+        return (e) -> {
             if (e != null) {
                 span.setStatus(StatusCode.ERROR);
             }
-            span.end(duration, TimeUnit.NANOSECONDS);
+            span.end();
         };
     }
 

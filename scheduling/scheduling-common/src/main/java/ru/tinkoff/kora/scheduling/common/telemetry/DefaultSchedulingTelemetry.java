@@ -70,7 +70,7 @@ public final class DefaultSchedulingTelemetry implements SchedulingTelemetry {
                 this.logger.logJobFinish(duration, exception);
             }
             if (this.span != null) {
-                this.span.close(duration, exception);
+                this.span.close(exception);
             }
         }
     }

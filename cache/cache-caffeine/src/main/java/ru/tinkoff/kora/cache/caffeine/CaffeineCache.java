@@ -34,7 +34,7 @@ final class CaffeineCache<K, V> implements ru.tinkoff.kora.cache.Cache<K, V> {
         telemetryContext.startRecording();
 
         final V v = caffeine.getIfPresent(key);
-        if (v != null) {
+        if (v == null) {
             logger.trace("Value NOT found in cache '{}' for key: {}", name, key);
         } else {
             logger.debug("Value found in cache '{}' for key: {}", name, key);

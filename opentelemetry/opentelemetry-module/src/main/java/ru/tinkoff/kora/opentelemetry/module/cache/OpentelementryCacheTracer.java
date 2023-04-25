@@ -11,7 +11,6 @@ import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.concurrent.TimeUnit;
 
 public final class OpentelementryCacheTracer implements CacheTracer {
 
@@ -25,21 +24,19 @@ public final class OpentelementryCacheTracer implements CacheTracer {
         this.tracer = tracer;
     }
 
-    record OpentelemetryCacheSpan(Span span, Context currentContext, OpentelemetryContext context, long startedInNanos) implements CacheSpan {
+    record OpentelemetryCacheSpan(Span span, Context currentContext, OpentelemetryContext context) implements CacheSpan {
 
         @Override
         public void recordSuccess() {
-            final long duration = System.nanoTime() - startedInNanos;
             span.setStatus(StatusCode.OK);
-            span.end(duration, TimeUnit.NANOSECONDS);
+            span.end();
             OpentelemetryContext.set(currentContext, context);
         }
 
         @Override
         public void recordFailure(@Nullable Throwable throwable) {
-            final long duration = System.nanoTime() - startedInNanos;
             span.setStatus(StatusCode.ERROR);
-            span.end(duration, TimeUnit.NANOSECONDS);
+            span.end();
             OpentelemetryContext.set(currentContext, context);
         }
     }
@@ -57,6 +54,6 @@ public final class OpentelementryCacheTracer implements CacheTracer {
             .startSpan();
 
         OpentelemetryContext.set(context, traceContext.add(span));
-        return new OpentelemetryCacheSpan(span, context, traceContext, System.nanoTime());
+        return new OpentelemetryCacheSpan(span, context, traceContext);
     }
 }

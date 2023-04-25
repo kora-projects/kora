@@ -8,7 +8,7 @@ import javax.annotation.Nullable;
 
 public interface GrpcServerTracer {
     interface GrpcServerSpan {
-        void close(Status status, @Nullable Throwable exception, long processingTime);
+        void close(Status status, @Nullable Throwable exception);
 
         void addSend(Object message);
 

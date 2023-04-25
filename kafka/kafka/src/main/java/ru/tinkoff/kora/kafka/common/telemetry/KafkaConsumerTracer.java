@@ -9,11 +9,11 @@ public interface KafkaConsumerTracer {
     interface KafkaConsumerRecordsSpan {
         KafkaConsumerRecordSpan get(ConsumerRecord<?, ?> record);
 
-        void close(long duration, @Nullable Throwable ex);
+        void close(@Nullable Throwable ex);
     }
 
     interface KafkaConsumerRecordSpan {
-        void close(long duration, @Nullable Throwable ex);
+        void close(@Nullable Throwable ex);
     }
 
     KafkaConsumerRecordsSpan get(ConsumerRecords<?, ?> records);

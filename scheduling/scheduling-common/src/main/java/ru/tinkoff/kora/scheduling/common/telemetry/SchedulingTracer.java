@@ -6,7 +6,7 @@ import javax.annotation.Nullable;
 
 public interface SchedulingTracer {
     interface SchedulingSpan {
-        void close(long duration, @Nullable Throwable exception);
+        void close(@Nullable Throwable exception);
     }
 
     SchedulingSpan createSpan(Context ctx);

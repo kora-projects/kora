@@ -15,7 +15,6 @@ import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 import static io.opentelemetry.context.Context.root;
 
@@ -52,14 +51,14 @@ public final class OpentelemetryHttpServerTracer implements HttpServerTracer {
 
         OpentelemetryContext.set(context, OpentelemetryContext.get(context).add(span));
 
-        return (statusCode, resultCode, processingTime, exception) -> {
+        return (statusCode, resultCode, exception) -> {
             if (statusCode >= 500 || exception != null || resultCode != HttpResultCode.SUCCESS) {
                 span.setStatus(StatusCode.ERROR);
             }
             if (exception != null) {
                 span.recordException(exception);
             }
-            span.end(processingTime, TimeUnit.NANOSECONDS);
+            span.end();
         };
     }
 

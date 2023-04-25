@@ -18,7 +18,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 public class OpentelemetryKafkaConsumerTracer implements KafkaConsumerTracer {
     private final Tracer tracer;
@@ -94,11 +93,11 @@ public class OpentelemetryKafkaConsumerTracer implements KafkaConsumerTracer {
         }
 
         @Override
-        public void close(long duration, @Nullable Throwable ex) {
+        public void close(@Nullable Throwable ex) {
             for (var span : this.spans.values()) {
-                span.end(duration, TimeUnit.NANOSECONDS);
+                span.end();
             }
-            this.rootSpan.end(duration, TimeUnit.NANOSECONDS);
+            this.rootSpan.end();
         }
 
         private enum ConsumerRecordTextMapGetter implements TextMapGetter<ConsumerRecord<?, ?>> {
@@ -133,8 +132,8 @@ public class OpentelemetryKafkaConsumerTracer implements KafkaConsumerTracer {
         }
 
         @Override
-        public void close(long duration, @Nullable Throwable ex) {
-            this.recordSpan.end(duration, TimeUnit.NANOSECONDS);
+        public void close(@Nullable Throwable ex) {
+            this.recordSpan.end();
             OpentelemetryContext.set(Context.current(), this.rootCtx);
         }
     }

@@ -7,8 +7,6 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 import ru.tinkoff.kora.scheduling.common.telemetry.SchedulingTracer;
 
-import java.util.concurrent.TimeUnit;
-
 public class OpentelemetrySchedulingTracer implements SchedulingTracer {
     private final Tracer tracer;
     private final String className;
@@ -32,11 +30,11 @@ public class OpentelemetrySchedulingTracer implements SchedulingTracer {
             .startSpan();
         OpentelemetryContext.set(context, OpentelemetryContext.get(context).add(span));
 
-        return (duration, exception) -> {
+        return (exception) -> {
             if (exception != null) {
                 span.recordException(exception);
             }
-            span.end(duration, TimeUnit.NANOSECONDS);
+            span.end();
         };
     }
 }

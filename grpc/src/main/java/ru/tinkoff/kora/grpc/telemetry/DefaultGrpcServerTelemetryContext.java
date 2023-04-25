@@ -25,7 +25,7 @@ public final class DefaultGrpcServerTelemetryContext implements GrpcServerTeleme
         var processingTime = System.nanoTime() - this.startTime;
         if (this.logger != null) this.logger.logEnd(this.serviceName, this.methodName, status, exception, processingTime);
         if (this.metrics != null) this.metrics.onClose(status, exception, processingTime);
-        if (this.span != null) this.span.close(status, exception, processingTime);
+        if (this.span != null) this.span.close(status, exception);
     }
 
     @Override

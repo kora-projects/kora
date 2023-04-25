@@ -27,7 +27,7 @@ public final class DefaultJmsConsumerTelemetry implements JmsConsumerTelemetry {
             var duration = System.nanoTime() - start;
             if (this.logger != null) this.logger.onMessageProcessed(message, duration);
             if (this.metrics != null) this.metrics.onMessageProcessed(message, duration);
-            if (span != null) span.close(duration, e);
+            if (span != null) span.close(e);
         };
     }
 }

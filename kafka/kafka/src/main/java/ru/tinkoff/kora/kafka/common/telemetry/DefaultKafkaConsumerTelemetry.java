@@ -64,7 +64,7 @@ public class DefaultKafkaConsumerTelemetry<K, V> implements KafkaConsumerTelemet
         @Override
         public void close(@Nullable Throwable ex) {
             var duration = System.nanoTime() - this.start;
-            if (this.span != null) this.span.close(duration, ex);
+            if (this.span != null) this.span.close(ex);
             if (this.metrics != null) this.metrics.onRecordsProcessed(this.records, duration, ex);
             if (this.logger != null) this.logger.logRecordsProcessed(this.records, ex);
         }
@@ -91,7 +91,7 @@ public class DefaultKafkaConsumerTelemetry<K, V> implements KafkaConsumerTelemet
         @Override
         public void close(@Nullable Throwable ex) {
             var duration = System.nanoTime() - this.recordStart;
-            if (this.recordSpan != null) this.recordSpan.close(duration, ex);
+            if (this.recordSpan != null) this.recordSpan.close(ex);
             if (this.metrics != null) this.metrics.onRecordProcessed(this.record, duration, ex);
             if (this.logger != null) this.logger.logRecordProcessed(this.record, ex);
 

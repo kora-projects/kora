@@ -51,7 +51,7 @@ public final class DefaultHttpServerTelemetry implements HttpServerTelemetry {
             if (routeTemplate != null) {
                 if (this.logger != null) this.logger.logEnd(operation, statusCode, resultCode, processingTime, exception);
 
-                if (span != null) span.close(statusCode, resultCode, processingTime, exception);
+                if (span != null) span.close(statusCode, resultCode, exception);
             }
         };
     }
