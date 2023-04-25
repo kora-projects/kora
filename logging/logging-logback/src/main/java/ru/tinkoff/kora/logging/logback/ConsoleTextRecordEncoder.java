@@ -64,7 +64,7 @@ public final class ConsoleTextRecordEncoder implements Encoder<ILoggingEvent> {
         }
 
         w.append(event.getFormattedMessage()).flush();
-        for (var marker : event.getMarkerList()) {
+        if (event.getMarkerList() != null) for (var marker : event.getMarkerList()) {
             if (marker instanceof StructuredArgument structuredArgument) {
                 w.append("\n")
                     .append("\t").append(structuredArgument.fieldName()).append("=")
