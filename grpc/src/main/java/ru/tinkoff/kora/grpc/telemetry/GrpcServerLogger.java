@@ -8,6 +8,8 @@ import javax.annotation.Nullable;
 
 public interface GrpcServerLogger {
 
+    boolean isEnabled();
+
     void logEnd(String serviceName, String methodName, @Nullable Status status, @Nullable Throwable exception, long processingTime);
 
     void logBegin(ServerCall<?, ?> call, Metadata headers, String serviceName, String methodName);

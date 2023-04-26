@@ -17,14 +17,18 @@ public class TelemetryInterceptor implements HttpClientInterceptor {
 
     @Override
     public Mono<HttpClientResponse> processRequest(Function<HttpClientRequest, Mono<HttpClientResponse>> chain, HttpClientRequest request) {
+        if (!this.telemetry.isEnabled()) {
+            return chain.apply(request);
+        }
+
         return Mono.deferContextual(rctx -> {
             var ctx = Context.Reactor.current(rctx).fork();
             ctx.inject();
-            var applyResult = this.telemetry.get(ctx, request);
+            var telemetryContext = this.telemetry.get(ctx, request);
 
-            return chain.apply(applyResult.request())
-                .doOnError(e -> applyResult.close(null, e))
-                .map(response -> applyResult.close(response, null))
+            return chain.apply(telemetryContext.request())
+                .doOnError(e -> telemetryContext.close(null, e))
+                .map(response -> telemetryContext.close(response, null))
                 .contextWrite(c -> Context.Reactor.inject(c, ctx));
         });
     }

@@ -6,6 +6,9 @@ import javax.annotation.Nullable;
 
 public final class DefaultHttpServerTelemetry implements HttpServerTelemetry {
     private static final String UNMATCHED_ROUTE_TEMPLATE = "UNKNOWN_ROUTE";
+    private static final HttpServerTelemetryContext NOOP_CTX = (statusCode, resultCode, exception) -> {
+
+    };
 
     @Nullable
     private final HttpServerMetrics metrics;
@@ -22,21 +25,31 @@ public final class DefaultHttpServerTelemetry implements HttpServerTelemetry {
 
     @Override
     public HttpServerTelemetryContext get(PublicApiHandler.PublicApiRequest request, @Nullable String routeTemplate) {
+        var metrics = this.metrics;
+        var logger = this.logger;
+        var tracer = this.tracer;
+        if (metrics == null && tracer == null && (logger == null || !logger.isEnabled())) {
+            return NOOP_CTX;
+        }
         var start = System.nanoTime();
         var method = request.method();
         var scheme = request.scheme();
         var host = request.hostName();
 
-        if (this.metrics != null) this.metrics.requestStarted(method, routeTemplate != null ? routeTemplate : UNMATCHED_ROUTE_TEMPLATE, host, scheme);
+        if (metrics != null) metrics.requestStarted(method, routeTemplate != null ? routeTemplate : UNMATCHED_ROUTE_TEMPLATE, host, scheme);
 
         final HttpServerTracer.HttpServerSpan span;
         final String operation;
         if (routeTemplate != null) {
             operation = method + " " + routeTemplate;
-            span = this.tracer != null
-                ? this.tracer.createSpan(routeTemplate, request)
-                : null;
-            if (this.logger != null) this.logger.logStart(operation);
+            if (tracer != null) {
+                span = tracer.createSpan(routeTemplate, request);
+            } else {
+                span = null;
+            }
+            if (logger != null) {
+                logger.logStart(operation);
+            }
         } else {
             span = null;
             operation = null;
@@ -46,12 +59,15 @@ public final class DefaultHttpServerTelemetry implements HttpServerTelemetry {
             var end = System.nanoTime();
             var processingTime = end - start;
 
-            if (this.metrics != null) this.metrics.requestFinished(method, routeTemplate != null ? routeTemplate : UNMATCHED_ROUTE_TEMPLATE, host, scheme, statusCode, processingTime);
+            if (metrics != null) metrics.requestFinished(method, routeTemplate != null ? routeTemplate : UNMATCHED_ROUTE_TEMPLATE, host, scheme, statusCode, processingTime);
 
             if (routeTemplate != null) {
-                if (this.logger != null) this.logger.logEnd(operation, statusCode, resultCode, processingTime, exception);
-
-                if (span != null) span.close(statusCode, resultCode, exception);
+                if (logger != null) {
+                    logger.logEnd(operation, statusCode, resultCode, processingTime, exception);
+                }
+                if (span != null) {
+                    span.close(statusCode, resultCode, exception);
+                }
             }
         };
     }

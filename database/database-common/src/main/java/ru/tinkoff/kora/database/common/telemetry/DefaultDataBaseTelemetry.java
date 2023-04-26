@@ -6,6 +6,9 @@ import ru.tinkoff.kora.database.common.QueryContext;
 import javax.annotation.Nullable;
 
 public class DefaultDataBaseTelemetry implements DataBaseTelemetry {
+    private static final DataBaseTelemetryContext NOOP_CTX = exception -> {
+    };
+
     @Nullable
     private final DataBaseMetricWriter metricWriter;
     @Nullable
@@ -29,14 +32,21 @@ public class DefaultDataBaseTelemetry implements DataBaseTelemetry {
 
     @Override
     public DataBaseTelemetryContext createContext(Context ctx, QueryContext query) {
-        var span = this.tracing == null ? null : this.tracing.createQuerySpan(ctx, query);
+        var metricWriter = this.metricWriter;
+        var tracing = this.tracing;
+        var logger = this.logger;
+        if (metricWriter == null && tracing == null && (logger == null || !logger.isEnabled())) {
+            return NOOP_CTX;
+        }
+
+        var span = tracing == null ? null : tracing.createQuerySpan(ctx, query);
         var start = System.nanoTime();
-        if (this.logger != null) this.logger.logQueryBegin(query);
+        if (logger != null) logger.logQueryBegin(query);
 
         return exception -> {
             var duration = System.nanoTime() - start;
-            if (this.metricWriter != null) this.metricWriter.recordQuery(start, query, exception);
-            if (this.logger != null) this.logger.logQueryEnd(duration, query, exception);
+            if (metricWriter != null) metricWriter.recordQuery(start, query, exception);
+            if (logger != null) logger.logQueryEnd(duration, query, exception);
             if (span != null) span.close(exception);
         };
     }

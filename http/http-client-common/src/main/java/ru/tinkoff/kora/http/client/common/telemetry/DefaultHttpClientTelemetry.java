@@ -35,7 +35,22 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
     }
 
     @Override
+    public boolean isEnabled() {
+        return metrics != null
+               || tracing != null
+               || logger != null && (logger.logRequest() || logger.logResponse());
+    }
+
+    @Override
+    @Nullable
     public HttpServerTelemetryContext get(Context ctx, HttpClientRequest request) {
+        var logger = this.logger;
+        var tracing = this.tracing;
+        var metrics = this.metrics;
+        if (metrics == null && tracing == null && (logger == null || (!logger.logRequest() && !logger.logResponse()))) {
+            return null;
+        }
+
         var startTime = System.nanoTime();
         var method = request.method();
         var uri = URI.create(request.resolvedUri());
@@ -46,22 +61,22 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         var resolvedUri = request.resolvedUri();
         var target = operation.substring(method.length() + 1);
 
-        var createSpanResult = this.tracing == null ? null : this.tracing.createSpan(ctx, request);
+        var createSpanResult = tracing == null ? null : tracing.createSpan(ctx, request);
         if (createSpanResult != null) {
             request = createSpanResult.request();
         }
         var headers = request.headers();
 
-        if (this.logger != null && this.logger.logRequest()) {
-            if (!this.logger.logRequestHeaders()) {
-                this.logger.logRequest(authority, request.method(), operation, resolvedUri, null, null);
+        if (logger != null && logger.logRequest()) {
+            if (!logger.logRequestHeaders()) {
+                logger.logRequest(authority, request.method(), operation, resolvedUri, null, null);
             } else {
-                if (!this.logger.logRequestBody()) {
-                    this.logger.logRequest(authority, request.method(), operation, resolvedUri, request.headers(), null);
+                if (!logger.logRequestBody()) {
+                    logger.logRequest(authority, request.method(), operation, resolvedUri, headers, null);
                 } else {
                     var requestBodyCharset = this.detectCharset(request.headers());
                     if (requestBodyCharset == null) {
-                        this.logger.logRequest(authority, request.method(), operation, resolvedUri, request.headers(), null);
+                        this.logger.logRequest(authority, request.method(), operation, resolvedUri, headers, null);
                     } else {
                         var requestBodyFlux = this.wrapBody(request.body(), true, l -> {
                             var s = byteBufListToBodyString(l, requestBodyCharset);
@@ -116,13 +131,16 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
                 }, () -> bodySubscribed.set(true));
 
                 return new HttpClientResponse.Default(
-                    response.code(), response.headers(), responseBodyFlux, Mono.defer(() -> {
+                    response.code(),
+                    response.headers(),
+                    responseBodyFlux,
+                    Mono.defer(() -> {
                         if (bodySubscribed.compareAndSet(false, true)) {
                             responseBodyFlux.subscribe();
                         }
                         return response.close();
-                    }
-                ));
+                    })
+                );
             }
         };
     }

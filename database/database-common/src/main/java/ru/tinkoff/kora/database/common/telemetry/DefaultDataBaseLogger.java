@@ -18,6 +18,11 @@ public class DefaultDataBaseLogger implements DataBaseLogger {
     }
 
     @Override
+    public boolean isEnabled() {
+        return this.queryLog.isDebugEnabled();
+    }
+
+    @Override
     public void logQueryBegin(QueryContext queryContext) {
         if (this.queryLog.isDebugEnabled()) {
             this.queryLog.debug(marker("sqlQuery", gen -> {

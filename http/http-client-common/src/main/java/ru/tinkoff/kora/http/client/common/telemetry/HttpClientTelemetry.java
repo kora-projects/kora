@@ -14,5 +14,7 @@ public interface HttpClientTelemetry {
         HttpClientResponse close(@Nullable HttpClientResponse response, @Nullable Throwable exception);
     }
 
+    boolean isEnabled();
+
     HttpServerTelemetryContext get(Context ctx, HttpClientRequest request);
 }
