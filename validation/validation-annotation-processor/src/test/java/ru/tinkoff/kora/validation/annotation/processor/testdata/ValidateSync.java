@@ -12,7 +12,7 @@ public class ValidateSync {
     public static final String IGNORED = "ops";
 
     @Validate
-    public int validatedInput(@Range(from = 1, to = 5) int c1,
+    public int validatedInput(@Range(from = 1, to = Integer.MAX_VALUE) int c1,
                               @Nullable @NotEmpty String c2,
                               @Nullable @Valid ValidTaz c3) {
         return c1;

@@ -17,7 +17,6 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class AopProcessor {
     private static final Logger log = LoggerFactory.getLogger(AopProcessor.class);
@@ -266,7 +265,11 @@ public class AopProcessor {
             if (typeMethod.getReturnType().getKind() != TypeKind.VOID) {
                 b.add("return ");
             }
-            b.add("this.$L(", superCall);
+            if (superCall.startsWith("super.")) {
+                b.add("$L(", superCall);
+            } else {
+                b.add("this.$L(", superCall);
+            }
             for (int i = 0; i < typeMethod.getParameters().size(); i++) {
                 if (i > 0) {
                     b.add(", ");

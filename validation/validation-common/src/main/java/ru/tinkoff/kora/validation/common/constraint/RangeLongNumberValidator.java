@@ -1,14 +1,12 @@
 package ru.tinkoff.kora.validation.common.constraint;
 
-import javax.annotation.Nonnull;
-
 import org.jetbrains.annotations.NotNull;
 import ru.tinkoff.kora.validation.common.ValidationContext;
 import ru.tinkoff.kora.validation.common.Validator;
 import ru.tinkoff.kora.validation.common.Violation;
 import ru.tinkoff.kora.validation.common.annotation.Range;
 
-import java.math.BigDecimal;
+import javax.annotation.Nonnull;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Predicate;
@@ -23,11 +21,11 @@ final class RangeLongNumberValidator<T extends Number> implements Validator<T> {
     private final Predicate<T> toPredicate;
 
     RangeLongNumberValidator(double fromDouble, double toDouble, Range.Boundary boundary) {
-        if(toDouble < fromDouble)
+        if (toDouble < fromDouble)
             throw new IllegalArgumentException("From can't be less than To, but From was " + fromDouble + " and To was " + toDouble);
 
-        this.from = BigDecimal.valueOf(fromDouble).longValue();
-        this.to = BigDecimal.valueOf(toDouble).longValue();
+        this.from = (long) fromDouble;
+        this.to = (long) toDouble;
         this.boundary = boundary;
         this.fromPredicate = switch (boundary) {
             case INCLUSIVE_INCLUSIVE, INCLUSIVE_EXCLUSIVE -> (v -> v.longValue() >= from);

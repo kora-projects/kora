@@ -98,7 +98,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             .firstOrNull() ?: false
 
         builder
-            .addStatement("val _returnValueViolations = %T<%T>(%L)", ArrayList::class.java, VIOLATION_TYPE, constraints.size + validates.size + 1)
+            .addStatement("val _returnValueViolations = %T<%T>()", ArrayList::class.java, VIOLATION_TYPE)
             .addStatement("val _returnValueContext = %T.builder().failFast(%L).build()", CONTEXT_TYPE, failFast)
 
         for (constraint in constraints) {
@@ -169,7 +169,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             .firstOrNull() ?: false
 
         val builder = CodeBlock.builder()
-            .addStatement("val _argumentsViolations = %T<%T>(%L)", ArrayList::class.java, VIOLATION_TYPE, method.parameters.size * 2)
+            .addStatement("val _argumentsViolations = %T<%T>()", ArrayList::class.java, VIOLATION_TYPE)
             .addStatement("val _argumentsContext = %T.builder().failFast(%L).build()", CONTEXT_TYPE, failFast)
 
         for (parameter in method.parameters.filter { it.isValidatable() }) {
@@ -192,10 +192,12 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
                 val constraintField = aspectContext.fieldFactory.constructorInitialized(constraintType, createCodeBlock)
                 if (isNullable) {
                     builder.beginControlFlow("if(%N != null)", parameter.name!!.asString())
-                    builder.addStatement("_argumentsViolations.addAll(%N.validate(%N, _argumentsContext))", constraintField, parameter.name!!.asString())
+                    builder.addStatement("_argumentsViolations.addAll(%N.validate(%N, _argumentsContext.addPath(%S)))",
+                        constraintField, parameter.name!!.asString(), parameter.name!!.asString())
                     builder.endControlFlow()
                 } else {
-                    builder.addStatement("_argumentsViolations.addAll(%N.validate(%N, _argumentsContext))", constraintField, parameter.name!!.asString())
+                    builder.addStatement("_argumentsViolations.addAll(%N.validate(%N, _argumentsContext.addPath(%S)))",
+                        constraintField, parameter.name!!.asString(), parameter.name!!.asString())
                 }
             }
 
@@ -205,10 +207,12 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
                 val validatorField = aspectContext.fieldFactory.constructorParam(validatorType, listOf())
                 if (isNullable) {
                     builder.beginControlFlow("if(%N != null)", parameter.name!!.asString())
-                    builder.addStatement("_argumentsViolations.addAll(%N.validate(%N, _argumentsContext))", validatorField, parameter.name!!.asString())
+                    builder.addStatement("_argumentsViolations.addAll(%N.validate(%N, _argumentsContext.addPath(%S)))",
+                        validatorField, parameter.name!!.asString(), parameter.name!!.asString())
                     builder.endControlFlow()
                 } else {
-                    builder.addStatement("_argumentsViolations.addAll(%N.validate(%N, _argumentsContext))", validatorField, parameter.name!!.asString())
+                    builder.addStatement("_argumentsViolations.addAll(%N.validate(%N, _argumentsContext.addPath(%S)))",
+                        validatorField, parameter.name!!.asString(), parameter.name!!.asString())
                 }
             }
 
