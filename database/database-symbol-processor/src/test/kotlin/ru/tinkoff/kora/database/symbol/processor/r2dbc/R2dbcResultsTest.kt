@@ -7,8 +7,11 @@ import org.mockito.Mockito.any
 import org.mockito.Mockito.verify
 import org.mockito.kotlin.whenever
 import reactor.core.publisher.Mono
+import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.database.common.UpdateCount
 import ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcResultFluxMapper
+import kotlin.reflect.full.findAnnotations
+import kotlin.reflect.jvm.jvmErasure
 
 class R2dbcResultsTest : AbstractR2dbcTest() {
 
@@ -331,6 +334,37 @@ class R2dbcResultsTest : AbstractR2dbcTest() {
                 fun test1(test: String): Long
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
     }
+
+    @Test
+    fun testTaggedResult() {
+        val mapper = Mockito.mock(R2dbcResultFluxMapper::class.java)
+        val repository = compile(
+            listOf(mapper), """
+            @Repository
+            interface TestRepository : R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Tag(TestRepository::class)
+                fun test(): Int
+            }
+            
+            """.trimIndent()
+        )
+        whenever(mapper.apply(any())).thenReturn(Mono.just(42))
+        val result = repository.invoke<Any>("test")
+        assertThat(result).isEqualTo(42)
+        verify(executor.con).createStatement("SELECT count(*) FROM test")
+        verify(executor.statement).execute()
+        verify(mapper).apply(any())
+
+
+        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(R2dbcResultFluxMapper::class)
+        val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
+        assertThat(tag).isNotNull()
+        assertThat(tag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("TestRepository")))
+    }
+
 }

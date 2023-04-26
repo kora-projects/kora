@@ -37,7 +37,7 @@ public abstract class AbstractJsonAnnotationProcessorTest extends AbstractAnnota
             return (JsonReader<Object>) this.compileResult.loadClass("$" + forClass + "JsonReader")
                 .getConstructors()[0]
                 .newInstance(params);
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | ClassNotFoundException e) {
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
     }
@@ -48,7 +48,7 @@ public abstract class AbstractJsonAnnotationProcessorTest extends AbstractAnnota
             return (JsonWriter<Object>) this.compileResult.loadClass("$" + forClass + "JsonWriter")
                 .getConstructors()[0]
                 .newInstance(params);
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | ClassNotFoundException e) {
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
     }

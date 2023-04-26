@@ -4,6 +4,7 @@ import com.datastax.oss.driver.api.core.cql.Statement;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import reactor.core.publisher.Mono;
+import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraReactiveResultSetMapper;
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraResultSetMapper;
 
@@ -161,6 +162,32 @@ public class CassandraResultsTest extends AbstractCassandraRepositoryTest {
                 Long test(String test);
             }
             """);
+    }
 
+    @Test
+    public void testTagOnResultMapper() throws ClassNotFoundException {
+        var mapper = Mockito.mock(CassandraResultSetMapper.class);
+        var repository = compileCassandra(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("SELECT count(*) FROM test")
+                @Tag(TestRepository.class)
+                Integer test();
+            }
+            """);
+
+        when(mapper.apply(any())).thenReturn(42);
+        var result = repository.invoke("test");
+
+        assertThat(result).isEqualTo(42);
+        verify(executor.mockSession).prepare("SELECT count(*) FROM test");
+        verify(executor.mockSession).execute(any(Statement.class));
+        verify(mapper).apply(executor.resultSet);
+
+        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        assertThat(mapperConstructorParameter.getType()).isEqualTo(CassandraResultSetMapper.class);
+        var tag = mapperConstructorParameter.getAnnotation(Tag.class);
+        assertThat(tag).isNotNull();
+        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
     }
 }

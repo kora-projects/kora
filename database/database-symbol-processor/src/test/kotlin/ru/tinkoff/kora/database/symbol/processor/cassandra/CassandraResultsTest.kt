@@ -9,8 +9,11 @@ import org.mockito.Mockito
 import org.mockito.Mockito.verify
 import org.mockito.kotlin.whenever
 import reactor.core.publisher.Mono
+import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraReactiveResultSetMapper
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraResultSetMapper
+import kotlin.reflect.full.findAnnotations
+import kotlin.reflect.jvm.jvmErasure
 
 class CassandraResultsTest : AbstractCassandraRepositoryTest() {
     @Test
@@ -168,6 +171,35 @@ class CassandraResultsTest : AbstractCassandraRepositoryTest() {
                 fun test1(test: String): Long
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
+    }
+
+    @Test
+    fun testTaggedResult() {
+        val mapper = Mockito.mock(CassandraResultSetMapper::class.java)
+        val repository = compile(
+            listOf(mapper), """
+            @Repository
+            interface TestRepository : CassandraRepository {
+                @Query("SELECT count(*) FROM test")
+                @Tag(TestRepository::class)
+                fun test(): Int
+            }
+            
+            """.trimIndent()
+        )
+        whenever(mapper.apply(ArgumentMatchers.any())).thenReturn(42)
+        val result = repository.invoke<Any>("test")
+        assertThat(result).isEqualTo(42)
+        verify(executor.mockSession).prepare("SELECT count(*) FROM test")
+        verify(executor.mockSession).execute(ArgumentMatchers.any(Statement::class.java))
+        verify(mapper).apply(executor.resultSet)
+
+        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(CassandraResultSetMapper::class)
+        val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
+        assertThat(tag).isNotNull()
+        assertThat(tag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("TestRepository")))
     }
 }

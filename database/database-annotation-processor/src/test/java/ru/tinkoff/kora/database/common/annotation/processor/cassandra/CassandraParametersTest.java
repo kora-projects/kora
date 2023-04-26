@@ -13,6 +13,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.TestContext;
 import ru.tinkoff.kora.application.graph.TypeRef;
+import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.cassandra.CassandraConnectionFactory;
 import ru.tinkoff.kora.database.cassandra.mapper.parameter.CassandraParameterColumnMapper;
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraReactiveResultSetMapper;
@@ -26,6 +27,7 @@ import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRec
 import java.util.List;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -375,5 +377,53 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
             """, """
             public record TestRecord(@Mapping(TestMapper.class) TestRecord f1, @Mapping(TestMapper.class) TestRecord f2){}
             """);
+    }
+
+    @Test
+    public void testEntityFieldMappingByTag() throws ClassNotFoundException {
+        var mapper = Mockito.mock(CassandraParameterColumnMapper.class);
+        var repository = compileCassandra(List.of(mapper), """
+            public record SomeEntity(long id, @Tag(SomeEntity.class) String value) {}
+                
+            """, """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:entity.id, :entity.value)")
+                void test(SomeEntity entity);
+            }
+            """);
+
+        repository.invoke("test", newObject("SomeEntity", 42L, "test-value"));
+
+        verify(executor.boundStatementBuilder).setLong(0, 42L);
+        verify(mapper).apply(any(), eq(1), eq("test-value"));
+
+        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        assertThat(mapperConstructorParameter.getType()).isEqualTo(CassandraParameterColumnMapper.class);
+        var tag = mapperConstructorParameter.getAnnotation(Tag.class);
+        assertThat(tag).isNotNull();
+        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("SomeEntity")});
+    }
+
+    @Test
+    public void testParameterMappingByTag() throws ClassNotFoundException {
+        var mapper = Mockito.mock(CassandraParameterColumnMapper.class);
+        var repository = compileCassandra(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                void test(@Tag(TestRepository.class) String value);
+            }
+            """);
+
+        repository.invoke("test", "test-value");
+
+        verify(mapper).apply(any(), eq(0), eq("test-value"));
+
+        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        assertThat(mapperConstructorParameter.getType()).isEqualTo(CassandraParameterColumnMapper.class);
+        var tag = mapperConstructorParameter.getAnnotation(Tag.class);
+        assertThat(tag).isNotNull();
+        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
     }
 }

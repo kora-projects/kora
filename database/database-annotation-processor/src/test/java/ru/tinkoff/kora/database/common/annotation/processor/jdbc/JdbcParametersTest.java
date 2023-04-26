@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.annotation.processor.common.TestContext;
 import ru.tinkoff.kora.application.graph.TypeRef;
+import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.common.annotation.processor.DbTestUtils;
 import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityJavaBean;
 import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRecord;
@@ -18,6 +19,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
 
@@ -182,6 +184,32 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
     }
 
     @Test
+    public void testEntityFieldMappingByTag() throws SQLException, ClassNotFoundException {
+        var mapper = Mockito.mock(JdbcParameterColumnMapper.class);
+        var repository = compileJdbc(List.of(mapper), """
+            public record SomeEntity(long id, @Tag(SomeEntity.class) String value) {}
+                
+            """, """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:entity.id, :entity.value)")
+                void test(SomeEntity entity);
+            }
+            """);
+
+        repository.invoke("test", newObject("SomeEntity", 42L, "test-value"));
+
+        verify(executor.preparedStatement).setLong(1, 42L);
+        verify(mapper).set(any(), eq(2), eq("test-value"));
+
+        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        assertThat(mapperConstructorParameter.getType()).isEqualTo(JdbcParameterColumnMapper.class);
+        var tag = mapperConstructorParameter.getAnnotation(Tag.class);
+        assertThat(tag).isNotNull();
+        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("SomeEntity")});
+    }
+
+    @Test
     public void testNativeParameterWithMapping() throws SQLException {
         var repository = compileJdbc(List.of(), """
             public final class StringToJsonbParameterMapper implements JdbcParameterColumnMapper<String> {
@@ -314,4 +342,27 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
             public record TestRecord(@Mapping(TestMapper.class) TestRecord f1, @Mapping(TestMapper.class) TestRecord f2){}
             """);
     }
+
+    @Test
+    public void testParameterMappingByTag() throws ClassNotFoundException, SQLException {
+        var mapper = Mockito.mock(JdbcParameterColumnMapper.class);
+        var repository = compileJdbc(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                void test(@Tag(TestRepository.class) String value);
+            }
+            """);
+
+        repository.invoke("test", "test-value");
+
+        verify(mapper).set(any(), eq(1), eq("test-value"));
+
+        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        assertThat(mapperConstructorParameter.getType()).isEqualTo(JdbcParameterColumnMapper.class);
+        var tag = mapperConstructorParameter.getAnnotation(Tag.class);
+        assertThat(tag).isNotNull();
+        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
+    }
+
 }

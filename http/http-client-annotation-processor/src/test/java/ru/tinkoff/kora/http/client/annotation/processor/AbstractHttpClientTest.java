@@ -119,7 +119,7 @@ public abstract class AbstractHttpClientTest extends AbstractAnnotationProcessor
             } else {
                 throw new RuntimeException(e.getTargetException());
             }
-        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+        } catch (InstantiationException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
     }

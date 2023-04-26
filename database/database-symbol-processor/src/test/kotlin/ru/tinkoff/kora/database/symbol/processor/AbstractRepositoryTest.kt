@@ -11,7 +11,7 @@ import kotlin.reflect.full.callSuspend
 import kotlin.reflect.full.memberFunctions
 
 abstract class AbstractRepositoryTest : AbstractSymbolProcessorTest() {
-    class TestRepository(private val repositoryClass: KClass<*>, private val repositoryObject: Any) {
+    class TestRepository(val repositoryClass: KClass<*>, private val repositoryObject: Any) {
         @SuppressWarnings("unchecked")
         fun <T> invoke(method: String, vararg args: Any?): T? {
             for (repositoryClassMethod in repositoryClass.memberFunctions) {

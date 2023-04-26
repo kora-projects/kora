@@ -5,6 +5,7 @@ import org.mockito.Mockito;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.TestContext;
 import ru.tinkoff.kora.application.graph.TypeRef;
+import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.common.annotation.processor.DbTestUtils;
 import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRecord;
 import ru.tinkoff.kora.database.common.annotation.processor.r2dbc.repository.AllowedParametersRepository;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
 
@@ -221,4 +223,54 @@ public class R2dbcParametersTest extends AbstractR2dbcRepositoryTest {
             public record TestRecord(@Mapping(TestMapper.class) TestRecord f1, @Mapping(TestMapper.class) TestRecord f2){}
             """);
     }
+
+    @Test
+    public void testEntityFieldMappingByTag() throws ClassNotFoundException {
+        var mapper = Mockito.mock(R2dbcParameterColumnMapper.class);
+        var repository = compileR2dbc(List.of(mapper), """
+            public record SomeEntity(long id, @Tag(SomeEntity.class) String value) {}
+                
+            """, """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:entity.id, :entity.value)")
+                Mono<Void> test(SomeEntity entity);
+            }
+            """);
+
+        repository.invoke("test", newObject("SomeEntity", 42L, "test-value"));
+
+        verify(executor.statement).bind(0, 42L);
+        verify(mapper).apply(any(), eq(1), eq("test-value"));
+
+        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        assertThat(mapperConstructorParameter.getType()).isEqualTo(R2dbcParameterColumnMapper.class);
+        var tag = mapperConstructorParameter.getAnnotation(Tag.class);
+        assertThat(tag).isNotNull();
+        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("SomeEntity")});
+    }
+
+    @Test
+    public void testParameterMappingByTag() throws ClassNotFoundException {
+        var mapper = Mockito.mock(R2dbcParameterColumnMapper.class);
+        var repository = compileR2dbc(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                void test(@Tag(TestRepository.class) String value);
+            }
+            """);
+
+        repository.invoke("test", "test-value");
+
+        verify(mapper).apply(any(), eq(0), eq("test-value"));
+
+        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        assertThat(mapperConstructorParameter.getType()).isEqualTo(R2dbcParameterColumnMapper.class);
+        var tag = mapperConstructorParameter.getAnnotation(Tag.class);
+        assertThat(tag).isNotNull();
+        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
+    }
+
+
 }

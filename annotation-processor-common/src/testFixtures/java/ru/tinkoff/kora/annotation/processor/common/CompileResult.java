@@ -34,8 +34,12 @@ public record CompileResult(String testPackage, List<Diagnostic<? extends JavaFi
         return this.manager.getFileForInput(StandardLocation.SOURCE_OUTPUT, this.testPackage, className);
     }
 
-    public Class<?> loadClass(String className) throws ClassNotFoundException {
-        return this.manager.getClassLoader(StandardLocation.CLASS_OUTPUT).loadClass(this.testPackage + "." + className);
+    public Class<?> loadClass(String className) {
+        try {
+            return this.manager.getClassLoader(StandardLocation.CLASS_OUTPUT).loadClass(this.testPackage + "." + className);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public RuntimeException compilationException() {

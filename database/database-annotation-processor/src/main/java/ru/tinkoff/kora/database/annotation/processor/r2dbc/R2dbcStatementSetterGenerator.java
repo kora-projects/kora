@@ -54,7 +54,7 @@ public class R2dbcStatementSetterGenerator {
                         }
                     }
                 } else if (mapping != null && mapping.mapperClass() != null) {
-                    var mapper = parameterMappers.get(mapping.mapperClass(), mapping.mapperTags());
+                    var mapper = parameterMappers.get(R2dbcTypes.PARAMETER_COLUMN_MAPPER, mapping, parameter.type());
                     for (var index : sqlParameter.sqlIndexes()) {
                         b.addCode("$L.apply(_stmt, $L, $L);\n", mapper, index, parameterName);
                     }
@@ -91,7 +91,7 @@ public class R2dbcStatementSetterGenerator {
                             }
                         }
                     } else if (mapping != null && mapping.mapperClass() != null) {
-                        var mapper = parameterMappers.get(mapping.mapperClass(), mapping.mapperTags());
+                        var mapper = parameterMappers.get(R2dbcTypes.PARAMETER_COLUMN_MAPPER, mapping, field.type());
                         for (var index : sqlParameter.sqlIndexes()) {
                             b.addCode("$L.apply(_stmt, $L, $L);\n", mapper, index, fieldAccessor);
                         }

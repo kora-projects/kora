@@ -67,7 +67,7 @@ public class AbstractExtensionTest extends AbstractAnnotationProcessorTest {
             var object = (Supplier<ApplicationGraphDraw>) appClass.getConstructor().newInstance();
             this.draw = object.get();
             this.graph = this.draw.init().block();
-        } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
+        } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
         return this.graph;
