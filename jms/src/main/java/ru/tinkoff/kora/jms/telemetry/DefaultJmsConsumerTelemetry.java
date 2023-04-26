@@ -5,6 +5,9 @@ import javax.jms.JMSException;
 import javax.jms.Message;
 
 public final class DefaultJmsConsumerTelemetry implements JmsConsumerTelemetry {
+    private static final JmsConsumerTelemetryContext NOOP_CTX = e -> {
+
+    };
     @Nullable
     private final JmsConsumerTracer tracing;
     @Nullable
@@ -20,13 +23,20 @@ public final class DefaultJmsConsumerTelemetry implements JmsConsumerTelemetry {
 
     @Override
     public JmsConsumerTelemetryContext get(Message message) throws JMSException {
+        var tracing = this.tracing;
+        var metrics = this.metrics;
+        var logger = this.logger;
+        if (tracing == null && metrics == null && (logger == null || !logger.isEnabled())) {
+            return DefaultJmsConsumerTelemetry.NOOP_CTX;
+        }
+
         var start = System.nanoTime();
-        var span = this.tracing == null ? null : this.tracing.get(message);
-        if (this.logger != null) this.logger.onMessageReceived(message);
+        var span = tracing == null ? null : tracing.get(message);
+        if (logger != null) logger.onMessageReceived(message);
         return e -> {
             var duration = System.nanoTime() - start;
-            if (this.logger != null) this.logger.onMessageProcessed(message, duration);
-            if (this.metrics != null) this.metrics.onMessageProcessed(message, duration);
+            if (logger != null) logger.onMessageProcessed(message, duration);
+            if (metrics != null) metrics.onMessageProcessed(message, duration);
             if (span != null) span.close(e);
         };
     }

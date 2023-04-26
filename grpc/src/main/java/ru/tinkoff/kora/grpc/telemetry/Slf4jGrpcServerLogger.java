@@ -14,6 +14,11 @@ public final class Slf4jGrpcServerLogger implements GrpcServerLogger {
     private static final Logger log = LoggerFactory.getLogger(GrpcServer.class);
 
     @Override
+    public boolean isEnabled() {
+        return log.isWarnEnabled();
+    }
+
+    @Override
     public void logEnd(String serviceName, String methodName, @Nullable Status status, @Nullable Throwable exception, long processingTime) {
         if (status != null && status.isOk()) {
             var marker = StructuredArgument.marker("grpcResponse", gen -> {

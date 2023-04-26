@@ -12,11 +12,18 @@ import javax.annotation.Nullable;
 public interface HttpServerLogger {
     Logger log = LoggerFactory.getLogger(HttpServer.class);
 
+    boolean isEnabled();
+
     void logStart(String operation);
 
     void logEnd(String operation, Integer statusCode, HttpResultCode resultCode, long processingTime, @Nullable Throwable exception);
 
     final class DefaultHttpServerLogger implements HttpServerLogger {
+        @Override
+        public boolean isEnabled() {
+            return log.isInfoEnabled();
+        }
+
         @Override
         public void logStart(String operation) {
             if (!log.isInfoEnabled()) {

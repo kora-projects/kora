@@ -50,8 +50,10 @@ public class Context {
         INSTANCE.set(this);
     }
 
-    public static void clear() {
-        INSTANCE.remove();
+    public static Context clear() {
+        var clean = new Context();
+        INSTANCE.set(clean);
+        return clean;
     }
 
     public <T> T set(Key<T> key, T value) {
