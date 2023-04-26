@@ -37,9 +37,8 @@ public interface CircuitBreaker {
      * @param <T>      type of result
      * @return result after {@link #tryAcquire()} was successful or throws {@link CallNotPermittedException}
      * @throws CallNotPermittedException when can't acquire
-     * @throws CallException             wraps callable exception if occurred
      */
-    <T> T accept(@Nonnull Callable<T> callable) throws CallNotPermittedException, CallException;
+    <T> T accept(@Nonnull Supplier<T> callable) throws CallNotPermittedException;
 
     /**
      * Try to acquire {@link CircuitBreaker} and return result from {@link Supplier} or result from {@link Supplier} fallback
@@ -49,10 +48,9 @@ public interface CircuitBreaker {
      * @param fallback to execute if {@link #tryAcquire()} failed
      * @param <T>      type of result
      * @return result after {@link #tryAcquire()} was successful or return fallback result
-     * @throws CallException         wraps callable exception if occurred
-     * @throws CallFallbackException wraps fallback callable exception if occurred
+     * @throws CallNotPermittedException when can't acquire
      */
-    <T> T accept(@Nonnull Callable<T> callable, @Nonnull Callable<T> fallback) throws CallFallbackException, CallException;
+    <T> T accept(@Nonnull Supplier<T> callable, @Nonnull Supplier<T> fallback) throws CallNotPermittedException;
 
     /**
      * Try to obtain a permission to execute a call. If a call is not permitted, the number of not

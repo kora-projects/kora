@@ -1,11 +1,13 @@
 package ru.tinkoff.kora.resilient.circuitbreaker.annotation;
 
 import ru.tinkoff.kora.common.AopAnnotation;
+import ru.tinkoff.kora.resilient.circuitbreaker.CallNotPermittedException;
 
 import java.lang.annotation.*;
 
 /**
  * Annotation allow applying {@link ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreaker} to a specific method
+ * When applied to method, method may throw {@link CallNotPermittedException} when all CircuitBreaker in OPEN state
  */
 @AopAnnotation
 @Documented

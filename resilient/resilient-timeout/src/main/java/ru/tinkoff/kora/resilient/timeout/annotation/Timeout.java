@@ -1,12 +1,14 @@
 package ru.tinkoff.kora.resilient.timeout.annotation;
 
 import ru.tinkoff.kora.common.AopAnnotation;
+import ru.tinkoff.kora.resilient.timeout.TimeoutException;
 import ru.tinkoff.kora.resilient.timeout.Timeouter;
 
 import java.lang.annotation.*;
 
 /**
  * Annotation allow applying {@link Timeouter} to a specific method
+ * When applied to method, method may throw {@link TimeoutException} when all timeout occured
  */
 @AopAnnotation
 @Documented

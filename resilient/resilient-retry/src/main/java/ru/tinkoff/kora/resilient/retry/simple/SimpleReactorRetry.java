@@ -14,7 +14,7 @@ import java.time.Duration;
 
 final class SimpleReactorRetry extends Retry {
 
-    private static final Logger logger = LoggerFactory.getLogger(SimpleRetryState.class);
+    private static final Logger logger = LoggerFactory.getLogger(SimpleReactorRetry.class);
 
     private final String name;
     private final long delayNanos;
@@ -49,14 +49,16 @@ final class SimpleReactorRetry extends Retry {
                 }
 
                 if (signal.totalRetries() >= attempts) {
-                    logger.trace("RetryReactor '{}' exhausted all '{}' attempts", name, signal.totalRetries());
+                    logger.debug("RetryReactor '{}' exhausted all '{}' attempts", name, signal.totalRetries());
                     metrics.recordExhaustedAttempts(name, attempts);
-                    return Mono.error(new RetryAttemptException(attempts));
+                    final RetryAttemptException retryAttemptException = new RetryAttemptException(attempts, currentFailure);
+                    retryAttemptException.addSuppressed(currentFailure);
+                    return Mono.error(retryAttemptException);
                 }
 
                 final long nextDelayNanos = delayNanos + (delayStepNanos * (signal.totalRetries() - 1));
                 final Duration delayDuration = Duration.ofNanos(nextDelayNanos);
-                logger.trace("RetryState '{}' initiating '{}' retry for '{}' due to throwable: {}",
+                logger.trace("RetryState '{}' initiating '{}' retry for '{}' due to exception: {}",
                     name, signal.totalRetries(), delayDuration, currentFailure.getClass().getCanonicalName());
 
                 metrics.recordAttempt(name, nextDelayNanos);

@@ -26,7 +26,7 @@ final class SimpleFallbacker implements Fallbacker {
     @Override
     public boolean canFallback(Throwable throwable) {
         if (failurePredicate.test(throwable)) {
-            logger.trace("Initiating Fallback '{}' due to: {}", name, throwable.getClass().getCanonicalName());
+            logger.debug("Initiating Fallback '{}' due to: {}", name, throwable.getClass().getCanonicalName());
             metrics.recordExecute(name, throwable);
             return true;
         } else {

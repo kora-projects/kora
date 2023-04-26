@@ -2,13 +2,16 @@ package ru.tinkoff.kora.resilient.circuitbreaker.simple;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.tinkoff.kora.resilient.circuitbreaker.*;
+import ru.tinkoff.kora.resilient.circuitbreaker.CallNotPermittedException;
+import ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreaker;
+import ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreakerFailurePredicate;
 import ru.tinkoff.kora.resilient.circuitbreaker.telemetry.CircuitBreakerMetrics;
 
 import javax.annotation.Nonnull;
 import java.time.Clock;
-import java.util.concurrent.Callable;
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
 /**
  * --------------------------------------------------------------------------------------------------
@@ -64,19 +67,19 @@ record SimpleCircuitBreaker(
     }
 
     @Override
-    public <T> T accept(@Nonnull Callable<T> callable) {
+    public <T> T accept(@Nonnull Supplier<T> callable) {
         return internalAccept(callable, null);
     }
 
     @Override
-    public <T> T accept(@Nonnull Callable<T> callable, @Nonnull Callable<T> fallback) {
+    public <T> T accept(@Nonnull Supplier<T> callable, @Nonnull Supplier<T> fallback) {
         return internalAccept(callable, fallback);
     }
 
-    private <T> T internalAccept(@Nonnull Callable<T> supplier, Callable<T> fallback) {
+    private <T> T internalAccept(@Nonnull Supplier<T> supplier, Supplier<T> fallback) {
         try {
             acquire();
-            var t = supplier.call();
+            var t = supplier.get();
             releaseOnSuccess();
             return t;
         } catch (CallNotPermittedException e) {
@@ -84,14 +87,10 @@ record SimpleCircuitBreaker(
                 throw e;
             }
 
-            try {
-                return fallback.call();
-            } catch (Exception ex) {
-                throw new CallFallbackException(ex, name);
-            }
+            return fallback.get();
         } catch (Exception e) {
             releaseOnError(e);
-            throw new CallException(e, name);
+            throw e;
         }
     }
 
@@ -135,8 +134,7 @@ record SimpleCircuitBreaker(
     @Override
     public void acquire() throws CallNotPermittedException {
         if (!tryAcquire()) {
-            throw new CallNotPermittedException("Call Is Not Permitted due to CircuitBreaker named '"
-                + name + "' been in " + getState(state.get()) + " state", name);
+            throw new CallNotPermittedException(getState(state.get()), name);
         }
     }
 
@@ -145,29 +143,42 @@ record SimpleCircuitBreaker(
         final long value = state.get();
         final State state = getState(value);
         if (state == State.CLOSED) {
+            logger.trace("CircuitBreaker '{}' acquired", name);
             return true;
         }
 
         if (state == State.HALF_OPEN) {
             final short acquired = countHalfOpenAcquired(value);
             if (acquired < config.permittedCallsInHalfOpenState()) {
-                return this.state.compareAndSet(value, value + 1) || tryAcquire();
+                final boolean isAcquired = this.state.compareAndSet(value, value + 1);
+                if (isAcquired) {
+                    logger.trace("CircuitBreaker '{}' acquired", name);
+                } else {
+                    return tryAcquire();
+                }
             } else {
+                logger.trace("CircuitBreaker '{}' can't be acquired in HALF_OPEN state", name);
                 return false;
             }
         }
 
         // go to half open
         final long currentTimeInMillis = clock.millis();
-        if (currentTimeInMillis - value >= waitDurationInOpenStateInMillis) {
+        final long beenInOpenState = currentTimeInMillis - value;
+        if (beenInOpenState >= waitDurationInOpenStateInMillis) {
             if (this.state.compareAndSet(value, HALF_OPEN_STATE + 1)) {
                 onStateChange(State.OPEN, State.HALF_OPEN);
+                logger.trace("CircuitBreaker '{}' acquired", name);
                 return true;
             } else {
                 // prob concurrently switched to half open and have to reacquire
                 return tryAcquire();
             }
         } else {
+            if (logger.isTraceEnabled()) {
+                logger.trace("CircuitBreaker '{}' can't be acquired being in OPEN state for '{}' when require minimum '{}'",
+                    name, Duration.ofMillis(beenInOpenState), Duration.ofMillis(waitDurationInOpenStateInMillis));
+            }
             return false;
         }
     }
@@ -189,6 +200,8 @@ record SimpleCircuitBreaker(
         if (prevState != newState) {
             onStateChange(prevState, newState);
         }
+
+        logger.trace("CircuitBreaker '{}' released on success", name);
     }
 
     private long calculateStateOnSuccess(long currentState) {
@@ -242,6 +255,8 @@ record SimpleCircuitBreaker(
         if (prevState != newState) {
             onStateChange(prevState, newState);
         }
+
+        logger.trace("CircuitBreaker '{}' released on error: {}", name, throwable.getClass().getCanonicalName());
     }
 
     private long calculateStateOnFailure(long currentState) {

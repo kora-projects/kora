@@ -9,6 +9,7 @@ import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -65,7 +66,7 @@ public class RetryableKoraAspect implements KoraAspect {
 
     private CodeBlock buildBodySync(ExecutableElement method, String superCall, String fieldRetry) {
         var builder = CodeBlock.builder()
-            .addStatement("var _cause = (Exception) null")
+            .addStatement("var _suppressed = new $T<Exception>();", ArrayList.class)
             .beginControlFlow("try (var _state = $L.asState())", fieldRetry)
             .beginControlFlow("while (true)")
             .beginControlFlow("try");
@@ -80,21 +81,22 @@ public class RetryableKoraAspect implements KoraAspect {
         builder.nextControlFlow("catch (Exception _e)");
         builder.addStatement("var _status = _state.onException(_e)");
         builder.beginControlFlow("if ($T.REJECTED == _status)", RETRY_STATUS)
+            .addStatement("""
+                for (var _exception : _suppressed) {
+                    _e.addSuppressed(_exception);
+                }
+                """)
             .addStatement("throw _e")
             .nextControlFlow("else if($T.ACCEPTED == _status)", RETRY_STATUS)
             .add("""
-                if (_cause == null) {
-                    _cause = _e;
-                } else {
-                    _cause.addSuppressed(_e);
-                }
+                _suppressed.add(_e);
                 _state.doDelay();
                 """)
             .nextControlFlow("else if($T.EXHAUSTED  == _status)", RETRY_STATUS)
             .add("""
-                var _exhaustedException = new $T(_state.getAttempts());
-                if (_cause != null) {
-                    _exhaustedException.addSuppressed(_cause);
+                var _exhaustedException = new $T(_state.getAttempts(), _e);
+                for (var _exception : _suppressed) {
+                    _exhaustedException.addSuppressed(_exception);
                 }
                 throw _exhaustedException;
                 """, RETRY_EXCEPTION)

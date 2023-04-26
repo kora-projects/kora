@@ -74,7 +74,7 @@ class RetryableKoraAspect(val resolver: Resolver) : KoraAspect {
         return CodeBlock.builder()
             .add("return %L.asState()", fieldRetrier).indent().add("\n")
             .controlFlow(".use { _state ->", fieldRetrier) {
-                addStatement("var _cause: Exception? = null")
+                addStatement("val _suppressed = %T<Exception>();", ArrayList::class)
                 addStatement("lateinit var _result: %T", method.returnType?.resolve()?.toTypeName())
                 controlFlow("while (true)") {
                     controlFlow("try") {
@@ -83,18 +83,12 @@ class RetryableKoraAspect(val resolver: Resolver) : KoraAspect {
                         nextControlFlow("catch (_e: Exception)")
                         addStatement("val _status = _state.onException(_e)")
                         controlFlow("when (_status)") {
-                            addStatement("%T.REJECTED -> throw _e", MEMBER_RETRY_STATUS)
-                            controlFlow("%T.ACCEPTED ->", MEMBER_RETRY_STATUS) {
-                                add(
-                                    """
-                            if (_cause == null) {
-                                _cause = _e
-                            } else {
-                                _cause.addSuppressed(_e)
+                            controlFlow("%T.REJECTED ->", MEMBER_RETRY_STATUS) {
+                                addStatement("_suppressed.forEach { _e.addSuppressed(it) }")
+                                addStatement("throw _e")
                             }
-                            
-                            """.trimIndent()
-                                )
+                            controlFlow("%T.ACCEPTED ->", MEMBER_RETRY_STATUS) {
+                                addStatement("_suppressed.add(_e)")
                                 if (method.isSuspend()) {
                                     addStatement("%M(_state.delayNanos.%M)", MEMBER_DELAY, MEMBER_TIME)
                                 } else {
@@ -104,13 +98,11 @@ class RetryableKoraAspect(val resolver: Resolver) : KoraAspect {
                             controlFlow("%T.EXHAUSTED ->", MEMBER_RETRY_STATUS) {
                                 add(
                                     """
-                            var _exhaustedException = %M(_state.getAttempts())
-                            if (_cause != null) {
-                                _exhaustedException.addSuppressed(_cause)
-                            }
-                            throw _exhaustedException
-                            
-                            """.trimIndent(), MEMBER_RETRY_EXCEPTION
+                                    val _exhaustedException = %M(_state.getAttempts(), _e)
+                                    _suppressed.forEach { _e.addSuppressed(it) }
+                                    throw _exhaustedException
+                                    
+                                    """.trimIndent(), MEMBER_RETRY_EXCEPTION
                                 )
                             }
                         }
@@ -136,11 +128,11 @@ class RetryableKoraAspect(val resolver: Resolver) : KoraAspect {
                             addStatement("true")
                         }
                         controlFlow("%T.EXHAUSTED ->", MEMBER_RETRY_STATUS) {
-                            addStatement("throw %M(_state.getAttempts())", MEMBER_RETRY_EXCEPTION)
+                            addStatement("throw %M(_state.getAttempts(), _cause)", MEMBER_RETRY_EXCEPTION)
                         }
                     }
                 }
-                unindent().add("\n").add(")\n")
+                unindent().add(")\n")
             }
         }.build()
     }
