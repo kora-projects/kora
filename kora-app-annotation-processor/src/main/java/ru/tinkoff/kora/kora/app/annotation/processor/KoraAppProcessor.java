@@ -559,11 +559,20 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 mb.addCode("return new $T(", component);
                 for (int i = 0; i < constructor.getParameters().size(); i++) {
                     var parameter = constructor.getParameters().get(i);
-                    mb.addParameter(ParameterSpec.get(parameter));
+                    var pb = ParameterSpec.get(parameter).toBuilder();
+                    var tag = TagUtils.parseTagValue(parameter);
+                    if (!tag.isEmpty()) {
+                        pb.addAnnotation(TagUtils.makeAnnotationSpec(tag));
+                    }
+                    mb.addParameter(pb.build());
                     if (i > 0) {
                         mb.addCode(", ");
                     }
                     mb.addCode("$L", parameter);
+                }
+                var tag = TagUtils.parseTagValue(component);
+                if (!tag.isEmpty()) {
+                    mb.addAnnotation(TagUtils.makeAnnotationSpec(tag));
                 }
                 mb.addCode(");\n");
                 b.addMethod(mb.build());
@@ -589,15 +598,26 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                     mb.addCode("return $L.$L(", moduleName, method.getSimpleName());
                     for (int i = 0; i < method.getParameters().size(); i++) {
                         var parameter = method.getParameters().get(i);
-                        mb.addParameter(ParameterSpec.get(parameter));
+                        var pb = ParameterSpec.get(parameter).toBuilder();
+                        var tag = TagUtils.parseTagValue(parameter);
+                        if (!tag.isEmpty()) {
+                            pb.addAnnotation(TagUtils.makeAnnotationSpec(tag));
+                        }
+                        mb.addParameter(pb.build());
                         if (i > 0) {
                             mb.addCode(", ");
                         }
                         mb.addCode("$L", parameter);
                     }
+                    var tag = TagUtils.parseTagValue(method);
+                    if (!tag.isEmpty()) {
+                        mb.addAnnotation(TagUtils.makeAnnotationSpec(tag));
+                    }
+                    if (AnnotationUtils.findAnnotation(method, CommonClassNames.defaultComponent) != null) {
+                        mb.addAnnotation(CommonClassNames.defaultComponent);
+                    }
                     mb.addCode(");\n");
                     b.addMethod(mb.build());
-
                 }
             }
 

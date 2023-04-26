@@ -12,7 +12,7 @@ public interface AppWithAppPart {
     }
 
     @Tag(Class1.class)
-    default Class1 class1Tag(Class2 class2) {
+    default Class1 class1Tag(@Tag(Class1.class) Class2 class2) {
         return new Class1();
     }
 
@@ -26,6 +26,11 @@ public interface AppWithAppPart {
     @ru.tinkoff.kora.common.Module
     interface Module {
         default Class2 class2() {
+            return new Class2();
+        }
+
+        @Tag(Class1.class)
+        default Class2 class2Tagged() {
             return new Class2();
         }
     }
