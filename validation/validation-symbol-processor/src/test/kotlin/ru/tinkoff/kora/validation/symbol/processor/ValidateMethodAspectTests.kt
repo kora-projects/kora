@@ -3,6 +3,7 @@ package ru.tinkoff.kora.validation.symbol.processor
 import com.google.devtools.ksp.KspExperimental
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.function.ThrowingSupplier
@@ -28,17 +29,17 @@ class ValidateMethodAspectTests : ValidateRunner() {
         val service = getValidateSync()
 
         // then
-        assertThrows(ViolationException::class.java) {
+        val e1 = assertThrows(ViolationException::class.java) {
             service.validatedInput(
                 0, "1", ValidTaz("1")
             )
         }
-        assertThrows(ViolationException::class.java) {
+        val e2 = assertThrows(ViolationException::class.java) {
             service.validatedInput(
                 1, "", ValidTaz("1")
             )
         }
-        assertThrows(ViolationException::class.java) {
+        val e3 = assertThrows(ViolationException::class.java) {
             service.validatedInput(
                 1, "1", ValidTaz("A")
             )
@@ -47,6 +48,10 @@ class ValidateMethodAspectTests : ValidateRunner() {
             ViolationException::class.java
         ) { service.validatedInput(0, "", ValidTaz("A")) }
         assertEquals(3, allViolations.violations.size)
+        Assertions.assertThat(e1.message).contains("Path 'c1' violation")
+        Assertions.assertThat(e2.message).contains("Path 'c2' violation")
+        Assertions.assertThat(e3.message).contains("Path 'c3.number' violation")
+        Assertions.assertThat(allViolations.message).contains("Path 'c1' violation", "Path 'c2' violation", "Path 'c3.number' violation")
     }
 
     @Test

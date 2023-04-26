@@ -106,7 +106,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             .orElse(false);
 
         builder
-            .addStatement("var _returnValueViolations = new $T<$T>($L)", ArrayList.class, VIOLATION_TYPE, constraints.size() + validates.size() + 1)
+            .addStatement("var _returnValueViolations = new $T<$T>()", ArrayList.class, VIOLATION_TYPE)
             .addStatement("var _returnValueContext = $T.builder().failFast($L).build()", CONTEXT_TYPE, isFailFast);
 
         for (var constraint : constraints) {
@@ -168,7 +168,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             .orElse(false);
 
         var builder = CodeBlock.builder()
-            .addStatement("var _argumentsViolations = new $T<$T>($L)", ArrayList.class, VIOLATION_TYPE, method.getParameters().size() * 2)
+            .addStatement("var _argumentsViolations = new $T<$T>()", ArrayList.class, VIOLATION_TYPE)
             .addStatement("var _argumentsContext = $T.builder().failFast($L).build()", CONTEXT_TYPE, isFailFast);
 
         for (var parameter : method.getParameters()) {
@@ -192,10 +192,12 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                     var constraintField = aspectContext.fieldFactory().constructorInitialized(constraintType, createExec);
                     if (isNullable && !isPrimitive) {
                         builder.beginControlFlow("if($N != null)", parameter.getSimpleName());
-                        builder.addStatement("_argumentsViolations.addAll($N.validate($N, _argumentsContext))", constraintField, parameter.getSimpleName());
+                        builder.addStatement("_argumentsViolations.addAll($N.validate($N, _argumentsContext.addPath($S)))",
+                            constraintField, parameter.getSimpleName(), parameter.getSimpleName());
                         builder.endControlFlow();
                     } else {
-                        builder.addStatement("_argumentsViolations.addAll($N.validate($N, _argumentsContext))", constraintField, parameter.getSimpleName());
+                        builder.addStatement("_argumentsViolations.addAll($N.validate($N, _argumentsContext.addPath($S)))",
+                            constraintField, parameter.getSimpleName(), parameter.getSimpleName());
                     }
 
                     if (isFailFast) {
@@ -211,10 +213,12 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                     var validatorField = aspectContext.fieldFactory().constructorParam(validatorType, List.of());
                     if (isNullable && !isPrimitive) {
                         builder.beginControlFlow("if($N != null)", parameter.getSimpleName());
-                        builder.addStatement("_argumentsViolations.addAll($N.validate($N, _argumentsContext))", validatorField, parameter.getSimpleName());
+                        builder.addStatement("_argumentsViolations.addAll($N.validate($N, _argumentsContext.addPath($S)))",
+                            validatorField, parameter.getSimpleName(), parameter.getSimpleName());
                         builder.endControlFlow();
                     } else {
-                        builder.addStatement("_argumentsViolations.addAll($N.validate($N, _argumentsContext))", validatorField, parameter.getSimpleName());
+                        builder.addStatement("_argumentsViolations.addAll($N.validate($N, _argumentsContext.addPath($S)))",
+                            validatorField, parameter.getSimpleName(), parameter.getSimpleName());
                     }
 
                     if (isFailFast) {

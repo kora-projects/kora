@@ -36,7 +36,7 @@ class ValidAnnotationProcessorTests extends ValidRunner {
     void validateRangeFail() {
         // given
         var service = getFooValidator();
-        var value = new ValidFoo("1", 1111L, OffsetDateTime.now(), null);
+        var value = new ValidFoo("1", -1111L, OffsetDateTime.now(), null);
 
         // then
         final List<Violation> violations = service.validate(value);

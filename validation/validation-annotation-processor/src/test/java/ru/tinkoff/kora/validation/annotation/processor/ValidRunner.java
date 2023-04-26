@@ -19,9 +19,10 @@ public abstract class ValidRunner extends Assertions implements ValidatorModule 
         try {
             final ClassLoader classLoader = getClassLoader();
             final Class<?> clazz = classLoader.loadClass("ru.tinkoff.kora.validation.annotation.processor.testdata.$ValidFoo_Validator");
-            return (Validator<ValidFoo>) clazz.getConstructors()[0].newInstance(notEmptyStringConstraintFactory(),
-                patternStringConstraintFactory(),
+            return (Validator<ValidFoo>) clazz.getConstructors()[0].newInstance(
+                notEmptyStringConstraintFactory(),
                 rangeLongConstraintFactory(),
+                patternStringConstraintFactory(),
                 getBarValidator());
         } catch (RuntimeException e) {
             throw e;
@@ -49,7 +50,9 @@ public abstract class ValidRunner extends Assertions implements ValidatorModule 
         try {
             final ClassLoader classLoader = getClassLoader();
             final Class<?> clazz = classLoader.loadClass("ru.tinkoff.kora.validation.annotation.processor.testdata.$ValidTaz_Validator");
-            return (Validator<ValidTaz>) clazz.getConstructors()[0].newInstance(patternStringConstraintFactory());
+            return (Validator<ValidTaz>) clazz.getConstructors()[0].newInstance(
+                patternStringConstraintFactory()
+            );
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {

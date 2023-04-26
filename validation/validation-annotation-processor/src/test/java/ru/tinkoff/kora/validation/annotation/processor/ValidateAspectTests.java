@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.validation.annotation.processor;
 
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import ru.tinkoff.kora.validation.annotation.processor.testdata.ValidTaz;
@@ -26,11 +27,15 @@ class ValidateAspectTests extends ValidateRunner {
         var service = getValidateSync();
 
         // then
-        assertThrows(ViolationException.class, () -> service.validatedInput(0, "1", new ValidTaz("1")));
-        assertThrows(ViolationException.class, () -> service.validatedInput(1, "", new ValidTaz("1")));
-        assertThrows(ViolationException.class, () -> service.validatedInput(1, "1", new ValidTaz("A")));
+        var e1 = assertThrows(ViolationException.class, () -> service.validatedInput(0, "1", new ValidTaz("1")));
+        var e2 = assertThrows(ViolationException.class, () -> service.validatedInput(1, "", new ValidTaz("1")));
+        var e3 = assertThrows(ViolationException.class, () -> service.validatedInput(1, "1", new ValidTaz("A")));
         var allViolations = assertThrows(ViolationException.class, () -> service.validatedInput(0, "", new ValidTaz("A")));
         assertEquals(3, allViolations.getViolations().size());
+        Assertions.assertThat(e1.getMessage()).contains("Path 'c1' violation");
+        Assertions.assertThat(e2.getMessage()).contains("Path 'c2' violation");
+        Assertions.assertThat(e3.getMessage()).contains("Path 'c3.number' violation");
+        Assertions.assertThat(allViolations.getMessage()).contains("Path 'c1' violation", "Path 'c2' violation", "Path 'c3.number' violation");
     }
 
     @Test

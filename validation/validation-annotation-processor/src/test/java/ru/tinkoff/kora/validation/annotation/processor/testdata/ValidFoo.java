@@ -10,7 +10,7 @@ import java.time.OffsetDateTime;
 
 @Valid
 public record ValidFoo(@NotEmpty @Pattern("\\d+") String number,
-                       @Range(from = 1, to = 10, boundary = Range.Boundary.INCLUSIVE_EXCLUSIVE) long code,
+                       @Range(from = 1L, to = Long.MAX_VALUE, boundary = Range.Boundary.INCLUSIVE_EXCLUSIVE) long code,
                        @Nullable OffsetDateTime timestamp,
                        @Nullable @Valid ValidBar bar) {
 
