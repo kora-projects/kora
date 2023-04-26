@@ -21,12 +21,10 @@ import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
 import ru.tinkoff.kora.kora.app.ksp.declaration.ModuleDeclaration
 import ru.tinkoff.kora.kora.app.ksp.exception.NewRoundException
 import ru.tinkoff.kora.kora.app.ksp.interceptor.ComponentInterceptors
+import ru.tinkoff.kora.ksp.common.*
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
-import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
-import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
-import ru.tinkoff.kora.ksp.common.visitClass
 import java.io.IOException
 import java.util.*
 import java.util.concurrent.atomic.AtomicReference
@@ -356,11 +354,20 @@ class KoraAppProcessor(
                 mb.addCode("return %T(", component.toClassName())
                 for (i in constructor.parameters.indices) {
                     val parameter = constructor.parameters[i]
-                    mb.addParameter(parameter.name!!.asString(), parameter.type.toTypeName())
+                    val tag = parameter.parseTags()
+                    val ps = ParameterSpec.builder(parameter.name!!.asString(), parameter.type.toTypeName())
+                    if (tag.isNotEmpty()) {
+                        ps.addAnnotation(tag.makeTagAnnotationSpec())
+                    }
+                    mb.addParameter(ps.build())
                     if (i > 0) {
                         mb.addCode(", ")
                     }
                     mb.addCode("%N", parameter)
+                }
+                val tag = component.parseTags()
+                if (tag.isNotEmpty()) {
+                    mb.addAnnotation(tag.makeTagAnnotationSpec())
                 }
                 mb.addCode(")\n")
                 b.addFunction(mb.build())
@@ -377,11 +384,23 @@ class KoraAppProcessor(
                     mb.addCode("return %N.%N(", moduleName, component.simpleName.asString())
                     for (i in component.parameters.indices) {
                         val parameter = component.parameters[i]
-                        mb.addParameter(parameter.name!!.asString(), parameter.type.toTypeName())
+                        val tag = parameter.parseTags()
+                        val ps = ParameterSpec.builder(parameter.name!!.asString(), parameter.type.toTypeName())
+                        if (tag.isNotEmpty()) {
+                            ps.addAnnotation(tag.makeTagAnnotationSpec())
+                        }
+                        mb.addParameter(ps.build())
                         if (i > 0) {
                             mb.addCode(", ")
                         }
                         mb.addCode("%N", parameter.name?.asString())
+                    }
+                    val tag = component.parseTags()
+                    if (tag.isNotEmpty()) {
+                        mb.addAnnotation(tag.makeTagAnnotationSpec())
+                    }
+                    if (component.findAnnotation(CommonClassNames.defaultComponent) != null) {
+                        mb.addAnnotation(CommonClassNames.defaultComponent)
                     }
                     mb.addCode(")\n")
                     b.addFunction(mb.build())
