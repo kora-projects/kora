@@ -26,7 +26,10 @@ record SimpleRetryState(
 
     @Override
     public int getAttempts() {
-        return attempts.get();
+        final int usedAttempts = attempts.get();
+        return (usedAttempts > attemptsMax)
+            ? attemptsMax
+            : usedAttempts;
     }
 
     @Override
@@ -38,14 +41,14 @@ record SimpleRetryState(
     @Override
     public RetryStatus onException(@Nonnull Throwable throwable) {
         if (!failurePredicate.test(throwable)) {
-            logger.trace("RetryState '{}' rejected throwable: {}", name, throwable.getClass().getCanonicalName());
+            logger.trace("RetryState '{}' rejected exception: {}", name, throwable.getClass().getCanonicalName());
             return RetryStatus.REJECTED;
         }
 
         var attemptsUsed = attempts.incrementAndGet();
         if (attemptsUsed <= attemptsMax) {
             if (logger.isTraceEnabled()) {
-                logger.trace("RetryState '{}' initiating '{}' retry for '{}' due to throwable: {}",
+                logger.trace("RetryState '{}' initiating '{}' retry attempt in '{}' due to exception: {}",
                     name, attemptsUsed, Duration.ofNanos(getDelayNanos()), throwable.getClass().getCanonicalName());
             }
 
@@ -65,10 +68,10 @@ record SimpleRetryState(
     public void close() {
         var attemptsUsed = attempts.get();
         if (attemptsUsed > attemptsMax) {
-            logger.trace("RetryState '{}' exhausted all '{}' attempts", name, attemptsMax);
+            logger.debug("RetryState '{}' exhausted all '{}' retry attempts", name, attemptsMax);
             metrics.recordExhaustedAttempts(name, attemptsMax);
         } else if (attemptsUsed > 0) {
-            logger.trace("RetryState '{}' success after '{}' failed attempts", name, attemptsUsed);
+            logger.trace("RetryState '{}' success after '{}' failed retry attempts", name, attemptsUsed);
             for (int i = 1; i < attemptsUsed; i++) {
                 final long attemptDelay = delayNanos + delayStepNanos * i;
                 metrics.recordAttempt(name, attemptDelay);

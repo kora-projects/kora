@@ -46,9 +46,25 @@ public interface Retrier {
     @Nonnull
     Retry asReactor();
 
+    /**
+     * @param runnable to execute for successful completion
+     * @throws RetryAttemptException if exhausted all attempts
+     */
     void retry(@Nonnull Runnable runnable) throws RetryAttemptException;
 
+    /**
+     * @param supplier to use for value extraction
+     * @param <T> type of value
+     * @return value is succeeded
+     * @throws RetryAttemptException if exhausted all attempts
+     */
     <T> T retry(@Nonnull Supplier<T> supplier) throws RetryAttemptException;
 
-    <T> T retry(@Nonnull Supplier<T> supplier, Supplier<T> fallback) throws RetryAttemptException;
+    /**
+     * @param supplier to use for value extraction
+     * @param fallback to use for value if failed to retrieve value from supplier
+     * @param <T> type of value
+     * @return value is succeeded
+     */
+    <T> T retry(@Nonnull Supplier<T> supplier, Supplier<T> fallback);
 }

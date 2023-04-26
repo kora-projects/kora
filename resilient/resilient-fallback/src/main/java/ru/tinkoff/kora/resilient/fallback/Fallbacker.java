@@ -6,7 +6,7 @@ import java.util.function.Supplier;
 
 public interface Fallbacker {
 
-    boolean canFallback(Throwable throwable);
+    boolean canFallback(@Nonnull Throwable throwable);
 
     void fallback(@Nonnull Runnable runnable, @Nonnull Runnable fallback);
 

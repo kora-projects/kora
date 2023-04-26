@@ -8,10 +8,13 @@ import ru.tinkoff.kora.resilient.retry.telemetry.RetryMetrics;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 final class SimpleRetrier implements Retrier {
+
     private final String name;
     private final long delayNanos;
     private final long delayStepNanos;
@@ -68,7 +71,7 @@ final class SimpleRetrier implements Retrier {
     }
 
     private <T> T internalRetry(Supplier<T> consumer, @Nullable Supplier<T> fallback) {
-        var cause = (Exception) null;
+        final List<Exception> suppressed = new ArrayList<>();
         try (var state = asState()) {
             while (true) {
                 try {
@@ -76,31 +79,32 @@ final class SimpleRetrier implements Retrier {
                 } catch (Exception e) {
                     var status = state.onException(e);
                     if (status == RetryState.RetryStatus.REJECTED) {
+                        for (Exception exception : suppressed) {
+                            e.addSuppressed(exception);
+                        }
+
                         throw e;
                     } else if (status == RetryState.RetryStatus.ACCEPTED) {
-                        if (cause == null) {
-                            cause = e;
-                        } else {
-                            cause.addSuppressed(e);
-                        }
+                        suppressed.add(e);
                         state.doDelay();
                     } else if (status == RetryState.RetryStatus.EXHAUSTED) {
                         if (fallback != null) {
                             try {
                                 return fallback.get();
                             } catch (Exception ex) {
-                                if (cause != null) {
-                                    ex.addSuppressed(cause);
+                                for (Exception exception : suppressed) {
+                                    ex.addSuppressed(exception);
                                 }
                                 throw ex;
                             }
                         }
 
-                        var exhaustedException = new RetryAttemptException(state.getAttempts());
-                        if (cause != null) {
-                            exhaustedException.addSuppressed(cause);
+                        final RetryAttemptException retryAttemptException = new RetryAttemptException(attempts, e);
+                        for (Exception exception : suppressed) {
+                            retryAttemptException.addSuppressed(exception);
                         }
-                        throw exhaustedException;
+
+                        throw retryAttemptException;
                     }
                 }
             }

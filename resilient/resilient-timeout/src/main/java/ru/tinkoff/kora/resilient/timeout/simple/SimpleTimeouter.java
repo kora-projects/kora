@@ -33,12 +33,17 @@ record SimpleTimeouter(String name, long delayMaxNanos, TimeoutMetrics metrics, 
 
     private <T> T internalExecute(Function<ExecutorService, Future<T>> consumer) throws TimeoutException {
         try {
+            if(logger.isTraceEnabled()) {
+                final Duration timeout = timeout();
+                logger.trace("SimpleTimeouter '{}' starting await for {}", name, timeout);
+            }
+
             return consumer.apply(executor).get(delayMaxNanos, TimeUnit.NANOSECONDS);
         } catch (ExecutionException e) {
             SimpleTimeouterUtils.doThrow(e.getCause());
         } catch (java.util.concurrent.TimeoutException e) {
             final Duration timeout = timeout();
-            logger.trace("SimpleTimeouter '{}' registered timeout after: {}", name, timeout);
+            logger.debug("SimpleTimeouter '{}' registered timeout after: {}", name, timeout);
             metrics.recordTimeout(name, delayMaxNanos);
             throw new TimeoutException("Timeout exceeded " + timeout);
         } catch (InterruptedException e) {
