@@ -6,6 +6,7 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.annotation.processor.common.TestContext;
 import ru.tinkoff.kora.application.graph.TypeRef;
+import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.common.annotation.processor.DbTestUtils;
 import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRecord;
 import ru.tinkoff.kora.database.common.annotation.processor.vertx.repository.AllowedParametersRepository;
@@ -16,6 +17,7 @@ import ru.tinkoff.kora.database.vertx.mapper.result.VertxRowSetMapper;
 import java.util.List;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -210,4 +212,52 @@ public class VertxParametersTest extends AbstractVertxRepositoryTest {
             public record TestRecord(@Mapping(TestMapper.class) TestRecord f1, @Mapping(TestMapper.class) TestRecord f2){}
             """);
     }
+
+    @Test
+    public void testEntityFieldMappingByTag() throws ClassNotFoundException {
+        var mapper = Mockito.mock(VertxParameterColumnMapper.class);
+        var repository = compileVertx(List.of(mapper), """
+            public record SomeEntity(long id, @Tag(SomeEntity.class) String value) {}
+                
+            """, """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:entity.id, :entity.value)")
+                void test(SomeEntity entity);
+            }
+            """);
+
+        repository.invoke("test", newObject("SomeEntity", 42L, "test-value"));
+
+        verify(mapper).apply("test-value");
+
+        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        assertThat(mapperConstructorParameter.getType()).isEqualTo(VertxParameterColumnMapper.class);
+        var tag = mapperConstructorParameter.getAnnotation(Tag.class);
+        assertThat(tag).isNotNull();
+        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("SomeEntity")});
+    }
+
+    @Test
+    public void testParameterMappingByTag() throws ClassNotFoundException {
+        var mapper = Mockito.mock(VertxParameterColumnMapper.class);
+        var repository = compileVertx(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                void test(@Tag(TestRepository.class) String value);
+            }
+            """);
+
+        repository.invoke("test", "test-value");
+
+        verify(mapper).apply("test-value");
+
+        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        assertThat(mapperConstructorParameter.getType()).isEqualTo(VertxParameterColumnMapper.class);
+        var tag = mapperConstructorParameter.getAnnotation(Tag.class);
+        assertThat(tag).isNotNull();
+        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
+    }
+
 }

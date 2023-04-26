@@ -51,7 +51,7 @@ class FieldFactory(builder: TypeSpec.Builder, constructor: FunSpec.Builder, pref
         val parameter = builder(name, typeName)
 
         if (tags.isNotEmpty()) {
-            parameter.addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value = {%L}", tags.joinToString(", ") { "$it::class" }).build())
+            parameter.addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value = [%L]", tags.joinToString(", ") { "$it::class" }).build())
         }
         constructor.addParameter(parameter.build())
         constructor.addStatement("this.%N = %N", name, name)

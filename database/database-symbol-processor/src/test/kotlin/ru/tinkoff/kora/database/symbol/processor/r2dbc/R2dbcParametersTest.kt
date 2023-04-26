@@ -1,10 +1,14 @@
 package ru.tinkoff.kora.database.symbol.processor.r2dbc
 
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.mockito.Mockito.verify
+import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.database.r2dbc.mapper.parameter.R2dbcParameterColumnMapper
+import kotlin.reflect.full.findAnnotations
+import kotlin.reflect.jvm.jvmErasure
 
 class R2dbcParametersTest : AbstractR2dbcTest() {
     @Test
@@ -249,6 +253,57 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
             """.trimIndent(), """
             data class TestRecord(@Mapping(TestMapper::class) val f1: TestRecord, @Mapping(TestMapper::class) val f2: TestRecord){}
             
-            """.trimIndent())
+            """.trimIndent()
+        )
+    }
+
+    @Test
+    fun testTagOnParameter() {
+        val mapper = Mockito.mock(R2dbcParameterColumnMapper::class.java) as R2dbcParameterColumnMapper<Int>
+        val repository = compile(
+            listOf(mapper), """
+            @Repository
+            interface TestRepository : R2dbcRepository {
+                @Query("INSERT INTO test(test) VALUES (:value)")
+                fun test(@Tag(TestRepository::class) value: Int)
+            }
+            """.trimIndent()
+        )
+
+        repository.invoke<Any>("test", 42)
+
+        verify(mapper).apply(ArgumentMatchers.same(executor.statement), ArgumentMatchers.eq(0), ArgumentMatchers.eq(42))
+
+        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(R2dbcParameterColumnMapper::class)
+        val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
+        Assertions.assertThat(tag).isNotNull()
+        Assertions.assertThat(tag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("TestRepository")))
+    }
+
+    @Test
+    fun testTagOnEntityField() {
+        val mapper = Mockito.mock(R2dbcParameterColumnMapper::class.java) as R2dbcParameterColumnMapper<String>
+        val repository = compile(
+            listOf(mapper), """
+        @Repository
+        interface TestRepository: R2dbcRepository {
+            @Query("INSERT INTO test(id, value) VALUES (:entity.id, :entity.value)")
+            fun test(entity: TestEntity)
+        }
+        """.trimIndent(), """
+        data class TestEntity(val id: Long, @Tag(TestRepository::class) val value: String?)    
+        """.trimIndent()
+        )
+
+        repository.invoke<Any>("test", new("TestEntity", 42, "test-value"))
+        verify(executor.statement).bind(0, 42L)
+        verify(mapper).apply(ArgumentMatchers.same(executor.statement), ArgumentMatchers.eq(1), ArgumentMatchers.eq("test-value"))
+
+        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(R2dbcParameterColumnMapper::class)
+        val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
+        Assertions.assertThat(tag).isNotNull()
+        Assertions.assertThat(tag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("TestRepository")))
     }
 }

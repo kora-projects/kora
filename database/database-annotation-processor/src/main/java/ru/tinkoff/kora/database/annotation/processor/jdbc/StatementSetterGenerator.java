@@ -2,7 +2,6 @@ package ru.tinkoff.kora.database.annotation.processor.jdbc;
 
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.TypeName;
-import ru.tinkoff.kora.database.annotation.processor.DbUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
 import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
@@ -59,7 +58,7 @@ public class StatementSetterGenerator {
                         }
                     }
                 } else if (mapping != null && mapping.mapperClass() != null) {
-                    var mapper = parameterMappers.get(mapping.mapperClass(), mapping.mapperTags());
+                    var mapper = parameterMappers.get(JdbcTypes.PARAMETER_COLUMN_MAPPER, mapping, parameter.type());
                     for (var idx : sqlParameter.sqlIndexes()) {
                         b.add("$L.set(_stmt, $L, $L);\n", mapper, idx + 1, parameterName);
                     }
@@ -102,7 +101,7 @@ public class StatementSetterGenerator {
                             b.add("$L.set(_stmt, $L, $L);\n", mapper, idx + 1, accessor);
                         }
                     } else {
-                        var mapper = parameterMappers.get(mapping.mapperClass(), mapping.mapperTags());
+                        var mapper = parameterMappers.get(JdbcTypes.PARAMETER_COLUMN_MAPPER, mapping, field.type());
                         for (var idx : sqlParameter.sqlIndexes()) {
                             b.add("$L.set(_stmt, $L, $L);\n", mapper, idx + 1, accessor);
                         }

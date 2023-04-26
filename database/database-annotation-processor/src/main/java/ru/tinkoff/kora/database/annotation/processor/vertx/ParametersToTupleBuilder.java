@@ -51,7 +51,7 @@ public class ParametersToTupleBuilder {
                             CodeBlock.of("$N.apply($L)", mapperName, e.getKey())
                         ));
                     } else if (mapping != null) {
-                        var mapperName = parameterMappers.get(mapping.mapperClass(), mapping.mapperTags());
+                        var mapperName = parameterMappers.get(VertxTypes.PARAMETER_COLUMN_MAPPER, mapping, simpleParameter.type());
                         sink.accept(new Param(
                             sqlParameter.sqlIndexes(),
                             e.getKey(),
@@ -82,7 +82,7 @@ public class ParametersToTupleBuilder {
                                 CodeBlock.of("$L", fieldAccessor)
                             ));
                         } else if (mapping != null && mapping.mapperClass() != null) {
-                            var mapperName = parameterMappers.get(mapping.mapperClass(), mapping.mapperTags());
+                            var mapperName = parameterMappers.get(VertxTypes.PARAMETER_COLUMN_MAPPER, mapping, field.type());
                             sink.accept(new Param(
                                 sqlParameter.sqlIndexes(),
                                 variableName,

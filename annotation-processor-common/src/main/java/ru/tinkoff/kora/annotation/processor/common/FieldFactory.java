@@ -29,10 +29,20 @@ public class FieldFactory {
         return this.fields.get(key);
     }
 
-    public String get(TypeMirror mapperClass, Set<String> resultMapperTag) {
-        var mapperType = TypeName.get(mapperClass);
-        return this.fields.get(new FieldKey(mapperType, resultMapperTag));
+    public String get(ClassName mapperType, CommonUtils.MappingData mappingData, TypeMirror type) {
+        var mapperClass = mappingData.mapperClass();
+        if (mapperClass == null) {
+            var mapperTypeName = ParameterizedTypeName.get(mapperType, TypeName.get(type).box());
+            return this.fields.get(new FieldKey(mapperTypeName, mappingData.mapperTags()));
+        }
+        var mapperTypeName = TypeName.get(mapperClass);
+        return this.fields.get(new FieldKey(mapperTypeName, mappingData.mapperTags()));
     }
+
+//    public String get(TypeMirror mapperClass, Set<String> resultMapperTag) {
+//        var mapperType = TypeName.get(mapperClass);
+//        return this.fields.get(new FieldKey(mapperType, resultMapperTag));
+//    }
 
     record FieldKey(TypeName typeName, Set<String> tags) {}
 

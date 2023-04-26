@@ -2,6 +2,7 @@ package ru.tinkoff.kora.database.common.annotation.processor.jdbc;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.common.UpdateCount;
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultSetMapper;
 
@@ -484,4 +485,33 @@ public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
             }
             """);
     }
+
+    @Test
+    public void testTagOnResultMapper() throws SQLException {
+        var mapper = Mockito.mock(JdbcResultSetMapper.class);
+        var repository = compileJdbc(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Tag(TestRepository.class)
+                @Query("SELECT count(*) FROM test")
+                Integer test();
+            }
+            """);
+
+        when(mapper.apply(any())).thenReturn(42);
+        var result = repository.invoke("test");
+
+        assertThat(result).isEqualTo(42);
+        verify(executor.mockConnection).prepareStatement("SELECT count(*) FROM test");
+        verify(executor.preparedStatement).executeQuery();
+        verify(mapper).apply(executor.resultSet);
+        executor.reset();
+
+        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        assertThat(mapperConstructorParameter.getType()).isEqualTo(JdbcResultSetMapper.class);
+        var tag = mapperConstructorParameter.getAnnotation(Tag.class);
+        assertThat(tag).isNotNull();
+        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
+    }
+
 }

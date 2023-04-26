@@ -6,9 +6,12 @@ import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.database.common.UpdateCount
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultSetMapper
 import java.util.concurrent.Executor
+import kotlin.reflect.full.findAnnotations
+import kotlin.reflect.jvm.jvmErasure
 
 class JdbcResultsTest : AbstractJdbcRepositoryTest() {
     @Test
@@ -362,6 +365,36 @@ class JdbcResultsTest : AbstractJdbcRepositoryTest() {
                 fun test1(test: String): Long
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
     }
+
+    @Test
+    fun testTaggedResult() {
+        val mapper = Mockito.mock(JdbcResultSetMapper::class.java)
+        val repository = compile(
+            listOf(mapper), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Tag(TestRepository::class)
+                @Query("SELECT count(*) FROM test")
+                fun test(): Int
+            }
+            
+            """.trimIndent()
+        )
+        whenever(mapper.apply(ArgumentMatchers.any())).thenReturn(42)
+        val result = repository.invoke<Any>("test")
+        Assertions.assertThat(result).isEqualTo(42)
+        verify(executor.mockConnection).prepareStatement("SELECT count(*) FROM test")
+        verify(executor.preparedStatement).executeQuery()
+        verify(mapper).apply(executor.resultSet)
+
+        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(JdbcResultSetMapper::class)
+        val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
+        Assertions.assertThat(tag).isNotNull()
+        Assertions.assertThat(tag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("TestRepository")))
+    }
+
 }

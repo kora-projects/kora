@@ -2,6 +2,7 @@ package ru.tinkoff.kora.database.common.annotation.processor.vertx;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.common.UpdateCount;
 import ru.tinkoff.kora.database.vertx.mapper.result.VertxRowSetMapper;
 
@@ -424,7 +425,34 @@ public class VertxResultsTest extends AbstractVertxRepositoryTest {
                 Long test(String test);
             }
             """);
+    }
 
+    @Test
+    public void testTagOnResultMapper() {
+        var mapper = Mockito.mock(VertxRowSetMapper.class);
+        var repository = compileVertx(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Tag(TestRepository.class)
+                @Query("SELECT count(*) FROM test")
+                CompletionStage<Integer> test();
+            }
+            """);
+
+        when(mapper.apply(any())).thenReturn(42);
+        var result = repository.invoke("test");
+
+        assertThat(result).isEqualTo(42);
+        verify(executor.connection).preparedQuery("SELECT count(*) FROM test");
+        verify(executor.query).execute(any(), any());
+        verify(mapper).apply(executor.rowSet);
+
+
+        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        assertThat(mapperConstructorParameter.getType()).isEqualTo(VertxRowSetMapper.class);
+        var tag = mapperConstructorParameter.getAnnotation(Tag.class);
+        assertThat(tag).isNotNull();
+        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
     }
 
 }

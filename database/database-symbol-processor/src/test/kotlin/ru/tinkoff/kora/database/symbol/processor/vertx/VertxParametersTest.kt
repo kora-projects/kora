@@ -1,23 +1,30 @@
 package ru.tinkoff.kora.database.symbol.processor.vertx
 
 import io.vertx.sqlclient.Tuple
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.mockito.kotlin.any
 import org.mockito.kotlin.same
 import org.mockito.kotlin.verify
+import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.database.vertx.mapper.parameter.VertxParameterColumnMapper
+import kotlin.reflect.full.findAnnotations
+import kotlin.reflect.jvm.jvmErasure
 
 class VertxParametersTest : AbstractVertxRepositoryTest() {
     @Test
     fun testConnectionParameter() {
-        val repository = compile(listOf<Any>(), """
+        val repository = compile(
+            listOf<Any>(), """
             @Repository
             interface TestRepository : VertxRepository {
                 @Query("INSERT INTO test(test) VALUES ('test')")
                 fun test(session: io.vertx.sqlclient.SqlClient)
             }
-            """.trimIndent())
+            """.trimIndent()
+        )
 
         repository.invoke<Any>("test", executor.connection)
 
@@ -26,14 +33,16 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
 
     @Test
     fun testNativeParameter() {
-        val repository = compile(listOf<Any>(), """
+        val repository = compile(
+            listOf<Any>(), """
             @Repository
             interface TestRepository : VertxRepository {
                 @Query("INSERT INTO test(value1, value2) VALUES (:value1, :value2)")
                 fun test(value1: String?, value2: Int)
             }
             
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         repository.invoke<Any>("test", null, 1)
         verify(executor.connection).preparedQuery("INSERT INTO test(value1, value2) VALUES ($1, $2)")
@@ -48,13 +57,15 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
 
     @Test
     fun testParametersWithSimilarNames() {
-        val repository = compile(listOf<Any>(), """
+        val repository = compile(
+            listOf<Any>(), """
             @Repository
             interface TestRepository : VertxRepository {
                 @Query("INSERT INTO test(value1, value2) VALUES (:value, :valueTest)")
                 fun test(value: String?, valueTest: Int)
             }
-            """.trimIndent())
+            """.trimIndent()
+        )
 
         repository.invoke<Any>("test", "test", 42)
 
@@ -64,7 +75,8 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
 
     @Test
     fun testEntityFieldMapping() {
-        val repository = compile(listOf<Any>(), """
+        val repository = compile(
+            listOf<Any>(), """
             class StringToJsonbParameterMapper: VertxParameterColumnMapper<String?> {
                 override fun apply(value: String?): Any? {
                     return mapOf("test" to value)
@@ -79,7 +91,8 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
                 fun test(entity: SomeEntity)
             }
 
-            """.trimIndent())
+            """.trimIndent()
+        )
 
         repository.invoke<Any>("test", new("SomeEntity", 42L, "test-value"))
 
@@ -89,7 +102,8 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
 
     @Test
     fun testNativeParameterWithMapping() {
-        val repository = compile(listOf<Any>(), """
+        val repository = compile(
+            listOf<Any>(), """
             class StringToJsonbParameterMapper: VertxParameterColumnMapper<String?> {
                 override fun apply(value: String?): Any? {
                     return mapOf("test" to value)
@@ -101,7 +115,8 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
                 @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
                 fun test(id: Long, @Mapping(StringToJsonbParameterMapper::class) value: String)
             }
-            """.trimIndent())
+            """.trimIndent()
+        )
 
         repository.invoke<Any>("test", 42L, "test-value")
 
@@ -111,7 +126,8 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
 
     @Test
     fun testDataClassParameter() {
-        val repository = compile(listOf<Any>(), """
+        val repository = compile(
+            listOf<Any>(), """
         @Repository
         interface TestRepository: VertxRepository {
             @Query("INSERT INTO test(id, value) VALUES (:entity.id, :entity.value)")
@@ -119,7 +135,8 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
         }
         """.trimIndent(), """
         data class TestEntity(val id: Long, val value: String?)    
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         repository.invoke<Any>("test", new("TestEntity", 42, null))
         verify(executor.connection).preparedQuery("INSERT INTO test(id, value) VALUES ($1, $2)")
@@ -135,7 +152,8 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
     @Test
     fun testUnknownTypeParameter() {
         val mapper = Mockito.mock(VertxParameterColumnMapper::class.java) as VertxParameterColumnMapper<Any>
-        val repository = compile(listOf(mapper), """
+        val repository = compile(
+            listOf(mapper), """
             @Repository
             interface TestRepository : VertxRepository {
                 @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
@@ -144,7 +162,8 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
             
             """.trimIndent(), """
             class UnknownType {}
-            """.trimIndent())
+            """.trimIndent()
+        )
         val o = new("UnknownType")
 
         repository.invoke<Any>("test", 42L, o)
@@ -155,7 +174,8 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
     @Test
     fun testUnknownTypeEntityField() {
         val mapper = Mockito.mock(VertxParameterColumnMapper::class.java) as VertxParameterColumnMapper<Any>
-        val repository = compile(listOf(mapper), """
+        val repository = compile(
+            listOf(mapper), """
             @Repository
             interface TestRepository : VertxRepository {
                 @Query("INSERT INTO test(id, value) VALUES (:id, :value0.f)")
@@ -166,7 +186,8 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
             class UnknownType {}
             """.trimIndent(), """
             data class TestEntity (val f: UnknownType)
-            """.trimIndent())
+            """.trimIndent()
+        )
         val o = new("UnknownType")
 
         repository.invoke<Any>("test", 42L, new("TestEntity", o))
@@ -176,7 +197,8 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
 
     @Test
     fun testNativeParameterNonFinalMapper() {
-        val repository = compile(listOf(newGenerated("TestMapper")), """
+        val repository = compile(
+            listOf(newGenerated("TestMapper")), """
             open class TestMapper : VertxParameterColumnMapper<String> {
                 override fun apply(value0: String?) =  mapOf("test" to value0)
             }
@@ -187,7 +209,8 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
                 fun test(id: Long, @Mapping(TestMapper::class) value0: String);
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
 
         repository.invoke<Any>("test", 42L, "test-value")
 
@@ -196,7 +219,8 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
 
     @Test
     fun testMultipleParametersWithSameMapper() {
-        val repository = compile(listOf(newGenerated("TestMapper")), """
+        val repository = compile(
+            listOf(newGenerated("TestMapper")), """
             open class TestMapper : VertxParameterColumnMapper<String> {
                 override fun apply(value0: String?) =  mapOf("test" to value0)
             }
@@ -209,12 +233,14 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
                 fun test(id: Long, @Mapping(TestMapper::class) value0: String);
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
     }
 
     @Test
     fun testMultipleParameterFieldsWithSameMapper() {
-        val repository = compile(listOf(newGenerated("TestMapper")), """
+        val repository = compile(
+            listOf(newGenerated("TestMapper")), """
             open class TestMapper : VertxParameterColumnMapper<TestRecord> {
                 override fun apply(value0: TestRecord?) =  mapOf("test" to value0.toString())
             }
@@ -232,6 +258,57 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
             """.trimIndent(), """
             data class TestRecord(@Mapping(TestMapper::class) val f1: TestRecord, @Mapping(TestMapper::class) val f2: TestRecord){}
             
-            """.trimIndent())
+            """.trimIndent()
+        )
+    }
+
+
+    @Test
+    fun testTagOnParameter() {
+        val mapper = Mockito.mock(VertxParameterColumnMapper::class.java) as VertxParameterColumnMapper<Int>
+        val repository = compile(
+            listOf(mapper), """
+            @Repository
+            interface TestRepository : VertxRepository {
+                @Query("INSERT INTO test(test) VALUES (:value)")
+                fun test(@Tag(TestRepository::class) value: Int)
+            }
+            """.trimIndent()
+        )
+
+        repository.invoke<Any>("test", 42)
+
+        Mockito.verify(mapper).apply(ArgumentMatchers.eq(42))
+
+        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(VertxParameterColumnMapper::class)
+        val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
+        Assertions.assertThat(tag).isNotNull()
+        Assertions.assertThat(tag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("TestRepository")))
+    }
+
+    @Test
+    fun testTagOnEntityField() {
+        val mapper = Mockito.mock(VertxParameterColumnMapper::class.java) as VertxParameterColumnMapper<String>
+        val repository = compile(
+            listOf(mapper), """
+        @Repository
+        interface TestRepository: VertxRepository {
+            @Query("INSERT INTO test(id, value) VALUES (:entity.id, :entity.value)")
+            fun test(entity: TestEntity)
+        }
+        """.trimIndent(), """
+        data class TestEntity(val id: Long, @Tag(TestRepository::class) val value: String?)    
+        """.trimIndent()
+        )
+
+        repository.invoke<Any>("test", new("TestEntity", 42, "test-value"))
+        Mockito.verify(mapper).apply(ArgumentMatchers.eq("test-value"))
+
+        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(VertxParameterColumnMapper::class)
+        val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
+        Assertions.assertThat(tag).isNotNull()
+        Assertions.assertThat(tag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("TestRepository")))
     }
 }

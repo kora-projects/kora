@@ -48,7 +48,7 @@ public class StatementSetterGenerator {
                     }
                 } else if (mapping != null && mapping.mapperClass() != null) {
                     for (var idx : sqlParameter.sqlIndexes()) {
-                        var mapper = parameterMappers.get(mapping.mapperClass(), mapping.mapperTags());
+                        var mapper = parameterMappers.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, mapping, parameter.type());
                         b.addCode("$L.apply(_stmt, $L, $L);\n", mapper, idx, parameter.variable());
                     }
                 } else {
@@ -84,7 +84,7 @@ public class StatementSetterGenerator {
                         }
                     } else if (mapping != null && mapping.mapperClass() != null) {
                         for (var idx : sqlParameter.sqlIndexes()) {
-                            var mapper = parameterMappers.get(mapping.mapperClass(), mapping.mapperTags());
+                            var mapper = parameterMappers.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, mapping, field.type());
                             b.addCode("$L.apply(_stmt, $L, $L);\n", mapper, idx, fieldAccessor);
                         }
                     } else {

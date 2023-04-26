@@ -3,6 +3,7 @@ package ru.tinkoff.kora.database.common.annotation.processor.r2dbc;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import reactor.core.publisher.Mono;
+import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.common.UpdateCount;
 import ru.tinkoff.kora.database.common.annotation.processor.r2dbc.MockR2dbcExecutor.MockColumn;
 import ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcResultFluxMapper;
@@ -399,6 +400,35 @@ public class R2dbcResultsTest extends AbstractR2dbcRepositoryTest {
             """);
 
     }
+
+    @Test
+    public void testTagOnResultMapper() {
+        var mapper = Mockito.mock(R2dbcResultFluxMapper.class);
+        var repository = compileR2dbc(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("SELECT count(*) FROM test")
+                @Tag(TestRepository.class)
+                Mono<Integer> test();
+            }
+            """);
+
+        when(mapper.apply(any())).thenReturn(Mono.just(42));
+        var result = repository.invoke("test");
+
+        assertThat(result).isEqualTo(42);
+        verify(executor.con).createStatement("SELECT count(*) FROM test");
+        verify(executor.statement).execute();
+        verify(mapper).apply(any());
+
+
+        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        assertThat(mapperConstructorParameter.getType()).isEqualTo(R2dbcResultFluxMapper.class);
+        var tag = mapperConstructorParameter.getAnnotation(Tag.class);
+        assertThat(tag).isNotNull();
+        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
+    }
+
 
     /*
     todo not supported yet

@@ -7,8 +7,11 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
+import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.database.common.UpdateCount
 import ru.tinkoff.kora.database.vertx.mapper.result.VertxRowSetMapper
+import kotlin.reflect.full.findAnnotations
+import kotlin.reflect.jvm.jvmErasure
 
 class VertxResultsTest : AbstractVertxRepositoryTest() {
 
@@ -305,6 +308,36 @@ class VertxResultsTest : AbstractVertxRepositoryTest() {
                 fun test1(test: String): Long
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
     }
+
+    @Test
+    fun testTaggedResult() {
+        val mapper = mock(VertxRowSetMapper::class.java)
+        val repository = compile(
+            listOf(mapper), """
+            @Repository
+            interface TestRepository : VertxRepository {
+                @Query("SELECT count(*) FROM test")
+                @Tag(TestRepository::class)
+                fun test(): Int
+            }
+            """.trimIndent()
+        )
+        whenever(mapper.apply(any())).thenReturn(42)
+        val result = repository.invoke<Any>("test")
+        assertThat(result).isEqualTo(42)
+        verify(executor.connection).preparedQuery("SELECT count(*) FROM test")
+        verify(executor.query).execute(ArgumentMatchers.any(), ArgumentMatchers.any())
+        verify(mapper).apply(executor.rowSet)
+
+
+        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(VertxRowSetMapper::class)
+        val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
+        assertThat(tag).isNotNull()
+        assertThat(tag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("TestRepository")))
+    }
+
 }

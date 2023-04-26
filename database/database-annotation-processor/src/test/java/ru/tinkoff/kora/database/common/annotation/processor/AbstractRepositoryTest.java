@@ -13,7 +13,7 @@ import java.util.concurrent.Future;
 
 public abstract class AbstractRepositoryTest extends AbstractAnnotationProcessorTest {
     protected static class TestRepository {
-        private final Class<?> repositoryClass;
+        public final Class<?> repositoryClass;
         private final Object repositoryObject;
 
         protected TestRepository(Class<?> repositoryClass, Object repositoryObject) {
@@ -77,7 +77,7 @@ public abstract class AbstractRepositoryTest extends AbstractAnnotationProcessor
             }
             var repository = repositoryClass.getConstructors()[0].newInstance(realArgs);
             return new TestRepository(repositoryClass, repository);
-        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
     }
