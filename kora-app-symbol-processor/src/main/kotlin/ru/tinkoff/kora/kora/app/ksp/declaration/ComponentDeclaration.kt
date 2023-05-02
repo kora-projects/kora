@@ -50,16 +50,16 @@ sealed interface ComponentDeclaration {
         val methodParameterTypes: List<KSType>,
         val typeVariables: List<KSTypeArgument>
     ) : ComponentDeclaration {
-        override val source get() = this.classDeclaration
+        override val source get() = this.constructor
     }
 
     data class DiscoveredAsDependencyComponent(
         override val type: KSType,
         val classDeclaration: KSClassDeclaration,
-        val constructor: KSFunctionDeclaration
+        val constructor: KSFunctionDeclaration,
+        override val tags: Set<String>
     ) : ComponentDeclaration {
         override val source get() = this.constructor
-        override val tags get() = setOf<String>()
     }
 
     data class FromExtensionComponent(
@@ -141,8 +141,9 @@ sealed interface ComponentDeclaration {
             if (type.isError) {
                 throw ProcessingErrorException("Component type is not resolvable in the current round of processing", classDeclaration)
             }
+            val tags = TagUtils.parseTagValue(classDeclaration)
 
-            return DiscoveredAsDependencyComponent(type, classDeclaration, constructor)
+            return DiscoveredAsDependencyComponent(type, classDeclaration, constructor, tags)
         }
 
         fun fromExtension(extensionResult: ExtensionResult.GeneratedResult): FromExtensionComponent {

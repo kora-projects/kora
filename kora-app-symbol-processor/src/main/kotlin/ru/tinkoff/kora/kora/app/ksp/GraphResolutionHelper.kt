@@ -8,7 +8,9 @@ import ru.tinkoff.kora.kora.app.ksp.component.ComponentDependency.*
 import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim
 import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponent
 import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
+import ru.tinkoff.kora.ksp.common.TagUtils
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
+import ru.tinkoff.kora.ksp.common.parseTags
 
 object GraphResolutionHelper {
     fun findDependency(ctx: ProcessingContext, forDeclaration: ComponentDeclaration, resolvedComponents: List<ResolvedComponent>, dependencyClaim: DependencyClaim): SingleDependency? {
@@ -65,7 +67,11 @@ object GraphResolutionHelper {
         if (declaration.typeParameters.isNotEmpty()) {
             return null
         }
-        return ComponentDeclaration.fromDependency(ctx, declaration)
+        val tags = TagUtils.parseTagValue(declaration)
+        if (dependencyClaim.tagsMatches(tags)) {
+            return ComponentDeclaration.fromDependency(ctx, declaration)
+        }
+        return null
     }
 
     fun findDependenciesForAllOf(ctx: ProcessingContext, dependencyClaim: DependencyClaim, resolvedComponents: List<ResolvedComponent>): List<SingleDependency> {

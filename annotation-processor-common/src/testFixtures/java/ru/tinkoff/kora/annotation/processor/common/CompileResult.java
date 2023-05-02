@@ -30,6 +30,13 @@ public record CompileResult(String testPackage, List<Diagnostic<? extends JavaFi
             .toList();
     }
 
+    public List<Diagnostic<? extends JavaFileObject>> errors() {
+        return this.diagnostic.stream()
+            .filter(d -> d.getKind() == Diagnostic.Kind.ERROR)
+            .toList();
+    }
+
+
     public FileObject generatedSourceFile(String className) throws IOException {
         return this.manager.getFileForInput(StandardLocation.SOURCE_OUTPUT, this.testPackage, className);
     }
@@ -89,4 +96,5 @@ public record CompileResult(String testPackage, List<Diagnostic<? extends JavaFi
         }
         return j.toString();
     }
+
 }

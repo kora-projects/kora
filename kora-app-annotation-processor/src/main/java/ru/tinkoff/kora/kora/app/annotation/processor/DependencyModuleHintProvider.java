@@ -55,10 +55,6 @@ public class DependencyModuleHintProvider {
         log.trace("Checking hints for {}/{}", missingTag, missingType);
         var result = new ArrayList<Hint>();
         for (var hint : this.hints) {
-            if (!this.tagMatches(missingTag, hint.tags())) {
-                log.trace("Hint {} doesn't match because of tag", hint);
-                continue;
-            }
             var matcher = hint.typeRegex.matcher(missingType.toString());
             if (matcher.matches()) {
                 log.trace("Hint {} matched!", hint);

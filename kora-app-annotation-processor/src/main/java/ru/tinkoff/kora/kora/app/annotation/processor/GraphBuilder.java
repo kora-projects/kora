@@ -203,7 +203,12 @@ public class GraphBuilder {
                     }
                 }
                 var hints = ctx.dependencyModuleHintProvider.findHints(dependencyClaim.type(), dependencyClaim.tags());
-                var msg = new StringBuilder(String.format("Required dependency was not found and candidate class %s is not final", dependencyClaim.type()));
+                var msg = new StringBuilder();
+                if (dependencyClaim.tags().isEmpty()) {
+                    msg.append(String.format("Required dependency was not found: %s", dependencyClaim.type()));
+                } else {
+                    msg.append(String.format("Required dependency was not found: %s %s", dependencyClaim.tags().stream().collect(Collectors.joining(", ", "@Tag(", ")")), dependencyClaim.type()));
+                }
                 for (var hint : hints) {
                     msg.append("\n  Hint: ").append(hint.message());
                 }

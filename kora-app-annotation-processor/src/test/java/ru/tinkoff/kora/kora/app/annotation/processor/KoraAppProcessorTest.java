@@ -154,7 +154,7 @@ class KoraAppProcessorTest {
         assertThatThrownBy(() -> testClass(AppWithUnresolvedDependency.class))
             .isInstanceOfSatisfying(CompilationErrorException.class, e -> SoftAssertions.assertSoftly(s -> {
                 s.assertThat(e.getMessage()).isEqualTo("""
-                    Required dependency was not found and candidate class ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3 is not final
+                    Required dependency was not found: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3
                       Requested at: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.class2(ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3)""");
                 s.assertThat(e.diagnostics.get(0).getPosition()).isEqualTo(326);
                 s.assertThat(e.diagnostics.get(0).getLineNumber()).isEqualTo(12);
@@ -195,13 +195,13 @@ class KoraAppProcessorTest {
         testClass(AppWithFactories9.class).init().block();
         assertThatThrownBy(() -> testClass(AppWithFactories10.class))
             .isInstanceOf(CompilationErrorException.class)
-            .hasMessageStartingWith("Required dependency was not found and candidate class java.io.Closeable is not final")
+            .hasMessageStartingWith("Required dependency was not found: java.io.Closeable")
             .asInstanceOf(type(CompilationErrorException.class))
             .extracting(CompilationErrorException::getDiagnostics, list(Diagnostic.class))
             .anySatisfy(d -> {
                 assertThat(d.getKind()).isEqualTo(Diagnostic.Kind.ERROR);
                 assertThat(d.getMessage(Locale.ENGLISH)).isEqualTo("""
-                    Required dependency was not found and candidate class java.io.Closeable is not final
+                    Required dependency was not found: java.io.Closeable
                       Requested at: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithFactories10.mock1(java.io.Closeable)
                     """.trim());
             })

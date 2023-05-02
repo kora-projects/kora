@@ -1,7 +1,11 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+
+import java.util.Locale;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class DependencyTest extends AbstractKoraAppTest {
     @Test
@@ -19,7 +23,7 @@ public class DependencyTest extends AbstractKoraAppTest {
                 default TestClass1 optionalReference(Optional<TestClass2> object) { assert object.isPresent(); return new TestClass1(); }
             }
             """);
-        Assertions.assertThat(draw.getNodes()).hasSize(6);
+        assertThat(draw.getNodes()).hasSize(6);
         draw.init().block();
     }
 
@@ -37,7 +41,7 @@ public class DependencyTest extends AbstractKoraAppTest {
                 default TestClass1 optionalOfValueOfReference(Optional<ValueOf<TestClass2>> object) { assert object.get().get() != null; return new TestClass1(); }
             }
             """);
-        Assertions.assertThat(draw.getNodes()).hasSize(6);
+        assertThat(draw.getNodes()).hasSize(6);
         draw.init().block();
     }
 
@@ -55,7 +59,7 @@ public class DependencyTest extends AbstractKoraAppTest {
                 default TestClass1 optionalOfPromiseOfReference(Optional<PromiseOf<TestClass2>> object) { return new TestClass1(); }
             }
             """);
-        Assertions.assertThat(draw.getNodes()).hasSize(6);
+        assertThat(draw.getNodes()).hasSize(6);
         draw.init().block();
     }
 
@@ -75,7 +79,7 @@ public class DependencyTest extends AbstractKoraAppTest {
                 default TestClass1 optionalOfPromiseOfReference(Optional<PromiseOf<TestClass2>> object) { return new TestClass1(); }
             }
             """);
-        Assertions.assertThat(draw.getNodes()).hasSize(9);
+        assertThat(draw.getNodes()).hasSize(9);
         draw.init().block();
     }
 
@@ -98,7 +102,7 @@ public class DependencyTest extends AbstractKoraAppTest {
                 default TestClass4 testClass4() { return new TestClass4(); }
             }
             """);
-        Assertions.assertThat(draw.getNodes()).hasSize(5);
+        assertThat(draw.getNodes()).hasSize(5);
         draw.init().block();
     }
 
@@ -121,7 +125,7 @@ public class DependencyTest extends AbstractKoraAppTest {
                 default TestClass4 testClass4() { return new TestClass4(); }
             }
             """);
-        Assertions.assertThat(draw.getNodes()).hasSize(5);
+        assertThat(draw.getNodes()).hasSize(5);
         draw.init().block();
     }
 
@@ -145,7 +149,7 @@ public class DependencyTest extends AbstractKoraAppTest {
                 default TestClass4 testClass4() { return new TestClass4(); }
             }
             """);
-        Assertions.assertThat(draw.getNodes()).hasSize(5);
+        assertThat(draw.getNodes()).hasSize(5);
         draw.init().block();
     }
 
@@ -168,7 +172,59 @@ public class DependencyTest extends AbstractKoraAppTest {
                 default TestClass1 allOfPromiseOfNothingByInterface(All<PromiseOf<TestInterface1>> all) { return new TestClass1(); }
             }
             """);
-        Assertions.assertThat(draw.getNodes()).hasSize(6);
+        assertThat(draw.getNodes()).hasSize(6);
         draw.init().block();
+    }
+
+    @Test
+    public void testDiscoveredFinalClassDependency() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                final class TestClass1 {}
+                
+                @Root
+                default String test(TestClass1 testClass) { return ""; }
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(2);
+        draw.init().block();
+    }
+
+    @Test
+    public void testDiscoveredFinalClassDependencyWithTag() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                @Tag(TestClass1.class)
+                final class TestClass1 {}
+                
+                @Root
+                default String test(@Tag(TestClass1.class) TestClass1 testClass) { return ""; }
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(2);
+        draw.init().block();
+    }
+
+    @Test
+    public void testDiscoveredFinalClassDependencyTaggedDependencyNoTagOnClass() {
+        assertThatThrownBy(() -> compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                final class TestClass1 {}
+                
+                @Root
+                default String test(@Tag(TestClass1.class) TestClass1 testClass) { return ""; }
+            }
+            """));
+
+        assertThat(compileResult.isFailed()).isTrue();
+        assertThat(compileResult.errors()).hasSize(1);
+        assertThat(compileResult.errors().get(0).getMessage(Locale.ENGLISH)).startsWith(
+            "Required dependency was not found: " +
+            "@Tag(ru.tinkoff.kora.kora.app.annotation.processor.packageForDependencyTest.testDiscoveredFinalClassDependencyTaggedDependencyNoTagOnClass.ExampleApplication.TestClass1) " +
+            "ru.tinkoff.kora.kora.app.annotation.processor.packageForDependencyTest.testDiscoveredFinalClassDependencyTaggedDependencyNoTagOnClass.ExampleApplication.TestClass1"
+        );
     }
 }
