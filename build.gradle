@@ -313,7 +313,6 @@ tasks.register("other-test") {
     project.getAllprojects().stream()
         .filter(p -> isOtherTest(p))
         .forEach((p) -> {
-            println(p.name)
             var name = p.name
             if (p.depth == 2) {
                 name = p.parent.name + ":" + name

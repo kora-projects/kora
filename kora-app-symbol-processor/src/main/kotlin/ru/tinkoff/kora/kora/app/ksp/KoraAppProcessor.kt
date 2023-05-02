@@ -23,6 +23,7 @@ import ru.tinkoff.kora.kora.app.ksp.exception.NewRoundException
 import ru.tinkoff.kora.kora.app.ksp.interceptor.ComponentInterceptors
 import ru.tinkoff.kora.ksp.common.*
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import java.io.IOException
@@ -225,7 +226,11 @@ class KoraAppProcessor(
                     components.add(component)
                 }
             }
-            val rootSet = components.filter { it.source.findAnnotation(CommonClassNames.root) != null || ctx!!.serviceTypesHelper.isLifecycle(it.type) }
+            val rootSet = components.filter {
+                it.source.isAnnotationPresent(CommonClassNames.root)
+                    || ctx!!.serviceTypesHelper.isLifecycle(it.type)
+                    || it is ComponentDeclaration.AnnotatedComponent && it.classDeclaration.isAnnotationPresent(CommonClassNames.root)
+            }
             return ProcessingState.None(declaration, allModules, components, templateComponents, rootSet)
         } catch (e: ProcessingErrorException) {
             return ProcessingState.Failed(e)

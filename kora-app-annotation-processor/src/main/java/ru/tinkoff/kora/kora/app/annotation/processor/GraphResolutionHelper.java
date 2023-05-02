@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
+import ru.tinkoff.kora.annotation.processor.common.TagUtils;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ComponentDependency;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponent;
@@ -69,7 +70,12 @@ public class GraphResolutionHelper {
         if (!element.getModifiers().contains(Modifier.FINAL) || !element.getModifiers().contains(Modifier.PUBLIC)) {
             return null;
         }
-        return ComponentDeclaration.fromDependency(element);
+        var tags = TagUtils.parseTagValue(element);
+        if (dependencyClaim.tagsMatches(tags)) {
+            return ComponentDeclaration.fromDependency(element);
+        } else {
+            return null;
+        }
     }
 
     public static List<ComponentDependency.SingleDependency> findDependenciesForAllOf(ProcessingContext ctx, DependencyClaim dependencyClaim, List<ResolvedComponent> resolvedComponents) {

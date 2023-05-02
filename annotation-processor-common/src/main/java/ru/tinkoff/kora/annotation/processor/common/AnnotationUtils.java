@@ -18,9 +18,14 @@ public class AnnotationUtils {
     public static AnnotationMirror findAnnotation(Element element, Predicate<String> namePredicate) {
         return element.getAnnotationMirrors().stream().filter(am -> namePredicate.test(((TypeElement) am.getAnnotationType().asElement()).getQualifiedName().toString())).findFirst().orElse(null);
     }
+
     @Nullable
     public static AnnotationMirror findAnnotation(Element element, ClassName name) {
         return findAnnotations(element, name, null).stream().findFirst().orElse(null);
+    }
+
+    public static boolean isAnnotationPresent(Element element, ClassName name) {
+        return !findAnnotations(element, name, null).isEmpty();
     }
 
     public static List<AnnotationMirror> findAnnotations(Element element, ClassName name, @Nullable ClassName containerName) {

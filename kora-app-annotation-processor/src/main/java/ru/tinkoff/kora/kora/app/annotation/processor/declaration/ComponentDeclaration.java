@@ -45,7 +45,7 @@ public sealed interface ComponentDeclaration {
         }
     }
 
-    record DiscoveredAsDependencyComponent(TypeMirror type, TypeElement typeElement, ExecutableElement constructor) implements ComponentDeclaration {
+    record DiscoveredAsDependencyComponent(TypeMirror type, TypeElement typeElement, ExecutableElement constructor, Set<String> tags) implements ComponentDeclaration {
         public DiscoveredAsDependencyComponent {
             assert typeElement.getTypeParameters().isEmpty();
         }
@@ -56,21 +56,12 @@ public sealed interface ComponentDeclaration {
         }
 
         @Override
-        public Set<String> tags() {
-            return Set.of();
-        }
-
-        @Override
         public boolean isTemplate() {
             return false;
         }
     }
 
     record FromExtensionComponent(TypeMirror type, ExecutableElement sourceMethod, List<TypeMirror> methodParameterTypes) implements ComponentDeclaration {
-        public FromExtensionComponent {
-            System.out.println(methodParameterTypes);
-        }
-
         @Override
         public Element source() {
             return this.sourceMethod;
@@ -139,10 +130,7 @@ public sealed interface ComponentDeclaration {
         var constructor = constructors.get(0);
         var type = typeElement.asType();
         var tags = TagUtils.parseTagValue(typeElement);
-        if (!tags.isEmpty()) {
-            throw new ProcessingErrorException("Discovered as dependency class cannot have tags", typeElement);
-        }
-        return new DiscoveredAsDependencyComponent(type, typeElement, constructor);
+        return new DiscoveredAsDependencyComponent(type, typeElement, constructor, tags);
     }
 
     static ComponentDeclaration fromExtension(ExtensionResult.GeneratedResult generatedResult) {
