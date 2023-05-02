@@ -53,7 +53,7 @@ class UserDefinedTypeStatementSetterGenerator(private val environment: SymbolPro
     private fun generateListSetter(resolver: Resolver, classDeclaration: KSClassDeclaration) {
         val type = classDeclaration.asType(listOf())
         val typeName = type.toTypeName()
-        val listTypeName = LIST.parameterizedBy(typeName.copy(false)).copy(true)
+        val listTypeName = LIST.parameterizedBy(typeName.copy(false)).copy(false)
         val entity = DbEntity.parseEntity(type)!!
         val typeSpec = TypeSpec.classBuilder(classDeclaration.generatedClassName("List_CassandraParameterColumnMapper"))
             .addModifiers(KModifier.PUBLIC, KModifier.FINAL)
@@ -63,7 +63,7 @@ class UserDefinedTypeStatementSetterGenerator(private val environment: SymbolPro
             .addModifiers(KModifier.OVERRIDE)
             .addParameter("_stmt", CassandraTypes.settableByName)
             .addParameter("_index", Int::class.javaPrimitiveType!!.asTypeName())
-            .addParameter("_listValue", listTypeName)
+            .addParameter("_listValue", listTypeName.copy(true))
         apply.controlFlow("if (_listValue == null)") {
             addStatement("_stmt.setToNull(_index)")
             addStatement("return")

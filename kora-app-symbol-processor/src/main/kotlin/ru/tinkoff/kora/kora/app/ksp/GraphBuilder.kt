@@ -57,6 +57,7 @@ object GraphBuilder {
 
             dependency@ for (currentDependency in frame.currentDependency until dependenciesToFind.size) {
                 val dependencyClaim = dependenciesToFind[currentDependency]
+                ctx.kspLogger.info("Resolving ${dependencyClaim.type} for ${declaration.source}")
                 if (dependencyClaim.claimType in listOf(ALL, ALL_OF_PROMISE, ALL_OF_VALUE)) {
                     val allOfDependency = processAllOf(ctx, processing, frame, currentDependency)
                     if (allOfDependency == null) {
