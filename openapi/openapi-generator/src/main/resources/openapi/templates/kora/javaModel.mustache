@@ -40,7 +40,8 @@ public record {{classname}} (
   {{/vendorExtensions.x-has-min-max}}{{#vendorExtensions.x-has-min-max-items}}@ru.tinkoff.kora.validation.common.annotation.Size(min = {{minItems}}, max = {{maxItems}})
   {{/vendorExtensions.x-has-min-max-items}}{{#vendorExtensions.x-has-min-max-length}}@ru.tinkoff.kora.validation.common.annotation.Size(min = {{minLength}}, max = {{maxLength}})
   {{/vendorExtensions.x-has-min-max-length}}{{#vendorExtensions.x-has-pattern}}@ru.tinkoff.kora.validation.common.annotation.Pattern("{{{pattern}}}")
-  {{/vendorExtensions.x-has-pattern}}{{{datatypeWithEnum}}} {{name}}{{^-last}},{{/-last}}
+  {{/vendorExtensions.x-has-pattern}}{{#vendorExtensions.x-has-valid-model}}@ru.tinkoff.kora.validation.common.annotation.Valid
+  {{/vendorExtensions.x-has-valid-model}}{{{datatypeWithEnum}}} {{name}}{{^-last}},{{/-last}}
 {{/allVars}}){{#vendorExtensions.x-discriminator-value}} implements {{parent}} {{/vendorExtensions.x-discriminator-value}}{
 {{#isArray}}
 public static String schema = """
