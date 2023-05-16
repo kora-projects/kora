@@ -558,7 +558,14 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 var mb = MethodSpec.methodBuilder("_component" + componentNumber++)
                     .returns(TypeName.get(component.asType()))
                     .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT);
-                mb.addCode("return new $T(", component);
+                if (component.getTypeParameters().isEmpty()) {
+                    mb.addCode("return new $T(", ClassName.get(component));
+                } else {
+                    for (var tp : component.getTypeParameters()) {
+                        mb.addTypeVariable(TypeVariableName.get(tp));
+                    }
+                    mb.addCode("return new $T<>(", ClassName.get(component));
+                }
                 for (int i = 0; i < constructor.getParameters().size(); i++) {
                     var parameter = constructor.getParameters().get(i);
                     var pb = ParameterSpec.get(parameter).toBuilder();
@@ -597,6 +604,9 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                     var mb = MethodSpec.methodBuilder("_component" + componentNumber++)
                         .returns(TypeName.get(method.getReturnType()))
                         .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT);
+                    for (var tp : method.getTypeParameters()) {
+                        mb.addTypeVariable(TypeVariableName.get(tp));
+                    }
                     mb.addCode("return $L.$L(", moduleName, method.getSimpleName());
                     for (int i = 0; i < method.getParameters().size(); i++) {
                         var parameter = method.getParameters().get(i);

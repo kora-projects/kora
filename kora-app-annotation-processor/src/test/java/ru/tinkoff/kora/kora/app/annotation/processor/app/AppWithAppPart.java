@@ -23,6 +23,9 @@ public interface AppWithAppPart {
     @Component
     class Class3 implements MockLifecycle {}
 
+    @Component
+    class Class4<T extends Number> implements MockLifecycle {}
+
     @ru.tinkoff.kora.common.Module
     interface Module {
         default Class2 class2() {
@@ -32,6 +35,11 @@ public interface AppWithAppPart {
         @Tag(Class1.class)
         default Class2 class2Tagged() {
             return new Class2();
+        }
+
+        @Tag(Class1.class)
+        default <T extends Number> Class4<T> class4() {
+            return new Class4<>();
         }
     }
 }
