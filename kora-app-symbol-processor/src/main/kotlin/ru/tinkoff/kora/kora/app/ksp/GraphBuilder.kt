@@ -199,7 +199,7 @@ object GraphBuilder {
                     }
                 }
                 val hints = ctx.dependencyHintProvider.findHints(dependencyClaim.type, dependencyClaim.tags)
-                val msg = StringBuilder("Required dependency was not found and candidate class ${dependencyClaim.type.toTypeName()} is not final")
+                val msg = StringBuilder("Required dependency type ${dependencyClaim.type.toTypeName()} was not found and can't be autocreated.")
                 for (hint in hints) {
                     msg.append("\n  Hint: ").append(hint.message())
                 }
