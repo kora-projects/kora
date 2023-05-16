@@ -118,10 +118,20 @@ components:
           type: string
         tag:
           type: string
+        food:
+          $ref: "#/components/schemas/Food"
     Pets:
       type: array
       items:
         $ref: "#/components/schemas/Pet"
+    Food:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
     Error:
       type: object
       required:

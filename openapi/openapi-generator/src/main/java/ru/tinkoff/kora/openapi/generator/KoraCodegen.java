@@ -402,6 +402,12 @@ public class KoraCodegen extends DefaultCodegen {
             model.vendorExtensions.put("x-enable-validation", this.enableValidation);
             if (this.enableValidation) {
                 for (var variable : model.allVars) {
+                    if(variable.getRef() != null) {
+                        var variableModelField = allModels.get(variable.openApiType);
+                        if (variableModelField != null) {
+                            variable.vendorExtensions.put("x-has-valid-model", true);
+                        }
+                    }
                     this.visitVariableValidation(variable, variable.openApiType, variable.dataFormat, variable.vendorExtensions);
                 }
             }
