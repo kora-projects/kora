@@ -29,17 +29,17 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
 
         val constraintToFieldName = HashMap<Constraint.Factory, String>()
         val validatedToFieldName = HashMap<Validated, String>()
-        val contextBuilder = ArrayList<CodeBlock>()
         val constraintBuilder = ArrayList<CodeBlock>()
         for (i in meta.fields.indices) {
             val field = meta.fields[i]
             val contextField = "_context$i"
-            contextBuilder.add(
+            constraintBuilder.add(
                 CodeBlock.of(
                     """
-                var %L = context.addPath(%S)
-                
-                """.trimIndent(), contextField, field.name
+                        
+                    val %L = context.addPath(%S)
+                    
+                    """.trimIndent(), contextField, field.name
                 )
             )
 
@@ -47,16 +47,19 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
                 val constraint = field.constraint[j]
                 val suffix = i.toString() + "_" + j
                 val constraintField = constraintToFieldName.computeIfAbsent(constraint.factory) { "_constraint$suffix" }
+                val constraintResultField = "_constraintResult_$suffix"
+
                 constraintBuilder.add(
                     CodeBlock.of(
                         """
-                        _violations.addAll(%L.validate(value.%L, %L));
-                        if(context.isFailFast && _violations.isNotEmpty()) {
-                            return _violations;
+                        val %N = %L.validate(value.%L, %L)
+                        if(context.isFailFast && %N.isNotEmpty()) {
+                            return %N
                         }
+                        _violations.addAll(%N)
                         
                         """.trimIndent(),
-                        constraintField, field.accessor(), contextField
+                        constraintResultField, constraintField, field.accessor(), contextField, constraintResultField, constraintResultField, constraintResultField
                     )
                 )
             }
@@ -65,31 +68,35 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
                 val validated = field.validates[j]
                 val suffix = i.toString() + "_" + j
                 val validatorField = validatedToFieldName.computeIfAbsent(validated) { "_validator$suffix" }
+                val validatorResultField = "_validatorResult_$suffix"
                 if (field.isNotNull()) {
                     constraintBuilder.add(
                         CodeBlock.of(
                             """
+                            val %N = %L.validate(value.%L, %L)
+                            if(context.isFailFast && %N.isNotEmpty()) {
+                                return %N
+                            }
+                            _violations.addAll(%N)
                             
-                        _violations.addAll(%L.validate(value.%L, %L));
-                        if(context.isFailFast) {
-                            return _violations;
-                        }
-                        
-                        """.trimIndent(), validatorField, field.accessor(), contextField
+                            """.trimIndent(),
+                            validatorResultField, validatorField, field.accessor(), contextField, validatorResultField, validatorResultField, validatorResultField
                         )
                     )
                 } else {
                     constraintBuilder.add(
                         CodeBlock.of(
                             """
-                        if(value.%L != null) {
-                            _violations.addAll(%L.validate(value.%L, %L));
-                            if(context.isFailFast) {
-                                return _violations;
+                            if(value.%L != null) {
+                                val %N = %L.validate(value.%L, %L)
+                                if(context.isFailFast && %N.isNotEmpty()) {
+                                    return %N
+                                }
+                                _violations.addAll(%N)
                             }
-                        }
-                        
-                        """.trimIndent(), field.accessor(), validatorField, field.accessor(), contextField
+                            
+                            """.trimIndent(),
+                            field.accessor(), validatorResultField, validatorField, field.accessor(), contextField, validatorResultField, validatorResultField, validatorResultField
                         )
                     )
                 }
@@ -136,6 +143,7 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
                 .addStatement("this.%L = %L", fieldName, fieldName)
         }
 
+        val memberList = MemberName("kotlin.collections", "mutableListOf")
         val validateMethodSpecBuilder = FunSpec.builder("validate")
             .addModifiers(KModifier.OVERRIDE)
             .returns("kotlin.collections.MutableList".asType(listOf(VIOLATION_TYPE.canonicalName.asType())).asPoetType())
@@ -145,16 +153,15 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
                 CodeBlock.of(
                     """
                     if(value == null) {
-                        return mutableListOf(context.violates("Input value is null"));
+                        return mutableListOf(context.violates("Input value is null"))
                     }
                     
-                    val _violations = %T<Violation>();
+                    val _violations = %M<Violation>()
                     
-                    """.trimIndent(), ArrayList::class
+                    """.trimIndent(), memberList
                 )
             )
 
-        contextBuilder.forEach { b -> validateMethodSpecBuilder.addCode(b) }
         constraintBuilder.forEach { b -> validateMethodSpecBuilder.addCode(b) }
         validateMethodSpecBuilder.addCode(CodeBlock.of("return _violations"))
 

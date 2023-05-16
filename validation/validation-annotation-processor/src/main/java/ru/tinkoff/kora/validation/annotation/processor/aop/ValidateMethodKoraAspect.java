@@ -105,11 +105,13 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             .findFirst()
             .orElse(false);
 
-        builder
-            .addStatement("var _returnValueViolations = new $T<$T>()", ArrayList.class, VIOLATION_TYPE)
-            .addStatement("var _returnValueContext = $T.builder().failFast($L).build()", CONTEXT_TYPE, isFailFast);
+        builder.addStatement("var _returnValueContext = $T.builder().failFast($L).build()", CONTEXT_TYPE, isFailFast);
+        if (!isFailFast) {
+            builder.addStatement("var _returnValueViolations = new $T<$T>()", ArrayList.class, VIOLATION_TYPE);
+        }
 
-        for (var constraint : constraints) {
+        for (int i = 1; i <= constraints.size(); i++) {
+            var constraint = constraints.get(i - 1);
             var constraintFactory = aspectContext.fieldFactory().constructorParam(constraint.factory().type().asMirror(env), List.of());
             var constraintType = constraint.factory().validator().asMirror(env);
 
@@ -121,21 +123,32 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                 .build();
 
             var constraintField = aspectContext.fieldFactory().constructorInitialized(constraintType, createExec);
-            builder.addStatement("_returnValueViolations.addAll($N.validate(_result, _returnValueContext))", constraintField);
+            var constraintResultField = "_returnConstraintResult_" + i;
+            builder.addStatement("var $N = $N.validate(_result, _returnValueContext)", constraintResultField, constraintField);
             if (isFailFast) {
-                builder.beginControlFlow("if (!_returnValueViolations.isEmpty())")
-                    .addStatement("throw new $T(_returnValueViolations)", EXCEPTION_TYPE)
+                builder.beginControlFlow("if (!$N.isEmpty())", constraintResultField)
+                    .addStatement("throw new $T($N)", EXCEPTION_TYPE, constraintResultField)
+                    .endControlFlow();
+            } else {
+                builder.beginControlFlow("if (!$N.isEmpty())", constraintResultField)
+                    .addStatement("_returnValueViolations.addAll($N)", constraintResultField)
                     .endControlFlow();
             }
         }
 
-        for (var validated : validates) {
+        for (int i = 1; i <= validates.size(); i++) {
+            var validated = validates.get(i - 1);
             var validatorType = validated.validator().asMirror(env);
             var validatorField = aspectContext.fieldFactory().constructorParam(validatorType, List.of());
-            builder.addStatement("_returnValueViolations.addAll($N.validate(_result, _returnValueContext))", validatorField);
+            var validatedResultField = "_returnValidatorResult_" + i;
+            builder.addStatement("var $N = $N.validate(_result, _returnValueContext)", validatedResultField, validatorField);
             if (isFailFast) {
-                builder.beginControlFlow("if (!_returnValueViolations.isEmpty())")
-                    .addStatement("throw new $T(_returnValueViolations)", EXCEPTION_TYPE)
+                builder.beginControlFlow("if (!$N.isEmpty())", validatedResultField)
+                    .addStatement("throw new $T($N)", EXCEPTION_TYPE, validatedResultField)
+                    .endControlFlow();
+            } else {
+                builder.beginControlFlow("if (!$N.isEmpty())", validatedResultField)
+                    .addStatement("_returnValueViolations.addAll($N)", validatedResultField)
                     .endControlFlow();
             }
         }
@@ -168,8 +181,11 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             .orElse(false);
 
         var builder = CodeBlock.builder()
-            .addStatement("var _argumentsViolations = new $T<$T>()", ArrayList.class, VIOLATION_TYPE)
             .addStatement("var _argumentsContext = $T.builder().failFast($L).build()", CONTEXT_TYPE, isFailFast);
+
+        if (!isFailFast) {
+            builder.addStatement("var _argumentsViolations = new $T<$T>()", ArrayList.class, VIOLATION_TYPE);
+        }
 
         for (var parameter : method.getParameters()) {
             var isNullable = CommonUtils.isNullable(parameter);
@@ -178,7 +194,14 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                 var constraints = ValidUtils.getValidatedByConstraints(env, parameter.asType(), parameter.getAnnotationMirrors());
                 var validates = getValidForArguments(parameter);
 
-                for (var constraint : constraints) {
+                if (isNullable && !isPrimitive) {
+                    builder.beginControlFlow("if($N != null)", parameter.getSimpleName());
+                }
+
+                var argumentsContext = "_argumentContext_" + parameter;
+                builder.addStatement("var $N = _argumentsContext.addPath($S)", argumentsContext, parameter.getSimpleName());
+                for (int i = 1; i <= constraints.size(); i++) {
+                    var constraint = constraints.get(i - 1);
                     var constraintFactory = aspectContext.fieldFactory().constructorParam(constraint.factory().type().asMirror(env), List.of());
                     var constraintType = constraint.factory().validator().asMirror(env);
 
@@ -190,42 +213,47 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                         .build();
 
                     var constraintField = aspectContext.fieldFactory().constructorInitialized(constraintType, createExec);
-                    if (isNullable && !isPrimitive) {
-                        builder.beginControlFlow("if($N != null)", parameter.getSimpleName());
-                        builder.addStatement("_argumentsViolations.addAll($N.validate($N, _argumentsContext.addPath($S)))",
-                            constraintField, parameter.getSimpleName(), parameter.getSimpleName());
-                        builder.endControlFlow();
-                    } else {
-                        builder.addStatement("_argumentsViolations.addAll($N.validate($N, _argumentsContext.addPath($S)))",
-                            constraintField, parameter.getSimpleName(), parameter.getSimpleName());
-                    }
+                    var constraintResultField = "_argumentConstraintResult_" + parameter + "_" + i;
 
+                    builder.addStatement("var $N = $N.validate($N, $N)",
+                        constraintResultField, constraintField, parameter.getSimpleName(), argumentsContext);
                     if (isFailFast) {
-                        builder.beginControlFlow("if (!_argumentsViolations.isEmpty())")
-                            .addStatement("throw new $T(_argumentsViolations)", EXCEPTION_TYPE)
+                        builder
+                            .beginControlFlow("if (!$N.isEmpty())", constraintResultField)
+                            .addStatement("throw new $T($N)", EXCEPTION_TYPE, constraintResultField)
+                            .endControlFlow();
+                    } else {
+                        builder
+                            .beginControlFlow("if (!$N.isEmpty())", constraintResultField)
+                            .addStatement("_argumentsViolations.addAll($N)", constraintResultField)
                             .endControlFlow();
                     }
                 }
 
-                for (var validated : validates) {
+                for (int i = 1; i <= validates.size(); i++) {
+                    var validated = validates.get(i - 1);
                     var validatorType = validated.validator().asMirror(env);
 
                     var validatorField = aspectContext.fieldFactory().constructorParam(validatorType, List.of());
-                    if (isNullable && !isPrimitive) {
-                        builder.beginControlFlow("if($N != null)", parameter.getSimpleName());
-                        builder.addStatement("_argumentsViolations.addAll($N.validate($N, _argumentsContext.addPath($S)))",
-                            validatorField, parameter.getSimpleName(), parameter.getSimpleName());
-                        builder.endControlFlow();
-                    } else {
-                        builder.addStatement("_argumentsViolations.addAll($N.validate($N, _argumentsContext.addPath($S)))",
-                            validatorField, parameter.getSimpleName(), parameter.getSimpleName());
-                    }
+                    var validatorResultField = "_argumentValidatorResult_" + parameter + "_" + i;
 
+                    builder.addStatement("var $N = $N.validate($N, $N)",
+                        validatorResultField, validatorField, parameter.getSimpleName(), argumentsContext);
                     if (isFailFast) {
-                        builder.beginControlFlow("if (!_argumentsViolations.isEmpty())")
-                            .addStatement("throw new $T(_argumentsViolations)", EXCEPTION_TYPE)
+                        builder
+                            .beginControlFlow("if (!$N.isEmpty())", validatorResultField)
+                            .addStatement("throw new $T($N)", EXCEPTION_TYPE, validatorResultField)
+                            .endControlFlow();
+                    } else {
+                        builder
+                            .beginControlFlow("if (!$N.isEmpty())", validatorResultField)
+                            .addStatement("_argumentsViolations.addAll($N)", validatorResultField)
                             .endControlFlow();
                     }
+                }
+
+                if (isNullable && !isPrimitive) {
+                    builder.endControlFlow();
                 }
             }
         }

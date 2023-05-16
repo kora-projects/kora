@@ -17,7 +17,6 @@ import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.validation.symbol.processor.*
-import java.util.*
 import java.util.concurrent.Future
 
 class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
@@ -97,11 +96,14 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             }
             .firstOrNull() ?: false
 
-        builder
-            .addStatement("val _returnValueViolations = %T<%T>()", ArrayList::class.java, VIOLATION_TYPE)
-            .addStatement("val _returnValueContext = %T.builder().failFast(%L).build()", CONTEXT_TYPE, failFast)
+        val memberList = MemberName("kotlin.collections", "mutableListOf")
+        builder.addStatement("val _returnValueContext = %T.builder().failFast(%L).build()", CONTEXT_TYPE, failFast)
 
-        for (constraint in constraints) {
+        if(!failFast) {
+            builder.addStatement("val _returnValueViolations = %M<%T>()", memberList, VIOLATION_TYPE)
+        }
+
+        for ((i, constraint) in constraints.withIndex()) {
             val factoryType = constraint.factory.type.asKSType(resolver)
             val constraintFactory = aspectContext.fieldFactory.constructorParam(factoryType, listOf())
             val constraintType = constraint.factory.validator().asKSType(resolver)
@@ -116,29 +118,33 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
                 .build()
 
             val constraintField = aspectContext.fieldFactory.constructorInitialized(constraintType, createCodeBlock)
-            builder.addStatement("_returnValueViolations.addAll(%N.validate(_result, _returnValueContext))", constraintField)
-
+            val constraintResultField = "_returnConstraintResult_${i + 1}"
             if (failFast) {
-                builder.beginControlFlow("if (!_returnValueViolations.isEmpty())")
-                    .addStatement("throw %T(_returnValueViolations)", EXCEPTION_TYPE)
+                builder.addStatement("val %N = %N.validate(_result, _returnValueContext)", constraintResultField, constraintField)
+                    .beginControlFlow("if (%N.isNotEmpty())", constraintResultField)
+                    .addStatement("throw %T(%N)", EXCEPTION_TYPE, constraintResultField)
                     .endControlFlow()
+            } else {
+                builder.addStatement("_returnValueViolations.addAll(%N.validate(_result, _returnValueContext))", constraintField)
             }
         }
 
-        for (validated in validates) {
+        for ((i, validated) in validates.withIndex()) {
             val validatorType = validated.validator().asKSType(resolver)
             val validatorField = aspectContext.fieldFactory.constructorParam(validatorType, listOf())
-            builder.addStatement("_returnValueViolations.addAll(%N.validate(_result, _returnValueContext))", validatorField)
-
+            val validatorResultField = "_returnValidatorResult_${i + 1}"
+            builder.addStatement("val %N = %N.validate(_result, _returnValueContext)", validatorResultField, validatorField)
             if (failFast) {
-                builder.beginControlFlow("if (!_returnValueViolations.isEmpty())")
-                    .addStatement("throw %T(_returnValueViolations)", EXCEPTION_TYPE)
+                builder.beginControlFlow("if (%N.isNotEmpty())", validatorResultField)
+                    .addStatement("throw %T(%N)", EXCEPTION_TYPE, validatorResultField)
                     .endControlFlow()
+            } else {
+                builder.addStatement("_returnValueViolations.addAll(%N)", validatorResultField)
             }
         }
 
-        if(!failFast) {
-            builder.beginControlFlow("if (!_returnValueViolations.isEmpty())")
+        if (!failFast) {
+            builder.beginControlFlow("if (_returnValueViolations.isNotEmpty())")
                 .addStatement("throw %T(_returnValueViolations)", EXCEPTION_TYPE)
                 .endControlFlow()
         }
@@ -168,14 +174,26 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             }
             .firstOrNull() ?: false
 
+        val memberList = MemberName("kotlin.collections", "mutableListOf")
         val builder = CodeBlock.builder()
-            .addStatement("val _argumentsViolations = %T<%T>()", ArrayList::class.java, VIOLATION_TYPE)
             .addStatement("val _argumentsContext = %T.builder().failFast(%L).build()", CONTEXT_TYPE, failFast)
+
+        if (!failFast) {
+            builder.addStatement("val _argumentsViolations = %M<%T>()", memberList, VIOLATION_TYPE)
+        }
 
         for (parameter in method.parameters.filter { it.isValidatable() }) {
             val isNullable = parameter.type.resolve().isMarkedNullable
             val constraints = ValidUtils.getConstraints(parameter.type, parameter.annotations)
-            for (constraint in constraints) {
+
+            val parameterName = parameter.name!!.asString()
+            val argumentContext = "_argumentsContext_" + parameterName
+            builder.addStatement(
+                "val %N = _argumentsContext.addPath(%S)",
+                argumentContext, parameterName
+            )
+
+            for ((i, constraint) in constraints.withIndex()) {
                 val factoryType = constraint.factory.type.asKSType(resolver)
                 val constraintFactory = aspectContext.fieldFactory.constructorParam(factoryType, listOf())
                 val constraintType = constraint.factory.validator().asKSType(resolver)
@@ -190,41 +208,51 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
                     .build()
 
                 val constraintField = aspectContext.fieldFactory.constructorInitialized(constraintType, createCodeBlock)
+                val constraintResultField = "_argumentConstraintResult_${parameterName}_${i + 1}"
                 if (isNullable) {
-                    builder.beginControlFlow("if(%N != null)", parameter.name!!.asString())
-                    builder.addStatement("_argumentsViolations.addAll(%N.validate(%N, _argumentsContext.addPath(%S)))",
-                        constraintField, parameter.name!!.asString(), parameter.name!!.asString())
-                    builder.endControlFlow()
+                    builder.beginControlFlow("if(%N != null)", parameterName)
+                }
+
+                if (failFast) {
+                    builder.addStatement("val %N = %N.validate(%N, %N)", constraintResultField, constraintField, parameterName, argumentContext)
+                        .beginControlFlow("if(%N.isNotEmpty())", constraintResultField)
+                        .addStatement("throw %T(%N)", EXCEPTION_TYPE, constraintResultField)
+                        .endControlFlow()
                 } else {
-                    builder.addStatement("_argumentsViolations.addAll(%N.validate(%N, _argumentsContext.addPath(%S)))",
-                        constraintField, parameter.name!!.asString(), parameter.name!!.asString())
+                    builder.addStatement("_argumentsViolations.addAll(%N.validate(%N, %N))", constraintField, parameterName, argumentContext)
+                }
+
+                if (isNullable) {
+                    builder.endControlFlow()
                 }
             }
 
             val validates = getValidForArguments(parameter)
-            for (validated in validates) {
+            for ((i, validated) in validates.withIndex()) {
                 val validatorType = validated.validator().asKSType(resolver)
                 val validatorField = aspectContext.fieldFactory.constructorParam(validatorType, listOf())
+                val validatorResultField = "_argumentValidatorResult_${parameterName}_${i + 1}"
                 if (isNullable) {
-                    builder.beginControlFlow("if(%N != null)", parameter.name!!.asString())
-                    builder.addStatement("_argumentsViolations.addAll(%N.validate(%N, _argumentsContext.addPath(%S)))",
-                        validatorField, parameter.name!!.asString(), parameter.name!!.asString())
-                    builder.endControlFlow()
-                } else {
-                    builder.addStatement("_argumentsViolations.addAll(%N.validate(%N, _argumentsContext.addPath(%S)))",
-                        validatorField, parameter.name!!.asString(), parameter.name!!.asString())
+                    builder.beginControlFlow("if(%N != null)", parameterName)
                 }
-            }
 
-            if (failFast) {
-                builder.beginControlFlow("if (!_argumentsViolations.isEmpty())")
-                    .addStatement("throw %T(_argumentsViolations)", EXCEPTION_TYPE)
-                    .endControlFlow()
+                if (failFast) {
+                    builder.addStatement("val %N = %N.validate(%N, %N)", validatorResultField, validatorField, parameterName, argumentContext)
+                        .beginControlFlow("if(%N.isNotEmpty())", validatorResultField)
+                        .addStatement("throw %T(%N)", EXCEPTION_TYPE, validatorResultField)
+                        .endControlFlow()
+                } else {
+                    builder.addStatement("_argumentsViolations.addAll(%N.validate(%N, %N))", validatorField, parameterName, argumentContext)
+                }
+
+                if (isNullable) {
+                    builder.endControlFlow()
+                }
             }
         }
 
         if (!failFast) {
-            builder.beginControlFlow("if (!_argumentsViolations.isEmpty())")
+            builder.beginControlFlow("if (_argumentsViolations.isNotEmpty())")
                 .addStatement("throw %T(_argumentsViolations)", EXCEPTION_TYPE)
                 .endControlFlow()
         }
