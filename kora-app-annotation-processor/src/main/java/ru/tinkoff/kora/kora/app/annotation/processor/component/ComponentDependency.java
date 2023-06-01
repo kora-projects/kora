@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.component;
 
+import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.application.graph.TypeRef;
@@ -10,12 +11,11 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
 import java.util.List;
-import java.util.Set;
 
 public sealed interface ComponentDependency {
     DependencyClaim claim();
 
-    CodeBlock write(ProcessingContext ctx, List<ResolvedComponent> resolvedComponents, Set<Integer> promisedComponents);
+    CodeBlock write(ProcessingContext ctx, ClassName graphTypeName, List<ResolvedComponent> resolvedComponents);
 
     sealed interface SingleDependency extends ComponentDependency {
         ResolvedComponent component();
@@ -24,24 +24,22 @@ public sealed interface ComponentDependency {
     record TargetDependency(DependencyClaim claim, ResolvedComponent component) implements SingleDependency {
 
         @Override
-        public CodeBlock write(ProcessingContext ctx, List<ResolvedComponent> resolvedComponents, Set<Integer> promisedComponents) {
-            var node = promisedComponents.contains(component.index()) ? CodeBlock.of("$L.get()", this.component.name()) : CodeBlock.of("$L", this.component.name());
-            return CodeBlock.of("g.get($L)", node);
+        public CodeBlock write(ProcessingContext ctx, ClassName graphTypeName, List<ResolvedComponent> resolvedComponents) {
+            return CodeBlock.of("g.get($T.$L)", graphTypeName, this.component.name());
         }
     }
 
     record WrappedTargetDependency(DependencyClaim claim, ResolvedComponent component) implements SingleDependency {
 
         @Override
-        public CodeBlock write(ProcessingContext ctx, List<ResolvedComponent> resolvedComponents, Set<Integer> promisedComponents) {
-            var node = promisedComponents.contains(component.index()) ? CodeBlock.of("$L.get()", this.component.name()) : CodeBlock.of("$L", this.component.name());
-            return CodeBlock.of("g.get($L).value()", node);
+        public CodeBlock write(ProcessingContext ctx, ClassName graphTypeName, List<ResolvedComponent> resolvedComponents) {
+            return CodeBlock.of("g.get($T.$L).value()", graphTypeName, this.component.name());
         }
     }
 
     record NullDependency(DependencyClaim claim) implements ComponentDependency {
         @Override
-        public CodeBlock write(ProcessingContext ctx, List<ResolvedComponent> resolvedComponents, Set<Integer> promisedComponents) {
+        public CodeBlock write(ProcessingContext ctx, ClassName graphTypeName, List<ResolvedComponent> resolvedComponents) {
             return switch (this.claim.claimType()) {
                 case ONE_NULLABLE -> CodeBlock.of("($T) null", this.claim.type());
                 case NULLABLE_VALUE_OF -> CodeBlock.of("($T<$T>) null", CommonClassNames.valueOf, this.claim.type());
@@ -53,12 +51,11 @@ public sealed interface ComponentDependency {
 
     record ValueOfDependency(DependencyClaim claim, SingleDependency delegate) implements SingleDependency {
         @Override
-        public CodeBlock write(ProcessingContext ctx, List<ResolvedComponent> resolvedComponents, Set<Integer> promisedComponents) {
-            var node = promisedComponents.contains(delegate.component().index()) ? CodeBlock.of("$L.get()", delegate.component().name()) : CodeBlock.of("$L", delegate.component().name());
+        public CodeBlock write(ProcessingContext ctx, ClassName graphTypeName, List<ResolvedComponent> resolvedComponents) {
             if (this.delegate instanceof WrappedTargetDependency) {
-                return CodeBlock.of("g.valueOf($L).map($T::value).map(v -> ($T) v)", node, CommonClassNames.wrapped, claim.type());
+                return CodeBlock.of("g.valueOf($T.$L).map($T::value).map(v -> ($T) v)", graphTypeName, delegate.component().name(), CommonClassNames.wrapped, claim.type());
             }
-            return CodeBlock.of("g.valueOf($L).map(v -> ($T) v)", node, claim.type());
+            return CodeBlock.of("g.valueOf($T.$L).map(v -> ($T) v)", graphTypeName, delegate.component().name(), claim.type());
         }
 
         @Override
@@ -69,11 +66,11 @@ public sealed interface ComponentDependency {
 
     record PromiseOfDependency(DependencyClaim claim, SingleDependency delegate) implements SingleDependency {
         @Override
-        public CodeBlock write(ProcessingContext ctx, List<ResolvedComponent> resolvedComponents, Set<Integer> promisedComponents) {
+        public CodeBlock write(ProcessingContext ctx, ClassName graphTypeName, List<ResolvedComponent> resolvedComponents) {
             if (this.delegate instanceof WrappedTargetDependency) {
-                return CodeBlock.of("g.promiseOf($L.get()).map($T::value).map(v -> ($T) v)", this.delegate.component().name(), CommonClassNames.wrapped, this.claim.type());
+                return CodeBlock.of("g.promiseOf($T.$L).map($T::value).map(v -> ($T) v)", graphTypeName, this.delegate.component().name(), CommonClassNames.wrapped, this.claim.type());
             }
-            return CodeBlock.of("g.promiseOf($L.get()).map(v -> ($T) v)", delegate.component().name(), this.claim.type());
+            return CodeBlock.of("g.promiseOf($T.$L).map(v -> ($T) v)", graphTypeName, delegate.component().name(), this.claim.type());
         }
 
         @Override
@@ -84,7 +81,7 @@ public sealed interface ComponentDependency {
 
     record TypeOfDependency(DependencyClaim claim) implements SingleDependency {
         @Override
-        public CodeBlock write(ProcessingContext ctx, List<ResolvedComponent> resolvedComponents, Set<Integer> promisedComponents) {
+        public CodeBlock write(ProcessingContext ctx, ClassName graphTypeName, List<ResolvedComponent> resolvedComponents) {
             return this.buildTypeRef(ctx.types, this.claim.type());
         }
 
@@ -119,7 +116,7 @@ public sealed interface ComponentDependency {
 
     record AllOfDependency(DependencyClaim claim) implements ComponentDependency {
         @Override
-        public CodeBlock write(ProcessingContext ctx, List<ResolvedComponent> resolvedComponents, Set<Integer> promisedComponents) {
+        public CodeBlock write(ProcessingContext ctx, ClassName graphTypeName, List<ResolvedComponent> resolvedComponents) {
             var codeBlock = CodeBlock.builder().add("$T.of(", CommonClassNames.all);
             var dependencies = GraphResolutionHelper.findDependenciesForAllOf(ctx, this.claim, resolvedComponents);
             for (int i = 0; i < dependencies.size(); i++) {
@@ -127,7 +124,7 @@ public sealed interface ComponentDependency {
                 if (i == 0) {
                     codeBlock.indent().add("\n");
                 }
-                codeBlock.add(dependency.write(ctx, resolvedComponents, promisedComponents));
+                codeBlock.add(dependency.write(ctx, graphTypeName, resolvedComponents));
                 if (i == dependencies.size() - 1) {
                     codeBlock.unindent();
                 } else {
@@ -143,9 +140,9 @@ public sealed interface ComponentDependency {
     record PromisedProxyParameterDependency(ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclaration declaration, DependencyClaim claim) implements ComponentDependency {
 
         @Override
-        public CodeBlock write(ProcessingContext ctx, List<ResolvedComponent> resolvedComponents, Set<Integer> promisedComponents) {
+        public CodeBlock write(ProcessingContext ctx, ClassName graphTypeName, List<ResolvedComponent> resolvedComponents) {
             var dependencies = GraphResolutionHelper.findDependency(ctx, declaration, resolvedComponents, this.claim);
-            return CodeBlock.of("g.promiseOf($L.get())", dependencies.component().name());
+            return CodeBlock.of("g.promiseOf($T.$L)", graphTypeName, dependencies.component().name());
         }
     }
 }

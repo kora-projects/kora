@@ -5,6 +5,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -352,6 +353,35 @@ class GraphTest {
         assertThat(object2.refreshTime).isGreaterThan(beforeRefresh);
     }
 
+    @Test
+    void subgraphTest() {
+        var graph = ReferenceGraph.graph();
+        var subgraphDraw = graph.draw.subgraph(graph.object4Node);
+        assertThat(subgraphDraw.getNodes()).hasSize(5);
+        var subgraph = subgraphDraw.init().block();
+    }
+
+    @Test
+    void replaceNodeTest() {
+        var graph = ReferenceGraph.graph();
+        var draw = graph.draw.copy();
+        var mock = Mockito.mock(TestObject.class);
+        Mockito.when(mock.init()).thenReturn(Mono.empty());
+        Mockito.when(mock.release()).thenReturn(Mono.empty());
+
+        draw.replaceNode(graph.object2Node, g -> mock);
+        var newGraph = draw.init().block();
+
+        @SuppressWarnings("unchecked")
+        var object5Node = (Node<TestObject>) draw.getNodes().stream()
+            .filter(n -> n.factory == graph.object5Factory)
+            .findFirst()
+            .get();
+
+        Mockito.verify(mock).init();
+        var o5 = newGraph.get(object5Node);
+        assertThat(o5.dependencies.get(0)).isSameAs(mock);
+    }
 
     /**
      * <pre>
@@ -369,21 +399,20 @@ class GraphTest {
     private static class ReferenceGraph {
         private final ApplicationGraphDraw draw = new ApplicationGraphDraw(ReferenceGraph.class);
         private final TestObjectFactory rootFactory = factory();
+        private final Node<TestObject> rootNode = draw.addNode0(TestObject.class, TAGS, rootFactory);
+        private final TestObjectFactory object1Factory = factory(rootNode);
+        private final Node<TestObject> object1Node = draw.addNode0(TestObject.class, TAGS, object1Factory, rootNode);
         private final TestObjectFactory interceptor1Factory = factory();
-        private final TestObjectFactory object1Factory = factory();
-        private final TestObjectFactory object2Factory = factory();
-        private final TestObjectFactory object3Factory = factory();
-        private final TestObjectFactory object5Factory = factory();
-        private final Node<TestObject> rootNode = draw.addNode0(TAGS, rootFactory);
-        private final Node<TestObject> interceptor1 = draw.addNode0(TAGS, interceptor1Factory);
-        private final Node<TestObject> object1Node = draw.addNode0(TAGS, object1Factory, rootNode);
-        private final Node<TestObject> object2Node = draw.addNode0(TAGS, object2Factory, List.of(interceptor1), rootNode);
-        private final Node<TestObject> object3Node = draw.addNode0(TAGS, object3Factory, object1Node);
+        private final Node<TestObject> interceptor1 = draw.addNode0(TestObject.class, TAGS, interceptor1Factory);
+        private final TestObjectFactory object2Factory = factory(rootNode);
+        private final Node<TestObject> object2Node = draw.addNode0(TestObject.class, TAGS, object2Factory, List.of(interceptor1), rootNode);
+        private final TestObjectFactory object3Factory = factory(object1Node);
+        private final Node<TestObject> object3Node = draw.addNode0(TestObject.class, TAGS, object3Factory, object1Node);
         private final TestObjectFactory object4Factory = factory(object1Node, object2Node.valueOf());
+        private final Node<TestObject> object4Node = draw.addNode0(TestObject.class, TAGS, object4Factory, object1Node, object2Node.valueOf());
+        private final TestObjectFactory object5Factory = factory(object2Node);
+        private final Node<TestObject> object5Node = draw.addNode0(TestObject.class, TAGS, object5Factory, object2Node);
 
-
-        private final Node<TestObject> object4Node = draw.addNode0(TAGS, object4Factory, object1Node, object2Node.valueOf());
-        private final Node<TestObject> object5Node = draw.addNode0(TAGS, object5Factory, object2Node);
         private final RefreshableGraph graph = this.draw.init().block();
 
         public static ReferenceGraph graph() {

@@ -388,14 +388,6 @@ class KoraAppProcessorTest {
         var class1Node = class1Nodes.get(0);
         assertThat(graph.get(class1Node).value()).isEqualTo(2);
     }
-    @Test
-    void appWithCycleProxy() throws Throwable {
-        var graphDraw = testClass(AppWithCycleProxy.class);
-        Assertions.assertThat(graphDraw.getNodes()).hasSize(7);
-        var graph = graphDraw.init().block();
-        Assertions.assertThat(graph).isNotNull();
-
-    }
 
     @SuppressWarnings("unchecked")
     <T> Node<T> findNodeOf(ApplicationGraphDraw graphDraw, Class<T> type, Class<?>... tags) {
@@ -420,9 +412,9 @@ class KoraAppProcessorTest {
                     return true;
                 }
                 if (nonTagged) {
-                    return node.getTags().length == 0;
+                    return node.tags().length == 0;
                 }
-                return Arrays.stream(tags).allMatch(tag -> Arrays.asList(node.getTags()).contains(tag));
+                return Arrays.stream(tags).allMatch(tag -> Arrays.asList(node.tags()).contains(tag));
             })
             .collect(Collectors.toList());
     }

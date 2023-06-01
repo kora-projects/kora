@@ -22,9 +22,9 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
 import javax.tools.Diagnostic;
 import java.io.IOException;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -293,95 +293,66 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 
 
     private JavaFile generateApplicationGraph(Element classElement, List<TypeElement> allModules, ComponentInterceptors interceptors, List<ResolvedComponent> components) {
-        var graphDraw = this.elements.getTypeElement(CommonClassNames.applicationGraphDraw.canonicalName());
         var packageElement = (PackageElement) classElement.getEnclosingElement();
         var implClass = ClassName.get(packageElement.getQualifiedName().toString(), classElement.getSimpleName().toString() + "Impl");
+        var graphName = classElement.getSimpleName().toString() + "Graph";
+        var graphTypeName = ClassName.get(packageElement.getQualifiedName().toString(), graphName);
 
-        var classBuilder = TypeSpec.classBuilder(classElement.getSimpleName().toString() + "Graph")
+        var classBuilder = TypeSpec.classBuilder(graphName)
             .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", CodeBlock.of("$S", KoraAppProcessor.class.getCanonicalName())).build())
             .addOriginatingElement(classElement)
             .addModifiers(Modifier.PUBLIC)
-            .addSuperinterface(ParameterizedTypeName.get(ClassName.get(Supplier.class), TypeName.get(graphDraw.asType())))
-            .addSuperinterface(ParameterizedTypeName.get(ClassName.get(Function.class), implClass, TypeName.get(graphDraw.asType())))
+            .addSuperinterface(ParameterizedTypeName.get(ClassName.get(Supplier.class), CommonClassNames.applicationGraphDraw))
+            .addField(CommonClassNames.applicationGraphDraw, "graphDraw", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
             .addMethod(MethodSpec
                 .methodBuilder("get")
                 .addAnnotation(Override.class)
                 .addModifiers(Modifier.PUBLIC)
                 .returns(CommonClassNames.applicationGraphDraw)
-                .addStatement("return $L.graph(new $T())", classElement.getSimpleName().toString() + "Graph", implClass)
-                .build())
-            .addMethod(MethodSpec
-                .methodBuilder("apply")
-                .addAnnotation(Override.class)
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(implClass, "impl")
-                .returns(CommonClassNames.applicationGraphDraw)
-                .addStatement("return $L.graph(impl)", classElement.getSimpleName().toString() + "Graph")
+                .addStatement("return graphDraw")
                 .build());
-
         for (var component : this.components) {
             classBuilder.addOriginatingElement(component);
         }
         for (var module : this.modules) {
             classBuilder.addOriginatingElement(module);
         }
-        var functionMethodBuilder = MethodSpec.methodBuilder("graph")
-            .addParameter(implClass, "impl")
-            .returns(CommonClassNames.applicationGraphDraw)
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .addStatement("var graphDraw = new $T($T.class)", CommonClassNames.applicationGraphDraw, classElement);
-        var promisedComponents = new TreeSet<Integer>();
+        var staticBlock = CodeBlock.builder()
+            .addStatement("var map = new $T<$T, $T>()", HashMap.class, String.class, Type.class)
+            .beginControlFlow("for (var field : $L.class.getDeclaredFields())", graphName)
+            .addStatement("if (!field.getName().startsWith($S)) continue", "component")
+            .addStatement("map.put(field.getName(), (($T) field.getGenericType()).getActualTypeArguments()[0])", ParameterizedType.class)
+            .endControlFlow();
         for (var component : components) {
-            for (var dependency : component.dependencies()) {
-                if (dependency instanceof ComponentDependency.PromiseOfDependency pod && pod.component() != null) {
-                    promisedComponents.add(pod.component().index());
-                }
-                if (dependency instanceof ComponentDependency.PromisedProxyParameterDependency pod) {
-                    var d = GraphResolutionHelper.findDependency(ctx, pod.declaration(), components, pod.claim());
-                    promisedComponents.add(d.component().index());
-                }
-                if (dependency instanceof ComponentDependency.AllOfDependency allOf && allOf.claim().claimType().equals(DependencyClaim.DependencyClaimType.ALL_OF_PROMISE)) {
-                    for (var d : GraphResolutionHelper.findDependenciesForAllOf(ctx, dependency.claim(), components)) {
-                        promisedComponents.add(d.component().index());
-                    }
-                }
-            }
+            classBuilder.addField(FieldSpec.builder(ParameterizedTypeName.get(CommonClassNames.node, TypeName.get(component.type()).box()), component.name(), Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL).build());
+            staticBlock.addStatement("var _type_of_$L = map.get($S)", component.name(), component.name());
         }
-        for (var promisedComponent : promisedComponents) {
-            functionMethodBuilder.addStatement("var component$L = new $T<$T<$T>>()", promisedComponent, AtomicReference.class, CommonClassNames.node, components.get(promisedComponent).type());
-        }
-        functionMethodBuilder.addCode("\n");
 
+        staticBlock
+            .addStatement("var impl = new $T()", implClass)
+            .addStatement("graphDraw = new $T($T.class)", CommonClassNames.applicationGraphDraw, classElement);
 
         for (var component : components) {
-            var statement = this.generateComponentStatement(allModules, interceptors, components, promisedComponents, component);
-
-            functionMethodBuilder.addStatement(statement);
+            var statement = this.generateComponentStatement(graphTypeName, allModules, interceptors, components, component);
+            staticBlock.addStatement(statement);
         }
-        functionMethodBuilder.addStatement("return graphDraw");
         var supplierMethodBuilder = MethodSpec.methodBuilder("graph")
             .returns(CommonClassNames.applicationGraphDraw)
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .addStatement("var impl = new $L()", implClass)
-            .addStatement("return $L.graph(impl)", classElement.getSimpleName().toString() + "Graph");
+            .addStatement("return graphDraw", graphName);
 
 
         return JavaFile.builder(packageElement.getQualifiedName().toString(), classBuilder
-                .addMethod(functionMethodBuilder.build())
                 .addMethod(supplierMethodBuilder.build())
+                .addStaticBlock(staticBlock.build())
                 .build())
             .build();
     }
 
-    private CodeBlock generateComponentStatement(List<TypeElement> allModules, ComponentInterceptors interceptors, List<ResolvedComponent> components, Set<Integer> promisedComponents, ResolvedComponent component) {
+    private CodeBlock generateComponentStatement(ClassName graphTypeName, List<TypeElement> allModules, ComponentInterceptors interceptors, List<ResolvedComponent> components, ResolvedComponent component) {
         var statement = CodeBlock.builder();
         var declaration = component.declaration();
-        var isPromised = promisedComponents.contains(component.index());
-        if (isPromised) {
-            statement.add("$L.set(graphDraw.addNode0(", component.name());
-        } else {
-            statement.add("var $L = graphDraw.addNode0(", component.name());
-        }
+        statement.add("$L = graphDraw.addNode0(_type_of_$L, ", component.name(), component.name());
         statement.add("new Class<?>[]{");
         for (var tag : component.tags()) {
             statement.add("$L.class, ", tag);
@@ -454,7 +425,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         for (int i = 0, dependenciesSize = resolvedDependencies.size(); i < dependenciesSize; i++) {
             if (i > 0) statement.add(",\n");
             var resolvedDependency = resolvedDependencies.get(i);
-            statement.add(resolvedDependency.write(this.ctx, components, promisedComponents));
+            statement.add(resolvedDependency.write(this.ctx, graphTypeName, components));
         }
         if (!resolvedDependencies.isEmpty()) {
             statement.unindent();
@@ -477,9 +448,6 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                     var dependencies = GraphResolutionHelper.findDependenciesForAllOf(ctx, allOf.claim(), components);
                     for (var dependency : dependencies) {
                         statement.add(", $L", dependency.component().name());
-                        if (promisedComponents.contains(dependency.component().index())) {
-                            statement.add(".get()");
-                        }
                         if (allOf.claim().claimType() == DependencyClaim.DependencyClaimType.ALL_OF_VALUE) {
                             statement.add(".valueOf()");
                         }
@@ -493,18 +461,12 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 
             if (resolvedDependency instanceof ComponentDependency.SingleDependency dependency && dependency.component() != null) {
                 statement.add(", $L", dependency.component().name());
-                if (promisedComponents.contains(dependency.component().index())) {
-                    statement.add(".get()");
-                }
                 if (resolvedDependency instanceof ComponentDependency.ValueOfDependency) {
                     statement.add(".valueOf()");
                 }
             }
         }
         statement.add(")");
-        if (isPromised) {
-            statement.add(")");
-        }
         return statement.build();
     }
 
@@ -515,7 +477,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         var classBuilder = TypeSpec.classBuilder(className)
             .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", CodeBlock.of("$S", KoraAppProcessor.class.getCanonicalName())).build())
             .addOriginatingElement(classElement)
-            .addModifiers(Modifier.PUBLIC)
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(typeMirror);
 
         for (int i = 0; i < modules.size(); i++) {
