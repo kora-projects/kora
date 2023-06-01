@@ -5,6 +5,8 @@ import com.fasterxml.jackson.core.JsonFactoryBuilder;
 import com.fasterxml.jackson.core.JsonParseException;
 import ru.tinkoff.kora.common.DefaultComponent;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -429,8 +431,8 @@ public interface JsonCommonModule {
     default JsonReader<Double> doubleJsonReader() {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
-            case VALUE_NUMBER_FLOAT -> parser.getDoubleValue();
-            default -> throw new JsonParseException(parser, "Expecting VALUE_NUMBER_FLOAT token, got " + parser.currentToken());
+            case VALUE_NUMBER_FLOAT, VALUE_NUMBER_INT -> parser.getDoubleValue();
+            default -> throw new JsonParseException(parser, "Expecting VALUE_NUMBER_FLOAT or VALUE_NUMBER_INT token, got " + parser.currentToken());
         };
     }
 
@@ -468,6 +470,43 @@ public interface JsonCommonModule {
             case VALUE_TRUE -> true;
             case VALUE_FALSE -> false;
             default -> throw new JsonParseException(parser, "Expecting VALUE_TRUE or VALUE_FALSE token, got " + parser.currentToken());
+        };
+    }
+
+    default JsonWriter<BigDecimal> bigDecimalJsonWriter() {
+        return (gen, bigDecimal) -> {
+            if (bigDecimal == null) {
+                gen.writeNull();
+            } else {
+                gen.writeNumber(bigDecimal);
+            }
+        };
+    }
+
+    default JsonReader<BigDecimal> bigDecimalJsonReader() {
+        return parser -> switch (parser.currentToken()) {
+            case VALUE_NULL -> null;
+            case VALUE_NUMBER_FLOAT, VALUE_NUMBER_INT -> parser.getDecimalValue();
+            default -> throw new JsonParseException(parser, "Expecting VALUE_NUMBER_FLOAT or VALUE_NUMBER_INT token, got " + parser.currentToken());
+        };
+    }
+
+
+    default JsonWriter<BigInteger> bigIntegerJsonWriter() {
+        return (gen, bigDecimal) -> {
+            if (bigDecimal == null) {
+                gen.writeNull();
+            } else {
+                gen.writeNumber(bigDecimal);
+            }
+        };
+    }
+
+    default JsonReader<BigInteger> bigIntegerJsonReader() {
+        return parser -> switch (parser.currentToken()) {
+            case VALUE_NULL -> null;
+            case VALUE_NUMBER_INT -> parser.getBigIntegerValue();
+            default -> throw new JsonParseException(parser, "Expecting VALUE_NUMBER_INT token, got " + parser.currentToken());
         };
     }
 
