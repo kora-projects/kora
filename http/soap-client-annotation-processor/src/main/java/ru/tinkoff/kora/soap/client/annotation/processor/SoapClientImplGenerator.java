@@ -105,7 +105,7 @@ public class SoapClientImplGenerator {
                 operationName = method.getSimpleName().toString();
             }
             var executorFieldName = operationName + "RequestExecutor";
-            constructorBuilder.addCode("this.$L = new $T(httpClient, telemetry, new $T(jaxb), $S, config.url(), $S, $S);",
+            constructorBuilder.addCode("this.$L = new $T(httpClient, telemetry, new $T(jaxb), $S, config.url(), config.timeout(), $S, $S);",
                 executorFieldName, soapClasses.soapRequestExecutor(), soapClasses.xmlToolsType(), serviceName, operationName, soapAction
             );
             builder.addField(soapClasses.soapRequestExecutor(), executorFieldName, Modifier.PRIVATE, Modifier.FINAL);
@@ -226,8 +226,8 @@ public class SoapClientImplGenerator {
         m.addCode("if (__response instanceof $T __failure) {$>\n", soapClasses.soapResultFailure());
         m.addCode("var __fault = __failure.fault();\n");
         if (!method.getThrownTypes().isEmpty()) {
+            m.beginControlFlow("if (__fault.getDetail() != null && __fault.getDetail().getAny() != null && __fault.getDetail().getAny().size() > 0)");
             m.addCode("var __detail = __fault.getDetail().getAny().get(0);\n");
-            m.addCode("var __faultCode = __fault.getFaultcode();\n");
             for (var thrownType : method.getThrownTypes()) {
                 var webFault = this.findAnnotation(processingEnv.getTypeUtils().asElement(thrownType), soapClasses.webFaultType());
                 if (webFault == null) {
@@ -241,19 +241,28 @@ public class SoapClientImplGenerator {
                     .map(ExecutableElement::getReturnType)
                     .findFirst()
                     .get();
-                var namespace = findAnnotationValue(webFault, "targetNamespace").toString();
-                var localPart = findAnnotationValue(webFault, "name").toString();
-                m.addCode("if ($S.equals(__faultCode.getNamespaceURI()) && $S.equals(__faultCode.getLocalPart()) && __detail instanceof $T __error)\n", namespace, localPart, detailType);
+                m.addCode("if (__detail instanceof $T __error) {\n", detailType);
                 if (isReactive) {
                     m.addCode("  __sink.error(new $T(__failure.faultMessage(), __error));\n", thrownType);
+                    m.addCode("  return;\n", thrownType);
                 } else {
                     m.addCode("  throw new $T(__failure.faultMessage(), __error);\n", thrownType);
                 }
-                m.addCode("else ");
+                m.addCode("} else ");
             }
+            if (isReactive) {
+                m.addCode("{\n");
+                m.addCode("  __sink.error(new $T(__failure.faultMessage(), __fault));\n", soapClasses.soapFaultException());
+                m.addCode("  return;\n}\n");
+            } else {
+                m.addCode("\n  throw new $T(__failure.faultMessage(), __fault);\n", soapClasses.soapFaultException());
+            }
+            m.endControlFlow();
         }
+
         if (isReactive) {
-            m.addCode("__sink.error(new $T(__failure.faultMessage(), __fault));$<\n}\n", soapClasses.soapFaultException());
+            m.addCode("__sink.error(new $T(__failure.faultMessage(), __fault));\n", soapClasses.soapFaultException());
+            m.addCode("return;$<\n}\n");
         } else {
             m.addCode("throw new $T(__failure.faultMessage(), __fault);$<\n}\n", soapClasses.soapFaultException());
         }

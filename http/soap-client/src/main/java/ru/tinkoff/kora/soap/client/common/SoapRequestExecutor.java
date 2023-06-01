@@ -18,6 +18,7 @@ import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
 
 public class SoapRequestExecutor {
     private final HttpClient httpClient;
@@ -25,11 +26,13 @@ public class SoapRequestExecutor {
     private final String url;
     private final String soapAction;
     private final SoapClientTelemetry telemetry;
+    private final Duration timeout;
 
-    public SoapRequestExecutor(HttpClient httpClient, SoapClientTelemetryFactory telemetryFactory, XmlTools xmlTools, String service, String url, String method, @Nullable String soapAction) {
+    public SoapRequestExecutor(HttpClient httpClient, SoapClientTelemetryFactory telemetryFactory, XmlTools xmlTools, String service, String url, Duration timeout, String method, @Nullable String soapAction) {
         this.httpClient = httpClient;
         this.xmlTools = xmlTools;
         this.url = url;
+        this.timeout = timeout;
         this.soapAction = soapAction;
         this.telemetry = telemetryFactory.get(service, method, url);
     }
@@ -39,6 +42,7 @@ public class SoapRequestExecutor {
         var requestXml = this.xmlTools.marshal(requestEnvelope);
         var httpClientRequest = HttpClientRequest.post(this.url)
             .body(requestXml)
+            .requestTimeout((int) timeout.toMillis())
             .header("content-type", "text/xml");
         if (this.soapAction != null) {
             httpClientRequest.header("SOAPAction", this.soapAction);
