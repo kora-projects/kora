@@ -39,7 +39,7 @@ public class JsonKoraExtension implements KoraExtension {
     public JsonKoraExtension(ProcessingEnvironment processingEnv) {
         this.types = processingEnv.getTypeUtils();
         this.elements = processingEnv.getElementUtils();
-        var knownTypes = new KnownType(this.elements, this.types);
+        var knownTypes = new KnownType();
         this.readerTypeMetaParser = new ReaderTypeMetaParser(processingEnv, knownTypes);
         this.writerTypeMetaParser = new WriterTypeMetaParser(processingEnv, knownTypes);
 

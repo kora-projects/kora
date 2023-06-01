@@ -393,15 +393,15 @@ public class JsonReaderGenerator {
                 }
                 """, JsonTypes.jsonToken, JsonTypes.jsonToken, parameterName);
             case DOUBLE_OBJECT, DOUBLE_PRIMITIVE -> CodeBlock.of("""
-                if (_token == $T.VALUE_NUMBER_FLOAT) {
+                if (_token == $T.VALUE_NUMBER_FLOAT || _token == $T.VALUE_NUMBER_INT) {
                   $L _parser.getDoubleValue();
                 }
-                """, JsonTypes.jsonToken, parameterName);
+                """, JsonTypes.jsonToken, JsonTypes.jsonToken, parameterName);
             case FLOAT_OBJECT, FLOAT_PRIMITIVE -> CodeBlock.of("""
-                if (_token == $T.VALUE_NUMBER_FLOAT) {
+                if (_token == $T.VALUE_NUMBER_FLOAT || _token == $T.VALUE_NUMBER_INT) {
                   $L _parser.getFloatValue();
                 }
-                """, JsonTypes.jsonToken, parameterName);
+                """, JsonTypes.jsonToken, JsonTypes.jsonToken, parameterName);
             case LONG_OBJECT, LONG_PRIMITIVE -> CodeBlock.of("""
                 if (_token == $T.VALUE_NUMBER_INT) {
                   $L _parser.getLongValue();

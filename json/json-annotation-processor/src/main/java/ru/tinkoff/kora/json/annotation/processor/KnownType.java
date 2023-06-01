@@ -1,67 +1,40 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
+import com.squareup.javapoet.ArrayTypeName;
+import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.TypeName;
+
 import javax.annotation.Nullable;
-import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.Elements;
-import javax.lang.model.util.Types;
-import java.util.List;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Map;
-import java.util.Set;
-import java.util.SortedSet;
+import java.util.UUID;
 
 public class KnownType {
-    private final Elements elements;
-    private final Types types;
-    private final TypeMirror string;
-    private final TypeMirror booleanObject;
-    private final TypeMirror booleanPrimitive;
-    private final TypeMirror integerObject;
-    private final TypeMirror integerPrimitive;
-    private final TypeMirror bigInteger;
-    private final TypeMirror bigDecimal;
-    private final TypeMirror doubleObject;
-    private final TypeMirror doublePrimitive;
-    private final TypeMirror floatObject;
-    private final TypeMirror floatPrimitive;
-    private final TypeMirror longObject;
-    private final TypeMirror longPrimitive;
-    private final TypeMirror shortObject;
-    private final TypeMirror shortPrimitive;
-    private final TypeMirror binary;
-    private final TypeMirror listErasure;
-    private final TypeMirror setErasure;
-    private final TypeMirror mapErasure;
-    private final TypeMirror sortedSetErasure;
-    private final TypeMirror uuid;
+    private final Map<TypeName, KnownTypesEnum> knownTypes;
 
-    public KnownType(Elements elements, Types types) {
-        this.elements = elements;
-        this.types = types;
-
-        this.uuid = this.elements.getTypeElement("java.util.UUID").asType();
-        this.string = this.elements.getTypeElement("java.lang.String").asType();
-        this.booleanObject = this.elements.getTypeElement("java.lang.Boolean").asType();
-        this.booleanPrimitive = this.types.unboxedType(this.booleanObject);
-        this.shortObject = this.elements.getTypeElement("java.lang.Short").asType();
-        this.shortPrimitive = this.types.unboxedType(this.shortObject);
-        this.integerObject = this.elements.getTypeElement("java.lang.Integer").asType();
-        this.integerPrimitive = this.types.unboxedType(this.integerObject);
-        this.longObject = this.elements.getTypeElement("java.lang.Long").asType();
-        this.longPrimitive = this.types.unboxedType(this.longObject);
-        this.bigInteger = this.elements.getTypeElement("java.math.BigInteger").asType();
-        this.bigDecimal = this.elements.getTypeElement("java.math.BigDecimal").asType();
-        this.doubleObject = this.elements.getTypeElement("java.lang.Double").asType();
-        this.doublePrimitive = this.types.unboxedType(this.doubleObject);
-        this.floatObject = this.elements.getTypeElement("java.lang.Float").asType();
-        this.floatPrimitive = this.types.unboxedType(this.floatObject);
-        this.binary = this.types.getArrayType(this.types.getPrimitiveType(TypeKind.BYTE));
-
-        this.listErasure = this.types.erasure(this.elements.getTypeElement(List.class.getCanonicalName()).asType());
-        this.setErasure = this.types.erasure(this.elements.getTypeElement(Set.class.getCanonicalName()).asType());
-        this.mapErasure = this.types.erasure(this.elements.getTypeElement(Map.class.getCanonicalName()).asType());
-        this.sortedSetErasure = this.types.erasure(this.elements.getTypeElement(SortedSet.class.getCanonicalName()).asType());
+    public KnownType() {
+        this.knownTypes = Map.ofEntries(
+            Map.entry(ClassName.get(UUID.class), KnownTypesEnum.UUID),
+            Map.entry(ClassName.get(String.class), KnownTypesEnum.STRING),
+            Map.entry(TypeName.BOOLEAN, KnownTypesEnum.BOOLEAN_PRIMITIVE),
+            Map.entry(TypeName.BOOLEAN.box(), KnownTypesEnum.BOOLEAN_OBJECT),
+            Map.entry(TypeName.SHORT, KnownTypesEnum.SHORT_PRIMITIVE),
+            Map.entry(TypeName.SHORT.box(), KnownTypesEnum.SHORT_OBJECT),
+            Map.entry(TypeName.INT, KnownTypesEnum.INTEGER_PRIMITIVE),
+            Map.entry(TypeName.INT.box(), KnownTypesEnum.INTEGER_OBJECT),
+            Map.entry(TypeName.LONG, KnownTypesEnum.LONG_PRIMITIVE),
+            Map.entry(TypeName.LONG.box(), KnownTypesEnum.LONG_OBJECT),
+            Map.entry(TypeName.DOUBLE, KnownTypesEnum.DOUBLE_PRIMITIVE),
+            Map.entry(TypeName.DOUBLE.box(), KnownTypesEnum.DOUBLE_OBJECT),
+            Map.entry(TypeName.FLOAT, KnownTypesEnum.FLOAT_PRIMITIVE),
+            Map.entry(TypeName.FLOAT.box(), KnownTypesEnum.FLOAT_OBJECT),
+            Map.entry(ClassName.get(BigInteger.class), KnownTypesEnum.BIG_INTEGER),
+            Map.entry(ClassName.get(BigDecimal.class), KnownTypesEnum.BIG_DECIMAL),
+            Map.entry(ArrayTypeName.of(TypeName.BYTE), KnownTypesEnum.BINARY)
+        );
     }
 
 
@@ -70,96 +43,8 @@ public class KnownType {
         if (typeMirror.getKind() == TypeKind.ERROR) {
             return null;
         }
-        if (this.types.isSameType(typeMirror, string)) {
-            return KnownTypesEnum.STRING;
-        }
-        if (this.types.isSameType(typeMirror, integerObject)) {
-            return KnownTypesEnum.INTEGER_OBJECT;
-        }
-        if (this.types.isSameType(typeMirror, integerPrimitive)) {
-            return KnownTypesEnum.INTEGER_PRIMITIVE;
-        }
-        if (this.types.isSameType(typeMirror, longObject)) {
-            return KnownTypesEnum.LONG_OBJECT;
-        }
-        if (this.types.isSameType(typeMirror, longPrimitive)) {
-            return KnownTypesEnum.LONG_PRIMITIVE;
-        }
-        if (this.types.isSameType(typeMirror, booleanObject)) {
-            return KnownTypesEnum.BOOLEAN_OBJECT;
-        }
-        if (this.types.isSameType(typeMirror, booleanPrimitive)) {
-            return KnownTypesEnum.BOOLEAN_PRIMITIVE;
-        }
-        if (this.types.isSameType(typeMirror, bigInteger)) {
-            return KnownTypesEnum.BIG_INTEGER;
-        }
-        if (this.types.isSameType(typeMirror, bigDecimal)) {
-            return KnownTypesEnum.BIG_DECIMAL;
-        }
-        if (this.types.isSameType(typeMirror, doubleObject)) {
-            return KnownTypesEnum.DOUBLE_OBJECT;
-        }
-        if (this.types.isSameType(typeMirror, doublePrimitive)) {
-            return KnownTypesEnum.DOUBLE_PRIMITIVE;
-        }
-        if (this.types.isSameType(typeMirror, floatObject)) {
-            return KnownTypesEnum.FLOAT_OBJECT;
-        }
-        if (this.types.isSameType(typeMirror, floatPrimitive)) {
-            return KnownTypesEnum.FLOAT_PRIMITIVE;
-        }
-        if (this.types.isSameType(typeMirror, shortObject)) {
-            return KnownTypesEnum.SHORT_OBJECT;
-        }
-        if (this.types.isSameType(typeMirror, shortPrimitive)) {
-            return KnownTypesEnum.SHORT_PRIMITIVE;
-        }
-        if (this.types.isSameType(typeMirror, binary)) {
-            return KnownTypesEnum.BINARY;
-        }
-        if (this.types.isSameType(typeMirror, uuid)) {
-            return KnownTypesEnum.UUID;
-        }
-        return null;
-    }
+        return knownTypes.get(TypeName.get(typeMirror));
 
-    @Nullable
-    public TypeMirror extractList(TypeMirror typeMirror) {
-        if (this.types.isSameType(this.types.erasure(typeMirror), this.listErasure)) {
-            var declaredType = (DeclaredType) typeMirror;
-            return declaredType.getTypeArguments().get(0);
-        }
-        return null;
-    }
-
-    @Nullable
-    public TypeMirror extractSet(TypeMirror typeMirror) {
-        if (this.types.isSameType(this.types.erasure(typeMirror), this.setErasure)) {
-            var declaredType = (DeclaredType) typeMirror;
-            return declaredType.getTypeArguments().get(0);
-        }
-        return null;
-    }
-
-    @Nullable
-    public TypeMirror extractMap(TypeMirror typeMirror) {
-        if (this.types.isSameType(this.types.erasure(typeMirror), this.mapErasure)) {
-            var declaredType = (DeclaredType) typeMirror;
-            if (this.types.isSameType(this.string, declaredType.getTypeArguments().get(0))) {
-                return declaredType.getTypeArguments().get(1);
-            }
-        }
-        return null;
-    }
-
-    @Nullable
-    public TypeMirror extractSortedSet(TypeMirror typeMirror) {
-        if (this.types.isSameType(this.types.erasure(typeMirror), this.sortedSetErasure)) {
-            var declaredType = (DeclaredType) typeMirror;
-            return declaredType.getTypeArguments().get(0);
-        }
-        return null;
     }
 
     public enum KnownTypesEnum {

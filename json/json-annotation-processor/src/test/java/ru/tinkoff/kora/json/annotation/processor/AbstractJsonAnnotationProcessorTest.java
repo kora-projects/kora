@@ -84,12 +84,23 @@ public abstract class AbstractJsonAnnotationProcessorTest extends AbstractAnnota
         }
 
         public void verify(T expectedObject, String expectedJson) {
+            verifyRead(expectedJson, expectedObject);
+            verifyWrite(expectedObject, expectedJson);
+        }
+
+        public void verifyRead(String expectedJson, T expectedObject) {
+            try {
+                var object = this.reader.read(expectedJson.getBytes(StandardCharsets.UTF_8));
+                assertThat(object).isEqualTo(expectedObject);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public void verifyWrite(T expectedObject, String expectedJson) {
             try {
                 var json = this.writer.toByteArray(expectedObject);
                 assertThat(json).asString(StandardCharsets.UTF_8).isEqualTo(expectedJson);
-
-                var object = this.reader.read(expectedJson.getBytes(StandardCharsets.UTF_8));
-                assertThat(object).isEqualTo(expectedObject);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

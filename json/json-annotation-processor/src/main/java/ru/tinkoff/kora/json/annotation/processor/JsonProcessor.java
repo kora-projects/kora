@@ -43,7 +43,7 @@ public class JsonProcessor {
         this.processingEnv = processingEnv;
         this.elements = processingEnv.getElementUtils();
         this.types = processingEnv.getTypeUtils();
-        var knownTypes = new KnownType(processingEnv.getElementUtils(), processingEnv.getTypeUtils());
+        var knownTypes = new KnownType();
         this.readerTypeMetaParser = new ReaderTypeMetaParser(this.processingEnv, knownTypes);
         this.writerTypeMetaParser = new WriterTypeMetaParser(processingEnv, knownTypes);
         this.writerGenerator = new JsonWriterGenerator(this.processingEnv);
