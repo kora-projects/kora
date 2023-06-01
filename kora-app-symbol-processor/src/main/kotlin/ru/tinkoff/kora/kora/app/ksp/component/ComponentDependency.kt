@@ -17,36 +17,28 @@ import ru.tinkoff.kora.ksp.common.CommonClassNames
 sealed interface ComponentDependency {
     val claim: DependencyClaim
 
-    fun write(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>, promisedComponents: Set<Int>): CodeBlock
+    fun write(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>): CodeBlock
 
     sealed interface SingleDependency : ComponentDependency {
         val component: ResolvedComponent?
     }
 
     data class TargetDependency(override val claim: DependencyClaim, override val component: ResolvedComponent) : SingleDependency {
-        override fun write(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>, promisedComponents: Set<Int>): CodeBlock {
-            if (promisedComponents.contains(component.index)) {
-                return CodeBlock.of("g.get(%L.get())", component.name)
-            } else {
-                return CodeBlock.of("g.get(%L)", component.name)
-            }
+        override fun write(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>): CodeBlock {
+            return CodeBlock.of("it.get(%L)", component.name)
         }
     }
 
     data class WrappedTargetDependency(override val claim: DependencyClaim, override val component: ResolvedComponent) : SingleDependency {
-        override fun write(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>, promisedComponents: Set<Int>): CodeBlock {
-            if (promisedComponents.contains(component.index)) {
-                return CodeBlock.of("g.get(%L.get()).value()", component.name)
-            } else {
-                return CodeBlock.of("g.get(%L).value()", component.name)
-            }
+        override fun write(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>): CodeBlock {
+            return CodeBlock.of("it.get(%L).value()", component.name)
         }
     }
 
     data class NullDependency(override val claim: DependencyClaim) : SingleDependency {
         override val component = null
 
-        override fun write(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>, promisedComponents: Set<Int>): CodeBlock {
+        override fun write(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>): CodeBlock {
             return when (claim.claimType) {
                 DependencyClaim.DependencyClaimType.NULLABLE_ONE -> CodeBlock.of("null as %T", claim.type.toTypeName().copy(true))
                 DependencyClaim.DependencyClaimType.NULLABLE_VALUE_OF -> CodeBlock.of("null as %T", CommonClassNames.valueOf.parameterizedBy(claim.type.toTypeName()).copy(true))
@@ -61,16 +53,15 @@ sealed interface ComponentDependency {
         override val component
             get() = delegate.component
 
-        override fun write(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>, promisedComponents: Set<Int>): CodeBlock {
+        override fun write(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>): CodeBlock {
             if (delegate is NullDependency) {
                 return CodeBlock.of("%T.valueOfNull()", CommonClassNames.valueOf)
             }
             val component = delegate.component!!
-            val node = if (promisedComponents.contains(component.index)) CodeBlock.of("%L.get()", component.name) else CodeBlock.of("%L", component.name)
             if (delegate is WrappedTargetDependency) {
-                return CodeBlock.of("g.valueOf(%L).map { it.value() }.map { it as %T }", node, claim.type.toTypeName())
+                return CodeBlock.of("it.valueOf(%L).map { it.value() }.map { it as %T }", component.name, claim.type.toTypeName())
             }
-            return CodeBlock.of("g.valueOf(%L).map { it as %T }", node, claim.type.toTypeName())
+            return CodeBlock.of("it.valueOf(%L).map { it as %T }", component.name, claim.type.toTypeName())
         }
     }
 
@@ -78,21 +69,20 @@ sealed interface ComponentDependency {
         override val component
             get() = delegate.component
 
-        override fun write(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>, promisedComponents: Set<Int>): CodeBlock {
+        override fun write(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>): CodeBlock {
             if (delegate is NullDependency) {
                 return CodeBlock.of("%T.promiseOfNull()", CommonClassNames.promiseOf)
             }
             val component = delegate.component!!
-            val node = if (promisedComponents.contains(component.index)) CodeBlock.of("%L.get()", component.name) else CodeBlock.of("%L", component.name)
             if (delegate is WrappedTargetDependency) {
-                return CodeBlock.of("g.promiseOf(%L).map { it.value() }.map { it as %T }", node, claim.type.toTypeName())
+                return CodeBlock.of("it.promiseOf(%L).map { it.value() }.map { it as %T }", component.name, claim.type.toTypeName())
             }
-            return CodeBlock.of("g.promiseOf(%L).map { it as %T }", node, claim.type.toTypeName())
+            return CodeBlock.of("it.promiseOf(%L).map { it as %T }", component.name, claim.type.toTypeName())
         }
     }
 
     data class TypeOfDependency(override val claim: DependencyClaim) : ComponentDependency {
-        override fun write(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>, promisedComponents: Set<Int>): CodeBlock {
+        override fun write(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>): CodeBlock {
             return buildTypeRef(claim.type)
         }
 
@@ -123,14 +113,14 @@ sealed interface ComponentDependency {
     }
 
     data class AllOfDependency(override val claim: DependencyClaim) : ComponentDependency {
-        override fun write(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>, promisedComponents: Set<Int>): CodeBlock {
+        override fun write(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>): CodeBlock {
             val codeBlock = CodeBlock.builder().add("%T.of(", CommonClassNames.all)
             val dependencies = GraphResolutionHelper.findDependenciesForAllOf(ctx, claim, resolvedComponents)
             for ((i, dependency) in dependencies.withIndex()) {
                 if (i == 0) {
                     codeBlock.indent().add("\n")
                 }
-                codeBlock.add(dependency.write(ctx, resolvedComponents, promisedComponents))
+                codeBlock.add(dependency.write(ctx, resolvedComponents))
                 if (i == dependencies.size - 1) {
                     codeBlock.unindent()
                 } else {
@@ -143,9 +133,9 @@ sealed interface ComponentDependency {
     }
 
     data class PromisedProxyParameterDependency(val declaration: ComponentDeclaration, override val claim: DependencyClaim) : ComponentDependency {
-        override fun write(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>, promisedComponents: Set<Int>): CodeBlock {
+        override fun write(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>): CodeBlock {
             val dependencies = GraphResolutionHelper.findDependency(ctx, declaration, resolvedComponents, this.claim)
-            return CodeBlock.of("g.promiseOf(%L.get())", dependencies!!.component!!.name)
+            return CodeBlock.of("it.promiseOf(self.%L)", dependencies!!.component!!.name)
         }
 
     }

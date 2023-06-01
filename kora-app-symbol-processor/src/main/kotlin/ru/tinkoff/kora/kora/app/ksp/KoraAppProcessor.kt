@@ -25,11 +25,14 @@ import ru.tinkoff.kora.ksp.common.*
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
+import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
+import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import java.io.IOException
+import java.lang.reflect.ParameterizedType
+import java.lang.reflect.Type
 import java.util.*
-import java.util.concurrent.atomic.AtomicReference
-import java.util.function.Function
 import java.util.function.Supplier
 import javax.annotation.processing.SupportedOptions
 
@@ -425,8 +428,6 @@ class KoraAppProcessor(
         interceptors: ComponentInterceptors
     ): FileSpec {
         val supplier: KSClassDeclaration = resolver.getClassDeclarationByName(Supplier::class.qualifiedName.toString())!!
-        val functionDeclaration: KSClassDeclaration = resolver.getClassDeclarationByName(Function::class.qualifiedName.toString())!!
-
         val containingFile = declaration.containingFile!!
         val packageName = containingFile.packageName.asString()
         val graphName = "${declaration.simpleName.asString()}Graph"
@@ -438,24 +439,15 @@ class KoraAppProcessor(
 
         val implClass = ClassName(packageName, "${declaration.simpleName.asString()}Impl")
         val supplierSuperInterface = supplier.toClassName().parameterizedBy(CommonClassNames.applicationGraphDraw)
-        val functionSuperInterface = functionDeclaration.toClassName().parameterizedBy(implClass, CommonClassNames.applicationGraphDraw)
         val classBuilder = TypeSpec.classBuilder(graphName)
             .addOriginatingKSFile(containingFile)
             .generated(KoraAppProcessor::class)
             .addSuperinterface(supplierSuperInterface)
-            .addSuperinterface(functionSuperInterface)
             .addFunction(
                 FunSpec.builder("get")
                     .addModifiers(KModifier.OVERRIDE)
                     .returns(CommonClassNames.applicationGraphDraw)
-                    .addStatement("return %N.graph(%T())", "${declaration.simpleName.asString()}Graph", implClass)
-                    .build()
-            ).addFunction(
-                FunSpec.builder("apply")
-                    .addModifiers(KModifier.OVERRIDE)
-                    .addParameter("impl", implClass)
-                    .returns(CommonClassNames.applicationGraphDraw)
-                    .addStatement("return %N.graph(impl)", "${declaration.simpleName.asString()}Graph")
+                    .addStatement("return graphDraw")
                     .build()
             )
 
@@ -466,60 +458,31 @@ class KoraAppProcessor(
             classBuilder.addOriginatingKSFile(module.containingFile!!)
         }
         val companion = TypeSpec.companionObjectBuilder()
-        val functionMethodBuilder = FunSpec.builder("graph")
-            .addParameter("impl", implClass)
-            .returns(CommonClassNames.applicationGraphDraw)
-            .addStatement("val graphDraw =  %T(%T::class.java)", ApplicationGraphDraw::class, declaration.toClassName())
-        val promisedComponents = TreeSet<Int>()
-        for (component in graph) {
-            for (dependency in component.dependencies) {
-                if (dependency is ComponentDependency.PromiseOfDependency) {
-                    dependency.component?.let {
-                        promisedComponents.add(it.index)
-                    }
-                }
-                if (dependency is ComponentDependency.PromisedProxyParameterDependency) {
-                    val d = GraphResolutionHelper.findDependency(ctx!!, dependency.declaration, graph, dependency.claim)
-                    promisedComponents.add(d!!.component!!.index)
-                }
-                if (dependency is ComponentDependency.AllOfDependency && dependency.claim.claimType == DependencyClaim.DependencyClaimType.ALL_OF_PROMISE) {
-                    for (d in GraphResolutionHelper.findDependenciesForAllOf(ctx!!, dependency.claim, graph)) {
-                        promisedComponents.add(d.component!!.index)
-                    }
-                }
+            .addProperty("graphDraw", CommonClassNames.applicationGraphDraw)
+        val initBlock = CodeBlock.builder()
+            .addStatement("val self = %T", ClassName(packageName, graphName))
+            .addStatement("val map = %T<%T, %T>()", HashMap::class.asClassName(), String::class.asClassName(), Type::class.asClassName())
+            .controlFlow("for (field in %L::class.java.declaredFields)", graphName) {
+                addStatement("if (!field.name.startsWith(%S)) continue", "component")
+                addStatement("map[field.name] = (field.genericType as %T).actualTypeArguments[0]", ParameterizedType::class.asClassName())
             }
+            .addStatement("val impl = %T()", implClass)
+            .addStatement("graphDraw =  %T(%T::class.java)", ApplicationGraphDraw::class, declaration.toClassName())
+        for (component in graph) {
+            companion.addProperty(component.name, CommonClassNames.node.parameterizedBy(component.type.toTypeName()))
         }
-        for (promisedComponent in promisedComponents) {
-            functionMethodBuilder.addStatement(
-                "val component%L = %T<%T<%T>>()",
-                promisedComponent,
-                AtomicReference::class.asClassName(),
-                CommonClassNames.node,
-                graph[promisedComponent].type.toTypeName()
-            )
-        }
-        functionMethodBuilder.addCode("\n")
-
 
         for (component in graph) {
-            val statement = this.generateComponentStatement(allModules, interceptors, graph, promisedComponents, component)
-            functionMethodBuilder.addCode(statement)
+            val statement = this.generateComponentStatement(allModules, interceptors, graph, component)
+            initBlock.add(statement).add("\n")
         }
-        functionMethodBuilder.addStatement("\n")
-        functionMethodBuilder.addStatement("return graphDraw")
 
         val supplierMethodBuilder = FunSpec.builder("graph")
             .returns(ApplicationGraphDraw::class)
-            .addCode("\nval impl = %T()", implClass)
-            .addCode("\nreturn %N.graph(impl)\n", declaration.simpleName.asString() + "Graph")
+            .addCode("\nreturn graphDraw\n", declaration.simpleName.asString() + "Graph")
         return fileSpec.addType(
             classBuilder
-                .addType(
-                    companion
-                        .addFunction(supplierMethodBuilder.build())
-                        .addFunction(functionMethodBuilder.build())
-                        .build()
-                )
+                .addType(companion.addInitializerBlock(initBlock.build()).addFunction(supplierMethodBuilder.build()).build())
                 .addFunction(supplierMethodBuilder.build())
                 .build()
         ).build()
@@ -529,24 +492,18 @@ class KoraAppProcessor(
         allModules: List<KSClassDeclaration>,
         interceptors: ComponentInterceptors,
         components: List<ResolvedComponent>,
-        promisedComponents: Set<Int>,
         component: ResolvedComponent
     ): CodeBlock {
         val statement = CodeBlock.builder()
         val declaration = component.declaration
-        val isPromised = promisedComponents.contains(component.index)
-        if (isPromised) {
-            statement.add("%L.set(graphDraw.addNode0(", component.name)
-        } else {
-            statement.add("val %L = graphDraw.addNode0(", component.name)
-        }
+        statement.add("%L = graphDraw.addNode0(map[%S], ", component.name, component.name)
         statement.indent().add("\n")
         statement.add("arrayOf(")
         for (tag in component.tags) {
             statement.add("%L::class.java, ", tag)
         }
         statement.add("),\n")
-        statement.add("{ g -> ")
+        statement.add("{ ")
 
         when (declaration) {
             is ComponentDeclaration.AnnotatedComponent -> {
@@ -618,7 +575,7 @@ class KoraAppProcessor(
             if (i > 0) {
                 statement.add(",\n")
             }
-            statement.add(dependency.write(ctx!!, components, promisedComponents))
+            statement.add(dependency.write(ctx!!, components))
         }
         if (component.dependencies.isNotEmpty()) {
             statement.unindent().add("\n")
@@ -646,9 +603,6 @@ class KoraAppProcessor(
                             statement.add(", ")
                         }
                         statement.add("%L", d.component!!.name)
-                        if (promisedComponents.contains(d.component!!.index)) {
-                            statement.add(".get()")
-                        }
                         if (dependency.claim.claimType == DependencyClaim.DependencyClaimType.ALL_OF_VALUE) {
                             statement.add(".valueOf()")
                         }
@@ -670,9 +624,6 @@ class KoraAppProcessor(
                     statement.add(", ")
                 }
                 statement.add("%L", dependency.component!!.name)
-                if (promisedComponents.contains(dependency.component!!.index)) {
-                    statement.add(".get()")
-                }
                 if (dependency is ComponentDependency.ValueOfDependency) {
                     statement.add(".valueOf()")
                 }
@@ -680,9 +631,6 @@ class KoraAppProcessor(
         }
         statement.unindent()
         statement.add("\n)")
-        if (isPromised) {
-            statement.add(")")
-        }
         return statement.add("\n").build()
     }
 }

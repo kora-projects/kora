@@ -17,9 +17,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 final class GraphImpl implements RefreshableGraph, Lifecycle {
-    public static int EMPTY_OPTIONAL_INDEX = -1;
-    public static int EMPTY_NULLABLE_INDEX = -2;
-
     private volatile AtomicReferenceArray<Object> objects;
     private final ApplicationGraphDraw draw;
     private final Logger log;
@@ -32,18 +29,13 @@ final class GraphImpl implements RefreshableGraph, Lifecycle {
         this.objects = new AtomicReferenceArray<>(this.draw.size());
     }
 
+    @Override
     public ApplicationGraphDraw draw() {
         return this.draw;
     }
 
     @Override
     public <T> T get(Node<T> node) {
-        if (node.index == EMPTY_OPTIONAL_INDEX) {
-            return (T) Optional.empty();
-        }
-        if (node.index == EMPTY_NULLABLE_INDEX) {
-            return null;
-        }
         if (node.graphDraw != this.draw) {
             throw new IllegalArgumentException("Node is from another graph");
         }
@@ -57,7 +49,7 @@ final class GraphImpl implements RefreshableGraph, Lifecycle {
 
     @Override
     public <T> ValueOf<T> valueOf(final Node<? extends T> node) {
-        if (node.index >= 0 && node.graphDraw != this.draw) {
+        if (node.graphDraw != this.draw) {
             throw new IllegalArgumentException("Node is from another graph");
         }
         return new ValueOf<>() {
@@ -244,10 +236,14 @@ final class GraphImpl implements RefreshableGraph, Lifecycle {
                 .switchIfEmpty(Mono.just(o))
                 .doOnEach(s -> {
                     switch (s.getType()) {
-                        case CANCEL -> this.log.trace("Intercepting release node {} of class {} with node {} of class {} cancelled", node.index, o.getClass(), interceptorNode.index, interceptor.getClass());
-                        case ON_SUBSCRIBE -> this.log.trace("Intercepting release node {} of class {} with node {} of class {}", node.index, o.getClass(), interceptorNode.index, interceptor.getClass());
-                        case ON_ERROR -> this.log.trace("Intercepting release node {} of class {} with node {} of class {} error", node.index, o.getClass(), interceptorNode.index, interceptor.getClass(), s.getThrowable());
-                        case ON_COMPLETE -> this.log.trace("Intercepting release node {} of class {} with node {} of class {} complete", node.index, o.getClass(), interceptorNode.index, interceptor.getClass());
+                        case CANCEL ->
+                            this.log.trace("Intercepting release node {} of class {} with node {} of class {} cancelled", node.index, o.getClass(), interceptorNode.index, interceptor.getClass());
+                        case ON_SUBSCRIBE ->
+                            this.log.trace("Intercepting release node {} of class {} with node {} of class {}", node.index, o.getClass(), interceptorNode.index, interceptor.getClass());
+                        case ON_ERROR ->
+                            this.log.trace("Intercepting release node {} of class {} with node {} of class {} error", node.index, o.getClass(), interceptorNode.index, interceptor.getClass(), s.getThrowable());
+                        case ON_COMPLETE ->
+                            this.log.trace("Intercepting release node {} of class {} with node {} of class {} complete", node.index, o.getClass(), interceptorNode.index, interceptor.getClass());
                         default -> {}
                     }
                 })
@@ -352,10 +348,14 @@ final class GraphImpl implements RefreshableGraph, Lifecycle {
                             .switchIfEmpty(Mono.just(o))
                             .doOnEach(s -> {
                                 switch (s.getType()) {
-                                    case CANCEL -> this.rootGraph.log.trace("Intercepting init node {} of class {} with node {} of class {} cancelled", node.index, o.getClass(), interceptor.index, interceptorObject.getClass());
-                                    case ON_SUBSCRIBE -> this.rootGraph.log.trace("Intercepting init node {} of class {} with node {} of class {}", node.index, o.getClass(), interceptor.index, interceptorObject.getClass());
-                                    case ON_ERROR -> this.rootGraph.log.trace("Intercepting init node {} of class {} with node {} of class {} error", node.index, o.getClass(), interceptor.index, interceptorObject.getClass(), s.getThrowable());
-                                    case ON_COMPLETE -> this.rootGraph.log.trace("Intercepting init node {} of class {} with node {} of class {} complete", node.index, o.getClass(), interceptor.index, interceptorObject.getClass());
+                                    case CANCEL ->
+                                        this.rootGraph.log.trace("Intercepting init node {} of class {} with node {} of class {} cancelled", node.index, o.getClass(), interceptor.index, interceptorObject.getClass());
+                                    case ON_SUBSCRIBE ->
+                                        this.rootGraph.log.trace("Intercepting init node {} of class {} with node {} of class {}", node.index, o.getClass(), interceptor.index, interceptorObject.getClass());
+                                    case ON_ERROR ->
+                                        this.rootGraph.log.trace("Intercepting init node {} of class {} with node {} of class {} error", node.index, o.getClass(), interceptor.index, interceptorObject.getClass(), s.getThrowable());
+                                    case ON_COMPLETE ->
+                                        this.rootGraph.log.trace("Intercepting init node {} of class {} with node {} of class {} complete", node.index, o.getClass(), interceptor.index, interceptorObject.getClass());
                                     default -> {}
                                 }
                             }));

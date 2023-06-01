@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.Locale;
@@ -227,4 +228,25 @@ public class DependencyTest extends AbstractKoraAppTest {
             "ru.tinkoff.kora.kora.app.annotation.processor.packageForDependencyTest.testDiscoveredFinalClassDependencyTaggedDependencyNoTagOnClass.ExampleApplication.TestClass1"
         );
     }
+
+    @Test
+    public void testRecursiveDependency() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                interface TestInterface1 {}
+                interface TestInterface2 {}
+                class TestClass2 implements TestInterface1, TestInterface2 {}
+                class TestClass1 implements MockLifecycle {}
+
+                default TestInterface1 testInterface1(TestInterface2 p) { return new TestClass2(); }
+                default TestInterface2 testInterface2(TestInterface1 p) { return new TestClass2(); }
+
+                default TestClass1 root(TestInterface1 testInterface1, TestInterface2 testInterface2) { return new TestClass1(); }
+            }
+            """);
+        Assertions.assertThat(draw.getNodes()).hasSize(4);
+        draw.init().block();
+    }
+
 }
