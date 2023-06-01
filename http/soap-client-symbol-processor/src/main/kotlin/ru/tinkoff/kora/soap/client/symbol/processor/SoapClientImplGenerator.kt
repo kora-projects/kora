@@ -94,7 +94,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
             }
             val executorFieldName = operationName + "RequestExecutor"
             constructorBuilder.addCode(
-                "this.%L = %T(httpClient, telemetry, %T(jaxb), %S, config.url(), %S, %S)\n",
+                "this.%L = %T(httpClient, telemetry, %T(jaxb), %S, config.url, config.timeout, %S, %S)\n",
                 executorFieldName, SoapRequestExecutor::class.java, soapClasses.xmlToolsType(), serviceName, operationName, soapAction
             )
             builder.addProperty(executorFieldName, SoapRequestExecutor::class, KModifier.PRIVATE)
@@ -222,14 +222,12 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
     }
 
     @KspExperimental
-    @kotlin.jvm.Throws(Exception::class)
     private fun addMapResponse(m: FunSpec.Builder, method: KSFunctionDeclaration, soapClasses: SoapClasses, isReactive: Boolean) {
         m.addCode("if (__response is %T ) {\n", SoapResult.Failure::class.java)
         m.addCode("val __fault = __response.fault()\n")
         val throws = method.getAnnotationsByType(kotlin.jvm.Throws::class).toList()
         if (throws.isNotEmpty()) {
             m.addCode("val __detail = __fault.getDetail().getAny().get(0)\n")
-            m.addCode("val __faultCode = __fault.getFaultcode()\n")
             val thrownTypes = throws.map { it.exceptionClasses.toList() }.flatten()
             for (thrownType in thrownTypes) {
                 val thrownTypeDeclaration = resolver.getClassDeclarationByName(thrownType.qualifiedName!!) ?: continue
@@ -240,7 +238,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
                     .first()
                 val namespace = findAnnotationValue(webFault, "targetNamespace").toString()
                 val localPart = findAnnotationValue(webFault, "name").toString()
-                m.addCode("if (%S.equals(__faultCode.getNamespaceURI()) && %S.equals(__faultCode.getLocalPart()) && __detail is %T)\n", namespace, localPart, detailType)
+                m.addCode("if (__detail is %T)\n", namespace, localPart, detailType)
                 if (isReactive) {
                     m.addCode("  __sink.error(%T(__response.faultMessage(), __detail))\n", thrownType)
                 } else {

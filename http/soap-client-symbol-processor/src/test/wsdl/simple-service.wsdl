@@ -22,6 +22,20 @@
                     </xsd:sequence>
                 </xsd:complexType>
             </xsd:element>
+            <xsd:element name="TestError1">
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element minOccurs="0" name="val1" type="xsd:string"/>
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+            <xsd:element name="TestError2">
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element minOccurs="0" name="val1" type="xsd:string"/>
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
         </xsd:schema>
     </wsdl:types>
 
@@ -31,11 +45,19 @@
     <wsdl:message name="testResponseMsg">
         <wsdl:part element="tns:TestResponse" name="testResponse"/>
     </wsdl:message>
+    <wsdl:message name="testError1Msg">
+        <wsdl:part element="tns:TestError1" name="testError1"/>
+    </wsdl:message>
+    <wsdl:message name="testError2Msg">
+        <wsdl:part element="tns:TestError2" name="testError2"/>
+    </wsdl:message>
 
     <wsdl:portType name="SimpleService">
         <wsdl:operation name="test">
             <wsdl:input message="tns:testRequestMsg" name="testRequest"/>
             <wsdl:output message="tns:testResponseMsg" name="testResponse"/>
+            <wsdl:fault message="tns:testError1Msg" name="testError1"/>
+            <wsdl:fault message="tns:testError2Msg" name="testError2"/>
         </wsdl:operation>
     </wsdl:portType>
 

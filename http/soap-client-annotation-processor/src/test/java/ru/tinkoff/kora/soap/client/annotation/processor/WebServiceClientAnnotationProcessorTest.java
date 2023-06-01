@@ -7,12 +7,14 @@ import org.apache.cxf.jaxws.EndpointImpl;
 import org.apache.cxf.transport.http_jetty.JettyHTTPDestination;
 import org.apache.cxf.transport.http_jetty.JettyHTTPServerEngine;
 import org.assertj.core.api.Assertions;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.assertj.core.api.InstanceOfAssertFactory;
 import org.asynchttpclient.Dsl;
 import org.eclipse.jetty.server.ServerConnector;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.http.client.async.AsyncHttpClient;
@@ -31,17 +33,19 @@ import java.io.OutputStreamWriter;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Stream;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class WebServiceClientAnnotationProcessorTest {
     private final AsyncHttpClient httpClient = new AsyncHttpClient(Dsl.asyncHttpClient());
@@ -67,7 +71,7 @@ class WebServiceClientAnnotationProcessorTest {
             log.setLevel(Level.INFO);
         }
         if (log instanceof Logger log) {
-            log.setLevel(Level.TRACE);
+            log.setLevel(Level.OFF);
         }
     }
 
@@ -75,10 +79,24 @@ class WebServiceClientAnnotationProcessorTest {
     void testCxfServer() throws Throwable {
         var cl = TestUtils.annotationProcessFiles(files("build/generated/wsdl-javax-simple-service/"), new WebServiceClientAnnotationProcessor());
         var serviceClass = cl.loadClass("ru.tinkoff.kora.simple.service.SimpleService");
-        var invocationHandler = (InvocationHandler) Proxy.newProxyInstance(cl, new Class<?>[]{serviceClass, InvocationHandler.class}, (proxy, method, args) -> {
-            var mockResponse = instance(cl, "ru.tinkoff.kora.simple.service.TestResponse");
-            set(mockResponse, "val1", "test");
-            return mockResponse;
+        enum RsKind {SUCCESS, FAILURE1, FAILURE2}
+        var rsKind = new AtomicReference<RsKind>(RsKind.SUCCESS);
+        var invocationHandler = (InvocationHandler) Proxy.newProxyInstance(cl, new Class<?>[]{serviceClass, InvocationHandler.class}, (proxy, method, args) -> switch (rsKind.get()) {
+            case SUCCESS -> {
+                var i = instance(cl, "ru.tinkoff.kora.simple.service.TestResponse");
+                set(i, "val1", "test");
+                yield i;
+            }
+            case FAILURE1 -> {
+                var error = instance(cl, "ru.tinkoff.kora.simple.service.TestError1");
+                set(error, "val1", "test");
+                throw (Exception) instance(cl, "ru.tinkoff.kora.simple.service.TestError1Msg", "error", error);
+            }
+            case FAILURE2 -> {
+                var error = instance(cl, "ru.tinkoff.kora.simple.service.TestError2");
+                set(error, "val1", "test");
+                throw (Exception) instance(cl, "ru.tinkoff.kora.simple.service.TestError2Msg", "error", error);
+            }
         });
         var server = Proxy.newProxyInstance(cl, new Class<?>[]{serviceClass}, invocationHandler);
         var endpoint = new EndpointImpl(server);
@@ -96,10 +114,25 @@ class WebServiceClientAnnotationProcessorTest {
             assertThat(response)
                 .hasFieldOrPropertyWithValue("val1", "test");
 
-            var monoResponse = invoke(client, "testReactive", Mono.class, request);
-            var monoResolvedResponse = invoke(monoResponse, "block", Object.class);
+            var monoResponse = (Mono<?>) invoke(client, "testReactive", Mono.class, request);
+            var monoResolvedResponse = monoResponse.block();
             assertThat(monoResolvedResponse)
                 .hasFieldOrPropertyWithValue("val1", "test");
+
+
+            rsKind.set(RsKind.FAILURE1);
+            assertThatThrownBy(() -> invoke(client, "test", responseType, request))
+                .isInstanceOf(cl.loadClass("ru.tinkoff.kora.simple.service.TestError1Msg"));
+            assertThatThrownBy(() -> ((Mono<?>) invoke(client, "testReactive", Mono.class, request)).block())
+                .extracting(Exceptions::unwrap, InstanceOfAssertFactories.throwable(Exception.class))
+                .isInstanceOf(cl.loadClass("ru.tinkoff.kora.simple.service.TestError1Msg"));
+
+            rsKind.set(RsKind.FAILURE2);
+            assertThatThrownBy(() -> invoke(client, "test", responseType, request))
+                .isInstanceOf(cl.loadClass("ru.tinkoff.kora.simple.service.TestError2Msg"));
+            assertThatThrownBy(() -> ((Mono<?>) invoke(client, "testReactive", Mono.class, request)).block())
+                .extracting(Exceptions::unwrap, InstanceOfAssertFactories.throwable(Exception.class))
+                .isInstanceOf(cl.loadClass("ru.tinkoff.kora.simple.service.TestError2Msg"));
         }
     }
 
@@ -143,7 +176,7 @@ class WebServiceClientAnnotationProcessorTest {
         var bytes = b.toByteArray();
         httpServer.createContext("/test", exchange -> {
             exchange.getResponseHeaders().add("content-type", "multipart/related; type=\"application/xop+xml\"; boundary=\"uuid:503a0c8a-82a4-4c6d-843e-5c3c1389048c\"; " +
-                                                              "start=\"<root.message@cxf.apache.org>\"; start-info=\"text/xml\"");
+                "start=\"<root.message@cxf.apache.org>\"; start-info=\"text/xml\"");
             exchange.sendResponseHeaders(200, bytes.length);
             try (var os = exchange.getResponseBody()) {
                 os.write(bytes);
@@ -193,14 +226,20 @@ class WebServiceClientAnnotationProcessorTest {
 
     }
 
-    private Object instance(ClassLoader cl, String type) throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+    private Object instance(ClassLoader cl, String type, Object... args) throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException {
         var instanceClass = cl.loadClass(type);
-        return instanceClass.getConstructor().newInstance();
+        var argTypes = Arrays.stream(args).map(Object::getClass).toArray(Class<?>[]::new);
+        var constructor = MethodHandles.publicLookup().findConstructor(instanceClass, MethodType.methodType(void.class, argTypes));
+        try {
+            return constructor.invokeWithArguments(args);
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private Object invoke(Object object, String methodName, Class<?> returnType, Object... args) throws Throwable {
         var objectType = object.getClass();
-        var argTypes = Stream.of(args).<Class<?>>map(Object::getClass).toList();
+        var argTypes = Arrays.stream(args).<Class<?>>map(Object::getClass).toList();
         if (Mono.class.isAssignableFrom(objectType)) {
             objectType = Mono.class;
         }
@@ -237,7 +276,7 @@ class WebServiceClientAnnotationProcessorTest {
         var constructor = type.getConstructor(HttpClient.class, SoapClientTelemetryFactory.class, SoapServiceConfig.class);
         var httpClient = this.httpClient.with(new TelemetryInterceptor(new DefaultHttpClientTelemetry(null, null, new Sl4fjHttpClientLogger(log, log))));
         var telemetry = new DefaultSoapClientTelemetryFactory(null);
-        return constructor.newInstance(httpClient, telemetry, new SoapServiceConfig(url));
+        return constructor.newInstance(httpClient, telemetry, new SoapServiceConfig(url, Duration.ofSeconds(60)));
     }
 
     private List<String> files(String path) {
