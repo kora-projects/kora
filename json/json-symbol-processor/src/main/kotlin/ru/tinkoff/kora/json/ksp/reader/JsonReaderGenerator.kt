@@ -338,83 +338,61 @@ class JsonReaderGenerator(val resolver: Resolver) {
 
     private fun readKnownType(jsonName: String, knownType: KnownTypesEnum, isNullable: Boolean): CodeBlock {
         val method = CodeBlock.builder()
-        method.add(
-            when (knownType) {
-                KnownTypesEnum.STRING -> {
-                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_STRING)", JsonTypes.jsonToken).apply {
-                        addStatement("return _parser.text")
-                    }.build()
-                }
+        when (knownType) {
+            KnownTypesEnum.STRING -> method.controlFlow("if (_token == %T.VALUE_STRING)", JsonTypes.jsonToken) {
+                addStatement("return _parser.text")
+            }
 
-                KnownTypesEnum.BOOLEAN -> {
-                    CodeBlock.builder().apply {
-                        beginControlFlow("if (_token == %T.VALUE_TRUE)", JsonTypes.jsonToken)
-                        addStatement("return true")
-                        nextControlFlow("else if (_token == %T.VALUE_FALSE)", JsonTypes.jsonToken)
-                        addStatement("return false")
-                    }.build()
+            KnownTypesEnum.BOOLEAN -> {
+                method.controlFlow("if (_token == %T.VALUE_TRUE)", JsonTypes.jsonToken) {
+                    addStatement("return true")
                 }
-
-                INTEGER -> {
-                    CodeBlock.builder().beginControlFlow(" if (_token == %T.VALUE_NUMBER_INT)", JsonTypes.jsonToken).apply {
-                        addStatement("return _parser.intValue")
-                    }.build()
-                }
-
-                BIG_INTEGER -> {
-                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_NUMBER_INT)", JsonTypes.jsonToken).apply {
-                        addStatement("return _parser.bigIntegerValue")
-                    }.build()
-                }
-
-                BIG_DECIMAL -> {
-                    CodeBlock.builder().beginControlFlow("if (_token == %1T.VALUE_NUMBER_INT || _token == %1T.VALUE_NUMBER_FLOAT)", JsonTypes.jsonToken).apply {
-                        addStatement("return _parser.decimalValue")
-                    }.build()
-                }
-
-                KnownTypesEnum.DOUBLE -> {
-                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_NUMBER_FLOAT)", JsonTypes.jsonToken).apply {
-                        addStatement("return _parser.doubleValue")
-                    }.build()
-                }
-
-                KnownTypesEnum.FLOAT -> {
-                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_NUMBER_FLOAT)", JsonTypes.jsonToken).apply {
-                        addStatement("return _parser.floatValue\n")
-                    }.build()
-                }
-
-                KnownTypesEnum.LONG -> {
-                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_NUMBER_INT)", JsonTypes.jsonToken).apply {
-                        addStatement("return _parser.longValue")
-                    }.build()
-                }
-
-                KnownTypesEnum.SHORT -> {
-                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_NUMBER_INT)", JsonTypes.jsonToken).apply {
-                        addStatement("return _parser.shortValue")
-                    }.build()
-                }
-
-                BINARY -> {
-                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_STRING)", JsonTypes.jsonToken).apply {
-                        addStatement("return _parser.binaryValue")
-                    }.build()
-                }
-
-                KnownTypesEnum.UUID -> {
-                    CodeBlock.builder().beginControlFlow("if (_token == %T.VALUE_STRING)", JsonTypes.jsonToken).apply {
-                        addStatement("return %T.fromString(_parser.text)", UUID::class)
-                    }.build()
+                method.controlFlow("if (_token == %T.VALUE_FALSE)", JsonTypes.jsonToken) {
+                    addStatement("return false")
                 }
             }
-        )
-        if (isNullable) {
-            method.nextControlFlow("else if (_token == %T.VALUE_NULL)", JsonTypes.jsonToken)
-            method.addStatement("return null")
+
+            INTEGER -> method.controlFlow("if (_token == %T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
+                addStatement("return _parser.intValue")
+            }
+
+            BIG_INTEGER -> method.controlFlow("if (_token == %T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
+                addStatement("return _parser.bigIntegerValue")
+            }
+
+            BIG_DECIMAL -> method.controlFlow("if (_token == %1T.VALUE_NUMBER_INT || _token == %1T.VALUE_NUMBER_FLOAT)", JsonTypes.jsonToken) {
+                addStatement("return _parser.decimalValue")
+            }
+
+            KnownTypesEnum.DOUBLE -> method.controlFlow("if (_token == %1T.VALUE_NUMBER_FLOAT || _token == %1T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
+                addStatement("return _parser.doubleValue")
+            }
+
+            KnownTypesEnum.FLOAT -> method.controlFlow("if (_token == %1T.VALUE_NUMBER_FLOAT || _token == %1T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
+                addStatement("return _parser.floatValue")
+            }
+
+            KnownTypesEnum.LONG -> method.controlFlow("if (_token == %T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
+                addStatement("return _parser.longValue")
+            }
+
+            KnownTypesEnum.SHORT -> method.controlFlow("if (_token == %T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
+                addStatement("return _parser.shortValue")
+            }
+
+            BINARY -> method.controlFlow("if (_token == %T.VALUE_STRING)", JsonTypes.jsonToken) {
+                addStatement("return _parser.binaryValue")
+            }
+
+            KnownTypesEnum.UUID -> method.controlFlow("if (_token == %T.VALUE_STRING)", JsonTypes.jsonToken) {
+                addStatement("return %T.fromString(_parser.text)", UUID::class)
+            }
         }
-        method.nextControlFlow("else")
+        if (isNullable) {
+            method.controlFlow("if (_token == %T.VALUE_NULL)", JsonTypes.jsonToken) {
+                addStatement("return null")
+            }
+        }
         val exceptionMessage = "Expecting %s token for field '%s', got \$_token".format(
             expectedTokens(
                 knownType,
@@ -422,7 +400,6 @@ class JsonReaderGenerator(val resolver: Resolver) {
             ).contentToString(), jsonName
         )
         method.addStatement("throw %T(\n _parser,\n%P\n)", JsonTypes.jsonParseException, exceptionMessage)
-        method.endControlFlow()
         return method.build()
     }
 

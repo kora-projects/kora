@@ -56,7 +56,7 @@ class JsonWriterGenerator(
             functionBody.addStatement("_gen.writeString(%S)", discriminatorValue)
         }
         for (field in meta.fields) {
-            this.addWriteParam(functionBody, field, typeParameterResolver)
+            this.addWriteParam(functionBody, field)
         }
         functionBody.addStatement("_gen.writeEndObject()")
 
@@ -109,18 +109,14 @@ class JsonWriterGenerator(
         return field.accessor + "Writer"
     }
 
-    private fun addWriteParam(function: CodeBlock.Builder, field: JsonClassWriterMeta.FieldMeta, typeParameterResolver: TypeParameterResolver) {
-        function.add("_gen.writeFieldName(%L)\n", this.jsonNameStaticName(field))
-        if (field.writer == null && field.typeMeta is WriterFieldType.KnownWriterFieldType) {
-            function.add(this.writeKnownType(field.typeMeta.knownType, field.typeMeta.markedNullable, CodeBlock.of("_object.%L", field.accessor)))
-        } else if (field.writer == null) {
-            function.controlFlow("if (_object.%L == null)", field.accessor) {
-                addStatement("_gen.writeNull()")
-                nextControlFlow("else")
-                addStatement("%L.write(_gen, _object.%L!!)", writerFieldName(field), field.accessor)
+    private fun addWriteParam(function: CodeBlock.Builder, field: JsonClassWriterMeta.FieldMeta) {
+        function.controlFlow("_object.%N%L.let {", field.accessor, if (field.type.isMarkedNullable) "?" else "") {
+            function.add("_gen.writeFieldName(%L)\n", jsonNameStaticName(field))
+            if (field.writer == null && field.typeMeta is WriterFieldType.KnownWriterFieldType) {
+                function.add(writeKnownType(field.typeMeta.knownType))
+            } else {
+                function.addStatement("%L.write(_gen, it)", writerFieldName(field))
             }
-        } else {
-            function.addStatement("%L.write(_gen, _object.%L)", this.writerFieldName(field), field.accessor)
         }
     }
 
@@ -128,24 +124,14 @@ class JsonWriterGenerator(
         return "_" + field.fieldSimpleName.asString() + "_optimized_field_name"
     }
 
-    private fun writeKnownType(
-        knownType: KnownTypesEnum,
-        isMarkedNullable: Boolean,
-        value: CodeBlock
-    ): CodeBlock {
-        val nullableCodeBlock = if (isMarkedNullable) CodeBlock.of("if (%L == null) _gen.writeNull() else ", value) else CodeBlock.of("")
+    private fun writeKnownType(knownType: KnownTypesEnum) = when (knownType) {
+        KnownTypesEnum.STRING -> CodeBlock.of("_gen.writeString(it)\n")
+        KnownTypesEnum.BOOLEAN -> CodeBlock.of("_gen.writeBoolean(it)\n")
+        INTEGER, BIG_INTEGER, BIG_DECIMAL, KnownTypesEnum.DOUBLE, KnownTypesEnum.FLOAT, KnownTypesEnum.LONG, KnownTypesEnum.SHORT -> CodeBlock.of(
+            "_gen.writeNumber(it)\n"
+        )
 
-        return when (knownType) {
-            KnownTypesEnum.STRING -> CodeBlock.of("%L_gen.writeString(%L)\n", nullableCodeBlock, value)
-            KnownTypesEnum.BOOLEAN -> CodeBlock.of("%L_gen.writeBoolean(%L)\n", nullableCodeBlock, value)
-            INTEGER, BIG_INTEGER, BIG_DECIMAL, KnownTypesEnum.DOUBLE, KnownTypesEnum.FLOAT, KnownTypesEnum.LONG, KnownTypesEnum.SHORT -> CodeBlock.of(
-                "%L_gen.writeNumber(%L)\n",
-                nullableCodeBlock,
-                value
-            )
-
-            BINARY -> CodeBlock.of("%L_gen.writeBinary(%L)\n", nullableCodeBlock, value)
-            UUID -> CodeBlock.of("%L_gen.writeString(%L.toString())\n", nullableCodeBlock, value)
-        }
+        BINARY -> CodeBlock.of("_gen.writeBinary(it)\n")
+        UUID -> CodeBlock.of("_gen.writeString(it.toString())\n")
     }
 }
