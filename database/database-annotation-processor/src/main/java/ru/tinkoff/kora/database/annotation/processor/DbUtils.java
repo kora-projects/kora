@@ -37,7 +37,7 @@ public class DbUtils {
                 .stream()
                 .filter(e -> e.getKind() == ElementKind.METHOD)
                 .filter(e -> !e.getModifiers().contains(Modifier.STATIC))
-                .filter(e -> e.getModifiers().contains(Modifier.PUBLIC) || e.getModifiers().contains(Modifier.PROTECTED))
+                .filter(e -> !e.getModifiers().contains(Modifier.PRIVATE))
                 .filter(e -> e.getModifiers().contains(Modifier.ABSTRACT)))
             .map(ExecutableElement.class::cast)
             .filter(e -> CommonUtils.findAnnotation(elements, e, QUERY_ANNOTATION) != null)
@@ -45,8 +45,13 @@ public class DbUtils {
     }
 
     public static MethodSpec.Builder queryMethodBuilder(ExecutableElement method, ExecutableType methodType) {
-        var b = CommonUtils.overridingKeepAop(method, methodType)
-            .addModifiers(Modifier.PUBLIC);
+        var b = CommonUtils.overridingKeepAop(method, methodType);
+        if (method.getModifiers().contains(Modifier.PROTECTED)) {
+            b.addModifiers(Modifier.PROTECTED);
+        }
+        if (method.getModifiers().contains(Modifier.PUBLIC)) {
+            b.addModifiers(Modifier.PUBLIC);
+        }
         for (var thrownType : method.getThrownTypes()) {
             b.addException(TypeName.get(thrownType));
         }
