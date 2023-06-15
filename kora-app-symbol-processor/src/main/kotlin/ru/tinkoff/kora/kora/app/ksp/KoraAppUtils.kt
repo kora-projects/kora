@@ -43,6 +43,9 @@ fun overridingKeepAop(funDeclaration: KSFunctionDeclaration, resolver: Resolver)
     if (funDeclaration.modifiers.contains(Modifier.PROTECTED)) {
         funBuilder.addModifiers(KModifier.PROTECTED)
     }
+    if (funDeclaration.modifiers.contains(Modifier.PUBLIC)) {
+        funBuilder.addModifiers(KModifier.PUBLIC)
+    }
 
     for (typeParameter in funDeclaration.typeParameters) {
         funBuilder.addTypeVariable(typeParameter.toTypeVariableName())
