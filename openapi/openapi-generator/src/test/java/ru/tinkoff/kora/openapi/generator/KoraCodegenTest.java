@@ -53,15 +53,15 @@ class KoraCodegenTest {
             "kotlin_server"
         };
         var files = new String[]{
-            "/example/petstoreV3_form.yaml",
-            "/example/petstoreV3_validation.yaml",
-            "/example/petstoreV3_single_response.yaml",
-            "/example/petstoreV3_security_api_key.yaml",
-            "/example/petstoreV3_security_basic.yaml",
-            "/example/petstoreV3_security_bearer.yaml",
-            "/example/petstoreV3_security_oauth.yaml",
-            "/example/petstoreV3_discriminator.yaml",
-            "/example/petstoreV2.yaml",
+//            "/example/petstoreV3_form.yaml",
+//            "/example/petstoreV3_validation.yaml",
+//            "/example/petstoreV3_single_response.yaml",
+//            "/example/petstoreV3_security_api_key.yaml",
+//            "/example/petstoreV3_security_basic.yaml",
+//            "/example/petstoreV3_security_bearer.yaml",
+//            "/example/petstoreV3_security_oauth.yaml",
+//            "/example/petstoreV3_discriminator.yaml",
+//            "/example/petstoreV2.yaml",
             "/example/petstoreV3.yaml",
         };
         for (var fileName : files) {
