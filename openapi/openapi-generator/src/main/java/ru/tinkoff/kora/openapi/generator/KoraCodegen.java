@@ -402,7 +402,7 @@ public class KoraCodegen extends DefaultCodegen {
             model.vendorExtensions.put("x-enable-validation", this.enableValidation);
             if (this.enableValidation) {
                 for (var variable : model.allVars) {
-                    if(variable.getRef() != null) {
+                    if (variable.getRef() != null) {
                         var variableModelField = allModels.get(variable.openApiType);
                         if (variableModelField != null) {
                             variable.vendorExtensions.put("x-has-valid-model", true);
@@ -1324,29 +1324,32 @@ public class KoraCodegen extends DefaultCodegen {
                     }
                 }
             }
-            if (this.enableValidation) for (var p : op.allParams) {
-                var validation = false;
-                if (p.isModel) {
-                    for (var variable : p.vars) {
-                        if (variable.hasValidation) {
+            if (this.enableValidation) {
+                op.vendorExtensions.put("enableValidation", this.enableValidation);
+                for (var p : op.allParams) {
+                    var validation = false;
+                    if (p.isModel) {
+                        for (var variable : p.vars) {
+                            if (variable.hasValidation) {
+                                validation = true;
+                                break;
+                            }
+                        }
+                    } else if (p.isArray) {
+                        if (p.hasValidation) {
                             validation = true;
-                            break;
+                        }
+                    } else {
+                        if (p.hasValidation) {
+                            validation = true;
                         }
                     }
-                } else if (p.isArray) {
-                    if (p.hasValidation) {
-                        validation = true;
+                    if (validation) {
+                        p.vendorExtensions.put("x-validate", true);
+                        op.vendorExtensions.put("x-validate", true);
+                        var type = p.getSchema() != null ? p.getSchema().openApiType : null;
+                        visitVariableValidation(p, type, p.dataFormat, p.vendorExtensions);
                     }
-                } else {
-                    if (p.hasValidation) {
-                        validation = true;
-                    }
-                }
-                if (validation) {
-                    p.vendorExtensions.put("x-validate", true);
-                    op.vendorExtensions.put("x-validate", true);
-                    var type = p.getSchema() != null ? p.getSchema().openApiType : null;
-                    visitVariableValidation(p, type, p.dataFormat, p.vendorExtensions);
                 }
             }
         }
