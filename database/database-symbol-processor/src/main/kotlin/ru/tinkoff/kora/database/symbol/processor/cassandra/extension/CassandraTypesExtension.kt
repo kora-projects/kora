@@ -184,12 +184,18 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
 
     private fun generateParameterColumnMapper(resolver: Resolver, type: KSType): (() -> ExtensionResult)? {
         val entityType = type.arguments[0].type!!.resolve()
+        if (entityType.isMarkedNullable) {
+            return null
+        }
         val ksClassDeclaration = entityType.declaration as KSClassDeclaration
         if (ksClassDeclaration.findAnnotation(CassandraTypes.udt) != null) {
             return generatedByProcessor(resolver, ksClassDeclaration, "CassandraParameterColumnMapper")
         }
         if (ksClassDeclaration.qualifiedName?.asString() == "kotlin.collections.List") {
             val t = entityType.arguments[0].type!!.resolve()
+            if (t.isMarkedNullable) {
+                return null
+            }
             val ksClassDeclaration = t.declaration as KSClassDeclaration
             if (ksClassDeclaration.findAnnotation(CassandraTypes.udt) != null) {
                 return generatedByProcessor(resolver, ksClassDeclaration, "List_CassandraParameterColumnMapper")
@@ -200,12 +206,18 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
 
     private fun generateRowColumnMapper(resolver: Resolver, type: KSType): (() -> ExtensionResult)? {
         val entityType = type.arguments[0].type!!.resolve()
+        if (entityType.isMarkedNullable) {
+            return null
+        }
         val ksClassDeclaration = entityType.declaration as KSClassDeclaration
         if (ksClassDeclaration.findAnnotation(CassandraTypes.udt) != null) {
             return generatedByProcessor(resolver, ksClassDeclaration, "CassandraRowColumnMapper")
         }
         if (ksClassDeclaration.qualifiedName?.asString() == "kotlin.collections.List") {
             val t = entityType.arguments[0].type!!.resolve()
+            if (t.isMarkedNullable) {
+                return null
+            }
             val ksClassDeclaration = t.declaration as KSClassDeclaration
             if (ksClassDeclaration.findAnnotation(CassandraTypes.udt) != null) {
                 return generatedByProcessor(resolver, ksClassDeclaration, "List_CassandraRowColumnMapper")
