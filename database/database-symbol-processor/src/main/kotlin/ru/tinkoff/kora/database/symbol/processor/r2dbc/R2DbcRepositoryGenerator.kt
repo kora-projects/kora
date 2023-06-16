@@ -47,7 +47,7 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
         val parameterMappers = FieldFactory(typeBuilder, constructorBuilder, "_parameter_mapper_")
         for (method in repositoryType.findQueryMethods()) {
             val methodType = method.asMemberOf(repositoryResolvedType)
-            val parameters = QueryParameterParser.parse(R2dbcTypes.connection, method, methodType)
+            val parameters = QueryParameterParser.parse(R2dbcTypes.connection, R2dbcTypes.parameterColumnMapper, method, methodType)
             val queryAnnotation = method.findAnnotation(DbUtils.queryAnnotation)!!
             val queryString = queryAnnotation.findValue<String>("value")!!
             val query = QueryWithParameters.parse(queryString, parameters)

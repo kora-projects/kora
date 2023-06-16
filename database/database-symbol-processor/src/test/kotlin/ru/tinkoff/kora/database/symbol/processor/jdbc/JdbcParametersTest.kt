@@ -262,6 +262,28 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
     }
 
     @Test
+    fun testTagOnDataClassParameter() {
+        val mapper = Mockito.mock(JdbcParameterColumnMapper::class.java) as JdbcParameterColumnMapper<Int>
+        val repository = compile(
+            listOf(mapper), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("INSERT INTO test(test) VALUES (:value)")
+                fun test(@Tag(TestRepository::class) value: TestEntity)
+            }
+            """.trimIndent(), """
+            data class TestEntity(val value: String)    
+            """.trimIndent()
+        )
+
+        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(JdbcParameterColumnMapper::class)
+        val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
+        Assertions.assertThat(tag).isNotNull()
+        Assertions.assertThat(tag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("TestRepository")))
+    }
+
+    @Test
     fun testTagOnEntityField() {
         val mapper = Mockito.mock(JdbcParameterColumnMapper::class.java) as JdbcParameterColumnMapper<String>
         val repository = compile(

@@ -260,4 +260,24 @@ public class VertxParametersTest extends AbstractVertxRepositoryTest {
         assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
     }
 
+    @Test
+    public void testRecordParameterMappingByTag() {
+        var mapper = Mockito.mock(VertxParameterColumnMapper.class);
+        var repository = compileVertx(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                void test(@Tag(TestRepository.class) TestRecord value);
+            }
+            """, """
+            public record TestRecord(String value){}
+            """);
+
+        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        assertThat(mapperConstructorParameter.getType()).isEqualTo(VertxParameterColumnMapper.class);
+        var tag = mapperConstructorParameter.getAnnotation(Tag.class);
+        assertThat(tag).isNotNull();
+        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
+    }
+
 }

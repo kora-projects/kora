@@ -272,5 +272,25 @@ public class R2dbcParametersTest extends AbstractR2dbcRepositoryTest {
         assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
     }
 
+    @Test
+    public void testRecordParameterMappingByTag() throws ClassNotFoundException {
+        var mapper = Mockito.mock(R2dbcParameterColumnMapper.class);
+        var repository = compileR2dbc(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                void test(@Tag(TestRepository.class) TestRecord value);
+            }
+            """, """
+            public record TestRecord(String value){}
+            """);
+
+        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        assertThat(mapperConstructorParameter.getType()).isEqualTo(R2dbcParameterColumnMapper.class);
+        var tag = mapperConstructorParameter.getAnnotation(Tag.class);
+        assertThat(tag).isNotNull();
+        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
+    }
+
 
 }

@@ -46,7 +46,7 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         val parameterMappers = FieldFactory(typeBuilder, constructorBuilder, "_parameter_mapper")
         for (method in repositoryType.findQueryMethods()) {
             val methodType = method.asMemberOf(repositoryResolvedType)
-            val parameters = QueryParameterParser.parse(CassandraTypes.connection, method, methodType)
+            val parameters = QueryParameterParser.parse(CassandraTypes.connection, CassandraTypes.parameterColumnMapper, method, methodType)
             val queryAnnotation = method.findAnnotation(DbUtils.queryAnnotation)!!
             val queryString = queryAnnotation.findValue<String>("value")!!
             val query = QueryWithParameters.parse(queryString, parameters)

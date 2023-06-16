@@ -262,7 +262,6 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
         )
     }
 
-
     @Test
     fun testTagOnParameter() {
         val mapper = Mockito.mock(VertxParameterColumnMapper::class.java) as VertxParameterColumnMapper<Int>
@@ -279,6 +278,28 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
         repository.invoke<Any>("test", 42)
 
         Mockito.verify(mapper).apply(ArgumentMatchers.eq(42))
+
+        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(VertxParameterColumnMapper::class)
+        val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
+        Assertions.assertThat(tag).isNotNull()
+        Assertions.assertThat(tag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("TestRepository")))
+    }
+
+    @Test
+    fun testTagOnDataClassParameter() {
+        val mapper = Mockito.mock(VertxParameterColumnMapper::class.java) as VertxParameterColumnMapper<Int>
+        val repository = compile(
+            listOf(mapper), """
+            @Repository
+            interface TestRepository : VertxRepository {
+                @Query("INSERT INTO test(test) VALUES (:value)")
+                fun test(@Tag(TestRepository::class) value: TestEntity)
+            }
+            """.trimIndent(), """
+            data class TestEntity(val value: String)    
+            """.trimIndent()
+        )
 
         val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
         Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(VertxParameterColumnMapper::class)

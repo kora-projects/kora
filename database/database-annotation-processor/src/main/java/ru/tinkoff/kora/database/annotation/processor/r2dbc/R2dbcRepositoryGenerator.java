@@ -4,8 +4,6 @@ import com.squareup.javapoet.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.*;
-import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
@@ -65,7 +63,7 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
 
         for (var method : queryMethods) {
             var methodType = (ExecutableType) this.types.asMemberOf(repositoryType, method);
-            var parameters = QueryParameterParser.parse(this.types, R2dbcTypes.CONNECTION, method, methodType);
+            var parameters = QueryParameterParser.parse(this.types, R2dbcTypes.CONNECTION, R2dbcTypes.PARAMETER_COLUMN_MAPPER, method, methodType);
             var queryAnnotation = CommonUtils.findDirectAnnotation(method, DbUtils.QUERY_ANNOTATION);
             var queryString = CommonUtils.parseAnnotationValueWithoutDefault(queryAnnotation, "value").toString();
             var query = QueryWithParameters.parse(filer, queryString, parameters);
