@@ -30,7 +30,7 @@ public class RepositoryKoraExtension implements KoraExtension {
             return null;
         }
         var element = this.types.asElement(typeMirror);
-        if (element.getKind() != ElementKind.INTERFACE) {
+        if (element.getKind() != ElementKind.INTERFACE && (element.getKind() != ElementKind.CLASS || !element.getModifiers().contains(Modifier.ABSTRACT))) {
             return null;
         }
         if (CommonUtils.findDirectAnnotation(element, DbUtils.REPOSITORY_ANNOTATION) == null) {

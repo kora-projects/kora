@@ -9,6 +9,7 @@ import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.Modifier
 import ru.tinkoff.kora.database.symbol.processor.DbUtils
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
@@ -23,7 +24,10 @@ class RepositoryKoraExtension(private val kspLogger: KSPLogger) : KoraExtension 
             return null
         }
         val declaration = type.declaration as KSClassDeclaration
-        if (declaration.classKind != ClassKind.INTERFACE || declaration.findAnnotation(DbUtils.repositoryAnnotation) == null) {
+        if (declaration.classKind != ClassKind.INTERFACE && (declaration.classKind != ClassKind.CLASS || !declaration.modifiers.contains(Modifier.ABSTRACT))) {
+            return null
+        }
+        if (declaration.findAnnotation(DbUtils.repositoryAnnotation) == null) {
             return null
         }
         return lambda@{
