@@ -11,6 +11,7 @@ import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRec
 import ru.tinkoff.kora.database.common.annotation.processor.jdbc.repository.AllowedParametersRepository;
 import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory;
 import ru.tinkoff.kora.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
+import ru.tinkoff.kora.json.common.annotation.Json;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
@@ -187,7 +188,7 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
     public void testEntityFieldMappingByTag() throws SQLException, ClassNotFoundException {
         var mapper = Mockito.mock(JdbcParameterColumnMapper.class);
         var repository = compileJdbc(List.of(mapper), """
-            public record SomeEntity(long id, @Tag(SomeEntity.class) String value) {}
+            public record SomeEntity(long id, @ru.tinkoff.kora.json.common.annotation.Json String value) {}
                 
             """, """
             @Repository
@@ -206,7 +207,7 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
         assertThat(mapperConstructorParameter.getType()).isEqualTo(JdbcParameterColumnMapper.class);
         var tag = mapperConstructorParameter.getAnnotation(Tag.class);
         assertThat(tag).isNotNull();
-        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("SomeEntity")});
+        assertThat(tag.value()).isEqualTo(new Class<?>[]{Json.class});
     }
 
     @Test

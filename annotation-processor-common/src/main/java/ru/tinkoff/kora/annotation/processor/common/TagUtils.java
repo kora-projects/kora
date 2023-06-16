@@ -4,6 +4,9 @@ import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.CodeBlock;
 
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.RecordComponentElement;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.List;
@@ -13,7 +16,7 @@ import java.util.stream.Collectors;
 
 public class TagUtils {
 
-    public static Set<String> parseTagValue(Element element) {
+    private static Set<String> parseTagValue0(Element element) {
         for (var annotationMirror : element.getAnnotationMirrors()) {
             var type = annotationMirror.getAnnotationType();
             if (type.toString().equals(CommonClassNames.tag.canonicalName())) {
@@ -30,6 +33,61 @@ public class TagUtils {
                         .stream()
                         .map(TypeMirror::toString)
                         .collect(Collectors.toSet());
+                }
+            }
+        }
+        return Set.of();
+    }
+
+    public static Set<String> parseTagValue(Element element) {
+        var tag = parseTagValue0(element);
+        if (!tag.isEmpty()) {
+            return tag;
+        }
+        if (element.getEnclosingElement().getKind() == ElementKind.RECORD) {
+            if (element.getKind() == ElementKind.FIELD) {
+                for (var enclosedElement : element.getEnclosingElement().getEnclosedElements()) {
+                    if (enclosedElement.getKind() == ElementKind.RECORD_COMPONENT && enclosedElement.getSimpleName().contentEquals(element.getSimpleName())) {
+                        var recordComponent = (RecordComponentElement) enclosedElement;
+                        tag = parseTagValue0(recordComponent);
+                        if (tag.isEmpty()) {
+                            return parseTagValue0(recordComponent.getAccessor());
+                        } else {
+                            return tag;
+                        }
+                    }
+                }
+            }
+            if (element.getKind() == ElementKind.RECORD_COMPONENT) {
+                var recordComponent = (RecordComponentElement) element;
+                for (var enclosedElement : element.getEnclosingElement().getEnclosedElements()) {
+                    if (enclosedElement.getKind() == ElementKind.FIELD && enclosedElement.getSimpleName().contentEquals(element.getSimpleName())) {
+                        tag = parseTagValue0(enclosedElement);
+                        if (!tag.isEmpty()) {
+                            return tag;
+                        }
+                    }
+                }
+                return parseTagValue0(recordComponent.getAccessor());
+            }
+            if (element.getKind() == ElementKind.METHOD) {
+                var method = (ExecutableElement) element;
+                if (!method.getParameters().isEmpty()) {
+                    return Set.of();
+                }
+                for (var enclosedElement : element.getEnclosingElement().getEnclosedElements()) {
+                    if (enclosedElement.getKind() == ElementKind.FIELD && enclosedElement.getSimpleName().contentEquals(element.getSimpleName())) {
+                        tag = parseTagValue0(enclosedElement);
+                        if (!tag.isEmpty()) {
+                            return tag;
+                        }
+                    }
+                    if (enclosedElement.getKind() == ElementKind.RECORD_COMPONENT && enclosedElement.getSimpleName().contentEquals(element.getSimpleName())) {
+                        tag = parseTagValue0(enclosedElement);
+                        if (!tag.isEmpty()) {
+                            return tag;
+                        }
+                    }
                 }
             }
         }
