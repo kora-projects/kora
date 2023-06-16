@@ -348,6 +348,28 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
     }
 
     @Test
+    fun testTagOnDataClassParameter() {
+        val mapper = Mockito.mock(CassandraParameterColumnMapper::class.java) as CassandraParameterColumnMapper<Int>
+        val repository = compile(
+            listOf(mapper), """
+            @Repository
+            interface TestRepository : CassandraRepository {
+                @Query("INSERT INTO test(test) VALUES (:value)")
+                fun test(@Tag(TestRepository::class) value: TestEntity)
+            }
+            """.trimIndent(), """
+            data class TestEntity(val value: String)    
+            """.trimIndent()
+        )
+
+        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(CassandraParameterColumnMapper::class)
+        val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
+        assertThat(tag).isNotNull()
+        assertThat(tag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("TestRepository")))
+    }
+
+    @Test
     fun testTagOnEntityField() {
         val mapper = Mockito.mock(CassandraParameterColumnMapper::class.java) as CassandraParameterColumnMapper<String>
         val repository = compile(

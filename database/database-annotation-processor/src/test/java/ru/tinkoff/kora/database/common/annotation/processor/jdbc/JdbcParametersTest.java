@@ -365,4 +365,24 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
         assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
     }
 
+    @Test
+    public void testRecordParameterMapping() throws ClassNotFoundException, SQLException {
+        var mapper = Mockito.mock(JdbcParameterColumnMapper.class);
+        var repository = compileJdbc(List.of(mapper), """            
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value::jsonb)")
+                void test(@Tag(TestRepository.class) TestRecord value);
+            }
+            """, """
+            public record TestRecord(String value){}
+            """);
+
+        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        assertThat(mapperConstructorParameter.getType()).isEqualTo(JdbcParameterColumnMapper.class);
+        var tag = mapperConstructorParameter.getAnnotation(Tag.class);
+        assertThat(tag).isNotNull();
+        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
+    }
+
 }

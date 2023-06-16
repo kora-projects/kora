@@ -45,7 +45,7 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         val parameterMappers = FieldFactory(typeBuilder, constructorBuilder, "_parameter_mapper_")
         for (method in queryMethods) {
             val methodType = method.asMemberOf(repositoryResolvedType)
-            val parameters = QueryParameterParser.parse(JdbcTypes.connection, method, methodType)
+            val parameters = QueryParameterParser.parse(JdbcTypes.connection, JdbcTypes.jdbcParameterColumnMapper, method, methodType)
             val queryAnnotation = method.findAnnotation(DbUtils.queryAnnotation)!!
             val queryString = queryAnnotation.findValue<String>("value")!!
             val query = QueryWithParameters.parse(queryString, parameters)

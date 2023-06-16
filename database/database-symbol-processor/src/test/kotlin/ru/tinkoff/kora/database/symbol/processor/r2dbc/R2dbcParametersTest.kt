@@ -282,6 +282,28 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
     }
 
     @Test
+    fun testTagOnDataClassParameter() {
+        val mapper = Mockito.mock(R2dbcParameterColumnMapper::class.java) as R2dbcParameterColumnMapper<Int>
+        val repository = compile(
+            listOf(mapper), """
+            @Repository
+            interface TestRepository : R2dbcRepository {
+                @Query("INSERT INTO test(test) VALUES (:value)")
+                fun test(@Tag(TestRepository::class) value: TestEntity)
+            }
+            """.trimIndent(), """
+            data class TestEntity(val value: String)    
+            """.trimIndent()
+        )
+
+        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(R2dbcParameterColumnMapper::class)
+        val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
+        Assertions.assertThat(tag).isNotNull()
+        Assertions.assertThat(tag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("TestRepository")))
+    }
+
+    @Test
     fun testTagOnEntityField() {
         val mapper = Mockito.mock(R2dbcParameterColumnMapper::class.java) as R2dbcParameterColumnMapper<String>
         val repository = compile(

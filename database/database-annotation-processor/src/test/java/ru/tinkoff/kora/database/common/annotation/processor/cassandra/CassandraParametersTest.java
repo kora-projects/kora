@@ -24,6 +24,7 @@ import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityJav
 import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRecord.TestUnknownType;
 import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRecord.UnknownTypeField;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
@@ -419,6 +420,26 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
         repository.invoke("test", "test-value");
 
         verify(mapper).apply(any(), eq(0), eq("test-value"));
+
+        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        assertThat(mapperConstructorParameter.getType()).isEqualTo(CassandraParameterColumnMapper.class);
+        var tag = mapperConstructorParameter.getAnnotation(Tag.class);
+        assertThat(tag).isNotNull();
+        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
+    }
+
+    @Test
+    public void testRecordParameterMapping() throws ClassNotFoundException, SQLException {
+        var mapper = Mockito.mock(CassandraParameterColumnMapper.class);
+        var repository = compileCassandra(List.of(mapper), """            
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("INSERT INTO test(value) VALUES (:value::jsonb)")
+                void test(@Tag(TestRepository.class) TestRecord value);
+            }
+            """, """
+            public record TestRecord(String value){}
+            """);
 
         var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
         assertThat(mapperConstructorParameter.getType()).isEqualTo(CassandraParameterColumnMapper.class);
