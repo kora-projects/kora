@@ -32,7 +32,7 @@ import ru.tinkoff.kora.validation.common.annotation.Range;
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
 @HttpController{{#vendorExtensions.enableValidation}}
 @ru.tinkoff.kora.common.Component{{/vendorExtensions.enableValidation}}
-{{#vendorExtensions.enableValidation}}open{{/vendorExtensions.enableValidation}} class {{classname}}Controller(private val delegate: {{classname}}Delegate) {
+{{#vendorExtensions.enableValidation}}open {{/vendorExtensions.enableValidation}}class {{classname}}Controller(private val delegate: {{classname}}Delegate) {
 {{#operations}}
 {{#operation}}
     /**
@@ -67,7 +67,7 @@ import ru.tinkoff.kora.validation.common.annotation.Range;
     @Validate
     {{/vendorExtensions.x-validate}}
     @Mapping({{classname}}ServerResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ResponseMapper::class)
-    suspend fun {{operationId}}({{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {
+    {{#vendorExtensions.enableValidation}}open {{/vendorExtensions.enableValidation}}suspend fun {{operationId}}({{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {
       return this.delegate.{{operationId}}(
         {{#allParams}}{{#lambda.trim}}
         {{#hasFormParams}}{{^isFormParam}}{{paramName}},{{/isFormParam}}{{/hasFormParams}}

@@ -43,10 +43,12 @@ abstract class BaseSymbolProcessor(environment: SymbolProcessorEnvironment) : Sy
     val kspLogger: KSPLogger = if (!debug) environment.logger else object : KSPLogger {
 
         override fun error(message: String, symbol: KSNode?) {
+            environment.logger.error(message, symbol)
             writeMessage("error", message, symbol)
         }
 
         override fun exception(e: Throwable) {
+            environment.logger.exception(e)
             val sw = StringWriter()
             val pw = PrintWriter(sw)
             e.printStackTrace(pw)
