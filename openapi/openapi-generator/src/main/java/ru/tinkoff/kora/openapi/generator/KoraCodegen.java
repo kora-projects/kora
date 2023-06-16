@@ -56,6 +56,10 @@ public class KoraCodegen extends DefaultCodegen {
                 case JAVA_SERVER, REACTIVE_SERVER, KOTLIN_SERVER -> true;
             };
         }
+
+        public boolean isJava() {
+            return this != KOTLIN_CLIENT && this != KOTLIN_SERVER;
+        }
     }
 
     record TagData(@Nullable String httpClientTag, @Nullable String telemetryTag) {}
@@ -307,13 +311,16 @@ public class KoraCodegen extends DefaultCodegen {
         } else {
             languageSpecificPrimitives = new HashSet<>(
                 Arrays.asList(
-                    "ByteArray",
                     "String",
                     "boolean",
                     "Boolean",
+                    "double",
                     "Double",
+                    "int",
                     "Integer",
+                    "long",
                     "Long",
+                    "float",
                     "Float",
                     "Object",
                     "byte[]")
@@ -417,6 +424,33 @@ public class KoraCodegen extends DefaultCodegen {
                     childModel.vendorExtensions.put("x-discriminator-value", mappedModel.getMappingName());
                     childModel.allVars.removeIf(prop -> StringUtils.equals(model.discriminator.getPropertyBaseName(), prop.baseName));
                     childModel.requiredVars.removeIf(prop -> StringUtils.equals(model.discriminator.getPropertyBaseName(), prop.baseName));
+                }
+            }
+            if (codegenMode.isJava()) {
+                for (var requiredVar : model.allVars) {
+                    if (!requiredVar.required) {
+                        continue;
+                    }
+                    if (requiredVar.isInteger) {
+                        requiredVar.dataType = "int";
+                        requiredVar.datatypeWithEnum = "int";
+                    }
+                    if (requiredVar.isLong) {
+                        requiredVar.dataType = "long";
+                        requiredVar.datatypeWithEnum = "long";
+                    }
+                    if (requiredVar.isFloat) {
+                        requiredVar.dataType = "float";
+                        requiredVar.datatypeWithEnum = "float";
+                    }
+                    if (requiredVar.isDouble) {
+                        requiredVar.dataType = "double";
+                        requiredVar.datatypeWithEnum = "double";
+                    }
+                    if (requiredVar.isBoolean) {
+                        requiredVar.dataType = "boolean";
+                        requiredVar.datatypeWithEnum = "boolean";
+                    }
                 }
             }
         }
@@ -1349,6 +1383,28 @@ public class KoraCodegen extends DefaultCodegen {
                         op.vendorExtensions.put("x-validate", true);
                         var type = p.getSchema() != null ? p.getSchema().openApiType : null;
                         visitVariableValidation(p, type, p.dataFormat, p.vendorExtensions);
+                    }
+                }
+            }
+            if (codegenMode.isJava()) {
+                for (var allParam : op.allParams) {
+                    if (!allParam.required) {
+                        continue;
+                    }
+                    if (allParam.isInteger) {
+                        allParam.dataType = "int";
+                    }
+                    if (allParam.isLong) {
+                        allParam.dataType = "long";
+                    }
+                    if (allParam.isFloat) {
+                        allParam.dataType = "float";
+                    }
+                    if (allParam.isDouble) {
+                        allParam.dataType = "double";
+                    }
+                    if (allParam.isBoolean) {
+                        allParam.dataType = "boolean";
                     }
                 }
             }
