@@ -3,7 +3,9 @@ package ru.tinkoff.kora.annotation.processor.common;
 import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.CodeBlock;
 
+import javax.lang.model.AnnotatedConstruct;
 import javax.lang.model.element.Element;
+import javax.lang.model.type.ArrayType;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.RecordComponentElement;
@@ -16,7 +18,7 @@ import java.util.stream.Collectors;
 
 public class TagUtils {
 
-    private static Set<String> parseTagValue0(Element element) {
+    private static Set<String> parseTagValue0(AnnotatedConstruct element) {
         for (var annotationMirror : element.getAnnotationMirrors()) {
             var type = annotationMirror.getAnnotationType();
             if (type.toString().equals(CommonClassNames.tag.canonicalName())) {
@@ -36,12 +38,18 @@ public class TagUtils {
                 }
             }
         }
+        if (element instanceof ArrayType array) {
+            return parseTagValue0(array.getComponentType());
+        }
         return Set.of();
     }
 
-    public static Set<String> parseTagValue(Element element) {
-        var tag = parseTagValue0(element);
+    public static Set<String> parseTagValue(AnnotatedConstruct construct) {
+        var tag = parseTagValue0(construct);
         if (!tag.isEmpty()) {
+            return tag;
+        }
+        if (!(construct instanceof Element element)) {
             return tag;
         }
         if (element.getEnclosingElement().getKind() == ElementKind.RECORD) {

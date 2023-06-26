@@ -503,18 +503,26 @@ public class CommonUtils {
     }
 
     public static boolean isMono(TypeMirror type) {
-        return type.getKind() == TypeKind.DECLARED && type.toString().startsWith("reactor.core.publisher.Mono<");
+        return type.getKind() == TypeKind.DECLARED
+            && type instanceof DeclaredType dt
+            && dt.asElement().toString().equals("reactor.core.publisher.Mono");
     }
 
     public static boolean isList(TypeMirror type) {
-        return type.getKind() == TypeKind.DECLARED && type.toString().startsWith("java.util.List<");
+        return type.getKind() == TypeKind.DECLARED
+            && type instanceof DeclaredType dt
+            && dt.asElement().toString().equals("java.util.List");
     }
 
     public static boolean isOptional(TypeMirror type) {
-        return type.getKind() == TypeKind.DECLARED && type.toString().startsWith("java.util.Optional<");
+        return type.getKind() == TypeKind.DECLARED
+            && type instanceof DeclaredType dt
+            && dt.asElement().toString().equals("java.util.Optional");
     }
 
     public static boolean isFlux(TypeMirror type) {
-        return type.getKind() == TypeKind.DECLARED && type.toString().startsWith("reactor.core.publisher.Flux<");
+        return type.getKind() == TypeKind.DECLARED
+            && type instanceof DeclaredType dt
+            && dt.asElement().toString().equals("reactor.core.publisher.Flux");
     }
 }

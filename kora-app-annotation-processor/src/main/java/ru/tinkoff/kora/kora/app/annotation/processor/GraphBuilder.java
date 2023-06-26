@@ -204,10 +204,11 @@ public class GraphBuilder {
                 }
                 var hints = ctx.dependencyModuleHintProvider.findHints(dependencyClaim.type(), dependencyClaim.tags());
                 var msg = new StringBuilder();
+                var claimTypeName = TypeName.get(dependencyClaim.type()).annotated(List.of());
                 if (dependencyClaim.tags().isEmpty()) {
-                    msg.append(String.format("Required dependency was not found: %s", dependencyClaim.type()));
+                    msg.append(String.format("Required dependency was not found: %s", claimTypeName));
                 } else {
-                    msg.append(String.format("Required dependency was not found: %s %s", dependencyClaim.tags().stream().collect(Collectors.joining(", ", "@Tag(", ")")), dependencyClaim.type()));
+                    msg.append(String.format("Required dependency was not found: %s %s", dependencyClaim.tags().stream().collect(Collectors.joining(", ", "@Tag(", ")")), claimTypeName));
                 }
                 for (var hint : hints) {
                     msg.append("\n  Hint: ").append(hint.message());

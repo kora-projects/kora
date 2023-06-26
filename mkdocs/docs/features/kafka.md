@@ -12,8 +12,8 @@ Kora предоставляет небольшую обёртку над `KafkaC
 Конструктор контейнера выглядит следующим образом:
 
 ```java
-public KafkaConsumerContainer(KafkaConsumerConfig config,
-                              Deserializer<K> keyDeserializer,
+public KafkaSubscribeConsumerContainer(KafkaConsumerConfig config,
+    Deserializer<K> keyDeserializer,
                               Deserializer<V> valueDeserializer,
                               BaseKafkaRecordsHandler<K, V> handler) {
     this.factory = new KafkaConsumerFactory<>(config);
@@ -27,7 +27,7 @@ public KafkaConsumerContainer(KafkaConsumerConfig config,
 `BaseKafkaRecordsHandler<K,V>` это базовый функциональный интерфейс обработчика:
 
 ```java
-package ru.tinkoff.kora.kafka.common.containers.handlers;
+package ru.tinkoff.kora.kafka.common.consumer.containers.handlers;
 
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -45,7 +45,6 @@ public record KafkaConsumerConfig(
     Properties driverProperties,
     @Nullable List<String> topics,
     @Nullable Pattern topicsPattern,
-    @Nullable List<String> partitions,
     Either<Duration, String> offset,
     Duration pollTimeout,
     int threads
@@ -56,7 +55,6 @@ public record KafkaConsumerConfig(
 * driverProperties - `Properties` из официального клиента кафки, документацию по ним можно посмотреть по ссылке: [https://kafka.apache.org/documentation/#consumerconfigs](https://kafka.apache.org/documentation/#consumerconfigs)
 * topics - список топиков на которые нужно подписаться, через запятую
 * topicsPattern - регулярка, по которой можно подписаться на топики.
-* partitions - список партиций к которым нужно подключиться через assign, в формате `{topic}:{partition_number}`, например `books:1,books:2,books:5`
 * offset - стратегия, которую нужно применить при подключении через assign.  
   Допустимые значение `earliest` - перейти на самый ранний доступный offset, `latest` - перейти на последний доступный offset, строка в формате `Duration`, например `5m` - сдвиг на определённое время назад  
 * pollTimeout - таймаут для poll(), значение по умолчанию - 5 секунд
@@ -93,11 +91,11 @@ kafka {
 
 ### Генерация по аннотации
 
-В большинстве случаев проще всего будет воспользоваться аннотацией `@KafkaIncoming`, например, как в коде ниже:
+В большинстве случаев проще всего будет воспользоваться аннотацией `@KafkaListener`, например, как в коде ниже:
 ```java
 @Component
 final class Consumers {
-    @KafkaIncoming("kafka.first")
+    @KafkaListener("kafka.first")
     void processRecord(ConsumerRecord<String, String> record) { 
         //some handler code
     }
@@ -113,7 +111,7 @@ public interface ConsumersModule {
         Consumers _controller,
         KafkaConsumerConfig _consumerConfig,
         Deserializer<String> keyDeserializer, Deserializer<String> valueDeserializer) {
-        return new KafkaConsumerContainer<>(
+        return new KafkaSubscribeConsumerContainer<>(
             _consumerConfig,
             keyDeserializer,
             valueDeserializer,
@@ -134,11 +132,11 @@ public interface ConsumersModule {
 ```java
 @Component
 final class Consumers {
-    @KafkaIncoming("kafka.first")
+    @KafkaListener("kafka.first")
     void processRecord(ConsumerRecord<String, String> record) { 
         //some handler code
     }
-    @KafkaIncoming("kafka.other")
+    @KafkaListener("kafka.other")
     void processRecords(ConsumerRecords<String, String> records, Consumer<String,String> consumer) {
         //some handler code
         consumer.commitAsync();
@@ -149,45 +147,46 @@ final class Consumers {
 
 ### Поддерживаемые сигнатуры:
 ```java
-@KafkaIncoming("kafka.first")
+@KafkaListener("kafka.first")
 void processRecordsWithConsumer(ConsumerRecords<String, CustomEvent> records, Consumer<String, CustomEvent> consumer) {}
 ```
 Принимает `ConsumerRecords` и `Consumer`, коммитить оффсет нужно вручную.
 
 ```java
-@KafkaIncoming("kafka.first")
+@KafkaListener("kafka.first")
 void processRecordWithConsumer(ConsumerRecord<String, String> records, Consumer<String, String> consumer) {}
 ```
 Принимает `ConsumerRecord` и `Consumer`. Как и в предыдущем случае, `commit` нужно вызывать вручную. Вызывается для каждого `ConsumerRecord` полученного при вызове `poll()`
 
 ```java
-@KafkaIncoming("kafka.first"
+@KafkaListener("kafka.first"
 void processRecords(ConsumerRecords<String, String> records) {}
 ```
 Принимает `ConsumerRecords`, после вызова обработчика вызывается `commitSync()`.
 
 ```java
-@KafkaIncoming("kafka.first")
+@KafkaListener("kafka.first")
 void processRecord(ConsumerRecord<String, String> record) {}
 ```
 Принимает `ConsumerRecord`, после обработки всех `ConsumerRecord` вызывается `commitSync()`.
 
 ```java
-@KafkaIncoming("kafka.first")
+@KafkaListener("kafka.first")
 void processValue(CustomEvent value) {}
 ```
 
 Принимает `ConsumerRecord.value`, после обработки всех событий вызывается `commitSync()`.
 
 ```java
-@KafkaIncoming("kafka.first")
+@KafkaListener("kafka.first")
 void processKeyValue(String key, CustomEvent value) {}
 ```
 То же, что и предыдущий кейс, но добавляется key из `ConsumerRecord`
 
 ### Исключения в обработчике
 
-Если метод помеченный `@KafkaIncoming` выбросит исключение, то Consumer будет перезапущен, потому что нет общего решения, как реагировать на это и разработчик **должен** сам решить как эту ситуацию обрабатывать.
+Если метод помеченный `@KafkaListener` выбросит исключение, то Consumer будет перезапущен, потому что нет общего решения, как реагировать на это и разработчик **должен** сам решить как эту ситуацию
+обрабатывать.
 
 ### Обработка ошибок десериализации
 
@@ -200,21 +199,40 @@ void processKeyValue(String key, CustomEvent value) {}
 
 Из этих исключений можно получить сырой `ConsumerRecord<byte[], byte[]>`
 
-Если вы используете сигнатуру с распакованными `key`/`value`, то можно добавить последним аргументом `Exception`
+Если вы используете сигнатуру с распакованными `key`/`value`, то можно добавить последним аргументом `Exception`, `Throwable`, `RecordKeyDeserializationException`
+или `RecordValueDeserializationException`.
 
 ```java
-@KafkaIncoming("kafka.first")
+@KafkaListener("kafka.first")
 public void process(@Nullable String key, @Nullable String value, @Nullable Exception exception) {
-    if (exception != null) {
-      //handle exception
-    } else {
-      //handle key/value
+    if(exception!=null){
+    //handle exception
+    }else{
+    //handle key/value
     }
-}
+    }
 ```
 
 Обратите внимание, что все аргументы становятся необязательными, то есть мы ожидаем что у нас либо будут ключ и значение, либо исключение
 
+### Настройка key/value deserializer
+
+Для более точной настройки десериализаторов поддерживаются теги.
+Теги можно установить на параметре-ключе, параметре-значении, а так же на параметрах типа `ConsumerRecord` и `ConsumerRecords`.
+Эти теги будут установлены на зависимостях контейнера.
+Примеры:
+
+```java
+@KafkaListener("kafka.first")
+void process1(@Tag(Sometag1.class) String key,@Tag(Sometag2.class) String value){}
+
+@KafkaListener("kafka.first")
+void process2(ConsumerRecord<@Tag(Sometag1.class) String, @Tag(Sometag2.class) String> record){}
+
+@KafkaListener("kafka.first")
+void process2(ConsumerRecords<@Tag(Sometag1.class) String, @Tag(Sometag2.class) String> record){}
+
+```
 
 ### Прочее
 

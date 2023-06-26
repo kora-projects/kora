@@ -1,1 +1,1 @@
-ru.tinkoff.kora.kafka.annotation.processor.KafkaAnnotationProcessor
+ru.tinkoff.kora.kafka.annotation.processor.consumer.KafkaListenerAnnotationProcessor

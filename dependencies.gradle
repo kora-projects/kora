@@ -13,7 +13,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             version('netty', '4.1.85.Final')
             version('kafka', '3.3.1')
             version('vertx', '4.3.4')
-            version('testcontainers', '1.17.5')
+            version('testcontainers', '1.18.3')
             version('cassandra', '4.15.0')
             version('grpc', '1.50.2')
             version('grpc-kotlin', '1.3.0')
@@ -144,7 +144,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
 
             library('commons.codec', 'commons-codec', 'commons-codec').version('1.15')
 
-            library('openapi-generator', 'org.openapitools', 'openapi-generator').version('6.2.1')
+            library('openapi-generator', 'org.openapitools', 'openapi-generator').version('6.4.0')
             library('swagger-core', 'io.swagger.core.v3', 'swagger-core').version('2.2.6')
             library('swagger-annotations', 'io.swagger.core.v3', 'swagger-annotations').version('2.2.6')
             library('swagger-models', 'io.swagger.core.v3', 'swagger-models').version('2.2.6')
