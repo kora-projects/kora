@@ -10,7 +10,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import ru.tinkoff.kora.common.Context;
-import ru.tinkoff.kora.kafka.common.telemetry.KafkaConsumerTracer;
+import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTracer;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 
 import javax.annotation.Nullable;

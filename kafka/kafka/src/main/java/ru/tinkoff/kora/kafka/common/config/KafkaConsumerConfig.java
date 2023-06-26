@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.kafka.common.config;
 
+import org.apache.kafka.clients.CommonClientConfigs;
 import ru.tinkoff.kora.common.util.Either;
 
 import javax.annotation.Nullable;
@@ -17,11 +18,13 @@ public record KafkaConsumerConfig(
     Either<Duration, String> offset,
     Duration pollTimeout,
     Duration backoffTimeout,
-    int threads
+    int threads,
+    Duration partitionRefreshInterval
 ) {
     private static final Duration DEFAULT_POLL_TIMEOUT = Duration.ofSeconds(5);
     private static final Duration DEFAULT_BACKOFF_TIMEOUT = Duration.ofSeconds(15);
     private static final int DEFAULT_THREADS_COUNT = 1;
+    private static final Duration DEFAULT_REFRESH_TIMEOUT = Duration.ofMinutes(1);
     private static final Either<Duration, String> DEFAULT_OFFSET = Either.right("latest");
 
     public KafkaConsumerConfig(
@@ -32,20 +35,34 @@ public record KafkaConsumerConfig(
         @Nullable Either<Duration, String> offset,
         @Nullable Duration pollTimeout,
         @Nullable Duration backoffTimeout,
-        @Nullable Integer threads
+        @Nullable Integer threads,
+        @Nullable Duration partitionRefreshInterval
     ) {
         this(
             driverProperties,
             topics,
             topicsPattern,
             partitions,
-            offset == null ? DEFAULT_OFFSET : offset ,
+            offset == null ? DEFAULT_OFFSET : offset,
             pollTimeout == null ? DEFAULT_POLL_TIMEOUT : pollTimeout,
             backoffTimeout == null ? DEFAULT_BACKOFF_TIMEOUT : backoffTimeout,
-            threads == null ? DEFAULT_THREADS_COUNT : threads
+            threads == null ? DEFAULT_THREADS_COUNT : threads,
+            partitionRefreshInterval == null ? DEFAULT_REFRESH_TIMEOUT : partitionRefreshInterval
         );
+    }
 
-        if (topics == null && topicsPattern == null && partitions == null) throw new IllegalArgumentException("`topics` or `topicsPattern` or `partitions` must be specified");
+    public KafkaConsumerConfig {
+        if (topics == null && topicsPattern == null && partitions == null) {
+            throw new IllegalArgumentException("`topics` or `topicsPattern` or `partitions` must be specified");
+        }
+        if (driverProperties.getProperty(CommonClientConfigs.GROUP_ID_CONFIG) == null) {
+            if (topics == null) {
+                throw new IllegalArgumentException("`topics` or `group.id` must be specified");
+            }
+            if (topics.size() != 1) {
+                throw new IllegalArgumentException("`topics` must contain exactly one element if `group.id` is not specified");
+            }
+        }
     }
 
     public KafkaConsumerConfig withDriverPropertiesOverrides(Map<String, Object> overrides) {
@@ -60,7 +77,8 @@ public record KafkaConsumerConfig(
             offset,
             pollTimeout,
             backoffTimeout,
-            threads
+            threads,
+            partitionRefreshInterval
         );
     }
 }

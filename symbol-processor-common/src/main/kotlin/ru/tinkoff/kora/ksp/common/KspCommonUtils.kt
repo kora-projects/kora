@@ -240,7 +240,7 @@ fun parseAnnotationClassValue(target: KSAnnotated, annotationName: String): List
 
 inline fun <reified T> parseAnnotationValue(target: KSAnnotation, name: String) = target.findValue<T>(name)
 
-fun parseTagValue(target: KSAnnotated): List<KSType> {
+fun parseTags(target: KSAnnotated): List<KSType> {
     return parseAnnotationClassValue(target, CommonClassNames.tag.canonicalName)
 }
 

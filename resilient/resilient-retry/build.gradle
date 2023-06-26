@@ -9,7 +9,7 @@ dependencies {
     testImplementation project(":test:test-logging")
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.8.2"
     testImplementation "org.junit.jupiter:junit-jupiter-params:5.8.2"
-    testImplementation "org.testcontainers:junit-jupiter:1.17.1"
+    testImplementation "org.testcontainers:junit-jupiter:" + libs.versions.testcontainers.get()
     testImplementation "org.awaitility:awaitility:4.2.0"
 }
 

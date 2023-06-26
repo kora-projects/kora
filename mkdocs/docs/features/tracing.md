@@ -1,6 +1,6 @@
 ## Tracing
 
-Kora умеет экспортить спаны OTLP по gRPC. На данный момент спаны экспортятся для HttpServer, HttpClient, методов с @KafkaIncoming и всех баз данных.
+Kora умеет экспортить спаны OTLP по gRPC. На данный момент спаны экспортятся для HttpServer, HttpClient, методов с @KafkaListener и всех баз данных.
 
 ### Dependency
 

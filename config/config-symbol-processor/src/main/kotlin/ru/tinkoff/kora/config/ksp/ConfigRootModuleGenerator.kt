@@ -16,7 +16,7 @@ import ru.tinkoff.kora.config.common.ConfigRoot
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor
 import ru.tinkoff.kora.config.ksp.exception.NewRoundWantedException
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
-import ru.tinkoff.kora.ksp.common.parseTagValue
+import ru.tinkoff.kora.ksp.common.parseTags
 
 @KspExperimental
 class ConfigRootModuleGenerator(
@@ -85,7 +85,7 @@ class ConfigRootModuleGenerator(
         fields: List<KSPropertyDeclaration>,
     ): List<PropertyMeta> {
         return fields.map { field ->
-            val tags = parseTagValue(field)
+            val tags = parseTags(field)
             PropertyMeta(field.simpleName.asString(), field, tags)
         }.toList()
     }

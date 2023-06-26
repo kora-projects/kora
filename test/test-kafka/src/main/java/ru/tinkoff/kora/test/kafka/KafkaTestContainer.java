@@ -2,22 +2,16 @@ package ru.tinkoff.kora.test.kafka;
 
 import org.apache.kafka.clients.admin.DeleteTopicsOptions;
 import org.junit.jupiter.api.extension.*;
-import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.KafkaContainer;
-import org.testcontainers.containers.Network;
-import org.testcontainers.containers.output.Slf4jLogConsumer;
-import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 
 import javax.annotation.Nullable;
 import java.lang.reflect.Method;
-import java.time.Duration;
 import java.util.HashSet;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
-public class KafkaTestContainer implements ParameterResolver, AfterEachCallback {
+public class KafkaTestContainer implements ParameterResolver, AfterEachCallback, TestInstancePostProcessor {
     private static final ExtensionContext.Namespace NAMESPACE = ExtensionContext.Namespace.create(KafkaTestContainer.class);
     private static volatile KafkaContainer container = null;
     private static volatile KafkaParams params = null;
@@ -32,8 +26,10 @@ public class KafkaTestContainer implements ParameterResolver, AfterEachCallback 
             return;
         }
         if (container == null) {
-            container = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:5.4.3"))
-                .withExposedPorts(9092, 9093);;
+            container = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.4.0"))
+                .withKraft()
+                .withExposedPorts(9092, 9093);
+            ;
 
             container.start();
         }
@@ -78,7 +74,7 @@ public class KafkaTestContainer implements ParameterResolver, AfterEachCallback 
 
     @Override
     public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
-        return extensionContext.getStore(NAMESPACE).getOrComputeIfAbsent(extensionContext.getRequiredTestMethod(), p -> {
+        return extensionContext.getStore(NAMESPACE).getOrComputeIfAbsent(KafkaTestContainer.class, p -> {
             var params = getParams();
             return params.withTopicPrefix(UUID.randomUUID().toString().replace("-", ""));
         }, KafkaParams.class);
@@ -87,16 +83,29 @@ public class KafkaTestContainer implements ParameterResolver, AfterEachCallback 
 
     @Override
     public void afterEach(ExtensionContext context) throws Exception {
-        var params = context.getStore(NAMESPACE).get(context.getRequiredTestMethod(), KafkaParams.class);
+        var params = context.getStore(NAMESPACE).get(KafkaTestContainer.class, KafkaParams.class);
         if (params != null) {
             getParams().withAdmin(a -> {
                 try {
                     a.deleteTopics(params.createdTopics(), new DeleteTopicsOptions().timeoutMs(1000)).all().get();
                 } catch (InterruptedException | ExecutionException e) {
-                    throw new RuntimeException(e);
                 }
             });
             context.getStore(NAMESPACE).remove(context.getRequiredTestMethod(), KafkaParams.class);
+        }
+    }
+
+    @Override
+    public void postProcessTestInstance(Object testInstance, ExtensionContext context) throws Exception {
+        for (var declaredField : testInstance.getClass().getDeclaredFields()) {
+            if (declaredField.getType().equals(KafkaParams.class)) {
+                declaredField.setAccessible(true);
+                var p = context.getStore(NAMESPACE).getOrComputeIfAbsent(KafkaTestContainer.class, k -> {
+                    var params = getParams();
+                    return params.withTopicPrefix(UUID.randomUUID().toString().replace("-", ""));
+                }, KafkaParams.class);
+                declaredField.set(testInstance, p);
+            }
         }
     }
 }
