@@ -37,7 +37,6 @@ public class OpentelemetryKafkaConsumerTracer implements KafkaConsumerTracer {
             .setAttribute(SemanticAttributes.MESSAGING_SYSTEM, "kafka")
             .setNoParent()
             .startSpan();
-
         var rootCtx = otctx.add(rootSpan);
         for (var topicPartition : partitions) {
             var partitionSpan = this.tracer
@@ -45,9 +44,10 @@ public class OpentelemetryKafkaConsumerTracer implements KafkaConsumerTracer {
                 .setParent(rootCtx.getContext())
                 .setSpanKind(SpanKind.CONSUMER)
                 .setAttribute(SemanticAttributes.MESSAGING_SYSTEM, "kafka")
-                .setAttribute(SemanticAttributes.MESSAGING_DESTINATION, topicPartition.topic())
-                .setAttribute(SemanticAttributes.MESSAGING_DESTINATION_KIND, "topic")
-                .setAttribute(SemanticAttributes.MESSAGING_KAFKA_PARTITION, (long) topicPartition.partition())
+                .setAttribute(SemanticAttributes.MESSAGING_SOURCE_NAME, topicPartition.topic())
+                .setAttribute(SemanticAttributes.MESSAGING_SOURCE_KIND, "topic")
+                .setAttribute(SemanticAttributes.MESSAGING_KAFKA_SOURCE_PARTITION, (long) topicPartition.partition())
+                .setAttribute(SemanticAttributes.MESSAGING_BATCH_MESSAGE_COUNT, (long) records.count())
                 .startSpan();
             spans.put(topicPartition, partitionSpan);
         }
@@ -73,19 +73,19 @@ public class OpentelemetryKafkaConsumerTracer implements KafkaConsumerTracer {
         public KafkaConsumerRecordSpan get(ConsumerRecord<?, ?> record) {
             var partitionSpan = this.spans.get(new TopicPartition(record.topic(), record.partition()));
             var root = io.opentelemetry.context.Context.root();
-            var link = W3CTraceContextPropagator.getInstance().extract(root, record, ConsumerRecordTextMapGetter.INSTANCE);
+            var parent = W3CTraceContextPropagator.getInstance().extract(root, record, ConsumerRecordTextMapGetter.INSTANCE);
+
             var recordSpanBuilder = this.tracer
-                .spanBuilder(record.topic() + " receive")
-                .setParent(this.rootCtx.getContext().with(partitionSpan))
+                .spanBuilder(record.topic() + " process")
                 .setSpanKind(SpanKind.CONSUMER)
+                .setParent(parent)
+                .addLink(partitionSpan.getSpanContext())
                 .setAttribute(SemanticAttributes.MESSAGING_SYSTEM, "kafka")
-                .setAttribute(SemanticAttributes.MESSAGING_DESTINATION, record.topic())
-                .setAttribute(SemanticAttributes.MESSAGING_DESTINATION_KIND, "topic")
-                .setAttribute(SemanticAttributes.MESSAGING_KAFKA_PARTITION, (long) record.partition());
-            if (link != null) {
-                var linkSpan = Span.fromContext(link).getSpanContext();
-                recordSpanBuilder.addLink(linkSpan);
-            }
+                .setAttribute(SemanticAttributes.MESSAGING_SOURCE_NAME, record.topic())
+                .setAttribute(SemanticAttributes.MESSAGING_SOURCE_KIND, "topic")
+                .setAttribute(SemanticAttributes.MESSAGING_KAFKA_MESSAGE_KEY, record.key().toString())
+                .setAttribute(SemanticAttributes.MESSAGING_KAFKA_SOURCE_PARTITION, (long) record.partition())
+                .setAttribute(SemanticAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET, record.offset());
             var recordSpan = recordSpanBuilder.startSpan();
             OpentelemetryContext.set(Context.current(), this.rootCtx.add(recordSpan));
 
@@ -115,7 +115,7 @@ public class OpentelemetryKafkaConsumerTracer implements KafkaConsumerTracer {
 
             @Nullable
             @Override
-            public String get(@Nullable ConsumerRecord<?, ?> carrier, String key) {
+            public String get(ConsumerRecord<?, ?> carrier, String key) {
                 var header = carrier.headers().lastHeader(key);
                 return header != null ? new String(header.value(), StandardCharsets.UTF_8) : null;
             }

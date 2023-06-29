@@ -13,7 +13,7 @@ import com.google.devtools.ksp.symbol.Modifier
 import ru.tinkoff.kora.database.symbol.processor.DbUtils
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
-import ru.tinkoff.kora.kora.app.ksp.hasAopAnnotations
+import ru.tinkoff.kora.ksp.common.CommonAopUtils.hasAopAnnotations
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 

@@ -29,6 +29,7 @@ import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
+import ru.tinkoff.kora.ksp.common.CommonAopUtils.hasAopAnnotations
 import java.io.IOException
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type

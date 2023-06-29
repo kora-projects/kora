@@ -7,6 +7,7 @@ object KafkaClassNames {
     val consumerRecord = ClassName("org.apache.kafka.clients.consumer", "ConsumerRecord")
     val consumerRecords = ClassName("org.apache.kafka.clients.consumer", "ConsumerRecords")
     val deserializer = ClassName("org.apache.kafka.common.serialization", "Deserializer")
+    val serializer = ClassName("org.apache.kafka.common.serialization", "Serializer")
     val commonClientConfigs = ClassName("org.apache.kafka.clients", "CommonClientConfigs")
 
 
@@ -23,5 +24,15 @@ object KafkaClassNames {
 
     val recordHandler = ClassName("ru.tinkoff.kora.kafka.common.consumer.containers.handlers", "KafkaRecordHandler")
     val recordsHandler = ClassName("ru.tinkoff.kora.kafka.common.consumer.containers.handlers", "KafkaRecordsHandler")
+
+    val kafkaPublisherAnnotation = ClassName("ru.tinkoff.kora.kafka.common.annotation", "KafkaPublisher")
+    val producer = ClassName("org.apache.kafka.clients.producer", "Producer")
+    val kafkaProducer = ClassName("org.apache.kafka.clients.producer", "KafkaProducer")
+    val transactionalProducer = ClassName("ru.tinkoff.kora.kafka.common.producer", "TransactionalProducer")
+    val transactionalProducerImpl = ClassName("ru.tinkoff.kora.kafka.common.producer", "TransactionalProducerImpl")
+    val publisherConfig = ClassName("ru.tinkoff.kora.kafka.common.producer", "PublisherConfig")
+    val producerTelemetryFactory = ClassName("ru.tinkoff.kora.kafka.common.producer.telemetry", "KafkaProducerTelemetryFactory")
+    val producerTelemetry = ClassName("ru.tinkoff.kora.kafka.common.producer.telemetry", "KafkaProducerTelemetry")
+    val producerRecord = ClassName("org.apache.kafka.clients.producer", "ProducerRecord")
 
 }

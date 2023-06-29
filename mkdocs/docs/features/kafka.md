@@ -238,7 +238,55 @@ void process2(ConsumerRecords<@Tag(Sometag1.class) String, @Tag(Sometag2.class) 
 
 Для обработчиков, не использующих ключ, по умолчанию используется `Deserializer<byte[]>` т.к. он просто возвращает не обработанные байты.
 
+## Контейнер для KafkaProducer
+
+Для использования `KafkaProducer` в коде их необходимо объявить.
+Создается продюсер с помощью интерфейса:
+
+```java
+@ru.tinkoff.kora.kafka.common.annotation.KafkaPublisher("kafka.producer.config")
+public interface MyKafkaProducer extends org.apache.kafka.clients.producer.Producer<byte[], byte[]> {
+}
+```
+
+По такому интерфейсу будет сгенерирован модуль, содержащий:
+
+- `ru.tinkoff.kora.kafka.common.producer.PublisherConfig`, собранный из конфигурации по пути "kafka.producer.config"
+- реализацию `MyKafkaProducer`, делегирующую во внутренний `KafkaProducer`, с добавлением телеметрии
+- `KafkaProducer` с тегом `@Tag(MyKafkaProducer.class)`, если нужен именно этот класс. При использовании будет отсутствовать телеметрия
+
+### Транзакции
+
+Если необходимо использовать транзакции с kafka, следует наследовать интерфейс `ru.tinkoff.kora.kafka.common.producer.TransactionalProducer`.
+Он предоставляет один метод `begin`, который следует использовать в блоке try-with-resources:
+
+```java
+
+@ru.tinkoff.kora.kafka.common.annotation.KafkaPublisher("kafka.producer.config")
+public interface MyKafkaProducer extends ru.tinkoff.kora.kafka.common.producer.TransactionalProducer<byte[], byte[]> {
+}
 
 
+    void someTransactionalMethod() {
+        try (var producer = this.myKafkaProducer.begin()) {
+            producer.send(record);
+            if (something) {
+                producer.abortTransaction();
+            } else {
+                producer.commitTransaction();// will be called on try-with-resources close
+            }
+        }
+    }
+```
 
+### Управление Serializer
 
+Для уточнения какой `Serializer` взять из контейнера есть возможность использовать теги.
+Теги необходимо устанавливать на параметры `TransactionalProducer` или `Producer`:
+
+```java
+
+@ru.tinkoff.kora.kafka.common.annotation.KafkaPublisher("kafka.producer.config")
+public interface MyKafkaProducer extends org.apache.kafka.clients.producer.Producer<@Tag(MyTag1.class) byte[], @Tag(MyTag2.class) byte[]> {
+}
+```

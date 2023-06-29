@@ -9,6 +9,7 @@ import ru.tinkoff.kora.opentelemetry.module.http.client.OpentelemetryHttpClientT
 import ru.tinkoff.kora.opentelemetry.module.http.server.OpentelemetryHttpServerTracer;
 import ru.tinkoff.kora.opentelemetry.module.jms.consumer.OpentelemetryJmsConsumerTracer;
 import ru.tinkoff.kora.opentelemetry.module.kafka.consumer.OpentelemetryKafkaConsumerTracer;
+import ru.tinkoff.kora.opentelemetry.module.kafka.consumer.OpentelemetryKafkaProducerTracer;
 import ru.tinkoff.kora.opentelemetry.module.scheduling.OpentelemetrySchedulingTracerFactory;
 
 public interface OpentelemetryModule {
@@ -35,6 +36,11 @@ public interface OpentelemetryModule {
     @DefaultComponent
     default OpentelemetryKafkaConsumerTracer opentelemetryKafkaConsumerTracing(Tracer tracer) {
         return new OpentelemetryKafkaConsumerTracer(tracer);
+    }
+
+    @DefaultComponent
+    default OpentelemetryKafkaProducerTracer opentelemetryKafkaProducerTracer(Tracer tracer) {
+        return new OpentelemetryKafkaProducerTracer(tracer);
     }
 
     @DefaultComponent

@@ -8,9 +8,9 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.database.symbol.processor.model.QueryParameter
-import ru.tinkoff.kora.kora.app.ksp.overridingKeepAop
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
+import ru.tinkoff.kora.ksp.common.CommonAopUtils.overridingKeepAop
 import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.MappingData
 import ru.tinkoff.kora.ksp.common.parseMappingData
@@ -177,7 +177,7 @@ object DbUtils {
 
 
     fun KSFunctionDeclaration.queryMethodBuilder(resolver: Resolver): FunSpec.Builder {
-        return overridingKeepAop(this, resolver);
+        return overridingKeepAop(resolver);
     }
 }
 

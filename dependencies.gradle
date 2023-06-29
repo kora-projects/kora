@@ -11,7 +11,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             version('jackson', '2.14.0')
             version('mockserver', '5.14.0')
             version('netty', '4.1.85.Final')
-            version('kafka', '3.3.1')
+            version('kafka', '3.4.0')
             version('vertx', '4.3.4')
             version('testcontainers', '1.18.3')
             version('cassandra', '4.15.0')
@@ -31,9 +31,9 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             library('micrometer-registry-prometheus', 'io.micrometer', 'micrometer-registry-prometheus').versionRef('micrometer')
             library('prometheus-jmx-collector', 'io.prometheus.jmx', 'collector').version("0.17.2")
 
-            library('opentelemetry-sdk-trace', 'io.opentelemetry', 'opentelemetry-sdk-trace').version('1.20.0')
-            library('opentelemetry-context', 'io.opentelemetry', 'opentelemetry-context').version('1.20.0')
-            library('opentelemetry-semconv', 'io.opentelemetry', 'opentelemetry-semconv').version('1.20.0-alpha')
+            library('opentelemetry-sdk-trace', 'io.opentelemetry', 'opentelemetry-sdk-trace').version('1.26.0')
+            library('opentelemetry-context', 'io.opentelemetry', 'opentelemetry-context').version('1.26.0')
+            library('opentelemetry-semconv', 'io.opentelemetry', 'opentelemetry-semconv').version('1.26.0-alpha')
             library('opentelemetry-exporter-otlp-trace', 'io.opentelemetry', 'opentelemetry-exporter-otlp-trace').version('1.14.0')
 
             library('typesafe-config', 'com.typesafe', 'config').version("1.4.2")

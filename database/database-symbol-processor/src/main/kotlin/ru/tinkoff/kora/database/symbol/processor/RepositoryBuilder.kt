@@ -15,7 +15,7 @@ import ru.tinkoff.kora.database.symbol.processor.cassandra.CassandraRepositoryGe
 import ru.tinkoff.kora.database.symbol.processor.jdbc.JdbcRepositoryGenerator
 import ru.tinkoff.kora.database.symbol.processor.r2dbc.R2DbcRepositoryGenerator
 import ru.tinkoff.kora.database.symbol.processor.vertx.VertxRepositoryGenerator
-import ru.tinkoff.kora.kora.app.ksp.extendsKeepAop
+import ru.tinkoff.kora.ksp.common.CommonAopUtils.extendsKeepAop
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
@@ -36,7 +36,7 @@ class RepositoryBuilder(
     fun build(repositoryDeclaration: KSClassDeclaration): TypeSpec? {
         log.info("Generating Repository for {}", repositoryDeclaration.simpleName.asString())
         val name = repositoryDeclaration.getOuterClassesAsPrefix() + repositoryDeclaration.simpleName.asString() + "_Impl"
-        val builder = extendsKeepAop(repositoryDeclaration, resolver, name)
+        val builder = repositoryDeclaration.extendsKeepAop(resolver, name)
             .generated(RepositoryBuilder::class)
             .addOriginatingKSFile(repositoryDeclaration.containingFile!!)
         val constructorBuilder = FunSpec.constructorBuilder()

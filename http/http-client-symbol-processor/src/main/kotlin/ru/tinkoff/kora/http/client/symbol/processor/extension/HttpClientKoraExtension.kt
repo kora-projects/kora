@@ -12,7 +12,7 @@ import ru.tinkoff.kora.http.client.common.annotation.HttpClient
 import ru.tinkoff.kora.http.client.symbol.processor.clientName
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
-import ru.tinkoff.kora.kora.app.ksp.hasAopAnnotations
+import ru.tinkoff.kora.ksp.common.CommonAopUtils.hasAopAnnotations
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 
 @KspExperimental

@@ -6,6 +6,7 @@ import com.google.devtools.ksp.symbol.*
 import com.google.devtools.ksp.visitor.KSEmptyVisitor
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
@@ -17,6 +18,7 @@ import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import kotlin.reflect.KClass
 
 object KspCommonUtils {
+
     fun KSAnnotated.findRepeatableAnnotation(annotationName: ClassName, containerName: ClassName): List<KSAnnotation> {
         val annotations = this.annotations
             .filter { it.shortName.asString() == annotationName.simpleName && it.annotationType.resolve().declaration.qualifiedName?.asString() == annotationName.canonicalName }

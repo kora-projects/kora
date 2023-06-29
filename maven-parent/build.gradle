@@ -131,7 +131,6 @@ publishing {
         }
     }
     repositories {
-        mavenLocal()
         maven { MavenArtifactRepository repo ->
             url = uri(System.getenv().getOrDefault("REPO_URL", "http://some-uri.com"))
             credentials {
