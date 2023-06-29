@@ -60,7 +60,6 @@ public record KafkaParams(String bootstrapServers, String topicPrefix, Set<Strin
             logger.info("Attempting to create topic {}", realName);
             try {
                 admin.createTopics(List.of(new NewTopic(realName, partitions, (short) 1)), new CreateTopicsOptions().timeoutMs(2000)).all().get();
-                logger.info("Created : {}", admin.describeTopics(List.of(realName)).allTopicNames().get());
             } catch (ExecutionException e) {
                 if (e.getCause() instanceof org.apache.kafka.common.errors.TopicExistsException te) {
                     return;

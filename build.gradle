@@ -22,7 +22,6 @@ allprojects {
     group = "ru.tinkoff.kora"
     version = System.getenv().getOrDefault("KORA_VERSION", "0.11.0-SNAPSHOT")
     repositories {
-        mavenLocal()
         mavenCentral()
     }
 }
@@ -143,7 +142,6 @@ subprojects {
             }
         }
         repositories {
-            mavenLocal()
             maven { MavenArtifactRepository repo ->
                 url = uri(System.getenv().getOrDefault("REPO_URL", "http://some-uri.com"))
                 credentials {

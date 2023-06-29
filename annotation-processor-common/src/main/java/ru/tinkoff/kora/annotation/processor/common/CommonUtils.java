@@ -154,14 +154,9 @@ public class CommonUtils {
         return null;
     }
 
+    @Deprecated
     public static String getOuterClassesAsPrefix(Element element) {
-        var prefix = new StringBuilder("$");
-        var parent = element.getEnclosingElement();
-        while (parent.getKind() != ElementKind.PACKAGE) {
-            prefix.insert(1, parent.getSimpleName().toString() + "_");
-            parent = parent.getEnclosingElement();
-        }
-        return prefix.toString();
+        return NameUtils.getOuterClassesAsPrefix(element);
     }
 
     public static List<ExecutableElement> findConstructors(TypeElement typeElement, Predicate<Set<Modifier>> modifiersFilter) {

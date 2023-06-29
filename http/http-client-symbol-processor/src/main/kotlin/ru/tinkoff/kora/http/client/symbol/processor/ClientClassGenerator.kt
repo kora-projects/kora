@@ -24,11 +24,11 @@ import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryFactory
 import ru.tinkoff.kora.http.client.common.writer.StringParameterConverter
 import ru.tinkoff.kora.http.common.annotation.HttpRoute
-import ru.tinkoff.kora.kora.app.ksp.extendsKeepAop
-import ru.tinkoff.kora.kora.app.ksp.hasAopAnnotations
-import ru.tinkoff.kora.kora.app.ksp.overridingKeepAop
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
+import ru.tinkoff.kora.ksp.common.CommonAopUtils.extendsKeepAop
+import ru.tinkoff.kora.ksp.common.CommonAopUtils.hasAopAnnotations
+import ru.tinkoff.kora.ksp.common.CommonAopUtils.overridingKeepAop
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.writeTagValue
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.findRepeatableAnnotation
@@ -55,7 +55,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
     fun generate(declaration: KSClassDeclaration): TypeSpec {
         val typeName = declaration.clientName()
         val methods: List<MethodData> = this.parseMethods(declaration)
-        val builder = extendsKeepAop(declaration, resolver, typeName)
+        val builder = declaration.extendsKeepAop(resolver, typeName)
             .generated(ClientClassGenerator::class)
         if (hasAopAnnotations(resolver, declaration)) {
             builder.addModifiers(KModifier.OPEN)
@@ -138,7 +138,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
     @OptIn(KspExperimental::class)
     private fun buildFunction(methodData: MethodData): FunSpec {
         val method = methodData.declaration
-        val b = overridingKeepAop(method, resolver)
+        val b = method.overridingKeepAop(resolver)
             .throws(HttpClientException::class)
         val methodClientName: String = method.simpleName.asString() + "Client"
         val methodRequestTimeout: String = method.simpleName.asString() + "RequestTimeout"

@@ -8,7 +8,13 @@ import ru.tinkoff.kora.application.graph.Wrapped;
 
 import java.util.Properties;
 
-public final class KafkaProducerContainer<K,V> implements Lifecycle, Wrapped<KafkaProducer<K,V>> {
+/**
+ * @param <K> key type
+ * @param <V> value type
+ * @deprecated move to @ru.tinkoff.kora.kafka.common.annotation.KafkaPublisher generated producer
+ */
+@Deprecated
+public final class KafkaProducerContainer<K, V> implements Lifecycle, Wrapped<KafkaProducer<K, V>> {
 
     private KafkaProducer<K, V> producer;
     private final Properties properties;
