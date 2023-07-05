@@ -2,7 +2,7 @@ package ru.tinkoff.kora.database.symbol.processor
 
 import kotlinx.coroutines.runBlocking
 import org.intellij.lang.annotations.Language
-import reactor.core.publisher.Mono
+import ru.tinkoff.kora.common.Context
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 import java.lang.reflect.InvocationTargetException
 import java.util.concurrent.Future
@@ -16,22 +16,20 @@ abstract class AbstractRepositoryTest : AbstractSymbolProcessorTest() {
         fun <T> invoke(method: String, vararg args: Any?): T? {
             for (repositoryClassMethod in repositoryClass.memberFunctions) {
                 if (repositoryClassMethod.name == method && repositoryClassMethod.parameters.size == args.size + 1) {
-                    try {
-                        val realArgs = Array(args.size + 1) {
-                            if (it == 0) {
-                                repositoryObject
-                            } else {
-                                args[it - 1]
-                            }
+                    val realArgs = Array(args.size + 1) {
+                        if (it == 0) {
+                            repositoryObject
+                        } else {
+                            args[it - 1]
                         }
-
+                    }
+                    try {
                         val result = if (repositoryClassMethod.isSuspend) {
-                            runBlocking { repositoryClassMethod.callSuspend(*realArgs) }
+                            runBlocking(Context.Kotlin.asCoroutineContext(Context.current())) { repositoryClassMethod.callSuspend(*realArgs) }
                         } else {
                             repositoryClassMethod.call(*realArgs)
                         }
                         return when (result) {
-                            is Mono<*> -> result.block()
                             is Future<*> -> result.get()
                             else -> result
                         } as T?
@@ -58,26 +56,16 @@ abstract class AbstractRepositoryTest : AbstractSymbolProcessorTest() {
             throw compileResult.compilationException()
         }
 
-        return try {
-            val repositoryClass = compileResult.loadClass("\$TestRepository_Impl")
-            val realArgs = arrayOfNulls<Any>(arguments.size + 1)
-            realArgs[0] = connectionFactory
-            System.arraycopy(arguments.toTypedArray(), 0, realArgs, 1, arguments.size)
-            for ((i, arg) in realArgs.withIndex()) {
-                if (arg is GeneratedObject<*>) {
-                    realArgs[i] = arg.invoke()
-                }
+        val repositoryClass = compileResult.loadClass("\$TestRepository_Impl")
+        val realArgs = arrayOfNulls<Any>(arguments.size + 1)
+        realArgs[0] = connectionFactory
+        System.arraycopy(arguments.toTypedArray(), 0, realArgs, 1, arguments.size)
+        for ((i, arg) in realArgs.withIndex()) {
+            if (arg is GeneratedObject<*>) {
+                realArgs[i] = arg.invoke()
             }
-            val repository = repositoryClass.constructors[0].newInstance(*realArgs)
-            TestRepository(repositoryClass.kotlin, repository)
-        } catch (e: ClassNotFoundException) {
-            throw RuntimeException(e)
-        } catch (e: InstantiationException) {
-            throw RuntimeException(e)
-        } catch (e: IllegalAccessException) {
-            throw RuntimeException(e)
-        } catch (e: InvocationTargetException) {
-            throw RuntimeException(e)
         }
+        val repository = repositoryClass.constructors[0].newInstance(*realArgs)
+        return TestRepository(repositoryClass.kotlin, repository)
     }
 }

@@ -3,6 +3,7 @@ package ru.tinkoff.kora.ksp.common
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeReference
 import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.ksp.toClassName
 import java.util.concurrent.CompletableFuture
@@ -16,7 +17,9 @@ object CommonClassNames {
     val flow = ClassName("kotlinx.coroutines.flow", "Flow")
     val list = List::class.asClassName()
     val synchronousSink = ClassName("reactor.core.publisher", "SynchronousSink")
+    val await = MemberName("kotlinx.coroutines.future", "await")
 
+    val context = ClassName("ru.tinkoff.kora.common", "Context")
     val aopAnnotation = ClassName("ru.tinkoff.kora.common", "AopAnnotation")
     val mapping = ClassName("ru.tinkoff.kora.common", "Mapping")
     val mappings = ClassName("ru.tinkoff.kora.common", "Mapping", "Mappings")

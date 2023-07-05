@@ -4,8 +4,10 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
+import org.mockito.kotlin.any
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import ru.tinkoff.kora.common.Context
 import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.database.common.UpdateCount
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultSetMapper
@@ -78,7 +80,11 @@ class JdbcResultsTest : AbstractJdbcRepositoryTest() {
 
     @Test
     fun testReturnSuspendObject() {
-        val e = Executor { command -> command.run() }
+        val e = Executor { command -> Thread(command).start() }
+        val ctxKey = object : Context.Key<String>() {
+            override fun copy(`object`: String?) = TODO("Not yet implemented")
+        }
+        Context.current()[ctxKey] = "test"
         val mapper = Mockito.mock(JdbcResultSetMapper::class.java)
         val repository = compile(listOf(e, mapper), """
             @Repository
@@ -89,6 +95,10 @@ class JdbcResultsTest : AbstractJdbcRepositoryTest() {
             
             """.trimIndent())
         whenever(mapper.apply(ArgumentMatchers.any())).thenReturn(42)
+        whenever(executor.mockConnection.prepareStatement(any())).then {
+            require(Context.current()[ctxKey] == "test")
+            executor.preparedStatement
+        }
         val result = repository.invoke<Any>("test")
         Assertions.assertThat(result).isEqualTo(42)
         verify(executor.mockConnection).prepareStatement("SELECT count(*) FROM test")

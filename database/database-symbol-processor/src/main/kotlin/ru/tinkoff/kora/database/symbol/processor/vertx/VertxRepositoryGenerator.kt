@@ -32,7 +32,6 @@ import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.parseMappingData
 
 class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLogger: KSPLogger) : RepositoryGenerator {
-    private val await = MemberName("kotlinx.coroutines.future", "await")
     private val repositoryInterface = resolver.getClassDeclarationByName(resolver.getKSNameFromString(VertxTypes.repository.canonicalName))?.asStarProjectedType()
     override fun repositoryInterface() = repositoryInterface
 
@@ -105,7 +104,7 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
 
         }
         if (isSuspend) {
-            b.addCode("  .%M()", await)
+            b.addCode("  .%M()", CommonClassNames.await)
         } else if (!isFlow) {
             b.addCode("  .toCompletableFuture().join()")
             if (function.returnType!!.isMarkedNullable) {
