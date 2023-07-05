@@ -7,11 +7,8 @@ import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toTypeName
-import reactor.core.publisher.Mono
 import ru.tinkoff.kora.database.symbol.processor.DbUtils
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.addMapper
-import ru.tinkoff.kora.database.symbol.processor.DbUtils.awaitSingle
-import ru.tinkoff.kora.database.symbol.processor.DbUtils.awaitSingleOrNull
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.findQueryMethods
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.parseExecutorTag
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.queryMethodBuilder
@@ -30,10 +27,11 @@ import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.parseMappingData
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executor
 
 class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenerator {
+    private val withContext = MemberName("kotlinx.coroutines", "withContext")
+    private val asCoroutineDispatcher = MemberName("kotlinx.coroutines", "asCoroutineDispatcher")
     private val repositoryInterface = resolver.getClassDeclarationByName(resolver.getKSNameFromString(JdbcTypes.jdbcRepository.canonicalName))?.asStarProjectedType()
     override fun repositoryInterface() = repositoryInterface
 
@@ -66,23 +64,22 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         }
         val b = method.queryMethodBuilder(resolver)
         if (method.isSuspend()) {
-            b.beginControlFlow("return %T.fromCompletionStage({", Mono::class)
-            b.beginControlFlow("%T.supplyAsync({", CompletableFuture::class)
+            b.beginControlFlow("return %M(kotlin.coroutines.coroutineContext + this._executor.%M()) {", withContext, asCoroutineDispatcher)
         }
         val returnTypeName = methodType.returnType?.toTypeName()
 
         val connection = parameters.firstOrNull { it is QueryParameter.ConnectionParameter }
-            ?.let { CodeBlock.of("%L", it.variable) } ?: CodeBlock.of("this._jdbcConnectionFactory.currentConnection()")
+            ?.let { CodeBlock.of("%L", it.variable) } ?: CodeBlock.of("_jdbcConnectionFactory.currentConnection()")
         b.addStatement("var _conToUse = %L", connection)
         b.addStatement("val _conToClose: %T?", JdbcTypes.connection)
         b.controlFlow("if (_conToUse == null)") {
-            addStatement("_conToUse = this._jdbcConnectionFactory.newConnection()")
+            addStatement("_conToUse = _jdbcConnectionFactory.newConnection()")
             addStatement("_conToClose = _conToUse")
             nextControlFlow("else")
             addStatement("_conToClose = null")
         }
         b.addStatement("val _query = %T(%S, %S)", DbUtils.queryContext, query.rawQuery, sql)
-        b.addStatement("val _telemetry = this._jdbcConnectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.current(), _query)")
+        b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.current(), _query)")
         b.controlFlow("try") {
             controlFlow("_conToClose.use") {
                 controlFlow("_conToUse!!.prepareStatement(_query.sql()).use { _stmt ->") {
@@ -104,7 +101,7 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
                         addStatement("_telemetry.close(null)")
                         addCode("return")
                         if (method.isSuspend()) {
-                            addCode("@supplyAsync")
+                            addCode("@withContext")
                         }
                         addCode(" %T(_updateCount)\n", updateCount)
                     } else {
@@ -113,7 +110,7 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
                             addStatement("_telemetry.close(null)")
                             addCode("return")
                             if (method.isSuspend()) {
-                                addCode("@supplyAsync")
+                                addCode("@withContext")
                             }
                             addCode(" _result")
                             if (!methodType.returnType!!.isMarkedNullable) {
@@ -133,14 +130,6 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         }
         if (method.isSuspend()) {
             b.endControlFlow()
-            b.addCode(", this._executor)")
-            b.endControlFlow()
-            b.addCode(")")
-            if (methodType.returnType!!.isMarkedNullable) {
-                b.addCode(".%M()", awaitSingleOrNull)
-            } else {
-                b.addCode(".%M()", awaitSingle)
-            }
         }
         return b.build()
     }
