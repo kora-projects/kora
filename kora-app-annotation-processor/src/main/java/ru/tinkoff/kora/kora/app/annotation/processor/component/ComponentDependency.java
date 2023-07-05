@@ -25,7 +25,7 @@ public sealed interface ComponentDependency {
 
         @Override
         public CodeBlock write(ProcessingContext ctx, ClassName graphTypeName, List<ResolvedComponent> resolvedComponents) {
-            return CodeBlock.of("g.get($T.$L)", graphTypeName, this.component.name());
+            return CodeBlock.of("g.get($T.$N.$N)", graphTypeName, this.component.holderName(), this.component.fieldName());
         }
     }
 
@@ -33,7 +33,7 @@ public sealed interface ComponentDependency {
 
         @Override
         public CodeBlock write(ProcessingContext ctx, ClassName graphTypeName, List<ResolvedComponent> resolvedComponents) {
-            return CodeBlock.of("g.get($T.$L).value()", graphTypeName, this.component.name());
+            return CodeBlock.of("g.get($T.$N.$N).value()", graphTypeName, this.component.holderName(), this.component.fieldName());
         }
     }
 
@@ -53,9 +53,9 @@ public sealed interface ComponentDependency {
         @Override
         public CodeBlock write(ProcessingContext ctx, ClassName graphTypeName, List<ResolvedComponent> resolvedComponents) {
             if (this.delegate instanceof WrappedTargetDependency) {
-                return CodeBlock.of("g.valueOf($T.$L).map($T::value).map(v -> ($T) v)", graphTypeName, delegate.component().name(), CommonClassNames.wrapped, claim.type());
+                return CodeBlock.of("g.valueOf($T.$N.$N).map($T::value).map(v -> ($T) v)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName(), CommonClassNames.wrapped, claim.type());
             }
-            return CodeBlock.of("g.valueOf($T.$L).map(v -> ($T) v)", graphTypeName, delegate.component().name(), claim.type());
+            return CodeBlock.of("g.valueOf($T.$N.$N).map(v -> ($T) v)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName(), claim.type());
         }
 
         @Override
@@ -68,9 +68,9 @@ public sealed interface ComponentDependency {
         @Override
         public CodeBlock write(ProcessingContext ctx, ClassName graphTypeName, List<ResolvedComponent> resolvedComponents) {
             if (this.delegate instanceof WrappedTargetDependency) {
-                return CodeBlock.of("g.promiseOf($T.$L).map($T::value).map(v -> ($T) v)", graphTypeName, this.delegate.component().name(), CommonClassNames.wrapped, this.claim.type());
+                return CodeBlock.of("g.promiseOf($T.$N.$N).map($T::value).map(v -> ($T) v)", graphTypeName, delegate.component().holderName(), this.delegate.component().fieldName(), CommonClassNames.wrapped, this.claim.type());
             }
-            return CodeBlock.of("g.promiseOf($T.$L).map(v -> ($T) v)", graphTypeName, delegate.component().name(), this.claim.type());
+            return CodeBlock.of("g.promiseOf($T.$N.$N).map(v -> ($T) v)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName(), this.claim.type());
         }
 
         @Override
@@ -142,7 +142,7 @@ public sealed interface ComponentDependency {
         @Override
         public CodeBlock write(ProcessingContext ctx, ClassName graphTypeName, List<ResolvedComponent> resolvedComponents) {
             var dependencies = GraphResolutionHelper.findDependency(ctx, declaration, resolvedComponents, this.claim);
-            return CodeBlock.of("g.promiseOf($T.$L)", graphTypeName, dependencies.component().name());
+            return CodeBlock.of("g.promiseOf($T.$N.$N)", graphTypeName, dependencies.component().holderName(), dependencies.component().fieldName());
         }
     }
 }

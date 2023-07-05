@@ -24,12 +24,10 @@ import ru.tinkoff.kora.kora.app.ksp.interceptor.ComponentInterceptors
 import ru.tinkoff.kora.ksp.common.*
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
-import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
-import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
-import ru.tinkoff.kora.ksp.common.CommonClassNames
-import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
-import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.hasAopAnnotations
+import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
+import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import java.io.IOException
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
@@ -41,6 +39,9 @@ import javax.annotation.processing.SupportedOptions
 class KoraAppProcessor(
     environment: SymbolProcessorEnvironment
 ) : BaseSymbolProcessor(environment) {
+    companion object {
+        const val COMPONENTS_PER_HOLDER_CLASS = 500
+    }
 
     private val processedDeclarations = hashMapOf<String, Pair<KSClassDeclaration, ProcessingState>>()
 
@@ -432,6 +433,7 @@ class KoraAppProcessor(
         val containingFile = declaration.containingFile!!
         val packageName = containingFile.packageName.asString()
         val graphName = "${declaration.simpleName.asString()}Graph"
+        val graphTypeName = ClassName(packageName, graphName)
 
         val fileSpec = FileSpec.builder(
             packageName = packageName,
@@ -460,22 +462,62 @@ class KoraAppProcessor(
         }
         val companion = TypeSpec.companionObjectBuilder()
             .addProperty("graphDraw", CommonClassNames.applicationGraphDraw)
-        val initBlock = CodeBlock.builder()
-            .addStatement("val self = %T", ClassName(packageName, graphName))
-            .addStatement("val map = %T<%T, %T>()", HashMap::class.asClassName(), String::class.asClassName(), Type::class.asClassName())
-            .controlFlow("for (field in %L::class.java.declaredFields)", graphName) {
-                addStatement("if (!field.name.startsWith(%S)) continue", "component")
-                addStatement("map[field.name] = (field.genericType as %T).actualTypeArguments[0]", ParameterizedType::class.asClassName())
+
+        var currentClass: TypeSpec.Builder? = null
+        var currentConstructor: FunSpec.Builder? = null
+        var holders = 0
+
+        for (i in graph.indices) {
+            val componentNumber = i % COMPONENTS_PER_HOLDER_CLASS
+            if (componentNumber == 0) {
+                if (currentClass != null) {
+                    currentClass.primaryConstructor(currentConstructor!!.build())
+                    classBuilder.addType(currentClass.build())
+                    val prevNumber = i / COMPONENTS_PER_HOLDER_CLASS - 1
+                    companion.addProperty("holder$prevNumber", graphTypeName.nestedClass("ComponentHolder$prevNumber"))
+                }
+                holders++
+                val className = graphTypeName.nestedClass("ComponentHolder" + i / COMPONENTS_PER_HOLDER_CLASS)
+                currentClass = TypeSpec.classBuilder(className)
+                currentConstructor = FunSpec.constructorBuilder()
+                    .addParameter("graphDraw", CommonClassNames.applicationGraphDraw)
+                    .addParameter("impl", implClass)
+                    .addStatement("val self = %T", graphTypeName)
+                    .addStatement("val map = %T<%T, %T>()", HashMap::class.asClassName(), String::class.asClassName(), Type::class.asClassName())
+                    .controlFlow("for (field in %T::class.java.declaredFields)", className) {
+                        controlFlow("if (!field.name.startsWith(%S))", "component") { addStatement("continue") }
+                        addStatement("map[field.name] = (field.genericType as %T).actualTypeArguments[0]", ParameterizedType::class.asClassName())
+                    }
+                for (j in 0 until i / COMPONENTS_PER_HOLDER_CLASS) {
+                    currentConstructor.addParameter("ComponentHolder$j", graphTypeName.nestedClass("ComponentHolder$j"));
+                }
             }
-            .addStatement("val impl = %T()", implClass)
-            .addStatement("graphDraw =  %T(%T::class.java)", ApplicationGraphDraw::class, declaration.toClassName())
-        for (component in graph) {
-            companion.addProperty(component.name, CommonClassNames.node.parameterizedBy(component.type.toTypeName()))
+            val component = graph[i];
+            currentClass!!.addProperty(component.fieldName, CommonClassNames.node.parameterizedBy(component.type.toTypeName()))
+            val statement = this.generateComponentStatement(allModules, interceptors, graph, component)
+            currentConstructor!!.addCode(statement).addCode("\n")
+        }
+        if (graph.isNotEmpty()) {
+            var lastComponentNumber = graph.size / COMPONENTS_PER_HOLDER_CLASS;
+            if (graph.size % COMPONENTS_PER_HOLDER_CLASS == 0) {
+                lastComponentNumber--;
+            }
+            currentClass!!.addFunction(currentConstructor!!.build());
+            classBuilder.addType(currentClass.build())
+            companion.addProperty("holder$lastComponentNumber", graphTypeName.nestedClass("ComponentHolder$lastComponentNumber"));
         }
 
-        for (component in graph) {
-            val statement = this.generateComponentStatement(allModules, interceptors, graph, component)
-            initBlock.add(statement).add("\n")
+
+        val initBlock = CodeBlock.builder()
+            .addStatement("val self = %T", graphTypeName)
+            .addStatement("val impl = %T()", implClass)
+            .addStatement("graphDraw =  %T(%T::class.java)", ApplicationGraphDraw::class, declaration.toClassName())
+        for (i in 0 until holders) {
+            initBlock.add("%N = %T(graphDraw, impl", "holder$i", graphTypeName.nestedClass("ComponentHolder$i"))
+            for (j in 0 until i) {
+                initBlock.add(", holder$j")
+            }
+            initBlock.add(")\n");
         }
 
         val supplierMethodBuilder = FunSpec.builder("graph")
@@ -497,7 +539,7 @@ class KoraAppProcessor(
     ): CodeBlock {
         val statement = CodeBlock.builder()
         val declaration = component.declaration
-        statement.add("%L = graphDraw.addNode0(map[%S], ", component.name, component.name)
+        statement.add("%N = graphDraw.addNode0(map[%S], ", component.fieldName, component.fieldName)
         statement.indent().add("\n")
         statement.add("arrayOf(")
         for (tag in component.tags) {
@@ -587,7 +629,11 @@ class KoraAppProcessor(
             if (i > 0) {
                 statement.add(", ")
             }
-            statement.add("%L", interceptor.component.name)
+            if (component.holderName == interceptor.component.holderName) {
+                statement.add("%N", interceptor.component.fieldName)
+            } else {
+                statement.add("%N.%N", interceptor.component.holderName, interceptor.component.fieldName)
+            }
         }
         statement.add(")")
 
@@ -603,7 +649,11 @@ class KoraAppProcessor(
                         } else {
                             statement.add(", ")
                         }
-                        statement.add("%L", d.component!!.name)
+                        if (component.holderName == d.component!!.holderName) {
+                            statement.add("%N", d.component!!.fieldName)
+                        } else {
+                            statement.add("%N.%N", d.component!!.holderName, d.component!!.fieldName)
+                        }
                         if (dependency.claim.claimType == DependencyClaim.DependencyClaimType.ALL_OF_VALUE) {
                             statement.add(".valueOf()")
                         }
@@ -624,7 +674,11 @@ class KoraAppProcessor(
                 } else {
                     statement.add(", ")
                 }
-                statement.add("%L", dependency.component!!.name)
+                if (component.holderName == dependency.component!!.holderName) {
+                    statement.add("%N", dependency.component!!.fieldName)
+                } else {
+                    statement.add("%N.%N", dependency.component!!.holderName, dependency.component!!.fieldName)
+                }
                 if (dependency is ComponentDependency.ValueOfDependency) {
                     statement.add(".valueOf()")
                 }

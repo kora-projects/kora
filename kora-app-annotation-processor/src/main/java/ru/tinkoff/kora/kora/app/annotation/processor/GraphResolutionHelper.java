@@ -188,7 +188,8 @@ public class GraphResolutionHelper {
                     declaredComponent.tags(),
                     declaredComponent.method(),
                     realParams,
-                    typeParameters
+                    typeParameters,
+                    declaredComponent.isInterceptor()
                 ));
             } else if (sourceDeclaration instanceof ComponentDeclaration.AnnotatedComponent annotatedComponent) {
                 var realParams = new ArrayList<TypeMirror>();
@@ -205,7 +206,8 @@ public class GraphResolutionHelper {
                     annotatedComponent.tags(),
                     annotatedComponent.constructor(),
                     realParams,
-                    typeParameters
+                    typeParameters,
+                    annotatedComponent.isInterceptor()
                 ));
             } else if (sourceDeclaration instanceof ComponentDeclaration.FromExtensionComponent extensionComponent) {
                 var realParams = new ArrayList<TypeMirror>();
@@ -315,7 +317,7 @@ public class GraphResolutionHelper {
     public static List<ComponentDeclaration> findInterceptorDeclarations(ProcessingContext ctx, List<ComponentDeclaration> sourceDeclarations, TypeMirror typeMirror) {
         var result = new ArrayList<ComponentDeclaration>();
         for (var sourceDeclaration : sourceDeclarations) {
-            if (ctx.serviceTypeHelper.isInterceptorFor(sourceDeclaration.type(), typeMirror)) {
+            if (sourceDeclaration.isInterceptor() && ctx.serviceTypeHelper.isInterceptorFor(sourceDeclaration.type(), typeMirror)) {
                 result.add(sourceDeclaration);
             }
         }
