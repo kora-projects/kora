@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.declaration;
 
 import ru.tinkoff.kora.annotation.processor.common.*;
+import ru.tinkoff.kora.kora.app.annotation.processor.ProcessingContext;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
 
 import javax.lang.model.element.*;
@@ -24,8 +25,10 @@ public sealed interface ComponentDeclaration {
         return false;
     }
 
+    boolean isInterceptor();
+
     record FromModuleComponent(TypeMirror type, ModuleDeclaration module, Set<String> tags, ExecutableElement method, List<TypeMirror> methodParameterTypes,
-                               List<TypeMirror> typeVariables) implements ComponentDeclaration {
+                               List<TypeMirror> typeVariables, boolean isInterceptor) implements ComponentDeclaration {
         @Override
         public Element source() {
             return this.method;
@@ -38,7 +41,7 @@ public sealed interface ComponentDeclaration {
     }
 
     record AnnotatedComponent(TypeMirror type, TypeElement typeElement, Set<String> tags, ExecutableElement constructor, List<TypeMirror> methodParameterTypes,
-                              List<TypeMirror> typeVariables) implements ComponentDeclaration {
+                              List<TypeMirror> typeVariables, boolean isInterceptor) implements ComponentDeclaration {
         @Override
         public Element source() {
             return this.constructor;
@@ -59,6 +62,11 @@ public sealed interface ComponentDeclaration {
         public boolean isTemplate() {
             return false;
         }
+
+        @Override
+        public boolean isInterceptor() {
+            return false;
+        }
     }
 
     record FromExtensionComponent(TypeMirror type, ExecutableElement sourceMethod, List<TypeMirror> methodParameterTypes) implements ComponentDeclaration {
@@ -70,6 +78,11 @@ public sealed interface ComponentDeclaration {
         @Override
         public Set<String> tags() {
             return Set.of();
+        }
+
+        @Override
+        public boolean isInterceptor() {
+            return false;
         }
     }
 
@@ -92,6 +105,11 @@ public sealed interface ComponentDeclaration {
         public Set<String> tags() {
             return Set.of(CommonClassNames.promisedProxy.canonicalName());
         }
+
+        @Override
+        public boolean isInterceptor() {
+            return false;
+        }
     }
 
     record OptionalComponent(TypeMirror type, Set<String> tags) implements ComponentDeclaration {
@@ -99,17 +117,23 @@ public sealed interface ComponentDeclaration {
         public Element source() {
             return null;
         }
+
+        @Override
+        public boolean isInterceptor() {
+            return false;
+        }
     }
 
-    static ComponentDeclaration fromModule(ModuleDeclaration module, ExecutableElement method) {
+    static ComponentDeclaration fromModule(ProcessingContext ctx, ModuleDeclaration module, ExecutableElement method) {
         var type = method.getReturnType();
         var tags = TagUtils.parseTagValue(method);
         var parameterTypes = method.getParameters().stream().map(VariableElement::asType).toList();
         var typeParameters = method.getTypeParameters().stream().map(TypeParameterElement::asType).toList();
-        return new FromModuleComponent(type, module, tags, method, parameterTypes, typeParameters);
+        var isInterceptor = ctx.serviceTypeHelper.isInterceptor(type);
+        return new FromModuleComponent(type, module, tags, method, parameterTypes, typeParameters, isInterceptor);
     }
 
-    static ComponentDeclaration fromAnnotated(TypeElement typeElement) {
+    static ComponentDeclaration fromAnnotated(ProcessingContext ctx, TypeElement typeElement) {
         var constructors = CommonUtils.findConstructors(typeElement, m -> m.contains(Modifier.PUBLIC));
         if (constructors.size() != 1) {
             throw new ProcessingErrorException("@Component annotated class should have exactly one public constructor", typeElement);
@@ -119,7 +143,8 @@ public sealed interface ComponentDeclaration {
         var tags = TagUtils.parseTagValue(typeElement);
         var parameterTypes = constructor.getParameters().stream().map(VariableElement::asType).toList();
         var typeParameters = typeElement.getTypeParameters().stream().map(TypeParameterElement::asType).toList();
-        return new AnnotatedComponent(type, typeElement, tags, constructor, parameterTypes, typeParameters);
+        var isInterceptor = ctx.serviceTypeHelper.isInterceptor(type);
+        return new AnnotatedComponent(type, typeElement, tags, constructor, parameterTypes, typeParameters, isInterceptor);
     }
 
     static ComponentDeclaration fromDependency(TypeElement typeElement) {

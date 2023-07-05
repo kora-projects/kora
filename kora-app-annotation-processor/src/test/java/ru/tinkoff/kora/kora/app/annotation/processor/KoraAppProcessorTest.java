@@ -254,9 +254,9 @@ class KoraAppProcessorTest {
                 s.assertThat(error.getMessage(Locale.US))
                     .startsWith("More than one component matches dependency claim ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect.Class1:");
 
-                s.assertThat(error.getMessage(Locale.US)).contains("FromModuleComponent[type=ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect.Class1, module=MixedInModule[element=ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect], tags=[], method=c1(), methodParameterTypes=[], typeVariables=[]]");
-                s.assertThat(error.getMessage(Locale.US)).contains("FromModuleComponent[type=ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect.Class1, module=MixedInModule[element=ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect], tags=[], method=c2(), methodParameterTypes=[], typeVariables=[]]");
-                s.assertThat(error.getMessage(Locale.US)).contains("FromModuleComponent[type=ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect.Class1, module=MixedInModule[element=ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect], tags=[], method=c3(), methodParameterTypes=[], typeVariables=[]]");
+                s.assertThat(error.getMessage(Locale.US)).contains("FromModuleComponent[type=ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect.Class1, module=MixedInModule[element=ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect], tags=[], method=c1(), methodParameterTypes=[], typeVariables=[]");
+                s.assertThat(error.getMessage(Locale.US)).contains("FromModuleComponent[type=ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect.Class1, module=MixedInModule[element=ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect], tags=[], method=c2(), methodParameterTypes=[], typeVariables=[]");
+                s.assertThat(error.getMessage(Locale.US)).contains("FromModuleComponent[type=ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect.Class1, module=MixedInModule[element=ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect], tags=[], method=c3(), methodParameterTypes=[], typeVariables=[]");
             }));
     }
 

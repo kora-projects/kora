@@ -16,7 +16,7 @@ import javax.lang.model.util.Types;
 import java.util.*;
 
 public class KoraAppUtils {
-    static List<ComponentDeclaration> parseComponents(Types types, Elements elements, Collection<? extends ModuleDeclaration> modules) {
+    static List<ComponentDeclaration> parseComponents(ProcessingContext ctx, Collection<? extends ModuleDeclaration> modules) {
         var result = new ArrayList<ComponentDeclaration>();
         for (var module : modules) {
             var anInterface = module.element();
@@ -31,14 +31,14 @@ public class KoraAppUtils {
                 if (executableElement.getModifiers().contains(Modifier.STATIC)) {
                     continue;
                 }
-                result.add(ComponentDeclaration.fromModule(module, executableElement));
+                result.add(ComponentDeclaration.fromModule(ctx, module, executableElement));
             }
         }
         var finalResult = new ArrayList<>(result);
         for (var component : result) {
             var executableElement = (ExecutableElement) component.source();
             if (executableElement.getAnnotation(Override.class) != null) {
-                var overridee = findOverridee(types, elements, executableElement);
+                var overridee = findOverridee(ctx.types, ctx.elements, executableElement);
                 assert overridee.size() > 0;
                 finalResult.removeIf(cd -> {
                     for (var element : overridee) {

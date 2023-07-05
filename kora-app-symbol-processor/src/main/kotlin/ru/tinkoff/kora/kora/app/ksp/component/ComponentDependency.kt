@@ -25,13 +25,13 @@ sealed interface ComponentDependency {
 
     data class TargetDependency(override val claim: DependencyClaim, override val component: ResolvedComponent) : SingleDependency {
         override fun write(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>): CodeBlock {
-            return CodeBlock.of("it.get(%L)", component.name)
+            return CodeBlock.of("it.get(%N.%N)", component.holderName, component.fieldName)
         }
     }
 
     data class WrappedTargetDependency(override val claim: DependencyClaim, override val component: ResolvedComponent) : SingleDependency {
         override fun write(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>): CodeBlock {
-            return CodeBlock.of("it.get(%L).value()", component.name)
+            return CodeBlock.of("it.get(%N.%N).value()", component.holderName, component.fieldName)
         }
     }
 
@@ -59,9 +59,9 @@ sealed interface ComponentDependency {
             }
             val component = delegate.component!!
             if (delegate is WrappedTargetDependency) {
-                return CodeBlock.of("it.valueOf(%L).map { it.value() }.map { it as %T }", component.name, claim.type.toTypeName())
+                return CodeBlock.of("it.valueOf(%N.%N).map { it.value() }.map { it as %T }", component.holderName, component.fieldName, claim.type.toTypeName())
             }
-            return CodeBlock.of("it.valueOf(%L).map { it as %T }", component.name, claim.type.toTypeName())
+            return CodeBlock.of("it.valueOf(%N.%N).map { it as %T }", component.holderName, component.fieldName, claim.type.toTypeName())
         }
     }
 
@@ -75,9 +75,9 @@ sealed interface ComponentDependency {
             }
             val component = delegate.component!!
             if (delegate is WrappedTargetDependency) {
-                return CodeBlock.of("it.promiseOf(%L).map { it.value() }.map { it as %T }", component.name, claim.type.toTypeName())
+                return CodeBlock.of("it.promiseOf(%N.%N).map { it.value() }.map { it as %T }", component.holderName, component.fieldName, claim.type.toTypeName())
             }
-            return CodeBlock.of("it.promiseOf(%L).map { it as %T }", component.name, claim.type.toTypeName())
+            return CodeBlock.of("it.promiseOf(%N.%N).map { it as %T }", component.holderName, component.fieldName, claim.type.toTypeName())
         }
     }
 
@@ -135,7 +135,7 @@ sealed interface ComponentDependency {
     data class PromisedProxyParameterDependency(val declaration: ComponentDeclaration, override val claim: DependencyClaim) : ComponentDependency {
         override fun write(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>): CodeBlock {
             val dependencies = GraphResolutionHelper.findDependency(ctx, declaration, resolvedComponents, this.claim)
-            return CodeBlock.of("it.promiseOf(self.%L)", dependencies!!.component!!.name)
+            return CodeBlock.of("it.promiseOf(self.%N.%N)", dependencies!!.component!!.holderName, dependencies!!.component!!.fieldName)
         }
 
     }
