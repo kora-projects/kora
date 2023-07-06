@@ -58,7 +58,11 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
 
         repository.invoke("test", "test", 42);
 
-        verify(executor.telemetry).createContext(any(), eq(new QueryContext("INSERT INTO test(value1, value2) VALUES (:value1, :value2)", "INSERT INTO test(value1, value2) VALUES (?, ?)")));
+        verify(executor.telemetry).createContext(any(), eq(new QueryContext(
+            "INSERT INTO test(value1, value2) VALUES (:value1, :value2)",
+            "INSERT INTO test(value1, value2) VALUES (?, ?)",
+            "TestRepository.test"
+        )));
         verify(executor.telemetryCtx).close(null);
         verify(executor.mockSession).prepare("INSERT INTO test(value1, value2) VALUES (?, ?)");
         verify(executor.boundStatementBuilder).setString(0, "test");

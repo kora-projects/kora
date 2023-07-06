@@ -12,6 +12,7 @@ import ru.tinkoff.kora.database.symbol.processor.DbUtils
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.addMapper
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.asFlow
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.findQueryMethods
+import ru.tinkoff.kora.database.symbol.processor.DbUtils.operationName
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.parseExecutorTag
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.queryMethodBuilder
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.resultMapperName
@@ -64,7 +65,7 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
             .forEach { sql = sql.replace(":" + it.first, it.second) }
 
         val b = funDeclaration.queryMethodBuilder(resolver)
-        b.addCode("val _query = %T(\n  %S,\n  %S\n)\n", DbUtils.queryContext, query.rawQuery, sql)
+        b.addCode("val _query = %T(\n  %S,\n  %S\n,  %S\n)\n", DbUtils.queryContext, query.rawQuery, sql, funDeclaration.operationName())
         val batchParam = parameters.firstOrNull { it is QueryParameter.BatchParameter }
         val isSuspend = funDeclaration.isSuspend()
         val isFlow = funDeclaration.isFlow()

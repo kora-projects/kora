@@ -152,11 +152,12 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             }
             var _query = new $T(
               $S,
+              $S,
               $S
             );
             var _telemetry = this._connectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.current(), _query);
             try (_conToClose; var _stmt = _conToUse.prepareStatement(_query.sql())) {$>
-            """, connection, JdbcTypes.CONNECTION, DbUtils.QUERY_CONTEXT, query.rawQuery(), sql);
+            """, connection, JdbcTypes.CONNECTION, DbUtils.QUERY_CONTEXT, query.rawQuery(), sql, DbUtils.operationName(method));
         b.addCode(StatementSetterGenerator.generate(method, query, parameters, batchParam, parameterMappers));
         if (isVoid(method) || isMono && isVoid(((DeclaredType) methodType.getReturnType()).getTypeArguments().get(0))) {
             if (batchParam != null) {

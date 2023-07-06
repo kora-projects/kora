@@ -43,7 +43,7 @@ public final class OpentelemetryDataBaseTracer implements DataBaseTracer {
     @Override
     public DataBaseSpan createQuerySpan(Context ctx, QueryContext queryContext) {
         var otctx = OpentelemetryContext.get(ctx);
-        var builder = this.tracer.spanBuilder("db_query")
+        var builder = this.tracer.spanBuilder(queryContext.operation())
             .setSpanKind(SpanKind.CLIENT)
             .setParent(otctx.getContext())
             .setAttribute(SemanticAttributes.DB_SYSTEM, this.dbSystem)
@@ -67,7 +67,7 @@ public final class OpentelemetryDataBaseTracer implements DataBaseTracer {
     public DataBaseSpan createCallSpan(QueryContext queryContext) {
         var ctx = Context.current();
         var otctx = OpentelemetryContext.get(ctx);
-        var builder = this.tracer.spanBuilder("db_call")
+        var builder = this.tracer.spanBuilder(queryContext.operation())
             .setSpanKind(SpanKind.CLIENT)
             .setParent(otctx.getContext())
             .setAttribute(SemanticAttributes.DB_SYSTEM, this.dbSystem)
@@ -87,5 +87,4 @@ public final class OpentelemetryDataBaseTracer implements DataBaseTracer {
             OpentelemetryContext.set(ctx, otctx);
         };
     }
-
 }

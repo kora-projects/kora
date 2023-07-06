@@ -16,6 +16,7 @@ import ru.tinkoff.kora.database.symbol.processor.DbUtils.asFlow
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.awaitSingle
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.awaitSingleOrNull
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.findQueryMethods
+import ru.tinkoff.kora.database.symbol.processor.DbUtils.operationName
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.parseExecutorTag
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.queryMethodBuilder
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.resultMapperName
@@ -66,7 +67,7 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
             sql = sql.replace(":" + parameter.sqlParameterName, "?")
         }
         val b = funDeclaration.queryMethodBuilder(resolver)
-        b.addCode("val _query = %T(\n  %S,\n  %S\n)\n", DbUtils.queryContext, query.rawQuery, sql)
+        b.addCode("val _query = %T(\n  %S,\n  %S\n,  %S\n)\n", DbUtils.queryContext, query.rawQuery, sql, funDeclaration.operationName())
         val batchParam = parameters.firstOrNull { it is QueryParameter.BatchParameter }
         val profile = funDeclaration.findAnnotation(CassandraTypes.cassandraProfileAnnotation)?.findValue<String>("value")
         val returnType = function.returnType!!

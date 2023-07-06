@@ -92,7 +92,7 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
         var connectionParameter = parameters.stream().filter(QueryParameter.ConnectionParameter.class::isInstance).findFirst().orElse(null);
 
         var b = DbUtils.queryMethodBuilder(method, methodType);
-        b.addStatement(CodeBlock.of("var _query = new $T(\n  $S,\n  $S\n)", DbUtils.QUERY_CONTEXT, query.rawQuery(), sql));
+        b.addStatement(CodeBlock.of("var _query = new $T(\n  $S,\n  $S,\n  $S\n)", DbUtils.QUERY_CONTEXT, query.rawQuery(), sql, DbUtils.operationName(method)));
         var batchParam = parameters.stream().filter(QueryParameter.BatchParameter.class::isInstance).findFirst().orElse(null);
         var isFlux = CommonUtils.isFlux(methodType.getReturnType());
         var isMono = CommonUtils.isMono(methodType.getReturnType());

@@ -10,6 +10,7 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.database.symbol.processor.DbUtils
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.addMapper
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.findQueryMethods
+import ru.tinkoff.kora.database.symbol.processor.DbUtils.operationName
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.parseExecutorTag
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.queryMethodBuilder
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.resultMapperName
@@ -78,7 +79,7 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
             nextControlFlow("else")
             addStatement("_conToClose = null")
         }
-        b.addStatement("val _query = %T(%S, %S)", DbUtils.queryContext, query.rawQuery, sql)
+        b.addStatement("val _query = %T(%S, %S, %S)", DbUtils.queryContext, query.rawQuery, sql, method.operationName())
         b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.current(), _query)")
         b.controlFlow("try") {
             controlFlow("_conToClose.use") {

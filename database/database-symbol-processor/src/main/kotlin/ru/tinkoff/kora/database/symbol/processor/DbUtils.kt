@@ -30,6 +30,8 @@ object DbUtils {
     val awaitSingle = MemberName("kotlinx.coroutines.reactor", "awaitSingle")
     val asFlow = MemberName("kotlinx.coroutines.reactive", "asFlow")
 
+    fun KSFunctionDeclaration.operationName() = this.parentDeclaration?.simpleName?.asString() + "." + this.simpleName.asString()
+
     fun FieldFactory.addMapper(mapper: Mapper): String {
         if (mapper.mapperType == null) {
             return add(mapper.fieldTypeName, mapper.tags)
