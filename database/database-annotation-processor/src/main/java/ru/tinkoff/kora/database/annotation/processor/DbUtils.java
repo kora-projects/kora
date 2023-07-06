@@ -86,6 +86,10 @@ public class DbUtils {
         }
     }
 
+    public static String operationName(ExecutableElement method) {
+        return method.getEnclosingElement().getSimpleName().toString() + "." + method.getSimpleName().toString();
+    }
+
     public record Mapper(@Nullable TypeMirror typeMirror, TypeName typeName, Set<String> tag, @Nullable Function<CodeBlock, CodeBlock> wrapper) {
         public Mapper(TypeName typeName, Set<String> tag) {
             this(null, typeName, tag, null);

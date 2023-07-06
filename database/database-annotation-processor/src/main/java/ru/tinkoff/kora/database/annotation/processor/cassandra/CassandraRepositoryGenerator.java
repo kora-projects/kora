@@ -91,7 +91,7 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
             sql = sql.replace(":" + parameter.sqlParameterName(), "?");
         }
         var b = DbUtils.queryMethodBuilder(method, methodType);
-        b.addStatement(CodeBlock.of("var _query = new $T(\n  $S,\n  $S\n)", DbUtils.QUERY_CONTEXT, query.rawQuery(), sql));
+        b.addStatement(CodeBlock.of("var _query = new $T(\n  $S,\n  $S,\n  $S\n)", DbUtils.QUERY_CONTEXT, query.rawQuery(), sql, DbUtils.operationName(method)));
         var batchParam = parameters.stream().filter(QueryParameter.BatchParameter.class::isInstance).findFirst().orElse(null);
         String profile = null;
         var profileAnnotation = CommonUtils.findAnnotation(elements, method, CassandraTypes.CASSANDRA_PROFILE);
