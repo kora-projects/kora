@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.json.ksp
 
 import com.google.devtools.ksp.getAllSuperTypes
-import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.STAR
 import com.squareup.kotlinpoet.TypeName
@@ -37,30 +36,30 @@ fun findJsonField(param: KSAnnotated): KSAnnotation? {
 }
 
 
-fun KSClassDeclaration.discriminatorField(resolver: Resolver): String? {
+fun KSClassDeclaration.discriminatorField(): String? {
+    if (this.packageName.asString() == "kotlin") {
+        return null
+    }
     if (this.modifiers.contains(Modifier.SEALED)) {
         val annotation = this.findAnnotation(JsonTypes.jsonDiscriminatorField)
         if (annotation != null) {
             return annotation.findValue<String>("value")
         }
     }
-    this.superTypes
-        .map { it.resolve() }
-        .filter { it != resolver.builtIns.anyType }
-        .map { it.declaration as KSClassDeclaration }
-        .forEach { supertype ->
-            val discriminator = supertype.discriminatorField(resolver)
-            if (discriminator != null) {
-                return discriminator
-            }
+    for (type in this.superTypes) {
+        val supertype = type.resolve().declaration as KSClassDeclaration
+        val discriminator = supertype.discriminatorField()
+        if (discriminator != null) {
+            return discriminator
         }
+    }
     return null
 }
 
-fun KSClassDeclaration.discriminatorValue(): String {
+fun KSClassDeclaration.discriminatorValues(): List<String> {
     return findAnnotation(JsonTypes.jsonDiscriminatorValue)
-        ?.findValue<String>("value")
-        ?: this.simpleName.asString()
+        ?.findValue<List<String>>("value")
+        ?: listOf(this.simpleName.asString())
 }
 
 

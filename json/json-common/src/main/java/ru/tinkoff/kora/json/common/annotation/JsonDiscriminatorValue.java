@@ -17,5 +17,5 @@ public @interface JsonDiscriminatorValue {
     /**
      * @return value that indicates annotated type
      */
-    String value();
+    String[] value();
 }

@@ -9,12 +9,7 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toClassName
-import ru.tinkoff.kora.json.ksp.JsonTypes
-import ru.tinkoff.kora.json.ksp.detectSealedHierarchyTypeVariables
-import ru.tinkoff.kora.json.ksp.discriminatorField
-import ru.tinkoff.kora.json.ksp.jsonReaderName
-import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
-import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
+import ru.tinkoff.kora.json.ksp.*
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.collectFinalSealedSubtypes
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
@@ -46,27 +41,28 @@ class SealedInterfaceReaderGenerator(private val resolver: Resolver, logger: KSP
 
         addReaders(typeBuilder, subclasses, typeArgMap)
 
-        val discriminatorField = jsonClassDeclaration.discriminatorField(resolver)
+        val discriminatorField = jsonClassDeclaration.discriminatorField()
             ?: throw ProcessingErrorException("Sealed interface should have @JsonDiscriminatorField annotation", jsonClassDeclaration)
         val function = FunSpec.builder("read")
             .addModifiers(KModifier.PUBLIC, KModifier.OVERRIDE)
             .addParameter("_parser", JsonTypes.jsonParser)
             .returns(typeName.copy(nullable = true))
-        function.addCode("val bufferedParser = %T(_parser)\n", JsonTypes.bufferedParserWithDiscriminator)
-        function.addCode("val discriminator = bufferedParser.getDiscriminator(%S) ", discriminatorField)
-        function.addCode("?: throw %T(_parser, %S)\n", JsonTypes.jsonParseException, "Discriminator required, but not provided")
-        function.addCode("bufferedParser.resetPosition()\n")
+        function.addCode("val bufferingParser = %T(_parser)\n", JsonTypes.bufferingJsonParser)
+        function.addCode("val discriminator = %T.readStringDiscriminator(bufferingParser, %S)\n", JsonTypes.discriminatorHelper, discriminatorField);
+        function.addCode("if (discriminator == null) throw %T(_parser, %S)\n", JsonTypes.jsonParseException, "Discriminator required, but not provided");
+        function.addCode("val bufferedParser = %T.createFlattened(false, bufferingParser.reset(), _parser)\n", JsonTypes.jsonParserSequence)
+        function.addCode("bufferedParser.nextToken()\n")
         function.beginControlFlow("return when(discriminator) {")
         subclasses.forEach { elem ->
             val readerName = getReaderFieldName(elem)
-            val requiredDiscriminatorValue = elem.findAnnotation(JsonTypes.jsonDiscriminatorValue)
-                ?.findValue<String>("value")
-                ?: elem.simpleName.asString()
-            function.addCode(
-                "%S -> %L.read(bufferedParser)\n",
-                requiredDiscriminatorValue,
-                readerName
-            )
+            val requiredDiscriminatorValues = elem.discriminatorValues()
+            for (requiredDiscriminatorValue in requiredDiscriminatorValues) {
+                function.addCode(
+                    "%S -> %L.read(bufferedParser)\n",
+                    requiredDiscriminatorValue,
+                    readerName
+                )
+            }
         }
         function.addCode("else -> throw %T(_parser, %S)", JsonTypes.jsonParseException, "Unknown discriminator")
         function.endControlFlow()

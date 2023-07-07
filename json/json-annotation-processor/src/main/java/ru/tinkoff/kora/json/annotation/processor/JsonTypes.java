@@ -20,10 +20,12 @@ public class JsonTypes {
     public static final ClassName jsonFieldAnnotation = ClassName.get("ru.tinkoff.kora.json.common.annotation", "JsonField");
     public static final ClassName jsonSkipAnnotation = ClassName.get("ru.tinkoff.kora.json.common.annotation", "JsonSkip");
 
-    public static final ClassName bufferedParserWithDiscriminator = ClassName.get("ru.tinkoff.kora.json.common", "BufferedParserWithDiscriminator");
+    public static final ClassName bufferingJsonParser = ClassName.get("ru.tinkoff.kora.json.common.util", "BufferingJsonParser");
+    public static final ClassName discriminatorHelper = ClassName.get("ru.tinkoff.kora.json.common.util", "DiscriminatorHelper");
 
     public static final ClassName jsonParseException = ClassName.get("com.fasterxml.jackson.core", "JsonParseException");
     public static final ClassName jsonParser = ClassName.get("com.fasterxml.jackson.core", "JsonParser");
+    public static final ClassName jsonParserSequence = ClassName.get("com.fasterxml.jackson.core.util", "JsonParserSequence");
     public static final ClassName jsonGenerator = ClassName.get("com.fasterxml.jackson.core", "JsonGenerator");
     public static final ClassName jsonToken = ClassName.get("com.fasterxml.jackson.core", "JsonToken");
     public static final ClassName serializedString = ClassName.get("com.fasterxml.jackson.core.io", "SerializedString");
