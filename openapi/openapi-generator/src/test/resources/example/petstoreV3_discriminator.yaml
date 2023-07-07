@@ -17,6 +17,35 @@ paths:
           description: Updated
 components:
   schemas:
+    ValidationErrorDto:
+      title: ValidationErrorDto
+      type: object
+      oneOf:
+        - $ref: '#/components/schemas/BlockValidationErrorDto'
+        - $ref: '#/components/schemas/PropValidationErrorDto'
+      discriminator:
+        propertyName: type
+        mapping:
+          'Block.Error1': '#/components/schemas/BlockValidationErrorDto'
+          'Block.Error2': '#/components/schemas/BlockValidationErrorDto'
+          'Prop.Error': '#/components/schemas/PropValidationErrorDto'
+
+    PropValidationErrorDto:
+      title: PropValidationErrorDto
+      type: object
+      properties:
+        type:
+          type: string
+
+    BlockValidationErrorDto:
+      title: PropValidationErrorDto
+      type: object
+      properties:
+        type:
+          type: string
+        key:
+          type: integer
+
     Pet:
       type: object
       required:

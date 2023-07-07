@@ -69,6 +69,37 @@ def isPublishedLibrary = { Project p ->
     }
     return true
 }
+subprojects {
+    configurations {
+        all {
+            resolutionStrategy.force "com.fasterxml.jackson.core:jackson-annotations:" + libs.versions.jackson.get()
+            resolutionStrategy.force "com.fasterxml.jackson.core:jackson-core:" + libs.versions.jackson.get()
+            resolutionStrategy.force "com.fasterxml.jackson.core:jackson-databind:" + libs.versions.jackson.get()
+            resolutionStrategy.force "io.netty:netty-buffer:" + libs.versions.netty.get()
+            resolutionStrategy.force "io.netty:netty-codec:" + libs.versions.netty.get()
+            resolutionStrategy.force "io.netty:netty-codec-dns:" + libs.versions.netty.get()
+            resolutionStrategy.force "io.netty:netty-codec-http2:" + libs.versions.netty.get()
+            resolutionStrategy.force "io.netty:netty-codec-http:" + libs.versions.netty.get()
+            resolutionStrategy.force "io.netty:netty-codec-socks:" + libs.versions.netty.get()
+            resolutionStrategy.force "io.netty:netty-codec-common:" + libs.versions.netty.get()
+            resolutionStrategy.force "io.netty:netty-handler:" + libs.versions.netty.get()
+            resolutionStrategy.force "io.netty:netty-handler-proxy:" + libs.versions.netty.get()
+            resolutionStrategy.force "io.netty:netty-resolver:" + libs.versions.netty.get()
+            resolutionStrategy.force "io.netty:netty-resolver-dns:" + libs.versions.netty.get()
+            resolutionStrategy.force "io.netty:netty-resolver-dns-classes-macos:" + libs.versions.netty.get()
+            resolutionStrategy.force "io.netty:netty-resolver-dns-classes-macos:" + libs.versions.netty.get()
+            resolutionStrategy.force "io.netty:netty-transport:" + libs.versions.netty.get()
+            resolutionStrategy.force "io.netty:netty-transport-clasess-epoll:" + libs.versions.netty.get()
+            resolutionStrategy.force "io.netty:netty-transport-clasess-kqueue:" + libs.versions.netty.get()
+            resolutionStrategy.force "io.netty:netty-transport-native-epoll:" + libs.versions.netty.get()
+            resolutionStrategy.force "io.netty:netty-transport-native-kqueue:" + libs.versions.netty.get()
+            resolutionStrategy.force "io.netty:netty-transport-unix-common:" + libs.versions.netty.get()
+            resolutionStrategy.force "org.jetbrains.kotlin:kotlin-stdlib:" + libs.versions.kotlin.get().get()
+            resolutionStrategy.force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:" + libs.versions.kotlin.get().get()
+            resolutionStrategy.force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:" + libs.versions.kotlin.get().get()
+        }
+    }
+}
 
 // config published libraries
 subprojects {

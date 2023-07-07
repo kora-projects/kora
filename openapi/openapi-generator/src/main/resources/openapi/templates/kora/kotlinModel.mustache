@@ -30,7 +30,7 @@ sealed interface {{classname}}
 {{^discriminator}}
 @ru.tinkoff.kora.json.common.annotation.JsonWriter
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
-{{#vendorExtensions.x-discriminator-value}}@ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorValue("{{vendorExtensions.x-discriminator-value}}"){{/vendorExtensions.x-discriminator-value}}
+{{#vendorExtensions.x-discriminator-value}}@ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorValue(value = {{{vendorExtensions.x-discriminator-value}}}){{/vendorExtensions.x-discriminator-value}}
 {{#hasVars}}data {{/hasVars}}class {{classname}} @ru.tinkoff.kora.json.common.annotation.JsonReader constructor (
 {{#allVars}}
   @JsonField("{{baseName}}")
@@ -50,6 +50,14 @@ sealed interface {{classname}}
     {{name}}: {{{datatypeWithEnum}}}{{^-last}},{{/-last}}
 {{/requiredVars}}  ) : this({{#allVars}}{{#required}}{{name}}{{/required}}{{^required}}null{{/required}}{{^-last}}, {{/-last}}{{/allVars}})
 {{/additionalConstructor}}
+{{#vendorExtensions.x-discriminator-values-check}}
+  init {
+    if {{{vendorExtensions.x-discriminator-values-check}}} {
+      throw IllegalStateException("Invalid discriminator value");
+    }
+  }
+{{/vendorExtensions.x-discriminator-values-check}}
+
 
 
   {{#allVars}}

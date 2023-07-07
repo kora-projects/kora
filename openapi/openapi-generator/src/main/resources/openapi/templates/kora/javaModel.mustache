@@ -23,14 +23,13 @@ import ru.tinkoff.kora.json.common.annotation.*;
 {{#discriminator}}
 @ru.tinkoff.kora.json.common.annotation.Json
 @JsonDiscriminatorField("{{{propertyBaseName}}}")
-public sealed interface {{classname}} permits {{#mappedModels}}{{modelName}}{{^-last}}, {{/-last}}{{/mappedModels}} {
+public sealed interface {{classname}} permits {{#vendorExtensions.x-unique-mapped-models}}{{.}}{{^-last}}, {{/-last}}{{/vendorExtensions.x-unique-mapped-models}} {
 }
 {{/discriminator}}
 {{^discriminator}}
-{{^additionalConstructor}}@ru.tinkoff.kora.json.common.annotation.JsonReader
-{{/additionalConstructor}}@ru.tinkoff.kora.json.common.annotation.JsonWriter
+@ru.tinkoff.kora.json.common.annotation.JsonWriter
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
-{{#vendorExtensions.x-discriminator-value}}@JsonDiscriminatorValue("{{vendorExtensions.x-discriminator-value}}"){{/vendorExtensions.x-discriminator-value}}
+{{#vendorExtensions.x-discriminator-value}}@JsonDiscriminatorValue({{{vendorExtensions.x-discriminator-value}}}){{/vendorExtensions.x-discriminator-value}}
 {{#vendorExtensions.x-enable-validation}}@ru.tinkoff.kora.validation.common.annotation.Valid{{/vendorExtensions.x-enable-validation}}
 public record {{classname}} (
 {{#allVars}}
@@ -56,11 +55,14 @@ public static String schema = """
 {{/requiredVars}}  ) {
     this({{#allVars}}{{#required}}{{name}}{{/required}}{{^required}}null{{/required}}{{^-last}}, {{/-last}}{{/allVars}});
   }
-
-  @ru.tinkoff.kora.json.common.annotation.JsonReader
-  public {{classname}} {
-  }
 {{/additionalConstructor}}
+  @ru.tinkoff.kora.json.common.annotation.JsonReader
+  public {{classname}} { {{#vendorExtensions.x-discriminator-values-check}}
+    if {{{vendorExtensions.x-discriminator-values-check}}} {
+      throw new IllegalStateException("Invalid discriminator value");
+    }
+{{/vendorExtensions.x-discriminator-values-check}}
+  }
 
 
   {{#allVars}}

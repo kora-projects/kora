@@ -419,11 +419,51 @@ public class KoraCodegen extends DefaultCodegen {
                 }
             }
             if (model.discriminator != null) {
-                for (CodegenDiscriminator.MappedModel mappedModel : model.discriminator.getMappedModels()) {
-                    CodegenModel childModel = allModels.get(mappedModel.getModelName());
-                    childModel.vendorExtensions.put("x-discriminator-value", mappedModel.getMappingName());
-                    childModel.allVars.removeIf(prop -> StringUtils.equals(model.discriminator.getPropertyBaseName(), prop.baseName));
-                    childModel.requiredVars.removeIf(prop -> StringUtils.equals(model.discriminator.getPropertyBaseName(), prop.baseName));
+                var map = model.discriminator.getMappedModels().stream()
+                    .collect(Collectors.toMap(CodegenDiscriminator.MappedModel::getModelName, m -> List.of(m.getMappingName()), (l1, l2) -> {
+                        var l = new ArrayList<String>(l1.size() + l2.size());
+                        l.addAll(l1);
+                        l.addAll(l2);
+                        return l;
+                    }));
+                var uniqueMappedModels = model.discriminator.getMappedModels().stream().map(CodegenDiscriminator.MappedModel::getModelName).collect(Collectors.toSet());
+                model.vendorExtensions.put("x-unique-mapped-models", uniqueMappedModels);
+                for (var mappedModel : model.discriminator.getMappedModels()) {
+                    var childModel = allModels.get(mappedModel.getModelName());
+                    childModel.parentModel = model;
+                    childModel.parent = model.classname;
+                    var mappings = map.get(mappedModel.getModelName());
+                    if (mappings.size() == 1) {
+                        childModel.vars.removeIf(prop -> StringUtils.equals(model.discriminator.getPropertyBaseName(), prop.baseName));
+                        childModel.hasVars = !childModel.allVars.isEmpty();
+                        childModel.emptyVars = childModel.allVars.isEmpty();
+                        childModel.allVars.removeIf(prop -> StringUtils.equals(model.discriminator.getPropertyBaseName(), prop.baseName));
+                        childModel.requiredVars.removeIf(prop -> StringUtils.equals(model.discriminator.getPropertyBaseName(), prop.baseName));
+                    } else if (!childModel.vendorExtensions.containsKey("x-discriminator-values")) {
+                        var property = childModel.allVars.stream().filter(prop -> StringUtils.equals(model.discriminator.getPropertyBaseName(), prop.baseName)).findFirst().get();
+                        if (!property.required) {
+                            property.setRequired(true);
+                            childModel.requiredVars.add(property);
+                            childModel.setHasRequired(!childModel.requiredVars.isEmpty());
+                        }
+
+                        var sb = new StringBuilder().append("(");
+                        for (int i = 0; i < mappings.size(); i++) {
+                            var mapping = mappings.get(i);
+                            if (i > 0) {
+                                sb.append(" && ");
+                            }
+                            if (this.codegenMode.isJava()) {
+                                sb.append("!").append(property.name).append(".equals(\"").append(mapping).append("\")");
+                            } else {
+                                sb.append(property.name).append(" != \"").append(mapping).append("\"");
+                            }
+                        }
+                        childModel.vendorExtensions.put("x-discriminator-values-check", sb.append(")").toString());
+                    }
+                    var separators = this.codegenMode.isJava() ? new String[]{"{\"", "\"}"} : new String[]{"[\"", "\"]"};
+                    var discriminatorValues = mappings.stream().collect(Collectors.joining("\", \"", separators[0], separators[1]));
+                    childModel.vendorExtensions.put("x-discriminator-value", discriminatorValues);
                 }
             }
             if (codegenMode.isJava()) {
@@ -547,7 +587,7 @@ public class KoraCodegen extends DefaultCodegen {
             var model = (Map<String, Object>) obj;
             var models = (List<Map<String, Object>>) model.get("models");
             var codegenModel = (CodegenModel) models.get(0).get("model");
-            var additionalConstructor = codegenModel.getHasVars() && codegenModel.getVars().size() != codegenModel.getRequiredVars().size();
+            var additionalConstructor = codegenModel.getHasVars() && !codegenModel.getVars().isEmpty() && !codegenModel.getAllVars().isEmpty() && codegenModel.getVars().size() != codegenModel.getRequiredVars().size();
             model.put("additionalConstructor", additionalConstructor);
         }
         return objs;
