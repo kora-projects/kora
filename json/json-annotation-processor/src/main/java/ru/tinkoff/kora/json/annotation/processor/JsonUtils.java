@@ -2,6 +2,7 @@ package ru.tinkoff.kora.json.annotation.processor;
 
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 
 import javax.annotation.Nullable;
 import javax.lang.model.element.Element;
@@ -10,6 +11,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
+import java.util.List;
 
 
 public class JsonUtils {
@@ -66,14 +68,17 @@ public class JsonUtils {
         return null;
     }
 
-    public static String discriminatorValue(TypeElement element) {
+    public static List<String> discriminatorValue(TypeElement element) {
         var annotation = AnnotationUtils.findAnnotation(element, JsonTypes.jsonDiscriminatorValue);
         if (annotation != null) {
-            var value = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(annotation, "value");
+            var value = AnnotationUtils.<List<String>>parseAnnotationValueWithoutDefault(annotation, "value");
             if (value != null) {
+                if (value.isEmpty()) {
+                    throw new ProcessingErrorException("Discriminator value can't be empty array", element, annotation);
+                }
                 return value;
             }
         }
-        return element.getSimpleName().toString();
+        return List.of(element.getSimpleName().toString());
     }
 }

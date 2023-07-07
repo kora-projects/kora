@@ -10,7 +10,7 @@ import ru.tinkoff.kora.json.ksp.JsonTypes
 import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum
 import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum.*
 import ru.tinkoff.kora.json.ksp.discriminatorField
-import ru.tinkoff.kora.json.ksp.discriminatorValue
+import ru.tinkoff.kora.json.ksp.discriminatorValues
 import ru.tinkoff.kora.json.ksp.jsonWriterName
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
@@ -49,11 +49,13 @@ class JsonWriterGenerator(
         }
         functionBody.addStatement("_gen.writeStartObject(_object)")
 
-        val discriminatorField = meta.classDeclaration.discriminatorField(resolver)
+        val discriminatorField = meta.classDeclaration.discriminatorField()
         if (discriminatorField != null) {
-            val discriminatorValue = meta.classDeclaration.discriminatorValue()
-            functionBody.addStatement("_gen.writeFieldName(%S)", discriminatorField)
-            functionBody.addStatement("_gen.writeString(%S)", discriminatorValue)
+            if (meta.fields.none { it.jsonName == discriminatorField }) {
+                val discriminatorValue = meta.classDeclaration.discriminatorValues().first()
+                functionBody.addStatement("_gen.writeFieldName(%S)", discriminatorField)
+                functionBody.addStatement("_gen.writeString(%S)", discriminatorValue)
+            }
         }
         for (field in meta.fields) {
             this.addWriteParam(functionBody, field)

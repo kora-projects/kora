@@ -42,6 +42,60 @@ public class SealedTest extends AbstractJsonAnnotationProcessorTest {
     }
 
     @Test
+    public void testSealedInterfaceWithField() throws IOException {
+        compile("""
+            @Json
+            @JsonDiscriminatorField("@type")
+            public sealed interface TestInterface {
+                @Json
+                @JsonDiscriminatorValue({"Impl1.1", "Impl1.2"})
+                record Impl1(@JsonField("@type") String type, String value) implements TestInterface {
+                    public Impl1 {
+                        if (!"Impl1.1".equals(type) && !"Impl1.2".equals(type)) {
+                          throw new IllegalStateException(String.valueOf(type));
+                        }
+                    }
+                }
+
+                @Json
+                record Impl2(int value) implements TestInterface{}
+
+                @Json
+                @JsonDiscriminatorValue({"Impl3.1", "Impl3.2"})
+                record Impl3() implements TestInterface {
+                }
+            }
+            """);
+
+        var o11 = newObject("TestInterface$Impl1", "Impl1.1", "test");
+        var json11 = "{\"@type\":\"Impl1.1\",\"value\":\"test\"}";
+        var o12 = newObject("TestInterface$Impl1", "Impl1.2", "test");
+        var json12 = "{\"@type\":\"Impl1.2\",\"value\":\"test\"}";
+
+        var o2 = newObject("TestInterface$Impl2", 42);
+        var json2 = "{\"@type\":\"Impl2\",\"value\":42}";
+
+        var o3 = newObject("TestInterface$Impl3");
+        var json31 = "{\"@type\":\"Impl3.1\"}";
+        var json32 = "{\"@type\":\"Impl3.2\"}";
+
+        var m1 = mapper("TestInterface_Impl1");
+        var m2 = mapper("TestInterface_Impl2");
+        var m3 = mapper("TestInterface_Impl3");
+        var m = mapper("TestInterface", List.of(m1, m2, m3), List.of(m1, m2, m3));
+
+        assertThat(m.toByteArray(o11)).asString(StandardCharsets.UTF_8).isEqualTo(json11);
+        assertThat(m.toByteArray(o12)).asString(StandardCharsets.UTF_8).isEqualTo(json12);
+        assertThat(m.toByteArray(o2)).asString(StandardCharsets.UTF_8).isEqualTo(json2);
+        assertThat(m.toByteArray(o3)).asString(StandardCharsets.UTF_8).isEqualTo(json31);
+        assertThat(m.read(json11.getBytes(StandardCharsets.UTF_8))).isEqualTo(o11);
+        assertThat(m.read(json12.getBytes(StandardCharsets.UTF_8))).isEqualTo(o12);
+        assertThat(m.read(json2.getBytes(StandardCharsets.UTF_8))).isEqualTo(o2);
+        assertThat(m.read(json31.getBytes(StandardCharsets.UTF_8))).isEqualTo(o3);
+        assertThat(m.read(json32.getBytes(StandardCharsets.UTF_8))).isEqualTo(o3);
+    }
+
+    @Test
     public void testSealedInterfaceParsingType() throws IOException {
         compile("""
             @Json
