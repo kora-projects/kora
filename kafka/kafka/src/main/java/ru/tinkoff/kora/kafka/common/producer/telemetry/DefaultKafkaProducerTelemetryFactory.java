@@ -1,13 +1,18 @@
 package ru.tinkoff.kora.kafka.common.producer.telemetry;
 
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.TopicPartition;
+import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerMetrics.KafkaProducerTxMetrics;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerTracer.KafkaProducerRecordSpan;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerTracer.KafkaProducerTxSpan;
 
 import javax.annotation.Nullable;
+import java.util.Map;
 import java.util.Properties;
 
 public class DefaultKafkaProducerTelemetryFactory implements KafkaProducerTelemetryFactory {
@@ -70,14 +75,20 @@ public class DefaultKafkaProducerTelemetryFactory implements KafkaProducerTeleme
         public KafkaProducerTransactionTelemetryContext tx() {
             var span = this.tracer == null ? null : this.tracer.tx();
             var metrics = this.metrics == null ? null : this.metrics.tx();
+            if (this.logger != null) {
+                this.logger.txBegin();
+            }
             return new DefaultKafkaProducerTransactionTelemetryContext(span, this.logger, metrics);
         }
 
         @Override
         public KafkaProducerRecordTelemetryContext record(ProducerRecord<?, ?> record) {
+            if (this.logger != null) {
+                this.logger.sendBegin(record);
+            }
             var span = this.tracer == null ? null : this.tracer.get(record);
 
-            return new DefaultKafkaProducerRecordTelemetryContext(span, this.logger, this.metrics);
+            return new DefaultKafkaProducerRecordTelemetryContext(record, span, this.logger, this.metrics);
         }
     }
 
@@ -93,6 +104,13 @@ public class DefaultKafkaProducerTelemetryFactory implements KafkaProducerTeleme
             this.span = span;
             this.logger = logger;
             this.metrics = metrics;
+        }
+
+        @Override
+        public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, ConsumerGroupMetadata groupMetadata) {
+            if (this.logger != null) {
+                this.logger.sendOffsetsToTransaction(offsets, groupMetadata);
+            }
         }
 
         @Override
@@ -125,29 +143,45 @@ public class DefaultKafkaProducerTelemetryFactory implements KafkaProducerTeleme
     private static final class DefaultKafkaProducerRecordTelemetryContext implements KafkaProducerTelemetry.KafkaProducerRecordTelemetryContext {
         private final KafkaProducerRecordSpan span;
         private final KafkaProducerLogger logger;
+        private final ProducerRecord<?, ?> record;
+        private final Context ctx;
 
-        public DefaultKafkaProducerRecordTelemetryContext(@Nullable KafkaProducerRecordSpan span, @Nullable KafkaProducerLogger logger, @Nullable KafkaProducerMetrics metrics) {
+        public DefaultKafkaProducerRecordTelemetryContext(ProducerRecord<?, ?> record, @Nullable KafkaProducerRecordSpan span, @Nullable KafkaProducerLogger logger, @Nullable KafkaProducerMetrics metrics) {
             this.span = span;
             this.logger = logger;
+            this.record = record;
+            this.ctx = Context.current().fork();
         }
 
         @Override
         public void sendEnd(Throwable e) {
-            if (this.logger != null) {
-                this.logger.sendEnd(e);
-            }
-            if (this.span != null) {
-                this.span.close(e);
+            var oldCtx = Context.current();
+            try {
+                this.ctx.inject();
+                if (this.logger != null) {
+                    this.logger.sendEnd(record, e);
+                }
+                if (this.span != null) {
+                    this.span.close(e);
+                }
+            } finally {
+                oldCtx.inject();
             }
         }
 
         @Override
         public void sendEnd(RecordMetadata metadata) {
-            if (this.logger != null) {
-                this.logger.sendEnd(metadata);
-            }
-            if (this.span != null) {
-                this.span.close(metadata);
+            var oldCtx = Context.current();
+            try {
+                this.ctx.inject();
+                if (this.logger != null) {
+                    this.logger.sendEnd(metadata);
+                }
+                if (this.span != null) {
+                    this.span.close(metadata);
+                }
+            } finally {
+                oldCtx.inject();
             }
         }
     }
