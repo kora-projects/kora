@@ -15,6 +15,7 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -504,9 +505,72 @@ public class CommonUtils {
     }
 
     public static boolean isList(TypeMirror type) {
+        if (type.getKind() != TypeKind.DECLARED) {
+            return false;
+        }
+        if (!(type instanceof DeclaredType dt)) {
+            return false;
+        }
+        var name = dt.asElement().toString();
+        return name.equals(List.class.getCanonicalName())
+            || name.equals(ArrayList.class.getCanonicalName())
+            || name.equals(LinkedList.class.getCanonicalName());
+    }
+
+    public static boolean isSet(TypeMirror type) {
+        if (type.getKind() != TypeKind.DECLARED) {
+            return false;
+        }
+        if (!(type instanceof DeclaredType dt)) {
+            return false;
+        }
+        var name = dt.asElement().toString();
+        return name.equals(Set.class.getCanonicalName())
+            || name.equals(HashSet.class.getCanonicalName())
+            || name.equals(TreeSet.class.getCanonicalName())
+            || name.equals(SortedSet.class.getCanonicalName())
+            || name.equals(LinkedHashSet.class.getCanonicalName())
+            || name.equals(CopyOnWriteArraySet.class.getCanonicalName())
+            || name.equals(ConcurrentSkipListSet.class.getCanonicalName());
+    }
+
+    public static boolean isQueue(TypeMirror type) {
         return type.getKind() == TypeKind.DECLARED
             && type instanceof DeclaredType dt
-            && dt.asElement().toString().equals("java.util.List");
+            && (dt.asElement().toString().equals(Queue.class.getCanonicalName())
+            || dt.asElement().toString().equals(Deque.class.getCanonicalName()));
+    }
+
+    public static boolean isCollection(TypeMirror type) {
+        return type.getKind() == TypeKind.DECLARED
+            && type instanceof DeclaredType dt
+            && (dt.asElement().toString().equals(Collection.class.getCanonicalName())
+            || isList(type)
+            || isSet(type)
+            || isQueue(type));
+    }
+
+    public static boolean isMap(TypeMirror type) {
+        if (type.getKind() != TypeKind.DECLARED) {
+            return false;
+        }
+        if (!(type instanceof DeclaredType dt)) {
+            return false;
+        }
+        var name = dt.asElement().toString();
+
+        return name.equals(Map.class.getCanonicalName())
+            || name.equals(HashMap.class.getCanonicalName())
+            || name.equals(TreeMap.class.getCanonicalName())
+            || name.equals(LinkedHashMap.class.getCanonicalName())
+            || name.equals(ConcurrentMap.class.getCanonicalName())
+            || name.equals(ConcurrentHashMap.class.getCanonicalName())
+            || name.equals(SortedMap.class.getCanonicalName())
+            || name.equals(NavigableMap.class.getCanonicalName())
+            || name.equals(ConcurrentSkipListMap.class.getCanonicalName())
+            || name.equals(IdentityHashMap.class.getCanonicalName())
+            || name.equals(WeakHashMap.class.getCanonicalName())
+            || name.equals(EnumMap.class.getCanonicalName());
     }
 
     public static boolean isOptional(TypeMirror type) {

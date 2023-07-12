@@ -6,7 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Indicates that annotated field will be skipped when serialized into JSON
+ * Indicates that annotated field will be ignored and not serialized into JSON
  */
 @Target({ElementType.FIELD})
 @Retention(RetentionPolicy.CLASS)

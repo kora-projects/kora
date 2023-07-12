@@ -14,4 +14,5 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Tag(Json.class)
 public @interface Json {
+
 }

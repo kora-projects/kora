@@ -2,6 +2,7 @@ package ru.tinkoff.kora.json.annotation.processor.writer;
 
 import com.squareup.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
+import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
 import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
 import ru.tinkoff.kora.json.annotation.processor.KnownType;
@@ -14,7 +15,6 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Types;
 import java.io.IOException;
-import java.util.function.Function;
 
 public class JsonWriterGenerator {
     private final Types types;
@@ -115,17 +115,39 @@ public class JsonWriterGenerator {
     }
 
     private void addWriteParam(MethodSpec.Builder method, FieldMeta field) {
-        if (!field.typeMirror().getKind().isPrimitive()) {
+        if (field.typeMirror().getKind().isPrimitive()) {
+            method.addCode("_gen.writeFieldName($L);\n", this.jsonNameStaticName(field));
+            if (field.writer() == null && field.writerTypeMeta() instanceof WriterFieldType.KnownWriterFieldType typeMeta) {
+                method.addCode(this.writeKnownType(typeMeta.knownType(), CodeBlock.of("_object.$L", field.accessor())));
+            } else {
+                method.addStatement("$L.write(_gen, _object.$L)", this.writerFieldName(field), field.accessor());
+            }
+            return;
+        }
+        var isEmptyCheck = field.includeType() == JsonClassWriterMeta.IncludeType.NON_EMPTY
+            && (CommonUtils.isCollection(field.typeMirror()) || CommonUtils.isMap(field.typeMirror()));
+        if (isEmptyCheck) {
+            method.addCode("if (_object.$L != null && !_object.$L.isEmpty()) {$>\n", field.accessor(), field.accessor());
+        } else if (field.includeType() != JsonClassWriterMeta.IncludeType.ALWAYS) {
             method.addCode("if (_object.$L != null) {$>\n", field.accessor());
         }
+
         method.addCode("_gen.writeFieldName($L);\n", this.jsonNameStaticName(field));
         if (field.writer() == null && field.writerTypeMeta() instanceof WriterFieldType.KnownWriterFieldType typeMeta) {
-            method.addCode(this.writeKnownType(field, typeMeta.knownType(), CodeBlock.of("_object.$L", field.accessor())));
+            if (field.includeType() == JsonClassWriterMeta.IncludeType.ALWAYS) {
+                method.beginControlFlow("if (_object.$L == null)", field.accessor());
+                method.addCode("_gen.writeNull();\n");
+                method.nextControlFlow("else");
+                method.addCode(this.writeKnownType(typeMeta.knownType(), CodeBlock.of("_object.$L", field.accessor())));
+                method.endControlFlow();
+            } else {
+                method.addCode(this.writeKnownType(typeMeta.knownType(), CodeBlock.of("_object.$L", field.accessor())));
+            }
         } else {
             method.addStatement("$L.write(_gen, _object.$L)", this.writerFieldName(field), field.accessor());
         }
-        if (!field.typeMirror().getKind().isPrimitive()) {
-            method.addCode("$<\n}\n");
+        if (field.includeType() != JsonClassWriterMeta.IncludeType.ALWAYS) {
+            method.addCode("$<}\n");
         }
     }
 
@@ -133,21 +155,13 @@ public class JsonWriterGenerator {
         return "_" + field.field().getSimpleName().toString() + "_optimized_field_name";
     }
 
-    private CodeBlock writeKnownType(FieldMeta field, KnownType.KnownTypesEnum knownType, CodeBlock value) {
-        Function<String, CodeBlock> addNullable = m -> CodeBlock.of("""
-            if ($L != null) {
-              _gen.$L($L);
-            } else {
-              _gen.writeNull();
-            }
-            """, value, m, value);
-
+    private CodeBlock writeKnownType(KnownType.KnownTypesEnum knownType, CodeBlock value) {
         return switch (knownType) {
             case STRING -> CodeBlock.of("_gen.writeString($L);\n", value);
             case BOOLEAN_OBJECT, BOOLEAN_PRIMITIVE -> CodeBlock.of("_gen.writeBoolean($L);\n", value);
             case INTEGER_OBJECT, BIG_INTEGER, BIG_DECIMAL, DOUBLE_OBJECT, FLOAT_OBJECT, LONG_OBJECT, SHORT_OBJECT,
                 INTEGER_PRIMITIVE, DOUBLE_PRIMITIVE, FLOAT_PRIMITIVE, LONG_PRIMITIVE, SHORT_PRIMITIVE -> CodeBlock.of("_gen.writeNumber($L);\n", value);
-            case BINARY -> addNullable.apply("writeBinary");
+            case BINARY -> CodeBlock.of("_gen.writeBinary($L);\n", value);
             case UUID -> CodeBlock.of("_gen.writeString($L.toString());\n", value);
         };
     }

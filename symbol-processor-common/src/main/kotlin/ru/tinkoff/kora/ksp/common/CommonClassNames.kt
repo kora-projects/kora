@@ -1,14 +1,14 @@
 package ru.tinkoff.kora.ksp.common
 
+import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeReference
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.ksp.toClassName
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.CompletionStage
-import java.util.concurrent.Future
+import java.util.*
+import java.util.concurrent.*
 
 object CommonClassNames {
     val publisher = ClassName("org.reactivestreams", "Publisher")
@@ -52,22 +52,82 @@ object CommonClassNames {
     val config = ClassName("com.typesafe.config", "Config")
     val configValueExtractor = ClassName("ru.tinkoff.kora.config.common.extractor", "ConfigValueExtractor")
 
+    val isNotEmpty = MemberName("kotlin.collections", "isNotEmpty")
+
+    fun KSType.isList(): Boolean {
+        val className = if (this.declaration is KSClassDeclaration) this.toClassName().canonicalName else this.toString()
+        return className == List::class.qualifiedName
+            || className == MutableList::class.qualifiedName
+            || className == ArrayList::class.qualifiedName
+            || className == LinkedList::class.qualifiedName
+    }
+
+    fun KSType.isSet(): Boolean {
+        val className = if (this.declaration is KSClassDeclaration) this.toClassName().canonicalName else this.toString()
+        return className == Set::class.qualifiedName
+            || className == MutableSet::class.qualifiedName
+            || className == HashSet::class.qualifiedName
+            || className == TreeSet::class.qualifiedName
+            || className == SortedSet::class.qualifiedName
+            || className == LinkedHashSet::class.qualifiedName
+            || className == CopyOnWriteArraySet::class.qualifiedName
+            || className == ConcurrentSkipListSet::class.qualifiedName
+    }
+
+    fun KSType.isQueue(): Boolean {
+        val className = if (this.declaration is KSClassDeclaration) this.toClassName().canonicalName else this.toString()
+        return className == Queue::class.qualifiedName
+            || className == Deque::class.qualifiedName
+    }
+
+    fun KSType.isCollection(): Boolean {
+        val className = if (this.declaration is KSClassDeclaration) this.toClassName().canonicalName else this.toString()
+        return className == Collection::class.qualifiedName
+            || className == MutableCollection::class.qualifiedName
+            || isList()
+            || isSet()
+            || isQueue()
+    }
+
+    fun KSType.isMap(): Boolean {
+        val className = if (this.declaration is KSClassDeclaration) this.toClassName().canonicalName else this.toString()
+        return className == Map::class.qualifiedName
+            || className == MutableMap::class.qualifiedName
+            || className == HashMap::class.qualifiedName
+            || className == TreeMap::class.qualifiedName
+            || className == ConcurrentMap::class.qualifiedName
+            || className == ConcurrentHashMap::class.qualifiedName
+            || className == LinkedHashMap::class.qualifiedName
+            || className == SortedMap::class.qualifiedName
+            || className == NavigableMap::class.qualifiedName
+            || className == ConcurrentSkipListMap::class.qualifiedName
+            || className == IdentityHashMap::class.qualifiedName
+            || className == WeakHashMap::class.qualifiedName
+            || className == EnumMap::class.qualifiedName
+    }
+
+    fun KSType.isIterable(): Boolean {
+        val className = if (this.declaration is KSClassDeclaration) this.toClassName().canonicalName else this.toString()
+        return className == Iterable::class.qualifiedName
+            || className == MutableIterable::class.qualifiedName
+            || isCollection()
+            || isMap()
+    }
 
     fun KSType.isMono() = this.toClassName().canonicalName == mono.canonicalName
     fun KSType.isFlux() = this.toClassName().canonicalName == flux.canonicalName
     fun KSType.isFlow() = this.toClassName().canonicalName == flow.canonicalName
     fun KSType.isPublisher() = this.toClassName().canonicalName == publisher.canonicalName
-    fun KSType.isList() = this.toClassName().canonicalName == list.canonicalName
 
     fun KSType.isFuture(): Boolean {
         val className = this.toClassName()
-        return className.canonicalName == Future::class.java.canonicalName
-            || className.canonicalName == CompletionStage::class.java.canonicalName
-            || className.canonicalName == CompletableFuture::class.java.canonicalName
+        return className.canonicalName == Future::class.qualifiedName
+            || className.canonicalName == CompletionStage::class.qualifiedName
+            || className.canonicalName == CompletableFuture::class.qualifiedName
     }
 
     fun KSTypeReference.isVoid(): Boolean {
         val typeAsStr = resolve().toClassName().canonicalName
-        return Void::class.java.canonicalName == typeAsStr || "void" == typeAsStr || Unit::class.java.canonicalName == typeAsStr
+        return Void::class.qualifiedName == typeAsStr || "void" == typeAsStr || Unit::class.qualifiedName == typeAsStr
     }
 }

@@ -61,6 +61,7 @@ class JsonKoraExtension(
                 writerTypeMetaParser.parse(possibleJsonClassDeclaration)
                 return { generateWriter(resolver, possibleJsonClassDeclaration) }
             } catch (e: ProcessingErrorException) {
+                e.message?.let { kspLogger.warn(it, null) }
                 return null
             }
         }
@@ -122,18 +123,18 @@ class JsonKoraExtension(
         return ExtensionResult.RequiresCompilingResult
     }
 
-    private fun generateWriter(resolver: Resolver, jsonClass: KSClassDeclaration): ExtensionResult {
-        val packageElement = jsonClass.packageName.asString()
-        val resultClassName = jsonClass.jsonWriterName()
+    private fun generateWriter(resolver: Resolver, declaration: KSClassDeclaration): ExtensionResult {
+        val packageElement = declaration.packageName.asString()
+        val resultClassName = declaration.jsonWriterName()
         val resultDeclaration = resolver.getClassDeclarationByName("$packageElement.$resultClassName")
         if (resultDeclaration != null) {
             return ExtensionResult.fromConstructor(findDefaultConstructor(resultDeclaration), resultDeclaration)
         }
-        if (jsonClass.isAnnotationPresent(JsonTypes.json) || jsonClass.isAnnotationPresent(JsonTypes.jsonWriterAnnotation)) {
+        if (declaration.isAnnotationPresent(JsonTypes.json) || declaration.isAnnotationPresent(JsonTypes.jsonWriterAnnotation)) {
             // annotation processor will handle that
             return ExtensionResult.RequiresCompilingResult
         }
-        processor.generateWriter(jsonClass)
+        processor.generateWriter(declaration)
         return ExtensionResult.RequiresCompilingResult
     }
 

@@ -52,12 +52,36 @@ class GenericsTest : AbstractJsonSymbolProcessorTest() {
     }
 
     @Test
+    fun testGenericJsonWriterExtensionWithIncludeClassAlways() {
+        compile(
+            listOf(KoraAppProcessorProvider()),
+            """
+            import ru.tinkoff.kora.json.common.annotation.JsonInclude
+            
+            @JsonInclude(JsonInclude.IncludeType.ALWAYS)
+            data class TestClass <T> (val value: T?, val values: List<T>?)             
+            """.trimIndent(),
+            """
+                @KoraApp
+                interface TestApp : ru.tinkoff.kora.json.common.JsonCommonModule {
+                  @Root
+                  fun root(w1: ru.tinkoff.kora.json.common.JsonWriter<TestClass<String?>>) = ""
+                }
+            """.trimIndent()
+        )
+        val graph = loadClass("TestAppGraph").toGraph()
+        val writer = graph.findAllByType(writerClass("TestClass")) as List<JsonWriter<Any?>>
+
+        writer[0].assertWrite(new("TestClass", null, null), "{\"value\":null,\"values\":null}")
+    }
+
+    @Test
     fun testGenericJsonReaderExtensionWithAnnotation() {
         compile(
             listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()),
             """
             @ru.tinkoff.kora.json.common.annotation.Json
-            data class TestClass <T> (val value:T)             
+            data class TestClass <T> (val value: T)             
             """.trimIndent(),
             """
                 @KoraApp
