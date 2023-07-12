@@ -7,10 +7,7 @@ import ru.tinkoff.kora.common.util.CoroutineContextElement;
 import ru.tinkoff.kora.common.util.ReactorContextHook;
 
 import javax.annotation.Nullable;
-import java.util.AbstractMap;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 public class Context {
     private static final ThreadLocal<Context> INSTANCE = ThreadLocal.withInitial(Context::new);
@@ -34,16 +31,18 @@ public class Context {
     }
 
     public Context fork() {
-        return new Context(this.values.entrySet()
-            .stream()
-            .map(e -> new AbstractMap.SimpleImmutableEntry<>(e.getKey(), copy(e.getKey(), e.getValue())))
-            .filter(e -> e.getValue() != null)
-            .collect(Collectors.toMap(
-                Map.Entry::getKey,
-                Map.Entry::getValue,
-                (a, b) -> a,
-                ConcurrentHashMap::new
-            )));
+        var values = new ConcurrentHashMap<Key<?>, Object>(capacity(this.values.size()));
+        for (var entry : this.values.entrySet()) {
+            var value = entry.getValue();
+            if (value == null) {
+                continue;
+            }
+
+            var key = entry.getKey();
+            values.put(key, copy(key, value));
+        }
+
+        return new Context(values);
     }
 
     public void inject() {
@@ -132,6 +131,10 @@ public class Context {
     @SuppressWarnings("unchecked")
     private static <T> T copy(Key<T> key, Object value) {
         return key.copy((T) value);
+    }
+
+    private static int capacity(int numMappings) {
+        return (int) Math.ceil(numMappings / 0.75D);
     }
 
     static {
