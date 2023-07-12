@@ -37,7 +37,6 @@ class JsonSymbolProcessor(
             try {
                 when (it) {
                     is KSClassDeclaration -> {
-
                         if (it.isAnnotationPresent(JsonTypes.json) || (it.isAnnotationPresent(JsonTypes.jsonReaderAnnotation) && it.isAnnotationPresent(JsonTypes.jsonWriterAnnotation))) {
                             if (processedReaders.add(it.qualifiedName!!.asString())) {
                                 jsonProcessor.generateReader(it)

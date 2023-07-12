@@ -35,7 +35,7 @@ class KnownType(private val resolver: Resolver) {
             float, nullableFloat -> KnownTypesEnum.FLOAT
             short, nullableShort -> KnownTypesEnum.SHORT
             bigInteger, bigInteger.makeNullable() -> KnownTypesEnum.BIG_INTEGER
-            bigDecimal, bigDecimal.makeNullable()-> KnownTypesEnum.BIG_DECIMAL
+            bigDecimal, bigDecimal.makeNullable() -> KnownTypesEnum.BIG_DECIMAL
             boolean, nullableBoolean -> KnownTypesEnum.BOOLEAN
             binary, binary.makeNullable() -> KnownTypesEnum.BINARY
             uuid, uuid.makeNullable() -> KnownTypesEnum.UUID

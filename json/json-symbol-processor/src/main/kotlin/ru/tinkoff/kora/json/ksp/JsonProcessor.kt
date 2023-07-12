@@ -55,18 +55,18 @@ class JsonProcessor(
         fileSpec.build().writeTo(codeGenerator = codeGenerator, aggregating = false)
     }
 
-    fun generateWriter(jsonClassDeclaration: KSClassDeclaration) {
-        val packageElement = jsonClassPackage(jsonClassDeclaration)
-        val writerClassName = jsonClassDeclaration.jsonWriterName()
+    fun generateWriter(declaration: KSClassDeclaration) {
+        val packageElement = jsonClassPackage(declaration)
+        val writerClassName = declaration.jsonWriterName()
         val writerDeclaration = resolver.getClassDeclarationByName("$packageElement.$writerClassName")
         if (writerDeclaration != null) {
             return
         }
         val writerType = when {
-            isSealed(jsonClassDeclaration) -> sealedWriterGenerator.generateSealedWriter(jsonClassDeclaration)
-            jsonClassDeclaration.modifiers.contains(Modifier.ENUM) -> enumJsonWriterGenerator.generateEnumWriter(jsonClassDeclaration)
+            isSealed(declaration) -> sealedWriterGenerator.generateSealedWriter(declaration)
+            declaration.modifiers.contains(Modifier.ENUM) -> enumJsonWriterGenerator.generateEnumWriter(declaration)
             else -> {
-                val meta = writerTypeMetaParser.parse(jsonClassDeclaration)
+                val meta = writerTypeMetaParser.parse(declaration)
                 writerGenerator.generate(meta)
             }
         }

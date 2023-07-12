@@ -5,6 +5,7 @@ import com.squareup.kotlinpoet.ClassName
 object JsonTypes {
 
     val json = ClassName("ru.tinkoff.kora.json.common.annotation", "Json")
+    val jsonInclude = ClassName("ru.tinkoff.kora.json.common.annotation", "JsonInclude")
     val jsonDiscriminatorField = ClassName("ru.tinkoff.kora.json.common.annotation", "JsonDiscriminatorField")
     val jsonDiscriminatorValue = ClassName("ru.tinkoff.kora.json.common.annotation", "JsonDiscriminatorValue")
 

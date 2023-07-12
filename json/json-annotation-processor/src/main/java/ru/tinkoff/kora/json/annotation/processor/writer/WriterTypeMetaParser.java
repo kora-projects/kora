@@ -17,6 +17,7 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static ru.tinkoff.kora.annotation.processor.common.CommonUtils.getNameConverter;
@@ -75,9 +76,13 @@ public class WriterTypeMetaParser {
         var writer = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(jsonField, "writer");
 
         var typeMeta = this.parseWriterFieldType(fieldTypeMirror);
+        var includeType = Optional.ofNullable(CommonUtils.findAnnotation(this.elements, field, JsonTypes.jsonInclude))
+            .or(() -> Optional.ofNullable(CommonUtils.findAnnotation(this.elements, jsonClass, JsonTypes.jsonInclude)))
+            .map(a -> CommonUtils.parseAnnotationValue(this.elements, a, "value").toString())
+            .flatMap(JsonClassWriterMeta.IncludeType::tryParse)
+            .orElse(JsonClassWriterMeta.IncludeType.NON_NULL);
 
-
-        return new FieldMeta(field, fieldTypeMirror, typeMeta, jsonName, accessorMethod, writer);
+        return new FieldMeta(field, fieldTypeMirror, typeMeta, jsonName, includeType, accessorMethod, writer);
     }
 
     private WriterFieldType parseWriterFieldType(TypeMirror typeMirror) {
@@ -96,7 +101,6 @@ public class WriterTypeMetaParser {
             .filter(a -> this.types.isSameType(a.getAnnotationType(), this.jsonFieldAnnotation))
             .findFirst()
             .orElse(null);
-
     }
 
     private String parseJsonName(VariableElement param, @Nullable AnnotationMirror jsonField, @Nullable NameConverter nameConverter) {

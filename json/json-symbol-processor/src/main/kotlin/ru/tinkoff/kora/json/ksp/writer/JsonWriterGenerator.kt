@@ -12,25 +12,26 @@ import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum.*
 import ru.tinkoff.kora.json.ksp.discriminatorField
 import ru.tinkoff.kora.json.ksp.discriminatorValues
 import ru.tinkoff.kora.json.ksp.jsonWriterName
+import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.CommonClassNames.isCollection
+import ru.tinkoff.kora.ksp.common.CommonClassNames.isMap
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 
-class JsonWriterGenerator(
-    private val resolver: Resolver
-) {
+class JsonWriterGenerator(private val resolver: Resolver) {
 
     fun generate(meta: JsonClassWriterMeta): TypeSpec {
-        val jsonClassDeclaration = meta.classDeclaration
-        val typeParameterResolver = jsonClassDeclaration.typeParameters.toTypeParameterResolver()
-        val typeName = meta.classDeclaration.toTypeName()
+        val declaration = meta.type
+        val typeParameterResolver = declaration.typeParameters.toTypeParameterResolver()
+        val typeName = declaration.toTypeName()
         val writerInterface = JsonTypes.jsonWriter.parameterizedBy(typeName)
-        val typeBuilder = TypeSpec.classBuilder(meta.classDeclaration.jsonWriterName())
+        val typeBuilder = TypeSpec.classBuilder(declaration.jsonWriterName())
             .generated(JsonWriterGenerator::class)
-        jsonClassDeclaration.containingFile?.let { typeBuilder.addOriginatingKSFile(it) }
+        declaration.containingFile?.let { typeBuilder.addOriginatingKSFile(it) }
         typeBuilder.addSuperinterface(writerInterface)
 
-        meta.classDeclaration.typeParameters.forEach {
+        declaration.typeParameters.forEach {
             typeBuilder.addTypeVariable(it.toTypeVariableName())
         }
 
@@ -49,10 +50,10 @@ class JsonWriterGenerator(
         }
         functionBody.addStatement("_gen.writeStartObject(_object)")
 
-        val discriminatorField = meta.classDeclaration.discriminatorField()
+        val discriminatorField = declaration.discriminatorField()
         if (discriminatorField != null) {
             if (meta.fields.none { it.jsonName == discriminatorField }) {
-                val discriminatorValue = meta.classDeclaration.discriminatorValues().first()
+                val discriminatorValue = meta.type.discriminatorValues().first()
                 functionBody.addStatement("_gen.writeFieldName(%S)", discriminatorField)
                 functionBody.addStatement("_gen.writeString(%S)", discriminatorValue)
             }
@@ -112,12 +113,47 @@ class JsonWriterGenerator(
     }
 
     private fun addWriteParam(function: CodeBlock.Builder, field: JsonClassWriterMeta.FieldMeta) {
-        function.controlFlow("_object.%N%L.let {", field.accessor, if (field.type.isMarkedNullable) "?" else "") {
+        val read = CodeBlock.builder()
+            .add("_gen.writeFieldName(%L)\n", jsonNameStaticName(field))
+        if (field.writer == null && field.typeMeta is WriterFieldType.KnownWriterFieldType) {
+            read.add(writeKnownType(field.typeMeta.knownType))
+        } else {
+            read.addStatement("%L.write(_gen, it)", writerFieldName(field))
+        }
+        if (!field.type.isMarkedNullable) {
+            function.controlFlow("_object.%N.let {", field.accessor) {
+                if (field.includeType == JsonClassWriterMeta.IncludeType.NON_EMPTY && (field.type.isCollection() || field.type.isMap())) {
+                    controlFlow("if (it.%M())", CommonClassNames.isNotEmpty) {
+                        add(read.build())
+                    }
+                } else {
+                    add(read.build())
+                }
+            }
+            return
+        }
+        if (field.includeType == JsonClassWriterMeta.IncludeType.NON_EMPTY && (field.type.isCollection() || field.type.isMap())) {
+            function.controlFlow("_object.%N?.let {", field.accessor) {
+                controlFlow("if (it.%M())", CommonClassNames.isNotEmpty) {
+                    add(read.build())
+                }
+            }
+        } else if (field.includeType != JsonClassWriterMeta.IncludeType.ALWAYS) {
+            function.controlFlow("_object.%N?.let {", field.accessor) {
+                add(read.build())
+            }
+        } else {
             function.add("_gen.writeFieldName(%L)\n", jsonNameStaticName(field))
-            if (field.writer == null && field.typeMeta is WriterFieldType.KnownWriterFieldType) {
-                function.add(writeKnownType(field.typeMeta.knownType))
-            } else {
-                function.addStatement("%L.write(_gen, it)", writerFieldName(field))
+            function.controlFlow("_object.%N.let {", field.accessor) {
+                if (field.writer == null && field.typeMeta is WriterFieldType.KnownWriterFieldType) {
+                    controlFlow("if (it == null)") {
+                        add("_gen.writeNull()")
+                        nextControlFlow("else")
+                        add(writeKnownType(field.typeMeta.knownType))
+                    }
+                } else {
+                    addStatement("%L.write(_gen, it)", writerFieldName(field))
+                }
             }
         }
     }
