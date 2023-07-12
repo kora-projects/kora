@@ -3,12 +3,7 @@ package ru.tinkoff.kora.common;
 import javax.annotation.Nullable;
 
 public interface Principal {
-    Context.Key<Principal> KEY = new Context.Key<>() {
-        @Override
-        protected Principal copy(Principal object) {
-            return object;
-        }
-    };
+    Context.Key<Principal> KEY = new Context.KeyImmutable<>() {};
 
     @Nullable
     static Principal current() {
