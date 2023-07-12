@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Optional;
 
 public interface HttpServerModule extends StringParameterReadersModule {
+
     default HttpServerConfig httpServerConfig(Config config, ConfigValueExtractor<HttpServerConfig> configValueExtractor) {
         if (config.hasPath("httpServer")) {
             return configValueExtractor.extract(config.getValue("httpServer"));
@@ -42,12 +43,18 @@ public interface HttpServerModule extends StringParameterReadersModule {
         return new DefaultHttpServerTelemetry(metricWriter, logger, tracer);
     }
 
-    default PrivateApiHandler privateApiHandler(ValueOf<HttpServerConfig> config, ValueOf<Optional<PrivateApiMetrics>> meterRegistry, All<PromiseOf<ReadinessProbe>> readinessProbes, All<PromiseOf<LivenessProbe>> livenessProbes) {
+    default PrivateApiHandler privateApiHandler(ValueOf<HttpServerConfig> config,
+                                                ValueOf<Optional<PrivateApiMetrics>> meterRegistry,
+                                                All<PromiseOf<ReadinessProbe>> readinessProbes,
+                                                All<PromiseOf<LivenessProbe>> livenessProbes) {
         return new PrivateApiHandler(config, meterRegistry, readinessProbes, livenessProbes);
     }
 
-    default PublicApiHandler publicApiHandler(All<ValueOf<HttpServerRequestHandler>> handlers, @Tag(HttpServerModule.class) All<ValueOf<HttpServerInterceptor>> interceptors, ValueOf<HttpServerTelemetry> telemetry) {
-        return new PublicApiHandler(handlers, interceptors, telemetry);
+    default PublicApiHandler publicApiHandler(All<ValueOf<HttpServerRequestHandler>> handlers,
+                                              @Tag(HttpServerModule.class) All<ValueOf<HttpServerInterceptor>> interceptors,
+                                              ValueOf<HttpServerTelemetry> telemetry,
+                                              ValueOf<HttpServerConfig> httpServerConfig) {
+        return new PublicApiHandler(handlers, interceptors, telemetry, httpServerConfig);
     }
 
     default HttpServerLogger httpServerLogger() {

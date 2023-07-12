@@ -72,8 +72,8 @@ public class RequestHandlerGenerator {
         if (parameters == null) {
             return null;
         }
-        this.addParameterMappers(methodBuilder, requestMappingData, parameters);
 
+        this.addParameterMappers(methodBuilder, requestMappingData, parameters);
         if (!isMonoVoidReturnType(requestMappingData) && !isVoidReturnType(requestMappingData.executableType())) {
             var responseMapper = this.detectResponseMapper(requestMappingData, requestMappingData.executableElement());
             if (responseMapper == null) {
@@ -82,9 +82,7 @@ public class RequestHandlerGenerator {
             methodBuilder.addParameter(responseMapper);
         }
 
-
         var isBlocking = isBlocking(requestMappingData);
-
         if (isBlocking) {
             methodBuilder.addParameter(TypeName.get(BlockingRequestExecutor.class), "_executor");
         }
@@ -535,9 +533,13 @@ public class RequestHandlerGenerator {
     }
 
     private String methodName(RequestMappingData requestMappingData) {
+        final String suffix = requestMappingData.route().endsWith("/")
+            ? "_trailing_slash"
+            : "";
+
         return requestMappingData.httpMethod().toLowerCase() + Stream.of(requestMappingData.route().split("[^A-Za-z0-9]+"))
             .filter(Predicate.not(String::isBlank))
-            .collect(Collectors.joining("_", "_", ""));
+            .collect(Collectors.joining("_", "_",  suffix));
     }
 
     private boolean isNullable(RequestMappingData requestMappingData) {

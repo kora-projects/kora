@@ -2,60 +2,142 @@ package ru.tinkoff.kora.http.server.common.router;
 
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.http.common.HttpHeaders;
+import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.HttpServerRequestHandler;
-import ru.tinkoff.kora.http.server.common.HttpServerResponseSender;
 import ru.tinkoff.kora.http.server.common.SimpleHttpServerResponse;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandlerImpl;
-import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetry;
-
-import java.util.Map;
-
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.*;
 
 class PublicApiHandlerTest {
 
     @Test
-    void testEqualTemplatesWithDifferentMethods() {
+    void diffMethodSameRouteTemplateAndPathSuccess() {
         var handlers = All.of(
-            valueOf(handler("POST", "/some/path/{variable}/test")),
-            valueOf(handler("GET", "/some/path/{otherVariable}/test"))
+            valueOf(handler("POST", "/foo/bar/{variable}/baz")),
+            valueOf(handler("GET", "/foo/bar/{otherVariable}/baz"))
         );
-        var handler = new PublicApiHandler(handlers, All.of(), null);
+        var config = config(false);
+        var handler = new PublicApiHandler(handlers, All.of(), null, valueOf(config));
     }
 
     @Test
-    void testSameRouteHandlers() {
+    void sameMethodSameRouteTemplateAndPathFail() {
         var handlers = All.of(
-            valueOf(handler("POST", "/some/path/{variable}/test")),
-            valueOf(handler("POST", "/some/path/{otherVariable}/test"))
+            valueOf(handler("POST", "/foo/bar/{variable}/baz")),
+            valueOf(handler("POST", "/foo/bar/{otherVariable}/baz"))
         );
-        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, All.of(), null));
+        var config = config(false);
+        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, All.of(), null, valueOf(config)));
+    }
+
+
+    @Test
+    void diffMethodSameRouteTemplateSuccess() {
+        var handlers = All.of(
+            valueOf(handler("POST", "/foo/bar/{variable}")),
+            valueOf(handler("GET", "/foo/bar/{otherVariable}"))
+        );
+        var config = config(false);
+        var handler = new PublicApiHandler(handlers, All.of(), null, valueOf(config));
     }
 
     @Test
-    void testWildcard() {
+    void sameMethodSameRouteTemplateFail() {
         var handlers = All.of(
-            valueOf(handler("GET", "/test")),
-            valueOf(handler("POST", "/*"))
+            valueOf(handler("POST", "/foo/bar/{variable}")),
+            valueOf(handler("POST", "/foo/bar/{otherVariable}"))
         );
-        var telemetry = Mockito.mock(HttpServerTelemetry.class);
-        when(telemetry.get(any(), anyString())).thenReturn(mock(HttpServerTelemetry.HttpServerTelemetryContext.class));
-        var handler = new PublicApiHandler(handlers, All.of(), valueOf(telemetry));
+        var config = config(false);
+        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, All.of(), null, valueOf(config)));
+    }
 
-        var responseSender = mock(HttpServerResponseSender.class);
-        when(responseSender.send(any())).thenReturn(Mono.just(new HttpServerResponseSender.Success(200)));
+    @Test
+    void sameMethodSameRouteTemplateTrailingSlashSuccess() {
+        var handlers = All.of(
+            valueOf(handler("POST", "/foo/bar/{variable}")),
+            valueOf(handler("POST", "/foo/bar/{otherVariable}/"))
+        );
+        var config = config(false);
+        var handler = new PublicApiHandler(handlers, All.of(), null, valueOf(config));
+    }
 
-        var request = new PublicApiHandler.PublicApiRequest("POST", "/test", "test", "http", HttpHeaders.EMPTY, Map.of(), Flux.empty());
-        handler.process(request, responseSender);
+    @Test
+    void sameMethodSameRouteTemplateTrailingSlashWhenIgnoreTrailingSlashFail() {
+        var handlers = All.of(
+            valueOf(handler("POST", "/foo/bar/{variable}")),
+            valueOf(handler("POST", "/foo/bar/{otherVariable}/"))
+        );
+        var config = config(true);
+        var handler = new PublicApiHandler(handlers, All.of(), null, valueOf(config));
+    }
 
-        verify(responseSender).send(argThat(argument -> argument.code() == 200));
+    @Test
+    void sameMethodSameRouteTemplateButTrailingSlashSuccess() {
+        var handlers = All.of(
+            valueOf(handler("POST", "/foo/bar/{variable}/baz/")),
+            valueOf(handler("POST", "/foo/bar/{otherVariable}/baz"))
+        );
+        var config = config(false);
+        var handler = new PublicApiHandler(handlers, All.of(), null, valueOf(config));
+    }
+
+    @Test
+    void sameMethodSameRouteTemplateButTrailingSlashWhenIgnoreTrailingSlashFail() {
+        var handlers = All.of(
+            valueOf(handler("POST", "/foo/bar/{variable}/baz/")),
+            valueOf(handler("POST", "/foo/bar/{otherVariable}/baz"))
+        );
+        var config = config(true);
+        var handler = new PublicApiHandler(handlers, All.of(), null, valueOf(config));
+    }
+
+    @Test
+    void diffMethodSameRouteSuccess() {
+        var handlers = All.of(
+            valueOf(handler("POST", "/foo/bar")),
+            valueOf(handler("GET", "/foo/bar"))
+        );
+        var config = config(false);
+        var handler = new PublicApiHandler(handlers, All.of(), null, valueOf(config));
+    }
+
+    @Test
+    void sameMethodSameRouteFail() {
+        var handlers = All.of(
+            valueOf(handler("POST", "/foo/bar")),
+            valueOf(handler("POST", "/foo/bar"))
+        );
+        var config = config(false);
+        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, All.of(), null, valueOf(config)));
+    }
+
+    @Test
+    void sameMethodSameRouteTrailingSlashSuccess() {
+        // given
+        var handlers = All.of(
+            valueOf(handler("POST", "/foo/bar")),
+            valueOf(handler("POST", "/foo/bar/"))
+        );
+        var config = config(false);
+        var handler = new PublicApiHandler(handlers, All.of(), null, valueOf(config));
+    }
+
+    @Test
+    void sameMethodSameRouteTrailingSlashWhenIgnoreTrailingSlashFail() {
+        // given
+        var handlers = All.of(
+            valueOf(handler("POST", "/foo/bar")),
+            valueOf(handler("POST", "/foo/bar/"))
+        );
+        var config = config(true);
+        var handler = new PublicApiHandler(handlers, All.of(), null, valueOf(config));
+    }
+
+    private HttpServerConfig config(boolean ignoreTrailingSlash) {
+        return new HttpServerConfig(null, null, null, null, null, ignoreTrailingSlash, null, null, null);
     }
 
     private HttpServerRequestHandler handler(String method, String route) {

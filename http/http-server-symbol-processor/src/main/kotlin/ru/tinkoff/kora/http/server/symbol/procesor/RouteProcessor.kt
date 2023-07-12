@@ -175,10 +175,10 @@ class RouteProcessor(private val resolver: Resolver) {
     }
 
     private fun funName(requestMappingData: RequestMappingData): String {
-        val methodName = requestMappingData.method.lowercase() + requestMappingData.pathTemplate.split(Regex("[^A-Za-z0-9]+"))
+        val suffix = if (requestMappingData.pathTemplate.endsWith("/")) "_trailing_slash" else ""
+        return requestMappingData.method.lowercase() + requestMappingData.pathTemplate.split(Regex("[^A-Za-z0-9]+"))
             .filter { it.isNotBlank() }
-            .joinToString("_", "_")
-        return methodName
+            .joinToString("_", "_", suffix)
     }
 
     private fun generateParamDeclaration(

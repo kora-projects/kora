@@ -63,7 +63,7 @@ public abstract class HttpServerTestKit {
 
 
 
-    private static ValueOf<HttpServerConfig> config = valueOf(new HttpServerConfig(0, 0, HttpServerConfig.DEFAULT_PRIVATE_API_METRICS_PATH, HttpServerConfig.DEFAULT_PRIVATE_API_READINESS_PATH, HttpServerConfig.DEFAULT_PRIVATE_API_LIVENESS_PATH, 1, 10, 1));
+    private static ValueOf<HttpServerConfig> config = valueOf(new HttpServerConfig(0, 0, HttpServerConfig.DEFAULT_PRIVATE_API_METRICS_PATH, HttpServerConfig.DEFAULT_PRIVATE_API_READINESS_PATH, HttpServerConfig.DEFAULT_PRIVATE_API_LIVENESS_PATH, false, 1, 10, 1));
 
     private final PrivateApiHandler privateApiHandler = new PrivateApiHandler(config, valueOf(Optional.of(registry)), All.of(readinessProbePromise), All.of(livenessProbePromise));
 
@@ -665,12 +665,17 @@ public abstract class HttpServerTestKit {
     }
 
     protected void startServer(List<HttpServerInterceptor> interceptors, HttpServerRequestHandler... handlers) {
+        startServer(false, interceptors, handlers);
+    }
+
+    protected void startServer(boolean ignoreTrailingSlash, List<HttpServerInterceptor> interceptors, HttpServerRequestHandler... handlers) {
         var interceptorsList = interceptors.stream().map(HttpServerTestKit::valueOf).toList();
         var handlerList = Stream.of(handlers)
             .map(HttpServerTestKit::valueOf)
             .toList();
-        var publicApiHandler = new PublicApiHandler(All.of(handlerList), All.of(interceptorsList), valueOf(new DefaultHttpServerTelemetry(this.metrics, this.logger, null)));
-        this.httpServer = this.httpServer(config, publicApiHandler);
+        var config = new HttpServerConfig(0, 0, HttpServerConfig.DEFAULT_PRIVATE_API_METRICS_PATH, HttpServerConfig.DEFAULT_PRIVATE_API_READINESS_PATH, HttpServerConfig.DEFAULT_PRIVATE_API_LIVENESS_PATH, ignoreTrailingSlash, 1, 10, 1);
+        var publicApiHandler = new PublicApiHandler(All.of(handlerList), All.of(interceptorsList), valueOf(new DefaultHttpServerTelemetry(this.metrics, this.logger, null)), valueOf(config));
+        this.httpServer = this.httpServer(valueOf(config), publicApiHandler);
         this.httpServer.init().block();
     }
 

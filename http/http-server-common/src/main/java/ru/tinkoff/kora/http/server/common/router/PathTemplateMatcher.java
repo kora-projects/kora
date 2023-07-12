@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.http.server.common.router;
 
 
+import javax.annotation.Nullable;
 import java.util.*;
 
 public class PathTemplateMatcher<T> {
@@ -21,18 +22,22 @@ public class PathTemplateMatcher<T> {
      */
     public record PathTemplateMatch<T>(String matchedTemplate, Map<String, String> parameters, T value) {}
 
-
+    @Nullable
     public PathTemplateMatch<T> match(final String path) {
+        return match(path, false);
+    }
+
+    @Nullable
+    public PathTemplateMatch<T> match(final String path, boolean ignoreTrailingSlash) {
         String normalizedPath = "".equals(path) ? "/" : path;
         final Map<String, String> params = new LinkedHashMap<>();
         int length = normalizedPath.length();
         final int[] lengths = this.lengths;
-        for (int i = 0; i < lengths.length; ++i) {
-            int pathLength = lengths[i];
+        for (int pathLength : lengths) {
             if (pathLength == length) {
                 var entry = pathTemplateMap.get(normalizedPath);
                 if (entry != null) {
-                    var res = handleStemMatch(entry, normalizedPath, params);
+                    var res = handleStemMatch(entry, normalizedPath, params, ignoreTrailingSlash);
                     if (res != null) {
                         return res;
                     }
@@ -41,7 +46,16 @@ public class PathTemplateMatcher<T> {
                 var part = normalizedPath.substring(0, pathLength);
                 var entry = pathTemplateMap.get(part);
                 if (entry != null) {
-                    var res = handleStemMatch(entry, normalizedPath, params);
+                    var res = handleStemMatch(entry, normalizedPath, params, ignoreTrailingSlash);
+                    if (res != null) {
+                        return res;
+                    }
+                }
+            } else if(ignoreTrailingSlash) {
+                var part = normalizedPath + "/";
+                var entry = pathTemplateMap.get(part);
+                if (entry != null) {
+                    var res = handleStemMatch(entry, normalizedPath, params, ignoreTrailingSlash);
                     if (res != null) {
                         return res;
                     }
@@ -51,9 +65,13 @@ public class PathTemplateMatcher<T> {
         return null;
     }
 
-    private PathTemplateMatch<T> handleStemMatch(Set<PathTemplateHolder> entry, final String path, final Map<String, String> params) {
+    @Nullable
+    private PathTemplateMatch<T> handleStemMatch(final Set<PathTemplateHolder> entry,
+                                                 final String path,
+                                                 final Map<String, String> params,
+                                                 boolean ignoreTrailingSlash) {
         for (var val : entry) {
-            if (val.template.matches(path, params)) {
+            if (val.template.matches(path, params, ignoreTrailingSlash)) {
                 return new PathTemplateMatch<>(val.template.templateString(), params, val.value);
             } else {
                 params.clear();
@@ -62,10 +80,10 @@ public class PathTemplateMatcher<T> {
         return null;
     }
 
-
     /**
      * @return the previous value associated with path template, or null if there was none
      */
+    @Nullable
     public Map.Entry<PathTemplate, T> add(final PathTemplate template, final T value) {
         var values = pathTemplateMap.get(trimBase(template));
         Set<PathTemplateHolder> newValues;
@@ -92,12 +110,10 @@ public class PathTemplateMatcher<T> {
     private String trimBase(PathTemplate template) {
         String retval = template.base();
 
-        if (template.base().endsWith("/") && !template.parameterNames().isEmpty()) {
-            return retval.substring(0, retval.length() - 1);
-        }
         if (retval.endsWith("*")) {
             return retval.substring(0, retval.length() - 1);
         }
+
         return retval;
     }
 
