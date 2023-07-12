@@ -10,11 +10,9 @@ import javax.annotation.Nullable;
 import java.util.Map;
 
 public interface KafkaProducerLogger {
-    boolean isEnabled();
-
     void sendBegin(ProducerRecord<?, ?> record);
 
-    void sendEnd(Throwable e);
+    void sendEnd(ProducerRecord<?, ?> record, Throwable e);
 
     void sendEnd(RecordMetadata metadata);
 

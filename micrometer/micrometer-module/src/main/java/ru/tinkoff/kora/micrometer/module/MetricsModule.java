@@ -28,6 +28,7 @@ import ru.tinkoff.kora.micrometer.module.http.server.tag.DefaultMicrometerHttpSe
 import ru.tinkoff.kora.micrometer.module.http.server.tag.MicrometerHttpServerTagsProvider;
 import ru.tinkoff.kora.micrometer.module.jms.consumer.MicrometerJmsConsumerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.kafka.consumer.MicrometerKafkaConsumerMetrics;
+import ru.tinkoff.kora.micrometer.module.kafka.producer.MicrometerKafkaProducerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerCircuitBreakerMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerFallbackMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerRetryMetrics;
@@ -129,6 +130,11 @@ public interface MetricsModule {
     @DefaultComponent
     default MicrometerKafkaConsumerMetrics micrometerKafkaConsumerMetrics(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
         return new MicrometerKafkaConsumerMetrics(meterRegistry, metricsConfig.kafkaConsumer());
+    }
+
+    @DefaultComponent
+    default MicrometerKafkaProducerMetricsFactory micrometerKafkaProducerMetricsFactory(MeterRegistry meterRegistry) {
+        return new MicrometerKafkaProducerMetricsFactory(meterRegistry);
     }
 
     @DefaultComponent

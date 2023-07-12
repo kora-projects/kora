@@ -55,6 +55,7 @@ public class TransactionalProducerWrapper<K, V> implements Producer<K, V> {
 
     @Override
     public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, ConsumerGroupMetadata groupMetadata) throws ProducerFencedException {
+        this.txTelemetry.sendOffsetsToTransaction(offsets, groupMetadata);
         delegate.sendOffsetsToTransaction(offsets, groupMetadata);
         state = TxState.STATE_IN_TX;
     }
