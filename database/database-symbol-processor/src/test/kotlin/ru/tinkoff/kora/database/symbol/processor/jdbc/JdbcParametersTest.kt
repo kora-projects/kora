@@ -6,7 +6,10 @@ import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.mockito.kotlin.verify
 import ru.tinkoff.kora.common.Tag
+import ru.tinkoff.kora.database.cassandra.CassandraConfig.Advanced.MetricsConfig.Config
+import ru.tinkoff.kora.database.jdbc.JdbcDatabaseConfig
 import ru.tinkoff.kora.database.jdbc.mapper.parameter.JdbcParameterColumnMapper
+import java.time.Duration
 import kotlin.reflect.full.findAnnotations
 import kotlin.reflect.jvm.jvmErasure
 
@@ -19,6 +22,27 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             interface TestRepository : JdbcRepository {
                 @Query("INSERT INTO test(test) VALUES ('test')")
                 fun test(connection: Connection)
+            }
+            """.trimIndent()
+        )
+
+        repository.invoke<Any>("test", executor.mockConnection)
+
+        verify(executor.preparedStatement).execute()
+        verify(executor.preparedStatement).updateCount
+    }
+
+    @Test
+    fun testAbstractClassRepository() {
+        val config = JdbcDatabaseConfig("1", "2", "3", "4",
+            null, null, null, null, null, null, null, null, null)
+        val repository = compileForArgs(
+            arrayOf(config, executor),
+            """
+            @Repository
+            abstract class TestRepository(val config: JdbcDatabaseConfig) : JdbcRepository {
+                @Query("INSERT INTO test(test) VALUES ('test')")
+                abstract fun test(connection: Connection)
             }
             """.trimIndent()
         )

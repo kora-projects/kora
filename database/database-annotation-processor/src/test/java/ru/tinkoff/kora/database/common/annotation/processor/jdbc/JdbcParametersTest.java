@@ -10,6 +10,7 @@ import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityJav
 import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRecord;
 import ru.tinkoff.kora.database.common.annotation.processor.jdbc.repository.AllowedParametersRepository;
 import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory;
+import ru.tinkoff.kora.database.jdbc.JdbcDatabaseConfig;
 import ru.tinkoff.kora.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
 import ru.tinkoff.kora.json.common.annotation.Json;
 
@@ -105,6 +106,32 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
                        
                 @Query("INSERT INTO test(test) VALUES ('test')")
                 void testConnection(Connection connection);
+            }
+            """);
+
+        repository.invoke("testConnection", executor.mockConnection);
+
+        verify(executor.mockConnection).prepareStatement("INSERT INTO test(test) VALUES ('test')");
+        verify(executor.preparedStatement).execute();
+    }
+
+    @Test
+    public void testAbstractClassRepository() throws SQLException {
+        var config = new JdbcDatabaseConfig("1", "2", "3", "4",
+            null, null, null, null, null, null, null, null, null);
+        var repository = compileForArgs(List.of(config, executor), """
+            import ru.tinkoff.kora.database.jdbc.JdbcDatabaseConfig;
+            @Repository
+            public abstract class TestRepository implements JdbcRepository {
+            
+                private final JdbcDatabaseConfig config;
+                
+                public TestRepository(JdbcDatabaseConfig config) {
+                    this.config = config;
+                }
+                       
+                @Query("INSERT INTO test(test) VALUES ('test')")
+                abstract void testConnection(Connection connection);
             }
             """);
 

@@ -23,9 +23,10 @@ public abstract class AbstractRepositoryTest extends AbstractAnnotationProcessor
 
         @SuppressWarnings("unchecked")
         public <T> T invoke(String method, Object... args) {
-            for (var repositoryClassMethod : repositoryClass.getMethods()) {
+            for (var repositoryClassMethod : repositoryClass.getDeclaredMethods()) {
                 if (repositoryClassMethod.getName().equals(method) && repositoryClassMethod.getParameters().length == args.length) {
                     try {
+                        repositoryClassMethod.setAccessible(true);
                         var result = repositoryClassMethod.invoke(this.repositoryObject, args);
                         if (result instanceof Mono<?> mono) {
                             return (T) mono.block();
@@ -75,6 +76,24 @@ public abstract class AbstractRepositoryTest extends AbstractAnnotationProcessor
                     realArgs[i] = gr.get();
                 }
             }
+            var repository = repositoryClass.getConstructors()[0].newInstance(realArgs);
+            return new TestRepository(repositoryClass, repository);
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    protected TestRepository compileForArgs(List<?> arguments, @Language("java") String... sources) {
+        var compileResult = compile(List.of(new RepositoryAnnotationProcessor()), sources);
+        if (compileResult.isFailed()) {
+            throw compileResult.compilationException();
+        }
+
+        Assertions.assertThat(compileResult.warnings()).hasSize(0);
+
+        try {
+            var repositoryClass = compileResult.loadClass("$TestRepository_Impl");
+            var realArgs = arguments.toArray();
             var repository = repositoryClass.getConstructors()[0].newInstance(realArgs);
             return new TestRepository(repositoryClass, repository);
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
