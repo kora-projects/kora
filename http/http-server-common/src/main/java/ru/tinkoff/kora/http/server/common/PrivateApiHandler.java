@@ -40,17 +40,32 @@ public class PrivateApiHandler {
     }
 
     public Publisher<? extends HttpServerResponse> handle(String path) {
-        String metricsPath = config.get().privateApiHttpMetricsPath();
-        String livenessPath = config.get().privateApiHttpLivenessPath();
-        String readinessPath = config.get().privateApiHttpReadinessPath();
+        var metricsPath = config.get().privateApiHttpMetricsPath();
+        var livenessPath = config.get().privateApiHttpLivenessPath();
+        var readinessPath = config.get().privateApiHttpReadinessPath();
 
-        if (path.equals(metricsPath) || path.startsWith(metricsPath + "?")) {
+        var pathWithoutSlash = (path.endsWith("/"))
+            ? path.substring(0, path.length() - 1)
+            : path;
+
+        var metricPathWithoutSlash = (metricsPath.endsWith("/"))
+            ? metricsPath.substring(0, metricsPath.length() - 1)
+            : metricsPath;
+        if (pathWithoutSlash.equals(metricPathWithoutSlash) || pathWithoutSlash.startsWith(metricPathWithoutSlash + "?")) {
             return this.metrics();
         }
-        if (path.equals(readinessPath) || path.startsWith(readinessPath + "?")) {
+
+        var readinessPathWithoutSlash = (readinessPath.endsWith("/"))
+            ? readinessPath.substring(0, readinessPath.length() - 1)
+            : readinessPath;
+        if (pathWithoutSlash.equals(readinessPathWithoutSlash) || pathWithoutSlash.startsWith(readinessPathWithoutSlash + "?")) {
             return this.readiness();
         }
-        if (path.equals(livenessPath) || path.startsWith(livenessPath + "?")) {
+
+        var livenessPathWithoutSlash = (livenessPath.endsWith("/"))
+            ? livenessPath.substring(0, livenessPath.length() - 1)
+            : livenessPath;
+        if (pathWithoutSlash.equals(livenessPathWithoutSlash) || pathWithoutSlash.startsWith(livenessPathWithoutSlash + "?")) {
             return this.liveness();
         }
 
@@ -77,7 +92,7 @@ public class PrivateApiHandler {
         return Flux.fromIterable(probes)
             .<HttpServerResponse>flatMap(probePromise -> {
                 var probe = probePromise.get();
-                if (!probe.isPresent()) {
+                if (probe.isEmpty()) {
                     var body = ByteBuffer.wrap("Probe is not ready yet".getBytes(StandardCharsets.UTF_8));
                     return Mono.just(new SimpleHttpServerResponse(503, PLAIN_TEXT_CONTENT_TYPE, HttpHeaders.of(), body));
                 }

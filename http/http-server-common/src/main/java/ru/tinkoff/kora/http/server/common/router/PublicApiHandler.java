@@ -39,27 +39,35 @@ public class PublicApiHandler implements RefreshListener {
     private final All<ValueOf<HttpServerInterceptor>> interceptors;
     private final AtomicReference<RequestHandler> requestHandler = new AtomicReference<>();
     private final ValueOf<HttpServerTelemetry> telemetry;
+    private final boolean ignoreTrailingSlash;
 
-    public PublicApiHandler(All<ValueOf<HttpServerRequestHandler>> handlers, All<ValueOf<HttpServerInterceptor>> interceptors, ValueOf<HttpServerTelemetry> httpServerTelemetry) {
+    public PublicApiHandler(All<ValueOf<HttpServerRequestHandler>> handlers,
+                            All<ValueOf<HttpServerInterceptor>> interceptors,
+                            ValueOf<HttpServerTelemetry> httpServerTelemetry,
+                            ValueOf<HttpServerConfig> httpServerConfig) {
         this.handlers = handlers;
         this.interceptors = interceptors;
         this.telemetry = httpServerTelemetry;
+        this.ignoreTrailingSlash = httpServerConfig.get().ignoreTrailingSlash();
         this.pathTemplateMatcher = new HashMap<>();
         this.allMethodMatchers = new PathTemplateMatcher<>();
         for (var h : handlers) {
             var handler = h.get();
             var route = handler.routeTemplate();
             var methodMatchers = this.pathTemplateMatcher.computeIfAbsent(handler.method(), k -> new PathTemplateMatcher<>());
+
             var oldValue = methodMatchers.add(route, h);
             if (oldValue != null) {
                 throw new IllegalStateException("Cannot add path template %s, matcher already contains an equivalent pattern %s".formatted(route, oldValue.getKey().templateString()));
             }
+
             var otherMethods = new ArrayList<>(List.of(handler.method()));
             var oldAllMethodValue = this.allMethodMatchers.add(route, otherMethods);
             if (oldAllMethodValue != null) {
                 otherMethods.addAll(oldAllMethodValue.getValue());
             }
         }
+
         if (interceptors.isEmpty()) {
             this.requestHandler.set(new SimpleRequestHandler());
         } else {
@@ -88,7 +96,7 @@ public class PublicApiHandler implements RefreshListener {
         final @Nullable String routeTemplate;
 
         var methodMatchers = pathTemplateMatcher.get(routerRequest.method());
-        var pathTemplateMatch = methodMatchers == null ? null : methodMatchers.match(routerRequest.path());
+        var pathTemplateMatch = methodMatchers == null ? null : methodMatchers.match(routerRequest.path(), ignoreTrailingSlash);
         if (pathTemplateMatch == null) {
             var allMethodMatch = allMethodMatchers.match(routerRequest.path);
             if (allMethodMatch != null) {
