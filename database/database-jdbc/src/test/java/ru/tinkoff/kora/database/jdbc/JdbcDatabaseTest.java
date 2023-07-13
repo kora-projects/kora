@@ -29,7 +29,7 @@ class JdbcDatabaseTest {
     }
 
     private static void withDb(PostgresParams params, Consumer<JdbcDatabase> consumer) {
-        var config = new JdbcDatabaseConfig(
+        var config = new $JdbcDatabaseConfig_ConfigValueExtractor.JdbcDatabaseConfig_Impl(
             params.user(),
             params.password(),
             params.jdbcUrl(),

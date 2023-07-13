@@ -10,18 +10,13 @@ import javax.annotation.Nullable;
 public class MicrometerSchedulingMetrics implements SchedulingMetrics {
     private final DistributionSummary successDuration;
 
-    public MicrometerSchedulingMetrics(MeterRegistry meterRegistry, @Nullable SchedulingMetricsConfig config, String className, String methodName) {
-        var builder = DistributionSummary.builder("scheduling.job.duration");
-        if (config != null && config.slo() != null) {
-            builder.serviceLevelObjectives(config.slo().stream().mapToDouble(Double::doubleValue).toArray());
-        } else {
-            builder.serviceLevelObjectives(1, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 30000, 60000, 90000);
-        }
-        this.successDuration = builder
+    public MicrometerSchedulingMetrics(MeterRegistry meterRegistry, SchedulingMetricsConfig config, String className, String methodName) {
+        var builder = DistributionSummary.builder("scheduling.job.duration")
+            .serviceLevelObjectives(config.slo())
             .baseUnit("milliseconds")
             .tag("code.function", methodName)
-            .tag("code.class", className)
-            .register(meterRegistry);
+            .tag("code.class", className);
+        this.successDuration = builder.register(meterRegistry);
     }
 
     @Override

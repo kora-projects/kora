@@ -57,7 +57,7 @@ record SimpleCircuitBreaker(
     private static final long BOTH_COUNTERS_INC = ERR_COUNTER_INC + COUNTER_INC;
 
     SimpleCircuitBreaker(String name, SimpleCircuitBreakerConfig.NamedConfig config, CircuitBreakerFailurePredicate failurePredicate, CircuitBreakerMetrics metrics) {
-        this(new AtomicLong(CLOSED_STATE), name, config, failurePredicate, metrics, config.waitDurationInOpenState().toMillis(), config.clock());
+        this(new AtomicLong(CLOSED_STATE), name, config, failurePredicate, metrics, config.waitDurationInOpenState().toMillis(), Clock.systemDefaultZone());
         this.metrics.recordState(name, State.CLOSED);
     }
 

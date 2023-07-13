@@ -11,6 +11,8 @@ dependencies {
     compileOnly(libs.kotlin.stdlib.lib)
     compileOnly(libs.kotlin.coroutines.reactor)
 
+    annotationProcessor project(':config:config-annotation-processor')
+
     testFixturesImplementation libs.okhttp
     testFixturesImplementation libs.junit.jupiter
     testFixturesImplementation libs.assertj

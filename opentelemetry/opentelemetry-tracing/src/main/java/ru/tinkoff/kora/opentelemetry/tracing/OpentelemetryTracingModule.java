@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.opentelemetry.tracing;
 
-import com.typesafe.config.Config;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
 import io.opentelemetry.sdk.resources.Resource;
@@ -12,20 +11,17 @@ import io.opentelemetry.sdk.trace.samplers.Sampler;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.LifecycleWrapper;
 import ru.tinkoff.kora.common.DefaultComponent;
+import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.opentelemetry.module.OpentelemetryModule;
 
 import javax.annotation.Nullable;
-import java.util.Map;
 import java.util.function.Supplier;
 
 public interface OpentelemetryTracingModule extends OpentelemetryModule {
 
     default OpentelemetryResourceConfig opentelemetryResourceConfig(Config config, ConfigValueExtractor<OpentelemetryResourceConfig> extractor) {
-        if (!config.hasPath("tracing.attributes")) {
-            return new OpentelemetryResourceConfig(Map.of());
-        }
-        return extractor.extract(config.getValue("tracing"));
+        return extractor.extract(config.get("tracing"));
     }
 
     default Resource opentelemetryTracingResource(OpentelemetryResourceConfig config) {

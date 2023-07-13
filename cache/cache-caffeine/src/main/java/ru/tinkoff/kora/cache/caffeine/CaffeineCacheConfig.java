@@ -1,25 +1,26 @@
 package ru.tinkoff.kora.cache.caffeine;
 
 
+import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.time.Duration;
 import java.util.Map;
 
-public record CaffeineCacheConfig(@Nullable Map<String, NamedCacheConfig> caffeine) {
+@ConfigValueExtractor
+public interface CaffeineCacheConfig {
+    String DEFAULT = "default";
+    NamedCacheConfig DEFAULT_CONFIG = new NamedCacheConfig(null, null, 100_000L, null);
 
-    private static final String DEFAULT = "default";
-
-    private static final NamedCacheConfig DEFAULT_CONFIG = new NamedCacheConfig(null, null, 100_000L, null);
+    default Map<String, NamedCacheConfig> caffeine() {
+        return Map.of();
+    }
 
     @Nonnull
-    public NamedCacheConfig getByName(@Nonnull String name) {
-        if (caffeine == null) {
-            return DEFAULT_CONFIG;
-        }
-
-        final NamedCacheConfig defaultConfig = caffeine.getOrDefault(DEFAULT, DEFAULT_CONFIG);
-        final NamedCacheConfig namedConfig = caffeine.get(name);
+    default NamedCacheConfig getByName(@Nonnull String name) {
+        final NamedCacheConfig defaultConfig = this.caffeine().getOrDefault(DEFAULT, DEFAULT_CONFIG);
+        final NamedCacheConfig namedConfig = this.caffeine().get(name);
         if (namedConfig == null) {
             return defaultConfig;
         }
@@ -32,10 +33,12 @@ public record CaffeineCacheConfig(@Nullable Map<String, NamedCacheConfig> caffei
         );
     }
 
-    public record NamedCacheConfig(@Nullable Duration expireAfterWrite,
-                                   @Nullable Duration expireAfterAccess,
-                                   @Nullable Long maximumSize,
-                                   @Nullable Integer initialSize) {
+    @ConfigValueExtractor
+    record NamedCacheConfig(
+        @Nullable Duration expireAfterWrite,
+        @Nullable Duration expireAfterAccess,
+        @Nullable Long maximumSize,
+        @Nullable Integer initialSize) {
 
     }
 }

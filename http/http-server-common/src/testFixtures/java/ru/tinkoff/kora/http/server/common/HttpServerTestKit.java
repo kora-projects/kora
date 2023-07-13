@@ -24,6 +24,7 @@ import ru.tinkoff.kora.common.util.ByteBufferFluxInputStream;
 import ru.tinkoff.kora.common.util.ReactorUtils;
 import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.HttpResultCode;
+import ru.tinkoff.kora.http.server.common.$HttpServerConfig_ConfigValueExtractor.HttpServerConfig_Impl;
 import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
 import ru.tinkoff.kora.http.server.common.telemetry.DefaultHttpServerTelemetry;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerLogger;
@@ -56,14 +57,12 @@ import static ru.tinkoff.kora.http.common.HttpMethod.POST;
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public abstract class HttpServerTestKit {
     protected static PrivateApiMetrics registry = Mockito.mock(PrivateApiMetrics.class);
-    private ReadinessProbe readinessProbe = Mockito.mock(ReadinessProbe.class);
-    private SettablePromiseOf<ReadinessProbe> readinessProbePromise = new SettablePromiseOf<>(readinessProbe);
-    private LivenessProbe livenessProbe = Mockito.mock(LivenessProbe.class);
-    private SettablePromiseOf<LivenessProbe> livenessProbePromise = new SettablePromiseOf<>(livenessProbe);
+    private final ReadinessProbe readinessProbe = Mockito.mock(ReadinessProbe.class);
+    private final SettablePromiseOf<ReadinessProbe> readinessProbePromise = new SettablePromiseOf<>(readinessProbe);
+    private final LivenessProbe livenessProbe = Mockito.mock(LivenessProbe.class);
+    private final SettablePromiseOf<LivenessProbe> livenessProbePromise = new SettablePromiseOf<>(livenessProbe);
 
-
-
-    private static ValueOf<HttpServerConfig> config = valueOf(new HttpServerConfig(0, 0, HttpServerConfig.DEFAULT_PRIVATE_API_METRICS_PATH, HttpServerConfig.DEFAULT_PRIVATE_API_READINESS_PATH, HttpServerConfig.DEFAULT_PRIVATE_API_LIVENESS_PATH, false, 1, 10, 1));
+    private static final ValueOf<HttpServerConfig> config = valueOf($HttpServerConfig_ConfigValueExtractor.DEFAULTS);
 
     private final PrivateApiHandler privateApiHandler = new PrivateApiHandler(config, valueOf(Optional.of(registry)), All.of(readinessProbePromise), All.of(livenessProbePromise));
 
@@ -673,7 +672,7 @@ public abstract class HttpServerTestKit {
         var handlerList = Stream.of(handlers)
             .map(HttpServerTestKit::valueOf)
             .toList();
-        var config = new HttpServerConfig(0, 0, HttpServerConfig.DEFAULT_PRIVATE_API_METRICS_PATH, HttpServerConfig.DEFAULT_PRIVATE_API_READINESS_PATH, HttpServerConfig.DEFAULT_PRIVATE_API_LIVENESS_PATH, ignoreTrailingSlash, 1, 10, 1);
+        var config = new HttpServerConfig_Impl(0, 0, "/metrics", "/system/readiness", "/system/liveness", ignoreTrailingSlash, 1, 10, Duration.ofMillis(1));
         var publicApiHandler = new PublicApiHandler(All.of(handlerList), All.of(interceptorsList), valueOf(new DefaultHttpServerTelemetry(this.metrics, this.logger, null)), valueOf(config));
         this.httpServer = this.httpServer(valueOf(config), publicApiHandler);
         this.httpServer.init().block();
@@ -715,6 +714,7 @@ public abstract class HttpServerTestKit {
     Request.Builder privateApiRequest(String path) {
         return request(this.privateHttpServer.port(), path);
     }
+
     Request.Builder request(String path) {
         return request(this.httpServer.port(), path);
     }

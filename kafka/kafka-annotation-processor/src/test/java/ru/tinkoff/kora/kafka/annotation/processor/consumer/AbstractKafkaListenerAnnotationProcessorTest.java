@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.kafka.annotation.processor.consumer;
 
-import com.typesafe.config.Config;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -17,6 +16,7 @@ import ru.tinkoff.kora.annotation.processor.common.CompileResult;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.kafka.common.config.KafkaConsumerConfig;
 import ru.tinkoff.kora.kafka.common.consumer.containers.ConsumerRecordWrapper;

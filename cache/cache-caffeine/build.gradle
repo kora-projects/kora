@@ -1,5 +1,6 @@
 dependencies {
     api project(":cache:cache-common")
+    annotationProcessor project(':config:config-annotation-processor')
 
     implementation project(":config:config-common")
     implementation libs.caffeine

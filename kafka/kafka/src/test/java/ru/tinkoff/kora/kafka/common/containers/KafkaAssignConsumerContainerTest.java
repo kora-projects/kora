@@ -13,7 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.common.util.Either;
-import ru.tinkoff.kora.kafka.common.config.KafkaConsumerConfig;
+import ru.tinkoff.kora.kafka.common.config.$KafkaConsumerConfig_ConfigValueExtractor.KafkaConsumerConfig_Impl;
 import ru.tinkoff.kora.kafka.common.consumer.containers.KafkaAssignConsumerContainer;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
 import ru.tinkoff.kora.test.kafka.KafkaParams;
@@ -43,7 +43,7 @@ class KafkaAssignConsumerContainerTest {
         driverProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, params.bootstrapServers());
         driverProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         var testTopic = params.createTopic("test-topic", 3);
-        var config = new KafkaConsumerConfig(driverProps, List.of(testTopic), null, null, Either.right("earliest"), Duration.ofMillis(100), null, Integer.valueOf(2), Duration.ofSeconds(1));
+        var config = new KafkaConsumerConfig_Impl(driverProps, List.of(testTopic), null, null, Either.right("earliest"), Duration.ofMillis(100), Duration.ofMillis(100), Integer.valueOf(2), Duration.ofSeconds(1));
         var deque = new ConcurrentLinkedDeque<>();
         @SuppressWarnings("unchecked")
         var telemetry = (KafkaConsumerTelemetry<String, Integer>) Mockito.mock(KafkaConsumerTelemetry.class);

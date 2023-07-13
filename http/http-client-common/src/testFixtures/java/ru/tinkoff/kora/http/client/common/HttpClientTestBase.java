@@ -33,6 +33,8 @@ import ru.tinkoff.kora.opentelemetry.module.http.client.OpentelemetryHttpClientT
 
 import java.io.IOException;
 
+import static java.time.Duration.ofMillis;
+
 @TestMethodOrder(MethodOrderer.Random.class)
 public abstract class HttpClientTestBase {
     protected static final LoggerContext ctx = (LoggerContext) LoggerFactory.getILoggerFactory();
@@ -46,7 +48,7 @@ public abstract class HttpClientTestBase {
         .setNoParent()
         .startSpan();
     protected final OpentelemetryContext rootTelemetry = OpentelemetryContext.get(Context.current());
-    private final HttpClient baseClient = this.createClient(new HttpClientConfig(100, 500, null, null));
+    private final HttpClient baseClient = this.createClient(new $HttpClientConfig_ConfigValueExtractor.HttpClientConfig_Impl(ofMillis(100), ofMillis(500), null, false));
 
     private final HttpClient client = this.baseClient
         .with(new TelemetryInterceptor(new DefaultHttpClientTelemetry(

@@ -10,7 +10,7 @@ import ru.tinkoff.kora.common.Module
 import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor
-import com.typesafe.config.Config
+import ru.tinkoff.kora.config.common.Config
 
 import ru.tinkoff.kora.http.client.common.interceptor.*
 import ru.tinkoff.kora.http.common.auth.*
@@ -28,7 +28,7 @@ interface ApiSecurity {
     @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class)
     fun {{name}}Config(config: Config): String {
         val configPath = "{{#hasSecurityConfigPrefix}}{{securityConfigPrefix}}.{{/hasSecurityConfigPrefix}}{{name}}"
-        return config.getString(configPath)
+        return config.get(configPath).asString()
     }
 
     @DefaultComponent
@@ -42,7 +42,8 @@ interface ApiSecurity {
 
     fun {{name}}Config(config: Config, extractor: ConfigValueExtractor<{{#lambda.classname}}{{name}}{{/lambda.classname}}Config>): {{#lambda.classname}}{{name}}{{/lambda.classname}}Config {
         val configPath = "{{#hasSecurityConfigPrefix}}{{securityConfigPrefix}}.{{/hasSecurityConfigPrefix}}{{name}}"
-        return extractor.extract(config.getValue(configPath))
+        val configValue = config.get(configPath)
+        return extractor.extract(configValue) ?: throw ru.tinkoff.kora.config.common.extractor.ConfigValueExtractionException.missingValueAfterParse(configValue)
     }
 
     @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class)

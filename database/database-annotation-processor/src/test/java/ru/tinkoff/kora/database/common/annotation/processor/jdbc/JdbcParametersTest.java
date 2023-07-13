@@ -117,13 +117,12 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
 
     @Test
     public void testAbstractClassRepository() throws SQLException {
-        var config = new JdbcDatabaseConfig("1", "2", "3", "4",
-            null, null, null, null, null, null, null, null, null);
+        var config = Mockito.mock(JdbcDatabaseConfig.class);
         var repository = compileForArgs(List.of(config, executor), """
             import ru.tinkoff.kora.database.jdbc.JdbcDatabaseConfig;
             @Repository
             public abstract class TestRepository implements JdbcRepository {
-            
+                        
                 private final JdbcDatabaseConfig config;
                 
                 public TestRepository(JdbcDatabaseConfig config) {

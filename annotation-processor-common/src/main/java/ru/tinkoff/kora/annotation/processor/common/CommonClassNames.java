@@ -41,6 +41,8 @@ public class CommonClassNames {
     public static final ClassName koraGenerated = ClassName.get("ru.tinkoff.kora.common.annotation", "Generated");
     public static final ClassName list = ClassName.get(List.class);
 
+    public static final ClassName config = ClassName.get("ru.tinkoff.kora.config.common", "Config");
     public static final ClassName configValueExtractor = ClassName.get("ru.tinkoff.kora.config.common.extractor", "ConfigValueExtractor");
-    public static final ClassName config = ClassName.get("com.typesafe.config", "Config");
+    public static final ClassName configValue = ClassName.get("ru.tinkoff.kora.config.common", "ConfigValue");
+    public static final ClassName configValueExtractionException = ClassName.get("ru.tinkoff.kora.config.common.extractor", "ConfigValueExtractionException");
 }

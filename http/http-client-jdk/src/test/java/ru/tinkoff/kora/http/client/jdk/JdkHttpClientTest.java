@@ -11,7 +11,7 @@ class JdkHttpClientTest extends HttpClientTest {
     @Override
     protected HttpClient createClient(HttpClientConfig config) {
         var client = java.net.http.HttpClient.newBuilder()
-            .connectTimeout(Duration.ofMillis(config.connectTimeout()));
+            .connectTimeout(config.connectTimeout());
         return new JdkHttpClient(client.build());
     }
 }

@@ -1,87 +1,75 @@
 package ru.tinkoff.kora.database.jdbc;
 
 import com.zaxxer.hikari.HikariConfig;
+import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
 import javax.annotation.Nullable;
 import java.time.Duration;
 import java.util.Properties;
 
-public record JdbcDatabaseConfig(
-    String username,
-    String password,
-    String jdbcUrl,
-    String poolName,
+@ConfigValueExtractor
+public interface JdbcDatabaseConfig {
+    String username();
+
+    String password();
+
+    String jdbcUrl();
+
+    String poolName();
+
     @Nullable
-    String schema,
-    Duration connectionTimeout,
-    Duration validationTimeout,
-    Duration idleTimeout,
-    Duration maxLifetime,
-    Duration leakDetectionThreshold,
-    int maxPoolSize,
-    int minIdle,
-    Properties dsProperties
-) {
+    String schema();
 
-    public JdbcDatabaseConfig(
-        String username,
-        String password,
-        String jdbcUrl,
-        String poolName,
-        @Nullable String schema,
-        @Nullable Duration connectionTimeout,
-        @Nullable Duration validationTimeout,
-        @Nullable Duration idleTimeout,
-        @Nullable Duration maxLifetime,
-        @Nullable Duration leakDetectionThreshold,
-        @Nullable Integer maxPoolSize,
-        @Nullable Integer minIdle,
-        @Nullable Properties dsProperties) {
-        this(username,
-            password,
-            jdbcUrl,
-            poolName,
-            schema,
-            connectionTimeout != null ? connectionTimeout : Duration.ofSeconds(30),
-            validationTimeout != null ? validationTimeout : Duration.ofSeconds(5),
-            idleTimeout != null ? idleTimeout : Duration.ofMinutes(10),
-            maxLifetime != null ? maxLifetime : Duration.ofMinutes(30),
-            leakDetectionThreshold != null ? leakDetectionThreshold : Duration.ZERO,
-            maxPoolSize != null ? maxPoolSize : 10,
-            minIdle != null ? minIdle : 0,
-            dsProperties != null ? props(dsProperties) : new Properties()
-        );
+    default Duration connectionTimeout() {
+        return Duration.ofSeconds(10);
     }
 
-    private static Properties props(Properties props) {
-        var properties = new Properties();
-        properties.putAll(props);
-        return properties;
+    default Duration validationTimeout() {
+        return Duration.ofSeconds(5);
     }
 
-    public JdbcDatabaseConfig {
-        assert dsProperties != null;
+    default Duration idleTimeout() {
+        return Duration.ofMinutes(60);
     }
 
-    public HikariConfig toHikariConfig() {
-        var config = new HikariConfig();
-        config.setConnectionTimeout(this.connectionTimeout.toMillis());
-        config.setValidationTimeout(this.validationTimeout.toMillis());
-        config.setIdleTimeout(this.idleTimeout.toMillis());
-        config.setMaxLifetime(this.maxLifetime.toMillis());
-        config.setLeakDetectionThreshold(this.leakDetectionThreshold.toMillis());
-        config.setMaximumPoolSize(this.maxPoolSize);
-        config.setMinimumIdle(this.minIdle);
-        config.setUsername(this.username);
-        config.setPassword(this.password);
-        config.setJdbcUrl(this.jdbcUrl);
-        config.setPoolName(this.poolName);
-        config.setInitializationFailTimeout(-1);
-        config.setAutoCommit(true);
-        config.setSchema(this.schema);
-        config.setDataSourceProperties(this.dsProperties);
-        config.setRegisterMbeans(false);
+    default Duration maxLifetime() {
+        return Duration.ofMinutes(30);
+    }
 
-        return config;
+    default Duration leakDetectionThreshold() {
+        return Duration.ofSeconds(0);
+    }
+
+    default int maxPoolSize() {
+        return 10;
+    }
+
+    default int minIdle() {
+        return 0;
+    }
+
+    default Properties dsProperties() {
+        return new Properties();
+    }
+
+    static HikariConfig toHikariConfig(JdbcDatabaseConfig config) {
+        var hikariConfig = new HikariConfig();
+        hikariConfig.setConnectionTimeout(config.connectionTimeout().toMillis());
+        hikariConfig.setValidationTimeout(config.validationTimeout().toMillis());
+        hikariConfig.setIdleTimeout(config.idleTimeout().toMillis());
+        hikariConfig.setMaxLifetime(config.maxLifetime().toMillis());
+        hikariConfig.setLeakDetectionThreshold(config.leakDetectionThreshold().toMillis());
+        hikariConfig.setMaximumPoolSize(config.maxPoolSize());
+        hikariConfig.setMinimumIdle(config.minIdle());
+        hikariConfig.setUsername(config.username());
+        hikariConfig.setPassword(config.password());
+        hikariConfig.setJdbcUrl(config.jdbcUrl());
+        hikariConfig.setPoolName(config.poolName());
+        hikariConfig.setInitializationFailTimeout(-1);
+        hikariConfig.setAutoCommit(true);
+        hikariConfig.setSchema(config.schema());
+        hikariConfig.setDataSourceProperties(config.dsProperties());
+        hikariConfig.setRegisterMbeans(false);
+        return hikariConfig;
     }
 }

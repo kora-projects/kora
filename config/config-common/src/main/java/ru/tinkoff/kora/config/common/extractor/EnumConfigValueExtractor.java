@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.config.common.extractor;
 
-import com.typesafe.config.ConfigValue;
-import com.typesafe.config.ConfigValueType;
+import ru.tinkoff.kora.config.common.ConfigValue;
 
 import java.util.HashMap;
 
@@ -16,9 +15,9 @@ public class EnumConfigValueExtractor<T extends Enum<T>> implements ConfigValueE
     }
 
     @Override
-    public T extract(ConfigValue value) {
-        if (value.valueType() == ConfigValueType.STRING) {
-            var str = value.unwrapped().toString();
+    public T extract(ConfigValue<?> value) {
+        if (value instanceof ConfigValue.StringValue stringValue) {
+            var str = stringValue.value();
             var enumValue = this.map.get(str);
             if (enumValue == null) {
                 throw ConfigValueExtractionException.parsingError(value, new IllegalArgumentException("Unknown enum value: " + str));
@@ -26,6 +25,6 @@ public class EnumConfigValueExtractor<T extends Enum<T>> implements ConfigValueE
             return enumValue;
         }
 
-        throw ConfigValueExtractionException.unexpectedValueType(value, ConfigValueType.STRING);
+        throw ConfigValueExtractionException.unexpectedValueType(value, ConfigValue.StringValue.class);
     }
 }

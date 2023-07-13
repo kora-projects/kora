@@ -230,7 +230,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
             .body("test-request".getBytes(StandardCharsets.UTF_8))
             .build();
 
-        var base = this.createClient(new HttpClientConfig(Duration.ofMillis(100), Duration.ofMillis(100), null, null));
+        var base = this.createClient(new $HttpClientConfig_ConfigValueExtractor.HttpClientConfig_Impl(Duration.ofMillis(100), Duration.ofMillis(100), null, false));
         var client = base
             .with(new TelemetryInterceptor(new DefaultHttpClientTelemetry(
                 new OpentelemetryHttpClientTracer(this.tracer),

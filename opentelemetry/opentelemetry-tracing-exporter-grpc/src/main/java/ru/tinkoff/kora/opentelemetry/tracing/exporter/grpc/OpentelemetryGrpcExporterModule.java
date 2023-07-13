@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.opentelemetry.tracing.exporter.grpc;
 
-import com.typesafe.config.Config;
 import io.grpc.netty.NettyChannelBuilder;
 import io.netty.channel.EventLoopGroup;
 import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
@@ -10,6 +9,8 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.LifecycleWrapper;
 import ru.tinkoff.kora.common.DefaultComponent;
+import ru.tinkoff.kora.config.common.Config;
+import ru.tinkoff.kora.config.common.ConfigValue;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.netty.common.NettyCommonModule;
 import ru.tinkoff.kora.opentelemetry.tracing.OpentelemetryTracingModule;
@@ -45,10 +46,10 @@ public interface OpentelemetryGrpcExporterModule extends NettyCommonModule, Open
     }
 
     default OpentelemetryGrpcExporterConfig otlpGrpcSpanExporterConfig(Config config, ConfigValueExtractor<OpentelemetryGrpcExporterConfig.FromConfig> extractor) {
-        if (!config.hasPath("tracing.exporter")) {
+        var value = config.get("tracing.exporter");
+        if (value instanceof ConfigValue.NullValue) {
             return new OpentelemetryGrpcExporterConfig.Empty();
         }
-        var value = config.getValue("tracing.exporter");
         return extractor.extract(value);
     }
 

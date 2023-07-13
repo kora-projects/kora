@@ -2,17 +2,21 @@ package ru.tinkoff.kora.annotation.processor.common;
 
 import com.squareup.javapoet.*;
 
+import javax.annotation.Nullable;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public class FieldFactory {
     private final Types types;
+    private final Elements elements;
     private final TypeSpec.Builder builder;
     private final MethodSpec.Builder constructor;
     private final Map<FieldKey, String> fields = new HashMap<>();
@@ -46,8 +50,9 @@ public class FieldFactory {
 
     record FieldKey(TypeName typeName, Set<String> tags) {}
 
-    public FieldFactory(Types types, TypeSpec.Builder builder, MethodSpec.Builder constructor, String prefix) {
+    public FieldFactory(Types types, Elements elements, TypeSpec.Builder builder, MethodSpec.Builder constructor, String prefix) {
         this.types = types;
+        this.elements = elements;
         this.builder = builder;
         this.constructor = constructor;
         this.prefix = prefix;
@@ -99,6 +104,39 @@ public class FieldFactory {
             this.constructor.addStatement("this.$N = new $T()", name, typeName);
         } else {
             this.constructor.addParameter(typeName, name);
+            this.constructor.addStatement("this.$N = $N", name, name);
+        }
+        return name;
+    }
+
+    public String add(@Nullable CommonUtils.MappingData mapping, TypeName defaultType) {
+        var tags = mapping == null
+            ? Set.<String>of()
+            : mapping.mapperTags();
+        var typeName = mapping == null
+            ? defaultType
+            : TypeName.get(Objects.requireNonNull(mapping.mapperClass()));
+        var typeElement = typeName instanceof ParameterizedTypeName ptn
+            ? this.elements.getTypeElement(ptn.rawType.canonicalName())
+            : this.elements.getTypeElement(((ClassName) typeName).canonicalName());
+
+        var key = new FieldKey(typeName, tags);
+        var existed = this.fields.get(key);
+        if (existed != null) {
+            return existed;
+        }
+        var name = this.prefix + (this.fields.size() + 1);
+        this.fields.put(key, name);
+        this.builder.addField(typeName, name, Modifier.PRIVATE, Modifier.FINAL);
+        if (tags.isEmpty() && CommonUtils.hasDefaultConstructorAndFinal(typeElement)) {
+            this.constructor.addStatement("this.$N = new $T()", name, typeName);
+        } else {
+            var parameter = ParameterSpec.builder(typeName, name);
+            var tag = CommonUtils.toTagAnnotation(tags);
+            if (tag != null) {
+                parameter.addAnnotation(tag);
+            }
+            this.constructor.addParameter(parameter.build());
             this.constructor.addStatement("this.$N = $N", name, name);
         }
         return name;

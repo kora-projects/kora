@@ -1,20 +1,21 @@
 package ru.tinkoff.kora.resilient.annotation.processor.aop.testdata;
 
-import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import ru.tinkoff.kora.common.KoraApp;
-import ru.tinkoff.kora.config.common.ConfigModule;
+import ru.tinkoff.kora.config.common.Config;
+import ru.tinkoff.kora.config.common.DefaultConfigExtractorsModule;
+import ru.tinkoff.kora.config.common.origin.SimpleConfigOrigin;
+import ru.tinkoff.kora.config.hocon.HoconConfigFactory;
 import ru.tinkoff.kora.resilient.circuitbreaker.simple.CircuitBreakerModule;
 import ru.tinkoff.kora.resilient.fallback.simple.FallbackModule;
 import ru.tinkoff.kora.resilient.retry.simple.RetryableModule;
 import ru.tinkoff.kora.resilient.timeout.simple.TimeoutModule;
 
 @KoraApp
-public interface AppWithConfig extends CircuitBreakerModule, FallbackModule, TimeoutModule, RetryableModule, ConfigModule {
+public interface AppWithConfig extends CircuitBreakerModule, FallbackModule, TimeoutModule, RetryableModule, DefaultConfigExtractorsModule {
 
-    @Override
     default Config config() {
-        return ConfigFactory.parseString(
+        return HoconConfigFactory.fromHocon(new SimpleConfigOrigin("test"), ConfigFactory.parseString(
             """
                 resilient {
                   circuitbreaker {
@@ -39,6 +40,6 @@ public interface AppWithConfig extends CircuitBreakerModule, FallbackModule, Tim
                   }
                 }
                 """
-        ).resolve();
+        ).resolve());
     }
 }

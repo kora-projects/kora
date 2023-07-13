@@ -40,7 +40,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
     @Override
     public Mono<Void> release() {
         return Mono.fromRunnable(() -> this.state.set(HttpServerState.SHUTDOWN))
-            .then(Mono.delay(Duration.ofMillis(this.config.get().shutdownWait())))
+            .then(Mono.delay(this.config.get().shutdownWait()))
             .then(ReactorUtils.ioMono(() -> {
                 logger.debug("Stopping Public HTTP Server (Undertow)...");
                 final long started = System.nanoTime();

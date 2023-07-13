@@ -5,13 +5,11 @@ import ru.tinkoff.kora.micrometer.module.MetricsConfig.SchedulingMetricsConfig;
 import ru.tinkoff.kora.scheduling.common.telemetry.SchedulingMetrics;
 import ru.tinkoff.kora.scheduling.common.telemetry.SchedulingMetricsFactory;
 
-import javax.annotation.Nullable;
-
 public class MicrometerSchedulingMetricsFactory implements SchedulingMetricsFactory {
     private final MeterRegistry meterRegistry;
     private final SchedulingMetricsConfig config;
 
-    public MicrometerSchedulingMetricsFactory(MeterRegistry meterRegistry, @Nullable SchedulingMetricsConfig config) {
+    public MicrometerSchedulingMetricsFactory(MeterRegistry meterRegistry, SchedulingMetricsConfig config) {
         this.meterRegistry = meterRegistry;
         this.config = config;
     }

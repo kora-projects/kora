@@ -6,10 +6,13 @@ import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.http.common.HttpHeaders;
+import ru.tinkoff.kora.http.server.common.$HttpServerConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.common.SimpleHttpServerResponse;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandlerImpl;
+
+import java.time.Duration;
 
 class PublicApiHandlerTest {
 
@@ -137,7 +140,7 @@ class PublicApiHandlerTest {
     }
 
     private HttpServerConfig config(boolean ignoreTrailingSlash) {
-        return new HttpServerConfig(null, null, null, null, null, ignoreTrailingSlash, null, null, null);
+        return new $HttpServerConfig_ConfigValueExtractor.HttpServerConfig_Impl(0, 0, "/metrics", "/system/readiness", "/system/liveness", ignoreTrailingSlash, 1, 10, Duration.ofMillis(1));
     }
 
     private HttpServerRequestHandler handler(String method, String route) {

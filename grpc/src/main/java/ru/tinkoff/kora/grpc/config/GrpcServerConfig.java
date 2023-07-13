@@ -1,12 +1,10 @@
 package ru.tinkoff.kora.grpc.config;
 
-import javax.annotation.Nullable;
+import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
-public record GrpcServerConfig(int port) {
-
-    public GrpcServerConfig(@Nullable Integer port) {
-        this(
-            port != null ? port : 8090
-        );
+@ConfigValueExtractor
+public interface GrpcServerConfig {
+    default int port() {
+        return 8090;
     }
 }

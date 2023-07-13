@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.scheduling.annotation.processor;
 
 import com.squareup.javapoet.*;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.annotation.processor.common.RecordClassBuilder;
@@ -18,6 +19,7 @@ import javax.lang.model.util.Types;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.Optional;
 
 public class JdkSchedulingGenerator {
     private static final ClassName fixedDelayJobClassName = ClassName.get("ru.tinkoff.kora.scheduling.jdk", "FixedDelayJob");
@@ -210,7 +212,7 @@ public class JdkSchedulingGenerator {
     private static MethodSpec configComponent(String packageName, String configClassName, String configPath) {
         return MethodSpec.methodBuilder(configClassName)
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
-            .addParameter(ClassName.get("com.typesafe.config", "Config"), "config")
+            .addParameter(CommonClassNames.config, "config")
             .addParameter(
                 ParameterizedTypeName.get(
                     ClassName.get("ru.tinkoff.kora.config.common.extractor", "ConfigValueExtractor"),
@@ -218,8 +220,8 @@ public class JdkSchedulingGenerator {
                 ),
                 "extractor"
             )
-            .addCode("var configValue = config.getValue($S);\n", configPath)
-            .addCode("return extractor.extract(configValue);\n")
+            .addCode("var configValue = config.get($S);\n", configPath)
+            .addStatement("return $T.ofNullable(extractor.extract(configValue)).orElseThrow(() -> $T.missingValueAfterParse(configValue))", Optional.class, CommonClassNames.configValueExtractionException)
             .returns(ClassName.get(packageName, configClassName))
             .build();
 

@@ -160,6 +160,20 @@ public class CommonUtils {
         return NameUtils.getOuterClassesAsPrefix(element);
     }
 
+    public static String generatedName(Element element, ClassName suffix) {
+        return generatedName(element, suffix.simpleName());
+    }
+
+    public static String generatedName(Element element, String suffix) {
+        var prefix = new StringBuilder("$");
+        var parent = element.getEnclosingElement();
+        while (parent.getKind() != ElementKind.PACKAGE) {
+            prefix.insert(1, parent.getSimpleName().toString() + "_");
+            parent = parent.getEnclosingElement();
+        }
+        return prefix.toString() + element.getSimpleName() + "_" + suffix;
+    }
+
     public static List<ExecutableElement> findConstructors(TypeElement typeElement, Predicate<Set<Modifier>> modifiersFilter) {
         var result = new ArrayList<ExecutableElement>();
         for (var element : typeElement.getEnclosedElements()) {

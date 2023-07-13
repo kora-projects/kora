@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.http.client.annotation.processor;
 
 import com.squareup.javapoet.*;
-import com.typesafe.config.Config;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.common.Module;
 import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
@@ -11,6 +11,7 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
+import java.util.Optional;
 
 public class ConfigModuleGenerator {
     private final Elements elements;
@@ -41,10 +42,10 @@ public class ConfigModuleGenerator {
             .addMethod(MethodSpec.methodBuilder(lowercaseName + "Config")
                 .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
                 .returns(configClass)
-                .addParameter(ParameterSpec.builder(Config.class, "config").build())
+                .addParameter(ParameterSpec.builder(CommonClassNames.config, "config").build())
                 .addParameter(ParameterSpec.builder(extractorClass, "extractor").build())
-                .addStatement("var value = config.getValue($S)", configPath)
-                .addStatement("return extractor.extract(value)")
+                .addStatement("var value = config.get($S)", configPath)
+                .addStatement("return $T.ofNullable(extractor.extract(value)).orElseThrow(() -> $T.missingValueAfterParse(value))", Optional.class, CommonClassNames.configValueExtractionException)
                 .build());
 
         return JavaFile.builder(packageName, type.build()).build();

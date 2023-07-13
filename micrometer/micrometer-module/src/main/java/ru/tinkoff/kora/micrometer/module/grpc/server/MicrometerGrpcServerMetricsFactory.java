@@ -30,13 +30,9 @@ public final class MicrometerGrpcServerMetricsFactory implements GrpcServerMetri
     }
 
     private GrpcServerMetrics buildMetrics(MetricsKey metricsKey) {
-        var durationBuilder = DistributionSummary.builder("rpc.server.duration");
-        if (this.config != null && this.config.slo() != null) {
-            durationBuilder.serviceLevelObjectives(this.config.slo().stream().mapToDouble(Double::doubleValue).toArray());
-        } else {
-            durationBuilder.serviceLevelObjectives(1, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 30000, 60000, 90000);
-        }
-        var duration = durationBuilder.baseUnit("milliseconds")
+        var duration = DistributionSummary.builder("rpc.server.duration")
+            .serviceLevelObjectives(this.config.slo())
+            .baseUnit("milliseconds")
             .tag("rpc.system", "grpc")
             .tag("rpc.service", metricsKey.serviceName)
             .tag("rpc.method", metricsKey.methodName)

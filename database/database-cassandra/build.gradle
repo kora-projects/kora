@@ -3,5 +3,7 @@ dependencies {
     api project(":database:database-common")
     api libs.cassandra.driver
 
+    annotationProcessor project(':config:config-annotation-processor')
+
     testImplementation project(':test:test-cassandra')
 }

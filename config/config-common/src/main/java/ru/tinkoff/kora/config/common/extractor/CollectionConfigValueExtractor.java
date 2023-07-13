@@ -1,9 +1,7 @@
 package ru.tinkoff.kora.config.common.extractor;
 
-import com.typesafe.config.ConfigList;
-import com.typesafe.config.ConfigValue;
-import com.typesafe.config.ConfigValueFactory;
-import com.typesafe.config.ConfigValueType;
+
+import ru.tinkoff.kora.config.common.ConfigValue;
 
 import java.util.Collection;
 
@@ -16,29 +14,23 @@ public abstract class CollectionConfigValueExtractor<T, C extends Collection<T>>
     }
 
     @Override
-    public C extract(ConfigValue value) {
-        return switch (value.valueType()) {
-            case NULL -> null;
-            case STRING -> {
-                var values = ((String) value.unwrapped()).split(",");
-                var result = newCollection(values.length);
-                for (String stringValue : values) {
-                    var listValue = ConfigValueFactory.fromAnyRef(stringValue).withOrigin(value.origin());
-                    result.add(elementValueExtractor.extract(listValue));
-                }
-
-                yield result;
+    public C extract(ConfigValue<?> value) {
+        if (value instanceof ConfigValue.StringValue str) {
+            var values = str.value().split(",");
+            var result = newCollection(values.length);
+            for (var stringValue : values) {
+                var listValue = new ConfigValue.StringValue(str.origin(), stringValue.trim());
+                result.add(elementValueExtractor.extract(listValue));
             }
-            case LIST -> {
-                var configList = ((ConfigList) value);
-                var result = newCollection(configList.size());
-                for (ConfigValue configValue : configList) {
-                    result.add(elementValueExtractor.extract(configValue));
-                }
-                yield result;
+            return result;
+        }
+        if (value instanceof ConfigValue.ArrayValue array) {
+            var result = newCollection(array.value().size());
+            for (var element : array) {
+                result.add(elementValueExtractor.extract(element));
             }
-            default -> throw ConfigValueExtractionException.unexpectedValueType(value, ConfigValueType.LIST);
-        };
+        }
+        throw ConfigValueExtractionException.unexpectedValueType(value, ConfigValue.ArrayValue.class);
     }
 
     protected abstract C newCollection(int size);

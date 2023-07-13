@@ -24,6 +24,7 @@ import ru.tinkoff.kora.ksp.common.KspCommonUtils.parametrized
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 
 // JdbcRowMapper<T>
+// JdbcResultSetMapper<T>
 // JdbcResultSetMapper<List<T>>
 class JdbcTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val codeGenerator: CodeGenerator) : KoraExtension {
     private val entityReader: DbEntityReader = DbEntityReader(

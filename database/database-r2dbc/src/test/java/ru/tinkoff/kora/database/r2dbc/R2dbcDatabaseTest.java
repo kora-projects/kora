@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ExtendWith(PostgresTestContainer.class)
 class R2dbcDatabaseTest {
     private static void withDb(PostgresParams params, Consumer<R2dbcDatabase> consumer) {
-        var config = new R2dbcDatabaseConfig(
+        var config = new $R2dbcDatabaseConfig_ConfigValueExtractor.R2dbcDatabaseConfig_Impl(
             "r2dbc:postgres://%s:%d/%s".formatted(params.host(), params.port(), params.db()),
             params.user(),
             params.password(),

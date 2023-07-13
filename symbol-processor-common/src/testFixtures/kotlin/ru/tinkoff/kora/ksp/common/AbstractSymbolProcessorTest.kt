@@ -10,6 +10,7 @@ import org.junit.jupiter.api.TestInfo
 import org.junit.jupiter.api.TestInstance
 import java.io.File
 import java.lang.reflect.Method
+import java.net.URLClassLoader
 import java.nio.charset.StandardCharsets
 import java.nio.file.*
 import java.util.*
@@ -36,6 +37,9 @@ abstract class AbstractSymbolProcessorTest {
 
     @AfterEach
     fun afterEach() {
+        if (this::compileResult.isInitialized) {
+            compileResult.classLoader.close()
+        }
         val oldRoot = Path.of(".", "build", "in-test-generated-ksp", "ksp", "sources", "kotlin")
         val newRoot = Path.of(".", "build", "in-test-generated-ksp", "sources")
         Files.walk(oldRoot).forEach { oldPath ->
@@ -100,7 +104,7 @@ abstract class AbstractSymbolProcessorTest {
         return this.symbolProcessFiles(sourceList, processors)
     }
 
-    data class CompileResult(val testPackage: String, val exitCode: KotlinCompilation.ExitCode, val classLoader: ClassLoader, val messages: List<String>) {
+    data class CompileResult(val testPackage: String, val exitCode: KotlinCompilation.ExitCode, val classLoader: URLClassLoader, val messages: List<String>) {
         fun loadClass(className: String): Class<*> {
             return classLoader.loadClass("$testPackage.$className")!!
         }

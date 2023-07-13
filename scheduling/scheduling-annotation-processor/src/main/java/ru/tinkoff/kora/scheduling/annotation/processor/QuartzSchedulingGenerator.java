@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.scheduling.annotation.processor;
 
 import com.squareup.javapoet.*;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.annotation.processor.common.RecordClassBuilder;
@@ -68,19 +69,22 @@ public class QuartzSchedulingGenerator {
                 var b = MethodSpec.methodBuilder(configClassName.simpleName())
                     .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
                     .returns(configClassName)
-                    .addParameter(ClassName.get("com.typesafe.config", "Config"), "config");
+                    .addParameter(CommonClassNames.config, "config");
+
                 if (cron != null && !cron.isBlank()) {
-                    b.addCode("if (!config.hasPath($S)) {\n  return new $T($S);\n}\n", configPath, configClassName, cron);
+                    b.addStatement("var value = config.get($S)", configPath);
+                    b.addCode("if (value instanceof $T.NullValue) {\n  return new $T($S);\n}\n", CommonClassNames.configValue, configClassName, cron);
+                } else {
+                    b.addStatement("var value = config.get($S)");
                 }
-                module.addMethod(b.addCode("""
-                        var value = config.getValue($S);
-                        var cron = switch (value.valueType()) {
-                            case STRING -> value.unwrapped().toString();
-                            default -> throw ru.tinkoff.kora.config.common.extractor.ConfigValueExtractionException.unexpectedValueType(value, com.typesafe.config.ConfigValueType.STRING);
-                        };
-                        """.stripIndent(), configPath)
-                    .addCode("return new $T(cron);\n", configClassName)
-                    .build());
+                b.beginControlFlow("if (value instanceof $T.StringValue str)", CommonClassNames.configValue)
+                    .addStatement("var cron = str.value();")
+                    .addStatement("return new $T(cron)", configClassName)
+                    .nextControlFlow("else")
+                    .addStatement("throw ru.tinkoff.kora.config.common.extractor.ConfigValueExtractionException.unexpectedValueType(value, $T.StringValue.class)", CommonClassNames.configValue)
+                    .endControlFlow();
+
+                module.addMethod(b.build());
                 component.addParameter(configClassName, "config");
                 cronSchedule = CodeBlock.of("config.cron()");
             } else {

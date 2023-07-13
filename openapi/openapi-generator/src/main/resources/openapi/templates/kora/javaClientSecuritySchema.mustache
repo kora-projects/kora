@@ -9,8 +9,8 @@ package {{apiPackage}};
 import ru.tinkoff.kora.common.Module;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.DefaultComponent;
+import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
-import com.typesafe.config.Config;
 
 import ru.tinkoff.kora.http.client.common.interceptor.*;
 import ru.tinkoff.kora.http.common.auth.*;
@@ -27,7 +27,7 @@ public interface ApiSecurity {
     @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class)
     default String {{name}}Config(Config config) {
         var configPath = "{{#hasSecurityConfigPrefix}}{{securityConfigPrefix}}.{{/hasSecurityConfigPrefix}}{{name}}";
-        return config.getString(configPath);
+        return config.get(configPath).asString();
     }
 
     @DefaultComponent
@@ -41,7 +41,12 @@ public interface ApiSecurity {
 
     default {{#lambda.classname}}{{name}}{{/lambda.classname}}Config {{name}}Config(Config config, ConfigValueExtractor<{{#lambda.classname}}{{name}}{{/lambda.classname}}Config> extractor) {
         var configPath = "{{#hasSecurityConfigPrefix}}{{securityConfigPrefix}}.{{/hasSecurityConfigPrefix}}{{name}}";
-        return extractor.extract(config.getValue(configPath));
+        var configValue = config.get(configPath);
+        var parsed = extractor.extract(configValue);
+        if (parsed == null) {
+            throw ru.tinkoff.kora.config.common.extractor.ConfigValueExtractionException.missingValueAfterParse(configValue);
+        }
+        return parsed;
     }
 
     @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class)

@@ -6,8 +6,6 @@ import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.RefreshableGraph;
-import ru.tinkoff.kora.config.annotation.processor.processor.ConfigRootAnnotationProcessor;
-import ru.tinkoff.kora.config.annotation.processor.processor.ConfigSourceAnnotationProcessor;
 import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor;
 import ru.tinkoff.kora.resilient.annotation.processor.aop.testdata.AppWithConfig;
 
@@ -65,8 +63,6 @@ public abstract class AppRunner extends Assertions {
     protected List<AbstractKoraProcessor> getProcessors() {
         return List.of(
             new KoraAppProcessor(),
-            new ConfigRootAnnotationProcessor(),
-            new ConfigSourceAnnotationProcessor(),
             new AopAnnotationProcessor()
         );
     }

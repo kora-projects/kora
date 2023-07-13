@@ -1,9 +1,9 @@
 dependencies {
     api project(":common")
     implementation project(":config:config-common")
+    annotationProcessor project(':config:config-annotation-processor')
 
     api libs.reactor.core
-    implementation libs.typesafe.config
 
     testImplementation project(":test:test-logging")
     testImplementation "org.awaitility:awaitility:4.2.0"

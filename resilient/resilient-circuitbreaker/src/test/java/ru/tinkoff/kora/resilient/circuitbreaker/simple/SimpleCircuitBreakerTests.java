@@ -35,7 +35,7 @@ class SimpleCircuitBreakerTests extends Assertions {
     @Test
     void switchFromClosedToOpen() {
         // given
-        final SimpleCircuitBreakerConfig.NamedConfig config = new SimpleCircuitBreakerConfig.NamedConfig(
+        final SimpleCircuitBreakerConfig.NamedConfig config = new $SimpleCircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
             30, WAIT_IN_OPEN, 3, 10L, 8L, SimpleCircuitBreakerFailurePredicate.class.getCanonicalName());
         final SimpleCircuitBreaker circuitBreaker = new SimpleCircuitBreaker("default", config, new SimpleCircuitBreakerFailurePredicate(), new NoopCircuitBreakerMetrics());
 
@@ -71,7 +71,7 @@ class SimpleCircuitBreakerTests extends Assertions {
     @Test
     void switchFromClosedToOpenForMinimumNumberOfCalls() {
         // given
-        final SimpleCircuitBreakerConfig.NamedConfig config = new SimpleCircuitBreakerConfig.NamedConfig(
+        final SimpleCircuitBreakerConfig.NamedConfig config = new $SimpleCircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
             100, WAIT_IN_OPEN, 1, 2L, 2L, SimpleCircuitBreakerFailurePredicate.class.getCanonicalName());
         final SimpleCircuitBreaker circuitBreaker = new SimpleCircuitBreaker("default", config, new SimpleCircuitBreakerFailurePredicate(), new NoopCircuitBreakerMetrics());
 
@@ -92,7 +92,7 @@ class SimpleCircuitBreakerTests extends Assertions {
     @Test
     void switchFromOpenToHalfOpenToOpen() {
         // given
-        final SimpleCircuitBreakerConfig.NamedConfig config = new SimpleCircuitBreakerConfig.NamedConfig(
+        final SimpleCircuitBreakerConfig.NamedConfig config = new $SimpleCircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
             100, WAIT_IN_OPEN, 1, 1L, 1L, SimpleCircuitBreakerFailurePredicate.class.getCanonicalName());
         final SimpleCircuitBreaker circuitBreaker = new SimpleCircuitBreaker("default", config, new SimpleCircuitBreakerFailurePredicate(), new NoopCircuitBreakerMetrics());
 
@@ -114,7 +114,7 @@ class SimpleCircuitBreakerTests extends Assertions {
     @Test
     void switchFromOpenToHalfOpenToClosed() {
         // given
-        final SimpleCircuitBreakerConfig.NamedConfig config = new SimpleCircuitBreakerConfig.NamedConfig(
+        final SimpleCircuitBreakerConfig.NamedConfig config = new $SimpleCircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
             100, WAIT_IN_OPEN, 1, 1L, 1L, SimpleCircuitBreakerFailurePredicate.class.getCanonicalName());
         final SimpleCircuitBreaker circuitBreaker = new SimpleCircuitBreaker("default", config, new SimpleCircuitBreakerFailurePredicate(), new NoopCircuitBreakerMetrics());
 
@@ -136,7 +136,7 @@ class SimpleCircuitBreakerTests extends Assertions {
     @Test
     void switchFromOpenToHalfOpenAndValidateAcquireCalls() {
         // given
-        final SimpleCircuitBreakerConfig.NamedConfig config = new SimpleCircuitBreakerConfig.NamedConfig(
+        final SimpleCircuitBreakerConfig.NamedConfig config = new $SimpleCircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
             100, WAIT_IN_OPEN, 1, 1L, 1L, SimpleCircuitBreakerFailurePredicate.class.getCanonicalName());
         final SimpleCircuitBreaker circuitBreaker = new SimpleCircuitBreaker("default", config, new SimpleCircuitBreakerFailurePredicate(), new NoopCircuitBreakerMetrics());
 
@@ -160,7 +160,7 @@ class SimpleCircuitBreakerTests extends Assertions {
     @Test
     void switchFromClosedToOpenForCustomFailurePredicate() {
         // given
-        final SimpleCircuitBreakerConfig.NamedConfig config = new SimpleCircuitBreakerConfig.NamedConfig(
+        final SimpleCircuitBreakerConfig.NamedConfig config = new $SimpleCircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
             100, WAIT_IN_OPEN, 1, 1L, 1L, "custom");
         final SimpleCircuitBreaker circuitBreaker = new SimpleCircuitBreaker("default", config, new CustomFailurePredicate(), new NoopCircuitBreakerMetrics());
 

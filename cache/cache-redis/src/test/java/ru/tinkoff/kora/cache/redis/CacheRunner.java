@@ -9,7 +9,6 @@ import ru.tinkoff.kora.cache.redis.testdata.AppWithConfig;
 import ru.tinkoff.kora.cache.redis.testdata.Box;
 import ru.tinkoff.kora.cache.redis.testdata.CacheableTargetMono;
 import ru.tinkoff.kora.cache.redis.testdata.CacheableTargetSync;
-import ru.tinkoff.kora.config.annotation.processor.processor.ConfigRootAnnotationProcessor;
 import ru.tinkoff.kora.config.annotation.processor.processor.ConfigSourceAnnotationProcessor;
 import ru.tinkoff.kora.json.annotation.processor.JsonAnnotationProcessor;
 import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor;
@@ -33,7 +32,7 @@ public abstract class CacheRunner extends Assertions {
         try {
             final List<Class<?>> classes = new ArrayList<>(List.of(targetClasses));
             classes.add(app);
-            var classLoader = TestUtils.annotationProcess(classes, new KoraAppProcessor(), new JsonAnnotationProcessor(), new AopAnnotationProcessor(), new CacheKeyAnnotationProcessor(), new ConfigRootAnnotationProcessor(), new ConfigSourceAnnotationProcessor());
+            var classLoader = TestUtils.annotationProcess(classes, new KoraAppProcessor(), new JsonAnnotationProcessor(), new AopAnnotationProcessor(), new CacheKeyAnnotationProcessor(), new ConfigSourceAnnotationProcessor());
             var clazz = classLoader.loadClass(app.getName() + "Graph");
             var constructors = (Constructor<? extends Supplier<? extends ApplicationGraphDraw>>[]) clazz.getConstructors();
             return constructors[0].newInstance().get();

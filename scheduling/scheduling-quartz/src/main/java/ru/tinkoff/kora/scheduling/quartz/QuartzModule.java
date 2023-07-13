@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.scheduling.quartz;
 
-import com.typesafe.config.Config;
 import org.quartz.Scheduler;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.scheduling.common.SchedulingModule;
 
@@ -12,7 +12,7 @@ import java.util.Properties;
 public interface QuartzModule extends SchedulingModule {
     @Tag(QuartzModule.class)
     default Properties quartzProperties(Config config, ConfigValueExtractor<Properties> extractor) {
-        var value = config.getValue("quartz");
+        var value = config.get("quartz");
         return extractor.extract(value);
     }
 

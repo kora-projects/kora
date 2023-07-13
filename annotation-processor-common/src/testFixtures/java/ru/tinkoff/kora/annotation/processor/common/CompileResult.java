@@ -86,7 +86,7 @@ public record CompileResult(String testPackage, List<Diagnostic<? extends JavaFi
             sw.flush();
             var lines = sw.toString().lines().toList();
             for (int i = 0; i < lines.size(); i++) {
-                var lineDiagnostic = diagnostic.getOrDefault((long) i, List.of());
+                var lineDiagnostic = diagnostic.getOrDefault((long) i + 1, List.of());
                 j.add("%03d | %s".formatted(i, lines.get(i)));
                 for (var d : lineDiagnostic) {
                     var diagnosticString = " ".repeat(((int) d.getColumnNumber()) - 1) + "^ " + d.getMessage(Locale.US);

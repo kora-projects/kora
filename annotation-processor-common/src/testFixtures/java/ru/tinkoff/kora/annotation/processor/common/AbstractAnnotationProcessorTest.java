@@ -16,6 +16,7 @@ import javax.tools.JavaFileObject;
 import javax.tools.ToolProvider;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -120,6 +121,18 @@ public abstract class AbstractAnnotationProcessorTest {
         try {
             var clazz = this.compileResult.loadClass(className);
             return clazz.getConstructors()[0].newInstance(params);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+    public Object invoke(Object target, String name, Object... params) {
+        try {
+            for (var method : target.getClass().getMethods()) {
+                if (method.getName().equals(name) && method.getParameterCount() == params.length) {
+                    return method.invoke(target, params);
+                }
+            }
+            throw new RuntimeException("Method " + name + " was not found");
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

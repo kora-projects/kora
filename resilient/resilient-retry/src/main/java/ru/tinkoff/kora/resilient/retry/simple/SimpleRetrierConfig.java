@@ -1,33 +1,39 @@
 package ru.tinkoff.kora.resilient.retry.simple;
 
+import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 import ru.tinkoff.kora.resilient.retry.RetrierFailurePredicate;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Objects;
 
-public record SimpleRetrierConfig(@Nullable Map<String, NamedConfig> retryable) {
+@ConfigValueExtractor
+public interface SimpleRetrierConfig {
+    String DEFAULT = "default";
 
-    public static final String DEFAULT = "default";
+    default Map<String, NamedConfig> retry() {
+        return Map.of();
+    }
 
-    public NamedConfig getNamedConfig(@Nonnull String name) {
-        if (retryable == null)
+    default NamedConfig getNamedConfig(@Nonnull String name) {
+        if (retry() == null)
             throw new IllegalStateException("Retryable no configuration is provided, but either '" + name + "' or '" + DEFAULT + "' config is required");
 
-        final NamedConfig defaultConfig = retryable.get(DEFAULT);
-        final NamedConfig namedConfig = retryable.getOrDefault(name, defaultConfig);
+        final NamedConfig defaultConfig = retry().get(DEFAULT);
+        final NamedConfig namedConfig = retry().getOrDefault(name, defaultConfig);
         if (namedConfig == null)
             throw new IllegalStateException("Retryable no configuration is provided, but either '" + name + "' or '" + DEFAULT + "' config is required");
 
         final NamedConfig mergedConfig = merge(namedConfig, defaultConfig);
-        if (mergedConfig.delay == null)
+        if (mergedConfig.delay() == null)
             throw new IllegalArgumentException("Retryable 'delay' is not configured in either '" + name + "' or '" + DEFAULT + "' config");
-        if (mergedConfig.attempts == null)
+        if (mergedConfig.attempts() == null)
             throw new IllegalArgumentException("Retryable 'attempts' is not configured in either '" + name + "' or '" + DEFAULT + "' config");
 
-        if (mergedConfig.attempts < 1)
-            throw new IllegalArgumentException("Retryable '" + name + "' attempts can't be less 1, but was " + mergedConfig.attempts);
+        if (mergedConfig.attempts() < 1)
+            throw new IllegalArgumentException("Retryable '" + name + "' attempts can't be less 1, but was " + mergedConfig.attempts());
 
         return mergedConfig;
     }
@@ -37,11 +43,11 @@ public record SimpleRetrierConfig(@Nullable Map<String, NamedConfig> retryable) 
             return namedConfig;
         }
 
-        return new NamedConfig(
-            namedConfig.delay == null ? defaultConfig.delay : namedConfig.delay,
-            namedConfig.delayStep == null ? defaultConfig.delayStep : namedConfig.delayStep,
-            namedConfig.attempts == null ? defaultConfig.attempts : namedConfig.attempts,
-            namedConfig.failurePredicateName == null ? defaultConfig.failurePredicateName : namedConfig.failurePredicateName);
+        return new $SimpleRetrierConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
+            namedConfig.delay() == null ? defaultConfig.delay() : namedConfig.delay(),
+            namedConfig.delayStep() == null ? Objects.requireNonNullElse(defaultConfig.delayStep(), Duration.ZERO) : namedConfig.delayStep(),
+            namedConfig.attempts() == null ? defaultConfig.attempts() : namedConfig.attempts(),
+            namedConfig.failurePredicateName() == null ? defaultConfig.failurePredicateName() : namedConfig.failurePredicateName());
     }
 
     /**
@@ -50,16 +56,19 @@ public record SimpleRetrierConfig(@Nullable Map<String, NamedConfig> retryable) 
      * {@link #attempts} Maximum number of retry attempts
      * {@link #failurePredicateName} {@link RetrierFailurePredicate#name()} default is {@link RetrierFailurePredicate}
      */
-    public record NamedConfig(@Nullable Duration delay,
-                              @Nullable Duration delayStep,
-                              @Nullable Integer attempts,
-                              @Nullable String failurePredicateName) {
+    @ConfigValueExtractor
+    interface NamedConfig {
+        @Nullable
+        Duration delay();
 
-        public NamedConfig(@Nullable Duration delay, @Nullable Duration delayStep, @Nullable Integer attempts, @Nullable String failurePredicateName) {
-            this.attempts = attempts;
-            this.delay = delay;
-            this.delayStep = (delayStep == null) ? Duration.ZERO : delayStep;
-            this.failurePredicateName = (failurePredicateName == null) ? SimpleRetrierFailurePredicate.class.getCanonicalName() : failurePredicateName;
+        @Nullable
+        Duration delayStep();
+
+        @Nullable
+        Integer attempts();
+
+        default String failurePredicateName() {
+            return SimpleRetrierFailurePredicate.class.getCanonicalName();
         }
     }
 }

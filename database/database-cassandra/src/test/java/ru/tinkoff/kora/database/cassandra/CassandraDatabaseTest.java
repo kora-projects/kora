@@ -19,19 +19,19 @@ class CassandraDatabaseTest {
         var profiles = new HashMap<String, CassandraConfig.Profile>();
         profiles.put(
             "profile",
-            new CassandraConfig.Profile(new CassandraConfig.Basic(
-                new CassandraConfig.Basic.BasicRequestConfig(Duration.ofSeconds(10), null, null, null, null),
+            new $CassandraConfig_Profile_ConfigValueExtractor.Profile_Impl(new $CassandraConfig_Basic_ConfigValueExtractor.Basic_Impl(
+                new $CassandraConfig_Basic_BasicRequestConfig_ConfigValueExtractor.BasicRequestConfig_Impl(Duration.ofSeconds(10), null, null, null, null),
                 null,
-                null,
+                List.of(),
                 null,
                 null,
                 null,
                 null
             ), null)
         );
-        var config = new CassandraConfig(
+        var config = new $CassandraConfig_ConfigValueExtractor.CassandraConfig_Impl(
             profiles,
-            new CassandraConfig.Basic(
+            new $CassandraConfig_Basic_ConfigValueExtractor.Basic_Impl(
                 null,
                 null,
                 List.of(params.host() + ":" + params.port()),
@@ -41,7 +41,7 @@ class CassandraDatabaseTest {
                 null
             ),
             null,
-            params.username() == null ? null : new CassandraConfig.CassandraCredentials(
+            params.username() == null ? null : new $CassandraConfig_CassandraCredentials_ConfigValueExtractor.CassandraCredentials_Impl(
                 params.username(),
                 params.password()
             )
@@ -73,7 +73,7 @@ class CassandraDatabaseTest {
 
         withDb(params, db -> {
             var result = db.query(qctx, stmt -> {
-                var s = stmt.bind( "test1");
+                var s = stmt.bind("test1");
                 return db.currentSession().execute(s).map(row -> {
                     var __id = row.isNull("id") ? null : row.getInt("id");
                     var __value = row.getString("value");

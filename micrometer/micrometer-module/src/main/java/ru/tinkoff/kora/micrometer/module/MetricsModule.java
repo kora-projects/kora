@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.micrometer.module;
 
-import com.typesafe.config.Config;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
@@ -17,6 +16,7 @@ import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.DefaultComponent;
+import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.micrometer.module.cache.MicrometerCacheMetrics;
 import ru.tinkoff.kora.micrometer.module.db.MicrometerDataBaseMetricWriterFactory;
@@ -85,11 +85,8 @@ public interface MetricsModule {
     }
 
     default MetricsConfig metricsConfig(Config config, ConfigValueExtractor<MetricsConfig> extractor) {
-        if (config.hasPath("metrics")) {
-            return extractor.extract(config.getObject("metrics"));
-        } else {
-            return new MetricsConfig(null, null, null, null, null, null, null, null);
-        }
+        var value = config.get("metrics");
+        return extractor.extract(value);
     }
 
     @DefaultComponent

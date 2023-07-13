@@ -1,35 +1,47 @@
 package ru.tinkoff.kora.http.client.common;
 
+import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
+
 import javax.annotation.Nullable;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 
-public record HttpClientConfig(int connectTimeout, int readTimeout, @Nullable HttpClientProxyConfig proxy, @Nullable Boolean useEnvProxy) {
-
-    public HttpClientConfig(
-        @Nullable Duration connectTimeout,
-        @Nullable Duration readTimeout,
-        @Nullable HttpClientProxyConfig proxy,
-        @Nullable Boolean useEnvProxy
-    ) {
-        this(
-            connectTimeout != null ? (int) connectTimeout.toMillis() : 2000,
-            readTimeout != null ? (int) readTimeout.toMillis() : 50000,
-            proxy,
-            useEnvProxy
-        );
+@ConfigValueExtractor
+public interface HttpClientConfig {
+    default Duration connectTimeout() {
+        return Duration.ofSeconds(2);
     }
 
-    public record HttpClientProxyConfig(
-        @Nullable String host,
-        @Nullable Integer port,
-        @Nullable List<String> nonProxyHosts,
-        @Nullable String user,
-        @Nullable String password
-    ) {
+    default Duration readTimeout() {
+        return Duration.ofSeconds(50000);
+    }
+
+    @Nullable
+    HttpClientProxyConfig proxy();
+
+    default boolean useEnvProxy() {
+        return false;
+    }
+
+    @ConfigValueExtractor
+    interface HttpClientProxyConfig {
+
+        String host();
+
+        int port();
+
         @Nullable
-        public static HttpClientProxyConfig fromEnv() {
+        List<String> nonProxyHosts();
+
+        @Nullable
+        String user();
+
+        @Nullable
+        String password();
+
+        @Nullable
+        static HttpClientProxyConfig fromEnv() {
             String proxyString = System.getenv("https_proxy");
             proxyString = proxyString != null ? proxyString : System.getenv("HTTPS_PROXY");
             proxyString = proxyString != null ? proxyString : System.getenv("http_proxy");
@@ -58,7 +70,9 @@ public record HttpClientConfig(int connectTimeout, int readTimeout, @Nullable Ht
                 nonProxyHosts = List.of(noProxyString.split(","));
             }
 
-            return new HttpClientProxyConfig(host, port, nonProxyHosts, user, password);
+            return new $HttpClientConfig_HttpClientProxyConfig_ConfigValueExtractor.HttpClientProxyConfig_Impl(
+                host, port, nonProxyHosts, user, password
+            );
         }
     }
 }

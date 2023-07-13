@@ -3,5 +3,7 @@ dependencies {
     api project(":common")
     api libs.hikari
 
+    annotationProcessor project(':config:config-annotation-processor')
+
     testImplementation project(':test:test-postgres')
 }

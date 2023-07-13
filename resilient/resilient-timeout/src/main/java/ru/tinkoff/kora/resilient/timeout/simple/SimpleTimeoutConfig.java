@@ -1,25 +1,32 @@
 package ru.tinkoff.kora.resilient.timeout.simple;
 
+import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
+
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Objects;
 
-public record SimpleTimeoutConfig(@Nullable Map<String, NamedConfig> timeout) {
+@ConfigValueExtractor
+public interface SimpleTimeoutConfig {
+    String DEFAULT = "default";
 
-    public static final String DEFAULT = "default";
+    default Map<String, NamedConfig> timeout() {
+        return Map.of();
+    }
 
-    public NamedConfig getNamedConfig(@Nonnull String name) {
-        if (timeout == null)
+    default NamedConfig getNamedConfig(@Nonnull String name) {
+        Objects.requireNonNull(name);
+        if (timeout() == null)
             throw new IllegalStateException("Timeout no configuration is provided, but either '" + name + "' or '" + DEFAULT + "' config is required");
 
-        final NamedConfig defaultConfig = timeout.get(DEFAULT);
-        final NamedConfig namedConfig = timeout.getOrDefault(name, defaultConfig);
+        final NamedConfig defaultConfig = timeout().get(DEFAULT);
+        final NamedConfig namedConfig = timeout().getOrDefault(name, defaultConfig);
         if (namedConfig == null)
             throw new IllegalStateException("Timeout no configuration is provided, but either '" + name + "' or '" + DEFAULT + "' config is required");
 
         final NamedConfig mergedConfig = merge(namedConfig, defaultConfig);
-        if (mergedConfig.duration == null)
+        if (mergedConfig.duration() == null)
             throw new IllegalStateException("Timeout 'duration' is not configured in either '" + name + "' or '" + DEFAULT + "' config");
 
         return mergedConfig;
@@ -30,11 +37,12 @@ public record SimpleTimeoutConfig(@Nullable Map<String, NamedConfig> timeout) {
             return namedConfig;
         }
 
-        return new NamedConfig(namedConfig.duration == null ? defaultConfig.duration : namedConfig.duration);
+        return new NamedConfig(namedConfig.duration() == null ? defaultConfig.duration() : namedConfig.duration());
     }
 
     /**
      * {@link #duration} Configures maximum interval for timeout.
      */
-    public record NamedConfig(Duration duration) {}
+    @ConfigValueExtractor
+    record NamedConfig(Duration duration) {}
 }

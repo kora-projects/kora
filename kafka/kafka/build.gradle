@@ -1,6 +1,8 @@
 dependencies {
     api project(":common")
+    api project(":config:config-common")
     api libs.kafka.client
 
+    annotationProcessor project(":config:config-annotation-processor")
     testImplementation project(':test:test-kafka')
 }
