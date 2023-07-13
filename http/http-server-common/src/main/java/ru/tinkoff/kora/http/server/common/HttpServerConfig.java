@@ -1,48 +1,26 @@
 package ru.tinkoff.kora.http.server.common;
 
-import javax.annotation.Nullable;
+import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
-public record HttpServerConfig(
-    int publicApiHttpPort,
-    int privateApiHttpPort,
-    String privateApiHttpMetricsPath,
-    String privateApiHttpReadinessPath,
-    String privateApiHttpLivenessPath,
-    boolean ignoreTrailingSlash,
-    int ioThreads,
-    int blockingThreads,
-    int shutdownWait) {
+import java.time.Duration;
 
-    public static int DEFAULT_PUBLIC_API_PORT = 8080;
-    public static int DEFAULT_PRIVATE_API_PORT = 8085;
-    public static String DEFAULT_PRIVATE_API_METRICS_PATH = "/metrics";
-    public static String DEFAULT_PRIVATE_API_READINESS_PATH = "/system/readiness";
-    public static String DEFAULT_PRIVATE_API_LIVENESS_PATH = "/system/liveness";
-    public static boolean DEFAULT_IGNORE_TRAILING_SLASH = false;
-    public static int DEFAULT_IO_THREADS = Math.max(Runtime.getRuntime().availableProcessors(), 2);
-    public static int DEFAULT_BLOCKING_THREADS = Math.min(Math.max(Runtime.getRuntime().availableProcessors(), 2) * 8, 200);
-    public static int DEFAULT_SHUTDOWN_WAIT = 5000;
+@ConfigValueExtractor
+public interface HttpServerConfig {
+    default int publicApiHttpPort() {return 8080;}
 
-    public HttpServerConfig(
-        @Nullable Integer publicApiHttpPort,
-        @Nullable Integer privateApiHttpPort,
-        @Nullable String  privateApiHttpMetricsPath,
-        @Nullable String  privateApiHttpReadinessPath,
-        @Nullable String  privateApiHttpLivenessPath,
-        @Nullable Boolean ignoreTrailingSlash,
-        @Nullable Integer ioThreads,
-        @Nullable Integer blockingThreads,
-        @Nullable Integer shutdownWait) {
-        this(
-            publicApiHttpPort != null ? publicApiHttpPort : DEFAULT_PUBLIC_API_PORT,
-            privateApiHttpPort != null ? privateApiHttpPort : DEFAULT_PRIVATE_API_PORT,
-            privateApiHttpMetricsPath != null ? privateApiHttpMetricsPath : DEFAULT_PRIVATE_API_METRICS_PATH,
-            privateApiHttpReadinessPath != null ? privateApiHttpReadinessPath : DEFAULT_PRIVATE_API_READINESS_PATH,
-            privateApiHttpLivenessPath != null ? privateApiHttpLivenessPath : DEFAULT_PRIVATE_API_LIVENESS_PATH,
-            ignoreTrailingSlash != null ? ignoreTrailingSlash : DEFAULT_IGNORE_TRAILING_SLASH,
-            ioThreads != null ? ioThreads : DEFAULT_IO_THREADS,
-            blockingThreads != null ? blockingThreads : DEFAULT_BLOCKING_THREADS,
-            shutdownWait != null ? shutdownWait : DEFAULT_SHUTDOWN_WAIT
-        );
-    }
+    default int privateApiHttpPort() {return 8085;}
+
+    default String privateApiHttpMetricsPath() {return "/metrics";}
+
+    default String privateApiHttpReadinessPath() {return "/system/readiness";}
+
+    default String privateApiHttpLivenessPath() {return "/system/liveness";}
+
+    default boolean ignoreTrailingSlash() {return false;}
+
+    default int ioThreads() {return Math.max(Runtime.getRuntime().availableProcessors(), 2);}
+
+    default int blockingThreads() {return Math.min(Math.max(Runtime.getRuntime().availableProcessors(), 2) * 8, 200);}
+
+    default Duration shutdownWait() {return Duration.ofMillis(100);}
 }

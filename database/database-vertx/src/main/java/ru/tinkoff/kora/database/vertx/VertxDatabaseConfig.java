@@ -2,72 +2,63 @@ package ru.tinkoff.kora.database.vertx;
 
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.sqlclient.PoolOptions;
+import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
 import javax.annotation.Nullable;
 import java.time.Duration;
+import java.util.Objects;
 
-public record VertxDatabaseConfig(
-    String username,
-    String password,
-    String host,
-    int port,
-    String database,
-    String poolName,
-    Duration connectionTimeout,
-    Duration idleTimeout,
-    Duration acquireTimeout,
-    int maxPoolSize,
-    boolean cachePreparedStatements) {
+@ConfigValueExtractor
+public interface VertxDatabaseConfig {
+    String username();
 
-    public VertxDatabaseConfig(
-        String username,
-        String password,
-        String host,
-        int port,
-        String database,
-        String poolName,
-        @Nullable Duration connectionTimeout,
-        @Nullable Duration idleTimeout,
-        @Nullable Duration acquireTimeout,
-        @Nullable Integer maxPoolSize,
-        @Nullable Boolean cachePreparedStatements) {
-        this(
-            username,
-            password,
-            host,
-            port,
-            database,
-            poolName,
-            defaultConnectionTimeout(connectionTimeout),
-            idleTimeout != null ? idleTimeout : Duration.ofMinutes(10),
-            acquireTimeout != null ? acquireTimeout : defaultConnectionTimeout(connectionTimeout),
-            maxPoolSize != null ? maxPoolSize : 10,
-            cachePreparedStatements != null ? cachePreparedStatements : true
-        );
+    String password();
+
+    String host();
+
+    int port();
+
+    String database();
+
+    String poolName();
+
+    default Duration connectionTimeout() {
+        return Duration.ofSeconds(30);
     }
 
-    private static Duration defaultConnectionTimeout(Duration connectionTimeout) {
-        return connectionTimeout != null ? connectionTimeout : Duration.ofSeconds(30);
+    default Duration idleTimeout() {
+        return Duration.ofMinutes(10);
     }
 
-    public PgConnectOptions toPgConnectOptions() {
+    @Nullable
+    Duration acquireTimeout();
+
+    default int maxPoolSize() {
+        return 10;
+    }
+
+    default boolean cachePreparedStatements() {
+        return true;
+    }
+
+    static PgConnectOptions toPgConnectOptions(VertxDatabaseConfig config) {
         return new PgConnectOptions()
-            .setMetricsName(this.poolName)
-            .setHost(this.host)
-            .setPort(this.port)
-            .setDatabase(this.database)
-            .setUser(this.username)
-            .setPassword(this.password)
-            .setConnectTimeout(Math.toIntExact(this.connectionTimeout.toMillis()))
-            .setIdleTimeout(Math.toIntExact(this.idleTimeout.toMillis()))
-            .setCachePreparedStatements(this.cachePreparedStatements);
+            .setMetricsName(config.poolName())
+            .setHost(config.host())
+            .setPort(config.port())
+            .setDatabase(config.database())
+            .setUser(config.username())
+            .setPassword(config.password())
+            .setConnectTimeout(Math.toIntExact(config.connectionTimeout().toMillis()))
+            .setIdleTimeout(Math.toIntExact(config.idleTimeout().toMillis()))
+            .setCachePreparedStatements(config.cachePreparedStatements());
     }
 
-    public PoolOptions toPgPoolOptions() {
+    static PoolOptions toPgPoolOptions(VertxDatabaseConfig config) {
         return new PoolOptions()
-            .setIdleTimeout(Math.toIntExact(this.idleTimeout.toMillis()))
-            .setConnectionTimeout(Math.toIntExact(this.connectionTimeout.toMillis()))
-            .setName(this.poolName)
-            .setMaxSize(this.maxPoolSize);
+            .setIdleTimeout(Math.toIntExact(config.idleTimeout().toMillis()))
+            .setConnectionTimeout(Math.toIntExact(Objects.requireNonNullElse(config.acquireTimeout(), config.connectionTimeout()).toMillis()))
+            .setName(config.poolName())
+            .setMaxSize(config.maxPoolSize());
     }
 }

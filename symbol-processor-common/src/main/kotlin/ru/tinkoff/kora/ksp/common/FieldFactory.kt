@@ -90,4 +90,29 @@ class FieldFactory(builder: TypeSpec.Builder, constructor: FunSpec.Builder, pref
         }
         return name
     }
+
+    fun add(mapping: MappingData?, fieldParserType: TypeName): String {
+        val typeName = mapping?.mapper?.toTypeName() ?: fieldParserType
+        val tags = mapping?.tags ?: setOf()
+        val key = FieldKey(typeName, tags)
+        val existed = fields[key]
+        if (existed != null) {
+            return existed
+        }
+        val name = prefix + (fields.size + 1)
+        fields[key] = name
+        builder.addProperty(name, typeName, KModifier.PRIVATE)
+        val decl = mapping?.mapper?.declaration
+        if (tags.isEmpty() && decl is KSClassDeclaration && !decl.isOpen() && decl.getConstructors().count() == 1 && decl.getConstructors().first().parameters.isEmpty()) {
+            constructor.addStatement("this.%N = %T()", name, typeName)
+        } else {
+            val parameter = builder(name, typeName)
+            if (tags.isNotEmpty()) {
+                parameter.addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value = [%L]", tags.joinToString(", ") { "$it::class" }).build())
+            }
+            constructor.addParameter(parameter.build())
+            constructor.addStatement("this.%N = %N", name, name)
+        }
+        return name
+    }
 }

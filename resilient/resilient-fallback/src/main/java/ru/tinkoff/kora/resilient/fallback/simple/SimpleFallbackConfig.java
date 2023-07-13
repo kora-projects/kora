@@ -1,20 +1,23 @@
 package ru.tinkoff.kora.resilient.fallback.simple;
 
+import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 import ru.tinkoff.kora.resilient.fallback.FallbackFailurePredicate;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.Map;
 
-public record SimpleFallbackConfig(Map<String, NamedConfig> fallback) {
+@ConfigValueExtractor
+public interface SimpleFallbackConfig {
+    String DEFAULT = "default";
+    NamedConfig DEFAULT_CONFIG = new $SimpleFallbackConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Defaults();
 
-    public static final String DEFAULT = "default";
+    default Map<String, NamedConfig> fallback() {
+        return Map.of();
+    }
 
-    private static final NamedConfig DEFAULT_CONFIG = new NamedConfig(SimpleFallbackFailurePredicate.class.getCanonicalName());
-
-    public NamedConfig getNamedConfig(@Nonnull String name) {
-        final NamedConfig defaultConfig = fallback.getOrDefault(DEFAULT, DEFAULT_CONFIG);
-        final NamedConfig namedConfig = fallback.getOrDefault(name, defaultConfig);
+    default NamedConfig getNamedConfig(@Nonnull String name) {
+        final NamedConfig defaultConfig = fallback().getOrDefault(DEFAULT, DEFAULT_CONFIG);
+        final NamedConfig namedConfig = fallback().getOrDefault(name, defaultConfig);
         return merge(namedConfig, defaultConfig);
     }
 
@@ -23,16 +26,16 @@ public record SimpleFallbackConfig(Map<String, NamedConfig> fallback) {
             return namedConfig;
         }
 
-        return new NamedConfig(namedConfig.failurePredicateName == null ? defaultConfig.failurePredicateName : namedConfig.failurePredicateName);
+        return new $SimpleFallbackConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(namedConfig.failurePredicateName() == null ? defaultConfig.failurePredicateName() : namedConfig.failurePredicateName());
     }
 
     /**
      * {@link #failurePredicateName} {@link FallbackFailurePredicate#name()} default is {@link SimpleFallbackFailurePredicate}
      */
-    public record NamedConfig(@Nullable String failurePredicateName) {
-
-        public NamedConfig(@Nullable String failurePredicateName) {
-            this.failurePredicateName = (failurePredicateName == null) ? SimpleFallbackFailurePredicate.class.getCanonicalName() : failurePredicateName;
+    @ConfigValueExtractor
+    interface NamedConfig {
+        default String failurePredicateName() {
+            return SimpleFallbackFailurePredicate.class.getCanonicalName();
         }
     }
 }

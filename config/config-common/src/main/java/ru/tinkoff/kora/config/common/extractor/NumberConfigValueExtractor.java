@@ -1,26 +1,22 @@
 package ru.tinkoff.kora.config.common.extractor;
 
-import com.typesafe.config.ConfigValue;
-import com.typesafe.config.ConfigValueType;
+import ru.tinkoff.kora.config.common.ConfigValue;
 
 import java.math.BigDecimal;
 
 public final class NumberConfigValueExtractor implements ConfigValueExtractor<BigDecimal> {
-  @Override
-  public BigDecimal extract(ConfigValue value) {
-    switch (value.valueType()) {
-      case NUMBER -> {
-        return new BigDecimal(value.unwrapped().toString());
-      }
-      case STRING -> {
-        try {
-          return new BigDecimal(((String) value.unwrapped()));
-        } catch (NumberFormatException ignored) {
-          //fallback to unexpectedValueType
+    @Override
+    public BigDecimal extract(ConfigValue<?> value) {
+        if (value instanceof ConfigValue.NumberValue numberValue) {
+            return new BigDecimal(numberValue.value().toString());
         }
-      }
+        if (value instanceof ConfigValue.StringValue stringValue) {
+            try {
+                return new BigDecimal(stringValue.value());
+            } catch (NumberFormatException ignored) {
+                //fallback to unexpectedValueType
+            }
+        }
+        throw ConfigValueExtractionException.unexpectedValueType(value, ConfigValue.NumberValue.class);
     }
-
-    throw ConfigValueExtractionException.unexpectedValueType(value, ConfigValueType.NUMBER);
-  }
 }

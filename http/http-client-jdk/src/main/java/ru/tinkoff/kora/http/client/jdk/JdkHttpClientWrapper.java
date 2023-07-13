@@ -8,7 +8,6 @@ import ru.tinkoff.kora.http.client.common.HttpClientConfig;
 import java.net.Authenticator;
 import java.net.PasswordAuthentication;
 import java.net.http.HttpClient;
-import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -28,19 +27,16 @@ public class JdkHttpClientWrapper implements Lifecycle, Wrapped<HttpClient> {
     public Mono<?> init() {
         return Mono.fromRunnable(() -> {
             var executorThreads = this.config.threads();
-            if (executorThreads == null) {
-                executorThreads = Runtime.getRuntime().availableProcessors() * 2;
-            }
             this.executor = Executors.newFixedThreadPool(executorThreads);
             var builder = HttpClient.newBuilder()
                 .executor(this.executor)
-                .connectTimeout(Duration.ofMillis(this.baseConfig.connectTimeout()))
+                .connectTimeout(this.baseConfig.connectTimeout())
                 .followRedirects(HttpClient.Redirect.NORMAL);
             var proxyConfig = this.baseConfig.proxy();
-            if (this.baseConfig.useEnvProxy() != null && this.baseConfig.useEnvProxy()) {
+            if (this.baseConfig.useEnvProxy()) {
                 proxyConfig = HttpClientConfig.HttpClientProxyConfig.fromEnv();
             }
-            if (proxyConfig != null && proxyConfig.host() != null && proxyConfig.port() != null) {
+            if (proxyConfig != null) {
                 builder.proxy(new JdkProxySelector(proxyConfig));
                 var proxyUser = proxyConfig.user();
                 var proxyPassword = proxyConfig.password();

@@ -4,8 +4,8 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import ru.tinkoff.kora.database.common.telemetry.DefaultDataBaseTelemetryFactory;
+import ru.tinkoff.kora.database.jdbc.$JdbcDatabaseConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.database.jdbc.JdbcDatabase;
-import ru.tinkoff.kora.database.jdbc.JdbcDatabaseConfig;
 import ru.tinkoff.kora.test.postgres.PostgresParams;
 import ru.tinkoff.kora.test.postgres.PostgresTestContainer;
 
@@ -18,7 +18,7 @@ public class FlywayJdbcDatabaseInterceptorTest {
 
     @Test
     public void testFlywayInterceptor(PostgresParams params) {
-        var config = new JdbcDatabaseConfig(
+        var config = new $JdbcDatabaseConfig_ConfigValueExtractor.JdbcDatabaseConfig_Impl(
             params.user(),
             params.password(),
             params.jdbcUrl(),

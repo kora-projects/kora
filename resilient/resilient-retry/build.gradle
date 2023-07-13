@@ -4,6 +4,7 @@ dependencies {
 
     api libs.reactor.core
     implementation libs.typesafe.config
+    annotationProcessor project(':config:config-annotation-processor')
 
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.8.2"
     testImplementation project(":test:test-logging")

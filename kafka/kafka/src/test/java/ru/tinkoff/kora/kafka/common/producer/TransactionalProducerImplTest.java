@@ -7,6 +7,8 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import ru.tinkoff.kora.kafka.common.producer.$PublisherConfig_ConfigValueExtractor.PublisherConfig_Impl;
+import ru.tinkoff.kora.kafka.common.producer.$PublisherConfig_TransactionConfig_ConfigValueExtractor.TransactionConfig_Impl;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.DefaultKafkaProducerTelemetryFactory;
 import ru.tinkoff.kora.test.kafka.KafkaParams;
 import ru.tinkoff.kora.test.kafka.KafkaTestContainer;
@@ -38,7 +40,7 @@ class TransactionalProducerImplTest {
         producerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, params.bootstrapServers());
 
         var producerTelemetry = new DefaultKafkaProducerTelemetryFactory(null, null, null);
-        var producerConfig = new PublisherConfig(producerProps, new PublisherConfig.TransactionConfig(
+        var producerConfig = new PublisherConfig_Impl(producerProps, new TransactionConfig_Impl(
             "test-", 5, Duration.ofSeconds(5)
         ));
 

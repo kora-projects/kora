@@ -20,6 +20,8 @@ include(
     'kora-app-annotation-processor',
     'kora-app-symbol-processor',
     'config:config-common',
+    'config:config-hocon',
+    'config:config-yaml',
     'config:config-annotation-processor',
     'config:config-symbol-processor',
     'json:json-common',

@@ -23,8 +23,8 @@ public class KoraCompileTestJavaClassLoader extends ClassLoader {
         }
         for (var object : this.objects) {
             if (object.getName().equals(name)) {
-                try {
-                    var bytes = object.openInputStream().readAllBytes();
+                try (var is = object.openInputStream()) {
+                    var bytes = is.readAllBytes();
                     var defined = this.defineClass(name, bytes, 0, bytes.length);
                     this.definedClasses.put(name, defined);
                     return defined;

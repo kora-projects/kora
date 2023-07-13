@@ -222,11 +222,11 @@ public class DependencyTest extends AbstractKoraAppTest {
 
         assertThat(compileResult.isFailed()).isTrue();
         assertThat(compileResult.errors()).hasSize(1);
-        assertThat(compileResult.errors().get(0).getMessage(Locale.ENGLISH)).startsWith(
-            "Required dependency was not found: " +
-            "@Tag(ru.tinkoff.kora.kora.app.annotation.processor.packageForDependencyTest.testDiscoveredFinalClassDependencyTaggedDependencyNoTagOnClass.ExampleApplication.TestClass1) " +
-            "ru.tinkoff.kora.kora.app.annotation.processor.packageForDependencyTest.testDiscoveredFinalClassDependencyTaggedDependencyNoTagOnClass.ExampleApplication.TestClass1"
-        );
+        assertThat(compileResult.errors().get(0).getMessage(Locale.ENGLISH))
+            .contains("Required dependency was not found: ")
+            .contains("@Tag(ru.tinkoff.kora.kora.app.annotation.processor.packageForDependencyTest.testDiscoveredFinalClassDependencyTaggedDependencyNoTagOnClass.ExampleApplication.TestClass1) ")
+            .contains("ru.tinkoff.kora.kora.app.annotation.processor.packageForDependencyTest.testDiscoveredFinalClassDependencyTaggedDependencyNoTagOnClass.ExampleApplication.TestClass1")
+        ;
     }
 
     @Test

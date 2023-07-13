@@ -106,7 +106,6 @@ public class RecordClassBuilder {
 
         sb.append(this.defaultConstructorBody.toString().indent(4));
         sb.append("\n  }\n");
-        // todo methods
         sb.append("}\n");
         return sb.toString();
     }

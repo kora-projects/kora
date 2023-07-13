@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.cache.redis;
 
-import com.typesafe.config.Config;
 import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.cache.CacheKey;
 import ru.tinkoff.kora.cache.CacheManager;
@@ -13,6 +12,7 @@ import ru.tinkoff.kora.cache.telemetry.CacheTracer;
 import ru.tinkoff.kora.cache.telemetry.DefaultCacheTelemetry;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.json.common.JsonCommonModule;
 import ru.tinkoff.kora.json.common.JsonReader;
@@ -21,7 +21,6 @@ import ru.tinkoff.kora.json.common.JsonWriter;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 public interface RedisCacheModule extends JsonCommonModule, LettuceModule {
@@ -33,7 +32,8 @@ public interface RedisCacheModule extends JsonCommonModule, LettuceModule {
     }
 
     default RedisCacheConfig redisCacheConfig(Config config, ConfigValueExtractor<RedisCacheConfig> extractor) {
-        return !config.hasPath("cache") ? new RedisCacheConfig(Map.of()) : extractor.extract(config.getValue("cache"));
+        var value = config.get("cache");
+        return extractor.extract(value);
     }
 
     default <V> RedisValueMapper<V> redisValueMapper(JsonWriter<V> jsonWriter, JsonReader<V> jsonReader, TypeRef<V> valueRef) {
@@ -64,13 +64,13 @@ public interface RedisCacheModule extends JsonCommonModule, LettuceModule {
 
     @Tag(RedisCacheManager.class)
     default <K, V> CacheManager<K, V> taggedRedisCacheManager(RedisKeyMapper<K> keyMapper,
-                                                                               RedisValueMapper<V> valueMapper,
-                                                                               SyncRedisClient syncClient,
-                                                                               ReactiveRedisClient reactiveClient,
-                                                                               RedisCacheConfig cacheConfig,
-                                                                               @Tag(RedisCacheManager.class) CacheTelemetry telemetry,
-                                                                               TypeRef<K> keyRef,
-                                                                               TypeRef<V> valueRef) {
+                                                              RedisValueMapper<V> valueMapper,
+                                                              SyncRedisClient syncClient,
+                                                              ReactiveRedisClient reactiveClient,
+                                                              RedisCacheConfig cacheConfig,
+                                                              @Tag(RedisCacheManager.class) CacheTelemetry telemetry,
+                                                              TypeRef<K> keyRef,
+                                                              TypeRef<V> valueRef) {
         return new RedisCacheManager<>(syncClient, reactiveClient, cacheConfig, telemetry, keyMapper, valueMapper);
     }
 }

@@ -15,14 +15,14 @@ public interface AsyncHttpClientModule extends NettyCommonModule, HttpClientModu
     default AsyncHttpClientConfig nettyClientConfig(EventLoopGroup eventLoopGroup, HttpClientConfig config) {
         DefaultAsyncHttpClientConfig.Builder builder = Dsl.config()
             .setEventLoopGroup(eventLoopGroup)
-            .setConnectTimeout(config.connectTimeout())
-            .setReadTimeout(config.readTimeout());
+            .setConnectTimeout((int) config.connectTimeout().toMillis())
+            .setReadTimeout((int) config.readTimeout().toMillis());
 
         HttpClientConfig.HttpClientProxyConfig proxy = config.proxy();
-        if (config.useEnvProxy() != null && config.useEnvProxy()) {
+        if (config.useEnvProxy()) {
             proxy = HttpClientConfig.HttpClientProxyConfig.fromEnv();
         }
-        if (proxy != null && proxy.host() != null && proxy.port() != null) {
+        if (proxy != null) {
             ProxyServer.Builder proxyBuilder = new ProxyServer.Builder(proxy.host(), proxy.port())
                 .setProxyType(ProxyType.HTTP);
 

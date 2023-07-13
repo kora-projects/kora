@@ -6,10 +6,10 @@ import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.mockito.kotlin.verify
 import ru.tinkoff.kora.common.Tag
-import ru.tinkoff.kora.database.cassandra.CassandraConfig.Advanced.MetricsConfig.Config
-import ru.tinkoff.kora.database.jdbc.JdbcDatabaseConfig
+import ru.tinkoff.kora.database.jdbc.`$JdbcDatabaseConfig_ConfigValueExtractor`.JdbcDatabaseConfig_Impl
 import ru.tinkoff.kora.database.jdbc.mapper.parameter.JdbcParameterColumnMapper
 import java.time.Duration
+import java.util.*
 import kotlin.reflect.full.findAnnotations
 import kotlin.reflect.jvm.jvmErasure
 
@@ -34,8 +34,21 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
 
     @Test
     fun testAbstractClassRepository() {
-        val config = JdbcDatabaseConfig("1", "2", "3", "4",
-            null, null, null, null, null, null, null, null, null)
+        val config = JdbcDatabaseConfig_Impl(
+            "1",
+            "2",
+            "3",
+            "testPool",
+            null,
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
+            1,
+            0,
+            Properties()
+        )
         val repository = compileForArgs(
             arrayOf(config, executor),
             """

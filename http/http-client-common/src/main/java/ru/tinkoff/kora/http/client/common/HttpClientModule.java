@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.http.client.common;
 
-import com.typesafe.config.Config;
 import ru.tinkoff.kora.common.DefaultComponent;
+import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.http.client.common.form.FormMultipartClientRequestMapper;
 import ru.tinkoff.kora.http.client.common.form.FormUrlEncodedClientRequestMapper;
@@ -13,13 +13,8 @@ import javax.annotation.Nullable;
 
 public interface HttpClientModule extends HttpClientRequestMapperModule, HttpClientResponseMapperModule, ParameterConvertersModule {
     default HttpClientConfig httpClientConfig(Config config, ConfigValueExtractor<HttpClientConfig> configValueExtractor) {
-        if (config.hasPath("httpClient")) {
-            var configValue = config.getValue("httpClient");
-            return configValueExtractor.extract(configValue);
-
-        } else {
-            return new HttpClientConfig(null, null, null, null);
-        }
+        var configValue = config.get("httpClient");
+        return configValueExtractor.extract(configValue);
     }
 
     @DefaultComponent

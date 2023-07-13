@@ -36,7 +36,11 @@ public class VertxDatabase implements Lifecycle, Wrapped<Pool>, VertxConnectionF
 
     public VertxDatabase(VertxDatabaseConfig vertxDatabaseConfig, EventLoopGroup eventLoopGroup, DataBaseTelemetryFactory telemetryFactory) {
         this.telemetry = telemetryFactory.get(vertxDatabaseConfig.poolName(), "postgres", vertxDatabaseConfig.username());
-        this.pool = PgPool.pool(VertxUtil.customEventLoopVertx(eventLoopGroup), vertxDatabaseConfig.toPgConnectOptions(), vertxDatabaseConfig.toPgPoolOptions());
+        this.pool = PgPool.pool(
+            VertxUtil.customEventLoopVertx(eventLoopGroup),
+            VertxDatabaseConfig.toPgConnectOptions(vertxDatabaseConfig),
+            VertxDatabaseConfig.toPgPoolOptions(vertxDatabaseConfig)
+        );
     }
 
     @Override

@@ -26,6 +26,7 @@ import ru.tinkoff.kora.http.client.annotation.processor.client.GithubClientReact
 import ru.tinkoff.kora.http.client.async.AsyncHttpClient;
 import ru.tinkoff.kora.http.client.common.HttpClient;
 import ru.tinkoff.kora.http.client.common.HttpClientTimeoutException;
+import ru.tinkoff.kora.http.client.common.declarative.$HttpClientOperationConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.http.client.common.declarative.HttpClientOperationConfig;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper;
 import ru.tinkoff.kora.http.client.common.telemetry.DefaultHttpClientTelemetryFactory;
@@ -85,9 +86,9 @@ class HttpClientAnnotationProcessorTest {
         var methodInterceptor2 = Mockito.spy(GithubClient.TestInterceptor2.class);
         var client = this.client(
             GithubClient.class,
-            new HttpClientOperationConfig[]{
-                new HttpClientOperationConfig(null),
-                new HttpClientOperationConfig(null),
+            new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl[]{
+                new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
+                new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
             },
             new Object[]{
                 classInterceptor1,
@@ -139,15 +140,15 @@ class HttpClientAnnotationProcessorTest {
     void testQuery() throws Exception {
         var client = this.client(
             ClientWithQueryParams.class,
-            new HttpClientOperationConfig[]{
-                new HttpClientOperationConfig(null),
-                new HttpClientOperationConfig(null),
-                new HttpClientOperationConfig(null),
-                new HttpClientOperationConfig(null),
-                new HttpClientOperationConfig(null),
-                new HttpClientOperationConfig(null),
-                new HttpClientOperationConfig(null),
-                new HttpClientOperationConfig(null),
+            new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl[]{
+                new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
+                new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
+                new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
+                new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
+                new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
+                new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
+                new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
+                new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
             },
             new Object[]{
                 (StringParameterConverter<Integer>) Object::toString,
@@ -248,9 +249,9 @@ class HttpClientAnnotationProcessorTest {
     void testReactiveClient() throws Exception {
         var client = this.client(
             GithubClientReactive.class,
-            new HttpClientOperationConfig[]{
-                new HttpClientOperationConfig(null),
-                new HttpClientOperationConfig(null)
+            new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl[]{
+                new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
+                new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null)
             },
             new Object[]{
                 responseMapper(GithubClientReactive.contributorListTypeRef),
@@ -292,10 +293,10 @@ class HttpClientAnnotationProcessorTest {
     void testClientWithTags() throws Exception {
         var client = this.client(
             ClientWithMappers.class,
-            new HttpClientOperationConfig[]{
-                new HttpClientOperationConfig(null),
-                new HttpClientOperationConfig(null),
-                new HttpClientOperationConfig(null),
+            new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl[]{
+                new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
+                new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
+                new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
             },
             new Object[]{
                 new ClientWithMappers.ContributorListMapper(),
@@ -342,9 +343,9 @@ class HttpClientAnnotationProcessorTest {
         var classInterceptor2 = Mockito.spy(GithubClient.TestInterceptor1.class);
         var methodInterceptor1 = Mockito.spy(GithubClient.TestInterceptor2.class);
         var methodInterceptor2 = Mockito.spy(GithubClient.TestInterceptor2.class);
-        var configs = new HttpClientOperationConfig[]{
-            new HttpClientOperationConfig(Duration.ofMillis(10)),
-            new HttpClientOperationConfig(null),
+        var configs = new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl[]{
+            new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(Duration.ofMillis(10)),
+            new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
         };
         var mappers = new Object[]{
             classInterceptor1,

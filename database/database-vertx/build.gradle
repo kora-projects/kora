@@ -11,6 +11,8 @@ dependencies {
     implementation "com.ongres.scram:common:2.1"
     implementation "com.ongres.scram:client:2.1"
 
+    annotationProcessor project(':config:config-annotation-processor')
+
     testImplementation project(':test:test-postgres')
     testImplementation libs.reactor.test
 }

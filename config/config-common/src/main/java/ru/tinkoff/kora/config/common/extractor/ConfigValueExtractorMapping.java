@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.config.common.extractor;
 
-import com.typesafe.config.ConfigValue;
+import ru.tinkoff.kora.config.common.ConfigValue;
 
 import java.util.function.Function;
 
@@ -14,7 +14,7 @@ public final class ConfigValueExtractorMapping<T, U> implements ConfigValueExtra
     }
 
     @Override
-    public U extract(ConfigValue value) {
+    public U extract(ConfigValue<?> value) {
         return mapping.apply(baseExtractor.extract(value));
     }
 }

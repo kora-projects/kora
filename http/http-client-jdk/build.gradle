@@ -1,5 +1,6 @@
 dependencies {
     api project(":http:http-client-common")
+    annotationProcessor project(':config:config-annotation-processor')
 
     testImplementation(testFixtures(project(":http:http-client-common")))
     testImplementation libs.jackson.datatype.jsr310

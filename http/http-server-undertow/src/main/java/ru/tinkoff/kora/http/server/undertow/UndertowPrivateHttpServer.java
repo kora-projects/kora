@@ -32,7 +32,7 @@ public class UndertowPrivateHttpServer implements PrivateHttpServer {
 
     @Override
     public Mono<Void> release() {
-        return Mono.delay(Duration.ofMillis(this.config.get().shutdownWait()))
+        return Mono.delay(this.config.get().shutdownWait())
             .then(ReactorUtils.ioMono(() -> {
                 logger.debug("Stopping Private HTTP Server (Undertow)...");
                 final long started = System.nanoTime();

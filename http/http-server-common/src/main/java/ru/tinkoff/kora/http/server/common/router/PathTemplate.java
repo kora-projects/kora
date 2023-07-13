@@ -149,7 +149,7 @@ public record PathTemplate(String templateString, boolean template, String base,
     }
 
     /**
-     * Check if the given uri matches the template. If so then it will return true and
+     * Check if the given url matches the template. If so then it will return true and
      * place the value of any path parameters into the given map.
      * <p>
      * Note the map may be modified even if the match in unsuccessful, however in this case

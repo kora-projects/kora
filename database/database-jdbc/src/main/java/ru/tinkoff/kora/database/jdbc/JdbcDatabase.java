@@ -34,7 +34,7 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
     public JdbcDatabase(JdbcDatabaseConfig databaseConfig, DataBaseTelemetry telemetry) {
         this.databaseConfig = databaseConfig;
         this.telemetry = telemetry;
-        this.dataSource = new HikariDataSource(this.databaseConfig.toHikariConfig());
+        this.dataSource = new HikariDataSource(JdbcDatabaseConfig.toHikariConfig(this.databaseConfig));
         if (telemetry != null) this.dataSource.setMetricRegistry(telemetry.getMetricRegistry());
     }
 

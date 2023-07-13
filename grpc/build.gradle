@@ -15,7 +15,10 @@ dependencies {
     compileOnly(libs.kotlin.stdlib.lib)
     compileOnly(libs.kotlin.coroutines.reactor)
 
+    annotationProcessor project(':config:config-annotation-processor')
+
     testImplementation project(':kora-app-annotation-processor')
+    testImplementation project(':config:config-common')
     testImplementation testFixtures(project(':annotation-processor-common'))
     testImplementation libs.grpc.java.gen
 //    testImplementation(libs.kotlin.stdlib.lib)

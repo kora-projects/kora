@@ -127,7 +127,7 @@ public class KafkaPublisherAnnotationProcessor extends AbstractKoraProcessor {
             .addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value", "$T.class", ClassName.get(typeElement)).build())
             .addParameter(CommonClassNames.config, "config")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueExtractor, KafkaClassNames.publisherConfig), "propertiesExtractor")
-            .addStatement("var configValue = config.getValue($S)", configPath)
+            .addStatement("var configValue = config.get($S)", configPath)
             .addStatement("return $T.requireNonNull(propertiesExtractor.extract(configValue))", Objects.class)
             .build();
     }

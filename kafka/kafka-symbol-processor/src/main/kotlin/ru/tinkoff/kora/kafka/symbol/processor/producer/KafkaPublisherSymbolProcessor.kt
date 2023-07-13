@@ -109,7 +109,7 @@ class KafkaPublisherSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseS
             .addAnnotation(setOf(producer.qualifiedName!!.asString()).toTagAnnotation()!!)
             .addParameter("config", CommonClassNames.config)
             .addParameter("extractor", CommonClassNames.configValueExtractor.parameterizedBy(KafkaClassNames.publisherConfig))
-            .addStatement("val configValue = config.getValue(%S)", configPath)
+            .addStatement("val configValue = config.get(%S)", configPath)
             .addStatement("return extractor.extract(configValue)!!", Objects::class.java)
             .build()
     }

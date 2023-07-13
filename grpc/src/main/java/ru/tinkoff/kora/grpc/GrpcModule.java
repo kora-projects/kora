@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.grpc;
 
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigValueFactory;
 import io.grpc.BindableService;
 import io.grpc.ServerInterceptor;
 import io.grpc.netty.NettyServerBuilder;
@@ -11,6 +9,7 @@ import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.application.graph.WrappedRefreshListener;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.grpc.config.GrpcServerConfig;
 import ru.tinkoff.kora.grpc.interceptors.ContextServerInterceptor;
@@ -21,15 +20,10 @@ import ru.tinkoff.kora.netty.common.NettyCommonModule;
 
 import javax.annotation.Nullable;
 import java.util.List;
-import java.util.Map;
 
 public interface GrpcModule extends NettyCommonModule {
     default GrpcServerConfig grpcServerConfig(Config config, ConfigValueExtractor<GrpcServerConfig> configValueExtractor) {
-        if (config.hasPath("grpcServer")) {
-            return configValueExtractor.extract(config.getValue("grpcServer"));
-        } else {
-            return configValueExtractor.extract(ConfigValueFactory.fromMap(Map.of()));
-        }
+        return configValueExtractor.extract(config.get("grpcServer"));
     }
 
     default GrpcServer grpcServer(ValueOf<NettyServerBuilder> serverBuilder) {

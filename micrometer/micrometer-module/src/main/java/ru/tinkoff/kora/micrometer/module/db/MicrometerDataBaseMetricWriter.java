@@ -36,16 +36,11 @@ public final class MicrometerDataBaseMetricWriter implements DataBaseMetricWrite
     private record DbMetrics(DistributionSummary duration) {}
 
     private DbMetrics metrics(String key) {
-        var builder = DistributionSummary.builder("database.client.request.duration");
-        if (this.config != null && this.config.slo() != null) {
-            builder.serviceLevelObjectives(this.config.slo().stream().mapToDouble(Double::doubleValue).toArray());
-        } else {
-            builder.serviceLevelObjectives(1, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 30000, 60000, 90000);
-        }
-        var duration = builder.baseUnit("milliseconds")
+        var builder = DistributionSummary.builder("database.client.request.duration")
+            .serviceLevelObjectives(this.config.slo())
+            .baseUnit("milliseconds")
             .tag("pool", this.poolName)
-            .tag("query.id", key)
-            .register(Metrics.globalRegistry);
-        return new DbMetrics(duration);
+            .tag("query.id", key);
+        return new DbMetrics(builder.register(Metrics.globalRegistry));
     }
 }

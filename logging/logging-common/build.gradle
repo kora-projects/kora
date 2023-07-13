@@ -4,4 +4,6 @@ dependencies {
     api project(':config:config-common')
     api libs.slf4j.api
     api libs.slf4j.jul
+
+    annotationProcessor project(':config:config-annotation-processor')
 }

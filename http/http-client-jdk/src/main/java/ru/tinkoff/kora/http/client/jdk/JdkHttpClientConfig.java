@@ -1,5 +1,10 @@
 package ru.tinkoff.kora.http.client.jdk;
 
-import javax.annotation.Nullable;
+import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
-public record JdkHttpClientConfig(@Nullable Integer threads) {}
+@ConfigValueExtractor
+public interface JdkHttpClientConfig {
+    default int threads() {
+        return Runtime.getRuntime().availableProcessors() * 2;
+    }
+}

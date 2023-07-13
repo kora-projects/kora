@@ -1,14 +1,19 @@
 package ru.tinkoff.kora.config.common.extractor;
 
-import com.typesafe.config.ConfigValue;
-import com.typesafe.config.ConfigValueType;
+import ru.tinkoff.kora.config.common.ConfigValue;
 
 public final class StringConfigValueExtractor implements ConfigValueExtractor<String> {
     @Override
-    public String extract(ConfigValue value) {
-        return switch (value.valueType()) {
-            case NUMBER, BOOLEAN, STRING -> value.unwrapped().toString();
-            default -> throw ConfigValueExtractionException.unexpectedValueType(value, ConfigValueType.STRING);
-        };
+    public String extract(ConfigValue<?> value) {
+        if (value instanceof ConfigValue.NumberValue numberValue) {
+            return numberValue.value().toString();
+        }
+        if (value instanceof ConfigValue.BooleanValue booleanValue) {
+            return booleanValue.value().toString();
+        }
+        if (value instanceof ConfigValue.StringValue stringValue) {
+            return stringValue.value();
+        }
+        throw ConfigValueExtractionException.unexpectedValueType(value, ConfigValue.StringValue.class);
     }
 }

@@ -10,6 +10,8 @@ import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
+import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.writeTagValue
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
@@ -60,19 +62,22 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
                     val configClassName = this.generateCronConfigRecord(type, function, cron)
                     val b = FunSpec.builder(configClassName.simpleName)
                         .returns(configClassName)
-                        .addParameter("config", ClassName("com.typesafe.config", "Config"))
+                        .addParameter("config", CommonClassNames.config)
                     if (cron.isNotBlank()) {
-                        b.addCode("if (!config.hasPath(%S)) {\n  return %T(%S);\n}\n", configPath, configClassName, cron)
+                        b.addStatement("val value = config.get(%S)", configPath)
+                        b.addCode("if (value is %T.NullValue) {\n  return %T(%S);\n}\n", CommonClassNames.configValue, configClassName, cron)
+                    } else {
+                        b.addStatement("val value = config.get(%S)!!", configPath)
                     }
-                    b.addCode(
-                        """
-                            val value = config.getValue(%S)
-                            if (value.valueType() != com.typesafe.config.ConfigValueType.STRING) {
-                              throw ru.tinkoff.kora.config.common.extractor.ConfigValueExtractionException.unexpectedValueType(value, com.typesafe.config.ConfigValueType.STRING)
-                            }
-                            return %T(value.unwrapped().toString());
-                        """.trimIndent(), configPath, configClassName
-                    )
+                    b.controlFlow("if (value is %T.StringValue)", CommonClassNames.configValue) {
+                        addStatement("return %T(value.value()!!)", configClassName)
+                        nextControlFlow("else")
+                        addStatement(
+                            "throw ru.tinkoff.kora.config.common.extractor.ConfigValueExtractionException.unexpectedValueType(value, %T.StringValue::class.java)",
+                            CommonClassNames.configValue
+                        )
+                    }
+
                     builder.addFunction(b.build())
                     component.addParameter("config", configClassName);
                     cronSchedule = CodeBlock.of("config.cron")

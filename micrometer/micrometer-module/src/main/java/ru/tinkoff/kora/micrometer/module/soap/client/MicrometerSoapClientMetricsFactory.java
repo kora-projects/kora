@@ -5,14 +5,13 @@ import ru.tinkoff.kora.micrometer.module.MetricsConfig;
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientMetrics;
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientMetricsFactory;
 
-import javax.annotation.Nullable;
 import java.net.URI;
 
 public class MicrometerSoapClientMetricsFactory implements SoapClientMetricsFactory {
     private final MeterRegistry meterRegistry;
     private final MetricsConfig.SoapClientMetricsConfig config;
 
-    public MicrometerSoapClientMetricsFactory(MeterRegistry meterRegistry, @Nullable MetricsConfig.SoapClientMetricsConfig config) {
+    public MicrometerSoapClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig.SoapClientMetricsConfig config) {
         this.meterRegistry = meterRegistry;
         this.config = config;
     }

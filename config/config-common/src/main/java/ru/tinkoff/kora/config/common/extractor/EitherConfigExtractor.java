@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.config.common.extractor;
 
-import com.typesafe.config.ConfigValue;
 import ru.tinkoff.kora.common.util.Either;
+import ru.tinkoff.kora.config.common.ConfigValue;
 
 public class EitherConfigExtractor<A, B> implements ConfigValueExtractor<Either<A, B>> {
 
@@ -14,7 +14,7 @@ public class EitherConfigExtractor<A, B> implements ConfigValueExtractor<Either<
     }
 
     @Override
-    public Either<A, B> extract(ConfigValue value) {
+    public Either<A, B> extract(ConfigValue<?> value) {
         try {
             return Either.left(leftExtractor.extract(value));
         } catch (Exception e) {

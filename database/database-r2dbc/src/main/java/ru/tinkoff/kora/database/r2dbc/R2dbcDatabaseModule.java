@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.database.r2dbc;
 
-import com.typesafe.config.Config;
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import ru.tinkoff.kora.application.graph.All;
+import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory;
 
@@ -11,7 +11,7 @@ import java.util.function.Function;
 public interface R2dbcDatabaseModule extends R2dbcModule {
 
     default R2dbcDatabaseConfig r2dbcConfig(Config config, ConfigValueExtractor<R2dbcDatabaseConfig> extractor) {
-        var value = config.getValue("db");
+        var value = config.get("db");
         return extractor.extract(value);
     }
 

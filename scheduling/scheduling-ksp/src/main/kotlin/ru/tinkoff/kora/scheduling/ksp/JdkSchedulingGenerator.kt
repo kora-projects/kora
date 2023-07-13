@@ -9,6 +9,7 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
+import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
@@ -150,13 +151,13 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
     }
 
     private fun configComponent(packageName: String, configClassName: String, configPath: String) = FunSpec.builder(configClassName)
-        .addParameter("config", ClassName("com.typesafe.config", "Config"))
+        .addParameter("config", CommonClassNames.config)
         .addParameter(
-            "extractor", ClassName("ru.tinkoff.kora.config.common.extractor", "ConfigValueExtractor")
-                .parameterizedBy(ClassName(packageName, configClassName))
+            "extractor", CommonClassNames.configValueExtractor
+            .parameterizedBy(ClassName(packageName, configClassName))
         )
-        .addCode("val configValue = config.getValue(%S);\n", configPath)
-        .addCode("return extractor.extract(configValue);\n")
+        .addCode("val configValue = config.get(%S);\n", configPath)
+        .addStatement("return extractor.extract(configValue) ?: throw %T.missingValueAfterParse(configValue)", CommonClassNames.configParseException)
         .returns(ClassName(packageName, configClassName))
         .build()
 

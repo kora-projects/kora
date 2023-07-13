@@ -1,0 +1,4 @@
+dependencies {
+    api project(':config:config-common')
+    api 'org.snakeyaml:snakeyaml-engine:2.6'
+}

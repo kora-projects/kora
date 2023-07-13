@@ -146,10 +146,10 @@ sealed interface ComponentDeclaration {
             return DiscoveredAsDependencyComponent(type, classDeclaration, constructor, tags)
         }
 
-        fun fromExtension(extensionResult: ExtensionResult.GeneratedResult): FromExtensionComponent {
+        fun fromExtension(ctx: ProcessingContext, extensionResult: ExtensionResult.GeneratedResult): FromExtensionComponent {
             val sourceMethod = extensionResult.constructor
             val sourceType = extensionResult.type
-            val parameterTypes = sourceType.parameterTypes.map { it!! }
+            val parameterTypes = sourceType.parameterTypes.map { it!!.fixPlatformType(ctx.resolver) }
             val type = sourceType.returnType!!
             if (type.isError) {
                 throw ProcessingErrorException("Component type is not resolvable in the current round of processing", sourceMethod)

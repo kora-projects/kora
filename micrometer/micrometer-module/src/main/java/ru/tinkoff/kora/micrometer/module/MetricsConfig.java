@@ -1,31 +1,80 @@
 package ru.tinkoff.kora.micrometer.module;
 
-import javax.annotation.Nullable;
-import java.util.List;
+import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
-public record MetricsConfig(
-    @Nullable DbMetricsConfig db,
-    @Nullable GrpcServerMetricsConfig grpcServer,
-    @Nullable HttpServerMetricsConfig httpServer,
-    @Nullable HttpClientMetricsConfig httpClient,
-    @Nullable SoapClientMetricsConfig soapClient,
-    @Nullable JmsConsumerMetricsConfig jmsConsumer,
-    @Nullable KafkaConsumerMetricsConfig kafkaConsumer,
-    @Nullable SchedulingMetricsConfig scheduling
-) {
-    public record DbMetricsConfig(@Nullable List<Double> slo) {}
+@ConfigValueExtractor
+public interface MetricsConfig {
+    double[] DEFAULT_SLO = new double[]{1, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 30000, 60000, 90000};
 
-    public record GrpcServerMetricsConfig(@Nullable List<Double> slo) {}
+    DbMetricsConfig db();
 
-    public record HttpServerMetricsConfig(@Nullable List<Double> slo) {}
+    GrpcServerMetricsConfig grpcServer();
 
-    public record HttpClientMetricsConfig(@Nullable List<Double> slo) {}
+    HttpServerMetricsConfig httpServer();
 
-    public record SoapClientMetricsConfig(@Nullable List<Double> slo) {}
+    HttpClientMetricsConfig httpClient();
 
-    public record JmsConsumerMetricsConfig(@Nullable List<Double> slo) {}
+    SoapClientMetricsConfig soapClient();
 
-    public record KafkaConsumerMetricsConfig(@Nullable List<Double> slo) {}
+    JmsConsumerMetricsConfig jmsConsumer();
 
-    public record SchedulingMetricsConfig(@Nullable List<Double> slo) {}
+    KafkaConsumerMetricsConfig kafkaConsumer();
+
+    SchedulingMetricsConfig scheduling();
+
+    @ConfigValueExtractor
+    interface DbMetricsConfig {
+        default double[] slo() {
+            return DEFAULT_SLO;
+        }
+    }
+
+    @ConfigValueExtractor
+    interface GrpcServerMetricsConfig {
+        default double[] slo() {
+            return DEFAULT_SLO;
+        }
+    }
+
+    @ConfigValueExtractor
+    interface HttpServerMetricsConfig {
+        default double[] slo() {
+            return DEFAULT_SLO;
+        }
+    }
+
+    @ConfigValueExtractor
+    interface HttpClientMetricsConfig {
+        default double[] slo() {
+            return DEFAULT_SLO;
+        }
+    }
+
+    @ConfigValueExtractor
+    interface SoapClientMetricsConfig {
+        default double[] slo() {
+            return DEFAULT_SLO;
+        }
+    }
+
+    @ConfigValueExtractor
+    interface JmsConsumerMetricsConfig {
+        default double[] slo() {
+            return DEFAULT_SLO;
+        }
+    }
+
+    @ConfigValueExtractor
+    interface KafkaConsumerMetricsConfig {
+        default double[] slo() {
+            return DEFAULT_SLO;
+        }
+    }
+
+    @ConfigValueExtractor
+    interface SchedulingMetricsConfig {
+        default double[] slo() {
+            return DEFAULT_SLO;
+        }
+    }
 }

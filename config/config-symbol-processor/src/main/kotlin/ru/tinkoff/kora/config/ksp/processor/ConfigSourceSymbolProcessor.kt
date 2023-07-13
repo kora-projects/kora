@@ -1,22 +1,22 @@
 package ru.tinkoff.kora.config.ksp.processor
 
-import com.google.devtools.ksp.KspExperimental
-import com.google.devtools.ksp.getAnnotationsByType
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.FileSpec
+import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.writeTo
-import com.typesafe.config.Config
-import ru.tinkoff.kora.common.Module
-import ru.tinkoff.kora.config.common.ConfigSource
-import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor
-import ru.tinkoff.kora.config.ksp.ConfigRootModuleGenerator
+import ru.tinkoff.kora.config.ksp.ConfigClassNames
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
+import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.visitClass
 import java.io.IOException
@@ -26,14 +26,14 @@ class ConfigSourceSymbolProcessor(
 ) : BaseSymbolProcessor(environment) {
     private val codeGenerator: CodeGenerator = environment.codeGenerator
 
-    @OptIn(KspExperimental::class)
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
-        val classesToProcess = resolver.getSymbolsWithAnnotation(ConfigSource::class.qualifiedName!!).toList()
+        val classesToProcess = resolver.getSymbolsWithAnnotation(ConfigClassNames.configSourceAnnotation.canonicalName).toList()
 
         classesToProcess.forEach {
             it.visitClass { config ->
                 val typeBuilder = TypeSpec.interfaceBuilder(config.simpleName.asString() + "Module")
-                val path = config.getAnnotationsByType(ConfigSource::class).first().value
+                val configSource = config.findAnnotation(ConfigClassNames.configSourceAnnotation)!!
+                val path = configSource.findValue<String>("value")!!
                 val name = StringBuilder(config.simpleName.asString())
                 var parent = config.parentDeclaration
                 while (parent is KSClassDeclaration && (parent.classKind == ClassKind.CLASS || parent.classKind == ClassKind.INTERFACE)) {
@@ -44,16 +44,16 @@ class ConfigSourceSymbolProcessor(
                 val function = FunSpec.builder(name.toString())
                     .returns(config.toClassName())
                     .addModifiers(KModifier.PUBLIC)
-                    .addParameter("config", Config::class.java.asTypeName())
+                    .addParameter("config", ConfigClassNames.config)
                     .addParameter(
                         "extractor",
-                        ConfigValueExtractor::class.asClassName().parameterizedBy(config.toClassName())
+                        ConfigClassNames.configValueExtractor.parameterizedBy(config.toClassName())
                     )
-                    .addStatement("val configValue = config.getValue(%S)", path)
-                    .addStatement("return extractor.extract(configValue)")
+                    .addStatement("val configValue = config.get(%S)", path)
+                    .addStatement("return extractor.extract(configValue) ?: throw %T.missingValueAfterParse(configValue)", CommonClassNames.configParseException)
                 val type = typeBuilder.addFunction(function.build())
-                    .addAnnotation(Module::class)
-                    .generated(ConfigRootModuleGenerator::class)
+                    .addAnnotation(CommonClassNames.module)
+                    .generated(ConfigSourceSymbolProcessor::class)
                     .addModifiers(KModifier.PUBLIC)
                     .addOriginatingKSFile(config.containingFile!!)
                     .build()

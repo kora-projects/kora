@@ -40,7 +40,7 @@ public interface {{classname}}ServerRequestMappers {
               {{/isArray}}{{^isArray}}
                   {{#required}}
                           if ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) {
-                          sink.error(ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form field '{{baseName}}' is required"));
+                          sink.error(ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form key '{{baseName}}' is required"));
                           return;
                           }
                           {{#vendorExtensions.requiresMapper}}
@@ -85,7 +85,7 @@ public interface {{classname}}ServerRequestMappers {
         .handle((state, sink) -> {
           {{#formParams}}{{#required}}
           if (state.{{paramName}} == null) {
-            sink.error(ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form field '{{baseName}}' is required"));
+            sink.error(ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form key '{{baseName}}' is required"));
             return;
           }
           {{/required}}{{/formParams}}

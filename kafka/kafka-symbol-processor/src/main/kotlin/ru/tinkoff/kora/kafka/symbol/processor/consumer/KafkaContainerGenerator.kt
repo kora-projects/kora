@@ -33,8 +33,8 @@ class KafkaContainerGenerator {
             .returns(CommonClassNames.lifecycle)
 
         funBuilder.addStatement("val wrappedHandler = %T.wrapHandler(telemetry, %L, handler)", KafkaClassNames.handlerWrapper, consumerParameter == null)
-        funBuilder.controlFlow("if (config.driverProperties.getProperty(%T.GROUP_ID_CONFIG) == null)", KafkaClassNames.commonClientConfigs) {
-            addStatement("val topics = config.topics")
+        funBuilder.controlFlow("if (config.driverProperties().getProperty(%T.GROUP_ID_CONFIG) == null)", KafkaClassNames.commonClientConfigs) {
+            addStatement("val topics = config.topics()")
             addStatement("require(topics != null)")
             addStatement("require(topics.size == 1)")
             addStatement("return %T(config, topics[0], keyDeserializer, valueDeserializer, telemetry, wrappedHandler)", KafkaClassNames.kafkaAssignConsumerContainer)

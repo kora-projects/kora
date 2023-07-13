@@ -1,16 +1,13 @@
 package ru.tinkoff.kora.cache.redis.client;
 
-import com.typesafe.config.Config;
 import io.lettuce.core.AbstractRedisClient;
-import io.lettuce.core.RedisClient;
-import io.lettuce.core.cluster.RedisClusterClient;
-import io.lettuce.core.codec.ByteArrayCodec;
+import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 
 public interface LettuceModule {
 
     default LettuceClientConfig lettuceConfig(Config config, ConfigValueExtractor<LettuceClientConfig> extractor) {
-        var value = config.getValue("lettuce");
+        var value = config.get("lettuce");
         return extractor.extract(value);
     }
 

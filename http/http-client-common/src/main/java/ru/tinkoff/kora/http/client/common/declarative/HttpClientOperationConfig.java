@@ -1,6 +1,12 @@
 package ru.tinkoff.kora.http.client.common.declarative;
 
+import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
+
 import javax.annotation.Nullable;
 import java.time.Duration;
 
-public record HttpClientOperationConfig(Duration requestTimeout) { }
+@ConfigValueExtractor
+public interface HttpClientOperationConfig {
+    @Nullable
+    Duration requestTimeout();
+}

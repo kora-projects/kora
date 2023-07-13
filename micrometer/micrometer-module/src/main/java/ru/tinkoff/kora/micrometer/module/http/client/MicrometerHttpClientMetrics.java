@@ -5,7 +5,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientMetrics;
 import ru.tinkoff.kora.micrometer.module.MetricsConfig;
 
-import javax.annotation.Nullable;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class MicrometerHttpClientMetrics implements HttpClientMetrics {
@@ -13,7 +12,7 @@ public final class MicrometerHttpClientMetrics implements HttpClientMetrics {
     private final ConcurrentHashMap<DurationKey, DistributionSummary> duration = new ConcurrentHashMap<>();
     private final MetricsConfig.HttpClientMetricsConfig config;
 
-    public MicrometerHttpClientMetrics(MeterRegistry meterRegistry, @Nullable MetricsConfig.HttpClientMetricsConfig config) {
+    public MicrometerHttpClientMetrics(MeterRegistry meterRegistry, MetricsConfig.HttpClientMetricsConfig config) {
         this.meterRegistry = meterRegistry;
         this.config = config;
     }
@@ -25,20 +24,15 @@ public final class MicrometerHttpClientMetrics implements HttpClientMetrics {
     }
 
     private DistributionSummary duration(DurationKey key) {
-        var builder = DistributionSummary.builder("http.client.duration");
-        if (this.config != null && this.config.slo() != null) {
-            builder.serviceLevelObjectives(this.config.slo().stream().mapToDouble(Double::doubleValue).toArray());
-        } else {
-            builder.serviceLevelObjectives(1, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 30000, 60000, 90000);
-        }
-
-        return builder.baseUnit("milliseconds")
+        var builder = DistributionSummary.builder("http.client.duration")
+            .serviceLevelObjectives(this.config.slo())
+            .baseUnit("milliseconds")
             .tag("http.method", key.method)
             .tag("http.host", key.host)
             .tag("http.scheme", key.scheme)
             .tag("http.target", key.target)
-            .tag("http.status_code", Integer.toString(key.statusCode()))
-            .register(meterRegistry);
+            .tag("http.status_code", Integer.toString(key.statusCode()));
+        return builder.register(meterRegistry);
     }
 
     private record DurationKey(int statusCode, String method, String host, String scheme, String target) {}

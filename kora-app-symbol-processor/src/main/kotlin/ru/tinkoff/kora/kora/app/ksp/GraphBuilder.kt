@@ -188,7 +188,7 @@ object GraphBuilder {
                         throw NewRoundException(processing, extension, dependencyClaim.type, dependencyClaim.tags)
                     } else {
                         extensionResult as ExtensionResult.GeneratedResult
-                        val extensionComponent = ComponentDeclaration.fromExtension(extensionResult)
+                        val extensionComponent = ComponentDeclaration.fromExtension(ctx, extensionResult)
                         if (extensionComponent.isTemplate()) {
                             processing.templateDeclarations.add(extensionComponent)
                         } else {

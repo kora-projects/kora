@@ -26,7 +26,7 @@ public class KafkaConsumerConfigGenerator {
             .returns(KafkaClassNames.kafkaConsumerConfig)
             .addParameter(CommonClassNames.config, "config")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueExtractor, KafkaClassNames.kafkaConsumerConfig), "extractor")
-            .addStatement("var configValue = config.getValue($S)", configPath)
+            .addStatement("var configValue = config.get($S)", configPath)
             .addStatement("return extractor.extract(configValue)")
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value", tagsBlock.build()).build());

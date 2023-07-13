@@ -24,6 +24,7 @@ import ru.tinkoff.kora.application.graph.Lifecycle
 import ru.tinkoff.kora.common.Context
 import ru.tinkoff.kora.http.client.async.AsyncHttpClient
 import ru.tinkoff.kora.http.client.common.HttpClient
+import ru.tinkoff.kora.http.client.common.declarative.`$HttpClientOperationConfig_ConfigValueExtractor`.HttpClientOperationConfig_Impl
 import ru.tinkoff.kora.http.client.common.declarative.HttpClientOperationConfig
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper
@@ -84,9 +85,9 @@ class HttpClientSymbolProcessorTest {
         val methodInterceptor2 = Mockito.spy(GithubClient.TestInterceptor2::class.java)
         val client: GithubClient = this.client(
             GithubClient::class, arrayOf(
-                HttpClientOperationConfig(null),
-                HttpClientOperationConfig(null),
-                HttpClientOperationConfig(null),
+                HttpClientOperationConfig_Impl(null),
+                HttpClientOperationConfig_Impl(null),
+                HttpClientOperationConfig_Impl(null),
             ), arrayOf(
                 classInterceptor1,
                 classInterceptor2,
@@ -152,14 +153,14 @@ class HttpClientSymbolProcessorTest {
     fun testQuery() {
         val client: ClientWithQueryParams = this.client(
             ClientWithQueryParams::class, arrayOf(
-                HttpClientOperationConfig(null),
-                HttpClientOperationConfig(null),
-                HttpClientOperationConfig(null),
-                HttpClientOperationConfig(null),
-                HttpClientOperationConfig(null),
-                HttpClientOperationConfig(null),
-                HttpClientOperationConfig(null),
-                HttpClientOperationConfig(null),
+                HttpClientOperationConfig_Impl(null),
+                HttpClientOperationConfig_Impl(null),
+                HttpClientOperationConfig_Impl(null),
+                HttpClientOperationConfig_Impl(null),
+                HttpClientOperationConfig_Impl(null),
+                HttpClientOperationConfig_Impl(null),
+                HttpClientOperationConfig_Impl(null),
+                HttpClientOperationConfig_Impl(null),
             ), arrayOf(
                 StringParameterConverter<LocalDate> { it.toString() },
                 StringParameterConverter<LocalDate> { it.toString() },
@@ -274,8 +275,8 @@ class HttpClientSymbolProcessorTest {
     fun testReactiveClient() {
         val client: GithubClientReactive = this.client(
             GithubClientReactive::class, arrayOf(
-                HttpClientOperationConfig(null),
-                HttpClientOperationConfig(null)
+                HttpClientOperationConfig_Impl(null),
+                HttpClientOperationConfig_Impl(null)
             ), arrayOf(
                 responseMapper(GithubClientReactive.contributorListTypeRef),
                 requestMapper(GithubClientReactive.issueTypeRef),
@@ -322,9 +323,9 @@ class HttpClientSymbolProcessorTest {
     fun testClientWithTags() {
         val client: ClientWithMappers = this.client(
             ClientWithMappers::class, arrayOf(
-                HttpClientOperationConfig(null),
-                HttpClientOperationConfig(null),
-                HttpClientOperationConfig(null),
+                HttpClientOperationConfig_Impl(null),
+                HttpClientOperationConfig_Impl(null),
+                HttpClientOperationConfig_Impl(null),
             ), arrayOf(
                 ClientWithMappers.IssueRequestMapper(),
                 unitMono(),
@@ -366,8 +367,8 @@ class HttpClientSymbolProcessorTest {
     fun testClientKotlin() {
         val client: GithubClientKotlin = this.client(
             GithubClientKotlin::class, arrayOf(
-                HttpClientOperationConfig(null),
-                HttpClientOperationConfig(null)
+                HttpClientOperationConfig_Impl(null),
+                HttpClientOperationConfig_Impl(null)
             ), arrayOf(
                 responseMapper(GithubClient.contributorListTypeRef),
                 requestMapper(GithubClient.issueTypeRef),

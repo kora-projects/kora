@@ -1,24 +1,25 @@
 package ru.tinkoff.kora.cache.redis;
 
 
+import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.time.Duration;
 import java.util.Map;
 
-public record RedisCacheConfig(@Nullable Map<String, NamedCacheConfig> redis) {
+@ConfigValueExtractor
+public interface RedisCacheConfig {
+    String DEFAULT = "default";
+    NamedCacheConfig DEFAULT_CONFIG = new NamedCacheConfig(null, null);
 
-    private static final String DEFAULT = "default";
+    default Map<String, NamedCacheConfig> redis() {
+        return Map.of();
+    }
 
-    private static final NamedCacheConfig DEFAULT_CONFIG = new NamedCacheConfig(null, null);
-
-    public NamedCacheConfig getByName(@Nonnull String name) {
-        if (redis == null) {
-            return DEFAULT_CONFIG;
-        }
-
-        final NamedCacheConfig defaultConfig = redis.getOrDefault(DEFAULT, DEFAULT_CONFIG);
-        final NamedCacheConfig namedConfig = redis.get(name);
+    default NamedCacheConfig getByName(@Nonnull String name) {
+        final NamedCacheConfig defaultConfig = this.redis().getOrDefault(DEFAULT, DEFAULT_CONFIG);
+        final NamedCacheConfig namedConfig = this.redis().get(name);
         if (namedConfig == null) {
             return defaultConfig;
         }
@@ -29,6 +30,10 @@ public record RedisCacheConfig(@Nullable Map<String, NamedCacheConfig> redis) {
         );
     }
 
-    public record NamedCacheConfig(@Nullable Duration expireAfterWrite,
-                                   @Nullable Duration expireAfterAccess) {}
+
+    @ConfigValueExtractor
+    record NamedCacheConfig(
+        @Nullable Duration expireAfterWrite,
+        @Nullable Duration expireAfterAccess
+    ) {}
 }

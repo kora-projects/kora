@@ -20,6 +20,7 @@ dependencies {
     testImplementation project(":test:test-logging")
     testImplementation project(":symbol-processor-common")
     testImplementation project(":aop:aop-symbol-processor")
+    testImplementation project(":config:config-hocon")
     testImplementation project(":config:config-symbol-processor")
     testImplementation project(":kora-app-symbol-processor")
     testImplementation(libs.kotlin.stdlib.lib)

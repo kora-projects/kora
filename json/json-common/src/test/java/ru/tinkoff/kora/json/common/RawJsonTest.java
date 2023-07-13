@@ -12,7 +12,7 @@ class RawJsonTest {
     @Test
     void testRawJsonWriter() throws IOException {
         var rawJson = new RawJson("""
-            {"field": "value"}
+            {"key": "value"}
             """);
         var writer = new RawJsonWriter();
         var baos = new ByteArrayOutputStream();
@@ -25,7 +25,7 @@ class RawJsonTest {
     @Test
     void testRawObjectCodec() throws IOException {
         var rawJson = new RawJson("""
-            {"field": "value"}
+            {"key": "value"}
             """);
 
         var baos = new ByteArrayOutputStream();

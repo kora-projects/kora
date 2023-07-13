@@ -6,4 +6,6 @@ dependencies {
     }
     api libs.grpc.stub
     api libs.grpc.netty
+
+    annotationProcessor project(':config:config-annotation-processor')
 }

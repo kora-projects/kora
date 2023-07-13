@@ -4,6 +4,8 @@ dependencies {
     api libs.r2dbc.spi
     api libs.r2dbc.pool
 
+    annotationProcessor project(':config:config-annotation-processor')
+
     testImplementation libs.r2dbc.postgres
     testImplementation libs.reactor.test
     testImplementation project(':test:test-postgres')

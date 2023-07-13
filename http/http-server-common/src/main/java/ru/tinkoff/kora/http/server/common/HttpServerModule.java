@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.http.server.common;
 
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigValueFactory;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.PromiseOf;
@@ -11,6 +9,7 @@ import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.liveness.LivenessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.common.util.ReactorUtils;
+import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.form.FormUrlEncoded;
@@ -25,17 +24,12 @@ import ru.tinkoff.kora.http.server.common.telemetry.*;
 import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
 import java.util.Optional;
 
 public interface HttpServerModule extends StringParameterReadersModule {
 
     default HttpServerConfig httpServerConfig(Config config, ConfigValueExtractor<HttpServerConfig> configValueExtractor) {
-        if (config.hasPath("httpServer")) {
-            return configValueExtractor.extract(config.getValue("httpServer"));
-        } else {
-            return configValueExtractor.extract(ConfigValueFactory.fromMap(Map.of()));
-        }
+        return configValueExtractor.extract(config.get("httpServer"));
     }
 
     @DefaultComponent

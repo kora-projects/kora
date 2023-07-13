@@ -3,6 +3,7 @@ dependencies {
     api libs.micrometer.registry.prometheus
     api libs.prometheus.jmx.collector
     api libs.opentelemetry.semconv
+    annotationProcessor project(':config:config-annotation-processor')
 
     compileOnly project(':http:http-server-common')
     compileOnly project(':http:soap-client')

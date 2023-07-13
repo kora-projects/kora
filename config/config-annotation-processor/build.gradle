@@ -1,9 +1,9 @@
 dependencies {
     api project(':annotation-processor-common')
-    api project(':config:config-common')
 
     implementation project(':kora-app-annotation-processor')
 
+    testImplementation project(':config:config-common')
     testImplementation testFixtures(project(':annotation-processor-common'))
 }
 

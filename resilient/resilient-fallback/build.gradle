@@ -4,7 +4,8 @@ dependencies {
     api project(":common")
 
     implementation project(":config:config-common")
-    implementation libs.typesafe.config
+
+    annotationProcessor project(':config:config-annotation-processor')
 
     testImplementation project(":test:test-logging")
     testImplementation libs.testcontainers.junit.jupiter

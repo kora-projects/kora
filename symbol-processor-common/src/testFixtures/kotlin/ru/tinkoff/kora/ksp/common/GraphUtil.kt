@@ -13,7 +13,7 @@ object GraphUtil {
         return GraphContainer(draw)
     }
 
-    class GraphContainer(private val draw: ApplicationGraphDraw) {
+    class GraphContainer(val draw: ApplicationGraphDraw) {
         private val graph = draw.init().block()!!
 
         fun <T : Any> findByType(type: Class<T>) = draw.nodes.asSequence()

@@ -1,9 +1,9 @@
 dependencies {
     api project(":cache:cache-common")
+    annotationProcessor project(':config:config-annotation-processor')
 
     implementation project(":json:json-common")
     implementation project(":config:config-common")
-    implementation libs.typesafe.config
     implementation(libs.lettuce.core) {
         exclude group: 'io.projectreactor', module: 'reactor-core'
     }

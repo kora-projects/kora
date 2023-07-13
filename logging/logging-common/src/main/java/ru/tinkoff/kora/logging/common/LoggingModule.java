@@ -1,11 +1,10 @@
 package ru.tinkoff.kora.logging.common;
 
-import com.typesafe.config.Config;
 import org.slf4j.ILoggerFactory;
 import org.slf4j.LoggerFactory;
+import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 
-import javax.annotation.Nullable;
 import java.util.Map;
 
 public interface LoggingModule {
@@ -13,19 +12,16 @@ public interface LoggingModule {
         return new LoggingConfigValueExtractor();
     }
 
-    default LoggingLevelRefresher loggingLevelRefresher(@Nullable LoggingConfig loggingConfig, LoggingLevelApplier loggingLevelApplier) {
-        if (loggingConfig == null) {
-            loggingConfig = new LoggingConfig(Map.of("ROOT", "info"));
-        }
+    default LoggingLevelRefresher loggingLevelRefresher(LoggingConfig loggingConfig, LoggingLevelApplier loggingLevelApplier) {
         return new LoggingLevelRefresher(loggingConfig, loggingLevelApplier);
     }
 
     default LoggingConfig loggingConfig(Config config, ConfigValueExtractor<LoggingConfig> extractor) {
-        if (config.hasPath("logging")) {
-            var value = config.getValue("logging");
-            return extractor.extract(value);
-        } else {
+        var value = config.get("logging");
+        if (value == null) {
             return new LoggingConfig(Map.of());
+        } else {
+            return extractor.extract(value);
         }
     }
 

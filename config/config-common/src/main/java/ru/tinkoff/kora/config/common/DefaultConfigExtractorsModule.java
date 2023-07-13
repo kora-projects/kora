@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.config.common;
 
-import com.typesafe.config.Config;
 import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.common.util.Either;
 import ru.tinkoff.kora.config.common.extractor.*;
@@ -52,13 +51,8 @@ public interface DefaultConfigExtractorsModule {
         return new BooleanConfigValueExtractor();
     }
 
-    default ConfigValueExtractor<Config> subconfigConfigValueExtractor() {
-        return new ObjectConfigValueExtractor<>() {
-            @Override
-            protected Config extract(Config config) {
-                return config;
-            }
-        };
+    default ConfigValueExtractor<ConfigValue.ObjectValue> subconfigConfigValueExtractor() {
+        return ConfigValue::asObject;
     }
 
     default ConfigValueExtractor<Duration> durationConfigValueExtractor() {
@@ -83,5 +77,9 @@ public interface DefaultConfigExtractorsModule {
 
     default ConfigValueExtractor<UUID> uuidConfigValueExtractor() {
         return new UUIDConfigValueExtractor();
+    }
+
+    default ConfigValueExtractor<double[]> doubleArrayConfigValueExtractor(ConfigValueExtractor<Double> doubleExtractor) {
+        return new DoubleArrayConfigValueExtractor(doubleExtractor);
     }
 }

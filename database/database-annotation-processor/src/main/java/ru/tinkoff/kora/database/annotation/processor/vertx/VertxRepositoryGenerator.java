@@ -60,8 +60,8 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
         var repositoryType = (DeclaredType) repositoryElement.asType();
         var queryMethods = DbUtils.findQueryMethods(this.types, this.elements, repositoryElement);
         this.enrichWithExecutor(repositoryElement, type, constructor, queryMethods);
-        var resultMappers = new FieldFactory(this.types, type, constructor, "_result_mapper_");
-        var parameterMappers = new FieldFactory(this.types, type, constructor, "_parameter_mapper_");
+        var resultMappers = new FieldFactory(this.types, elements, type, constructor, "_result_mapper_");
+        var parameterMappers = new FieldFactory(this.types, elements, type, constructor, "_parameter_mapper_");
         for (var method : queryMethods) {
             var methodType = (ExecutableType) this.types.asMemberOf(repositoryType, method);
             var parameters = QueryParameterParser.parse(this.types, List.of(VertxTypes.CONNECTION, VertxTypes.SQL_CLIENT), VertxTypes.PARAMETER_COLUMN_MAPPER, method, methodType);
