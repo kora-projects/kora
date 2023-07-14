@@ -37,6 +37,7 @@ public interface ValidationContext {
      */
     @Nonnull
     default Violation violates(@Nonnull String message) {
+        SimpleViolation.logger.debug("Validation violation on path '{}' with error: {}", path(), message);
         return new SimpleViolation(message, path());
     }
 

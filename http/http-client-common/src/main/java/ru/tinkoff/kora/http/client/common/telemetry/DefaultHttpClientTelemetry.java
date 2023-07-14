@@ -78,9 +78,9 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
                     if (requestBodyCharset == null) {
                         this.logger.logRequest(authority, request.method(), operation, resolvedUri, headers, null);
                     } else {
-                        var requestBodyFlux = this.wrapBody(request.body(), true, l -> {
-                            var s = byteBufListToBodyString(l, requestBodyCharset);
-                            this.logger.logRequest(authority, method, operation, resolvedUri, headers, s);
+                        var requestBodyFlux = this.wrapBody(request.body(), true, buffers -> {
+                            var bodyString = byteBufListToBodyString(buffers, requestBodyCharset);
+                            this.logger.logRequest(authority, method, operation, resolvedUri, headers, bodyString);
                         }, e -> {}, () -> {});
                         request = request.toBuilder()
                             .body(requestBodyFlux)
@@ -104,13 +104,17 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
                     if (metrics != null) {
                         metrics.record(-1, processingTime, method, host, scheme, target);
                     }
-                    if (logger != null && logger.logResponse()) logger.logResponse(authority, operation, processingTime, null, HttpResultCode.CONNECTION_ERROR, exception, null, null);
+                    if (logger != null && logger.logResponse()) {
+                        logger.logResponse(authority, operation, processingTime, null, HttpResultCode.CONNECTION_ERROR, exception, null, null);
+                    }
                     return null;
                 }
                 var responseBodyCharset = logger == null || !logger.logResponseBody() ? null : detectCharset(response.headers());
                 var bodySubscribed = new AtomicBoolean(false);
-                var responseBodyFlux = wrapBody(response.body(), responseBodyCharset != null, l -> {
-                    if (createSpanResult != null) createSpanResult.span().close(null);
+                var responseBodyFlux = wrapBody(response.body(), responseBodyCharset != null, buffers -> {
+                    if (createSpanResult != null) {
+                        createSpanResult.span().close(null);
+                    }
                     var processingTime = System.nanoTime() - startTime;
                     if (metrics != null) {
                         metrics.record(response.code(), processingTime, method, host, scheme, target);
@@ -118,7 +122,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
                     var resultCode = HttpResultCode.fromStatusCode(response.code());
                     if (logger != null) {
                         var headers = logger.logResponseHeaders() ? response.headers() : null;
-                        var bodyString = byteBufListToBodyString(l, responseBodyCharset);
+                        var bodyString = byteBufListToBodyString(buffers, responseBodyCharset);
                         logger.logResponse(authority, operation, processingTime, response.code(), resultCode, null, headers, bodyString);
                     }
                 }, e -> {
@@ -127,7 +131,9 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
                     if (metrics != null) {
                         metrics.record(-1, processingTime, method, host, scheme, target);
                     }
-                    if (logger != null && logger.logResponse()) logger.logResponse(authority, operation, processingTime, null, HttpResultCode.CONNECTION_ERROR, e, null, null);
+                    if (logger != null && logger.logResponse()) {
+                        logger.logResponse(authority, operation, processingTime, null, HttpResultCode.CONNECTION_ERROR, e, null, null);
+                    }
                 }, () -> bodySubscribed.set(true));
 
                 return new HttpClientResponse.Default(

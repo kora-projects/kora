@@ -95,7 +95,7 @@ final class GraphImpl implements RefreshableGraph, Lifecycle {
                         }
                         case ON_COMPLETE -> {
                             this.semaphore.release();
-                            log.debug("Refreshing Graph completed took {}", Duration.ofNanos(System.nanoTime() - started));
+                            log.debug("Refreshing Graph completed in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
                         }
                         default -> {}
                     }
@@ -110,22 +110,22 @@ final class GraphImpl implements RefreshableGraph, Lifecycle {
             root.set(0, this.objects.length());
             this.semaphore.acquireUninterruptibly();
 
-            log.debug("Initializing Graph...");
+            log.debug("Graph Initializing...");
             final long started = System.nanoTime();
             return this.initializeSubgraph(root)
                 .doOnEach(s -> {
                     switch (s.getType()) {
                         case CANCEL -> {
                             this.semaphore.release();
-                            log.debug("Initializing Graph cancelled");
+                            log.debug("Graph Initializing cancelled");
                         }
                         case ON_ERROR -> {
                             this.semaphore.release();
-                            log.debug("Initializing Graph error", s.getThrowable());
+                            log.debug("Graph Initializing error", s.getThrowable());
                         }
                         case ON_COMPLETE -> {
                             this.semaphore.release();
-                            log.debug("Initializing Graph completed took {}", Duration.ofNanos(System.nanoTime() - started));
+                            log.debug("Graph Initializing completed in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
                         }
                         default -> {}
                     }
@@ -139,22 +139,22 @@ final class GraphImpl implements RefreshableGraph, Lifecycle {
             var root = new BitSet(this.objects.length());
             root.set(0, this.objects.length());
             this.semaphore.acquireUninterruptibly();
-            log.debug("Releasing Graph...");
+            log.debug("Graph Releasing...");
             final long started = System.nanoTime();
             return this.releaseNodes(this.objects, root)
                 .doOnEach(s -> {
                     switch (s.getType()) {
                         case CANCEL -> {
                             this.semaphore.release();
-                            log.debug("Releasing graph cancelled");
+                            log.debug("Graph Releasing cancelled");
                         }
                         case ON_ERROR -> {
                             this.semaphore.release();
-                            log.debug("Releasing graph error", s.getThrowable());
+                            log.debug("Graph Releasing error", s.getThrowable());
                         }
                         case ON_COMPLETE -> {
                             this.semaphore.release();
-                            log.debug("Releasing graph completed took {}", Duration.ofNanos(System.nanoTime() - started));
+                            log.debug("Graph Releasing completed in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
                         }
                         default -> {}
                     }
@@ -175,7 +175,7 @@ final class GraphImpl implements RefreshableGraph, Lifecycle {
                 for (var newPromise : tmpGraph.newPromises) {
                     newPromise.graph = GraphImpl.this;
                 }
-                log.trace("Graph refreshed, calling interceptors");
+                log.trace("Graph refreshed, calling interceptors...");
                 for (var refreshListenerNode : this.refreshListenerNodes) {
                     if (this.objects.get(refreshListenerNode) instanceof RefreshListener refreshListener) {
                         try {
@@ -386,14 +386,14 @@ final class GraphImpl implements RefreshableGraph, Lifecycle {
             return lifecycle.init().then()
                 .doOnEach(s -> {
                     switch (s.getType()) {
-                        case CANCEL -> this.rootGraph.log.trace("Initializing node {} of class {} cancelled", index, lifecycle.getClass());
-                        case ON_SUBSCRIBE -> this.rootGraph.log.trace("Initializing node {} of class {}", index, lifecycle.getClass());
-                        case ON_ERROR -> this.rootGraph.log.trace("Initializing node {} of class {} error", index, lifecycle.getClass(), s.getThrowable());
+                        case CANCEL -> this.rootGraph.log.trace("Node Initializing {} of class {} cancelled", index, lifecycle.getClass());
+                        case ON_SUBSCRIBE -> this.rootGraph.log.trace("Node Initializing {} of class {}", index, lifecycle.getClass());
+                        case ON_ERROR -> this.rootGraph.log.trace("Node Initializing {} of class {} error", index, lifecycle.getClass(), s.getThrowable());
                         case ON_COMPLETE -> {
                             synchronized (TmpGraph.this) {
                                 this.initialized.set(node.index);
                             }
-                            this.rootGraph.log.trace("Initializing node {} of class {} complete", index, lifecycle.getClass());
+                            this.rootGraph.log.trace("Node Initializing {} of class {} complete", index, lifecycle.getClass());
                         }
                         default -> {}
                     }

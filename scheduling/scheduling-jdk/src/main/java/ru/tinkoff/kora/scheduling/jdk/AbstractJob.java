@@ -32,13 +32,13 @@ public abstract class AbstractJob implements Lifecycle {
     public final Mono<?> init() {
         return Mono.fromRunnable(() -> {
             if (this.started.compareAndSet(false, true)) {
-                logger.debug("Starting Scheduled Job '{}#{}'...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
+                logger.debug("Scheduled Job '{}#{}' starting...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
                 final long started = System.nanoTime();
 
                 this.scheduledFuture = this.schedule(this.service, this::runJob);
 
-                logger.info("Started Scheduled Job '{}#{}' took {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(),
-                    Duration.ofNanos(System.nanoTime() - started));
+                logger.info("Started Scheduled Job '{}#{}' started in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(),
+                    Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
             }
         });
     }
@@ -63,15 +63,15 @@ public abstract class AbstractJob implements Lifecycle {
     public final Mono<?> release() {
         return Mono.fromRunnable(() -> {
             if (this.started.compareAndSet(true, false)) {
-                logger.debug("Stopping Scheduled Job '{}#{}'...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
+                logger.debug("Scheduled Job '{}#{}' stopping...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
                 final long started = System.nanoTime();
 
                 var f = this.scheduledFuture;
                 this.scheduledFuture = null;
                 f.cancel(true);
 
-                logger.info("Stopped Scheduled Job '{}#{}' took {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(),
-                    Duration.ofNanos(System.nanoTime() - started));
+                logger.info("Scheduled Job '{}#{}' stopped in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(),
+                    Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
             }
         });
     }

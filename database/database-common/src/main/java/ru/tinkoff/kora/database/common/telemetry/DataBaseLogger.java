@@ -9,5 +9,5 @@ public interface DataBaseLogger {
 
     void logQueryBegin(QueryContext queryContext);
 
-    void logQueryEnd(long duration, QueryContext queryContext, @Nullable Throwable ex);
+    void logQueryEnd(long processingTime, QueryContext queryContext, @Nullable Throwable ex);
 }
