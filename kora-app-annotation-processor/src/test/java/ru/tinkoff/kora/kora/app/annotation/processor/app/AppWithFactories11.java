@@ -1,12 +1,13 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.app;
 
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
 import ru.tinkoff.kora.common.KoraApp;
+import ru.tinkoff.kora.common.annotation.Root;
 
 @KoraApp
 public interface AppWithFactories11 {
-    default MockLifecycle mock1(GenericClass<String> object) {
-        return new MockLifecycle() {};
+    @Root
+    default Object mock1(GenericClass<String> object) {
+        return new Object();
     }
 
     default <T> GenericClass<T> factory1(java.io.Closeable t) {

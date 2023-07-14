@@ -9,6 +9,7 @@ import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.application.graph.WrappedRefreshListener;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.grpc.config.GrpcServerConfig;
@@ -26,6 +27,7 @@ public interface GrpcModule extends NettyCommonModule {
         return configValueExtractor.extract(config.get("grpcServer"));
     }
 
+    @Root
     default GrpcServer grpcServer(ValueOf<NettyServerBuilder> serverBuilder) {
         return new GrpcServer(serverBuilder);
     }

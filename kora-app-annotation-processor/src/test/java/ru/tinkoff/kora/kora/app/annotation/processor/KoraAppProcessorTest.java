@@ -156,8 +156,8 @@ class KoraAppProcessorTest {
                 s.assertThat(e.getMessage()).isEqualTo("""
                     Required dependency was not found: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3
                       Requested at: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.class2(ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3)""");
-                s.assertThat(e.diagnostics.get(0).getPosition()).isEqualTo(326);
-                s.assertThat(e.diagnostics.get(0).getLineNumber()).isEqualTo(12);
+                s.assertThat(e.diagnostics.get(0).getPosition()).isEqualTo(327);
+                s.assertThat(e.diagnostics.get(0).getLineNumber()).isEqualTo(14);
                 s.assertThat(e.diagnostics.get(0).getSource().getName()).isEqualTo("src/test/java/ru/tinkoff/kora/kora/app/annotation/processor/app/AppWithUnresolvedDependency.java");
             }));
     }
@@ -307,7 +307,7 @@ class KoraAppProcessorTest {
     @Test
     void appWithLazyComponents() throws Exception {
         var graphDraw = testClass(AppWithLazyComponents.class);
-        Assertions.assertThat(graphDraw.getNodes()).hasSize(4);
+        Assertions.assertThat(graphDraw.getNodes()).hasSize(3);
         var materializedGraph = graphDraw.init().block();
         Assertions.assertThat(materializedGraph).isNotNull();
     }

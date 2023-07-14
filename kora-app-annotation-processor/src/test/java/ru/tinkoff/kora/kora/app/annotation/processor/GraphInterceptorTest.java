@@ -13,7 +13,7 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
                         
             @KoraApp
             public interface ExampleApplication {
-                class TestRoot implements MockLifecycle {}
+                class TestRoot {}
                 class TestClass {}
                 class TestInterceptor implements GraphInterceptor<TestClass> {
                     public Mono<TestClass> init(TestClass value) {
@@ -25,6 +25,7 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
                     }
                 }
 
+                @Root
                 default TestRoot root(TestClass testClass) {
                     return new TestRoot();
                 }
@@ -51,7 +52,7 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
                         
             @KoraApp
             public interface ExampleApplication {
-                class TestRoot implements MockLifecycle {}
+                class TestRoot {}
                 class TestInterceptor implements GraphInterceptor<TestRoot> {
                     public Mono<TestRoot> init(TestRoot value) {
                         return Mono.just(value);
@@ -62,6 +63,7 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
                     }
                 }
 
+                @Root
                 default TestRoot root() {
                     return new TestRoot();
                 }

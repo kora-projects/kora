@@ -3,12 +3,13 @@ package ru.tinkoff.kora.resilient.symbol.processor.aop.testdata
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle
 import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.common.annotation.Root
 import ru.tinkoff.kora.resilient.timeout.annotation.Timeout
 
 @Component
-open class TimeoutTarget : MockLifecycle {
+@Root
+open class TimeoutTarget {
 
     @Timeout("custom1")
     open fun getValueSync(): String {

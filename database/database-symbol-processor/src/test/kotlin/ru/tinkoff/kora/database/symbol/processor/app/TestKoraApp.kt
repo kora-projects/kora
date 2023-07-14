@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.database.symbol.processor.app
 
 import org.mockito.Mockito
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle
 import ru.tinkoff.kora.common.KoraApp
+import ru.tinkoff.kora.common.annotation.Root
 import ru.tinkoff.kora.database.common.annotation.Query
 import ru.tinkoff.kora.database.common.annotation.Repository
 import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory
@@ -20,7 +20,6 @@ interface TestKoraApp {
         return Mockito.mock<JdbcConnectionFactory>(JdbcConnectionFactory::class.java)
     }
 
-    fun mockLifecycle(testRepository: TestRepository): MockLifecycle {
-        return MockLifecycle.empty()
-    }
+    @Root
+    fun mockLifecycle(testRepository: TestRepository) = Any()
 }

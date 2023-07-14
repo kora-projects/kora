@@ -2,15 +2,16 @@ package ru.tinkoff.kora.resilient.annotation.processor.aop.testdata;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
 import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.resilient.timeout.annotation.Timeout;
 
 import java.io.IOException;
 import java.time.Duration;
 
 @Component
-public class TimeoutTarget implements MockLifecycle {
+@Root
+public class TimeoutTarget {
 
     @Timeout("custom1")
     public String getValueSync() {

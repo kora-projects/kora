@@ -10,9 +10,8 @@ import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.writeTo
-import org.mockito.Mockito
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle
 import ru.tinkoff.kora.common.KoraApp
+import ru.tinkoff.kora.common.annotation.Root
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionFactory
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
@@ -23,12 +22,13 @@ import ru.tinkoff.kora.ksp.common.visitClass
 interface AppWithProcessorExtension {
     annotation class TestAnnotation
 
-    fun mockLifecycle(interface1: Interface1): MockLifecycle {
-        return Mockito.spy<MockLifecycle>(MockLifecycle::class.java)
+    @Root
+    fun mockLifecycle(interface1: Interface1): Any {
+        return Any()
     }
 
     @TestAnnotation
-    interface Interface1 : MockLifecycle
+    interface Interface1
     class TestExtensionExtensionFactory : ExtensionFactory {
 
         override fun create(resolver: Resolver, kspLogger: KSPLogger, codeGenerator: CodeGenerator): KoraExtension {

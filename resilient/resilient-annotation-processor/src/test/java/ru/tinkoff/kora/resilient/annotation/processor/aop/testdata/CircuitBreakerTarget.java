@@ -2,14 +2,15 @@ package ru.tinkoff.kora.resilient.annotation.processor.aop.testdata;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
 import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.resilient.circuitbreaker.annotation.CircuitBreaker;
 
 import java.io.IOException;
 
 @Component
-public class CircuitBreakerTarget implements MockLifecycle {
+@Root
+public class CircuitBreakerTarget {
 
     public boolean alwaysFail = true;
 

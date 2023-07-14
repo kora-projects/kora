@@ -4,7 +4,6 @@ import com.squareup.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
-import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ComponentDependency;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ComponentDependencyHelper;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim;
@@ -37,7 +36,7 @@ public class GraphBuilder {
     public static ProcessingState processProcessing(ProcessingContext ctx, RoundEnvironment roundEnv, ProcessingState.Processing processing, @Nullable DependencyClaim forClaim) {
         if (processing.rootSet().isEmpty()) {
             return new ProcessingState.Failed(new ProcessingErrorException(
-                "@KoraApp has no root components, expected at least one component implementing: " + Lifecycle.class.getCanonicalName(),
+                "@KoraApp has no root components, expected at least one component annotated with @Root",
                 processing.root()
             ));
         }

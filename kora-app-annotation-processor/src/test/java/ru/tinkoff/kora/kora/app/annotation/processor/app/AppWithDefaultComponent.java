@@ -1,11 +1,12 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.app;
 
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.KoraApp;
+import ru.tinkoff.kora.common.annotation.Root;
 
 @KoraApp
 public interface AppWithDefaultComponent {
+    @Root
     default Class1 class1(Integer value, Long value1) {
         return new Class1(value);
     }
@@ -20,7 +21,7 @@ public interface AppWithDefaultComponent {
         return 1L;
     }
 
-    record Class1(Integer value) implements MockLifecycle {}
+    record Class1(Integer value) {}
 
 
     @ru.tinkoff.kora.common.Module

@@ -1,12 +1,13 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.app;
 
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
 import ru.tinkoff.kora.common.KoraApp;
+import ru.tinkoff.kora.common.annotation.Root;
 
 @KoraApp
 public interface AppWithRecords {
-    default MockLifecycle str(TestConfig testConfig) {
-        return new MockLifecycle() {};
+    @Root
+    default Object str(TestConfig testConfig) {
+        return new Object();
     }
 
     record TestConfig() {}

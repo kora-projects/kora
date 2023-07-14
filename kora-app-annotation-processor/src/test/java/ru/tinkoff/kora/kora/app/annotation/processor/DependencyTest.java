@@ -14,13 +14,17 @@ public class DependencyTest extends AbstractKoraAppTest {
         var draw = compile("""
             @KoraApp
             public interface ExampleApplication {
-                class TestClass1 implements MockLifecycle {}
+                class TestClass1 {}
                 class TestClass2 {}
 
                 default TestClass2 testClass2() { return new TestClass2(); }
+                @Root
                 default TestClass1 typeReference(TypeRef<TestClass2> object) { assert object != null; return new TestClass1(); }
+                @Root
                 default TestClass1 simpleReference(TestClass2 object) { assert object != null; return new TestClass1(); }
+                @Root
                 default TestClass1 nullableReference(@Nullable TestClass2 object) { assert object != null; return new TestClass1(); }
+                @Root
                 default TestClass1 optionalReference(Optional<TestClass2> object) { assert object.isPresent(); return new TestClass1(); }
             }
             """);
@@ -33,12 +37,15 @@ public class DependencyTest extends AbstractKoraAppTest {
         var draw = compile("""
             @KoraApp
             public interface ExampleApplication {
-                class TestClass1 implements MockLifecycle {}
+                class TestClass1 {}
                 class TestClass2 {}
 
                 default TestClass2 testClass2() { return new TestClass2(); }
+                @Root
                 default TestClass1 valueOfReference(ValueOf<TestClass2> object) { assert object != null; return new TestClass1(); }
+                @Root
                 default TestClass1 valueOfOptionalReference(ValueOf<Optional<TestClass2>> object) { assert object.get().isPresent(); return new TestClass1(); }
+                @Root
                 default TestClass1 optionalOfValueOfReference(Optional<ValueOf<TestClass2>> object) { assert object.get().get() != null; return new TestClass1(); }
             }
             """);
@@ -51,12 +58,16 @@ public class DependencyTest extends AbstractKoraAppTest {
         var draw = compile("""
             @KoraApp
             public interface ExampleApplication {
-                class TestClass1 implements MockLifecycle {}
+                class TestClass1 {}
                 class TestClass2 {}
 
+                @Root
                 default TestClass2 testClass2() { return new TestClass2(); }
+                @Root
                 default TestClass1 promiseOfReference(PromiseOf<TestClass2> object) { return new TestClass1(); }
+                @Root
                 default TestClass1 promiseOfOptionalReference(PromiseOf<Optional<TestClass2>> object) { return new TestClass1(); }
+                @Root
                 default TestClass1 optionalOfPromiseOfReference(Optional<PromiseOf<TestClass2>> object) { return new TestClass1(); }
             }
             """);
@@ -69,14 +80,20 @@ public class DependencyTest extends AbstractKoraAppTest {
         var draw = compile("""
             @KoraApp
             public interface ExampleApplication {
-                class TestClass1 implements MockLifecycle {}
+                class TestClass1 {}
                 class TestClass2 {}
 
+                @Root
                 default TestClass1 nullableReference(@Nullable TestClass2 object) { return new TestClass1(); }
+                @Root
                 default TestClass1 optionalReference(Optional<TestClass2> object) { return new TestClass1(); }
+                @Root
                 default TestClass1 valueOfOptionalReference(ValueOf<Optional<TestClass2>> object) { return new TestClass1(); }
+                @Root
                 default TestClass1 optionalOfValueOfReference(Optional<ValueOf<TestClass2>> object) { return new TestClass1(); }
+                @Root
                 default TestClass1 promiseOfOptionalReference(PromiseOf<Optional<TestClass2>> object) { return new TestClass1(); }
+                @Root
                 default TestClass1 optionalOfPromiseOfReference(Optional<PromiseOf<TestClass2>> object) { return new TestClass1(); }
             }
             """);
@@ -89,13 +106,15 @@ public class DependencyTest extends AbstractKoraAppTest {
         var draw = compile("""
             @KoraApp
             public interface ExampleApplication {
-                class TestClass1 implements MockLifecycle {}
+                class TestClass1 {}
                 interface TestInterface1 {}
                 class TestClass2 implements TestInterface1 {}
                 class TestClass3 implements TestInterface1 {}
                 class TestClass4 implements TestInterface1 {}
 
+                @Root
                 default TestClass1 allOfInterface(All<TestInterface1> all) { return new TestClass1(); }
+                @Root
                 default TestClass1 allOfClass(All<TestClass2> all) { return new TestClass1(); }
 
                 default TestClass2 testClass2() { return new TestClass2(); }
@@ -112,13 +131,15 @@ public class DependencyTest extends AbstractKoraAppTest {
         var draw = compile("""
             @KoraApp
             public interface ExampleApplication {
-                class TestClass1 implements MockLifecycle {}
+                class TestClass1 {}
                 interface TestInterface1 {}
                 class TestClass2 implements TestInterface1 {}
                 class TestClass3 implements TestInterface1 {}
                 class TestClass4 implements TestInterface1 {}
 
+                @Root
                 default TestClass1 allOfValueOfInterface(All<ValueOf<TestInterface1>> all) { return new TestClass1(); }
+                @Root
                 default TestClass1 allOfValueOfClass(All<ValueOf<TestClass2>> all) { return new TestClass1(); }
 
                 default TestClass2 testClass2() { return new TestClass2(); }
@@ -135,13 +156,15 @@ public class DependencyTest extends AbstractKoraAppTest {
         var draw = compile("""
             @KoraApp
             public interface ExampleApplication {
-                class TestClass1 implements MockLifecycle {}
+                class TestClass1 {}
                 interface TestInterface1 {}
                 class TestClass2 implements TestInterface1 {}
                 class TestClass3 implements TestInterface1 {}
                 class TestClass4 implements TestInterface1 {}
 
+                @Root
                 default TestClass1 allOfPromiseOfInterface(All<PromiseOf<TestInterface1>> all) { return new TestClass1(); }
+                @Root
                 default TestClass1 allOfPromiseOfClass(All<PromiseOf<TestClass2>> all) { return new TestClass1(); }
 
 
@@ -160,16 +183,21 @@ public class DependencyTest extends AbstractKoraAppTest {
             @KoraApp
             public interface ExampleApplication {
                 interface TestInterface1 {}
-                class TestClass1 implements MockLifecycle {}
+                class TestClass1 {}
                 class TestClass2 implements TestInterface1{}
 
-
+                @Root
                 default TestClass1 allOfNothingByClass(All<TestClass2> all) { return new TestClass1(); }
+                @Root
                 default TestClass1 allOfValueOfNothingByClass(All<ValueOf<TestClass2>> all) { return new TestClass1(); }
+                @Root
                 default TestClass1 allOfPromiseOfNothingByClass(All<PromiseOf<TestClass2>> all) { return new TestClass1(); }
 
+                @Root
                 default TestClass1 allOfNothingByInterface(All<TestInterface1> all) { return new TestClass1(); }
+                @Root
                 default TestClass1 allOfValueOfNothingByInterface(All<ValueOf<TestInterface1>> all) { return new TestClass1(); }
+                @Root
                 default TestClass1 allOfPromiseOfNothingByInterface(All<PromiseOf<TestInterface1>> all) { return new TestClass1(); }
             }
             """);
@@ -237,11 +265,12 @@ public class DependencyTest extends AbstractKoraAppTest {
                 interface TestInterface1 {}
                 interface TestInterface2 {}
                 class TestClass2 implements TestInterface1, TestInterface2 {}
-                class TestClass1 implements MockLifecycle {}
+                class TestClass1 {}
 
                 default TestInterface1 testInterface1(TestInterface2 p) { return new TestClass2(); }
                 default TestInterface2 testInterface2(TestInterface1 p) { return new TestClass2(); }
 
+                @Root
                 default TestClass1 root(TestInterface1 testInterface1, TestInterface2 testInterface2) { return new TestClass1(); }
             }
             """);

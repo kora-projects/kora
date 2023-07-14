@@ -64,18 +64,9 @@ public class TestUtils {
 
             @ru.tinkoff.kora.common.KoraApp
             public interface TestApp {
-                default ru.tinkoff.kora.application.graph.Lifecycle someLifecycle(${targets}) {
-                    return new ru.tinkoff.kora.application.graph.Lifecycle() {
-                        @Override
-                        public reactor.core.publisher.Mono<?> init() {
-                            return null;
-                        }
-
-                        @Override
-                        public reactor.core.publisher.Mono<?> release() {
-                            return null;
-                        }
-                    };
+                @ru.tinkoff.kora.common.annotation.Root
+                default Object someLifecycle(${targets}) {
+                    return new Object();
                 }
             """;
         for (int i = 0; i < requiredDependencies.length; i++) {

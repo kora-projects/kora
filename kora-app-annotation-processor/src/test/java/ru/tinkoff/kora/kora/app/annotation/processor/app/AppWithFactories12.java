@@ -1,13 +1,13 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.app;
 
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
-import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.common.KoraApp;
+import ru.tinkoff.kora.common.annotation.Root;
 
 @KoraApp
 public interface AppWithFactories12 {
-    default MockLifecycle mock1(ConfigValueExtractor<TestEnum> object) {
-        return new MockLifecycle() {};
+    @Root
+    default Object mock1(ConfigValueExtractor<TestEnum> object) {
+        return new Object();
     }
 
     default <T extends Enum<T>> EnumConfigValueExtractor<T> enumConfigValueExtractor() {

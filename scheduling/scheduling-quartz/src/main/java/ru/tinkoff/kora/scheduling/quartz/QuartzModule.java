@@ -4,6 +4,7 @@ import org.quartz.Scheduler;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.config.common.Config;
+import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.scheduling.common.SchedulingModule;
 
@@ -20,10 +21,12 @@ public interface QuartzModule extends SchedulingModule {
         return new KoraQuartzJobFactory(jobs);
     }
 
+    @Root
     default KoraQuartzScheduler koraQuartzScheduler(KoraQuartzJobFactory jobFactory, @Tag(QuartzModule.class) Properties properties) {
         return new KoraQuartzScheduler(jobFactory, properties);
     }
 
+    @Root
     default KoraQuartzJobRegistrar koraQuartzJobRegistrar(All<KoraQuartzJob> jobs, Scheduler scheduler) {
         return new KoraQuartzJobRegistrar(jobs, scheduler);
     }

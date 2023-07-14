@@ -1,10 +1,9 @@
 package ru.tinkoff.kora.kora.app.ksp.app
 
-import ru.tinkoff.kora.common.KoraApp
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle
 import ru.tinkoff.kora.application.graph.TypeRef
+import ru.tinkoff.kora.common.KoraApp
 import ru.tinkoff.kora.common.Tag
-import java.lang.IllegalStateException
+import ru.tinkoff.kora.common.annotation.Root
 
 @KoraApp
 interface AppWithFactories7 {
@@ -21,10 +20,11 @@ interface AppWithFactories7 {
         return GenericClass()
     }
 
+    @Root
     fun class1(@Tag(Class1::class) class1: GenericClass<Class1>): Class1 {
         return Class1()
     }
 
     class GenericClass<T>
-    class Class1 : MockLifecycle
+    class Class1
 }

@@ -1,11 +1,7 @@
 package ru.tinkoff.kora.kora.app.ksp.app
 
-import reactor.core.publisher.Mono
 import ru.tinkoff.kora.common.KoraApp
-import java.lang.RuntimeException
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle
-import ru.tinkoff.kora.application.graph.Lifecycle
-import ru.tinkoff.kora.application.graph.Wrapped
+import ru.tinkoff.kora.common.annotation.Root
 
 @KoraApp
 interface AppWithLazyComponents {
@@ -17,6 +13,7 @@ interface AppWithLazyComponents {
         return Class1()
     }
 
+    @Root
     fun class2(class1: Class1): Class2 {
         return Class2()
     }
@@ -27,15 +24,6 @@ interface AppWithLazyComponents {
 
     class Class0
     class Class1
-    class Class2 : Lifecycle {
-        override fun init(): Mono<Void> {
-            return Mono.empty()
-        }
-
-        override fun release(): Mono<Void> {
-            return Mono.empty()
-        }
-    }
-
+    class Class2
     class Class3
 }

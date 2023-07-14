@@ -16,7 +16,6 @@ public class ServiceTypesHelper {
     private final DeclaredType wrappedType;
     private final TypeElement interceptorTypeElement;
     private final DeclaredType interceptorType;
-    private final TypeMirror lifecycleType;
 
     public ServiceTypesHelper(Elements elements, Types types) {
         this.elements = elements;
@@ -25,8 +24,6 @@ public class ServiceTypesHelper {
         this.wrappedType = Objects.requireNonNull(this.types.getDeclaredType(this.wrappedTypeElement, this.types.getWildcardType(null, null)));
         this.interceptorTypeElement = Objects.requireNonNull(this.elements.getTypeElement(CommonClassNames.graphInterceptor.canonicalName()));
         this.interceptorType = Objects.requireNonNull(this.types.getDeclaredType(this.interceptorTypeElement, this.types.getWildcardType(null, null)));
-        var lifecycleTypeElement = Objects.requireNonNull(this.elements.getTypeElement(CommonClassNames.lifecycle.canonicalName()));
-        this.lifecycleType = Objects.requireNonNull(lifecycleTypeElement.asType());
     }
 
     public boolean isAssignableToUnwrapped(TypeMirror maybeWrapped, TypeMirror typeMirror) {
@@ -67,9 +64,5 @@ public class ServiceTypesHelper {
         var interceptorTypeParameter = this.interceptorTypeElement.getTypeParameters().get(0); // somehow it can be changed during execution
         var declaredType = (DeclaredType) maybeInterceptor;
         return this.types.asMemberOf(declaredType, interceptorTypeParameter);
-    }
-
-    public boolean isLifecycle(TypeMirror type) {
-        return this.types.isAssignable(type, this.lifecycleType) || this.isAssignableToUnwrapped(type, this.lifecycleType);
     }
 }

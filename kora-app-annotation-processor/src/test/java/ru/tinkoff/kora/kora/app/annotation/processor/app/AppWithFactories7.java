@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.app;
 
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
 import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.common.KoraApp;
 import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.common.annotation.Root;
 
 @KoraApp
 public interface AppWithFactories7 {
@@ -21,11 +21,12 @@ public interface AppWithFactories7 {
         return new GenericClass<>();
     }
 
+    @Root
     default Class1 class1(@Tag(Class1.class) GenericClass<Class1> class1) {
         return new Class1();
     }
 
     class GenericClass<T> {}
 
-    class Class1 implements MockLifecycle {}
+    class Class1 {}
 }

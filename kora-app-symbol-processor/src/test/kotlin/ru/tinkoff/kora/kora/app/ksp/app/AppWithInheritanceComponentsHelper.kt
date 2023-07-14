@@ -1,15 +1,15 @@
 package ru.tinkoff.kora.kora.app.ksp.app
 
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle
-import java.util.*
+import ru.tinkoff.kora.common.annotation.Root
 
 interface AppWithInheritanceComponentsHelper {
-    data class Class1( val class2: Class2) : MockLifecycle
+    data class Class1(val class2: Class2)
 
-    data class Class2( val class3: Class3) : MockLifecycle
+    data class Class2(val class3: Class3)
 
-    class Class3 : MockLifecycle
+    class Class3
     interface AppWithInheritanceComponentsModule1 {
+        @Root
         fun class1(class2: Class2): Class1 {
             return Class1(class2)
         }

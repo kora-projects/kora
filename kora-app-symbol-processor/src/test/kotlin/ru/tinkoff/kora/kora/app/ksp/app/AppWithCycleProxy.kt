@@ -1,14 +1,12 @@
 package ru.tinkoff.kora.kora.app.ksp.app
 
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle
-import ru.tinkoff.kora.application.graph.Lifecycle
 import ru.tinkoff.kora.common.KoraApp
+import ru.tinkoff.kora.common.annotation.Root
 
 @KoraApp
 interface AppWithCycleProxy {
-    fun someClass(w1: JsonWriter<Class1>, w2: JsonWriter<Class3>): Lifecycle {
-        return object : MockLifecycle{}
-    }
+    @Root
+    fun someClass(w1: JsonWriter<Class1>, w2: JsonWriter<Class3>) = Any()
 
     fun writer1(w: JsonWriter<Class2>) = Writer1()
     fun writer2(w: JsonWriter<Class1>) = Writer2()

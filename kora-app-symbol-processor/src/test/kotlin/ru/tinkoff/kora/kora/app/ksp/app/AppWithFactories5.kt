@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.kora.app.ksp.app
 
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle
 import ru.tinkoff.kora.application.graph.TypeRef
 import ru.tinkoff.kora.common.KoraApp
 
@@ -31,6 +30,6 @@ interface AppWithFactories5 {
     }
 
     class TwoGenericClass<T, Q>
-    class Class1 : MockLifecycle
-    class Class2 : MockLifecycle
+    class Class1
+    class Class2
 }

@@ -44,6 +44,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             .addParameter("service", jdkSchedulingExecutor)
             .addParameter("target", typeClassName)
             .returns(fixedRateJobClassName)
+            .addAnnotation(CommonClassNames.root)
             .addCode("val telemetry = telemetryFactory.get(%T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
 
         if (configName.isNullOrBlank()) {
@@ -85,6 +86,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             .addParameter("service", jdkSchedulingExecutor)
             .addParameter("target", typeClassName)
             .returns(fixedDelayJobClassName)
+            .addAnnotation(CommonClassNames.root)
             .addCode("val telemetry = telemetryFactory.get(%T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
 
         if (configName.isNullOrBlank()) {
@@ -125,6 +127,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             .addParameter("service", jdkSchedulingExecutor)
             .addParameter("target", typeClassName)
             .returns(runOnceJobClassName)
+            .addAnnotation(CommonClassNames.root)
             .addCode("val telemetry = telemetryFactory.get(%T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
 
         if (configName.isNullOrBlank()) {

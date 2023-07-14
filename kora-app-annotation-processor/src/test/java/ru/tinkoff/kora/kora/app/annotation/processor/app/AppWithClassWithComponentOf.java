@@ -1,21 +1,22 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.app;
 
-import org.mockito.Mockito;
 import reactor.core.publisher.Mono;
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.common.KoraApp;
+import ru.tinkoff.kora.common.annotation.Root;
 
 @KoraApp
 public interface AppWithClassWithComponentOf {
-    default MockLifecycle object1(Class1 class1) {
-        return Mockito.spy(MockLifecycle.class);
+    @Root
+    default Object object1(Class1 class1) {
+        return new Object();
     }
 
-    default MockLifecycle object2(ValueOf<Class3> class1) {
-        return Mockito.spy(MockLifecycle.class);
+    @Root
+    default Object object2(ValueOf<Class3> class1) {
+        return new Object();
     }
 
     @Component
@@ -39,6 +40,7 @@ public interface AppWithClassWithComponentOf {
 
     @Component
     class Class2 {}
+
     @Component
     class Class3 {}
 }

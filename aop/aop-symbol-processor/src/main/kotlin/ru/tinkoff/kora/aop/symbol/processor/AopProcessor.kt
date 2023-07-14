@@ -10,12 +10,10 @@ import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import ru.tinkoff.kora.common.Component
-import ru.tinkoff.kora.ksp.common.KoraSymbolProcessingEnv
+import ru.tinkoff.kora.ksp.common.*
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
-import ru.tinkoff.kora.ksp.common.findMethods
-import ru.tinkoff.kora.ksp.common.makeTagAnnotationSpec
-import ru.tinkoff.kora.ksp.common.parseTags
 import kotlin.reflect.KClass
 
 @KspExperimental
@@ -110,6 +108,9 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
             if (tags.isNotEmpty()) {
                 typeBuilder.addAnnotation(tags.makeTagAnnotationSpec())
             }
+        }
+        if (classDeclaration.isAnnotationPresent(CommonClassNames.root)) {
+            typeBuilder.addAnnotation(CommonClassNames.root)
         }
 
         val classFunctions = findMethods(classDeclaration) { f ->

@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.database.common.annotation.processor.app;
 
 import org.mockito.Mockito;
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
 import ru.tinkoff.kora.common.KoraApp;
+import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.database.common.annotation.Query;
 import ru.tinkoff.kora.database.common.annotation.Repository;
 import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory;
@@ -20,8 +20,9 @@ public interface TestKoraApp {
         return Mockito.mock(JdbcConnectionFactory.class);
     }
 
-    default MockLifecycle mockLifecycle(TestRepository testRepository) {
-        return MockLifecycle.empty();
+    @Root
+    default Object mockLifecycle(TestRepository testRepository) {
+        return new Object();
     }
 
 }

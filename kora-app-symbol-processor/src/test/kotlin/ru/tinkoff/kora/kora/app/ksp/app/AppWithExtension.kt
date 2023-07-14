@@ -12,8 +12,8 @@ import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.writeTo
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle
 import ru.tinkoff.kora.common.KoraApp
+import ru.tinkoff.kora.common.annotation.Root
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionFactory
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
@@ -22,6 +22,7 @@ import ru.tinkoff.kora.ksp.common.KspCommonUtils.parametrized
 @KoraApp
 interface AppWithExtension {
     // factory: generic component, accepts its genetic TypeRef as arguments
+    @Root
     fun test1(class1: Interface1, class1Optional: Array<out Interface1>): Class1 {
         return Class1()
     }
@@ -30,9 +31,9 @@ interface AppWithExtension {
         return Class2()
     }
 
-    interface Interface1 : MockLifecycle
-    open class Class1 : MockLifecycle
-    open class Class2 : MockLifecycle
+    interface Interface1
+    open class Class1
+    open class Class2
     class TestExtension1ExtensionFactory : ExtensionFactory {
         override fun create(resolver: Resolver, kspLogger: KSPLogger, codeGenerator: CodeGenerator): KoraExtension {
             return TestExtension1(resolver, codeGenerator)

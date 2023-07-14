@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.app;
 
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
 import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.common.KoraApp;
+import ru.tinkoff.kora.common.annotation.Root;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,13 +18,14 @@ public interface AppWithFactories4 {
         return new TwoGenericClass<>();
     }
 
+    @Root
     default Class1 class1(TwoGenericClass<ArrayList<Class1>, Class2> genericClass) {
         return new Class1();
     }
 
     class TwoGenericClass<T, Q> {}
 
-    class Class1 implements MockLifecycle {}
+    class Class1 {}
 
-    class Class2 implements MockLifecycle {}
+    class Class2 {}
 }

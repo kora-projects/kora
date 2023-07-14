@@ -2,16 +2,15 @@ package ru.tinkoff.kora.resilient.annotation.processor.aop.testdata;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
 import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.resilient.fallback.annotation.Fallback;
-import ru.tinkoff.kora.resilient.retry.annotation.Retryable;
 
 import java.io.IOException;
-import java.util.concurrent.TimeoutException;
 
 @Component
-public class FallbackTarget implements MockLifecycle {
+@Root
+public class FallbackTarget {
 
     public static final String VALUE = "OK";
     public static final String FALLBACK = "FALLBACK";

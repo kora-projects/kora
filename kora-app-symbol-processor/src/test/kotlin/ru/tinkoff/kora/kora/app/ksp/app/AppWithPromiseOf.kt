@@ -1,9 +1,8 @@
 package ru.tinkoff.kora.kora.app.ksp.app
 
-import ru.tinkoff.kora.common.KoraApp
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle
 import ru.tinkoff.kora.application.graph.PromiseOf
-import java.util.*
+import ru.tinkoff.kora.common.KoraApp
+import ru.tinkoff.kora.common.annotation.Root
 
 @KoraApp
 interface AppWithPromiseOf {
@@ -23,13 +22,12 @@ interface AppWithPromiseOf {
         return Class4(class1PromiseOf)
     }
 
-    fun mock(class2: Class2, class4: Class4): MockLifecycle {
-        return object : MockLifecycle {}
-    }
+    @Root
+    fun mock(class2: Class2, class4: Class4) = Any()
 
     class Class1
     data class Class2(val promiseOf: PromiseOf<Class1>)
 
-    class Class3 : MockLifecycle
-    data class Class4(val promiseOf: PromiseOf<Class3>) : MockLifecycle
+    class Class3
+    data class Class4(val promiseOf: PromiseOf<Class3>)
 }

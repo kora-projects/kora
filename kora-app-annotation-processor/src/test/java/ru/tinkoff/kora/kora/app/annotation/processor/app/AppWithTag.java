@@ -1,18 +1,20 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.app;
 
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
 import ru.tinkoff.kora.common.KoraApp;
 import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.common.annotation.Root;
 
 @KoraApp
 public interface AppWithTag {
 
     @Tag(Tag1.class)
+    @Root
     default Class1 class1Tag1(@Tag(Tag1.class) Class2 class2) {
         return new Class1(class2);
     }
 
     @Tag(Tag2.class)
+    @Root
     default Class1 class1Tag2(@Tag(Tag2.class) Class2 class2) {
         return new Class1(class2);
     }
@@ -31,7 +33,7 @@ public interface AppWithTag {
 
     class Tag2 {}
 
-    record Class1(Class2 class2) implements MockLifecycle {}
+    record Class1(Class2 class2) {}
 
-    class Class2 implements MockLifecycle {}
+    class Class2 {}
 }

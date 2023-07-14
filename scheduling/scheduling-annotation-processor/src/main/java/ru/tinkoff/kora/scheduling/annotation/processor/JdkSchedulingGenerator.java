@@ -77,6 +77,7 @@ public class JdkSchedulingGenerator {
             .addParameter(jdkSchedulingExecutor, "service")
             .addParameter(TypeName.get(type.asType()), "object")
             .returns(runOnceJobClassName)
+            .addAnnotation(CommonClassNames.root)
             .addCode("var telemetry = telemetryFactory.get($T.class, $S);\n", type, method.getSimpleName());
 
         if (configName.isEmpty()) {
@@ -121,6 +122,7 @@ public class JdkSchedulingGenerator {
             .addParameter(jdkSchedulingExecutor, "service")
             .addParameter(TypeName.get(type.asType()), "object")
             .returns(fixedDelayJobClassName)
+            .addAnnotation(CommonClassNames.root)
             .addCode("var telemetry = telemetryFactory.get($T.class, $S);\n", type, method.getSimpleName());
 
         if (configName.isEmpty()) {
@@ -172,6 +174,7 @@ public class JdkSchedulingGenerator {
             .addParameter(jdkSchedulingExecutor, "service")
             .addParameter(TypeName.get(type.asType()), "object")
             .returns(fixedRateJobClassName)
+            .addAnnotation(CommonClassNames.root)
             .addCode("var telemetry = telemetryFactory.get($T.class, $S);\n", type, method.getSimpleName());
 
         if (configName.isEmpty()) {
