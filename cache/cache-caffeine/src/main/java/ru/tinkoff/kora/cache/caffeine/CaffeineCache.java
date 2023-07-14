@@ -29,15 +29,15 @@ final class CaffeineCache<K, V> implements ru.tinkoff.kora.cache.Cache<K, V> {
 
     @Override
     public V get(@Nonnull K key) {
-        logger.trace("Looking for value in cache '{}' for key: {}", name, key);
+        logger.trace("Cache '{}' looking for value for key: {}", name, key);
         final CacheTelemetry.TelemetryContext telemetryContext = telemetry.create(CacheTelemetry.Operation.Type.GET, name, origin());
         telemetryContext.startRecording();
 
         final V v = caffeine.getIfPresent(key);
         if (v == null) {
-            logger.trace("Value NOT found in cache '{}' for key: {}", name, key);
+            logger.trace("Cache '{}' no value found for key: {}", name, key);
         } else {
-            logger.debug("Value found in cache '{}' for key: {}", name, key);
+            logger.debug("Cache '{}' found value for key: {}", name, key);
         }
 
         telemetryContext.recordSuccess(v);
@@ -46,7 +46,7 @@ final class CaffeineCache<K, V> implements ru.tinkoff.kora.cache.Cache<K, V> {
 
     @Nonnull
     public V put(@Nonnull K key, @Nonnull V value) {
-        logger.trace("Putting value in cache '{}' for key: {}", name, key);
+        logger.trace("Cache '{}' storing for key: {}", name, key);
         final CacheTelemetry.TelemetryContext telemetryContext = telemetry.create(CacheTelemetry.Operation.Type.PUT, name, origin());
         telemetryContext.startRecording();
 
@@ -58,7 +58,7 @@ final class CaffeineCache<K, V> implements ru.tinkoff.kora.cache.Cache<K, V> {
 
     @Override
     public void invalidate(@Nonnull K key) {
-        logger.trace("Invalidating value in cache '{}' for key: {}", name, key);
+        logger.trace("Cache '{}' invalidating for key: {}", name, key);
         final CacheTelemetry.TelemetryContext telemetryContext = telemetry.create(CacheTelemetry.Operation.Type.INVALIDATE, name, origin());
         telemetryContext.startRecording();
 
@@ -69,7 +69,7 @@ final class CaffeineCache<K, V> implements ru.tinkoff.kora.cache.Cache<K, V> {
 
     @Override
     public void invalidateAll() {
-        logger.trace("Invalidating all values in cache '{}'", name);
+        logger.trace("Cache '{}' invalidating all values", name);
         final CacheTelemetry.TelemetryContext telemetryContext = telemetry.create(CacheTelemetry.Operation.Type.INVALIDATE_ALL, name, origin());
         telemetryContext.startRecording();
 

@@ -28,7 +28,7 @@ public class KoraQuartzJobRegistrar implements Lifecycle {
                 .map(q -> q.getClass().getCanonicalName())
                 .toList();
 
-            logger.debug("Starting Quartz Jobs {}...", quartzJobsNames);
+            logger.debug("Quartz Jobs {} starting...", quartzJobsNames);
             final long started = System.nanoTime();
 
             for (var koraQuartzJob : this.quartzJobList) {
@@ -47,7 +47,7 @@ public class KoraQuartzJobRegistrar implements Lifecycle {
                 this.scheduler.scheduleJob(job, koraQuartzJob.getTrigger());
             }
 
-            logger.info("Started Quartz Jobs {} took {}", quartzJobsNames, Duration.ofNanos(System.nanoTime() - started));
+            logger.info("Quartz Jobs {} started in {}", quartzJobsNames, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
             return null;
         });
     }

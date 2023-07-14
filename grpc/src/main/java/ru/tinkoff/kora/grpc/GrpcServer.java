@@ -30,7 +30,7 @@ public class GrpcServer implements Lifecycle, ReadinessProbe {
     @Override
     public Mono<Void> init() {
         return Mono.create(sink -> {
-            logger.debug("Starting GRPC Server...");
+            logger.debug("Starting gRPC Server...");
             final long started = System.nanoTime();
 
             var builder = nettyServerBuilder.get();
@@ -38,25 +38,24 @@ public class GrpcServer implements Lifecycle, ReadinessProbe {
             try {
                 this.server.start();
                 this.state.set(GrpcServerState.RUN);
-                logger.info("Started GRPC Server took {}", Duration.ofNanos(System.nanoTime() - started));
+                logger.info("gRPC Server started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
                 sink.success();
             } catch (IOException e) {
                 sink.error(e);
             }
         });
-
     }
 
     @Override
     public Mono<Void> release() {
         return Mono.fromRunnable(() -> {
-            logger.debug("Stopping GRPC Server...");
+            logger.debug("gRPC Server stopping...");
             final long started = System.nanoTime();
 
             state.set(GrpcServerState.SHUTDOWN);
             server.shutdown();
 
-            logger.info("Stopped GRPC Server took {}", Duration.ofNanos(System.nanoTime() - started));
+            logger.info("gRPC Server stopped in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
         });
     }
 

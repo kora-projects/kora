@@ -52,7 +52,7 @@ public interface HttpServerModule extends StringParameterReadersModule {
     }
 
     default HttpServerLogger httpServerLogger() {
-        return new HttpServerLogger.DefaultHttpServerLogger();
+        return new Slf4jHttpServerLogger();
     }
 
     default HttpServerResponseMapper<HttpServerResponse> noopResponseMapper() {

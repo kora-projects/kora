@@ -7,10 +7,10 @@ import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
 import javax.annotation.Nullable;
 
 public interface HttpServerTracer {
+
     interface HttpServerSpan {
         void close(int statusCode, HttpResultCode resultCode, @Nullable Throwable exception);
     }
-
 
     interface HeadersSetter<H> {
         void set(H headers, String key, String value);

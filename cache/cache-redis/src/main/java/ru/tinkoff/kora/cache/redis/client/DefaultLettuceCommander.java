@@ -31,7 +31,7 @@ final class DefaultLettuceCommander implements LettuceCommander, Lifecycle {
     @Override
     public Mono<?> init() {
         return ReactorUtils.ioMono(() -> {
-            logger.debug("Starting Redis Client (Lettuce)...");
+            logger.debug("Redis Client (Lettuce) starting...");
             final long started = System.nanoTime();
 
             try {
@@ -56,7 +56,7 @@ final class DefaultLettuceCommander implements LettuceCommander, Lifecycle {
                 throw Exceptions.propagate(e);
             }
 
-            logger.info("Started Redis Client (Lettuce) took {}", Duration.ofNanos(System.nanoTime() - started));
+            logger.info("Redis Client (Lettuce) started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
         });
     }
 
@@ -64,10 +64,10 @@ final class DefaultLettuceCommander implements LettuceCommander, Lifecycle {
     public Mono<?> release() {
         return ReactorUtils.ioMono(() -> {
             try {
-                logger.debug("Stopping Redis Client (Lettuce)...");
+                logger.debug("Redis Client (Lettuce) stopping...");
                 final long started = System.nanoTime();
                 connection.close();
-                logger.info("Stopping Redis Client (Lettuce) took {}", Duration.ofNanos(System.nanoTime() - started));
+                logger.info("Redis Client (Lettuce) stopped in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
             } catch (Exception e) {
                 throw Exceptions.propagate(e);
             }

@@ -3,47 +3,55 @@ package ru.tinkoff.kora.database.common.telemetry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.database.common.QueryContext;
+import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
 import javax.annotation.Nullable;
 
-import static ru.tinkoff.kora.logging.common.arg.StructuredArgument.marker;
-
 public class DefaultDataBaseLogger implements DataBaseLogger {
-    private final Logger queryLog;
+
+    private final Logger log;
     private final String poolName;
 
     public DefaultDataBaseLogger(String poolName) {
         this.poolName = poolName;
-        this.queryLog = LoggerFactory.getLogger("ru.tinkoff.kora.database.jdbc." + poolName + ".query");
+        this.log = LoggerFactory.getLogger("ru.tinkoff.kora.database." + poolName + ".query");
     }
 
     @Override
     public boolean isEnabled() {
-        return this.queryLog.isDebugEnabled();
+        return this.log.isInfoEnabled();
     }
 
     @Override
     public void logQueryBegin(QueryContext queryContext) {
-        if (this.queryLog.isDebugEnabled()) {
-            this.queryLog.debug(marker("sqlQuery", gen -> {
-                gen.writeStartObject();
-                gen.writeStringField("pool", this.poolName);
-                gen.writeStringField("queryId", queryContext.queryId());
-                gen.writeEndObject();
-            }), "Sql query begin");
+        var marker = StructuredArgument.marker("sqlQuery", gen -> {
+            gen.writeStartObject();
+            gen.writeStringField("pool", this.poolName);
+            gen.writeStringField("queryId", queryContext.queryId());
+            gen.writeEndObject();
+        });
+
+        if (log.isDebugEnabled()) {
+            log.debug(marker, "SQL executing for pool '{}':\n{}",this.poolName, queryContext.sql());
+        } else if (log.isInfoEnabled()) {
+            log.info(marker, "SQL executing for pool '{}'", this.poolName);
         }
     }
 
     @Override
-    public void logQueryEnd(long duration, QueryContext queryContext, @Nullable Throwable ex) {
-        if (this.queryLog.isDebugEnabled()) {
-            this.queryLog.debug(marker("sqlQuery", gen -> {
-                gen.writeStartObject();
-                gen.writeStringField("pool", this.poolName);
-                gen.writeStringField("queryId", queryContext.queryId());
-                gen.writeNumberField("duration", duration / 1_000_000);
-                gen.writeEndObject();
-            }), "Sql query end");
+    public void logQueryEnd(long processingTime, QueryContext queryContext, @Nullable Throwable ex) {
+        var marker = StructuredArgument.marker("sqlQuery", gen -> {
+            gen.writeStartObject();
+            gen.writeStringField("pool", this.poolName);
+            gen.writeStringField("queryId", queryContext.queryId());
+            gen.writeNumberField("processingTime", processingTime / 1_000_000);
+            gen.writeEndObject();
+        });
+
+        if (log.isDebugEnabled()) {
+            log.debug(marker, "SQL executed for pool '{}':\n{}", this.poolName, queryContext.sql());
+        } else if(log.isInfoEnabled()) {
+            log.info(marker, "SQL executed for pool '{}'", this.poolName);
         }
     }
 }

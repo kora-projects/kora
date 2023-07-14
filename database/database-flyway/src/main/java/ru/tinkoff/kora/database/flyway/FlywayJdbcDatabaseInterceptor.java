@@ -19,14 +19,14 @@ public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<Jdb
         return ReactorUtils
             .ioMono(() -> {
                 final long started = System.nanoTime();
-                logger.info("Starting FlyWay migration...");
+                logger.info("FlyWay migration starting...");
 
                 Flyway.configure()
                     .dataSource(value.value())
                     .load()
                     .migrate();
 
-                logger.info("Finished FlyWay migration took {}", Duration.ofNanos(System.nanoTime() - started));
+                logger.info("FlyWay migration finished in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
             })
             .thenReturn(value);
     }

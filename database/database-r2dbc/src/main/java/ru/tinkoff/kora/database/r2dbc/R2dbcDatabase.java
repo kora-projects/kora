@@ -39,7 +39,10 @@ public class R2dbcDatabase implements R2dbcConnectionFactory, Lifecycle {
 
     public R2dbcDatabase(R2dbcDatabaseConfig config, List<Function<ConnectionFactoryOptions.Builder, ConnectionFactoryOptions.Builder>> customizers, DataBaseTelemetryFactory telemetryFactory) {
         this.connectionFactory = r2dbcConnectionFactory(config, customizers);
-        this.telemetry = telemetryFactory.get(config.poolName(), config.r2dbcUrl().substring(5, config.r2dbcUrl().indexOf(":", 6)), config.username());
+        this.telemetry = telemetryFactory.get(config.poolName(),
+            "r2dbc",
+            config.r2dbcUrl().substring(5, config.r2dbcUrl().indexOf(":", 6)),
+            config.username());
     }
 
     @Override

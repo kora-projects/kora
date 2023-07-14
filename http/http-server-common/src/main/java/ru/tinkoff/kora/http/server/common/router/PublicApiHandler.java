@@ -1,6 +1,8 @@
 package ru.tinkoff.kora.http.server.common.router;
 
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.All;
@@ -30,6 +32,9 @@ import java.util.function.Function;
  */
 
 public class PublicApiHandler implements RefreshListener {
+
+    private static final Logger log = LoggerFactory.getLogger(HttpServer.class);
+
     private final Function<HttpServerRequest, Mono<HttpServerResponse>> NOT_FOUND_HANDLER = request ->
         Mono.just(new SimpleHttpServerResponse(404, "application/octet-stream", HttpHeaders.of(), null));
 
@@ -152,21 +157,21 @@ public class PublicApiHandler implements RefreshListener {
                 if (ex == null && response instanceof Throwable throwableResponse) {
                     ex = throwableResponse;
                 }
-                ctx.close(success.code(), resultCode, ex);
+                ctx.close(success.code(), resultCode, response.headers(), ex);
             } else if (result instanceof HttpServerResponseSender.ResponseBodyErrorBeforeCommit responseBodyError) {
                 var newResponse = new SimpleHttpServerResponse(500, "text/plain", HttpHeaders.of(), StandardCharsets.UTF_8.encode(
                     Objects.requireNonNullElse(responseBodyError.error().getMessage(), "Unknown error")
                 ));
                 responseSender.send(newResponse).subscribe(v -> {
-                    ctx.close(500, HttpResultCode.SERVER_ERROR, responseBodyError.error());
+                    ctx.close(500, HttpResultCode.SERVER_ERROR, newResponse.headers(), responseBodyError.error());
                 });
             } else if (result instanceof HttpServerResponseSender.ResponseBodyError responseBodyError) {
-                ctx.close(response.code(), HttpResultCode.SERVER_ERROR, responseBodyError.error());
+                ctx.close(response.code(), HttpResultCode.SERVER_ERROR, response.headers(), responseBodyError.error());
             } else if (result instanceof HttpServerResponseSender.ConnectionError connectionError) {
-                ctx.close(response.code(), HttpResultCode.CONNECTION_ERROR, connectionError.error());
+                ctx.close(response.code(), HttpResultCode.CONNECTION_ERROR, response.headers(), connectionError.error());
             }
         }, e -> {
-            HttpServerLogger.log.error("Error dropped: looks like a bug in HttpServerResponseSender", e);
+            log.error("Error dropped: looks like a bug in HttpServerResponseSender", e);
         });
     }
 

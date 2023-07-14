@@ -110,6 +110,10 @@ public interface HttpHeaders extends Iterable<Map.Entry<String, List<String>>> {
     static String toString(HttpHeaders headers) {
         var sb = new StringBuilder();
         for (var entry : headers) {
+            if(!sb.isEmpty()) {
+                sb.append('\n');
+            }
+
             sb.append(entry.getKey());
             boolean first = true;
             for (var val : entry.getValue()) {
@@ -121,7 +125,6 @@ public interface HttpHeaders extends Iterable<Map.Entry<String, List<String>>> {
                 }
                 sb.append(val);
             }
-            sb.append("\n");
         }
         return sb.toString();
     }

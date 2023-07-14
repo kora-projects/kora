@@ -53,7 +53,7 @@ final class RedisCache<K, V> implements Cache<K, V> {
 
     @Override
     public V get(@Nonnull K key) {
-        logger.trace("Looking for value in cache '{}' for key: {}", name, key);
+        logger.trace("Cache '{}' looking for value for key: {}", name, key);
         final byte[] keyAsBytes = keyMapper.apply(key);
         final CacheTelemetry.TelemetryContext telemetryContext = telemetry.create(CacheTelemetry.Operation.Type.GET, name, origin());
 
@@ -64,9 +64,9 @@ final class RedisCache<K, V> implements Cache<K, V> {
                 : syncClient.getExpire(keyAsBytes, expireAfterAccessMillis);
 
             if (jsonAsBytes != null) {
-                logger.trace("Value NOT found in cache '{}' for key: {}", name, key);
+                logger.trace("Cache '{}' no value found for key: {}", name, key);
             } else {
-                logger.debug("Value found in cache '{}' for key: {}", name, key);
+                logger.debug("Cache '{}' found value for key: {}", name, key);
             }
 
             final V v = valueMapper.read(jsonAsBytes);
@@ -82,7 +82,7 @@ final class RedisCache<K, V> implements Cache<K, V> {
     @Nonnull
     @Override
     public V put(@Nonnull K key, @Nonnull V value) {
-        logger.trace("Putting value in cache '{}' for key: {}", name, key);
+        logger.trace("Cache '{}' storing for key: {}", name, key);
         final byte[] keyAsBytes = keyMapper.apply(key);
         final byte[] valueAsBytes = valueMapper.write(value);
         final CacheTelemetry.TelemetryContext telemetryContext = telemetry.create(CacheTelemetry.Operation.Type.PUT, name, origin());
@@ -95,7 +95,7 @@ final class RedisCache<K, V> implements Cache<K, V> {
                 syncClient.setExpire(keyAsBytes, valueAsBytes, expireAfterWriteMillis);
             }
             telemetryContext.recordSuccess();
-            logger.trace("Putted value in cache '{}' for key: {}", name, key);
+            logger.debug("Cache '{}' stored for key: {}", name, key);
             return value;
         } catch (Exception e) {
             telemetryContext.recordFailure(e);
@@ -106,7 +106,7 @@ final class RedisCache<K, V> implements Cache<K, V> {
 
     @Override
     public void invalidate(@Nonnull K key) {
-        logger.trace("Invalidating value in cache '{}' for key: {}", name, key);
+        logger.trace("Cache '{}' invalidating for key: {}", name, key);
         final byte[] keyAsBytes = keyMapper.apply(key);
         final CacheTelemetry.TelemetryContext telemetryContext = telemetry.create(CacheTelemetry.Operation.Type.INVALIDATE, name, origin());
 
@@ -114,7 +114,7 @@ final class RedisCache<K, V> implements Cache<K, V> {
             telemetryContext.startRecording();
             syncClient.del(keyAsBytes);
             telemetryContext.recordSuccess();
-            logger.trace("Invalidated value in cache '{}' for key: {}", name, key);
+            logger.debug("Cache '{}' invalidated for key: {}", name, key);
         } catch (Exception e) {
             telemetryContext.recordFailure(e);
             logger.warn(e.getMessage(), e);
@@ -123,14 +123,14 @@ final class RedisCache<K, V> implements Cache<K, V> {
 
     @Override
     public void invalidateAll() {
-        logger.trace("Invalidating all values in cache '{}'", name);
+        logger.trace("Cache '{}' invalidating all", name);
         final CacheTelemetry.TelemetryContext telemetryContext = telemetry.create(CacheTelemetry.Operation.Type.INVALIDATE_ALL, name, origin());
 
         try {
             telemetryContext.startRecording();
             syncClient.flushAll();
             telemetryContext.recordSuccess();
-            logger.trace("Invalidated all values in cache '{}'", name);
+            logger.debug("Cache '{}' invalidated all", name);
         } catch (Exception e) {
             telemetryContext.recordFailure(e);
             logger.warn(e.getMessage(), e);
@@ -143,7 +143,7 @@ final class RedisCache<K, V> implements Cache<K, V> {
         final CacheTelemetry.TelemetryContext telemetryContext = telemetry.create(CacheTelemetry.Operation.Type.GET, name, origin());
         return Mono.fromCallable(() -> keyMapper.apply(key))
             .flatMap(keyAsBytes -> {
-                logger.trace("Looking for value in cache '{}' for key: {}", name, key);
+                logger.trace("Cache '{}' looking for value for key: {}", name, key);
                 telemetryContext.startRecording();
                 return (expireAfterAccessMillis == null)
                     ? reactiveClient.get(keyAsBytes)
@@ -151,9 +151,9 @@ final class RedisCache<K, V> implements Cache<K, V> {
             })
             .map(jsonAsBytes -> {
                 if (jsonAsBytes != null) {
-                    logger.trace("Value NOT found in cache '{}' for key: {}", name, key);
+                    logger.trace("Cache '{}' no value found for key: {}", name, key);
                 } else {
-                    logger.debug("Value found in cache '{}' for key: {}", name, key);
+                    logger.debug("Cache '{}' found value for key: {}", name, key);
                 }
                 final V v = valueMapper.read(jsonAsBytes);
                 telemetryContext.recordSuccess(jsonAsBytes);
@@ -172,7 +172,7 @@ final class RedisCache<K, V> implements Cache<K, V> {
         final CacheTelemetry.TelemetryContext telemetryContext = telemetry.create(CacheTelemetry.Operation.Type.PUT, name, origin());
         return Mono.fromCallable(() -> keyMapper.apply(key))
             .flatMap(keyAsBytes -> {
-                logger.trace("Putting value in cache '{}' for key: {}", name, key);
+                logger.trace("Cache '{}' storing for key: {}", name, key);
                 final byte[] valueAsBytes = valueMapper.write(value);
                 telemetryContext.startRecording();
                 return (expireAfterWriteMillis == null)
@@ -182,7 +182,7 @@ final class RedisCache<K, V> implements Cache<K, V> {
             .map(r -> value)
             .switchIfEmpty(Mono.fromCallable(() -> {
                 telemetryContext.recordSuccess();
-                logger.trace("Putted value in cache '{}' for key: {}", name, key);
+                logger.debug("Cache '{}' stored for key: {}", name, key);
                 return value;
             }))
             .onErrorResume(e -> {
@@ -197,11 +197,14 @@ final class RedisCache<K, V> implements Cache<K, V> {
     public Mono<Void> invalidateAsync(@Nonnull K key) {
         final CacheTelemetry.TelemetryContext telemetryContext = telemetry.create(CacheTelemetry.Operation.Type.INVALIDATE, name, origin());
         return Mono.fromCallable(() -> {
-                logger.trace("Invalidating value in cache '{}' for key: {}", name, key);
+                logger.trace("Cache '{}' invalidating for key: {}", name, key);
                 return keyMapper.apply(key);
             })
             .flatMap(reactiveClient::del)
-            .doOnSuccess(r -> telemetryContext.recordSuccess())
+            .doOnSuccess(r -> {
+                telemetryContext.recordSuccess();
+                logger.debug("Cache '{}' invalidated for key: {}", name, key);
+            })
             .onErrorResume(e -> {
                 telemetryContext.recordFailure(e);
                 logger.warn(e.getMessage(), e);
@@ -213,9 +216,12 @@ final class RedisCache<K, V> implements Cache<K, V> {
     @Override
     public Mono<Void> invalidateAllAsync() {
         final CacheTelemetry.TelemetryContext telemetryContext = telemetry.create(CacheTelemetry.Operation.Type.INVALIDATE_ALL, name, origin());
-        logger.trace("Invalidating all values in cache '{}'", name);
+        logger.trace("Cache '{}' invalidating all", name);
         return reactiveClient.flushAll()
-            .doOnSuccess(r -> telemetryContext.recordSuccess())
+            .doOnSuccess(r -> {
+                telemetryContext.recordSuccess();
+                logger.debug("Cache '{}' invalidated all", name);
+            })
             .onErrorResume(e -> {
                 telemetryContext.recordFailure(e);
                 logger.warn(e.getMessage(), e);

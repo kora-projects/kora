@@ -42,20 +42,20 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
         return Mono.fromRunnable(() -> this.state.set(HttpServerState.SHUTDOWN))
             .then(Mono.delay(this.config.get().shutdownWait()))
             .then(ReactorUtils.ioMono(() -> {
-                logger.debug("Stopping Public HTTP Server (Undertow)...");
+                logger.debug("Public HTTP Server (Undertow) stopping...");
                 final long started = System.nanoTime();
                 this.gracefulShutdown.shutdown();
                 try {
+                    logger.debug("Public HTTP Server (Undertow) awaiting graceful shutdown...");
                     this.gracefulShutdown.awaitShutdown();
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                logger.debug("Awaiting Public HTTP Server (Undertow) graceful shutdown...");
                 if (this.undertow != null) {
                     this.undertow.stop();
                     this.undertow = null;
                 }
-                logger.info("Stopped Public HTTP Server (Undertow) took {}", Duration.ofNanos(System.nanoTime() - started));
+                logger.info("Public HTTP Server (Undertow) stopped in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
             }));
     }
 
@@ -64,7 +64,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
         return Mono.create(sink -> {
             // dirty hack to start undertow thread as non daemon
             var t = new Thread(() -> {
-                logger.debug("Starting Public HTTP Server (Undertow)...");
+                logger.debug("Public HTTP Server (Undertow) starting...");
                 final long started = System.nanoTime();
                 try {
                     this.gracefulShutdown.start();
@@ -72,7 +72,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
                     this.undertow.start();
                     this.state.set(HttpServerState.RUN);
                     var data = StructuredArgument.marker( "port", this.port() );
-                    logger.info(data, "Started Public HTTP Server (Undertow) took {}", Duration.ofNanos(System.nanoTime() - started));
+                    logger.info(data, "Public HTTP Server (Undertow) started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
                     sink.success();
                 } catch (Throwable e) {
                     sink.error(e);

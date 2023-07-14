@@ -51,7 +51,9 @@ public final class DefaultGrpcServerTelemetry implements GrpcServerTelemetry {
         var methodName = method(call);
         var m = metrics == null ? null : metrics.get(call, headers, serviceName, methodName);
         var span = tracing == null ? null : tracing.createSpan(call, headers, serviceName, methodName);
-        if (logger != null) logger.logBegin(call, headers, serviceName, methodName);
+        if (logger != null) {
+            logger.logBegin(call, headers, serviceName, methodName);
+        }
         return new DefaultGrpcServerTelemetryContext(start, serviceName, methodName, m, logger, span);
     }
 

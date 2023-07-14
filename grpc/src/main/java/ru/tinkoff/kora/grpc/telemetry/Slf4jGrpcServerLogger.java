@@ -11,53 +11,54 @@ import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 import javax.annotation.Nullable;
 
 public final class Slf4jGrpcServerLogger implements GrpcServerLogger {
+
     private static final Logger log = LoggerFactory.getLogger(GrpcServer.class);
 
     @Override
     public boolean isEnabled() {
-        return log.isWarnEnabled();
+        return log.isInfoEnabled();
     }
 
     @Override
     public void logEnd(String serviceName, String methodName, @Nullable Status status, @Nullable Throwable exception, long processingTime) {
+        var marker = StructuredArgument.marker("grpcResponse", gen -> {
+            gen.writeStartObject();
+            gen.writeStringField("serviceName", serviceName);
+            gen.writeStringField("operation", serviceName + "/" + methodName);
+            gen.writeNumberField("processingTime", processingTime / 1_000_000);
+            if (status != null) {
+                gen.writeStringField("status", status.getCode().name());
+            }
+            if (exception != null) {
+                var exceptionType = exception.getClass().getCanonicalName();
+                gen.writeStringField("exceptionType", exceptionType);
+            }
+            gen.writeEndObject();
+        });
+
         if (status != null && status.isOk()) {
-            var marker = StructuredArgument.marker("grpcResponse", gen -> {
-                gen.writeStartObject();
-                gen.writeStringField("serviceName", serviceName);
-                gen.writeStringField("operation", serviceName + "/" + methodName);
-                gen.writeNumberField("processingTime", processingTime / 1_000_000);
-                gen.writeStringField("status", status.getCode().name());
-                gen.writeEndObject();
-            });
-            log.info(marker, "Response finished");
-            return;
-        }
-        if (status == null) {
-            var marker = StructuredArgument.marker("grpcResponse", gen -> {
-                gen.writeStartObject();
-                gen.writeStringField("serviceName", serviceName);
-                gen.writeStringField("operation", serviceName + "/" + methodName);
-                gen.writeNumberField("processingTime", processingTime / 1_000_000);
-                gen.writeNullField("status");
-                gen.writeEndObject();
-            });
-            log.warn(marker, "Response finished", exception);
+            log.info(marker, "GrpcCall responded {} for {}#{}", status, serviceName, methodName);
+        } else if (status != null) {
+            log.warn(marker, "GrpcCall responded {} for {}#{}", status, serviceName, methodName, exception);
         } else {
-            var marker = StructuredArgument.marker("grpcResponse", gen -> {
-                gen.writeStartObject();
-                gen.writeStringField("serviceName", serviceName);
-                gen.writeStringField("operation", serviceName + "/" + methodName);
-                gen.writeNumberField("processingTime", processingTime / 1_000_000);
-                gen.writeStringField("status", status.getCode().name());
-                gen.writeEndObject();
-            });
-            log.warn(marker, "Response finished", exception);
+            log.warn(marker, "GrpcCall responded for {}#{}", serviceName, methodName, exception);
         }
     }
 
     @Override
     public void logBegin(ServerCall<?, ?> call, Metadata headers, String serviceName, String methodName) {
+        var marker = StructuredArgument.marker("grpcRequest", gen -> {
+            gen.writeStartObject();
+            gen.writeStringField("serviceName", serviceName);
+            gen.writeStringField("operation", serviceName + "/" + methodName);
+            gen.writeEndObject();
+        });
 
+        if (log.isDebugEnabled()) {
+            log.debug(marker, "GrpcCall received for {}#{}\n{}", serviceName, methodName, headers);
+        } else {
+            log.info(marker, "GrpcCall received for {}#{}", serviceName, methodName);
+        }
     }
 
     @Override

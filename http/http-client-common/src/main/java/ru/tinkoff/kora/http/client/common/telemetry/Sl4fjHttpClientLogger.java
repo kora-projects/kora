@@ -1,11 +1,11 @@
 package ru.tinkoff.kora.http.client.common.telemetry;
 
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
+import javax.annotation.Nullable;
 import java.util.concurrent.CancellationException;
 
 public class Sl4fjHttpClientLogger implements HttpClientLogger {
@@ -48,7 +48,12 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
     }
 
     @Override
-    public void logRequest(String authority, String method, String operation, String resolvedUri, @Nullable HttpHeaders headers, @Nullable String body) {
+    public void logRequest(String authority,
+                           String method,
+                           String operation,
+                           String resolvedUri,
+                           @Nullable HttpHeaders headers,
+                           @Nullable String body) {
         var marker = StructuredArgument.marker("httpResponse", gen -> {
             gen.writeStartObject();
             gen.writeStringField("authority", authority);
@@ -56,22 +61,27 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
             gen.writeEndObject();
         });
 
-        if (this.requestLog.isTraceEnabled() && body != null) {
+        if (this.requestLog.isTraceEnabled() && headers != null && headers.size() > 0 && body != null) {
             var headersString = this.requestHeaderString(headers);
             var bodyStr = this.requestBodyString(body);
-            this.requestLog.trace(marker, "{} {}\n{}\n{}\n", method, resolvedUri, headersString, bodyStr);
-            return;
-        }
-        if (this.requestLog.isDebugEnabled()) {
+            this.requestLog.trace(marker, "Requesting {}\n{}\n{}", operation, headersString, bodyStr);
+        } else if (this.requestLog.isDebugEnabled() && headers != null && headers.size() > 0) {
             var headersString = this.requestHeaderString(headers);
-            this.requestLog.debug(marker, "{} {}\n{}\n", method, resolvedUri, headersString);
-            return;
+            this.requestLog.debug(marker, "Requesting {}\n{}", operation, headersString);
+        } else {
+            this.requestLog.info(marker, "Requesting {}", operation);
         }
-        this.requestLog.info(marker, "{}", operation);
     }
 
     @Override
-    public void logResponse(String authority, String operation, long processingTime, @Nullable Integer statusCode, HttpResultCode resultCode, @Nullable Throwable exception, @Nullable HttpHeaders headers, @Nullable String body) {
+    public void logResponse(String authority,
+                            String operation,
+                            long processingTime,
+                            @Nullable Integer statusCode,
+                            HttpResultCode resultCode,
+                            @Nullable Throwable exception,
+                            @Nullable HttpHeaders headers,
+                            @Nullable String body) {
         var exceptionTypeString = exception != null
             ? exception.getClass().getCanonicalName()
             : statusCode != null ? null : CancellationException.class.getCanonicalName();
@@ -80,33 +90,30 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
             gen.writeStartObject();
             gen.writeStringField("authority", authority);
             gen.writeStringField("operation", operation);
-            gen.writeNumberField("processingTime", processingTime);
-            gen.writeFieldName("statusCode");
-            if (statusCode != null) {
-                gen.writeNumber(statusCode);
-            } else {
-                gen.writeNull();
-            }
             gen.writeStringField("resultCode", resultCode.name().toLowerCase());
-            gen.writeStringField("exceptionType", exceptionTypeString);
+            gen.writeNumberField("processingTime", processingTime / 1_000_000);
+            if (statusCode != null) {
+                gen.writeFieldName("statusCode");
+                gen.writeNumber(statusCode);
+            }
+            if (exceptionTypeString != null) {
+                gen.writeStringField("exceptionType", exceptionTypeString);
+            }
             gen.writeEndObject();
         });
-        if (responseLog.isTraceEnabled() && body != null) {
+
+        if (responseLog.isTraceEnabled() && headers != null && headers.size() > 0 && body != null) {
             var headersString = this.responseHeaderString(headers);
             var bodyStr = this.responseBodyString(body);
-            responseLog.trace(marker, "{}\n{}\n{}\n", statusCode, headersString, bodyStr);
-            return;
-        }
-        if (responseLog.isDebugEnabled() && headers != null) {
+            responseLog.trace(marker, "Received {} from {}\n{}\n{}", statusCode, operation, headersString, bodyStr);
+        } else if (responseLog.isDebugEnabled() && headers != null && headers.size() > 0) {
             var headersString = this.responseHeaderString(headers);
-            responseLog.debug(marker, "{}\n{}\n", statusCode, headersString);
-            return;
+            responseLog.debug(marker, "Received {} from {}\n{}", statusCode, operation, headersString);
+        } else if (statusCode != null) {
+            responseLog.info(marker, "Received {} from {}", statusCode, operation);
+        } else {
+            responseLog.info(marker, "Received no HttpResponse from {}", operation);
         }
-        if (statusCode != null) {
-            responseLog.info(marker, "{}", statusCode);
-            return;
-        }
-        responseLog.info(marker, "Http response was not received");
     }
 
     public String responseBodyString(String body) {
@@ -124,5 +131,4 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
     public String requestHeaderString(HttpHeaders headers) {
         return HttpHeaders.toString(headers);
     }
-
 }

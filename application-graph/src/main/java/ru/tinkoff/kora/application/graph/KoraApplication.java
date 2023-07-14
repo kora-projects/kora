@@ -11,22 +11,22 @@ public class KoraApplication {
         var start = System.currentTimeMillis();
         var graphDraw = supplier.get();
         var log = LoggerFactory.getLogger(graphDraw.getRoot());
-        log.debug("Initializing Application...");
+        log.debug("Application initializing...");
         try {
             var graph = graphDraw.init().block();
             var end = System.currentTimeMillis();
             try {
                 var uptime = ManagementFactory.getRuntimeMXBean().getUptime() / 1000.0;
-                log.info("Initialized Application in {} ms (JVM running for {} s)", end - start, uptime);
+                log.info("Application initialized in {} ms (JVM running for {} s)", end - start, uptime);
             } catch (Throwable ex) {
-                log.info("Initialized Application in {}ms", end - start);
+                log.info("Application initialized in {}ms", end - start);
             }
             var thread = new Thread(() -> graph.release().block());
             thread.setName("kora-shutdown");
             Runtime.getRuntime().addShutdownHook(thread);
             return graph;
         } catch (Exception e) {
-            log.error("Initializing Application failed with error", e);
+            log.error("Application initializing failed with error", e);
             e.printStackTrace();
             try {
                 Thread.sleep(100);// so async logger is able to write exception to log
