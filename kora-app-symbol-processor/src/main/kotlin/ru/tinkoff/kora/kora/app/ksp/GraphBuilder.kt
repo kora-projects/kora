@@ -198,7 +198,18 @@ object GraphBuilder {
                     }
                 }
                 val hints = ctx.dependencyHintProvider.findHints(dependencyClaim.type, dependencyClaim.tags)
-                val msg = StringBuilder("Required dependency type ${dependencyClaim.type.toTypeName()} was not found and can't be autocreated.")
+                val msg = if(dependencyClaim.tags.isEmpty()) {
+                    StringBuilder(
+                        "Required dependency type was not found and can't be auto created: ${dependencyClaim.type.toTypeName()}.\n" +
+                            "Please check class for @${CommonClassNames.component.canonicalName} annotation or that required module with component is plugged in."
+                    )
+                } else {
+                    val tagMsg = dependencyClaim.tags.joinToString(", ", "@Tag(", ")")
+                    StringBuilder(
+                        "Required dependency type was not found and can't be auto created: ${dependencyClaim.type.toTypeName()} with tag ${tagMsg}.\n" +
+                            "Please check class for @${CommonClassNames.component.canonicalName} annotation or that required module with component is plugged in."
+                    )
+                }
                 for (hint in hints) {
                     msg.append("\n  Hint: ").append(hint.message())
                 }

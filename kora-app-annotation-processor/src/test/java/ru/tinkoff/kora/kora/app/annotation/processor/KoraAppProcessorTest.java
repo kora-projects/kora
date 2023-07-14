@@ -154,7 +154,8 @@ class KoraAppProcessorTest {
         assertThatThrownBy(() -> testClass(AppWithUnresolvedDependency.class))
             .isInstanceOfSatisfying(CompilationErrorException.class, e -> SoftAssertions.assertSoftly(s -> {
                 s.assertThat(e.getMessage()).isEqualTo("""
-                    Required dependency was not found: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3
+                    Required dependency type was not found and can't be auto created: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3.
+                      Please check class for @Component annotation or that required module with component is plugged in.
                       Requested at: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.class2(ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3)""");
                 s.assertThat(e.diagnostics.get(0).getPosition()).isEqualTo(327);
                 s.assertThat(e.diagnostics.get(0).getLineNumber()).isEqualTo(14);
@@ -195,17 +196,17 @@ class KoraAppProcessorTest {
         testClass(AppWithFactories9.class).init().block();
         assertThatThrownBy(() -> testClass(AppWithFactories10.class))
             .isInstanceOf(CompilationErrorException.class)
-            .hasMessageStartingWith("Required dependency was not found: java.io.Closeable")
+            .hasMessageStartingWith("Required dependency type was not found and can't be auto created: java.io.Closeable")
             .asInstanceOf(type(CompilationErrorException.class))
             .extracting(CompilationErrorException::getDiagnostics, list(Diagnostic.class))
             .anySatisfy(d -> {
                 assertThat(d.getKind()).isEqualTo(Diagnostic.Kind.ERROR);
                 assertThat(d.getMessage(Locale.ENGLISH)).isEqualTo("""
-                    Required dependency was not found: java.io.Closeable
+                    Required dependency type was not found and can't be auto created: java.io.Closeable.
+                      Please check class for @Component annotation or that required module with component is plugged in.
                       Requested at: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithFactories10.mock1(java.io.Closeable)
                     """.trim());
-            })
-        ;
+            });
 //        assertThatThrownBy(() -> testClass(AppWithFactories11.class))
 //            .isInstanceOf(CompilationErrorException.class)
 //            .hasMessageContaining("Required dependency was not found and candidate class ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithFactories11.GenericClass<java.lang.String> is not final")
