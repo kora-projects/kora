@@ -135,7 +135,7 @@ sealed interface ComponentDeclaration {
         fun fromDependency(ctx: ProcessingContext, classDeclaration: KSClassDeclaration): DiscoveredAsDependencyComponent {
             val constructor = classDeclaration.primaryConstructor
             if (constructor == null) {
-                throw ProcessingErrorException("No primary constructor to parse component", classDeclaration)
+                throw ProcessingErrorException("No primary constructor to parse component for: $classDeclaration", classDeclaration)
             }
             val type = classDeclaration.asType(listOf())
             if (type.isError) {

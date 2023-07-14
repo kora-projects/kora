@@ -112,11 +112,11 @@ class AopSymbolProcessor(
                     }
                     ClassKind.CLASS -> {
                         if (declaration.isAbstract()) {
-                            errors.add(ProcessingError("Aspects can not be applied to abstract classes, but $declaration is not abstract", declaration))
+                            errors.add(ProcessingError("Aspects can't be applied to abstract classes, but $declaration is abstract", declaration))
                             return null
                         }
                         if (!declaration.isOpen()) {
-                            errors.add(ProcessingError("Aspects can be applied only to non final classes, but $declaration is not open", declaration))
+                            errors.add(ProcessingError("Aspects can be applied only to open classes, but $declaration is not open", declaration))
                             return null
                         }
                         val constructor = findAopConstructor(declaration)
@@ -131,7 +131,7 @@ class AopSymbolProcessor(
             }
             is KSFunctionDeclaration -> {
                 return if (!declaration.isOpen()) {
-                    errors.add(ProcessingError("Aspects can be applied only to non final functions, but function ${declaration.parentDeclaration}#$declaration is not open", declaration))
+                    errors.add(ProcessingError("Aspects applied only to open functions, but function ${declaration.parentDeclaration}#$declaration is not open", declaration))
                     return null
                 } else if (declaration.parentDeclaration is KSClassDeclaration) {
                     findKsClassDeclaration(declaration.parentDeclaration as KSClassDeclaration)
@@ -148,6 +148,7 @@ class AopSymbolProcessor(
 
 @KspExperimental
 class AopSymbolProcessorProvider : SymbolProcessorProvider {
+
     override fun create(
         environment: SymbolProcessorEnvironment
     ): SymbolProcessor {

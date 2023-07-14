@@ -206,7 +206,7 @@ class KoraAppKspTest {
             .isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
                 SoftAssertions.assertSoftly { s: SoftAssertions ->
                     s.assertThat(e.messages)
-                        .anyMatch { it.contains("Required dependency type ru.tinkoff.kora.kora.app.ksp.app.AppWithUnresolvedDependency.Class3 was not found and can't be autocreated") }
+                        .anyMatch { it.contains("Required dependency type was not found and can't be auto created: ru.tinkoff.kora.kora.app.ksp.app.AppWithUnresolvedDependency.Class3") }
                 }
             }
     }
@@ -257,7 +257,7 @@ class KoraAppKspTest {
             .isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
                 SoftAssertions.assertSoftly { s: SoftAssertions ->
                     s.assertThat(e.messages).anyMatch {
-                        it.contains("Required dependency type java.io.Closeable was not found and can't be autocreated")
+                        it.contains("Required dependency type was not found and can't be auto created: java.io.Closeable")
                     }
                 }
             }

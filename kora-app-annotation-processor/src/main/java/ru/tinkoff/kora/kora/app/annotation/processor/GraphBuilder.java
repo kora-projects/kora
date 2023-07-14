@@ -149,7 +149,12 @@ public class GraphBuilder {
                     }
                     if (results.size() > 1) {
                         var deps = templates.stream().map(Objects::toString).collect(Collectors.joining("\n")).indent(2);
-                        throw new ProcessingErrorException("More than one component matches dependency claim " + dependencyClaim.type() + ":\n" + deps, declaration.source());
+                        if(dependencyClaim.tags().isEmpty()) {
+                            throw new ProcessingErrorException("More than one component matches dependency claim " + dependencyClaim.type() + ":\n" + deps, declaration.source());
+                        } else {
+                            var tagMsg = dependencyClaim.tags().stream().collect(Collectors.joining(", ", "@Tag(", ")"));
+                            throw new ProcessingErrorException("More than one component matches dependency claim " + dependencyClaim.type() + " with tag " + tagMsg + " :\n" + deps, declaration.source());
+                        }
                     }
                     throw exception;
                 }
@@ -205,9 +210,14 @@ public class GraphBuilder {
                 var msg = new StringBuilder();
                 var claimTypeName = TypeName.get(dependencyClaim.type()).annotated(List.of());
                 if (dependencyClaim.tags().isEmpty()) {
-                    msg.append(String.format("Required dependency was not found: %s", claimTypeName));
+                    msg.append(String.format("Required dependency type was not found and can't be auto created: %s.\n" +
+                                             "Please check class for @%s annotation or that required module with component is plugged in.",
+                        claimTypeName, CommonClassNames.component.simpleName()));
                 } else {
-                    msg.append(String.format("Required dependency was not found: %s %s", dependencyClaim.tags().stream().collect(Collectors.joining(", ", "@Tag(", ")")), claimTypeName));
+                    var tagMsg = dependencyClaim.tags().stream().collect(Collectors.joining(", ", "@Tag(", ")"));
+                    msg.append(String.format("Required dependency type was not found and can't be auto created: %s with tag %s.\n" +
+                                             "Please check class for @%s annotation or that required module with component is plugged in.",
+                        claimTypeName, tagMsg, CommonClassNames.component.simpleName()));
                 }
                 for (var hint : hints) {
                     msg.append("\n  Hint: ").append(hint.message());

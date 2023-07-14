@@ -135,7 +135,7 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
                 return null;
             }
             if (element.getModifiers().contains(Modifier.FINAL)) {
-                this.errors.add(new ProcessingError("Aspects can be applied only to non final classes, but " + element.getSimpleName() + " is final", element));
+                this.errors.add(new ProcessingError("Aspects can't be applied to final classes, but " + element.getSimpleName() + " is final", element));
                 return null;
             }
             var typeElement = (TypeElement) element;
@@ -153,8 +153,12 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
             this.errors.add(new ProcessingError("Aspects can be applied only to classes or methods, got %s".formatted(element.getKind()), element));
             return null;
         }
-        if (element.getModifiers().contains(Modifier.FINAL) || element.getModifiers().contains(Modifier.PRIVATE)) {
-            this.errors.add(new ProcessingError("Aspects can be applied only to non final non private methods", element));
+        if (element.getModifiers().contains(Modifier.FINAL)) {
+            this.errors.add(new ProcessingError("Aspects can't be applied to final methods, but method " + element.getEnclosingElement().getSimpleName() + "#" + element.getSimpleName() + "() is final", element));
+            return null;
+        }
+        if (element.getModifiers().contains(Modifier.PRIVATE)) {
+            this.errors.add(new ProcessingError("Aspects can't be applied to private methods, but method " + element.getEnclosingElement().getSimpleName() + "#" + element.getSimpleName() + "() is private", element));
             return null;
         }
         return this.findTypeElement(element.getEnclosingElement());
