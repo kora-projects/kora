@@ -4,6 +4,7 @@ import com.squareup.javapoet.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.annotation.processor.common.*;
+import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ComponentDependency;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponent;
@@ -88,7 +89,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         var koraAppElements = roundEnv.getElementsAnnotatedWith(this.koraAppElement);
         for (var element : koraAppElements) {
             if (element.getKind() == ElementKind.INTERFACE) {
-                log.info("Kora app found: {}", element);
+                log.info("@KoraApp element found: {}", element);
                 this.annotatedElements.putIfAbsent((TypeElement) element, parseNone(element));
             } else {
                 this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "@KoraApp can be placed only on interfaces", element);
@@ -172,12 +173,19 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
     }
 
     private void processGenerated(RoundEnvironment roundEnv) {
-        log.info("Generated from prev round:\n{}", roundEnv.getElementsAnnotatedWith(ru.tinkoff.kora.common.annotation.Generated.class)
-            .stream()
-            .map(Object::toString)
-            .collect(Collectors.joining("\n"))
-            .indent(4)
-        );
+        if(log.isInfoEnabled()) {
+            final String generated = roundEnv.getElementsAnnotatedWith(Generated.class)
+                .stream()
+                .map(Object::toString)
+                .collect(Collectors.joining("\n"))
+                .indent(4);
+
+            if(!generated.isBlank()) {
+                log.info("Generated previous Round:\n{}", generated);
+            } else {
+                log.info("Nothing was generated previous Round.");
+            }
+        }
     }
 
     private boolean processComponents(RoundEnvironment roundEnv) {

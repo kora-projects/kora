@@ -2,5 +2,5 @@ dependencies {
     api project(":database:database-jdbc")
     api libs.flyway
 
-    testImplementation project(":test:test-postgres")
+    testImplementation project(":internal:test-postgres")
 }

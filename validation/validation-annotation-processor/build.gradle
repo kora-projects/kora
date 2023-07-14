@@ -10,7 +10,7 @@ dependencies {
     testImplementation project(":annotation-processor-common")
     testImplementation project(":kora-app-annotation-processor")
     testImplementation project(":config:config-annotation-processor")
-    testImplementation project(":test:test-logging")
+    testImplementation project(":internal:test-logging")
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.8.2"
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.8.2"
     testImplementation "org.junit.jupiter:junit-jupiter-params:5.8.2"

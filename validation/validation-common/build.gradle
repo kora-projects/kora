@@ -4,7 +4,7 @@ dependencies {
 
     implementation "org.jetbrains:annotations:23.0.0"
 
-    testImplementation project(":test:test-logging")
+    testImplementation project(":internal:test-logging")
 }
 
 apply from: "../../in-test-generated.gradle"

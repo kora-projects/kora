@@ -18,6 +18,7 @@ open class TestControllerWithCustomReaders {
     ): HttpServerResponseEntity<String> {
         val query = queryList ?: emptyList()
         val resultList = query + pathEntity
+        println("test1")
         return HttpServerResponseEntity(200, resultList.joinToString(", ") { it.string })
     }
 }

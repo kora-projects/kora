@@ -249,10 +249,17 @@ class KoraAppProcessor(
     }
 
     private fun processGenerated(resolver: Resolver) {
-        log.info("Generated from prev round:{}", resolver.getSymbolsWithAnnotation(CommonClassNames.generated.canonicalName)
-            .joinToString("\n") { obj -> obj.location.toString() }
-            .trimIndent()
-        )
+        if(log.isInfoEnabled) {
+            val generated = resolver.getSymbolsWithAnnotation(CommonClassNames.generated.canonicalName)
+                .joinToString("\n") { obj -> obj.location.toString() }
+                .trimIndent()
+
+            if(generated.isNotBlank()) {
+                log.info("Generated previous Round: {}", generated)
+            } else {
+                log.info("Nothing was generated previous Round.")
+            }
+        }
     }
 
     private fun processModules(resolver: Resolver): Boolean {

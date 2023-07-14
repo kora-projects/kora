@@ -8,5 +8,5 @@ dependencies {
 
     testImplementation libs.r2dbc.postgres
     testImplementation libs.reactor.test
-    testImplementation project(':test:test-postgres')
+    testImplementation project(':internal:test-postgres')
 }

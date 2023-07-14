@@ -8,7 +8,7 @@ import java.util.List;
 public final class Node<T> {
     final ApplicationGraphDraw graphDraw;
     final int index;
-    final Graph.Factory<T> factory;
+    final Graph.Factory<? extends T> factory;
     // leaks for the test purposes
     private final Type type;
     private final Class<?>[] tags;
@@ -18,7 +18,7 @@ public final class Node<T> {
     private final List<Node<?>> dependentNodes;
     private final boolean isValueOf;
 
-    Node(ApplicationGraphDraw graphDraw, int index, Graph.Factory<T> factory, Type type, List<Node<?>> dependencyNodes, List<Node<? extends GraphInterceptor<T>>> interceptors, Class<?>[] tags) {
+    Node(ApplicationGraphDraw graphDraw, int index, Graph.Factory<? extends T> factory, Type type, List<Node<?>> dependencyNodes, List<Node<? extends GraphInterceptor<T>>> interceptors, Class<?>[] tags) {
         this.graphDraw = graphDraw;
         this.index = index;
         this.factory = factory;
@@ -31,7 +31,7 @@ public final class Node<T> {
         this.tags = tags;
     }
 
-    private Node(ApplicationGraphDraw graphDraw, int index, Graph.Factory<T> factory, Type type, List<Node<?>> dependencyNodes, List<Node<? extends GraphInterceptor<T>>> interceptors, List<Node<?>> dependentNodes, List<Node<?>> intercepts, boolean isValueOf, Class<?>[] tags) {
+    private Node(ApplicationGraphDraw graphDraw, int index, Graph.Factory<? extends T> factory, Type type, List<Node<?>> dependencyNodes, List<Node<? extends GraphInterceptor<T>>> interceptors, List<Node<?>> dependentNodes, List<Node<?>> intercepts, boolean isValueOf, Class<?>[] tags) {
         this.graphDraw = graphDraw;
         this.index = index;
         this.factory = factory;

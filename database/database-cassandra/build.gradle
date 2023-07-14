@@ -5,5 +5,5 @@ dependencies {
 
     annotationProcessor project(':config:config-annotation-processor')
 
-    testImplementation project(':test:test-cassandra')
+    testImplementation project(':internal:test-cassandra')
 }

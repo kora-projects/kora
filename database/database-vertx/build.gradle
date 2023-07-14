@@ -13,6 +13,6 @@ dependencies {
 
     annotationProcessor project(':config:config-annotation-processor')
 
-    testImplementation project(':test:test-postgres')
+    testImplementation project(':internal:test-postgres')
     testImplementation libs.reactor.test
 }

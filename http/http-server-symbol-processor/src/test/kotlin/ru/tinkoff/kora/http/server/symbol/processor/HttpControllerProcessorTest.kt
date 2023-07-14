@@ -1,18 +1,18 @@
 package ru.tinkoff.kora.http.server.symbol.processor
 
 import com.google.devtools.ksp.KspExperimental
-
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.mockito.Mockito.*
+import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.whenever
 import ru.tinkoff.kora.http.common.HttpMethod
 import ru.tinkoff.kora.http.server.symbol.processor.controllers.*
 import ru.tinkoff.kora.http.server.symbol.processor.server.TestHttpServer
 import java.nio.charset.StandardCharsets
-import java.util.Map
 
 @KspExperimental
 class HttpControllerProcessorTest {
@@ -51,14 +51,14 @@ class HttpControllerProcessorTest {
         `when`(server.controller.headerString("someHeaderString")).thenReturn("otherString")
         `when`(server.controller.headerInt(15)).thenReturn(15)
 
-        server.invoke(HttpMethod.GET, "/headerString", ByteArray(0), Map.entry("string-header", "someHeaderString"))
+        server.invoke(HttpMethod.GET, "/headerString", ByteArray(0), "string-header" to "someHeaderString")
             .verifyStatus(200)
             .verifyBody("otherString")
         server.invoke(HttpMethod.GET, "/headerString", ByteArray(0))
             .verifyStatus(400)
         server.invoke(HttpMethod.GET, "/headerInt", ByteArray(0))
             .verifyStatus(400)
-        server.invoke(HttpMethod.GET, "/headerInt", ByteArray(0), Map.entry("int-header", "15"))
+        server.invoke(HttpMethod.GET, "/headerInt", ByteArray(0), "int-header" to "15")
             .verifyStatus(200)
             .verifyBody("15")
     }
@@ -114,8 +114,8 @@ class HttpControllerProcessorTest {
                 TestHttpServer.fromController(
                     TestControllerKotlinSuspendHandler::class
                 )
-            `when`(server.controller.kotlinNullableHeader(any<String>())).thenCallRealMethod()
-            server.invoke(HttpMethod.GET, "/kotlinNullableHeader", ByteArray(0), Map.entry("str", "someHeaderString"))
+            `when`(server.controller.kotlinNullableHeader(anyOrNull())).thenCallRealMethod()
+            server.invoke(HttpMethod.GET, "/kotlinNullableHeader", ByteArray(0), "str" to "someHeaderString")
                 .verifyStatus(200)
                 .verifyBody("someHeaderString")
             server.invoke(HttpMethod.GET, "/kotlinNullableHeader", ByteArray(0))
@@ -124,7 +124,7 @@ class HttpControllerProcessorTest {
             `when`(server.controller.kotlinNonNullableHeader(ArgumentMatchers.anyString())).thenCallRealMethod()
             server.invoke(HttpMethod.GET, "/kotlinNonNullableHeader", ByteArray(0))
                 .verifyStatus(400)
-            `when`(server.controller.kotlinNullableQuery(any())).thenCallRealMethod()
+            `when`(server.controller.kotlinNullableQuery(anyOrNull())).thenCallRealMethod()
             server.invoke(HttpMethod.GET, "/kotlinNullableQuery?str=test", ByteArray(0))
                 .verifyStatus(200)
                 .verifyBody("test")
@@ -168,7 +168,7 @@ class HttpControllerProcessorTest {
         server.invoke("POST", "/path", ByteArray(0))
             .verifyStatus(400)
             .verifyBody("TEST")
-        server.invoke("POST", "/path", ByteArray(0), Map.entry("test-header", "val"))
+        server.invoke("POST", "/path", ByteArray(0), "test-header" to "val")
             .verifyStatus(200)
     }
 
@@ -210,6 +210,7 @@ class HttpControllerProcessorTest {
             TestHttpServer.fromController(
                 TestControllerWithCustomReaders::class
             )
+        whenever(server.controller.test(any(), anyOrNull(), anyOrNull())).thenCallRealMethod()
 
         server.invoke("GET", "/test/fourth?queryEntity=first&queryEntity=second&queryEntity=third", ByteArray(0))
             .verifyStatus(200)
@@ -222,7 +223,7 @@ class HttpControllerProcessorTest {
 
     @Test
     fun testControllerWithInterceptors() {
-        val server: TestHttpServer<TestControllerWithInterceptors> =TestHttpServer.fromController(TestControllerWithInterceptors::class)
+        val server: TestHttpServer<TestControllerWithInterceptors> = TestHttpServer.fromController(TestControllerWithInterceptors::class)
         whenever(server.controller.withMethodLevelInterceptors()).thenCallRealMethod()
         server.invoke("GET", "/withMethodLevelInterceptors", ByteArray(0))
             .verifyStatus(200)
