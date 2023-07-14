@@ -10,7 +10,6 @@ import java.util.function.Supplier
 
 open class DependencyTest : AbstractSymbolProcessorTest() {
     override fun commonImports() = super.commonImports() + """
-        import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
         import ru.tinkoff.kora.application.graph.*;
         import java.util.Optional;
         

@@ -3,9 +3,8 @@ package ru.tinkoff.kora.kora.app.annotation.processor.app;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeSpec;
-import org.mockito.Mockito;
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
 import ru.tinkoff.kora.common.KoraApp;
+import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionFactory;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.KoraExtension;
@@ -30,13 +29,14 @@ import java.util.stream.Collectors;
 public interface AppWithProcessorExtension {
     @interface TestAnnotation {}
 
-    default MockLifecycle object(Interface1 interface1) {
-        return Mockito.spy(MockLifecycle.class);
+    @Root
+    default Object object(Interface1 interface1) {
+        return new Object();
     }
 
 
     @TestAnnotation
-    interface Interface1 extends MockLifecycle {}
+    interface Interface1 {}
 
     class TestExtensionExtensionFactory implements ExtensionFactory {
 

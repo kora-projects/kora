@@ -233,7 +233,6 @@ class KoraAppProcessor(
             }
             val rootSet = components.filter {
                 it.source.isAnnotationPresent(CommonClassNames.root)
-                    || ctx!!.serviceTypesHelper.isLifecycle(it.type)
                     || it is ComponentDeclaration.AnnotatedComponent && it.classDeclaration.isAnnotationPresent(CommonClassNames.root)
             }
             return ProcessingState.None(declaration, allModules, components, templateComponents, rootSet)

@@ -11,7 +11,8 @@ class InvalidTypeTest : AbstractSymbolProcessorTest() {
         compile(listOf<SymbolProcessorProvider>(KoraAppProcessorProvider()), """
             @ru.tinkoff.kora.common.KoraApp
             interface TestApp {
-                fun root() = ru.tinkoff.kora.annotation.processor.common.MockLifecycle.empty()
+                @Root
+                fun root() = Any()
                 fun unknownTypeComponent(): some.unknown.type.Component {
                     return null!!
                 }
@@ -20,7 +21,7 @@ class InvalidTypeTest : AbstractSymbolProcessorTest() {
             """.trimIndent())
 
         assertThat(compileResult.isFailed()).isTrue
-        assertThat(compileResult.messages).anyMatch { it.endsWith("TestApp.kt:12: Component type is not resolvable in the current round of processing") }
+        assertThat(compileResult.messages).anyMatch { it.endsWith("TestApp.kt:13: Component type is not resolvable in the current round of processing") }
     }
 
     @Test
@@ -28,12 +29,13 @@ class InvalidTypeTest : AbstractSymbolProcessorTest() {
         compile(listOf<SymbolProcessorProvider>(KoraAppProcessorProvider()), """
             @ru.tinkoff.kora.common.KoraApp
             interface TestApp {
-                fun root(dependency: some.unknown.type.Component) = ru.tinkoff.kora.annotation.processor.common.MockLifecycle.empty()
+                @Root
+                fun root(dependency: some.unknown.type.Component) = Any()
             }
             
             """.trimIndent())
 
         assertThat(compileResult.isFailed()).isTrue
-        assertThat(compileResult.messages).anyMatch { it.endsWith("TestApp.kt:11: Dependency type is not resolvable in the current round of processing") }
+        assertThat(compileResult.messages).anyMatch { it.endsWith("TestApp.kt:12: Dependency type is not resolvable in the current round of processing") }
     }
 }

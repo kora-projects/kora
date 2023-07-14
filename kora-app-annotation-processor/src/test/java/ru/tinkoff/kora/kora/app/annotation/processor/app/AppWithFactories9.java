@@ -1,17 +1,18 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.app;
 
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
 import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.common.KoraApp;
+import ru.tinkoff.kora.common.annotation.Root;
 
 @KoraApp
 public interface AppWithFactories9 {
-    default MockLifecycle mock1(GenericInterface<String> object) {
-        return new MockLifecycle() {};
+    @Root
+    default Object mock1(GenericInterface<String> object) {
+        return new Object();
     }
 
-    default MockLifecycle mock2(GenericImpl<String> object) {
-        return new MockLifecycle() {};
+    default Object mock2(GenericImpl<String> object) {
+        return new Object();
     }
 
     default <T> GenericInterface<T> factory1(TypeRef<T> t) {

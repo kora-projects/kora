@@ -17,10 +17,8 @@ object TestUtils {
                     
         @ru.tinkoff.kora.common.KoraApp
         public interface TestApp {
-            fun someLifecycle({targets}): ru.tinkoff.kora.application.graph.Lifecycle  {
-                return null!!
-            }
-
+            @ru.tinkoff.kora.common.annotation.Root
+            fun someLifecycle({targets}) = Any()
     """.trimIndent()
         for (i in requiredDependencies.indices) {
             template += """  fun component$i() : ${requiredDependencies[i]} { return null!!; }

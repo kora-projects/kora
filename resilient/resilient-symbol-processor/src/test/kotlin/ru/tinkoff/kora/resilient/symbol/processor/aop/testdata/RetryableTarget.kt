@@ -3,13 +3,14 @@ package ru.tinkoff.kora.resilient.symbol.processor.aop.testdata
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import org.slf4j.LoggerFactory
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle
 import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.common.annotation.Root
 import ru.tinkoff.kora.resilient.retry.annotation.Retryable
 import java.util.concurrent.atomic.AtomicInteger
 
 @Component
-open class RetryableTarget : MockLifecycle {
+@Root
+open class RetryableTarget {
 
     private val logger = LoggerFactory.getLogger(RetryableTarget::class.java)
     private val retryAttempts = AtomicInteger()

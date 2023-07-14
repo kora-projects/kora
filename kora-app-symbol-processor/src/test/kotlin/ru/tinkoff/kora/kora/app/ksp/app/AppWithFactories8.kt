@@ -1,14 +1,13 @@
 package ru.tinkoff.kora.kora.app.ksp.app
 
-import ru.tinkoff.kora.common.KoraApp
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle
 import ru.tinkoff.kora.application.graph.TypeRef
+import ru.tinkoff.kora.common.KoraApp
+import ru.tinkoff.kora.common.annotation.Root
 
 @KoraApp
 interface AppWithFactories8 {
-    fun mock(`object`: GenericInterface<Int, String>): MockLifecycle {
-        return object : MockLifecycle {}
-    }
+    @Root
+    fun mock(`object`: GenericInterface<Int, String>) = Any()
 
     fun <T : Comparable<T>> impl(t: TypeRef<T>): GenericImpl<T> {
         return GenericImpl()

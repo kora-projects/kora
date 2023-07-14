@@ -1,16 +1,15 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.app;
 
-import reactor.core.publisher.Mono;
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.KoraApp;
+import ru.tinkoff.kora.common.annotation.Root;
 
-import java.time.Duration;
 import java.util.Objects;
 
 @KoraApp
 public interface AppWithAllOfValueOf {
+    @Root
     default Class1 class1(All<ValueOf<Class2>> cls) {
         for (var cl : cls) {
             Objects.requireNonNull(cl.get());
@@ -22,13 +21,8 @@ public interface AppWithAllOfValueOf {
         return new Class2();
     }
 
-    class Class1 implements MockLifecycle {}
+    class Class1 {}
 
-    class Class2 implements MockLifecycle {
-        @Override
-        public Mono<Void> init() {
-            return Mono.delay(Duration.ofSeconds(1)).then();
-        }
-    }
+    class Class2 {}
 
 }

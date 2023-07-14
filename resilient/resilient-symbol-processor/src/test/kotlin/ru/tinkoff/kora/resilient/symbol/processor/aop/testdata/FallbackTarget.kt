@@ -2,12 +2,13 @@ package ru.tinkoff.kora.resilient.symbol.processor.aop.testdata
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle
 import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.common.annotation.Root
 import ru.tinkoff.kora.resilient.fallback.annotation.Fallback
 
 @Component
-open class FallbackTarget : MockLifecycle {
+@Root
+open class FallbackTarget {
 
     companion object {
         val VALUE = "OK"

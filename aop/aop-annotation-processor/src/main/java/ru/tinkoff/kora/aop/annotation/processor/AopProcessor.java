@@ -3,9 +3,7 @@ package ru.tinkoff.kora.aop.annotation.processor;
 import com.squareup.javapoet.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
-import ru.tinkoff.kora.annotation.processor.common.TagUtils;
+import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Generated;
@@ -191,6 +189,9 @@ public class AopProcessor {
         var tag = CommonUtils.findAnnotation(this.elements, this.types, typeElement, this.tagAnnotationTypeMirror);
         if (tag != null) {
             typeBuilder.addAnnotation(AnnotationSpec.get(tag));
+        }
+        if (AnnotationUtils.isAnnotationPresent(typeElement, CommonClassNames.root)) {
+            typeBuilder.addAnnotation(CommonClassNames.root);
         }
 
         var appliedProcessors = new LinkedHashSet<String>();

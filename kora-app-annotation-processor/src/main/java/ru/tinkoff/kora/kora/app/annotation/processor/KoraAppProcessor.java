@@ -251,8 +251,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 
             var sourceDescriptors = components.nonTemplates;
             var rootSet = sourceDescriptors.stream()
-                .filter(cd -> this.ctx.serviceTypeHelper.isLifecycle(cd.type())
-                    || AnnotationUtils.isAnnotationPresent(cd.source(), CommonClassNames.root)
+                .filter(cd -> AnnotationUtils.isAnnotationPresent(cd.source(), CommonClassNames.root)
                     || cd instanceof ComponentDeclaration.AnnotatedComponent ac && AnnotationUtils.isAnnotationPresent(ac.typeElement(), CommonClassNames.root))
                 .toList();
             return new ProcessingState.None(type, allModules, sourceDescriptors, components.templates, rootSet);

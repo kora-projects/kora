@@ -15,9 +15,10 @@ public class NodeTypeTest extends AbstractKoraAppTest {
             import java.util.Map;
             @KoraApp
             public interface ExampleApplication {
-                class TestClass1 implements MockLifecycle {}
+                class TestClass1 {}
 
                 default Map<String, TestClass1> testMap() { return new HashMap<>(); }
+                @Root
                 default TestClass1 root(Map<String, TestClass1> p0) { return new TestClass1(); }
             }
             """);

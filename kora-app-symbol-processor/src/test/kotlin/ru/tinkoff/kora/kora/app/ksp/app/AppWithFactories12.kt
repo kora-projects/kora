@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.kora.app.ksp.app
 
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle
 import ru.tinkoff.kora.common.KoraApp
+import ru.tinkoff.kora.common.annotation.Root
 
 @KoraApp
 interface AppWithFactories12 {
@@ -18,9 +18,8 @@ interface AppWithFactories12 {
         return SimpleGeneric()
     }
 
-    fun mock1(cl: GenericClass<Long, String>): MockLifecycle {
-        return object : MockLifecycle {}
-    }
+    @Root
+    fun mock1(cl: GenericClass<Long, String>): Any = Any()
 
     open class SimpleGeneric<T>
     data class GenericClass<T, R>(val t: SimpleGeneric<T>, val r: SimpleGeneric<R>)

@@ -10,11 +10,10 @@ import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.writeTo
-import ru.tinkoff.kora.common.KoraApp
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle
-import org.mockito.Mockito
 import reactor.core.publisher.Mono
 import ru.tinkoff.kora.application.graph.GraphInterceptor
+import ru.tinkoff.kora.common.KoraApp
+import ru.tinkoff.kora.common.annotation.Root
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionFactory
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
@@ -30,8 +29,9 @@ interface AppWithInterceptor {
         return Interceptor()
     }
 
-    fun lifecycle(o: Interface1): MockLifecycle {
-        return Mockito.spy(MockLifecycle::class.java)
+    @Root
+    fun lifecycle(o: Interface1): Any {
+        return Any()
     }
 
     class Class1
@@ -45,7 +45,7 @@ interface AppWithInterceptor {
         }
     }
 
-    interface Interface1 : MockLifecycle
+    interface Interface1
 
     class TestExtension(val resolver: Resolver, val codeGenerator: CodeGenerator) : KoraExtension {
         private val interfaceDeclaration = resolver.getClassDeclarationByName(Interface1::class.qualifiedName!!)!!

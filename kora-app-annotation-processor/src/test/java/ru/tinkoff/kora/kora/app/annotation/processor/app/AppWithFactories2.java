@@ -1,14 +1,14 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.app;
 
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
 import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.common.KoraApp;
+import ru.tinkoff.kora.common.annotation.Root;
 
 import java.util.List;
 
 @KoraApp
 public interface AppWithFactories2 {
-
+    @Root
     default Class1 class1(GenericClass<List<Class1>, String> dependency) {
         return new Class1();
     }
@@ -21,5 +21,5 @@ public interface AppWithFactories2 {
 
     class GenericClassImpl<T> extends GenericClass<T, String> {}
 
-    class Class1 implements MockLifecycle {}
+    class Class1 {}
 }

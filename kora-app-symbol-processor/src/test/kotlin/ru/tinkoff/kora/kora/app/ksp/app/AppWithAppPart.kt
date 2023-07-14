@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.kora.app.ksp.app
 
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle
 import ru.tinkoff.kora.common.Component
 import ru.tinkoff.kora.common.KoraSubmodule
 import ru.tinkoff.kora.common.Tag
@@ -16,11 +15,11 @@ interface AppWithAppPart {
         return Class1()
     }
 
-    class Class1 : MockLifecycle
-    class Class2 : MockLifecycle
+    class Class1
+    class Class2
 
     @Component
-    class Class3 : MockLifecycle
+    class Class3
 
     @ru.tinkoff.kora.common.Module
     interface Module {

@@ -7,6 +7,7 @@ import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.LifecycleWrapper;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.application.graph.Wrapped;
+import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.HttpServerModule;
 import ru.tinkoff.kora.http.server.common.PrivateApiHandler;
@@ -18,6 +19,7 @@ public interface UndertowModule extends HttpServerModule {
         return new UndertowPrivateApiHandler(privateApiHandler);
     }
 
+    @Root
     default UndertowPrivateHttpServer undertowPrivateHttpServer(ValueOf<HttpServerConfig> configValue, ValueOf<UndertowPrivateApiHandler> privateApiHandler, XnioWorker xnioWorker) {
         return new UndertowPrivateHttpServer(configValue, privateApiHandler, xnioWorker);
     }

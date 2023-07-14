@@ -15,8 +15,6 @@ class ServiceTypesHelper(val resolver: Resolver) {
         .filter { it.simpleName.asString() == "init" && it.parameters.size == 1 }
         .first()
 
-    private val lifecycleClassDeclaration = resolver.getClassDeclarationByName(resolver.getKSNameFromString(CommonClassNames.lifecycle.canonicalName))!!
-    private val lifecycleType = lifecycleClassDeclaration.asStarProjectedType()
 
     private val wrappedClassDeclaration = resolver.getClassDeclarationByName(resolver.getKSNameFromString(CommonClassNames.wrapped.canonicalName))!!
     private val wrappedType = wrappedClassDeclaration.asStarProjectedType()
@@ -64,10 +62,6 @@ class ServiceTypesHelper(val resolver: Resolver) {
         }
 
         return interceptorInitFunction.asMemberOf(maybeInterceptor).parameterTypes[0]!!.makeNotNullable()
-    }
-
-    fun isLifecycle(type: KSType): Boolean {
-        return lifecycleType.isAssignableFrom(type) || isAssignableToUnwrapped(type, this.lifecycleType)
     }
 
     fun isInterceptor(type: KSType) = interceptorType.isAssignableFrom(type)

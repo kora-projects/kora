@@ -1,28 +1,30 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.app;
 
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.common.KoraApp;
-
-import static org.mockito.Mockito.mock;
+import ru.tinkoff.kora.common.annotation.Root;
 
 @KoraApp
 public interface AppWithExactMatch {
 
-    default MockLifecycle mock0Super1(Superclass1 superclass) {
-        return mock(MockLifecycle.class);
+    @Root
+    default Object mock0Super1(Superclass1 superclass) {
+        return new Object();
     }
 
-    default MockLifecycle mock1(Class1 superclass) {
-        return mock(MockLifecycle.class);
+    @Root
+    default Object mock1(Class1 superclass) {
+        return new Object();
     }
 
-    default MockLifecycle mock0Super2(Superclass2 superclass) {
-        return mock(MockLifecycle.class);
+    @Root
+    default Object mock0Super2(Superclass2 superclass) {
+        return new Object();
     }
 
-    default MockLifecycle mock2(Class2 superclass) {
-        return mock(MockLifecycle.class);
+    @Root
+    default Object mock2(Class2 superclass) {
+        return new Object();
     }
 
     default Class1 class1() {

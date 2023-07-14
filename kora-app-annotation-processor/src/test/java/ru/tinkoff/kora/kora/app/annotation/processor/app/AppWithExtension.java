@@ -3,8 +3,8 @@ package ru.tinkoff.kora.kora.app.annotation.processor.app;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeSpec;
-import ru.tinkoff.kora.annotation.processor.common.MockLifecycle;
 import ru.tinkoff.kora.common.KoraApp;
+import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionFactory;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.KoraExtension;
@@ -26,18 +26,19 @@ import java.util.Optional;
 public interface AppWithExtension {
 
     // factory: generic component, accepts its genetic TypeRef as arguments
-
+    @Root
     default Class1 test1(Interface1 class1) {
         return new Class1() {};
     }
 
+    @Root
     default Class2 test2() {
         return new Class2() {};
     }
 
-    interface Interface1 extends MockLifecycle {}
+    interface Interface1 {}
 
-    class Class1 implements MockLifecycle {}
+    class Class1 {}
 
     class Class2 {}
 
