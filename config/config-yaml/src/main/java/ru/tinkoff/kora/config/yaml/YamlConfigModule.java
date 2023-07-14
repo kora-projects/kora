@@ -61,6 +61,11 @@ public interface YamlConfigModule extends CommonConfigModule {
             var connection = referenceUrl.openConnection();
             try (var is = connection.getInputStream()) {
                 var yamlConfig = YamlConfigFactory.fromYaml(origin, is);
+                try {
+                    yamlConfig.resolve();
+                } catch (Exception e) {
+                    throw new RuntimeException("Reference config must be resolvable without external configs", e);
+                }
                 config = MergeConfigFactory.merge(yamlConfig, config);
             } finally {
                 if (connection instanceof AutoCloseable closeable) {

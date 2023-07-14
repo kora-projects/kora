@@ -17,7 +17,7 @@ import kotlin.reflect.KClass
 
 class TestHttpServer<T>(private val requestHandlers: List<HttpServerRequestHandler>, val controller: T) {
     @SafeVarargs
-    operator fun invoke(method: String, path: String, body: ByteArray, vararg headers: Map.Entry<String, String>): HttpResponseAssert {
+    operator fun invoke(method: String, path: String, body: ByteArray, vararg headers: Pair<String, String>): HttpResponseAssert {
         for (requestHandler in requestHandlers) {
             if (requestHandler.method() != method) {
                 continue

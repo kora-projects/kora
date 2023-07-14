@@ -48,7 +48,7 @@ subprojects {
 
 // config test libraries
 subprojects {
-    if (project.parent.name != "test") {
+    if (project.parent.name != "internal") {
         return
     }
     dependencies {
@@ -61,10 +61,10 @@ def isPublishedLibrary = { Project p ->
     if (!p.childProjects.isEmpty()) {
         return false
     }
-    if (p.parent.name == "test") {
+    if (p.parent.name == "internal") {
         return false
     }
-    if (p.name == 'maven-parent') {
+    if (p.name == "maven-parent") {
         return false
     }
     return true
@@ -226,7 +226,7 @@ subprojects {
     dependencies {
         api libs.jsr305
 
-        testImplementation project(":test:test-logging")
+        testImplementation project(":internal:test-logging")
         testImplementation libs.junit.jupiter
         testImplementation libs.mockito.core
         testImplementation libs.assertj
@@ -330,7 +330,7 @@ def isOtherTest = { Project p ->
     if (p.name.startsWith("http") || p.name.startsWith("kafka") || p.name.startsWith("database")) {
         return false
     }
-    if (p.parent.name == "test") {
+    if (p.parent.name == "internal") {
         return false
     }
     return !kspProjects.contains(p.name)

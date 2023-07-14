@@ -9,7 +9,7 @@ dependencies {
     implementation libs.logback.classic
 
     testImplementation testFixtures(project(":annotation-processor-common"))
-    testImplementation project(":test:test-logging")
+    testImplementation project(":internal:test-logging")
     testImplementation "com.google.testing.compile:compile-testing:0.19"
 }
 

@@ -17,7 +17,7 @@ dependencies {
     testImplementation project(":resilient:resilient-retry")
     testImplementation project(":resilient:resilient-timeout")
     testImplementation project(":resilient:resilient-fallback")
-    testImplementation project(":test:test-logging")
+    testImplementation project(":internal:test-logging")
     testImplementation project(":symbol-processor-common")
     testImplementation project(":aop:aop-symbol-processor")
     testImplementation project(":config:config-hocon")

@@ -74,9 +74,10 @@ public interface HoconConfigModule extends CommonConfigModule {
 
     default com.typesafe.config.Config hoconConfig(@ApplicationConfig com.typesafe.config.Config config) {
         var loader = Thread.currentThread().getContextClassLoader();
+        ConfigFactory.invalidateCaches();
         return ConfigFactory.defaultOverrides(loader)
             .withFallback(config)
-            .withFallback(ConfigImpl.defaultReference(loader))
+            .withFallback(ConfigImpl.defaultReferenceUnresolved(loader))
             .resolve(ConfigResolveOptions.defaults());
     }
 

@@ -11,8 +11,8 @@ nav:
       - Логирование: features/logging.md
       - Метрики: features/metrics.md
       - Пробы: features/probes.md
-      - Http server: features/http-server.md
-      - Http client: features/http-client.md
+      - HTTP Server: features/http-server.md
+      - HTTP Client: features/http-client.md
       - Кодогенерация из OpenAPI: features/openapi-codegen.md
       - Kafka: features/kafka.md
       - Database: features/database.md
@@ -24,8 +24,9 @@ nav:
       - Scheduling: features/scheduling.md
       - Resilient: features/resilient.md
       - Cache: features/cache.md
-      - GraalVM Native Image: features/native.md
       - Validation: features/validation.md
+      - JUnit5 Extension: features/unit5.md
+      - GraalVM Native Image: features/native.md
 
 
 # Repository

@@ -105,9 +105,9 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
 
             library("junit-jupiter", "org.junit.jupiter", "junit-jupiter").version("5.9.1")
             library("junit-platform-launcher", "org.junit.platform", "junit-platform-launcher").version("1.9.1")
-            library("mockito-core", "org.mockito", "mockito-core").version("4.8.1")
-            library("mockito-inline", "org.mockito", "mockito-inline").version("4.8.1")
-            library("mockito-kotlin", "org.mockito.kotlin", "mockito-kotlin").version("4.0.0")
+            library("mockito-core", "org.mockito", "mockito-core").version("5.4.0")
+            library("mockito-inline", "org.mockito", "mockito-inline").version("5.2.0")
+            library("mockito-kotlin", "org.mockito.kotlin", "mockito-kotlin").version("5.0.0")
             library("assertj", "org.assertj", "assertj-core").version("3.23.1")
             library("mockserver-netty", "org.mock-server", "mockserver-netty").versionRef("mockserver")
             library("mockserver-client", "org.mock-server", "mockserver-client-java").versionRef("mockserver")

@@ -1,0 +1,14 @@
+dependencies {
+    api libs.junit.platform.launcher
+    api libs.junit.jupiter
+    api libs.mockito.core
+
+    implementation project(":common")
+    implementation project(":config:config-hocon")
+    implementation libs.jetbrains.annotations
+
+    testAnnotationProcessor project(":annotation-processors")
+    testImplementation project(":annotation-processors")
+}
+
+apply from: '../../in-test-generated.gradle'

@@ -69,11 +69,11 @@ include(
     'vertx-common',
     'netty-common',
     'openapi:openapi-generator',
-    'test:test-logging',
-    'test:test-postgres',
-    'test:test-kafka',
-    'test:test-cassandra',
-    'test:test-redis',
+    'internal:test-logging',
+    'internal:test-postgres',
+    'internal:test-kafka',
+    'internal:test-cassandra',
+    'internal:test-redis',
     'scheduling:scheduling-common',
     'scheduling:scheduling-jdk',
     'scheduling:scheduling-quartz',
@@ -94,6 +94,9 @@ include(
     'validation:validation-module',
     'validation:validation-annotation-processor',
     'validation:validation-symbol-processor',
+    'test:test-junit5',
 )
 
 apply from: 'dependencies.gradle'
+include 'internal'
+

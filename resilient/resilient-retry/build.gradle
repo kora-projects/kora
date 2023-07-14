@@ -7,7 +7,7 @@ dependencies {
     annotationProcessor project(':config:config-annotation-processor')
 
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.8.2"
-    testImplementation project(":test:test-logging")
+    testImplementation project(":internal:test-logging")
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.8.2"
     testImplementation "org.junit.jupiter:junit-jupiter-params:5.8.2"
     testImplementation "org.testcontainers:junit-jupiter:" + libs.versions.testcontainers.get()

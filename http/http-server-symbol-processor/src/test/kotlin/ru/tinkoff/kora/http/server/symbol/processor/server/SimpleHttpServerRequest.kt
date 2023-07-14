@@ -10,7 +10,7 @@ internal class SimpleHttpServerRequest(
     private val method: String,
     private val path: String,
     private val body: ByteArray,
-    private val headers: Array<out Map.Entry<String, String>>,
+    private val headers: Array<out Pair<String, String>>,
     private val routeParams: Map<String, String>
 ) : HttpServerRequest {
     override fun method(): String {
@@ -25,9 +25,9 @@ internal class SimpleHttpServerRequest(
         val entries: Array<Map.Entry<String, List<String>>?> = arrayOfNulls(headers.size)
         for (i in headers.indices) {
             entries[i] = java.util.Map.entry(
-                headers[i].key, listOf(
-                    headers[i].value
-                )
+                headers[i].first, listOf(
+                headers[i].second
+            )
             )
         }
         return HttpHeaders.of(*entries)
