@@ -2,7 +2,6 @@ package ru.tinkoff.kora.logging.common;
 
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.Lifecycle;
-import ru.tinkoff.kora.common.util.ReactorUtils;
 
 public class LoggingLevelRefresher implements Lifecycle {
     private final LoggingConfig config;
@@ -15,7 +14,7 @@ public class LoggingLevelRefresher implements Lifecycle {
 
     @Override
     public Mono<Void> init() {
-        return ReactorUtils.ioMono(() -> {
+        return Mono.fromRunnable(() -> {
             this.loggingLevelApplier.reset();
             for (var entry : config.levels().entrySet()) {
                 this.loggingLevelApplier.apply(entry.getKey(), entry.getValue());

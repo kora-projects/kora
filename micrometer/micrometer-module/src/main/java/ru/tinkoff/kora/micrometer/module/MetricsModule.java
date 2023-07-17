@@ -11,11 +11,10 @@ import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
 import io.micrometer.core.instrument.binder.system.UptimeMetrics;
 import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.All;
-import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.DefaultComponent;
+import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.micrometer.module.cache.MicrometerCacheMetrics;
@@ -44,11 +43,12 @@ public interface MetricsModule {
         return new Initializer(initializers.stream().map(ValueOf::get).toList());
     }
 
+    @Root
     default PrometheusMeterRegistry prometheusMeterRegistry(Initializer initializer) {
         return Initializer.meterRegistry.get();
     }
 
-    class Initializer implements Lifecycle {
+    class Initializer {
         private final static AtomicReference<PrometheusMeterRegistry> meterRegistry = new AtomicReference<>();
 
         public Initializer(List<PrometheusMeterRegistryInitializer> initializers) {
@@ -71,16 +71,6 @@ public interface MetricsModule {
             new JvmThreadMetrics().bindTo(meterRegistry);
             new FileDescriptorMetrics().bindTo(meterRegistry);
             new UptimeMetrics().bindTo(meterRegistry);
-        }
-
-        @Override
-        public Mono<Void> init() {
-            return Mono.empty();
-        }
-
-        @Override
-        public Mono<Void> release() {
-            return Mono.empty();
         }
     }
 

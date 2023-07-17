@@ -2,6 +2,7 @@ package ru.tinkoff.kora.logging.common;
 
 import org.slf4j.ILoggerFactory;
 import org.slf4j.LoggerFactory;
+import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 
@@ -12,6 +13,7 @@ public interface LoggingModule {
         return new LoggingConfigValueExtractor();
     }
 
+    @Root
     default LoggingLevelRefresher loggingLevelRefresher(LoggingConfig loggingConfig, LoggingLevelApplier loggingLevelApplier) {
         return new LoggingLevelRefresher(loggingConfig, loggingLevelApplier);
     }
