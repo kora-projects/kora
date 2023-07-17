@@ -5,7 +5,7 @@
 # Dependency
 
 ```groovy
-testImplementation "ru.tinkoff.kora:test:test-junit5"
+testImplementation "ru.tinkoff.kora:test-junit5"
 ```
 
 Удостовериться что включена платформа `JUnit` в Gradle:
@@ -33,6 +33,7 @@ final class Component1 implements Supplier<String> {
 
 Также класс `@Component` который является `Root` и используется `@Component` объявленный выше:
 ```java
+@Root
 @Component
 final class Component12 implements Lifecycle, Supplier<String> {
 
@@ -68,6 +69,7 @@ public interface ApplicationModules {
 Предполагается использовать аннотацию `@KoraAppTest` для аннотирования тестового класса.
 
 Параметры аннотации `@KoraAppTest`:
+
 - `application` - обязательный параметр который указывает на класс аннотированный `@KoraApp`, представляющий собой граф всех зависимостей которые будут доступны в рамках теста.
 - `components` - список компонентов которые надо инициализировать в рамках теста, можно указать список компонентов и только они и будут инициализированы в рамках графа, 
 в случае отсутствия указанных компонентов, будет инициализирован весь граф.
@@ -210,8 +212,6 @@ class ComponentJUnitExtensionTests implements KoraAppTestConfigModifier {
     }
 }
 ```
-
-`KoraConfigModification` - позволяет составлять цепочку из файлов конфигов и частей конфигов которые в итоге объединяются в один конфиг.
 
 ## Graph Modifier
 
