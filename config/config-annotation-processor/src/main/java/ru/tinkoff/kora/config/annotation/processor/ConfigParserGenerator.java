@@ -12,15 +12,14 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.io.IOException;
 import java.io.StringWriter;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class ConfigParserGenerator {
     private static final Logger log = LoggerFactory.getLogger(ConfigParserGenerator.class);
@@ -106,6 +105,11 @@ public class ConfigParserGenerator {
     }
 
     private MethodSpec buildExtractMethod(TypeElement element, TypeName typeName, ClassName implClassName, List<ConfigUtils.ConfigField> fields) {
+        var constructors = CommonUtils.findConstructors(element, m -> m.contains(Modifier.PUBLIC));
+        var emptyConstructor = constructors.stream().filter(e -> e.getParameters().isEmpty()).findFirst().orElse(null);
+        var nonEmptyConstructor = constructors.stream().filter(e -> !e.getParameters().isEmpty()).findFirst().orElse(null);
+        var constructorParams = nonEmptyConstructor == null ? Set.of() : nonEmptyConstructor.getParameters().stream().map(VariableElement::getSimpleName).map(Objects::toString).collect(Collectors.toSet());
+
         var rootParse = MethodSpec.methodBuilder("extract")
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(Override.class)
@@ -126,12 +130,23 @@ public class ConfigParserGenerator {
         }
         if (element.getKind() == ElementKind.CLASS) {
             if (element.getTypeParameters().isEmpty()) {
-                rootParse.addStatement("var _result = new $T()", implClassName);
+                rootParse.addCode("var _result = new $T(", implClassName);
             } else {
-                rootParse.addStatement("var _result = new $T<>()", implClassName);
+                rootParse.addCode("var _result = new $T<>(", implClassName);
             }
+            if (nonEmptyConstructor != null && emptyConstructor == null) {
+                for (int i = 0; i < nonEmptyConstructor.getParameters().size(); i++) {
+                    if (i > 0) {
+                        rootParse.addCode(", ");
+                    }
+                    rootParse.addCode("$N", nonEmptyConstructor.getParameters().get(i).getSimpleName());
+                }
+            }
+            rootParse.addCode(");\n");
             for (var field : fields) {
-                rootParse.addStatement("_result.set$N($N)", CommonUtils.capitalize(field.name()), field.name());
+                if (!constructorParams.contains(field.name()) || emptyConstructor != null) {
+                    rootParse.addStatement("_result.set$N($N)", CommonUtils.capitalize(field.name()), field.name());
+                }
             }
             rootParse.addStatement("return _result");
         } else {
@@ -202,9 +217,12 @@ public class ConfigParserGenerator {
         var fields = Objects.requireNonNull(f.left());
 
         var implClassName = ClassName.get(element);
-        var defaults = FieldSpec.builder(implClassName, "DEFAULTS", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
-            .initializer(CodeBlock.of("new $T()", implClassName));
-        typeBuilder.addField(defaults.build());
+        var hasDefault = CommonUtils.findConstructors(element, m -> m.contains(Modifier.PUBLIC)).stream().anyMatch(e -> e.getParameters().isEmpty());
+        if (hasDefault) {
+            var defaults = FieldSpec.builder(implClassName, "DEFAULTS", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+                .initializer(CodeBlock.of("new $T()", implClassName));
+            typeBuilder.addField(defaults.build());
+        }
 
 
         var constructor = buildConstructor(typeBuilder, fields);
