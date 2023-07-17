@@ -25,7 +25,7 @@ nav:
       - Resilient: features/resilient.md
       - Cache: features/cache.md
       - Validation: features/validation.md
-      - JUnit5 Extension: features/unit5.md
+      - JUnit5 Extension: features/junit5.md
       - GraalVM Native Image: features/native.md
 
 
