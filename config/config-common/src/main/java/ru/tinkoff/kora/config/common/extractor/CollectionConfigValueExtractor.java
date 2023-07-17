@@ -29,6 +29,7 @@ public abstract class CollectionConfigValueExtractor<T, C extends Collection<T>>
             for (var element : array) {
                 result.add(elementValueExtractor.extract(element));
             }
+            return result;
         }
         throw ConfigValueExtractionException.unexpectedValueType(value, ConfigValue.ArrayValue.class);
     }
