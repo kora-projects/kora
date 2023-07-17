@@ -32,7 +32,7 @@ public class DefaultDataBaseLogger implements DataBaseLogger {
         });
 
         if (log.isDebugEnabled()) {
-            log.debug(marker, "SQL executing for pool '{}':\n{}",this.poolName, queryContext.sql());
+            log.debug(marker, "SQL executing for pool '{}':\n{}", this.poolName, queryContext.sql());
         } else if (log.isInfoEnabled()) {
             log.info(marker, "SQL executing for pool '{}'", this.poolName);
         }
@@ -50,7 +50,7 @@ public class DefaultDataBaseLogger implements DataBaseLogger {
 
         if (log.isDebugEnabled()) {
             log.debug(marker, "SQL executed for pool '{}':\n{}", this.poolName, queryContext.sql());
-        } else if(log.isInfoEnabled()) {
+        } else if (log.isInfoEnabled()) {
             log.info(marker, "SQL executed for pool '{}'", this.poolName);
         }
     }

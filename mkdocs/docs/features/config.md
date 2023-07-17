@@ -1,19 +1,24 @@
 # Конфигурации
 
-Для конфигурации kora framework использует библиотеку [typesafe config](https://github.com/lightbend/config), которая умеет читать конфигурации в формате [HOCON](https://github.com/lightbend/config/blob/master/HOCON.md).  
+Kora поддерживает два формата конфигурационных файлов:
 
-## Подключение конфигураций
+- [HOCON](https://github.com/lightbend/config/blob/master/HOCON.md) с помощью [typesafe config](https://github.com/lightbend/config) через модуль `HoconConfigModule` из `config-hocon`
+- YAML через модуль `YamlConfigModule` из `config-yaml`
 
-К приложению необходимо добавить модуль `ConfigModule` через наследование. 
-Он добавит в контекст приложения вычитанный `typesafe config` и компонент, который будет следить за обновлениями внешнего файла конфигурации, если он задан через `-Dconfig.file=some-file.conf`.
+В обоих случаях по умолчанию читаются файлы:
+
+- `reference.(yml|conf)` для общих значений
+- файл, указанный через `config.file` или `config.resource`
+- при отсутствии предыдущего пункта прочитается файл по-умолчанию `application.(yml|conf)`
 
 ## ConfigSource
 
-Для упрощения создания пользовательских конфигураций следует использовать аннотацию `ConfigSource`.  
+Для упрощения создания пользовательских конфигураций следует использовать аннотацию `ConfigSource`.
 
 Рассмотрим пример:
 
 ```java
+
 @ConfigSource("services.foo")
 record FooServiceConfig(String bar, int baz) {}
 ```
@@ -33,10 +38,26 @@ services {
 
 ```java
 public final class FooService {
-  private final FooServiceConfig config;
-  
-  public FooService(FooServiceConfig config) {
-    this.config = config;
-  }
+    private final FooServiceConfig config;
+
+    public FooService(FooServiceConfig config) {
+        this.config = config;
+    }
+}
+```
+
+## Значения по умолчанию
+
+Если есть необходимость использовать в классе значения по умолчанию, то можно воспользоваться таким форматом:
+
+```java
+
+@ConfigSource("services.foo")
+interface FooServiceConfig {
+    String bar();
+
+    default int baz() {
+        return 42;
+    }
 }
 ```
