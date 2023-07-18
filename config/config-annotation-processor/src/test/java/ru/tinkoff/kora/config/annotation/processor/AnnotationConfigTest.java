@@ -256,6 +256,11 @@ public class AnnotationConfigTest extends AbstractConfigTest {
               }
               
               public int hashCode() { return java.util.Objects.hashCode(value); }
+              
+              @Override
+              public String toString() {
+                return "TestConfig[%s]".formatted(value);
+              }
             }
             """);
 
@@ -321,6 +326,48 @@ public class AnnotationConfigTest extends AbstractConfigTest {
               }
                             
               public String getValue2() {
+                return this.value2;
+              }
+              
+              @Override
+              public boolean equals(Object obj) {
+                return obj instanceof TestConfig that && java.util.Objects.equals(this.value1, that.value1) && java.util.Objects.equals(this.value2, that.value2);
+              }
+              
+              public int hashCode() { return java.util.Objects.hash(value1, value2); }
+              
+              public String toString() {
+                return "TestConfig(value1=%s, value2=%s)".formatted(this.value1, this.value2);
+              }
+            }
+            """);
+
+        var expected = newObject("TestConfig", "test", null);
+
+        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value1", "test")).root()))
+            .isEqualTo(expected);
+    }
+
+    @Test
+    public void testPojoWithFluent() {
+        var extractor = this.compileConfig(List.of(), """
+            @ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor
+            public class TestConfig {
+              @Nullable
+              private final String value1;
+              @Nullable
+              private final String value2;
+              
+              public TestConfig(String value1, String value2) {
+                this.value1 = value1;
+                this.value2 = value2;
+              }
+              
+              public String value1() {
+                return this.value1;
+              }
+                            
+              public String value2() {
                 return this.value2;
               }
               

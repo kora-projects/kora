@@ -151,12 +151,14 @@ public class ConfigUtils {
                     equals = method;
                 } else if (name.equals("hashCode") && method.getParameters().isEmpty()) {
                     hashCode = method;
-                } else {
+                } else if (method.getParameters().isEmpty()) {
                     if (name.startsWith("get")) {
                         fieldsWithAccessors.computeIfAbsent(CommonUtils.decapitalize(name.substring(3)), n -> new FieldAndAccessors()).getter = method;
-                    } else if (name.startsWith("set")) {
-                        fieldsWithAccessors.computeIfAbsent(CommonUtils.decapitalize(name.substring(3)), n -> new FieldAndAccessors()).setter = method;
+                    } else {
+                        fieldsWithAccessors.computeIfAbsent(name, n -> new FieldAndAccessors()).getter = method;
                     }
+                } else if (method.getParameters().size() == 1 && name.startsWith("set")) {
+                    fieldsWithAccessors.computeIfAbsent(CommonUtils.decapitalize(name.substring(3)), n -> new FieldAndAccessors()).setter = method;
                 }
             }
         }
@@ -167,24 +169,27 @@ public class ConfigUtils {
         var constructors = CommonUtils.findConstructors(te, m -> m.contains(Modifier.PUBLIC));
         var emptyConstructor = constructors.stream().filter(e -> e.getParameters().isEmpty()).findFirst().orElse(null);
         var nonEmptyConstructor = constructors.stream().filter(e -> !e.getParameters().isEmpty()).findFirst().orElse(null);
-        var constructorParams = nonEmptyConstructor == null ? Set.of() : nonEmptyConstructor.getParameters().stream().map(VariableElement::getSimpleName).map(Objects::toString).collect(Collectors.toSet());
+        var constructorParams = nonEmptyConstructor == null ? Map.of() : nonEmptyConstructor.getParameters().stream().collect(Collectors.toMap(
+            p -> p.getSimpleName().toString(),
+            p -> p
+        ));
 
         var seen = new HashSet<String>();
         var fields = new ArrayList<ConfigField>();
         for (var fieldWithAccessors : fieldsWithAccessors.entrySet()) {
             var name = fieldWithAccessors.getKey();
             var value = fieldWithAccessors.getValue();
-            if (value.getter == null) {
+            if (value.getter == null || value.field == null) {
                 continue;
             }
-            if (value.setter == null && !constructorParams.contains(value.field.getSimpleName().toString())) {
+            if (value.setter == null && !constructorParams.containsKey(value.field.getSimpleName().toString())) {
                 continue;
             }
             var fieldType = types.asMemberOf(typeMirror, value.field);
             if (seen.add(name)) {
                 var isNullable = CommonUtils.isNullable(value.field) && !fieldType.getKind().isPrimitive();
                 var mapping = CommonUtils.parseMapping(value.field).getMapping(ConfigClassNames.configValueExtractor);
-                var hasDefault = emptyConstructor != null || !constructorParams.contains(value.field.getSimpleName().toString());
+                var hasDefault = emptyConstructor != null || !constructorParams.containsKey(value.field.getSimpleName().toString());
                 fields.add(new ConfigUtils.ConfigField(
                     name, TypeName.get(fieldType), isNullable, hasDefault, mapping
                 ));

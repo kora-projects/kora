@@ -44,7 +44,9 @@ object ConfigUtils {
             }
             var equals: KSFunctionDeclaration? = null
             var hashCode: KSFunctionDeclaration? = null
+
             class FieldAndAccessors(var property: KSPropertyDeclaration? = null, var getter: KSFunctionDeclaration? = null, var setter: KSFunctionDeclaration? = null)
+
             val propertyMap = hashMapOf<String, FieldAndAccessors>()
             for (function in typeDecl.getDeclaredFunctions()) {
                 val name = function.simpleName.asString()
@@ -58,16 +60,17 @@ object ConfigUtils {
                 } else {
                     if (name.startsWith("get")) {
                         val propertyName = name.substring(3).replaceFirstChar { it.lowercaseChar() }
-                        propertyMap.computeIfAbsent(propertyName) {FieldAndAccessors()}.getter = function
-                    }
-                    if (name.startsWith("set")) {
+                        propertyMap.computeIfAbsent(propertyName) { FieldAndAccessors() }.getter = function
+                    } else if (name.startsWith("set")) {
                         val propertyName = name.substring(3).replaceFirstChar { it.lowercaseChar() }
-                        propertyMap.computeIfAbsent(propertyName) {FieldAndAccessors()}.setter = function
+                        propertyMap.computeIfAbsent(propertyName) { FieldAndAccessors() }.setter = function
+                    } else {
+                        propertyMap.computeIfAbsent(name) { FieldAndAccessors() }.getter = function
                     }
                 }
             }
             for (property in typeDecl.getAllProperties()) {
-                propertyMap.computeIfAbsent(property.simpleName.asString()) {FieldAndAccessors()}.property = property
+                propertyMap.computeIfAbsent(property.simpleName.asString()) { FieldAndAccessors() }.property = property
             }
             val properties = propertyMap.values.asSequence().filter { it.setter != null && it.getter != null && it.property != null }.map { it.property!! }.toList()
             if (equals == null || hashCode == null) {
