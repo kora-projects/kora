@@ -8,6 +8,8 @@ import org.mockito.Mockito
 import org.mockito.Mockito.verify
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.kotlin.whenever
+import ru.tinkoff.kora.config.common.ConfigValue.NullValue
+import ru.tinkoff.kora.config.common.ConfigValue.StringValue
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractionException
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor
 import ru.tinkoff.kora.config.common.factory.MapConfigFactory
@@ -109,20 +111,22 @@ class AnnotationConfigTest : AbstractConfigTest() {
     @Test
     fun testInterfaceWithUnknownType() {
         val mapper = Mockito.mock(ConfigValueExtractor::class.java)
-        whenever(mapper.extract(ArgumentMatchers.any())).thenReturn(Duration.ofDays(3000))
+        whenever(mapper.extract(ArgumentMatchers.isA(StringValue::class.java))).thenReturn(Duration.ofDays(3000))
+        whenever(mapper.extract(ArgumentMatchers.isA(NullValue::class.java))).thenThrow(IllegalArgumentException())
 
         val extractor = compileConfig(
             listOf(mapper), """
             @ConfigValueExtractor
             interface TestConfig {
-              fun value(): java.time.Duration
+              fun value1(): java.time.Duration
+              fun value2(): java.time.Duration?
             }
             
             """.trimIndent()
         )
 
         assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value1" to "test")).root()))
-            .isEqualTo(new("\$TestConfig_ConfigValueExtractor\$TestConfig_Impl", Duration.ofDays(3000)))
+            .isEqualTo(new("\$TestConfig_ConfigValueExtractor\$TestConfig_Impl", Duration.ofDays(3000), null))
         verify(mapper).extract(ArgumentMatchers.any())
     }
 
@@ -199,17 +203,18 @@ class AnnotationConfigTest : AbstractConfigTest() {
     @Test
     fun testDataClassWithUnknownType() {
         val mapper = Mockito.mock(ConfigValueExtractor::class.java)
-        whenever(mapper.extract(ArgumentMatchers.any())).thenReturn(Duration.ofDays(3000))
+        whenever(mapper.extract(ArgumentMatchers.isA(StringValue::class.java))).thenReturn(Duration.ofDays(3000))
+        whenever(mapper.extract(ArgumentMatchers.isA(NullValue::class.java))).thenThrow(IllegalArgumentException())
 
         val extractor = compileConfig(
             listOf(mapper), """
             @ConfigValueExtractor
-            data class TestConfig(val value: java.time.Duration)
+            data class TestConfig(val value1: java.time.Duration, val value2: java.time.Duration?)
             """.trimIndent()
         )
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value" to "test")).root()))
-            .isEqualTo(new("TestConfig", Duration.ofDays(3000)))
+        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value1" to "test")).root()))
+            .isEqualTo(new("TestConfig", Duration.ofDays(3000), null))
         verify(mapper).extract(ArgumentMatchers.any())
     }
 

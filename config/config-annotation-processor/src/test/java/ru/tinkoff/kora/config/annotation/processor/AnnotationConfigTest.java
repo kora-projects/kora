@@ -14,7 +14,8 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class AnnotationConfigTest extends AbstractConfigTest {
     @Test
@@ -99,10 +100,12 @@ public class AnnotationConfigTest extends AbstractConfigTest {
     @Test
     public void testInterfaceWithUnknownType() {
         var mapper = Mockito.mock(ConfigValueExtractor.class);
-        when(mapper.extract(any())).thenAnswer(invocation -> invocation.getArguments()[0] instanceof ConfigValue.NullValue
-            ? null :
-            Duration.ofDays(3000)
-        );
+        when(mapper.extract(any())).thenAnswer(invocation -> {
+            if (invocation.getArguments()[0] instanceof ConfigValue.NullValue) {
+                throw new IllegalArgumentException();
+            }
+            return Duration.ofDays(3000);
+        });
 
         var extractor = this.compileConfig(List.of(mapper), """
             @ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor
@@ -117,7 +120,7 @@ public class AnnotationConfigTest extends AbstractConfigTest {
         assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value", "test")).root()))
             .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", Duration.ofDays(3000), null));
 
-        verify(mapper, times(2)).extract(any());
+        verify(mapper).extract(any());
     }
 
     @Test

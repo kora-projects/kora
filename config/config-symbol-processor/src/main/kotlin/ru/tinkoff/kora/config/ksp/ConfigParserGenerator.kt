@@ -341,23 +341,20 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         parse.addParameter("config", ConfigClassNames.objectValue)
         parse.addStatement("var value = config.get(%N)", "_${field.name}_path")
         val isSupportedType = field.mapping == null && supportedTypes.containsKey(field.typeName)
-        if (field.hasDefault || isSupportedType) {
-            parse.controlFlow("if (value is %T.NullValue)", ConfigClassNames.configValue) {
-                if (field.hasDefault) {
-                    if (typeDecl.classKind == ClassKind.INTERFACE) {
-                        parse.addStatement("return DEFAULTS.%N()", field.name)
-                    } else {
-                        parse.addStatement("return DEFAULTS.%N", field.name)
-                    }
+        parse.controlFlow("if (value is %T.NullValue)", ConfigClassNames.configValue) {
+            if (field.isNullable && !field.hasDefault) {
+                addStatement("return null")
+            } else if (field.hasDefault) {
+                if (typeDecl.classKind == ClassKind.INTERFACE) {
+                    addStatement("return DEFAULTS.%N()", field.name)
                 } else {
-                    if (field.isNullable) {
-                        parse.addStatement("return null")
-                    } else {
-                        parse.addStatement("throw %T.missingValue(value)", ConfigClassNames.configValueExtractionException)
-                    }
+                    addStatement("return DEFAULTS.%N", field.name)
                 }
+            } else if (isSupportedType) {
+                addStatement("throw %T.missingValue(value)", ConfigClassNames.configValueExtractionException)
             }
         }
+
         if (isSupportedType) {
             parse.addStatement("return %L", this.parseSupportedType(field.typeName))
         } else if (field.isNullable) {
