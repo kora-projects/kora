@@ -319,17 +319,20 @@ public class ConfigParserGenerator {
                     parse.endControlFlow();
                 }
                 parse.endControlFlow();
-            }
-            parse.addStatement("var parsed = $L_parser.extract(value)", field.name());
-            parse.beginControlFlow("if (parsed == null)");
-            if (field.isNullable()) {
+            } else if (field.isNullable()) {
+                parse.beginControlFlow("if (value instanceof $T.NullValue nullValue)", ConfigClassNames.configValue);
                 parse.addStatement("return null");
-            } else {
-                parse.addStatement("throw $T.missingValueAfterParse(value)", ConfigClassNames.configValueExtractionException);
+                parse.endControlFlow();
             }
-            parse.nextControlFlow("else");
-            parse.addStatement("return parsed");
-            parse.endControlFlow();
+            if (field.isNullable()) {
+                parse.addStatement("return $L_parser.extract(value)", field.name());
+            } else {
+                parse.addStatement("var parsed = $L_parser.extract(value)", field.name());
+                parse.beginControlFlow("if (parsed == null)");
+                parse.addStatement("throw $T.missingValueAfterParse(value)", ConfigClassNames.configValueExtractionException);
+                parse.endControlFlow();
+                parse.addStatement("return parsed");
+            }
         }
         return parse.build();
     }
