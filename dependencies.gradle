@@ -67,7 +67,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
 
             library("jms-api", "javax.jms", "javax.jms-api").version("2.0.1")
 
-            library("undertow-core", "io.undertow", "undertow-core").version("2.2.10.Final")
+            library("undertow-core", "io.undertow", "undertow-core").version("2.3.7.Final")
             library("async-http-client", "org.asynchttpclient", "async-http-client").version("2.12.3")
             library("okhttp", "com.squareup.okhttp3", "okhttp").version("4.9.1")
 
