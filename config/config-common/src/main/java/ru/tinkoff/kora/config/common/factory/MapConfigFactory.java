@@ -87,6 +87,27 @@ public class MapConfigFactory {
                     }
                 } else {
                     var field = (PathElement.Key) element;
+                    if (!(currentObject instanceof Map<?, ?>)) {
+                        var prev = (Object) map;
+                        for (int j = 0; j < i - 1; j++) {
+                            if (parts.get(j) instanceof PathElement.Key k) {
+                                prev = ((Map<String, Object>) prev).get(k.name());
+                            } else if (parts.get(j) instanceof PathElement.Index index) {
+                                prev = ((List<Object>) prev).get(index.index());
+                            } else {
+                                throw new IllegalStateException();
+                            }
+                        }
+                        var prevPath = parts.get(i - 1);
+                        currentObject = new LinkedHashMap<String, Object>();
+                        if (prevPath instanceof PathElement.Key k) {
+                            ((Map<String, Object>) prev).put(k.name(), currentObject);
+                        } else if (prevPath instanceof PathElement.Index index) {
+                            ((List<Object>) prev).set(index.index(), currentObject);
+                        } else {
+                            throw new IllegalStateException();
+                        }
+                    }
                     var object = (Map<String, Object>) currentObject;
                     var currentValue = object.get(field.name());
                     if (currentValue == null) {
@@ -105,7 +126,7 @@ public class MapConfigFactory {
                     } else {
                         if (i + 1 < parts.size()) {
                             currentObject = currentValue;
-                        } else {
+                        } else if (!(currentValue instanceof Map<?, ?>)) {
                             object.put(field.name(), value);
                         }
                     }
