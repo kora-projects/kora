@@ -3,7 +3,6 @@ package ru.tinkoff.kora.database.annotation.processor.jdbc;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.TypeName;
 
-import javax.lang.model.util.Types;
 import java.util.function.BiFunction;
 
 public interface JdbcNativeType {

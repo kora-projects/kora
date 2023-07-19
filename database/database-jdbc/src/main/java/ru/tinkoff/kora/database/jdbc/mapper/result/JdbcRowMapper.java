@@ -9,5 +9,5 @@ import java.sql.SQLException;
 
 public interface JdbcRowMapper<T> extends Mapping.MappingFunction, RowMapper<T> {
     @Nullable
-    T apply(ResultSet rs) throws SQLException;
+    T apply(ResultSet row) throws SQLException;
 }

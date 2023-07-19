@@ -63,7 +63,7 @@ open class TestEntityCassandraRowMapperNonFinal : CassandraRowMapper<TestEntity>
 
 class ListTestEntityCassandraResultSetMapper :
     CassandraReactiveResultSetMapper<List<TestEntity>, Mono<List<TestEntity>>> {
-    override fun apply(rs: ReactiveResultSet): Mono<List<TestEntity>> {
+    override fun apply(rows: ReactiveResultSet): Mono<List<TestEntity>> {
         TODO()
     }
 }

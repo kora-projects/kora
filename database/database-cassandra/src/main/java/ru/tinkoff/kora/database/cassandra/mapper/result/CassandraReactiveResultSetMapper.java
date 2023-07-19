@@ -9,7 +9,7 @@ import ru.tinkoff.kora.common.Mapping;
 import java.util.List;
 
 public interface CassandraReactiveResultSetMapper<T, P extends Publisher<T>> extends Mapping.MappingFunction {
-    P apply(ReactiveResultSet rs);
+    P apply(ReactiveResultSet rows);
 
     static <T> CassandraReactiveResultSetMapper<T, Flux<T>> flux(CassandraRowMapper<T> rowMapper) {
         return rs -> Flux.from(rs).map(rowMapper::apply);

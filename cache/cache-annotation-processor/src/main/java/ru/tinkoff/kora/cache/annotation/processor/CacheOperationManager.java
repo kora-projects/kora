@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.cache.annotation.processor;
 
+import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -53,7 +54,7 @@ public final class CacheOperationManager {
             }
         }
 
-        final TypeMirror returnType = MethodUtils.isMono(method, env)
+        final TypeMirror returnType = MethodUtils.isMono(method)
             ? ((DeclaredType) method.getReturnType()).getTypeArguments().get(0)
             : method.getReturnType();
 
@@ -69,7 +70,7 @@ public final class CacheOperationManager {
                     ? ""
                     : packageElement.getQualifiedName().toString();
 
-                final String nonVoidReturnType = MethodUtils.isVoid(returnType)
+                final String nonVoidReturnType = CommonUtils.isVoid(returnType)
                     ? null
                     : returnType.toString();
 
@@ -89,7 +90,7 @@ public final class CacheOperationManager {
             }
 
             // Replace evict (void) operations previously saved
-            if (!MethodUtils.isVoid(returnType)) {
+            if (!CommonUtils.isVoid(returnType)) {
                 final String returnAsStr = returnType.toString();
                 if (signature.value != null && !returnAsStr.equals(signature.value)) {
                     throw new IllegalStateException("Cache Value type from " + signature.origin() + " mismatch with " + meta.origin()

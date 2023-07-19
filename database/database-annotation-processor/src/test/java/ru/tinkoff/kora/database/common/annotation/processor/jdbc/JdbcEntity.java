@@ -37,35 +37,35 @@ public class JdbcEntity {
 
     public static final class TestEntityFieldJdbcResultColumnMapper implements JdbcResultColumnMapper<TestEntityRecord.MappedField1> {
         @Override
-        public TestEntityRecord.MappedField1 apply(ResultSet rs, int index) throws SQLException {
+        public TestEntityRecord.MappedField1 apply(ResultSet row, int index) throws SQLException {
             return new TestEntityRecord.MappedField1();
         }
     }
 
     public static class TestEntityFieldJdbcResultColumnMapperNonFinal implements JdbcResultColumnMapper<TestEntityRecord.MappedField2> {
         @Override
-        public TestEntityRecord.MappedField2 apply(ResultSet rs, int index) throws SQLException {
+        public TestEntityRecord.MappedField2 apply(ResultSet row, int index) throws SQLException {
             return null;
         }
     }
 
     public static final class TestEntityJdbcRowMapper implements JdbcRowMapper<TestEntityRecord> {
         @Override
-        public TestEntityRecord apply(ResultSet rs) throws SQLException {
+        public TestEntityRecord apply(ResultSet row) throws SQLException {
             return null;
         }
     }
 
     public static class TestEntityJdbcRowMapperNonFinal implements JdbcRowMapper<TestEntityRecord> {
         @Override
-        public TestEntityRecord apply(ResultSet rs) throws SQLException {
+        public TestEntityRecord apply(ResultSet row) throws SQLException {
             return null;
         }
     }
 
     public static final class OptionalMappedEntityResultSetMapper implements JdbcResultSetMapper<Optional<TestEntityRecord>> {
         @Override
-        public Optional<TestEntityRecord> apply(ResultSet rs) throws SQLException {
+        public Optional<TestEntityRecord> apply(ResultSet rows) throws SQLException {
             return Optional.empty();
         }
     }
@@ -73,7 +73,7 @@ public class JdbcEntity {
 
     public static final class ListMappedEntityResultSetMapper implements JdbcResultSetMapper<List<TestEntityRecord>> {
         @Override
-        public List<TestEntityRecord> apply(ResultSet rs) throws SQLException {
+        public List<TestEntityRecord> apply(ResultSet rows) throws SQLException {
             return List.of();
         }
     }

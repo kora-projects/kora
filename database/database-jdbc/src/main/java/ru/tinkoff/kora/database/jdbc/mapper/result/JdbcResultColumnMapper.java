@@ -8,5 +8,5 @@ import java.sql.SQLException;
 
 public interface JdbcResultColumnMapper<T> extends Mapping.MappingFunction {
     @Nullable
-    T apply(ResultSet rs, int index) throws SQLException;
+    T apply(ResultSet row, int index) throws SQLException;
 }

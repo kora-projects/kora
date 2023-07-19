@@ -194,6 +194,9 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
         if (CommonUtils.isMono(returnType) || this.isCompletionStage(returnType)) {
             var monoParam = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
             var mapperType = ParameterizedTypeName.get(VertxTypes.ROW_SET_MAPPER, TypeName.get(monoParam));
+            if (monoParam.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
+                return Optional.empty();
+            }
             if (rowSetMapper != null) {
                 return Optional.of(new DbUtils.Mapper(rowSetMapper.mapperClass(), mapperType, rowSetMapper.mapperTags()));
             }
@@ -205,9 +208,6 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
                 } else {
                     return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTags(), c -> CodeBlock.of("$T.singleRowSetMapper($L)", VertxTypes.ROW_SET_MAPPER, c)));
                 }
-            }
-            if (monoParam.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
-                return Optional.empty();
             }
             return Optional.of(new DbUtils.Mapper(mapperType, Set.of()));
         }

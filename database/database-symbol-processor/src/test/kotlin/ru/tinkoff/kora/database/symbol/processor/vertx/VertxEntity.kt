@@ -57,13 +57,13 @@ open class TestEntityVertxRowMapperNonFinal : VertxRowMapper<TestEntity?> {
 }
 
 class TestEntityFieldVertxParameterColumnMapper : VertxParameterColumnMapper<TestEntity.MappedField1?> {
-    override fun apply(o: TestEntity.MappedField1?): Any {
+    override fun apply(value: TestEntity.MappedField1?): Any {
         return TestEntity.MappedField1()
     }
 }
 
 class TestEntityFieldVertxParameterColumnMapperNonFinal : VertxParameterColumnMapper<TestEntity.MappedField2?> {
-    override fun apply(o: TestEntity.MappedField2?): Any {
+    override fun apply(value: TestEntity.MappedField2?): Any {
         return TestEntity.MappedField2()
     }
 }

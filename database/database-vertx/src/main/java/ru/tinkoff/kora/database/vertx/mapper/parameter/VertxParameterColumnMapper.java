@@ -6,5 +6,5 @@ import javax.annotation.Nullable;
 
 public interface VertxParameterColumnMapper<T> extends Mapping.MappingFunction {
     @Nullable
-    Object apply(@Nullable T t);
+    Object apply(@Nullable T value);
 }

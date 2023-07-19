@@ -25,6 +25,7 @@ import javax.lang.model.type.TypeVariable;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.Map;
+import java.util.Objects;
 
 //R2dbcRowMapper<T>
 
@@ -62,20 +63,26 @@ public class R2dbcTypesExtension implements KoraExtension {
     @Nullable
     @Override
     public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror) {
-        if (!(typeMirror instanceof DeclaredType dt)) {
+        if (!(typeMirror instanceof DeclaredType declaredType)) {
             return null;
         }
-        if (typeMirror.toString().startsWith("ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcRowMapper<")) {
-            return this.generateResultRowMapper(roundEnvironment, dt);
+        var typeName = TypeName.get(typeMirror);
+        if (!(typeName instanceof ParameterizedTypeName ptn)) {
+            return null;
         }
-        if (typeMirror.toString().startsWith("ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcResultFluxMapper<")) {
-            return this.generateResultFluxMapper(roundEnvironment, dt);
+
+        if (Objects.equals(ptn.rawType, R2dbcTypes.ROW_MAPPER)) {
+            return this.generateResultRowMapper(declaredType);
         }
+        if (Objects.equals(ptn.rawType, R2dbcTypes.RESULT_FLUX_MAPPER)) {
+            return this.generateResultFluxMapper(declaredType);
+        }
+
         return null;
     }
 
     @Nullable
-    private KoraExtensionDependencyGenerator generateResultFluxMapper(RoundEnvironment roundEnvironment, DeclaredType dt) {
+    private KoraExtensionDependencyGenerator generateResultFluxMapper(DeclaredType dt) {
         var publisherType = dt.getTypeArguments().get(1);
         if (!publisherType.toString().startsWith("reactor.core.publisher.Mono<")) {
             return null;
@@ -96,7 +103,7 @@ public class R2dbcTypesExtension implements KoraExtension {
     }
 
     @Nullable
-    private KoraExtensionDependencyGenerator generateResultRowMapper(RoundEnvironment roundEnvironment, DeclaredType typeMirror) {
+    private KoraExtensionDependencyGenerator generateResultRowMapper(DeclaredType typeMirror) {
         var rowType = typeMirror.getTypeArguments().get(0);
         var entity = DbEntity.parseEntity(this.types, rowType);
         if (entity == null) {

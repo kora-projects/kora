@@ -17,6 +17,7 @@ import javax.annotation.Nullable;
 {non_id_placeholders}
 {update_columns}
  */
+@Deprecated
 public interface PostgresJdbcCrudRepository<ENTITY, ID> {
     @Nullable
     @Query("SELECT {columns} FROM {table_name} WHERE {id_column} = :id")

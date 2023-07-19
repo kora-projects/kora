@@ -59,14 +59,14 @@ public class R2dbcEntity {
 
     public static final class TestEntityFieldR2dbcParameterColumnMapper implements R2dbcParameterColumnMapper<TestEntityRecord.MappedField1> {
         @Override
-        public void apply(Statement stmt, int index, TestEntityRecord.MappedField1 o) {
+        public void apply(Statement stmt, int index, TestEntityRecord.MappedField1 value) {
 
         }
     }
 
     public static class TestEntityFieldR2dbcParameterColumnMapperNonFinal implements R2dbcParameterColumnMapper<TestEntityRecord.MappedField2> {
         @Override
-        public void apply(Statement stmt, int index, TestEntityRecord.MappedField2 o) {
+        public void apply(Statement stmt, int index, TestEntityRecord.MappedField2 value) {
 
         }
     }

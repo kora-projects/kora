@@ -34,7 +34,7 @@ public class CacheInvalidateAopKoraAspect extends AbstractAopCacheAspect {
 
         final List<String> cacheFields = getCacheFields(operation, cacheMirrors, aspectContext);
         final CodeBlock body;
-        if (MethodUtils.isMono(method, env)) {
+        if (MethodUtils.isMono(method)) {
             if (operation.meta().type() == CacheMeta.Type.EVICT_ALL) {
                 body = buildBodyMonoAll(method, operation, superCall, cacheFields);
             } else {

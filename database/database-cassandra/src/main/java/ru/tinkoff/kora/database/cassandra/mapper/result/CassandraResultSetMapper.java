@@ -10,7 +10,7 @@ import java.util.Optional;
 
 public interface CassandraResultSetMapper<T> extends Mapping.MappingFunction {
     @Nullable
-    T apply(ResultSet rs);
+    T apply(ResultSet rows);
 
     static <T> CassandraResultSetMapper<T> singleResultSetMapper(CassandraRowMapper<T> rowMapper) {
         return rs -> {
