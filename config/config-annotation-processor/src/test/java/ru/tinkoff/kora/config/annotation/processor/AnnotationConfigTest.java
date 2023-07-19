@@ -313,10 +313,10 @@ public class AnnotationConfigTest extends AbstractConfigTest {
             public class TestConfig {
               @Nullable
               private final String value1;
-              @Nullable
+              
               private final String value2;
               
-              public TestConfig(String value1, String value2) {
+              public TestConfig(String value1, @Nullable String value2) {
                 this.value1 = value1;
                 this.value2 = value2;
               }
@@ -358,7 +358,7 @@ public class AnnotationConfigTest extends AbstractConfigTest {
               @Nullable
               private final String value2;
               
-              public TestConfig(String value1, String value2) {
+              public TestConfig(String value1, @Nullable String value2) {
                 this.value1 = value1;
                 this.value2 = value2;
               }
@@ -388,6 +388,8 @@ public class AnnotationConfigTest extends AbstractConfigTest {
 
         assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value1", "test")).root()))
             .isEqualTo(expected);
+
+        assertThatThrownBy(() -> extractor.extract(MapConfigFactory.fromMap(Map.of("value2", "test")).root()));
     }
 
 }
