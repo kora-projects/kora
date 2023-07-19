@@ -92,7 +92,7 @@ public class CassandraEntity {
 
     public static final class ListTestEntityCassandraResultSetMapper implements CassandraReactiveResultSetMapper<List<TestEntityRecord>, Mono<List<TestEntityRecord>>> {
         @Override
-        public Mono<List<TestEntityRecord>> apply(ReactiveResultSet rs) {
+        public Mono<List<TestEntityRecord>> apply(ReactiveResultSet rows) {
             return null;
         }
     }

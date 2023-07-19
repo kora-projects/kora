@@ -36,7 +36,7 @@ public class TimeoutKoraAspect implements KoraAspect {
 
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
-        if (MethodUtils.isFuture(method, env)) {
+        if (MethodUtils.isFuture(method)) {
             throw new ProcessingErrorException("@Timeout can't be applied for types assignable from " + Future.class, method);
         }
 
@@ -55,9 +55,9 @@ public class TimeoutKoraAspect implements KoraAspect {
             CodeBlock.of("$L.get($S)", fieldManager, timeoutName));
 
         final CodeBlock body;
-        if (MethodUtils.isMono(method, env)) {
+        if (MethodUtils.isMono(method)) {
             body = buildBodyMono(method, superCall, timeoutName, fieldTimeouter, fieldMetrics);
-        } else if (MethodUtils.isFlux(method, env)) {
+        } else if (MethodUtils.isFlux(method)) {
             body = buildBodyFlux(method, superCall, timeoutName, fieldTimeouter, fieldMetrics);
         } else {
             body = buildBodySync(method, superCall, fieldTimeouter);

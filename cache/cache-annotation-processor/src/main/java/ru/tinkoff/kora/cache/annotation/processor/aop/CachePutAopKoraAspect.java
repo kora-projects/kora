@@ -33,7 +33,7 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
         final AbstractAopCacheAspect.CacheMirrors cacheMirrors = getCacheMirrors(operation, method, env);
 
         final List<String> cacheFields = getCacheFields(operation, cacheMirrors, aspectContext);
-        final CodeBlock body = MethodUtils.isMono(method, env)
+        final CodeBlock body = MethodUtils.isMono(method)
             ? buildBodyMono(method, operation, superCall, cacheFields)
             : buildBodySync(method, operation, superCall, cacheFields);
 

@@ -30,37 +30,37 @@ data class AllNativeTypesEntity(
 
 
 class TestEntityFieldJdbcResultColumnMapper : JdbcResultColumnMapper<TestEntity.MappedField1?> {
-    override fun apply(rs: ResultSet, index: Int): TestEntity.MappedField1? {
+    override fun apply(row: ResultSet, index: Int): TestEntity.MappedField1? {
         return TestEntity.MappedField1()
     }
 }
 
 open class TestEntityFieldJdbcResultColumnMapperNonFinal : JdbcResultColumnMapper<TestEntity.MappedField2?> {
-    override fun apply(rs: ResultSet, index: Int): TestEntity.MappedField2 {
+    override fun apply(row: ResultSet, index: Int): TestEntity.MappedField2 {
         return TestEntity.MappedField2()
     }
 }
 
 class TestEntityJdbcRowMapper : JdbcRowMapper<TestEntity> {
-    override fun apply(rs: ResultSet): TestEntity? {
+    override fun apply(row: ResultSet): TestEntity? {
         return null
     }
 }
 
 open class TestEntityJdbcRowMapperNonFinal : JdbcRowMapper<TestEntity> {
-    override fun apply(rs: ResultSet): TestEntity {
+    override fun apply(row: ResultSet): TestEntity {
         return null!!
     }
 }
 
 class OptionalMappedEntityResultSetMapper : JdbcResultSetMapper<Optional<TestEntity>> {
-    override fun apply(rs: ResultSet): Optional<TestEntity> {
+    override fun apply(rows: ResultSet): Optional<TestEntity> {
         return Optional.empty<TestEntity>()
     }
 }
 
 class ListMappedEntityResultSetMapper : JdbcResultSetMapper<List<TestEntity>> {
-    override fun apply(rs: ResultSet): List<TestEntity> {
+    override fun apply(rows: ResultSet): List<TestEntity> {
         return listOf<TestEntity>()
     }
 }

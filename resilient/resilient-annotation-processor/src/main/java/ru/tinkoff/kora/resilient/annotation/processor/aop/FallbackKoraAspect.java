@@ -34,7 +34,7 @@ public class FallbackKoraAspect implements KoraAspect {
 
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
-        if (MethodUtils.isFuture(method, env)) {
+        if (MethodUtils.isFuture(method)) {
             throw new ProcessingErrorException("@Fallback can't be applied for types assignable from " + Future.class, method);
         }
 
@@ -57,9 +57,9 @@ public class FallbackKoraAspect implements KoraAspect {
             fallbackerType, CodeBlock.of("$L.get($S);", fieldManager, name));
 
         final CodeBlock body;
-        if (MethodUtils.isMono(method, env)) {
+        if (MethodUtils.isMono(method)) {
             body = buildBodyMono(method, fallback, superCall, fieldFallbacker);
-        } else if (MethodUtils.isFlux(method, env)) {
+        } else if (MethodUtils.isFlux(method)) {
             body = buildBodyFlux(method, fallback, superCall, fieldFallbacker);
         } else {
             body = buildBodySync(method, fallback, superCall, fieldFallbacker);

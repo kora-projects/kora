@@ -4,6 +4,7 @@ import com.squareup.javapoet.*;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
+import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
 import ru.tinkoff.kora.annotation.processor.common.Visitors;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
@@ -31,8 +32,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.stream.LongStream;
-
-import static ru.tinkoff.kora.annotation.processor.common.MethodUtils.isVoid;
 
 public final class JdbcRepositoryGenerator implements RepositoryGenerator {
     private final TypeMirror repositoryInterface;
@@ -86,7 +85,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         if (CommonUtils.isMono(returnType)) {
             returnType = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
         }
-        if (isVoid(returnType)) {
+        if (CommonUtils.isVoid(returnType)) {
             return Optional.empty();
         }
         var batchParam = parameters.stream().filter(QueryParameter.BatchParameter.class::isInstance).findFirst().orElse(null);
@@ -159,7 +158,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             try (_conToClose; var _stmt = _conToUse.prepareStatement(_query.sql())) {$>
             """, connection, JdbcTypes.CONNECTION, DbUtils.QUERY_CONTEXT, query.rawQuery(), sql, DbUtils.operationName(method));
         b.addCode(StatementSetterGenerator.generate(method, query, parameters, batchParam, parameterMappers));
-        if (isVoid(method) || isMono && isVoid(((DeclaredType) methodType.getReturnType()).getTypeArguments().get(0))) {
+        if (MethodUtils.isVoid(method) || isMono && MethodUtils.isVoidGeneric(methodType.getReturnType())) {
             if (batchParam != null) {
                 b.addStatement("var _batchResult = _stmt.executeBatch()");
             } else {

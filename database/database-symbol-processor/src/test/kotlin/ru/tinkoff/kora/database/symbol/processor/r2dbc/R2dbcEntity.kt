@@ -52,9 +52,9 @@ open class TestEntityR2dbcRowMapperNonFinal : R2dbcRowMapper<TestEntity> {
 }
 
 class TestEntityFieldR2dbcParameterColumnMapper : R2dbcParameterColumnMapper<TestEntity.MappedField1?> {
-    override fun apply(stmt: Statement, index: Int, o: TestEntity.MappedField1?) {}
+    override fun apply(stmt: Statement, index: Int, value: TestEntity.MappedField1?) {}
 }
 
 open class TestEntityFieldR2dbcParameterColumnMapperNonFinal : R2dbcParameterColumnMapper<TestEntity.MappedField2?> {
-    override fun apply(stmt: Statement, index: Int, o: TestEntity.MappedField2?) {}
+    override fun apply(stmt: Statement, index: Int, value: TestEntity.MappedField2?) {}
 }

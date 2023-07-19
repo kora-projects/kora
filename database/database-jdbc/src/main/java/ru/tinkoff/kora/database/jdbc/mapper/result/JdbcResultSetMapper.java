@@ -11,7 +11,7 @@ import java.util.Optional;
 
 public interface JdbcResultSetMapper<T> extends Mapping.MappingFunction {
     @Nullable
-    T apply(ResultSet rs) throws SQLException;
+    T apply(ResultSet rows) throws SQLException;
 
     static <T> JdbcResultSetMapper<T> singleResultSetMapper(JdbcRowMapper<T> rowMapper) {
         return rs -> {

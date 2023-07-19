@@ -59,14 +59,14 @@ public class VertxEntity {
 
     public static final class TestEntityFieldVertxParameterColumnMapper implements VertxParameterColumnMapper<TestEntityRecord.MappedField1> {
         @Override
-        public Object apply(TestEntityRecord.MappedField1 o) {
+        public Object apply(TestEntityRecord.MappedField1 value) {
             return null;
         }
     }
 
     public static class TestEntityFieldVertxParameterColumnMapperNonFinal implements VertxParameterColumnMapper<TestEntityRecord.MappedField2> {
         @Override
-        public Object apply(TestEntityRecord.MappedField2 o) {
+        public Object apply(TestEntityRecord.MappedField2 value) {
             return null;
         }
     }

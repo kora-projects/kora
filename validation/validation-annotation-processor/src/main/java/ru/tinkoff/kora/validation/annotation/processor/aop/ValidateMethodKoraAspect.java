@@ -38,8 +38,8 @@ public class ValidateMethodKoraAspect implements KoraAspect {
 
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
-        final boolean isMono = MethodUtils.isMono(method, env);
-        final boolean isFlux = MethodUtils.isFlux(method, env);
+        final boolean isMono = MethodUtils.isMono(method);
+        final boolean isFlux = MethodUtils.isFlux(method);
         final TypeMirror returnType = (isMono || isFlux)
             ? MethodUtils.getGenericType(method.getReturnType()).orElseThrow()
             : method.getReturnType();
@@ -51,14 +51,14 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         }
 
         if (validationReturnCode.isPresent()) {
-            if (MethodUtils.isFuture(method, env)) {
+            if (MethodUtils.isFuture(method)) {
                 throw new ProcessingErrorException("@Validate for Return Value can't be applied for types assignable from " + Future.class, method);
             }
 
             if (MethodUtils.isVoid(method)) {
                 throw new ProcessingErrorException("@Validate for Return Value can't be applied for types assignable from " + Void.class, method);
             } else if (isMono || isFlux) {
-                if (MethodUtils.getGenericType(method.getReturnType()).filter(MethodUtils::isVoid).isPresent()) {
+                if (MethodUtils.getGenericType(method.getReturnType()).filter(CommonUtils::isVoid).isPresent()) {
                     throw new ProcessingErrorException("@Validate for Return Value can't be applied for types assignable from " + Void.class, method);
                 }
             }
@@ -77,8 +77,8 @@ public class ValidateMethodKoraAspect implements KoraAspect {
     }
 
     private Optional<CodeBlock> buildValidationReturnCode(ExecutableElement method, TypeMirror returnType, AspectContext aspectContext) {
-        final boolean isMono = MethodUtils.isMono(method, env);
-        final boolean isFlux = MethodUtils.isFlux(method, env);
+        final boolean isMono = MethodUtils.isMono(method);
+        final boolean isFlux = MethodUtils.isFlux(method);
 
         final List<ValidMeta.Constraint> constraints = ValidUtils.getValidatedByConstraints(env, returnType, method.getAnnotationMirrors());
         final List<Validated> validates = (method.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName())))

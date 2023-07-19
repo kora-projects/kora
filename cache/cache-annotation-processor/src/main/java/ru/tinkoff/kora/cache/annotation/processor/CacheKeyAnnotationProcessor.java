@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.cache.annotation.processor;
 
 import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
+import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
 import ru.tinkoff.kora.cache.annotation.*;
 import ru.tinkoff.kora.common.annotation.Generated;
@@ -74,14 +75,14 @@ public class CacheKeyAnnotationProcessor extends AbstractKoraProcessor {
                         throw new IllegalStateException(annotationNames + " annotation can't return Void type, but was for " + operation.meta().origin());
                     }
 
-                    if (MethodUtils.isMono(method, processingEnv)) {
+                    if (MethodUtils.isMono(method)) {
                         final DeclaredType returnType = (DeclaredType) method.getReturnType();
-                        if (returnType.getTypeArguments().stream().anyMatch(MethodUtils::isVoid)) {
+                        if (returnType.getTypeArguments().stream().anyMatch(CommonUtils::isVoid)) {
                             throw new IllegalStateException(annotationNames + " annotation can't return " + returnType + " with Void type erasure , but was for " + operation.meta().origin());
                         }
-                    } else if (MethodUtils.isFuture(method, processingEnv)) {
+                    } else if (MethodUtils.isFuture(method)) {
                         throw new IllegalArgumentException(annotationNames + " annotation doesn't support return type " + method.getReturnType() + " in " + operation.meta().origin());
-                    } else if (MethodUtils.isFlux(method, processingEnv)) {
+                    } else if (MethodUtils.isFlux(method)) {
                         throw new IllegalArgumentException(annotationNames + " annotation doesn't support return type " + method.getReturnType() + " in " + operation.meta().origin());
                     }
                 }

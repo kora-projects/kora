@@ -10,9 +10,7 @@ import ru.tinkoff.kora.database.common.annotation.processor.app.TestKoraAppTagge
 import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Parameter;
 import java.util.Arrays;
-import java.util.List;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;

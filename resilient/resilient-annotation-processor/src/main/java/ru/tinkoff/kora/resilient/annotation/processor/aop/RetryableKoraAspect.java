@@ -36,7 +36,7 @@ public class RetryableKoraAspect implements KoraAspect {
 
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
-        if (MethodUtils.isFuture(method, env)) {
+        if (MethodUtils.isFuture(method)) {
             throw new ProcessingErrorException("@Retryable can't be applied for types assignable from " + Future.class, method);
         }
 
@@ -53,9 +53,9 @@ public class RetryableKoraAspect implements KoraAspect {
             CodeBlock.of("$L.get($S);", fieldManager, retryableName));
 
         final CodeBlock body;
-        if (MethodUtils.isMono(method, env)) {
+        if (MethodUtils.isMono(method)) {
             body = buildBodyMono(method, superCall, fieldRetrier);
-        } else if (MethodUtils.isFlux(method, env)) {
+        } else if (MethodUtils.isFlux(method)) {
             body = buildBodyFlux(method, superCall, fieldRetrier);
         } else {
             body = buildBodySync(method, superCall, fieldRetrier);
