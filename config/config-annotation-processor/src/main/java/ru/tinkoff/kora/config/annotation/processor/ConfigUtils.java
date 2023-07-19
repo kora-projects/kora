@@ -169,7 +169,7 @@ public class ConfigUtils {
         var constructors = CommonUtils.findConstructors(te, m -> m.contains(Modifier.PUBLIC));
         var emptyConstructor = constructors.stream().filter(e -> e.getParameters().isEmpty()).findFirst().orElse(null);
         var nonEmptyConstructor = constructors.stream().filter(e -> !e.getParameters().isEmpty()).findFirst().orElse(null);
-        var constructorParams = nonEmptyConstructor == null ? Map.of() : nonEmptyConstructor.getParameters().stream().collect(Collectors.toMap(
+        var constructorParams = nonEmptyConstructor == null ? Map.<String, VariableElement>of() : nonEmptyConstructor.getParameters().stream().collect(Collectors.toMap(
             p -> p.getSimpleName().toString(),
             p -> p
         ));
@@ -189,6 +189,14 @@ public class ConfigUtils {
             if (seen.add(name)) {
                 var isNullable = CommonUtils.isNullable(value.field) && !fieldType.getKind().isPrimitive();
                 var mapping = CommonUtils.parseMapping(value.field).getMapping(ConfigClassNames.configValueExtractor);
+                var constructorParam = constructorParams.get(name);
+                if (constructorParam != null) {
+                    if (mapping == null) {
+                        mapping = CommonUtils.parseMapping(constructorParam).getMapping(ConfigClassNames.configValueExtractor);
+                    }
+                    isNullable = CommonUtils.isNullable(constructorParam) && !fieldType.getKind().isPrimitive();
+                    ;
+                }
                 var hasDefault = emptyConstructor != null || !constructorParams.containsKey(value.field.getSimpleName().toString());
                 fields.add(new ConfigUtils.ConfigField(
                     name, TypeName.get(fieldType), isNullable, hasDefault, mapping

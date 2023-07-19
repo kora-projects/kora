@@ -36,7 +36,7 @@ object TagUtils {
     fun parseTagValue(annotations: Sequence<KSAnnotation>): Set<String> {
         for (annotation in annotations.filter { !ignoreList.contains(it.shortName.asString()) }) {
             val type = annotation.annotationType.resolve()
-            if (type.declaration.qualifiedName!!.asString() == CommonClassNames.tag.canonicalName) {
+            if (type.declaration.qualifiedName?.asString() == CommonClassNames.tag.canonicalName) {
                 return AnnotationUtils.parseAnnotationValueWithoutDefaults<List<KSType>>(annotation, "value")!!
                     .asSequence()
                     .map { it.declaration.qualifiedName!!.asString() }
@@ -44,7 +44,7 @@ object TagUtils {
             }
             for (annotatedWith in type.declaration.annotations) {
                 val type = annotatedWith.annotationType.resolve()
-                if (type.declaration.qualifiedName!!.asString() == CommonClassNames.tag.canonicalName) {
+                if (type.declaration.qualifiedName?.asString() == CommonClassNames.tag.canonicalName) {
                     return AnnotationUtils.parseAnnotationValueWithoutDefaults<List<KSType>>(annotatedWith, "value")!!
                         .asSequence()
                         .map { it.declaration.qualifiedName!!.asString() }
