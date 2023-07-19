@@ -33,7 +33,7 @@ public final class EnumJsonReader<T extends Enum<T>> implements JsonReader<T> {
         var stringValue = parser.getText();
         var value = this.values.get(stringValue);
         if (value == null) {
-            throw new JsonParseException(parser, "Expecting enum value, got " + token);
+            throw new JsonParseException(parser, "Expecting one of " + this.values.keySet() + ", got " + stringValue);
         }
         return value;
     }
