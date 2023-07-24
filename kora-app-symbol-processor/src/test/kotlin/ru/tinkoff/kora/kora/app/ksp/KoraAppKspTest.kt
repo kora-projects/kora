@@ -424,7 +424,6 @@ class KoraAppKspTest {
         Assertions.assertThat(clazz).isNotNull
             .isInterface
             .hasMethods("_component0", "_component1")
-            .matches { cls -> AppWithAppPart::class.java.isAssignableFrom(cls) }
             .matches { cls -> !AppWithAppPart.Module::class.java.isAssignableFrom(cls) }
         val targetFile1 = "src/test/kotlin/" + AppWithAppPartApp::class.java.name.replace('.', '/') + ".kt"
         val modulePath = AppWithAppPart::class.java.protectionDomain.codeSource.location.path.substringBefore("/build")

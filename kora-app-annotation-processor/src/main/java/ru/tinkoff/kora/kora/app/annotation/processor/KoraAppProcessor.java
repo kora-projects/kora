@@ -570,7 +570,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             var packageElement = this.elements.getPackageOf(appPart);
             var b = TypeSpec.interfaceBuilder(appPart.getSimpleName() + "SubmoduleImpl")
                 .addModifiers(Modifier.PUBLIC)
-                .addSuperinterface(appPart.asType());
+                ;
             var componentNumber = 0;
             for (var component : this.components) {
                 b.addOriginatingElement(component);

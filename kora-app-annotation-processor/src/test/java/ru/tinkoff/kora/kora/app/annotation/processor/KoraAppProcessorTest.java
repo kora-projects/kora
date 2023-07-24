@@ -368,7 +368,6 @@ class KoraAppProcessorTest {
         Assertions.assertThat(clazz).isNotNull()
             .isInterface()
             .hasDeclaredMethods("_component0", "_component1")
-            .matches(AppWithAppPart.class::isAssignableFrom)
             .matches(Predicate.not(AppWithAppPart.Module.class::isAssignableFrom));
         var targetFile1 = "src/test/java/" + AppWithAppPartApp.class.getName().replace('.', '/') + ".java";
         var targetFile2 = "in-test-generated/classes/" + clazz.getCanonicalName().replace('.', '/') + ".class";

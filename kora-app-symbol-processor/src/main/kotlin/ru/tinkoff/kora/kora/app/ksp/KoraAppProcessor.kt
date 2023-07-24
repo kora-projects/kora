@@ -189,11 +189,11 @@ class KoraAppProcessor(
                 .filter(filterObjectMethods)
                 .toMutableList()
 
-            val submodules = declaration.superTypes.map { it.resolve() }
+            val submodules = declaration.getAllSuperTypes()
                 .map { it.declaration as KSClassDeclaration }
                 .filter { it.findAnnotation(CommonClassNames.koraSubmodule) != null }
                 .map { resolver.getKSNameFromString(it.qualifiedName!!.asString() + "SubmoduleImpl") }
-                .map { resolver.getClassDeclarationByName(it)!! }
+                .map { resolver.getClassDeclarationByName(it) ?: throw java.lang.IllegalStateException("Declaration of ${it.asString()} was not found") }
                 .toList()
             val allModules = (submodules + annotatedModules)
                 .flatMap { it.getAllSuperTypes().map { it.declaration as KSClassDeclaration } + it }
@@ -359,7 +359,6 @@ class KoraAppProcessor(
         for (appPart in this.appParts) {
             val packageName = appPart.packageName.asString()
             val b = TypeSpec.interfaceBuilder(appPart.simpleName.asString() + "SubmoduleImpl")
-                .addSuperinterface(appPart.toClassName())
                 .generated(KoraAppProcessor::class)
             var componentCounter = 0
             for (component in components) {
@@ -379,7 +378,7 @@ class KoraAppProcessor(
                     if (i > 0) {
                         mb.addCode(", ")
                     }
-                    mb.addCode("%N", parameter)
+                    mb.addCode("%N", parameter.name?.asString())
                 }
                 val tag = component.parseTags()
                 if (tag.isNotEmpty()) {
