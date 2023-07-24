@@ -19,6 +19,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @KoraAppTest(TestApplication.class)
 public class AddComponentWithGraphTests implements KoraAppTestGraphModifier {
 
+    @Tag(LifecycleComponent.class)
+    @TestComponent
+    private TestComponent2 component2;
+
     @Override
     public @NotNull KoraGraphModification graph() {
         return KoraGraphModification.create()

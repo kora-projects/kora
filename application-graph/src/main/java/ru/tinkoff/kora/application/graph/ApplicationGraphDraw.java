@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 public class ApplicationGraphDraw {
 
@@ -101,16 +102,20 @@ public class ApplicationGraphDraw {
         return draw;
     }
 
-    public ApplicationGraphDraw subgraph(Node<?>... rootNodes) {
+    public ApplicationGraphDraw subgraph(List<Node<?>> excludeTransitive, Iterable<Node<?>> rootNodes) {
         var seen = new TreeMap<Integer, Integer>();
+        var excludeTransitiveSet = excludeTransitive.stream().map(n -> n.index).collect(Collectors.toSet());
+
         var subgraph = new ApplicationGraphDraw(this.root);
         var visitor = new Object() {
             public <T> Node<T> accept(Node<T> node) {
                 if (!seen.containsKey(node.index)) {
                     var dependencies = new ArrayList<Node<?>>();
                     var interceptors = new ArrayList<Node<? extends GraphInterceptor<T>>>();
-                    for (var dependencyNode : node.getDependencyNodes()) {
-                        dependencies.add(this.accept(dependencyNode));
+                    if (!excludeTransitiveSet.contains(node.index)) {
+                        for (var dependencyNode : node.getDependencyNodes()) {
+                            dependencies.add(this.accept(dependencyNode));
+                        }
                     }
                     for (var interceptor : node.getInterceptors()) {
                         interceptors.add(this.accept(interceptor));

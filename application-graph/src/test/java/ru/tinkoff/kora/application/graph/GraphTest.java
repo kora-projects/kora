@@ -356,7 +356,7 @@ class GraphTest {
     @Test
     void subgraphTest() {
         var graph = ReferenceGraph.graph();
-        var subgraphDraw = graph.draw.subgraph(graph.object4Node);
+        var subgraphDraw = graph.draw.subgraph(List.of(), List.of(graph.object4Node));
         assertThat(subgraphDraw.getNodes()).hasSize(5);
         var subgraph = subgraphDraw.init().block();
     }

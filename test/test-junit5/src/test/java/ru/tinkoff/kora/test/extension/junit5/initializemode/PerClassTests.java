@@ -7,10 +7,13 @@ import org.junit.jupiter.api.TestMethodOrder;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppGraph;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplication;
+import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent12;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@KoraAppTest(value = TestApplication.class, initializeMode = KoraAppTest.InitializeMode.PER_CLASS)
+@KoraAppTest(value = TestApplication.class,
+    initializeMode = KoraAppTest.InitializeMode.PER_CLASS,
+components = TestComponent12.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class PerClassTests {
 

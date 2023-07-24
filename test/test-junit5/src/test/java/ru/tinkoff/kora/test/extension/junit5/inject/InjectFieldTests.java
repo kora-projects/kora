@@ -25,11 +25,6 @@ public class InjectFieldTests {
     }
 
     @Test
-    void empty() {
-        // do nothing
-    }
-
-    @Test
     void injectOne(@TestComponent TestComponent1 component1) {
         assertEquals("1", component1.get());
     }
