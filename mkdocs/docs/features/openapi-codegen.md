@@ -73,9 +73,13 @@ Maven:
 <configOptions>
   <mode>java_client</mode>
   <tags>{
-    "common": {
-      "httpClientTag": "some.tag.CanonicalName.class",
-      "telemetryTag": "some.tag.CanonicalName.class"
+    "*": { // применится для всех тегов, кроме явно указанных (в данном случае instrument)
+      "httpClientTag": "some.tag.Common.class",
+      "telemetryTag": "some.tag.Common.class"
+    }
+    "instrument": { // применится для instrument
+      "httpClientTag": "some.tag.Instrument.class",
+      "telemetryTag": "some.tag.Instrument.class"
     }
   }
   </tags>
@@ -86,11 +90,17 @@ Gradle:
     configOptions = [
     mode: "java_client",
     tags: """
-          "common": {
-            "httpClientTag": "some.tag.CanonicalName.class",
-            "telemetryTag": "some.tag.CanonicalName.class"
+          {
+            "*": { // применится для всех тегов, кроме явно указанных (в данном случае instrument)
+              "httpClientTag": "some.tag.Common.class",
+              "telemetryTag": "some.tag.Common.class"
+            },
+            "instrument": { // применится для instrument
+              "httpClientTag": "some.tag.Instrument.class",
+              "telemetryTag": "some.tag.Instrument.class"
+            }
           }
-        """
+          """
 ]
 ```
 
