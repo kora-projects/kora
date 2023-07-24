@@ -21,6 +21,12 @@ sealed interface ProcessingState {
         ) : ResolutionFrame
     }
 
+    fun stack() = if (this is Processing) {
+        this.resolutionStack
+    } else {
+        ArrayDeque()
+    }
+
     data class None(
         val root: KSClassDeclaration,
         val allModules: List<KSClassDeclaration>,
@@ -45,5 +51,5 @@ sealed interface ProcessingState {
 
     data class Ok(val root: KSClassDeclaration, val allModules: List<KSClassDeclaration>, val components: List<ResolvedComponent>) : ProcessingState
     data class NewRoundRequired(val source: Any, val type: KSType, val tag: Set<String>, val processing: Processing) : ProcessingState
-    data class Failed(val exception: ProcessingErrorException) : ProcessingState
+    data class Failed(val exception: ProcessingErrorException, val resolutionStack: Deque<ResolutionFrame>) : ProcessingState
 }

@@ -30,7 +30,8 @@ object GraphBuilder {
                 ProcessingErrorException(
                     "@KoraApp has no root components, expected at least one component annotated with @Root",
                     p.root
-                )
+                ),
+                p.resolutionStack
             )
         }
         var processing = p;

@@ -60,7 +60,22 @@ class KoraAppProcessor(
             when (processingResult) {
                 is ProcessingState.Failed -> {
                     processingResult.exception.printError(kspLogger)
-                    throw processingResult.exception
+                    if (processingResult.resolutionStack.isNotEmpty()) {
+                        val i = processingResult.resolutionStack.descendingIterator()
+                        val frames = ArrayList<ProcessingState.ResolutionFrame.Component>()
+                        while (i.hasNext()) {
+                            val frame = i.next()
+                            if (frame is ProcessingState.ResolutionFrame.Component) {
+                                frames.add(0, frame)
+                            } else {
+                                break
+                            }
+                        }
+                        val chain = frames.joinToString("\n            |            \n            ^            \n") {
+                            it.declaration.declarationString() + "   " + it.dependenciesToFind[it.currentDependency]
+                        }
+                        kspLogger.warn("Dependency resolve process: $chain")
+                    }
                 }
 
                 is ProcessingState.NewRoundRequired -> {
@@ -152,7 +167,7 @@ class KoraAppProcessor(
                     e.resolving
                 )
             } catch (e: ProcessingErrorException) {
-                results[actualKey] = declaration to ProcessingState.Failed(e)
+                results[actualKey] = declaration to ProcessingState.Failed(e, processingResult.stack())
             }
         }
         processedDeclarations.putAll(results)
@@ -176,7 +191,7 @@ class KoraAppProcessor(
 
     private fun parseNone(declaration: KSClassDeclaration): ProcessingState {
         if (declaration.classKind != ClassKind.INTERFACE) {
-            return ProcessingState.Failed(ProcessingErrorException("@KoraApp is only applicable to interfaces", declaration))
+            return ProcessingState.Failed(ProcessingErrorException("@KoraApp is only applicable to interfaces", declaration), ArrayDeque())
         }
         try {
             val rootErasure = declaration.asStarProjectedType()
@@ -237,7 +252,7 @@ class KoraAppProcessor(
             }
             return ProcessingState.None(declaration, allModules, components, templateComponents, rootSet)
         } catch (e: ProcessingErrorException) {
-            return ProcessingState.Failed(e)
+            return ProcessingState.Failed(e, ArrayDeque())
         }
     }
 

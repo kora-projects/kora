@@ -9,7 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.processing.ProcessingEnvironment;
-import javax.tools.Diagnostic;
 import javax.tools.StandardLocation;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -37,11 +36,9 @@ public class BuildEnvironment {
             } else if (dir.getFileName().toString().startsWith("generated-")) {
                 buildDir = dir.getParent();
             } else {
-                processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, "Build dir was no detected, there will be no build log for kora");
                 return;
             }
         } catch (IOException e) {
-            processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, "Build dir was no detected, there will be no build log for kora");
             return;
         }
         initLog(processingEnv);
