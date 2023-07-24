@@ -22,13 +22,22 @@ public final class ValidUtils {
                     .filter(ft -> ft instanceof DeclaredType)
                     .map(factoryType -> {
                         final DeclaredType factoryRawType = (DeclaredType) factoryType;
-                        final Map<String, Object> parameters = env.getElementUtils().getElementValuesWithDefaults(annotation).entrySet().stream()
+                        final Map<String, Object> parametersWithDefaults = env.getElementUtils().getElementValuesWithDefaults(annotation).entrySet().stream()
                             .collect(Collectors.toMap(
                                 ae -> ae.getKey().getSimpleName().toString(),
                                 ae -> castParameterValue(ae.getValue()),
                                 (v1, v2) -> v2,
                                 LinkedHashMap::new
                             ));
+
+                        final Map<String, Object> parameters = new LinkedHashMap<>();
+                        for (Element parameter : annotation.getAnnotationType().asElement().getEnclosedElements()) {
+                            if (parameter instanceof ExecutableElement ep) {
+                                final String parameterName = ep.getSimpleName().toString();
+                                final Object parameterValue = parametersWithDefaults.get(parameterName);
+                                parameters.put(parameterName, parameterValue);
+                            }
+                        }
 
                         if (parameters.size() > 0) {
                             factoryRawType.asElement().getEnclosedElements()

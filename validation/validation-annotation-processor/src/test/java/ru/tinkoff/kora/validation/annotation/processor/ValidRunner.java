@@ -38,6 +38,7 @@ public abstract class ValidRunner extends Assertions implements ValidatorModule 
             return (Validator<ValidBar>) clazz.getConstructors()[0].newInstance(
                 sizeListConstraintFactory(TypeRef.of(Integer.class)),
                 notBlankStringConstraintFactory(),
+                sizeStringConstraintFactory(),
                 listValidator(getTazValidator(), TypeRef.of(ValidTaz.class)));
         } catch (RuntimeException e) {
             throw e;
