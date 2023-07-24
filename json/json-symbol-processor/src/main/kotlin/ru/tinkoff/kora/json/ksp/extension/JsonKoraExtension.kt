@@ -26,7 +26,8 @@ class JsonKoraExtension(
     private val writerTypeMetaParser: WriterTypeMetaParser = WriterTypeMetaParser(resolver)
     private val processor: JsonProcessor = JsonProcessor(resolver, kspLogger, codeGenerator, knownTypes)
 
-    override fun getDependencyGenerator(resolver: Resolver, type: KSType): (() -> ExtensionResult)? {
+    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
+        if (tags.isNotEmpty()) return null
         val actualType = type.makeNotNullable()
         val erasure = actualType.starProjection()
         if (erasure == jsonWriterErasure) {

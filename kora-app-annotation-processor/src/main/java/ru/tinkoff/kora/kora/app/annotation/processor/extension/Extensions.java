@@ -10,6 +10,7 @@ import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ServiceLoader;
+import java.util.Set;
 
 public record Extensions(List<KoraExtension> extensions) {
     private static final Logger log = LoggerFactory.getLogger(Extensions.class);
@@ -28,10 +29,10 @@ public record Extensions(List<KoraExtension> extensions) {
 
 
     @Nullable
-    public KoraExtension.KoraExtensionDependencyGenerator findExtension(RoundEnvironment roundEnvironment, TypeMirror typeMirror) {
+    public KoraExtension.KoraExtensionDependencyGenerator findExtension(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tags) {
         var extensions = new ArrayList<KoraExtension.KoraExtensionDependencyGenerator>();
         for (var extension : this.extensions) {
-            var generator = extension.getDependencyGenerator(roundEnvironment, typeMirror);
+            var generator = extension.getDependencyGenerator(roundEnvironment, typeMirror, tags);
             if (generator != null) {
                 extensions.add(generator);
             }

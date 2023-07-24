@@ -11,13 +11,16 @@ import ru.tinkoff.kora.kora.app.annotation.processor.extension.KoraExtension;
 import javax.annotation.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
-import javax.lang.model.element.*;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
+import java.util.Set;
 
 public final class ConfigKoraExtension implements KoraExtension {
     private final Elements elements;
@@ -36,7 +39,8 @@ public final class ConfigKoraExtension implements KoraExtension {
 
     @Override
     @Nullable
-    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror) {
+    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tags) {
+        if (!tags.isEmpty()) return null;
         if (!types.isSameType(types.erasure(typeMirror), configValueExtractorTypeErasure)) {
             return null;
         }

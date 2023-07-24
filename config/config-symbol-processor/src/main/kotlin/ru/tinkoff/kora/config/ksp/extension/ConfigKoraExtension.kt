@@ -2,11 +2,9 @@ package ru.tinkoff.kora.config.ksp.extension
 
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.getConstructors
-import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
-import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.config.ksp.ConfigClassNames
 import ru.tinkoff.kora.config.ksp.ConfigParserGenerator
 import ru.tinkoff.kora.config.ksp.ConfigUtils
@@ -15,14 +13,14 @@ import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.JavaUtils.isRecord
 import ru.tinkoff.kora.ksp.common.generatedClassName
-import java.io.IOException
 
 class ConfigKoraExtension(resolver: Resolver, private val codeGenerator: CodeGenerator) : KoraExtension {
     private val configValueExtractorTypeErasure = resolver.getClassDeclarationByName(ConfigClassNames.configValueExtractor.canonicalName)!!.asStarProjectedType()
     private val configParserGenerator = ConfigParserGenerator(resolver)
     private val recordType = resolver.getClassDeclarationByName(Record::class.qualifiedName!!)!!.asStarProjectedType()
 
-    override fun getDependencyGenerator(resolver: Resolver, type: KSType): (() -> ExtensionResult)? {
+    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
+        if (tags.isNotEmpty()) return null
         val actualType = if (type.nullability == Nullability.PLATFORM) type.makeNotNullable() else type
         if (actualType.starProjection() != configValueExtractorTypeErasure) {
             return null

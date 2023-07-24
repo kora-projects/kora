@@ -13,13 +13,14 @@ import com.google.devtools.ksp.symbol.Modifier
 import ru.tinkoff.kora.database.symbol.processor.DbUtils
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
-import ru.tinkoff.kora.ksp.common.CommonAopUtils.hasAopAnnotations
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
+import ru.tinkoff.kora.ksp.common.CommonAopUtils.hasAopAnnotations
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 
 @KspExperimental
 class RepositoryKoraExtension(private val kspLogger: KSPLogger) : KoraExtension {
-    override fun getDependencyGenerator(resolver: Resolver, type: KSType): (() -> ExtensionResult)? {
+    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
+        if (tags.isNotEmpty()) return null
         if (type.declaration !is KSClassDeclaration) {
             return null
         }

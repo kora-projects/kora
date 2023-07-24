@@ -26,6 +26,7 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 //R2dbcRowMapper<T>
 
@@ -62,7 +63,8 @@ public class R2dbcTypesExtension implements KoraExtension {
 
     @Nullable
     @Override
-    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror) {
+    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tags) {
+        if (!tags.isEmpty()) return null;
         if (!(typeMirror instanceof DeclaredType declaredType)) {
             return null;
         }

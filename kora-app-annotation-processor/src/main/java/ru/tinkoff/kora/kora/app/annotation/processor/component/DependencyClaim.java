@@ -5,10 +5,14 @@ import ru.tinkoff.kora.annotation.processor.common.TypeParameterUtils;
 
 import javax.lang.model.type.TypeMirror;
 import java.util.Collection;
+import java.util.Objects;
 import java.util.Set;
 
 public record DependencyClaim(TypeMirror type, Set<String> tags, DependencyClaimType claimType) {
     public DependencyClaim {
+        Objects.requireNonNull(type);
+        Objects.requireNonNull(tags);
+        Objects.requireNonNull(claimType);
         if (TypeParameterUtils.hasTypeParameter(type)) {
             throw new IllegalStateException("Component can't have generic dependencies: " + type);
         }

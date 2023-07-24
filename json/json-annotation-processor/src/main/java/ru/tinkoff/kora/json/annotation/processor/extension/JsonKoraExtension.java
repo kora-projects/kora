@@ -25,6 +25,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.Objects;
+import java.util.Set;
 
 public class JsonKoraExtension implements KoraExtension {
 
@@ -49,7 +50,8 @@ public class JsonKoraExtension implements KoraExtension {
     }
 
     @Override
-    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror) {
+    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tags) {
+        if (!tags.isEmpty()) return null;
         var erasure = this.types.erasure(typeMirror);
         if (this.types.isSameType(erasure, this.jsonWriterErasure)) {
             var writerType = (DeclaredType) typeMirror;

@@ -51,7 +51,7 @@ interface AppWithInterceptor {
         private val interfaceDeclaration = resolver.getClassDeclarationByName(Interface1::class.qualifiedName!!)!!
         private val interfaceType = interfaceDeclaration.asStarProjectedType()
 
-        override fun getDependencyGenerator(resolver: Resolver, type: KSType): (() -> ExtensionResult)? {
+        override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
             if (!(type == interfaceType || type == interfaceType.makeNullable())) {
                 return null
             }

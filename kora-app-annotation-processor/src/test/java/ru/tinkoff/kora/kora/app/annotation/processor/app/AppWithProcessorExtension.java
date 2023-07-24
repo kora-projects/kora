@@ -109,7 +109,7 @@ public interface AppWithProcessorExtension {
         }
 
         @Override
-        public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror) {
+        public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tags) {
             if (this.types.isSameType(typeMirror, this.interfaceType)) {
                 return this::generateDependency;
             }

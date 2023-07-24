@@ -27,6 +27,7 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.Set;
 
 import static ru.tinkoff.kora.database.annotation.processor.cassandra.CassandraTypes.RESULT_SET;
 
@@ -69,7 +70,8 @@ public class CassandraTypesExtension implements KoraExtension {
 
     @Nullable
     @Override
-    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror) {
+    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tags) {
+        if (!tags.isEmpty()) return null;
         if (!(typeMirror instanceof DeclaredType dt)) {
             return null;
         }
