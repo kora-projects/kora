@@ -51,7 +51,6 @@ final class GraphUtils {
         return findNodeByTypeOrAssignable(graph, candidate.type(), candidate.tagsAsArray());
     }
 
-    @SuppressWarnings("unchecked")
     static Set<Node<?>> findNodeByTypeOrAssignable(ApplicationGraphDraw graph, Type type, Class<?>[] tags) {
         if (tags == null || tags.length == 0) {
             final Set<Node<?>> nodes = new HashSet<>();
