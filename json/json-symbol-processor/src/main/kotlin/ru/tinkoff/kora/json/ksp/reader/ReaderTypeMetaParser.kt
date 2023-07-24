@@ -47,7 +47,7 @@ class ReaderTypeMetaParser(
             .toList()
 
         if (constructors.isEmpty()) {
-            logger.error("No public constructor found: $classDeclaration", classDeclaration)
+            logger.warn("No public constructor found: $classDeclaration", classDeclaration)
             return null
         }
         if (constructors.size == 1) {

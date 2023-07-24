@@ -75,7 +75,7 @@ public class ReaderTypeMetaParser {
             .map(ExecutableElement.class::cast)
             .toList();
         if (constructors.isEmpty()) {
-            this.env.getMessager().printMessage(Diagnostic.Kind.ERROR, "No public constructor found: " + typeElement, typeElement);
+            this.env.getMessager().printMessage(Diagnostic.Kind.WARNING, "No public constructor found: " + typeElement, typeElement);
             return null;
         }
         if (constructors.size() == 1) {
