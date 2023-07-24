@@ -153,7 +153,7 @@ class KoraAppProcessorTest {
     void unresolvedDependency() {
         assertThatThrownBy(() -> testClass(AppWithUnresolvedDependency.class))
             .isInstanceOfSatisfying(CompilationErrorException.class, e -> SoftAssertions.assertSoftly(s -> {
-                s.assertThat(e.getMessage()).isEqualTo("""
+                s.assertThat(e.getMessage()).startsWith("""
                     Required dependency type was not found and can't be auto created: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3.
                       Please check class for @Component annotation or that required module with component is plugged in.
                       Requested at: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.class2(ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3)""");

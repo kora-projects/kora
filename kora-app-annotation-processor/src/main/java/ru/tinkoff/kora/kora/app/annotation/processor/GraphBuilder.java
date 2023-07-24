@@ -38,7 +38,7 @@ public class GraphBuilder {
             return new ProcessingState.Failed(new ProcessingErrorException(
                 "@KoraApp has no root components, expected at least one component annotated with @Root",
                 processing.root()
-            ));
+            ), new ArrayDeque<>());
         }
         var stack = processing.resolutionStack();
         frame:

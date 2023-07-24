@@ -126,7 +126,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 }
             } catch (ProcessingErrorException e) {
                 log.info("Processing exception", e);
-                results.put(annotatedClass.getKey(), new ProcessingState.Failed(e));
+                results.put(annotatedClass.getKey(), new ProcessingState.Failed(e, processingResult.stack()));
             } catch (Exception e) {
                 if (e instanceof FilerException || e.getCause() instanceof FilerException) {
                     this.processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING, e.getMessage());
@@ -146,6 +146,22 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 }
                 if (processingResult instanceof ProcessingState.Failed failed) {
                     failed.detailedException().printError(this.processingEnv);
+                    if (!failed.stack().isEmpty()) {
+                        var i = processingResult.stack().descendingIterator();
+                        var frames = new ArrayList<ProcessingState.ResolutionFrame.Component>();
+                        while (i.hasNext()) {
+                            var frame = i.next();
+                            if (frame instanceof ProcessingState.ResolutionFrame.Component c) {
+                                frames.add(0, c);
+                            } else {
+                                break;
+                            }
+                        }
+                        var chain = frames.stream()
+                            .map(c -> c.declaration().declarationString() + "   " + c.dependenciesToFind().get(c.currentDependency()))
+                            .collect(Collectors.joining("\n            |            \n            ^            \n"));
+                        this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Dependency resolve process: \n" + chain);
+                    }
                 }
                 if (processingResult instanceof ProcessingState.Ok ok) {
                     try {
@@ -232,7 +248,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 
     private ProcessingState parseNone(Element classElement) {
         if (classElement.getKind() != ElementKind.INTERFACE) {
-            return new ProcessingState.Failed(new ProcessingErrorException("@KoraApp is only applicable to interfaces", classElement));
+            return new ProcessingState.Failed(new ProcessingErrorException("@KoraApp is only applicable to interfaces", classElement), new ArrayDeque<>());
         }
         try {
             var type = (TypeElement) classElement;
@@ -269,7 +285,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 .toList();
             return new ProcessingState.None(type, allModules, sourceDescriptors, components.templates, rootSet);
         } catch (ProcessingErrorException e) {
-            return new ProcessingState.Failed(e);
+            return new ProcessingState.Failed(e, new ArrayDeque<>());
         }
     }
 

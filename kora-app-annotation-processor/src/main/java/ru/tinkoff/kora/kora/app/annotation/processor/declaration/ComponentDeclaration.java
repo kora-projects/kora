@@ -27,6 +27,8 @@ public sealed interface ComponentDeclaration {
 
     boolean isInterceptor();
 
+    String declarationString();
+
     record FromModuleComponent(TypeMirror type, ModuleDeclaration module, Set<String> tags, ExecutableElement method, List<TypeMirror> methodParameterTypes,
                                List<TypeMirror> typeVariables, boolean isInterceptor) implements ComponentDeclaration {
         @Override
@@ -38,6 +40,11 @@ public sealed interface ComponentDeclaration {
         public boolean isDefault() {
             return AnnotationUtils.findAnnotation(this.method, CommonClassNames.defaultComponent) != null;
         }
+
+        @Override
+        public String declarationString() {
+            return module.element().getQualifiedName() + "." + method.getSimpleName();
+        }
     }
 
     record AnnotatedComponent(TypeMirror type, TypeElement typeElement, Set<String> tags, ExecutableElement constructor, List<TypeMirror> methodParameterTypes,
@@ -45,6 +52,11 @@ public sealed interface ComponentDeclaration {
         @Override
         public Element source() {
             return this.constructor;
+        }
+
+        @Override
+        public String declarationString() {
+            return typeElement.getQualifiedName().toString();
         }
     }
 
@@ -67,6 +79,11 @@ public sealed interface ComponentDeclaration {
         public boolean isInterceptor() {
             return false;
         }
+
+        @Override
+        public String declarationString() {
+            return typeElement.getQualifiedName().toString();
+        }
     }
 
     record FromExtensionComponent(TypeMirror type, ExecutableElement sourceMethod, List<TypeMirror> methodParameterTypes) implements ComponentDeclaration {
@@ -83,6 +100,11 @@ public sealed interface ComponentDeclaration {
         @Override
         public boolean isInterceptor() {
             return false;
+        }
+
+        @Override
+        public String declarationString() {
+            return sourceMethod.getEnclosingElement().toString() + "." + sourceMethod.getSimpleName();
         }
     }
 
@@ -110,6 +132,11 @@ public sealed interface ComponentDeclaration {
         public boolean isInterceptor() {
             return false;
         }
+
+        @Override
+        public String declarationString() {
+            return "<Proxy>";
+        }
     }
 
     record OptionalComponent(TypeMirror type, Set<String> tags) implements ComponentDeclaration {
@@ -121,6 +148,11 @@ public sealed interface ComponentDeclaration {
         @Override
         public boolean isInterceptor() {
             return false;
+        }
+
+        @Override
+        public String declarationString() {
+            return "<EmptyOptional>";
         }
     }
 

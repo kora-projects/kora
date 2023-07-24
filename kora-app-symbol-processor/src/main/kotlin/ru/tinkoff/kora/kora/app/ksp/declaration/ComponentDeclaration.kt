@@ -15,6 +15,8 @@ sealed interface ComponentDeclaration {
     val source: KSDeclaration
     val tags: Set<String>
 
+    fun declarationString(): String
+
     fun isTemplate(): Boolean {
         for (argument in type.arguments) {
             if (argument.hasGenericVariable()) {
@@ -37,6 +39,8 @@ sealed interface ComponentDeclaration {
         val typeVariables: List<KSTypeArgument>
     ) : ComponentDeclaration {
         override val source get() = this.method
+        override fun declarationString() = module.element.qualifiedName?.asString() + "." + method.simpleName.asString()
+
         override fun isDefault(): Boolean {
             return method.findAnnotation(CommonClassNames.defaultComponent) != null
         }
@@ -51,6 +55,7 @@ sealed interface ComponentDeclaration {
         val typeVariables: List<KSTypeArgument>
     ) : ComponentDeclaration {
         override val source get() = this.constructor
+        override fun declarationString() = classDeclaration.qualifiedName?.asString().toString()
     }
 
     data class DiscoveredAsDependencyComponent(
@@ -60,6 +65,7 @@ sealed interface ComponentDeclaration {
         override val tags: Set<String>
     ) : ComponentDeclaration {
         override val source get() = this.constructor
+        override fun declarationString() = classDeclaration.qualifiedName?.asString().toString()
     }
 
     data class FromExtensionComponent(
@@ -70,6 +76,9 @@ sealed interface ComponentDeclaration {
         ) : ComponentDeclaration {
         override val source get() = this.sourceMethod
         override val tags get() = setOf<String>()
+        override fun declarationString(): String {
+            return sourceMethod.parentDeclaration?.qualifiedName?.asString().toString() + sourceMethod.simpleName.asString()
+        }
 
     }
 
@@ -81,6 +90,7 @@ sealed interface ComponentDeclaration {
     ) : ComponentDeclaration {
         override val source get() = this.classDeclaration
         override val tags get() = setOf(CommonClassNames.promisedProxy.canonicalName)
+        override fun declarationString() = "<Proxy>"
     }
 
 
@@ -89,6 +99,7 @@ sealed interface ComponentDeclaration {
         override val tags: Set<String>
     ) : ComponentDeclaration {
         override val source get() = type.declaration
+        override fun declarationString() = "Optional.empty"
     }
 
 
