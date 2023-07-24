@@ -4,21 +4,6 @@ plugins {
     id 'signing'
 }
 
-def visitLibrary(DependencyConstraintHandler dep, lib) {
-    if (lib instanceof Provider) {
-        dep.api(lib.get())
-    } else if (lib instanceof VersionCatalog) {
-        for (def sublib : lib.libraryAliases) {
-            visitLibrary(dep, lib.findLibrary(sublib).get())
-        }
-    } else if (lib instanceof org.gradle.api.internal.catalog.ExternalModuleDependencyFactory) {
-        for (def entry : lib.properties.entrySet()) {
-            visitLibrary(dep, entry.value)
-        }
-
-    }
-}
-
 dependencies {
     constraints {
         def addModule = { Project p ->
@@ -26,16 +11,11 @@ dependencies {
         }
 
         var added = new HashSet<String>()
-        project.rootProject.subprojects {
-            if (added.add(it.name)){
-                addModule(it)
-            }
-        }
-
-
-        for (def lib : libs.properties) {
-            if (lib.value != null) {
-                visitLibrary(it, lib.value)
+        project.rootProject.subprojects { Project p ->
+            if (p.parent.name == 'internal') return
+            if (!p.subprojects.isEmpty()) return
+            if (added.add(p.name)) {
+                addModule(p)
             }
         }
     }
@@ -126,7 +106,6 @@ publishing {
                         email = 'jakart89@gmail.com'
                     }
                 }
-
             }
         }
     }
