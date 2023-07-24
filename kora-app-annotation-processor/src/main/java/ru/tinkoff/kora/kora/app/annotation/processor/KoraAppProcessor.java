@@ -43,6 +43,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
     private TypeElement koraAppElement;
     private TypeElement moduleElement;
     private TypeElement koraSubmoduleElement;
+    private TypeElement componentElement;
     private ProcessingContext ctx;
 
     @Override
@@ -54,6 +55,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         }
         this.moduleElement = this.elements.getTypeElement(CommonClassNames.module.canonicalName());
         this.koraSubmoduleElement = this.elements.getTypeElement(CommonClassNames.koraSubmodule.canonicalName());
+        this.componentElement = this.elements.getTypeElement(CommonClassNames.component.canonicalName());
         this.initialized = true;
         this.ctx = new ProcessingContext(processingEnv);
         log.info("Starting kora processor");
@@ -173,14 +175,14 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
     }
 
     private void processGenerated(RoundEnvironment roundEnv) {
-        if(log.isInfoEnabled()) {
+        if (log.isInfoEnabled()) {
             final String generated = roundEnv.getElementsAnnotatedWith(Generated.class)
                 .stream()
                 .map(Object::toString)
                 .collect(Collectors.joining("\n"))
                 .indent(4);
 
-            if(!generated.isBlank()) {
+            if (!generated.isBlank()) {
                 log.info("Generated previous Round:\n{}", generated);
             } else {
                 log.info("Nothing was generated previous Round.");
@@ -189,9 +191,12 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
     }
 
     private boolean processComponents(RoundEnvironment roundEnv) {
-        var componentOfElements = roundEnv.getElementsAnnotatedWith(ru.tinkoff.kora.common.Component.class);
+        var componentOfElements = roundEnv.getElementsAnnotatedWith(this.componentElement);
         for (var componentElement : componentOfElements) {
             if (componentElement.getKind() != ElementKind.CLASS) {
+                continue;
+            }
+            if (componentElement.getModifiers().contains(Modifier.ABSTRACT)) {
                 continue;
             }
             var typeElement = (TypeElement) componentElement;
@@ -569,8 +574,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         for (var appPart : this.appParts) {
             var packageElement = this.elements.getPackageOf(appPart);
             var b = TypeSpec.interfaceBuilder(appPart.getSimpleName() + "SubmoduleImpl")
-                .addModifiers(Modifier.PUBLIC)
-                ;
+                .addModifiers(Modifier.PUBLIC);
             var componentNumber = 0;
             for (var component : this.components) {
                 b.addOriginatingElement(component);
