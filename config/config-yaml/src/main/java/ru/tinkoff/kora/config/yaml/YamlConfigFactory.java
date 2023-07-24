@@ -5,6 +5,7 @@ import org.snakeyaml.engine.v2.api.LoadSettings;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.ConfigValue;
 import ru.tinkoff.kora.config.common.ConfigValuePath;
+import ru.tinkoff.kora.config.common.factory.MapConfigFactory;
 import ru.tinkoff.kora.config.common.impl.SimpleConfig;
 import ru.tinkoff.kora.config.common.impl.SimpleConfigValueOrigin;
 import ru.tinkoff.kora.config.common.origin.ConfigOrigin;
@@ -22,6 +23,9 @@ public class YamlConfigFactory {
         var document = (Map<String, ?>) load.loadFromInputStream(is);
 
         var path = ConfigValuePath.root();
+        if (document == null) {
+            return MapConfigFactory.fromMap(origin, Map.of());
+        }
         var root = toObject(origin, path, document);
         return new SimpleConfig(origin, root);
     }
