@@ -17,7 +17,8 @@ import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 
 @KspExperimental
 class HttpClientKoraExtension : KoraExtension {
-    override fun getDependencyGenerator(resolver: Resolver, type: KSType): (() -> ExtensionResult)? {
+    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
+        if (tags.isNotEmpty()) return null
         val declaration = type.declaration
         if (declaration !is KSClassDeclaration || declaration.classKind != ClassKind.INTERFACE) {
             return null

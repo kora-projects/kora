@@ -21,6 +21,7 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.io.IOException;
 import java.util.Optional;
+import java.util.Set;
 
 @KoraApp
 public interface AppWithExtension {
@@ -67,7 +68,7 @@ public interface AppWithExtension {
 
         @Override
         @Nullable
-        public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror) {
+        public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tags) {
             if (this.types.isSameType(typeMirror, this.interfaceType)) {
                 return this::generateDependency;
             }

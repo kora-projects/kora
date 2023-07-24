@@ -9,10 +9,11 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import java.io.IOException;
+import java.util.Set;
 
 public interface KoraExtension {
     @Nullable
-    KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror);
+    KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tags);
 
     interface KoraExtensionDependencyGenerator {
         ExtensionResult generateDependency() throws IOException;

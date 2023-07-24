@@ -44,7 +44,8 @@ class R2dbcTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val 
         }
     )
 
-    override fun getDependencyGenerator(resolver: Resolver, type: KSType): (() -> ExtensionResult)? {
+    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
+        if (tags.isNotEmpty()) return null
         if (type.declaration.qualifiedName?.asString()?.equals(R2dbcTypes.rowMapper.canonicalName) == true) {
             return this.generateRowMapper(resolver, type)
         }

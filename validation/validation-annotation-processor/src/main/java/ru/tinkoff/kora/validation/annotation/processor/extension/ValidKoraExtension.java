@@ -21,6 +21,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
+import java.util.Set;
 
 public final class ValidKoraExtension implements KoraExtension {
 
@@ -40,7 +41,8 @@ public final class ValidKoraExtension implements KoraExtension {
 
     @Nullable
     @Override
-    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror) {
+    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tags) {
+        if (!tags.isEmpty()) return null;
         var erasure = types.erasure(typeMirror);
         if (!types.isSameType(erasure, validatorType)) {
             return null;

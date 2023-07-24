@@ -181,7 +181,7 @@ public class GraphBuilder {
                     stack.addAll(findInterceptors(ctx, processing, finalClassComponent));
                     continue frame;
                 }
-                var extension = ctx.extensions.findExtension(roundEnv, dependencyClaim.type());
+                var extension = ctx.extensions.findExtension(roundEnv, dependencyClaim.type(), dependencyClaim.tags());
                 if (extension != null) {
                     ExtensionResult extensionResult;
                     try {

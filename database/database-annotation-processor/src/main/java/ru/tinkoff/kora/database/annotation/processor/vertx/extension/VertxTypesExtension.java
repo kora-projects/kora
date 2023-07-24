@@ -27,6 +27,7 @@ import javax.lang.model.util.Types;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 //VertxRowSetMapper<List<T>>
 //VertxRowMapper<T>
@@ -64,7 +65,8 @@ public class VertxTypesExtension implements KoraExtension {
 
     @Nullable
     @Override
-    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror) {
+    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tags) {
+        if (!tags.isEmpty()) return null;
         if (!(typeMirror instanceof DeclaredType dt)) {
             return null;
         }

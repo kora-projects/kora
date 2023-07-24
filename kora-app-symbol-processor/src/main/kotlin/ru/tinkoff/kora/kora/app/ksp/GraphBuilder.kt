@@ -179,7 +179,7 @@ object GraphBuilder {
                     stack.addAll(findInterceptors(ctx, processing, finalClassComponent))
                     continue@frame
                 }
-                val extension = ctx.extensions.findExtension(ctx.resolver, dependencyClaim.type)
+                val extension = ctx.extensions.findExtension(ctx.resolver, dependencyClaim.type, dependencyClaim.tags)
                 if (extension != null) {
                     val extensionResult = extension()
                     if (extensionResult is ExtensionResult.RequiresCompilingResult) {

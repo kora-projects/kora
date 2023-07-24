@@ -46,7 +46,8 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
         }
     )
 
-    override fun getDependencyGenerator(resolver: Resolver, type: KSType): (() -> ExtensionResult)? {
+    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
+        if (tags.isNotEmpty()) return null
         if (type.declaration.qualifiedName?.asString()?.equals(CassandraTypes.resultSetMapper.canonicalName) == true) {
             return this.generateResultSetMapper(resolver, type)
         }
