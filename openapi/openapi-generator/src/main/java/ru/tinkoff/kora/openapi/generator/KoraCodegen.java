@@ -1243,16 +1243,22 @@ public class KoraCodegen extends DefaultCodegen {
                 }
             }
 
+            TagData tagData = null;
             for (var entry : this.tags.entrySet()) {
                 if (op.tags.stream().anyMatch(t -> t.getName().equals(entry.getKey()))) {
-                    var tagData = entry.getValue();
-                    if (tagData.httpClientTag != null) {
-                        httpClientAnnotationParams.put("httpClientTag", tagData.httpClientTag);
-                    }
-                    if (tagData.telemetryTag != null) {
-                        httpClientAnnotationParams.put("telemetryTag", tagData.telemetryTag);
-                    }
+                    tagData = entry.getValue();
                     break;
+                }
+            }
+            if (tagData == null) {
+                tagData = this.tags.get("*");
+            }
+            if (tagData != null) {
+                if (tagData.httpClientTag != null) {
+                    httpClientAnnotationParams.put("httpClientTag", tagData.httpClientTag);
+                }
+                if (tagData.telemetryTag != null) {
+                    httpClientAnnotationParams.put("telemetryTag", tagData.telemetryTag);
                 }
             }
 
