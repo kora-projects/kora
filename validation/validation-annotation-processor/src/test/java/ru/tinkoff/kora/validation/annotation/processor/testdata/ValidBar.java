@@ -14,8 +14,9 @@ public class ValidBar {
 
     @Nullable
     @NotBlank
+    @Size(max = 50)
     private String id;
-    @Size(min = 1, max = 5)
+    @Size(max = 5, min = 1)
     private List<Integer> codes;
     @Valid
     private List<ValidTaz> tazs;
