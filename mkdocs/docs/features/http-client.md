@@ -7,7 +7,7 @@ Kora предоставляет инструментарий для создан
 ### AsyncHttpClient
 
 ```groovy
-implemenation 'ru.tinkoff.kora:http-client-async'
+implementation 'ru.tinkoff.kora:http-client-async'
 ```
 
 Для работы через AsyncHttpClient необходимо добавить модуль `AsyncHttpClientModule` к своему `@KoraApp`.
@@ -15,7 +15,7 @@ implemenation 'ru.tinkoff.kora:http-client-async'
 ### Нативный JDK client
 
 ```groovy
-implemenation 'ru.tinkoff.kora:http-client-jdk'
+implementation 'ru.tinkoff.kora:http-client-jdk'
 ```
 
 Для работы через нативный JDK клиент необходимо добавить модуль `JdkHttpClientModule` к своему `@KoraApp`
