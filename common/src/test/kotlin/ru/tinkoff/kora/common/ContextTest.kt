@@ -5,6 +5,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.reactor.mono
 import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.assertDoesNotThrow
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 import reactor.core.publisher.Mono
 import ru.tinkoff.kora.common.util.ReactorContextHook
@@ -15,6 +17,10 @@ import java.util.concurrent.atomic.AtomicReference
 class ContextTest {
 
     private object TestKey : Context.KeyImmutable<String>()
+
+    private object TestKeyWithCopyNull : Context.Key<String>() {
+        override fun copy(obj: String?) = null
+    }
 
     @Test
     fun reactorToCoroutineContextInjection() {
@@ -109,4 +115,16 @@ class ContextTest {
         Assertions.assertEquals("foobar", res)
         Assertions.assertEquals("foobar", startContext.get(TestKey))
     }
+
+    @Test
+    fun contextForkWithNullEntryValueAfterCopyTest() {
+        val context = Context.current()
+        context.set(TestKeyWithCopyNull, "foo")
+
+        assertDoesNotThrow {
+            val forked = context.fork()
+            assertNull(forked.get(TestKeyWithCopyNull))
+        }
+    }
+
 }
