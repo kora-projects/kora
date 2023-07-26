@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 
 public class OpentelemetryKafkaConsumerTracer implements KafkaConsumerTracer {
     private final Tracer tracer;
@@ -83,9 +84,11 @@ public class OpentelemetryKafkaConsumerTracer implements KafkaConsumerTracer {
                 .setAttribute(SemanticAttributes.MESSAGING_SYSTEM, "kafka")
                 .setAttribute(SemanticAttributes.MESSAGING_SOURCE_NAME, record.topic())
                 .setAttribute(SemanticAttributes.MESSAGING_SOURCE_KIND, "topic")
-                .setAttribute(SemanticAttributes.MESSAGING_KAFKA_MESSAGE_KEY, record.key().toString())
                 .setAttribute(SemanticAttributes.MESSAGING_KAFKA_SOURCE_PARTITION, (long) record.partition())
                 .setAttribute(SemanticAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET, record.offset());
+            try {
+                recordSpanBuilder.setAttribute(SemanticAttributes.MESSAGING_KAFKA_MESSAGE_KEY, Objects.toString(record.key()));
+            } catch (Exception ignore) {}
             var recordSpan = recordSpanBuilder.startSpan();
             OpentelemetryContext.set(Context.current(), this.rootCtx.add(recordSpan));
 
