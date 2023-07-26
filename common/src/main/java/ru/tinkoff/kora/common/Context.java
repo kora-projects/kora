@@ -33,13 +33,12 @@ public class Context {
     public Context fork() {
         var values = new ConcurrentHashMap<Key<?>, Object>(capacity(this.values.size()));
         for (var entry : this.values.entrySet()) {
-            var value = entry.getValue();
-            if (value == null) {
+            var key = entry.getKey();
+            var copiedValue = copy(key, entry.getValue());
+            if (copiedValue == null) {
                 continue;
             }
-
-            var key = entry.getKey();
-            values.put(key, copy(key, value));
+            values.put(key, copiedValue);
         }
 
         return new Context(values);
