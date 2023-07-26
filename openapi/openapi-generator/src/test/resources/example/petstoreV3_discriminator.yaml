@@ -66,6 +66,10 @@ components:
             breed:
               type: string
               enum: [ Dingo, Husky, Retriever, Shepherd ]
+            int-breed:
+              description: "enum with int value"
+              type: int
+              enum: [ 5, 7, 8, 10 ]
     Cat: # "Cat" is a value for the pet_type property (the discriminator value)
       allOf: # Combines the main `Pet` schema with `Cat`-specific properties
         - $ref: '#/components/schemas/Pet'

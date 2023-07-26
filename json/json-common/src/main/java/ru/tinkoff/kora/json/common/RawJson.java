@@ -8,9 +8,20 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
-public record RawJson(@Nonnull byte[] value) implements SerializableString {
+public class RawJson implements SerializableString {
+    public final byte[] value;
+    private char[] valueChars;
+
     public RawJson(@Nonnull String value) {
-        this(value.getBytes(StandardCharsets.UTF_8));
+        this.value = value.getBytes(StandardCharsets.UTF_8);
+    }
+
+    public RawJson(@Nonnull byte[] value) {
+        this.value = value;
+    }
+
+    public byte[] value() {
+        return value;
     }
 
     @Override
@@ -60,7 +71,15 @@ public record RawJson(@Nonnull byte[] value) implements SerializableString {
 
     @Override
     public int appendUnquoted(char[] buffer, int offset) {
-        throw new UnsupportedOperationException();
+        if (valueChars == null) {
+            valueChars = new String(value).toCharArray();
+        }
+        final int length = valueChars.length;
+        if ((offset + length) > buffer.length) {
+            return -1;
+        }
+        System.arraycopy(valueChars, 0, buffer, offset, length);
+        return length;
     }
 
     @Override
