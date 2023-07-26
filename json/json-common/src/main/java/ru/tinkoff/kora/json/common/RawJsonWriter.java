@@ -21,6 +21,6 @@ public class RawJsonWriter implements JsonWriter<RawJson> {
         if (object == null) {
             return "null".getBytes(StandardCharsets.ISO_8859_1);
         }
-        return object.value();
+        return object.value;
     }
 }

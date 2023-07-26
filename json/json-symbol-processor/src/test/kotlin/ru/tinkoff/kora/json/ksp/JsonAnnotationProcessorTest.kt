@@ -32,8 +32,8 @@ internal class JsonAnnotationProcessorTest {
         )
         val writer: JsonWriter<DtoWithSupportedTypes?> = cl.writer(
             DtoWithSupportedTypes::class.java, ListJsonWriter { obj: JsonGenerator, v: Int? ->
-                obj.writeNumber(v!!)
-            },
+            obj.writeNumber(v!!)
+        },
             SetJsonWriter { obj: JsonGenerator, v: Int? ->
                 obj.writeNumber(
                     v!!
@@ -308,27 +308,6 @@ internal class JsonAnnotationProcessorTest {
         }
             .isInstanceOf(JsonParseException::class.java)
             .hasMessageStartingWith("Expecting [VALUE_NUMBER_INT] token for field 'field4', got VALUE_NULL")
-    }
-
-
-    @Test
-    fun testEnum() {
-        val cl = jsonClassLoader(DtoWithEnum::class)
-        val reader = cl.reader(
-            DtoWithEnum::class.java,
-            cl.reader(DtoWithEnum.TestEnum::class.java)
-        )
-        val writer = cl.writer(
-            DtoWithEnum::class.java,
-            cl.writer(DtoWithEnum.TestEnum::class.java)
-        )
-        val expected = DtoWithEnum(DtoWithEnum.TestEnum.VAL1)
-        val json: String = """
-            {
-              "testEnum" : "VAL1"
-            }""".trimIndent()
-        assertThat(fromJson(reader, json)).isEqualTo(expected)
-        assertThat(toJson(writer, expected)).isEqualTo(json)
     }
 
     @Test

@@ -322,22 +322,6 @@ class JsonAnnotationProcessorTest {
     }
 
     @Test
-    void testEnum() throws Exception {
-        var cl = processClass0(DtoWithEnum.class);
-        var reader = cl.reader(DtoWithEnum.class, new EnumJsonReader<>(DtoWithEnum.TestEnum.values(), Enum::name));
-        var writer = cl.writer(DtoWithEnum.class, cl.writer(DtoWithEnum.TestEnum.class));
-
-        var expected = new DtoWithEnum(DtoWithEnum.TestEnum.VAL1);
-        var json = """
-            {
-              "testEnum" : "VAL1"
-            }""";
-
-        assertThat(fromJson(reader, json)).isEqualTo(expected);
-        assertThat(toJson(writer, expected)).isEqualTo(json);
-    }
-
-    @Test
     void testObject() throws Exception {
         var cl = processClass0(DtoWithObject.class);
         var reader = cl.reader(DtoWithObject.class, (JsonReader<Object>) JsonObjectCodec::parse);

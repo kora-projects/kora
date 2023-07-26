@@ -1599,7 +1599,7 @@ public class KoraCodegen extends DefaultCodegen {
         }
 
         // number
-        if ("Integer".equals(datatype) || "Long".equals(datatype) ||
+        if ("Integer".equals(datatype) || "Int".equals(datatype) || "Long".equals(datatype) ||
             "Float".equals(datatype) || "Double".equals(datatype) || "BigDecimal".equals(datatype)) {
             String varName = "NUMBER_" + value;
             varName = varName.replaceAll("-", "MINUS_");
@@ -1619,7 +1619,7 @@ public class KoraCodegen extends DefaultCodegen {
 
     @Override
     public String toEnumValue(String value, String datatype) {
-        if ("Integer".equals(datatype) || "Double".equals(datatype)) {
+        if ("Integer".equals(datatype) || "Int".equals(datatype) || "Double".equals(datatype)) {
             return value;
         } else if ("Long".equals(datatype)) {
             // add l to number, e.g. 2048 => 2048l

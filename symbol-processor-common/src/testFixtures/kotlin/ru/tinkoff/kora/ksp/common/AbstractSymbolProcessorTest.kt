@@ -115,7 +115,7 @@ abstract class AbstractSymbolProcessorTest {
 
         fun compilationException(): Throwable {
             val errorMessages = mutableListOf<String>()
-            val indexOfFirst = messages.indexOfFirst { it.startsWith("e: [ksp]") }
+            val indexOfFirst = messages.indexOfFirst { it.startsWith("e: ") }
             if (indexOfFirst >= 0) {
                 for (i in indexOfFirst until messages.size) {
                     val message = messages[i]

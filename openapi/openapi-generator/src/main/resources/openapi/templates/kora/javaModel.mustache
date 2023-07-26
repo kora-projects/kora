@@ -18,7 +18,8 @@ import ru.tinkoff.kora.json.common.annotation.*;
 {{^isEnum}}
 
 /**
- * {{#description}}{{.}}{{/description}}{{^description}}{{classname}}{{/description}}
+ * {{#description}}{{.}}{{/description}}{{^description}}{{classname}}{{/description}}{{#allVars}}
+ * @param {{name}} {{#description}}{{.}}{{/description}}{{^description}}{{name}}{{/description}}{{/allVars}}
  */
 {{#discriminator}}
 @ru.tinkoff.kora.json.common.annotation.Json

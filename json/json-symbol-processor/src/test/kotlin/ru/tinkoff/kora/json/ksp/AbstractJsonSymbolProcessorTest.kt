@@ -28,8 +28,8 @@ abstract class AbstractJsonSymbolProcessorTest : AbstractSymbolProcessorTest() {
     protected open fun readerClass(forClass: String) = compileResult.classLoader.readerClass(testPackage(), forClass)
     protected open fun writerClass(forClass: String) = compileResult.classLoader.writerClass(testPackage(), forClass)
 
-    protected open fun reader(forClass: String, vararg params: Any?) = compileResult.classLoader.reader(testPackage(), forClass, params)
-    protected open fun writer(forClass: String, vararg params: Any?) = compileResult.classLoader.writer(testPackage(), forClass, params)
+    protected open fun reader(forClass: String, vararg params: Any?) = compileResult.classLoader.reader(testPackage(), forClass, *params)
+    protected open fun writer(forClass: String, vararg params: Any?) = compileResult.classLoader.writer(testPackage(), forClass, *params)
 
     protected open fun mapper(forClass: String) = compileResult.classLoader.mapper(testPackage(), forClass)
     protected open fun mapper(forClass: String, readerParams: List<*>, writerParams: List<*>) = compileResult.classLoader.mapper(testPackage(), forClass, readerParams, writerParams)
