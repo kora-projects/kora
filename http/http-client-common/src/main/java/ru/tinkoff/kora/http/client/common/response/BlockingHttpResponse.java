@@ -7,6 +7,7 @@ import ru.tinkoff.kora.http.client.common.HttpClientException;
 import ru.tinkoff.kora.http.client.common.UnknownHttpClientException;
 import ru.tinkoff.kora.http.common.HttpHeaders;
 
+import javax.annotation.Nullable;
 import java.io.InputStream;
 
 public interface BlockingHttpResponse extends AutoCloseable {
@@ -30,34 +31,50 @@ public interface BlockingHttpResponse extends AutoCloseable {
             }
             throw new UnknownHttpClientException(unwrapped);
         }
-        return new BlockingHttpResponse() {
-            @Override
-            public int code() {
-                return response.code();
-            }
+        return new DefaultBlockingResponseImpl(response);
+    }
 
-            @Override
-            public HttpHeaders headers() {
-                return response.headers();
-            }
+    class DefaultBlockingResponseImpl implements BlockingHttpResponse {
+        private final HttpClientResponse response;
+        @Nullable
+        private ByteBufferFluxInputStream body;
 
-            @Override
-            public ByteBufferFluxInputStream body() {
-                return new ByteBufferFluxInputStream(response.body());
-            }
+        public DefaultBlockingResponseImpl(HttpClientResponse response) {
+            this.response = response;
+        }
 
-            @Override
-            public void close() {
-                try {
-                    response.close().block();
-                } catch (Exception e) {
-                    var unwrapped = Exceptions.unwrap(e);
-                    if (unwrapped instanceof HttpClientException httpClientException) {
-                        throw httpClientException;
-                    }
-                    throw new UnknownHttpClientException(unwrapped);
+        @Override
+        public int code() {
+            return response.code();
+        }
+
+        @Override
+        public HttpHeaders headers() {
+            return response.headers();
+        }
+
+        @Override
+        public ByteBufferFluxInputStream body() {
+            var body = this.body;
+            if (body != null) {
+                return body;
+            }
+            body = new ByteBufferFluxInputStream(response.body());
+            this.body = body;
+            return body;
+        }
+
+        @Override
+        public void close() {
+            try {
+                response.close().block();
+            } catch (Exception e) {
+                var unwrapped = Exceptions.unwrap(e);
+                if (unwrapped instanceof HttpClientException httpClientException) {
+                    throw httpClientException;
                 }
+                throw new UnknownHttpClientException(unwrapped);
             }
-        };
+        }
     }
 }

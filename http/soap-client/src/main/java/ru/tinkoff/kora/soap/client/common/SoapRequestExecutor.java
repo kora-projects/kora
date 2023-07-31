@@ -48,27 +48,28 @@ public class SoapRequestExecutor {
             httpClientRequest.header("SOAPAction", this.soapAction);
         }
         try (var httpClientResponse = BlockingHttpResponse.from(this.httpClient.execute(httpClientRequest.build()))) {
-            var body = httpClientResponse.body();
             if (httpClientResponse.code() != 200 && httpClientResponse.code() != 500) {
                 telemetry.failure(new InvalidHttpCode(httpClientResponse.code()));
                 throw parseInvalidHttpCodeResponse(httpClientResponse);
             }
-            if (httpClientResponse.code() == 200) {
-                var contentType = httpClientResponse.headers().getFirst("content-type");
-                if (contentType != null && contentType.toLowerCase().startsWith("multipart")) {
-                    var result = readMultipart(contentType, body);
-                    telemetry.success(result);
-                    return result;
-                } else {
-                    var responseEnvelope = this.xmlTools.unmarshal(body);
-                    var result = new SoapResult.Success(responseEnvelope.getBody().getAny().get(0));
-                    telemetry.success(result);
-                    return result;
+            try (var body = httpClientResponse.body()) {
+                if (httpClientResponse.code() == 200) {
+                    var contentType = httpClientResponse.headers().getFirst("content-type");
+                    if (contentType != null && contentType.toLowerCase().startsWith("multipart")) {
+                        var result = readMultipart(contentType, body);
+                        telemetry.success(result);
+                        return result;
+                    } else {
+                        var responseEnvelope = this.xmlTools.unmarshal(body);
+                        var result = new SoapResult.Success(responseEnvelope.getBody().getAny().get(0));
+                        telemetry.success(result);
+                        return result;
+                    }
                 }
+                var result = readFailure(body);
+                telemetry.failure(new InternalServerError(result));
+                return result;
             }
-            var result = readFailure(body);
-            telemetry.failure(new InternalServerError(result));
-            return result;
         } catch (IOException | HttpClientException e) {
             telemetry.failure(new ProcessException(e));
             throw new SoapException(e);
@@ -132,8 +133,8 @@ public class SoapRequestExecutor {
     }
 
     private SoapException parseInvalidHttpCodeResponse(BlockingHttpResponse httpClientResponse) {
-        try {
-            var responseBody = httpClientResponse.body().readAllBytes();
+        try (var body = httpClientResponse.body()) {
+            var responseBody = body.readAllBytes();
             return new InvalidHttpResponseSoapException(httpClientResponse.code(), responseBody);
         } catch (IOException e) {
             return new SoapException(e);
