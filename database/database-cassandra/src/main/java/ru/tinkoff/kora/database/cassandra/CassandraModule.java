@@ -16,10 +16,6 @@ import java.util.Optional;
 
 public interface CassandraModule extends DataBaseModule {
 
-    default <T> CassandraResultSetMapper<T> cassandraSingleResultSetMapper(CassandraRowMapper<T> rowMapper) {
-        return CassandraResultSetMapper.singleResultSetMapper(rowMapper);
-    }
-
     default <T> CassandraResultSetMapper<Optional<T>> cassandraOptionalResultSetMapper(CassandraRowMapper<T> rowMapper) {
         return CassandraResultSetMapper.optionalResultSetMapper(rowMapper);
     }

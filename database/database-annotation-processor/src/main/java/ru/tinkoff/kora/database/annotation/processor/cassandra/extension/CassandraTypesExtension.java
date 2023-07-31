@@ -175,13 +175,23 @@ public class CassandraTypesExtension implements KoraExtension {
         if (!(listType instanceof DeclaredType dt)) {
             return null;
         }
-        var listTypeName = (ParameterizedTypeName) TypeName.get(listType);
-        if (listTypeName.rawType.canonicalName().equals("java.util.List")) {
+        if (CommonUtils.isList(listType)) {
+            var tn = (ParameterizedTypeName) TypeName.get(listType);
             var rowType = dt.getTypeArguments().get(0);
-            return this.listResultSetMapper(typeMirror, listTypeName, (DeclaredType) rowType);
-        } else {
-            return null;
+            return this.listResultSetMapper(typeMirror, tn, (DeclaredType) rowType);
         }
+        return () -> {
+            var singleResultSetMapper = this.elements.getTypeElement(CassandraTypes.RESULT_SET_MAPPER.canonicalName()).getEnclosedElements()
+                .stream()
+                .filter(e -> e.getKind() == ElementKind.METHOD && e.getModifiers().contains(Modifier.STATIC))
+                .map(ExecutableElement.class::cast)
+                .filter(m -> m.getSimpleName().contentEquals("singleResultSetMapper"))
+                .findFirst()
+                .orElseThrow();
+            var tp = (TypeVariable) singleResultSetMapper.getTypeParameters().get(0).asType();
+            var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, listType), singleResultSetMapper.asType());
+            return ExtensionResult.fromExecutable(singleResultSetMapper, executableType);
+        };
     }
 
     private KoraExtensionDependencyGenerator listResultSetMapper(DeclaredType typeMirror, ParameterizedTypeName listType, DeclaredType rowTypeMirror) {
