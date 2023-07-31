@@ -14,12 +14,12 @@ nav:
       - HTTP Server: features/http-server.md
       - HTTP Client: features/http-client.md
       - Кодогенерация из OpenAPI: features/openapi-codegen.md
+      - SOAP: features/soap.md
       - Kafka: features/kafka.md
-      - Database: features/database.md
-      - Cassandra: features/cassandra.md
+      - Database SQL: features/database.md
+      - Database Cassandra: features/cassandra.md
       - Json: features/json.md
-      - Soap: features/soap.md
-      - gRPC server: features/grpc-server.md
+      - gRPC Server: features/grpc-server.md
       - Tracing: features/tracing.md
       - Scheduling: features/scheduling.md
       - Resilient: features/resilient.md

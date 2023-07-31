@@ -3,7 +3,10 @@ package ru.tinkoff.kora.database.annotation.processor.r2dbc;
 import com.squareup.javapoet.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import ru.tinkoff.kora.annotation.processor.common.*;
+import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
+import ru.tinkoff.kora.annotation.processor.common.TagUtils;
+import ru.tinkoff.kora.annotation.processor.common.Visitors;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
@@ -26,6 +29,7 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
@@ -121,8 +125,10 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
         if (returnType.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
             b.addCode("return _flux.flatMap($T::getRowsUpdated).reduce(0L, Long::sum).map($T::new)", R2dbcTypes.RESULT, DbUtils.UPDATE_COUNT);
         } else if (resultFluxMapper != null) {
+            Objects.requireNonNull(resultMapperName, () -> "Illegal State occurred when expected to get result mapper, but got null in " + method.getEnclosingElement().getSimpleName() + "#" + method.getSimpleName());
             b.addCode("return $L.apply(_flux)\n", resultMapperName);
         } else if (rowMapper != null || !CommonUtils.isVoid(returnType)) {
+            Objects.requireNonNull(resultMapperName, () -> "Illegal State occurred when expected to get result mapper, but got null in " + method.getEnclosingElement().getSimpleName() + "#" + method.getSimpleName());
             b.addCode("return $L.apply(_flux)\n", resultMapperName);
         } else {
             b.addCode("return _flux.flatMap($T::getRowsUpdated).then()", R2dbcTypes.RESULT);

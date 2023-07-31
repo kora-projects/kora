@@ -58,10 +58,10 @@ public class CassandraTypesExtension implements KoraExtension {
                 }
             },
             fd -> CodeBlock.builder()
-                .beginControlFlow("if (_row.isNull($S))", fd.fieldName())
+                .beginControlFlow("if (_row.isNull(_idx_$L))", fd.fieldName())
                 .add(fd.nullable()
                     ? CodeBlock.of("$N = null;\n", fd.fieldName())
-                    : CodeBlock.of("throw new $T($S);\n", NullPointerException.class, "Result field %s is not nullable but row has null".formatted(fd.fieldName()))
+                    : CodeBlock.of("throw new $T($S);\n", NullPointerException.class, "Result field %s is not nullable but row %s has null".formatted(fd.fieldName(), fd.columnName()))
                 )
                 .endControlFlow()
                 .build()

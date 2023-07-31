@@ -196,6 +196,9 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             var result = CommonUtils.isNullable(method) || method.getReturnType().getKind().isPrimitive() || isMono
                 ? CodeBlock.of("_result")
                 : CodeBlock.of("$T.requireNonNull(_result)", Objects.class);
+
+            Objects.requireNonNull(resultMapperName, () -> "Illegal State occurred when expected to get result mapper, but got null in " + method.getEnclosingElement().getSimpleName() + "#" + method.getSimpleName());
+
             b.addCode("try (var _rs = _stmt.executeQuery()) {$>\n")
                 .addCode("var _result = $L.apply(_rs);\n", resultMapperName)
                 .addCode("_telemetry.close(null);\n")

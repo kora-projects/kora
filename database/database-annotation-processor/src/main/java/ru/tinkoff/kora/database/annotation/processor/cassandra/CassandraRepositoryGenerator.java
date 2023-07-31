@@ -3,7 +3,10 @@ package ru.tinkoff.kora.database.annotation.processor.cassandra;
 import com.squareup.javapoet.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import ru.tinkoff.kora.annotation.processor.common.*;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
+import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
+import ru.tinkoff.kora.annotation.processor.common.Visitors;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
 import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
@@ -23,10 +26,7 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 public class CassandraRepositoryGenerator implements RepositoryGenerator {
     private final TypeMirror repositoryInterface;
@@ -123,6 +123,7 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
             if (CommonUtils.isVoid(((DeclaredType) returnType).getTypeArguments().get(0))) {
                 b.addStatement("return $T.from(_rrs).then()", CommonClassNames.flux);
             } else {
+                Objects.requireNonNull(resultMapperName, () -> "Illegal State occurred when expected to get result mapper, but got null in " + method.getEnclosingElement().getSimpleName() + "#" + method.getSimpleName());
                 b.addStatement("return $N.apply(_rrs)", resultMapperName);
             }
             b.endControlFlow().addCode(")\n");// flatMap Statement
@@ -140,6 +141,7 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
             b.beginControlFlow("try");
             b.addStatement("var _rs = _session.execute(_s)");
             if (returnType.getKind() != TypeKind.VOID) {
+                Objects.requireNonNull(resultMapperName, () -> "Illegal State occurred when expected to get result mapper, but got null in " + method.getEnclosingElement().getSimpleName() + "#" + method.getSimpleName());
                 b.addStatement("var _result = $N.apply(_rs)", resultMapperName);
             }
             b.addStatement("_telemetry.close(null)");
