@@ -21,8 +21,8 @@ import javax.annotation.Nullable;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.http.common.annotation.InterceptWith;
 import ru.tinkoff.kora.http.server.common.HttpServerInterceptor;
-{{/hasAuthMethods}}{{#vendorExtensions.enableValidation}}
-import ru.tinkoff.kora.http.common.annotation.InterceptWith;
+{{/hasAuthMethods}}{{#vendorExtensions.enableValidation}}{{^hasAuthMethods}}
+import ru.tinkoff.kora.http.common.annotation.InterceptWith;{{/hasAuthMethods}}
 import ru.tinkoff.kora.validation.common.annotation.Validate;
 import ru.tinkoff.kora.validation.common.annotation.Valid;
 import ru.tinkoff.kora.validation.common.annotation.Size;

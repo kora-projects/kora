@@ -17,17 +17,29 @@ import ru.tinkoff.kora.json.common.annotation.*;
 {{/isEnum}}
 {{^isEnum}}
 
+{{#discriminator}}
+/**
+ * {{#description}}{{.}}{{/description}}{{^description}}{{classname}}{{/description}}
+ */
+ @ru.tinkoff.kora.json.common.annotation.Json
+@JsonDiscriminatorField("{{{propertyBaseName}}}")
+public sealed interface {{classname}} permits {{#vendorExtensions.x-unique-mapped-models}}{{.}}{{^-last}}, {{/-last}}{{/vendorExtensions.x-unique-mapped-models}} {
+{{#allVars}}{{^isDiscriminator}}
+/* {{{.}}} */
+  /**
+   * {{#description}}{{.}}{{/description}}{{^description}}{{name}}{{/description}}
+   */
+  {{{datatypeWithEnum}}} {{name}}();
+
+  {{{classname}}} with{{#lambda.titlecase}}{{name}}{{/lambda.titlecase}}({{^required}}@javax.annotation.Nullable{{/required}} {{{datatypeWithEnum}}} {{name}});
+{{/isDiscriminator}}{{/allVars}}
+}
+{{/discriminator}}
+{{^discriminator}}
 /**
  * {{#description}}{{.}}{{/description}}{{^description}}{{classname}}{{/description}}{{#allVars}}
  * @param {{name}} {{#description}}{{.}}{{/description}}{{^description}}{{name}}{{/description}}{{/allVars}}
  */
-{{#discriminator}}
-@ru.tinkoff.kora.json.common.annotation.Json
-@JsonDiscriminatorField("{{{propertyBaseName}}}")
-public sealed interface {{classname}} permits {{#vendorExtensions.x-unique-mapped-models}}{{.}}{{^-last}}, {{/-last}}{{/vendorExtensions.x-unique-mapped-models}} {
-}
-{{/discriminator}}
-{{^discriminator}}
 @ru.tinkoff.kora.json.common.annotation.JsonWriter
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
 {{#vendorExtensions.x-discriminator-value}}@JsonDiscriminatorValue({{{vendorExtensions.x-discriminator-value}}}){{/vendorExtensions.x-discriminator-value}}
@@ -81,12 +93,12 @@ public static String schema = """
 
 {{#allVars}}
 
-  public {{{classname}}} with{{#lambda.titlecase}}{{name}}{{/lambda.titlecase}}({{^required}}@javax.annotation.Nullable{{/required}} {{{datatypeWithEnum}}} {{name}}) {
+{{#isOverridden}}  @Override
+{{/isOverridden}}  public {{{classname}}} with{{#lambda.titlecase}}{{name}}{{/lambda.titlecase}}({{^required}}@javax.annotation.Nullable{{/required}} {{{datatypeWithEnum}}} {{name}}) {
     if (this.{{name}} == {{name}}) return this;
-    return new {{{classname}}}(
-    {{#allVars}}
-      {{name}}{{^-last}},{{/-last}}
-    {{/allVars}});
+    return new {{{classname}}}({{#allVars}}
+      {{name}}{{^-last}},{{/-last}}{{/allVars}}
+    );
   }
 
 {{/allVars}}

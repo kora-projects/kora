@@ -1415,6 +1415,17 @@ public class KoraCodegen extends DefaultCodegen {
                                 break;
                             }
                         }
+                        if (!validation) {
+                            var model = allModels.stream().map(mm -> mm.get("model")).map(CodegenModel.class::cast).filter(m -> m.name.equals(p.dataType)).findFirst().get();
+                            for (var child : Objects.requireNonNullElse(model.children, List.<CodegenModel>of())) {
+                                for (var variable : child.vars) {
+                                    if (variable.hasValidation) {
+                                        validation = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                     } else if (p.isArray) {
                         if (p.hasValidation) {
                             validation = true;
