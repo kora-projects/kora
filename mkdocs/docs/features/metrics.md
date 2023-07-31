@@ -19,7 +19,7 @@ public interface ApplicationModules extends MetricsModule { }
 
 ## Соглашения об именовании и составе метрик
 
-Мы следуем и вам рекомендуем использовать нотацию, описанную в спецификации OpenTelemetry.
+Мы следуем и вам рекомендуем использовать нотацию, описанную в [спецификации OpenTelemetry](https://opentelemetry.io/docs/specs/otel/metrics/).
 
 ## Модификация конфигурации
 
