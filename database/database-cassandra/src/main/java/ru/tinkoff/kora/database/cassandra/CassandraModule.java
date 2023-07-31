@@ -9,8 +9,7 @@ import ru.tinkoff.kora.database.common.DataBaseModule;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.*;
 import java.util.List;
 import java.util.Optional;
 
@@ -74,6 +73,12 @@ public interface CassandraModule extends DataBaseModule {
             : row.getByteBuffer(0);
     }
 
+    default CassandraRowMapper<LocalTime> localTimeCassandraRowMapper() {
+        return row -> row.isNull(0)
+            ? null
+            : row.getLocalTime(0);
+    }
+
     default CassandraRowMapper<LocalDate> localDateCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
@@ -84,6 +89,18 @@ public interface CassandraModule extends DataBaseModule {
         return row -> row.isNull(0)
             ? null
             : row.get(0, LocalDateTime.class);
+    }
+
+    default CassandraRowMapper<ZonedDateTime> zonedDateTimeCassandraRowMapper() {
+        return row -> row.isNull(0)
+            ? null
+            : row.get(0, ZonedDateTime.class);
+    }
+
+    default CassandraRowMapper<Instant> instantCassandraRowMapper() {
+        return row -> row.isNull(0)
+            ? null
+            : row.getInstant(0);
     }
 
     default CassandraReactiveResultSetMapper<Void, Mono<Void>> voidMonoCassandraReactiveResultSetMapper() {

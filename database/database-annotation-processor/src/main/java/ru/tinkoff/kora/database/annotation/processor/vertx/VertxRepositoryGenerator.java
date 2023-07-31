@@ -114,6 +114,7 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
         } else if (returnType.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
             resultMapper = CodeBlock.of("$T::extractUpdateCount", VertxTypes.ROW_SET_MAPPER);
         } else {
+            Objects.requireNonNull(resultMapperName, () -> "Illegal State occurred when expected to get result mapper, but got null in " + method.getEnclosingElement().getSimpleName() + "#" + method.getSimpleName());
             resultMapper = CodeBlock.of("$N", resultMapperName);
         }
         if (returnType.getKind() != TypeKind.VOID) {

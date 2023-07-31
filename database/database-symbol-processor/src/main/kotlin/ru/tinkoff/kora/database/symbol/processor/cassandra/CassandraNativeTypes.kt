@@ -5,9 +5,7 @@ import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.asTypeName
 import java.math.BigDecimal
 import java.nio.ByteBuffer
-import java.time.Instant
-import java.time.LocalDate
-import java.time.LocalDateTime
+import java.time.*
 
 object CassandraNativeTypes {
     private val nativeTypes = listOf(
@@ -110,6 +108,26 @@ object CassandraNativeTypes {
             Instant::class.asTypeName().copy(true),
             { rsName, i -> CodeBlock.of("%N.getInstant(%L)", rsName, i) },
             { stmt, variableName, idx -> CodeBlock.of("%N.setInstant(%L, %L)", stmt, idx, variableName) },
+        ),
+        CassandraNativeType.of(
+            LocalTime::class.asTypeName(),
+            { rsName, i -> CodeBlock.of("%N.getLocalTime(%L)", rsName, i) },
+            { stmt, variableName, idx -> CodeBlock.of("%N.setLocalTime(%L, %L)", stmt, idx, variableName) },
+        ),
+        CassandraNativeType.of(
+            LocalTime::class.asTypeName().copy(true),
+            { rsName, i -> CodeBlock.of("%N.getLocalTime(%L)", rsName, i) },
+            { stmt, variableName, idx -> CodeBlock.of("%N.setLocalTime(%L, %L)", stmt, idx, variableName) },
+        ),
+        CassandraNativeType.of(
+            ZonedDateTime::class.asTypeName(),
+            { rsName, i -> CodeBlock.of("%N.get(%L, %T::class.java)", rsName, i) },
+            { stmt, variableName, idx -> CodeBlock.of("%N.setLocalTime(%L, %L, %T::class.java)", stmt, idx, variableName, ZonedDateTime::class) },
+        ),
+        CassandraNativeType.of(
+            ZonedDateTime::class.asTypeName().copy(true),
+            { rsName, i -> CodeBlock.of("%N.get(%L, %T::class.java)", rsName, i) },
+            { stmt, variableName, idx -> CodeBlock.of("%N.setLocalTime(%L, %L, %T::class.java)", stmt, idx, variableName, ZonedDateTime::class) },
         ),
     )
 
