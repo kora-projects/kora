@@ -52,7 +52,7 @@ public abstract class AbstractJob implements Lifecycle {
             this.command.run();
             telemetryCtx.close(null);
         } catch (Exception e) {
-            logger.warn("Uncaught exception while running job: {}#{}", this.telemetry.jobClass().getCanonicalName(), this.telemetry.jobMethod());
+            logger.warn("Uncaught exception while running job: {}#{}", this.telemetry.jobClass().getCanonicalName(), this.telemetry.jobMethod(), e);
             telemetryCtx.close(e);
         }
     }
