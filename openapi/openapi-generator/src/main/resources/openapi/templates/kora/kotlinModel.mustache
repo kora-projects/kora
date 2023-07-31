@@ -19,16 +19,26 @@ import ru.tinkoff.kora.json.common.EnumJsonWriter
 {{/isEnum}}
 {{^isEnum}}
 
+{{#discriminator}}
+/**
+ * {{#description}}{{.}}{{/description}}{{^description}}{{classname}}{{/description}}
+ */
+@ru.tinkoff.kora.json.common.annotation.Json
+@ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorField("{{{propertyBaseName}}}")
+sealed interface {{classname}} {
+{{#allVars}}{{^isDiscriminator}}
+  /**
+   * {{#description}}{{.}}{{/description}}{{^description}}name{{/description}}
+   */
+  val {{name}}: {{{datatypeWithEnum}}}{{^required}}?{{/required}}
+{{/isDiscriminator}}{{/allVars}}
+}
+{{/discriminator}}
+{{^discriminator}}
 /**
  * {{#description}}{{.}}{{/description}}{{^description}}{{classname}}{{/description}}{{#allVars}}
  * @param {{name}} {{#description}}{{.}}{{/description}}{{^description}}{{name}}{{/description}}{{/allVars}}
  */
-{{#discriminator}}
-@ru.tinkoff.kora.json.common.annotation.Json
-@ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorField("{{{propertyBaseName}}}")
-sealed interface {{classname}}
-{{/discriminator}}
-{{^discriminator}}
 @ru.tinkoff.kora.json.common.annotation.JsonWriter
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
 {{#vendorExtensions.x-discriminator-value}}@ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorValue(value = {{{vendorExtensions.x-discriminator-value}}}){{/vendorExtensions.x-discriminator-value}}
@@ -41,7 +51,7 @@ sealed interface {{classname}}
   {{/vendorExtensions.x-has-min-max-length}}{{#vendorExtensions.x-has-pattern}}@ru.tinkoff.kora.validation.common.annotation.Pattern("{{{pattern}}}")
   {{/vendorExtensions.x-has-pattern}}{{#vendorExtensions.x-has-valid-model}}@ru.tinkoff.kora.validation.common.annotation.Valid
   {{/vendorExtensions.x-has-valid-model}}
-  val {{name}}: {{{datatypeWithEnum}}}{{^required}}?{{/required}}{{^-last}},{{/-last}}
+{{#isOverridden}}override {{/isOverridden}}val {{name}}: {{{datatypeWithEnum}}}{{^required}}?{{/required}}{{^-last}},{{/-last}}
 
 {{/allVars}}){{#vendorExtensions.x-discriminator-value}} : {{parent}} {{/vendorExtensions.x-discriminator-value}}{
 
