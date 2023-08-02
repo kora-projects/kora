@@ -5,6 +5,7 @@ import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
+import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.compile.ByteArrayJavaFileObject;
 import ru.tinkoff.kora.annotation.processor.common.compile.KoraCompileTestJavaFileManager;
 import ru.tinkoff.kora.application.graph.*;
@@ -16,11 +17,13 @@ import javax.tools.JavaFileObject;
 import javax.tools.ToolProvider;
 import java.io.IOException;
 import java.io.StringWriter;
-import java.lang.reflect.Method;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
@@ -125,6 +128,7 @@ public abstract class AbstractAnnotationProcessorTest {
             throw new RuntimeException(e);
         }
     }
+
     public Object invoke(Object target, String name, Object... params) {
         try {
             for (var method : target.getClass().getMethods()) {
@@ -225,6 +229,44 @@ public abstract class AbstractAnnotationProcessorTest {
         @Override
         public <T> PromiseOf<T> promiseOf(Node<T> node) {
             return graph.promiseOf(node);
+        }
+    }
+
+    protected static class TestObject {
+        public final Class<?> objectClass;
+        private final Object object;
+
+        public TestObject(Class<?> objectClass, Object object) {
+            this.objectClass = objectClass;
+            this.object = object;
+        }
+
+        @SuppressWarnings("unchecked")
+        public <T> T invoke(String methodName, Object... args) {
+            for (var method : objectClass.getDeclaredMethods()) {
+                if (method.getName().equals(methodName) && method.getParameters().length == args.length) {
+                    method.setAccessible(true);
+                    try {
+                        var result = method.invoke(this.object, args);
+                        if (result instanceof Mono<?> mono) {
+                            return (T) mono.block();
+                        }
+                        if (result instanceof Future<?> future) {
+                            return (T) future.get();
+                        }
+                        return (T) result;
+                    } catch (InvocationTargetException e) {
+                        if (e.getTargetException() instanceof RuntimeException re) {
+                            throw re;
+                        } else {
+                            throw new RuntimeException(e);
+                        }
+                    } catch (IllegalAccessException | ExecutionException | InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+            throw new IllegalArgumentException();
         }
     }
 }

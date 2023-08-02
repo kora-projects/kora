@@ -229,7 +229,7 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
         verify(executor.preparedStatement).setLong(1, 42L);
         verify(mapper).set(any(), eq(2), eq("test-value"));
 
-        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        var mapperConstructorParameter = repository.objectClass.getConstructors()[0].getParameters()[1];
         assertThat(mapperConstructorParameter.getType()).isEqualTo(JdbcParameterColumnMapper.class);
         var tag = mapperConstructorParameter.getAnnotation(Tag.class);
         assertThat(tag).isNotNull();
@@ -385,7 +385,7 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
 
         verify(mapper).set(any(), eq(1), eq("test-value"));
 
-        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        var mapperConstructorParameter = repository.objectClass.getConstructors()[0].getParameters()[1];
         assertThat(mapperConstructorParameter.getType()).isEqualTo(JdbcParameterColumnMapper.class);
         var tag = mapperConstructorParameter.getAnnotation(Tag.class);
         assertThat(tag).isNotNull();
@@ -405,7 +405,7 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
             public record TestRecord(String value){}
             """);
 
-        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        var mapperConstructorParameter = repository.objectClass.getConstructors()[0].getParameters()[1];
         assertThat(mapperConstructorParameter.getType()).isEqualTo(JdbcParameterColumnMapper.class);
         var tag = mapperConstructorParameter.getAnnotation(Tag.class);
         assertThat(tag).isNotNull();

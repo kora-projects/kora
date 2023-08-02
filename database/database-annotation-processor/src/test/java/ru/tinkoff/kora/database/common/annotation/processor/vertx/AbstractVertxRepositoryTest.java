@@ -27,7 +27,7 @@ public abstract class AbstractVertxRepositoryTest extends AbstractRepositoryTest
             """;
     }
 
-    protected TestRepository compileVertx(List<?> arguments, @Language("java") String... sources) {
+    protected TestObject compileVertx(List<?> arguments, @Language("java") String... sources) {
         return this.compile(this.executor, arguments, sources);
     }
 

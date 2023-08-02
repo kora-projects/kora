@@ -23,7 +23,7 @@ public abstract class AbstractJdbcRepositoryTest extends AbstractRepositoryTest 
             """;
     }
 
-    protected TestRepository compileJdbc(List<?> arguments, @Language("java") String... sources) {
+    protected TestObject compileJdbc(List<?> arguments, @Language("java") String... sources) {
         return this.compile(this.executor, arguments, sources);
     }
 }

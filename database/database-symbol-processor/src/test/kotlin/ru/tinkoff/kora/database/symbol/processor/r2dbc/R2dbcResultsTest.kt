@@ -360,7 +360,7 @@ class R2dbcResultsTest : AbstractR2dbcTest() {
         verify(mapper).apply(any())
 
 
-        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        val mapperConstructorParameter = repository.objectClass.constructors.first().parameters[1]
         assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(R2dbcResultFluxMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         assertThat(tag).isNotNull()

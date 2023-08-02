@@ -422,7 +422,7 @@ public class R2dbcResultsTest extends AbstractR2dbcRepositoryTest {
         verify(mapper).apply(any());
 
 
-        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        var mapperConstructorParameter = repository.objectClass.getConstructors()[0].getParameters()[1];
         assertThat(mapperConstructorParameter.getType()).isEqualTo(R2dbcResultFluxMapper.class);
         var tag = mapperConstructorParameter.getAnnotation(Tag.class);
         assertThat(tag).isNotNull();

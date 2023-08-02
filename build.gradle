@@ -346,6 +346,9 @@ tasks.register("other-test") {
             if (p.depth == 2) {
                 name = p.parent.name + ":" + name
             }
+            if (p.depth == 3) {
+                name = p.parent.parent.name + ":" + p.parent.name + ":" + name
+            }
             dependsOn(":" + name + ":test")
         })
 }

@@ -36,6 +36,8 @@ include(
     'opentelemetry:opentelemetry-tracing-exporter-grpc',
     'logging:logging-common',
     'logging:logging-logback',
+    'logging:declarative-logging:declarative-logging-annotation-processor',
+    'logging:declarative-logging:declarative-logging-symbol-processor',
     'annotation-processors',
     'symbol-processors',
     'grpc',

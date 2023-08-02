@@ -18,5 +18,8 @@ dependencies {
     testFixturesImplementation libs.kotlin.annotation.processing
     testFixturesImplementation libs.ksp
     testFixturesImplementation libs.ksp.api
+    testFixturesImplementation libs.kotlin.reflect
+    testFixturesImplementation libs.kotlin.coroutines.reactor
+    testFixturesImplementation libs.kotlin.coroutines.jdk8
 
 }

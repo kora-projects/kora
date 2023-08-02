@@ -333,7 +333,7 @@ class VertxResultsTest : AbstractVertxRepositoryTest() {
         verify(mapper).apply(executor.rowSet)
 
 
-        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        val mapperConstructorParameter = repository.objectClass.constructors.first().parameters[1]
         assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(VertxRowSetMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         assertThat(tag).isNotNull()

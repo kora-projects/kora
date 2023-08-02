@@ -17,7 +17,6 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.database.cassandra.mapper.parameter.CassandraParameterColumnMapper
-import java.util.List
 import kotlin.reflect.full.findAnnotations
 import kotlin.reflect.jvm.jvmErasure
 
@@ -173,7 +172,7 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
         val columnDefinition = Mockito.mock(ColumnDefinition::class.java)
         whenever(columnDefinition.name).thenReturn(CqlIdentifier.fromCql("test"))
         val columnDefinitions = DefaultColumnDefinitions.valueOf(
-            List.of(
+            listOf(
                 columnDefinition, columnDefinition
             )
         )
@@ -340,7 +339,7 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
         verify(mapper).apply(ArgumentMatchers.same(executor.boundStatementBuilder), ArgumentMatchers.eq(0), ArgumentMatchers.eq(42))
         verify(executor.mockSession).execute(any<Statement<*>>())
 
-        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        val mapperConstructorParameter = repository.objectClass.constructors.first().parameters[1]
         assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(CassandraParameterColumnMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         assertThat(tag).isNotNull()
@@ -362,7 +361,7 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
             """.trimIndent()
         )
 
-        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        val mapperConstructorParameter = repository.objectClass.constructors.first().parameters[1]
         assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(CassandraParameterColumnMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         assertThat(tag).isNotNull()
@@ -388,7 +387,7 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
         verify(executor.boundStatementBuilder).setLong(0, 42)
         verify(mapper).apply(ArgumentMatchers.same(executor.boundStatementBuilder), ArgumentMatchers.eq(1), ArgumentMatchers.eq("test-value"))
 
-        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        val mapperConstructorParameter = repository.objectClass.constructors.first().parameters[1]
         assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(CassandraParameterColumnMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         assertThat(tag).isNotNull()

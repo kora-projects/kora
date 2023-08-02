@@ -1,6 +1,8 @@
 package ru.tinkoff.kora.aop.symbol.processor
 
-import com.google.devtools.ksp.*
+import com.google.devtools.ksp.isConstructor
+import com.google.devtools.ksp.isProtected
+import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
@@ -9,14 +11,12 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
-import ru.tinkoff.kora.common.Component
 import ru.tinkoff.kora.ksp.common.*
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import kotlin.reflect.KClass
 
-@KspExperimental
 class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: Resolver) {
 
     private class TypeFieldFactory(private val resolver: Resolver) : KoraAspect.FieldFactory {
@@ -227,8 +227,8 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
 
         typeBuilder.generated(generatedClasses)
 
-        if (classDeclaration.isAnnotationPresent(Component::class)) {
-            typeBuilder.addAnnotation(Component::class)
+        if (classDeclaration.isAnnotationPresent(CommonClassNames.component)) {
+            typeBuilder.addAnnotation(CommonClassNames.component)
         }
 
         val constructorBuilder = FunSpec.constructorBuilder()

@@ -291,7 +291,7 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
 
         verify(mapper).set(ArgumentMatchers.same(executor.preparedStatement), ArgumentMatchers.eq(1), ArgumentMatchers.eq(42))
 
-        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        val mapperConstructorParameter = repository.objectClass.constructors.first().parameters[1]
         Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(JdbcParameterColumnMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         Assertions.assertThat(tag).isNotNull()
@@ -313,7 +313,7 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             """.trimIndent()
         )
 
-        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        val mapperConstructorParameter = repository.objectClass.constructors.first().parameters[1]
         Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(JdbcParameterColumnMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         Assertions.assertThat(tag).isNotNull()
@@ -339,7 +339,7 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
         verify(executor.preparedStatement).setLong(1, 42)
         verify(mapper).set(ArgumentMatchers.same(executor.preparedStatement), ArgumentMatchers.eq(2), ArgumentMatchers.eq("test-value"))
 
-        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        val mapperConstructorParameter = repository.objectClass.constructors.first().parameters[1]
         Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(JdbcParameterColumnMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         Assertions.assertThat(tag).isNotNull()

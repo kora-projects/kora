@@ -1,0 +1,13 @@
+apply from: "${project.rootDir}/kotlin-plugin.gradle"
+
+dependencies {
+    implementation project(':symbol-processor-common')
+    implementation project(':aop:aop-symbol-processor')
+
+    testImplementation project(':logging:logging-logback')
+    testImplementation testFixtures(project(':symbol-processor-common'))
+
+    testImplementation(libs.kotlin.coroutines.reactor)
+}
+
+apply from: "${project.rootDir}/in-test-generated.gradle"

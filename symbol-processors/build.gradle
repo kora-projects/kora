@@ -15,4 +15,5 @@ dependencies {
     api project(':cache:cache-symbol-processor')
     api project(':validation:validation-symbol-processor')
     api project(':mapstruct:mapstruct-ksp-extension')
+    api project(':logging:declarative-logging:declarative-logging-symbol-processor')
 }

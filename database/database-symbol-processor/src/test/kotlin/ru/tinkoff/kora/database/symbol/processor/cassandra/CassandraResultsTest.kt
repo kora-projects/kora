@@ -196,7 +196,7 @@ class CassandraResultsTest : AbstractCassandraRepositoryTest() {
         verify(executor.mockSession).execute(ArgumentMatchers.any(Statement::class.java))
         verify(mapper).apply(executor.resultSet)
 
-        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        val mapperConstructorParameter = repository.objectClass.constructors.first().parameters[1]
         assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(CassandraResultSetMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         assertThat(tag).isNotNull()
