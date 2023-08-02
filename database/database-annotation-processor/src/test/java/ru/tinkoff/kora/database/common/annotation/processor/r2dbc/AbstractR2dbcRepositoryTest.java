@@ -21,7 +21,7 @@ public abstract class AbstractR2dbcRepositoryTest extends AbstractRepositoryTest
             """;
     }
 
-    protected TestRepository compileR2dbc(List<?> arguments, @Language("java") String... sources) {
+    protected TestObject compileR2dbc(List<?> arguments, @Language("java") String... sources) {
         return this.compile(this.executor, arguments, sources);
     }
 }

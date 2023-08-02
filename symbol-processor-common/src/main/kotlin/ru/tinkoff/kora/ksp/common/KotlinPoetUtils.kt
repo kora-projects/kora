@@ -18,6 +18,12 @@ object KotlinPoetUtils {
         return this.endControlFlow()
     }
 
+    inline fun CodeBlock.Builder.nextControlFlow(controlFlow: String, vararg args: Any, callback: CodeBlock.Builder.() -> Unit): CodeBlock.Builder {
+        this.nextControlFlow(controlFlow, args)
+        callback(this)
+        return this
+    }
+
     fun List<KSType>.writeTagValue(name: String? = null): CodeBlock {
         val c = CodeBlock.builder()
         if (name != null) {

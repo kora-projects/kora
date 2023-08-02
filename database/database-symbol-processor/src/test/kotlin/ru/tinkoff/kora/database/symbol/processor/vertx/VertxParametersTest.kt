@@ -279,7 +279,7 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
 
         Mockito.verify(mapper).apply(ArgumentMatchers.eq(42))
 
-        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        val mapperConstructorParameter = repository.objectClass.constructors.first().parameters[1]
         Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(VertxParameterColumnMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         Assertions.assertThat(tag).isNotNull()
@@ -301,7 +301,7 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
             """.trimIndent()
         )
 
-        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        val mapperConstructorParameter = repository.objectClass.constructors.first().parameters[1]
         Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(VertxParameterColumnMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         Assertions.assertThat(tag).isNotNull()
@@ -326,7 +326,7 @@ class VertxParametersTest : AbstractVertxRepositoryTest() {
         repository.invoke<Any>("test", new("TestEntity", 42, "test-value"))
         Mockito.verify(mapper).apply(ArgumentMatchers.eq("test-value"))
 
-        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        val mapperConstructorParameter = repository.objectClass.constructors.first().parameters[1]
         Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(VertxParameterColumnMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         Assertions.assertThat(tag).isNotNull()

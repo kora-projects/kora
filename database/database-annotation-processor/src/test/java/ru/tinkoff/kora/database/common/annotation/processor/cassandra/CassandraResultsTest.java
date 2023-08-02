@@ -184,7 +184,7 @@ public class CassandraResultsTest extends AbstractCassandraRepositoryTest {
         verify(executor.mockSession).execute(any(Statement.class));
         verify(mapper).apply(executor.resultSet);
 
-        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        var mapperConstructorParameter = repository.objectClass.getConstructors()[0].getParameters()[1];
         assertThat(mapperConstructorParameter.getType()).isEqualTo(CassandraResultSetMapper.class);
         var tag = mapperConstructorParameter.getAnnotation(Tag.class);
         assertThat(tag).isNotNull();

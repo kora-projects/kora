@@ -1,18 +1,20 @@
 package ru.tinkoff.kora.aop.symbol.processor
 
-import com.google.devtools.ksp.*
+import com.google.devtools.ksp.getClassDeclarationByName
+import com.google.devtools.ksp.isAbstract
+import com.google.devtools.ksp.isOpen
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.*
+import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.writeTo
-import ru.tinkoff.kora.common.AopAnnotation
 import ru.tinkoff.kora.ksp.common.*
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.exception.ProcessingError
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import java.util.*
 
-@KspExperimental
 class AopSymbolProcessor(
     environment: SymbolProcessorEnvironment,
 ) : BaseSymbolProcessor(environment) {
@@ -32,7 +34,7 @@ class AopSymbolProcessor(
         aopProcessor = AopProcessor(aspects, resolver)
         annotations = aspects.asSequence().map { it.getSupportedAnnotationTypes() }.flatten().mapNotNull { resolver.getClassDeclarationByName(it) }.toList()
 
-        val noAopAnnotation = annotations.filter { !it.isAnnotationPresent(AopAnnotation::class) }
+        val noAopAnnotation = annotations.filter { !it.isAnnotationPresent(CommonClassNames.aopAnnotation) }
 
         noAopAnnotation.forEach { noAop ->
             KoraSymbolProcessingEnv.logger.warn("Annotation ${noAop.simpleName.asString()} has no @AopAnnotation marker, it will not be handled by some util methods" )
@@ -146,7 +148,6 @@ class AopSymbolProcessor(
 }
 
 
-@KspExperimental
 class AopSymbolProcessorProvider : SymbolProcessorProvider {
 
     override fun create(

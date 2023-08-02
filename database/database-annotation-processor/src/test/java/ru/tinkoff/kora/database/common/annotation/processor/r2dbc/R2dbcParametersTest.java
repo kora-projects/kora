@@ -243,7 +243,7 @@ public class R2dbcParametersTest extends AbstractR2dbcRepositoryTest {
         verify(executor.statement).bind(0, 42L);
         verify(mapper).apply(any(), eq(1), eq("test-value"));
 
-        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        var mapperConstructorParameter = repository.objectClass.getConstructors()[0].getParameters()[1];
         assertThat(mapperConstructorParameter.getType()).isEqualTo(R2dbcParameterColumnMapper.class);
         var tag = mapperConstructorParameter.getAnnotation(Tag.class);
         assertThat(tag).isNotNull();
@@ -265,7 +265,7 @@ public class R2dbcParametersTest extends AbstractR2dbcRepositoryTest {
 
         verify(mapper).apply(any(), eq(0), eq("test-value"));
 
-        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        var mapperConstructorParameter = repository.objectClass.getConstructors()[0].getParameters()[1];
         assertThat(mapperConstructorParameter.getType()).isEqualTo(R2dbcParameterColumnMapper.class);
         var tag = mapperConstructorParameter.getAnnotation(Tag.class);
         assertThat(tag).isNotNull();
@@ -285,7 +285,7 @@ public class R2dbcParametersTest extends AbstractR2dbcRepositoryTest {
             public record TestRecord(String value){}
             """);
 
-        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        var mapperConstructorParameter = repository.objectClass.getConstructors()[0].getParameters()[1];
         assertThat(mapperConstructorParameter.getType()).isEqualTo(R2dbcParameterColumnMapper.class);
         var tag = mapperConstructorParameter.getAnnotation(Tag.class);
         assertThat(tag).isNotNull();

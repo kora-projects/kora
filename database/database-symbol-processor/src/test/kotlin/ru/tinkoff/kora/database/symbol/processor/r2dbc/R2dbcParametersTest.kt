@@ -274,7 +274,7 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
 
         verify(mapper).apply(ArgumentMatchers.same(executor.statement), ArgumentMatchers.eq(0), ArgumentMatchers.eq(42))
 
-        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        val mapperConstructorParameter = repository.objectClass.constructors.first().parameters[1]
         Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(R2dbcParameterColumnMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         Assertions.assertThat(tag).isNotNull()
@@ -296,7 +296,7 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
             """.trimIndent()
         )
 
-        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        val mapperConstructorParameter = repository.objectClass.constructors.first().parameters[1]
         Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(R2dbcParameterColumnMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         Assertions.assertThat(tag).isNotNull()
@@ -322,7 +322,7 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
         verify(executor.statement).bind(0, 42L)
         verify(mapper).apply(ArgumentMatchers.same(executor.statement), ArgumentMatchers.eq(1), ArgumentMatchers.eq("test-value"))
 
-        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        val mapperConstructorParameter = repository.objectClass.constructors.first().parameters[1]
         Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(R2dbcParameterColumnMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         Assertions.assertThat(tag).isNotNull()

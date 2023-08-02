@@ -23,7 +23,7 @@ public abstract class AbstractCassandraRepositoryTest extends AbstractRepository
             """;
     }
 
-    protected TestRepository compileCassandra(List<?> arguments, @Language("java") String... sources) {
+    protected TestObject compileCassandra(List<?> arguments, @Language("java") String... sources) {
         return this.compile(this.executor, arguments, sources);
     }
 }

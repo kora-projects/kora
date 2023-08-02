@@ -400,7 +400,7 @@ class JdbcResultsTest : AbstractJdbcRepositoryTest() {
         verify(executor.preparedStatement).executeQuery()
         verify(mapper).apply(executor.resultSet)
 
-        val mapperConstructorParameter = repository.repositoryClass.constructors.first().parameters[1]
+        val mapperConstructorParameter = repository.objectClass.constructors.first().parameters[1]
         Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(JdbcResultSetMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         Assertions.assertThat(tag).isNotNull()

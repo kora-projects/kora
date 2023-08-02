@@ -403,7 +403,7 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
         verify(executor.boundStatementBuilder).setLong(0, 42L);
         verify(mapper).apply(any(), eq(1), eq("test-value"));
 
-        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        var mapperConstructorParameter = repository.objectClass.getConstructors()[0].getParameters()[1];
         assertThat(mapperConstructorParameter.getType()).isEqualTo(CassandraParameterColumnMapper.class);
         var tag = mapperConstructorParameter.getAnnotation(Tag.class);
         assertThat(tag).isNotNull();
@@ -425,7 +425,7 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
 
         verify(mapper).apply(any(), eq(0), eq("test-value"));
 
-        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        var mapperConstructorParameter = repository.objectClass.getConstructors()[0].getParameters()[1];
         assertThat(mapperConstructorParameter.getType()).isEqualTo(CassandraParameterColumnMapper.class);
         var tag = mapperConstructorParameter.getAnnotation(Tag.class);
         assertThat(tag).isNotNull();
@@ -445,7 +445,7 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
             public record TestRecord(String value){}
             """);
 
-        var mapperConstructorParameter = repository.repositoryClass.getConstructors()[0].getParameters()[1];
+        var mapperConstructorParameter = repository.objectClass.getConstructors()[0].getParameters()[1];
         assertThat(mapperConstructorParameter.getType()).isEqualTo(CassandraParameterColumnMapper.class);
         var tag = mapperConstructorParameter.getAnnotation(Tag.class);
         assertThat(tag).isNotNull();

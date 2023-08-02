@@ -9,6 +9,7 @@ nav:
       - Контейнер: features/container.md
       - Конфигурации: features/config.md
       - Логирование: features/logging.md
+      - Декларативное логирование: features/declarative-logging.md
       - Метрики: features/metrics.md
       - Пробы: features/probes.md
       - HTTP Server: features/http-server.md
