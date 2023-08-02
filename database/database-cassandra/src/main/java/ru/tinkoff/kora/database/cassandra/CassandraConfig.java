@@ -17,6 +17,7 @@ public interface CassandraConfig {
     @Nullable
     Advanced advanced();
 
+    @Nullable
     CassandraCredentials auth();
 
     @ConfigValueExtractor
