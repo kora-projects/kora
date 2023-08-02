@@ -29,7 +29,8 @@ public class HttpServerUtils {
     public static final ClassName interceptWithClassName = ClassName.get("ru.tinkoff.kora.http.common.annotation", "InterceptWith");
     public static final ClassName interceptWithContainerClassName = ClassName.get("ru.tinkoff.kora.http.common.annotation", "InterceptWith", "InterceptWithContainer");
 
-    record Interceptor(TypeName type, @Nullable AnnotationSpec tag) {}
+    public record Interceptor(TypeName type, @Nullable AnnotationSpec tag) {
+    }
 
     public static Interceptor parseInterceptor(AnnotationMirror a) {
         var interceptorType = ((TypeMirror) CommonUtils.parseAnnotationValueWithoutDefault(a, "value"));
