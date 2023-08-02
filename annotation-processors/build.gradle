@@ -12,4 +12,5 @@ dependencies {
     api project(':resilient:resilient-annotation-processor')
     api project(':cache:cache-annotation-processor')
     api project(':validation:validation-annotation-processor')
+    api project(':mapstruct:mapstruct-java-extension')
 }

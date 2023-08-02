@@ -1,0 +1,11 @@
+dependencies {
+    implementation project(':kora-app-symbol-processor')
+
+    testImplementation "org.mapstruct:mapstruct:1.5.5.Final"
+    testImplementation "org.mapstruct:mapstruct-processor:1.5.5.Final"
+    testImplementation testFixtures(project(':symbol-processor-common'))
+    testImplementation 'jakarta.inject:jakarta.inject-api:2.0.1'
+}
+
+apply from: "${project.rootDir}/in-test-generated.gradle"
+apply from: "${project.rootDir}/kotlin-plugin.gradle"

@@ -14,4 +14,5 @@ dependencies {
     api project(':resilient:resilient-symbol-processor')
     api project(':cache:cache-symbol-processor')
     api project(':validation:validation-symbol-processor')
+    api project(':mapstruct:mapstruct-ksp-extension')
 }
