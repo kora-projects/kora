@@ -3,9 +3,8 @@ package ru.tinkoff.kora.http.server.annotation.processor;
 import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.TypeSpec;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
-import ru.tinkoff.kora.common.Module;
-import ru.tinkoff.kora.http.server.common.annotation.HttpController;
 
 import javax.annotation.Nullable;
 import javax.annotation.processing.RoundEnvironment;
@@ -72,8 +71,7 @@ public class ControllerModuleGenerator {
         var classBuilder = TypeSpec.interfaceBuilder(controller.getSimpleName().toString() + "Module")
             .addOriginatingElement(controller)
             .addModifiers(Modifier.PUBLIC);
-        classBuilder.addAnnotation(AnnotationSpec.builder(Module.class).build());
-        var controllerAnnotation = controller.getAnnotation(HttpController.class);
+        classBuilder.addAnnotation(AnnotationSpec.builder(CommonClassNames.module).build());
         var error = false;
         var classes = collectInterfaces(this.types, controller);
 

@@ -25,7 +25,6 @@ import ru.tinkoff.kora.json.common.annotation.*;
 @JsonDiscriminatorField("{{{propertyBaseName}}}")
 public sealed interface {{classname}} permits {{#vendorExtensions.x-unique-mapped-models}}{{.}}{{^-last}}, {{/-last}}{{/vendorExtensions.x-unique-mapped-models}} {
 {{#allVars}}{{^isDiscriminator}}
-/* {{{.}}} */
   /**
    * {{#description}}{{.}}{{/description}}{{^description}}{{name}}{{/description}}
    */

@@ -2,7 +2,7 @@ package ru.tinkoff.kora.http.server.annotation.processor;
 
 import com.squareup.javapoet.*;
 import org.reactivestreams.Publisher;
-import reactor.core.publisher.Mono;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.annotation.Header;
@@ -148,11 +148,29 @@ public class RequestHandlerGenerator {
             }
         } else if (isMonoVoid) {
             controllerCall = CodeBlock.builder()
-                .add("$T.deferContextual(_ctx -> _controller.$L($L))\n", Mono.class, requestMappingData.executableElement().getSimpleName(), executeParameters)
+                .add("$T.deferContextual(_ctx -> {$>\n", CommonClassNames.mono)
+                .add("try {$>\n")
+                .add("return _controller.$N($L);$<\n", requestMappingData.executableElement().getSimpleName(), executeParameters)
+                .add("} catch (RuntimeException e) {\n")
+                .add("  throw e;\n")
+                .add("} catch (Exception e) {\n")
+                .add("  throw reactor.core.Exceptions.propagate(e);")
+                .add("}")
+                .add("$<\n})\n")
                 .add("  .thenReturn(new $T(200, \"application/octet-stream\", $T.of(), $T.allocate(0)))", SimpleHttpServerResponse.class, HttpHeaders.class, ByteBuffer.class)
                 .build();
         } else {
-            controllerCall = CodeBlock.of("$T.deferContextual(_ctx -> _controller.$L($L))", Mono.class, requestMappingData.executableElement().getSimpleName(), executeParameters);
+            controllerCall = CodeBlock.builder()
+                .add("$T.deferContextual(_ctx -> {$>\n", CommonClassNames.mono)
+                .add("try {$>\n")
+                .add("return _controller.$N($L);$<\n", requestMappingData.executableElement().getSimpleName(), executeParameters)
+                .add("} catch (RuntimeException e) {\n")
+                .add("  throw e;\n")
+                .add("} catch (Exception e) {\n")
+                .add("  throw reactor.core.Exceptions.propagate(e);")
+                .add("}")
+                .add("$<\n})")
+                .build();
         }
 
         var requestMappingBlock = CodeBlock.builder();

@@ -21,7 +21,7 @@ public interface {{classname}}Delegate {
       {{/required}}{{{dataType}}} {{paramName}}{{#hasFormParams}},{{/hasFormParams}}{{^hasFormParams}}{{^-last}},{{/-last}}{{/hasFormParams}}
 {{/isFormParam}}{{/allParams}}    {{#hasFormParams}}
       {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam form
-    {{/hasFormParams}});
+    {{/hasFormParams}}) throws Exception ;
 
 {{/operation}}
 }

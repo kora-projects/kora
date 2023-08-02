@@ -74,7 +74,7 @@ public{{^vendorExtensions.enableValidation}} final{{/vendorExtensions.enableVali
     @Validate
     {{/vendorExtensions.x-validate}}
     @Mapping({{classname}}ServerResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponseMapper.class)
-    public {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {{operationId}}({{>javaAnnotatedParams}}) {
+    public {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {{operationId}}({{>javaAnnotatedParams}}) throws Exception {
       return this.delegate.{{operationId}}(
         {{#allParams}}{{#lambda.trim}}
         {{#hasFormParams}}{{^isFormParam}}{{paramName}},{{/isFormParam}}{{/hasFormParams}}
