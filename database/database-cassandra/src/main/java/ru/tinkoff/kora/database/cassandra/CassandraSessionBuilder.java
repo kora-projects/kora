@@ -4,20 +4,13 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.internal.core.config.typesafe.DefaultProgrammaticDriverConfigLoaderBuilder;
 
-import java.net.InetSocketAddress;
-import java.util.stream.Collectors;
-
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.*;
 
 public class CassandraSessionBuilder {
     public CqlSession build(CassandraConfig config) {
         var builder = CqlSession.builder();
         var loaderBuilder = new DefaultProgrammaticDriverConfigLoaderBuilder();
-        var contactPoints = config.basic().contactPoints().stream().map(host -> {
-            var s = host.split(":");
-            return new InetSocketAddress(s[0], Integer.parseInt(s[1]));
-        }).collect(Collectors.toList());
-        builder.addContactPoints(contactPoints);
+        loaderBuilder.withStringList(CONTACT_POINTS, config.basic().contactPoints());
         builder.withKeyspace(config.basic().sessionKeyspace());
         if (config.auth() != null) {
             builder.withAuthCredentials(config.auth().login(), config.auth().password());
