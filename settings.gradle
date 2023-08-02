@@ -95,6 +95,8 @@ include(
     'validation:validation-annotation-processor',
     'validation:validation-symbol-processor',
     'test:test-junit5',
+    'mapstruct:mapstruct-java-extension',
+    'mapstruct:mapstruct-ksp-extension',
 )
 
 apply from: 'dependencies.gradle'
