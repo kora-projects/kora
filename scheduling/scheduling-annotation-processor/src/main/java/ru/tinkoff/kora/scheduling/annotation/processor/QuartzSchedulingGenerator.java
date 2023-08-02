@@ -75,7 +75,7 @@ public class QuartzSchedulingGenerator {
                     b.addStatement("var value = config.get($S)", configPath);
                     b.addCode("if (value instanceof $T.NullValue) {\n  return new $T($S);\n}\n", CommonClassNames.configValue, configClassName, cron);
                 } else {
-                    b.addStatement("var value = config.get($S)");
+                    b.addStatement("var value = config.get($S)", configPath);
                 }
                 b.beginControlFlow("if (value instanceof $T.StringValue str)", CommonClassNames.configValue)
                     .addStatement("var cron = str.value();")
