@@ -3,7 +3,7 @@ package ru.tinkoff.kora.micrometer.module.resilient;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.BaseUnits;
-import ru.tinkoff.kora.resilient.timeout.telemetry.TimeoutMetrics;
+import ru.tinkoff.kora.resilient.timeout.TimeoutMetrics;
 
 import javax.annotation.Nonnull;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,7 +22,7 @@ public final class MicrometerTimeoutMetrics implements TimeoutMetrics {
     @Override
     public void recordTimeout(@Nonnull String name, long timeoutInNanos) {
         var metrics = this.metrics.computeIfAbsent(name, k -> build(name));
-        metrics.exhausted.increment();
+        metrics.exhausted().increment();
     }
 
     private Metrics build(String name) {

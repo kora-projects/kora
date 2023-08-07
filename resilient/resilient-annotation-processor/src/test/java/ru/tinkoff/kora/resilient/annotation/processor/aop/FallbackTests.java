@@ -14,7 +14,7 @@ class FallbackTests extends AppRunner {
     private FallbackTarget getService() {
         final InitializedGraph graph = getGraph(AppWithConfig.class,
             CircuitBreakerTarget.class,
-            RetryableTarget.class,
+            RetryTarget.class,
             TimeoutTarget.class,
             FallbackTarget.class);
 

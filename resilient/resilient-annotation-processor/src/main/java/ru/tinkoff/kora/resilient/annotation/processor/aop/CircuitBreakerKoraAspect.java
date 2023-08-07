@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.resilient.annotation.processor.aop;
 
+import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingError;
@@ -9,6 +10,7 @@ import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 import java.util.List;
@@ -65,8 +67,6 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
 
     private CodeBlock buildBodySync(ExecutableElement method, String superCall, String circuitBreakerField) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
-        final String returnType = method.getReturnType().toString();
-
         final CodeBlock methodCall = MethodUtils.isVoid(method)
             ? superMethod
             : CodeBlock.of("var t = $L", superMethod.toString());
@@ -75,6 +75,8 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
             ? CodeBlock.of("return")
             : CodeBlock.of("return t", superMethod.toString());
 
+        final ClassName cbException = ClassName.get("ru.tinkoff.kora.resilient.timeout", "TimeoutExhaustedException");
+
         return CodeBlock.builder().add("""
             var _circuitBreaker = $L;
             try {
@@ -82,13 +84,13 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
                 $L;
                 _circuitBreaker.releaseOnSuccess();
                 $L;
-            } catch (ru.tinkoff.kora.resilient.circuitbreaker.CallNotPermittedException e) {
+            } catch ($T e) {
                 throw e;
             } catch (Exception e) {
                 _circuitBreaker.releaseOnError(e);
                 throw e;
             }
-            """, circuitBreakerField, methodCall.toString(), returnCall.toString()).build();
+            """, circuitBreakerField, methodCall.toString(), returnCall.toString(), cbException).build();
     }
 
     private CodeBlock buildBodyMono(ExecutableElement method, String superCall, String circuitBreakerField) {

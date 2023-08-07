@@ -33,7 +33,7 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
         val whileMember = MemberName("kotlinx.coroutines.flow", "takeWhile")
         val systemMember = MemberName("java.lang", "System")
         val atomicMember = MemberName("java.util.concurrent.atomic", "AtomicLong")
-        val timeoutKoraMember = MemberName("ru.tinkoff.kora.resilient.timeout", "TimeoutException")
+        val timeoutKoraMember = MemberName("ru.tinkoff.kora.resilient.timeout", "TimeoutExhaustedException")
     }
 
     override fun getSupportedAnnotationTypes(): Set<String> {
@@ -52,20 +52,18 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
         val annotation = method.annotations.filter { a -> a.annotationType.resolve().toClassName().canonicalName == ANNOTATION_TYPE }.first()
         val timeoutName = annotation.arguments.asSequence().filter { arg -> arg.name!!.getShortName() == "value" }.map { arg -> arg.value.toString() }.first()
 
-        val managerType = resolver.getClassDeclarationByName("ru.tinkoff.kora.resilient.timeout.TimeouterManager")!!.asType(listOf())
+        val metricType = resolver.getClassDeclarationByName("ru.tinkoff.kora.resilient.timeout.TimeoutMetrics")!!.asType(listOf()).makeNullable()
+        val fieldMetric = aspectContext.fieldFactory.constructorParam(metricType, listOf())
+        val managerType = resolver.getClassDeclarationByName("ru.tinkoff.kora.resilient.timeout.TimeoutManager")!!.asType(listOf())
         val fieldManager = aspectContext.fieldFactory.constructorParam(managerType, listOf())
         val fieldTimeout = aspectContext.fieldFactory.constructorInitialized(
-            resolver.getClassDeclarationByName("ru.tinkoff.kora.resilient.timeout.Timeouter")!!.asType(listOf()),
+            resolver.getClassDeclarationByName("ru.tinkoff.kora.resilient.timeout.Timeout")!!.asType(listOf()),
             CodeBlock.of("%L[%S]", fieldManager, timeoutName)
         )
 
         val body = if (method.isFlow()) {
-            val metricType = resolver.getClassDeclarationByName("ru.tinkoff.kora.resilient.timeout.telemetry.TimeoutMetrics")!!.asType(listOf()).makeNullable()
-            val fieldMetric = aspectContext.fieldFactory.constructorParam(metricType, listOf())
             buildBodyFlow(method, superCall, timeoutName, fieldTimeout, fieldMetric)
         } else if (method.isSuspend()) {
-            val metricType = resolver.getClassDeclarationByName("ru.tinkoff.kora.resilient.timeout.telemetry.TimeoutMetrics")!!.asType(listOf()).makeNullable()
-            val fieldMetric = aspectContext.fieldFactory.constructorParam(metricType, listOf())
             buildBodySuspend(method, superCall, timeoutName, fieldTimeout, fieldMetric)
         } else {
             buildBodySync(method, superCall, fieldTimeout)
@@ -105,10 +103,10 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
                   }
             } catch (e: %M) {
                 %L?.recordTimeout(%S, %L.timeout().toNanos())
-                throw %M("Timeout exceeded " + %L.timeout())
+                throw %M(%S, "Timeout exceeded " + %L.timeout())
             }
           """.trimIndent(), timeoutMember, fieldTimeout, superMethod.toString(), timeoutCancelMember,
-            fieldMetric, timeoutName, fieldTimeout, timeoutKoraMember, fieldTimeout
+            fieldMetric, timeoutName, fieldTimeout, timeoutKoraMember, timeoutName, fieldTimeout
         ).build()
     }
 
@@ -125,14 +123,14 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
                     val current = %M.nanoTime()
                     if (current > limit.get()) {
                         %L?.recordTimeout(%S, %L.timeout().toNanos())
-                        throw %M("Timeout exceeded " + %L.timeout())
+                        throw %M(%S, "Timeout exceeded " + %L.timeout())
                     } else {
                         false
                     }
                 }
             """.trimIndent(),
             atomicMember, flowMember, emitMember, superMethod.toString(), startMember, systemMember,
-            fieldTimeout, whileMember, systemMember, fieldMetric, timeoutName, fieldTimeout, timeoutKoraMember, fieldTimeout,
+            fieldTimeout, whileMember, systemMember, fieldMetric, timeoutName, fieldTimeout, timeoutKoraMember, timeoutName, fieldTimeout,
         ).build()
     }
 

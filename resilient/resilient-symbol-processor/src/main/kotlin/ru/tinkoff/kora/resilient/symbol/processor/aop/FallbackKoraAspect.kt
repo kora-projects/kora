@@ -45,9 +45,9 @@ class FallbackKoraAspect(val resolver: Resolver) : KoraAspect {
         val fallbackName = annotation.arguments.asSequence().filter { arg -> arg.name!!.getShortName() == "value" }.map { arg -> arg.value.toString() }.first()
         val fallback = annotation.asFallback(method)
 
-        val managerType = resolver.getClassDeclarationByName("ru.tinkoff.kora.resilient.fallback.FallbackerManager")!!.asType(listOf())
+        val managerType = resolver.getClassDeclarationByName("ru.tinkoff.kora.resilient.fallback.FallbackManager")!!.asType(listOf())
         val fieldManager = aspectContext.fieldFactory.constructorParam(managerType, listOf())
-        val fallbackType = resolver.getClassDeclarationByName("ru.tinkoff.kora.resilient.fallback.Fallbacker")!!.asType(listOf())
+        val fallbackType = resolver.getClassDeclarationByName("ru.tinkoff.kora.resilient.fallback.Fallback")!!.asType(listOf())
         val fieldFallback = aspectContext.fieldFactory.constructorInitialized(
             fallbackType,
             CodeBlock.of("%L[%S]", fieldManager, fallbackName)
