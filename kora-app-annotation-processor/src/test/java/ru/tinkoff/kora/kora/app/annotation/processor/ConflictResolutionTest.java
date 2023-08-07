@@ -50,4 +50,28 @@ public class ConflictResolutionTest extends AbstractKoraAppTest {
         assertThat(g.get(draw.getNodes().get(0))).isInstanceOf(this.compileResult.loadClass("TestImpl2"));
     }
 
+    @Test
+    public void testDefaultComponentTemplateOverride() throws ClassNotFoundException {
+        var draw = compile("""
+            public interface TestInterface <T> {}
+            """, """
+            public class TestImpl1 <T> implements TestInterface<T> {}
+            """, """
+            public class TestImpl2 <T> implements TestInterface<T> {}
+            """, """
+            @KoraApp
+            public interface ExampleApplication {
+                @Root
+                default String root(TestInterface<String> t) {return "";}
+                
+                @DefaultComponent
+                default <T> TestImpl1<T> testImpl1() { return new TestImpl1<>(); }
+                default <T> TestImpl2<T> testImpl2() { return new TestImpl2<>(); }
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(2);
+        var g = draw.init().block();
+        assertThat(g.get(draw.getNodes().get(0))).isInstanceOf(this.compileResult.loadClass("TestImpl2"));
+    }
+
 }

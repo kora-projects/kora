@@ -251,11 +251,14 @@ public class GraphResolutionHelper {
             d.type(),
             dependencyClaim.type()
         )).toList();
-        if (exactMatch.isEmpty()) {
-            return declarations;
-        } else {
+        if (!exactMatch.isEmpty()) {
             return exactMatch;
         }
+        var nonDefault = declarations.stream().filter(Predicate.not(ComponentDeclaration::isDefault)).toList();
+        if (!nonDefault.isEmpty()) {
+            return nonDefault;
+        }
+        return declarations;
     }
 
     @Nullable
