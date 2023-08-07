@@ -50,19 +50,19 @@ public class FallbackKoraAspect implements KoraAspect {
                 .map(e -> String.valueOf(e.getValue().getValue())).findFirst())
             .orElseThrow();
 
-        var managerType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.fallback.FallbackerManager"));
+        var managerType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.fallback.FallbackManager"));
         var fieldManager = aspectContext.fieldFactory().constructorParam(managerType, List.of());
-        var fallbackerType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.fallback.Fallbacker"));
-        var fieldFallbacker = aspectContext.fieldFactory().constructorInitialized(
-            fallbackerType, CodeBlock.of("$L.get($S);", fieldManager, name));
+        var fallbackType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.fallback.Fallback"));
+        var fieldFallback = aspectContext.fieldFactory().constructorInitialized(
+            fallbackType, CodeBlock.of("$L.get($S);", fieldManager, name));
 
         final CodeBlock body;
         if (MethodUtils.isMono(method)) {
-            body = buildBodyMono(method, fallback, superCall, fieldFallbacker);
+            body = buildBodyMono(method, fallback, superCall, fieldFallback);
         } else if (MethodUtils.isFlux(method)) {
-            body = buildBodyFlux(method, fallback, superCall, fieldFallbacker);
+            body = buildBodyFlux(method, fallback, superCall, fieldFallback);
         } else {
-            body = buildBodySync(method, fallback, superCall, fieldFallbacker);
+            body = buildBodySync(method, fallback, superCall, fieldFallback);
         }
 
         return new ApplyResult.MethodBody(body);
@@ -119,9 +119,5 @@ public class FallbackKoraAspect implements KoraAspect {
 
     private CodeBlock buildMethodCall(ExecutableElement method, String call) {
         return method.getParameters().stream().map(p -> CodeBlock.of("$L", p)).collect(joining(", ", call + "(", ")"));
-    }
-
-    private CodeBlock buildMethodSupplier(ExecutableElement method, String call) {
-        return method.getParameters().stream().map(p -> CodeBlock.of("$L", p)).collect(joining(", ", "() -> " + call + "(", ")"));
     }
 }

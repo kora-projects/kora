@@ -13,10 +13,7 @@ dependencies {
 
     testImplementation testFixtures(project(":annotation-processor-common"))
     testImplementation testFixtures(project(":symbol-processor-common"))
-    testImplementation project(":resilient:resilient-circuitbreaker")
-    testImplementation project(":resilient:resilient-retry")
-    testImplementation project(":resilient:resilient-timeout")
-    testImplementation project(":resilient:resilient-fallback")
+    testImplementation project(":resilient:resilient-kora")
     testImplementation project(":internal:test-logging")
     testImplementation project(":symbol-processor-common")
     testImplementation project(":aop:aop-symbol-processor")

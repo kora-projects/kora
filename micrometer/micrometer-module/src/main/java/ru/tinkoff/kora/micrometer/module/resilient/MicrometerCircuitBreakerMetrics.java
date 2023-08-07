@@ -1,9 +1,11 @@
 package ru.tinkoff.kora.micrometer.module.resilient;
 
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
-import ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreaker.State;
-import ru.tinkoff.kora.resilient.circuitbreaker.telemetry.CircuitBreakerMetrics;
+import io.micrometer.core.instrument.binder.BaseUnits;
+import ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreaker;
+import ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreakerMetrics;
 
 import javax.annotation.Nonnull;
 import java.util.Map;
@@ -12,28 +14,49 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public final class MicrometerCircuitBreakerMetrics implements CircuitBreakerMetrics {
 
-    private final Map<String, AtomicInteger> metrics = new ConcurrentHashMap<>();
+    private final Map<String, StateMetrics> metrics = new ConcurrentHashMap<>();
     private final MeterRegistry registry;
+
+    private record StateMetrics(AtomicInteger stateValue, Gauge state, Counter transitionOpen, Counter transitionHalfOpen) { }
 
     public MicrometerCircuitBreakerMetrics(MeterRegistry registry) {
         this.registry = registry;
     }
 
     @Override
-    public void recordState(@Nonnull String name, @Nonnull State newState) {
-        final AtomicInteger state = metrics.computeIfAbsent(name, k -> {
+    public void recordState(@Nonnull String name, @Nonnull CircuitBreaker.State newState) {
+        final StateMetrics stateMetrics = metrics.computeIfAbsent(name, k -> {
             final AtomicInteger gaugeState = new AtomicInteger(asIntState(newState));
-            Gauge.builder("resilient.circuitbreaker.state", gaugeState::get)
+            final Gauge state = Gauge.builder("resilient.circuitbreaker.state", gaugeState::get)
                 .tag("name", name)
                 .description("Circuit Breaker state metrics, where 0 -> CLOSED, 1 -> HALF_OPEN, 2 -> OPEN")
                 .register(registry);
-            return gaugeState;
+
+            final Counter transOpen = Counter.builder("resilient.circuitbreaker.transition")
+                .baseUnit(BaseUnits.OPERATIONS)
+                .tag("name", name)
+                .tag("state", CircuitBreaker.State.OPEN.name())
+                .register(registry);
+
+            final Counter transHalfOpen = Counter.builder("resilient.circuitbreaker.transition")
+                .baseUnit(BaseUnits.OPERATIONS)
+                .tag("name", name)
+                .tag("state", CircuitBreaker.State.HALF_OPEN.name())
+                .register(registry);
+
+            return new StateMetrics(gaugeState, state, transOpen, transHalfOpen);
         });
 
-        state.set(asIntState(newState));
+        stateMetrics.stateValue().set(asIntState(newState));
+
+        if(newState == CircuitBreaker.State.OPEN) {
+            stateMetrics.transitionOpen().increment();
+        } else if(newState == CircuitBreaker.State.HALF_OPEN) {
+            stateMetrics.transitionHalfOpen().increment();
+        }
     }
 
-    private int asIntState(State state) {
+    private int asIntState(CircuitBreaker.State state) {
         return switch (state) {
             case CLOSED -> 0;
             case HALF_OPEN -> 1;

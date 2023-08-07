@@ -6,13 +6,10 @@ import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.DefaultConfigExtractorsModule;
 import ru.tinkoff.kora.config.common.origin.SimpleConfigOrigin;
 import ru.tinkoff.kora.config.hocon.HoconConfigFactory;
-import ru.tinkoff.kora.resilient.circuitbreaker.simple.CircuitBreakerModule;
-import ru.tinkoff.kora.resilient.fallback.simple.FallbackModule;
-import ru.tinkoff.kora.resilient.retry.simple.RetryableModule;
-import ru.tinkoff.kora.resilient.timeout.simple.TimeoutModule;
+import ru.tinkoff.kora.resilient.ResilientModule;
 
 @KoraApp
-public interface AppWithConfig extends CircuitBreakerModule, FallbackModule, TimeoutModule, RetryableModule, DefaultConfigExtractorsModule {
+public interface AppWithConfig extends ResilientModule, DefaultConfigExtractorsModule {
 
     default Config config() {
         return HoconConfigFactory.fromHocon(new SimpleConfigOrigin("test"), ConfigFactory.parseString(

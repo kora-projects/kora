@@ -6,13 +6,10 @@ import ru.tinkoff.kora.common.KoraApp
 import ru.tinkoff.kora.config.common.DefaultConfigExtractorsModule
 import ru.tinkoff.kora.config.common.origin.SimpleConfigOrigin
 import ru.tinkoff.kora.config.hocon.HoconConfigFactory
-import ru.tinkoff.kora.resilient.circuitbreaker.simple.CircuitBreakerModule
-import ru.tinkoff.kora.resilient.fallback.simple.FallbackModule
-import ru.tinkoff.kora.resilient.retry.simple.RetryableModule
-import ru.tinkoff.kora.resilient.timeout.simple.TimeoutModule
+import ru.tinkoff.kora.resilient.ResilientModule
 
 @KoraApp
-interface AppWithConfig : CircuitBreakerModule, FallbackModule, TimeoutModule, RetryableModule, DefaultConfigExtractorsModule {
+interface AppWithConfig : ResilientModule, DefaultConfigExtractorsModule {
     fun config(config: Config) = HoconConfigFactory.fromHocon(SimpleConfigOrigin("test"), config)
 
     fun config() = ConfigFactory.parseString(

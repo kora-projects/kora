@@ -14,7 +14,7 @@ class CircuitBreakerTests extends AppRunner {
     private CircuitBreakerTarget getService() {
         final InitializedGraph graph = getGraph(AppWithConfig.class,
             CircuitBreakerTarget.class,
-            RetryableTarget.class,
+            RetryTarget.class,
             TimeoutTarget.class,
             FallbackTarget.class);
 

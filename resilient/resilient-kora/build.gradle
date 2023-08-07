@@ -1,0 +1,13 @@
+dependencies {
+    annotationProcessor project(":config:config-annotation-processor")
+    compileOnly libs.jetbrains.annotations
+
+    api project(":common")
+    implementation project(":config:config-common")
+
+    testImplementation project(":internal:test-logging")
+    testImplementation libs.testcontainers.junit.jupiter
+    testImplementation "org.awaitility:awaitility:4.2.0"
+}
+
+apply from: "../../in-test-generated.gradle"

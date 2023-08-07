@@ -3,7 +3,7 @@ package ru.tinkoff.kora.micrometer.module.resilient;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.BaseUnits;
-import ru.tinkoff.kora.resilient.fallback.telemetry.FallbackMetrics;
+import ru.tinkoff.kora.resilient.fallback.FallbackMetrics;
 
 import javax.annotation.Nonnull;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,7 +22,7 @@ public final class MicrometerFallbackMetrics implements FallbackMetrics {
     @Override
     public void recordExecute(@Nonnull String name, @Nonnull Throwable throwable) {
         var metrics = this.metrics.computeIfAbsent(name, k -> build(name));
-        metrics.attempts.increment();
+        metrics.attempts().increment();
     }
 
     private Metrics build(String name) {

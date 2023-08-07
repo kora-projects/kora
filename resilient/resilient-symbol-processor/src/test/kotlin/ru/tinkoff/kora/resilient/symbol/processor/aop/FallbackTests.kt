@@ -20,7 +20,7 @@ class FallbackTests : AppRunner() {
             listOf(
                 CircuitBreakerTarget::class,
                 FallbackTarget::class,
-                RetryableTarget::class,
+                RetryTarget::class,
                 TimeoutTarget::class,
             )
         )

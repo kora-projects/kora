@@ -12,10 +12,7 @@ dependencies {
     testImplementation project(":config:config-annotation-processor")
     testImplementation project(":config:config-hocon")
     testImplementation project(":internal:test-logging")
-    testImplementation project(":resilient:resilient-circuitbreaker")
-    testImplementation project(":resilient:resilient-retry")
-    testImplementation project(":resilient:resilient-timeout")
-    testImplementation project(":resilient:resilient-fallback")
+    testImplementation project(":resilient:resilient-kora")
     testImplementation "com.google.testing.compile:compile-testing:0.19"
 }
 

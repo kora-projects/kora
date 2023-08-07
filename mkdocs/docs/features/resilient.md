@@ -11,6 +11,28 @@
 - [Combination](#Combination)
 - [Поддерживаемые AOP типы](#supported-types)
 
+## Dependency
+
+**Java**:
+```groovy
+annotationProcessor "ru.tinkoff.kora:annotation-processors"
+implementation "ru.tinkoff.kora:resilient-kora"
+```
+
+**Kotlin**:
+```groovy
+ksp "ru.tinkoff.kora:annotation-processors"
+implementation "ru.tinkoff.kora:resilient-kora"
+```
+
+### Module
+
+```java
+@KoraApp
+public interface ApplicationModules extends ResilientModule { }
+```
+
+
 ## CircuitBreaker
 
 CircuitBreaker – это прокси, который контролирует поток к запросам к конкретному методу,
@@ -31,20 +53,6 @@ CircuitBreaker – это прокси, который контролирует 
 восстановления.
 
 Изначально имеет состояние CLOSED.
-
-#### Dependency
-
-**Java**:
-```groovy
-annotationProcessor "ru.tinkoff.kora:annotation-processors"
-implementation "ru.tinkoff.kora:resilient-circuitbreaker"
-```
-
-**Kotlin**:
-```groovy
-ksp "ru.tinkoff.kora:annotation-processors"
-implementation "ru.tinkoff.kora:resilient-circuitbreaker"
-```
 
 #### Module
 
@@ -146,20 +154,6 @@ Retryable - предоставляет возможность настраива
 
 Позволяет указать когда требуется повторить попытку выполнения метода, настроить параметры повторения, в случае если методом была брошена ошибка (Exception) соответствующая заданным требованиям повторения (*RetrierFailurePredicate*).
 
-#### Dependency
-
-**Java**:
-```groovy
-annotationProcessor "ru.tinkoff.kora:annotation-processors"
-implementation "ru.tinkoff.kora:resilient-retry"
-```
-
-**Kotlin**:
-```groovy
-ksp "ru.tinkoff.kora:annotation-processors"
-implementation "ru.tinkoff.kora:resilient-retry"
-```
-
 #### Module
 
 ```java
@@ -244,20 +238,6 @@ Timeout - предоставляет возможность задания па�
 
 Позволяет задать предельное время выполнения операции / метода.
 
-#### Dependency
-
-**Java**:
-```groovy
-annotationProcessor "ru.tinkoff.kora:annotation-processors"
-implementation "ru.tinkoff.kora:resilient-timeout"
-```
-
-**Kotlin**:
-```groovy
-ksp "ru.tinkoff.kora:annotation-processors"
-implementation "ru.tinkoff.kora:resilient-timeout"
-```
-
 #### Module
 
 ```java
@@ -310,20 +290,6 @@ resilient {
 
 Fallback - предоставляет возможность указания метода который будет вызван в случае
 если исключение брошенное проаннотированным методом будет удовлетворено (*FallbackFailurePredicate*).
-
-#### Dependency
-
-**Java**:
-```groovy
-annotationProcessor "ru.tinkoff.kora:annotation-processors"
-implementation "ru.tinkoff.kora:resilient-fallback"
-```
-
-**Kotlin**:
-```groovy
-ksp "ru.tinkoff.kora:annotation-processors"
-implementation "ru.tinkoff.kora:resilient-fallback"
-```
 
 #### Module
 
