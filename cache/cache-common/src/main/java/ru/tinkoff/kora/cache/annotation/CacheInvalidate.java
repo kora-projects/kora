@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.cache.annotation;
 
+import ru.tinkoff.kora.cache.Cache;
 import ru.tinkoff.kora.cache.CacheKeyMapper;
 import ru.tinkoff.kora.common.AopAnnotation;
 
@@ -11,19 +12,14 @@ import java.lang.annotation.*;
  */
 @Repeatable(CacheInvalidates.class)
 @Target({ElementType.METHOD})
-@Retention(RetentionPolicy.RUNTIME)
+@Retention(RetentionPolicy.CLASS)
 @AopAnnotation
 public @interface CacheInvalidate {
 
     /**
      * @return cache name (correlate with name in configuration file)
      */
-    String name();
-
-    /**
-     * @return {@link ru.tinkoff.kora.cache.CacheManager} implementation associated with cache (will use impl from default module if any present in Graph)
-     */
-    Class<?>[] tags() default {};
+    Class<? extends Cache<?, ?>> value();
 
     /**
      * Limit the automatic {@link CacheKeyMapper} to the given parameter names. Mutually exclusive with

@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
  * @see Cacheable
  */
 @Target({ElementType.METHOD})
-@Retention(RetentionPolicy.RUNTIME)
+@Retention(RetentionPolicy.CLASS)
 @AopAnnotation
 public @interface Cacheables {
 

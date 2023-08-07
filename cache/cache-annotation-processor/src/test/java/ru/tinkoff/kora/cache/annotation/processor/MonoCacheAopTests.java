@@ -6,32 +6,53 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
-import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCacheManager;
-import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.mono.CacheableTargetMono;
+import ru.tinkoff.kora.cache.CacheKey;
+import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache2;
+import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.mono.CacheableMono;
+import ru.tinkoff.kora.cache.caffeine.CaffeineCacheConfig;
+import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule;
 
+import java.lang.reflect.Constructor;
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.List;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class MonoCacheAopTests extends Assertions {
+class MonoCacheAopTests extends Assertions implements CaffeineCacheModule {
 
-    public static final String CACHED_SERVICE = "ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.mono.$CacheableTargetMono__AopProxy";
+    private static final String CACHED_IMPL = "ru.tinkoff.kora.cache.annotation.processor.testcache.$DummyCache2Impl";
+    private static final String CACHED_SERVICE = "ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.mono.$CacheableMono__AopProxy";
 
-    private final DummyCacheManager<?, ?> cacheManager = new DummyCacheManager<>();
-    private CacheableTargetMono service = null;
+    private DummyCache2 cache = null;
+    private CacheableMono service = null;
 
-    private CacheableTargetMono getService(DummyCacheManager<?, ?> manager) {
+    private CacheableMono getService() {
         if (service != null) {
             return service;
         }
 
         try {
-            var classLoader = TestUtils.annotationProcess(CacheableTargetMono.class, new AopAnnotationProcessor(), new CacheKeyAnnotationProcessor());
+            var classLoader = TestUtils.annotationProcess(List.of(DummyCache2.class, CacheableMono.class),
+                new AopAnnotationProcessor(), new CacheAnnotationProcessor());
+
+            var cacheClass = classLoader.loadClass(CACHED_IMPL);
+            if (cacheClass == null) {
+                throw new IllegalArgumentException("Expected class not found: " + CACHED_SERVICE);
+            }
+
+            final Constructor<?> cacheConstructor = cacheClass.getDeclaredConstructors()[0];
+            cacheConstructor.setAccessible(true);
+            cache = (DummyCache2) cacheConstructor.newInstance(CacheRunner.getConfig(),
+                caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+
             var serviceClass = classLoader.loadClass(CACHED_SERVICE);
             if (serviceClass == null) {
                 throw new IllegalArgumentException("Expected class not found: " + CACHED_SERVICE);
             }
-            service = (CacheableTargetMono) serviceClass.getConstructors()[0].newInstance(manager);
+
+            final Constructor<?> serviceConstructor = serviceClass.getDeclaredConstructors()[0];
+            serviceConstructor.setAccessible(true);
+            service = (CacheableMono) serviceConstructor.newInstance(cache);
             return service;
         } catch (Exception e) {
             throw new IllegalStateException(e);
@@ -39,14 +60,16 @@ class MonoCacheAopTests extends Assertions {
     }
 
     @BeforeEach
-    void reset() {
-        cacheManager.reset();
+    void cleanup() {
+        if (cache != null) {
+            cache.invalidateAll();
+        }
     }
 
     @Test
     void getFromCacheWhenWasCacheEmpty() {
         // given
-        final CacheableTargetMono service = getService(cacheManager);
+        var service = getService();
         service.value = "1";
         assertNotNull(service);
 
@@ -63,7 +86,7 @@ class MonoCacheAopTests extends Assertions {
     @Test
     void getFromCacheWhenCacheFilled() {
         // given
-        final CacheableTargetMono service = getService(cacheManager);
+        var service = getService();
         service.value = "1";
         assertNotNull(service);
 
@@ -81,7 +104,7 @@ class MonoCacheAopTests extends Assertions {
     @Test
     void getFromCacheWrongKeyWhenCacheFilled() {
         // given
-        final CacheableTargetMono service = getService(cacheManager);
+        var service = getService();
         service.value = "1";
         assertNotNull(service);
 
@@ -100,7 +123,7 @@ class MonoCacheAopTests extends Assertions {
     @Test
     void getFromCacheWhenCacheFilledOtherKey() {
         // given
-        final CacheableTargetMono service = getService(cacheManager);
+        var service = getService();
         service.value = "1";
         assertNotNull(service);
 
@@ -119,7 +142,7 @@ class MonoCacheAopTests extends Assertions {
     @Test
     void getFromCacheWhenCacheInvalidate() {
         // given
-        final CacheableTargetMono service = getService(cacheManager);
+        var service = getService();
         service.value = "1";
         assertNotNull(service);
 
@@ -127,10 +150,17 @@ class MonoCacheAopTests extends Assertions {
         final String initial = service.getValue("1", BigDecimal.ZERO).block(Duration.ofMinutes(1));
         final String cached = service.putValue(BigDecimal.ZERO, "5", "1").block(Duration.ofMinutes(1));
         assertEquals(initial, cached);
+
+        final String cached2 = service.putValue(BigDecimal.ZERO, "5", "2").block(Duration.ofMinutes(1));
+        assertEquals(initial, cached2);
+
         service.value = "2";
         service.evictValue("1", BigDecimal.ZERO).block(Duration.ofMinutes(1));
 
         // then
+        assertNull(cache.get(CacheKey.of("1", BigDecimal.ZERO)));
+        assertEquals(cached2, cache.get(CacheKey.of("2", BigDecimal.ZERO)));
+
         final String fromCache = service.getValue("1", BigDecimal.ZERO).block(Duration.ofMinutes(1));
         assertNotEquals(cached, fromCache);
     }
@@ -138,7 +168,7 @@ class MonoCacheAopTests extends Assertions {
     @Test
     void getFromCacheWhenCacheInvalidateAll() {
         // given
-        final CacheableTargetMono service = getService(cacheManager);
+        var service = getService();
         service.value = "1";
         assertNotNull(service);
 
@@ -146,10 +176,17 @@ class MonoCacheAopTests extends Assertions {
         final String initial = service.getValue("1", BigDecimal.ZERO).block(Duration.ofMinutes(1));
         final String cached = service.putValue(BigDecimal.ZERO, "5", "1").block(Duration.ofMinutes(1));
         assertEquals(initial, cached);
+
+        final String cached2 = service.putValue(BigDecimal.ZERO, "5", "2").block(Duration.ofMinutes(1));
+        assertEquals(initial, cached2);
+
         service.value = "2";
         service.evictAll().block(Duration.ofMinutes(1));
 
         // then
+        assertNull(cache.get(CacheKey.of("1", BigDecimal.ZERO)));
+        assertNull(cache.get(CacheKey.of("2", BigDecimal.ZERO)));
+
         final String fromCache = service.getValue("1", BigDecimal.ZERO).block(Duration.ofMinutes(1));
         assertNotEquals(cached, fromCache);
     }

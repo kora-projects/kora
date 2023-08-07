@@ -15,4 +15,6 @@ dependencies {
     compileOnly project(':scheduling:scheduling-common')
     compileOnly project(':resilient:resilient-kora')
     compileOnly project(':cache:cache-common')
+    compileOnly project(':cache:cache-caffeine')
+    compileOnly libs.prometheus.collector.caffeine
 }

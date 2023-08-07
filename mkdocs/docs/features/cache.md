@@ -9,10 +9,49 @@
 
 ## Examples
 
+### Cache Implementation
+
+Для начала требуется зарегистрировать типизированный `Cache` сигнатуру.
+
+Интерфейс `Cache` должен наследоваться только от предоставляемых Kora'ой реализаций: `CaffeineCache` / `RedisCache`.
+
+Для такого `Cache` будет сгенерирована и добавлена в граф реализация, ее можно будет использовать как `Bean` для внедрения зависимостей.
+
+#### Single key
+
+В случае если ключ кэша представляет собой 1 аргумент, то требуется зарегистрировать `Cache` с сигнатурой соответствующей типам ключа и значения.
+
+```java
+public interface DummyCache extends CaffeineCache<String, String> { }
+```
+
+#### Composite key
+
+В случае если ключ кэша представляет собой N аргументов, то требуется зарегистрировать `Cache` с использованием `CacheKey` интерфейса который отвечает за композитный ключ, где типизированной сигнатурой указываются N аргументов ключа.
+
+Пример для `Cache` где композитный ключ состоит из 2 элементов:
+
+```java
+public interface DummyCache extends CaffeineCache<CacheKey.Key2<String, BigDecimal>, String> { }
+```
+
+Для ключей из 3ых составляющих будет использоваться `CacheKey.Key3` и так далее.
+
+#### Config
+
+Для регистрации `Cache` и указания конфига требуется проаннотировать аннотацией `@Cache` где аргумент `value` означает полный путь к конфига.
+
+```java
+@Cache("my.full.cache.config.path")
+public interface DummyCache extends CaffeineCache<CacheKey.Key2<String, BigDecimal>, String> { }
+```
+
+### AOP
+
 Допустим имеется класс:
 ```java
 @Component
-public class CacheableTargetSync {
+public class CacheExample {
 
     public Long getValue(String arg1, BigDecimal arg2) {
         return ThreadLocalRandom.current().nextLong();
@@ -32,7 +71,13 @@ public class CacheableTargetSync {
 }
 ```
 
-### Get
+Для него регистрируем соответствующий `Cache`:
+```java
+@Cache("dummy")
+public interface DummyCache extends CaffeineCache<CacheKey.Key2<String, BigDecimal>, String> { }
+```
+
+#### Get
 
 Для кэширования и получения значения из кэша для метода *getValue()* следует проаннотировать его аннотацией *@Cacheable*.
 
@@ -42,15 +87,11 @@ public class CacheableTargetSync {
 
 Ключ для кэша составляет из аргументов метода, порядок аргументов имеет значение, в данном случае он будет составляться из значений *arg1* и *arg2*.
 
-В *value* указывается имя кеша где будет храниться значения.
-Место в каком кэше будет храниться значение, определяется его именем и его имплементацией.
-Реализация указывается в *tags* либо используется дефолтная если подключен дефолтный модуль (пример модуля *DefaultCaffeineCacheModule*/*DefaultRedisCacheModule*).
-
 ```java
 @Component
-public class CacheableTargetSync {
+public class CacheExample {
 
-    @Cacheable(name = "my_cache")
+    @Cacheable()
     public Long getValue(String arg1, BigDecimal arg2) {
         return ThreadLocalRandom.current().nextLong();
     }
@@ -69,29 +110,24 @@ public class CacheableTargetSync {
 }
 ```
 
-### Put
+#### Put
 
 Для добавления значений в кэш через метод *putValue()* следует проаннотировать его аннотацией *@CachePut*.
 
-Метод проаннотированный *@CachePut* будет вызван и его значение положено во все кэш определенный в *value*, значение это значение будет возвращено дальше.
-Имя кэша из *value* соответствует его имени в файле конфигурации (hocon)
+Метод проаннотированный *@CachePut* будет вызван и его значение положено во все кэш определенный в *value*.
 
 Ключ для кэша составляет из аргументов метода, порядок аргументов имеет значение, в данном случае он будет составляться из значений *arg1* и *arg2*.
 
-В *value* указывается имя кеша где будет храниться значения.
-Место в каком кэше будет храниться значение, определяется его именем и его имплементацией.
-Реализация указывается в *tags* либо используется дефолтная если подключен дефолтный модуль (пример модуля *DefaultCaffeineCacheModule*/*DefaultRedisCacheModule*).
-
 ```java
 @Component
-public class CacheableTargetSync {
+public class CacheExample {
 
-    @Cacheable(name = "my_cache")
+    @Cacheable(DummyCache.class)
     public Long getValue(String arg1, BigDecimal arg2) {
         return ThreadLocalRandom.current().nextLong();
     }
 
-    @CachePut(name = "my_cache")
+    @CachePut(DummyCache.class)
     public Long putValue(String arg1, BigDecimal arg2) {
         return ThreadLocalRandom.current().nextLong();
     }
@@ -106,34 +142,29 @@ public class CacheableTargetSync {
 }
 ```
 
-### Invalidate
+#### Invalidate
 
 Для удаления значения по ключу из кэша через метод *evictValue()* следует проаннотировать его аннотацией *@CacheInvalidate*.
 
 Метод проаннотированный *@CacheInvalidate* будет вызван и затем по ключу для кэша определенного в *value* будут удалены значения по ключу.
-Имя кэша из *value* соответствует его имени в файле конфигурации (hocon)
 
 Ключ для кэша составляет из аргументов метода, порядок аргументов имеет значение, в данном случае он будет составляться из значений *arg1* и *arg2*.
 
-В *value* указывается имя кеша где будет храниться значения.
-Место в каком кэше будет храниться значение, определяется его именем и его имплементацией.
-Реализация указывается в *tags* либо используется дефолтная если подключен дефолтный модуль (пример модуля *DefaultCaffeineCacheModule*/*DefaultRedisCacheModule*).
-
 ```java
 @Component
-public class CacheableTargetSync {
+public class CacheExample {
 
-    @Cacheable(name = "my_cache")
+    @Cacheable(DummyCache.class)
     public Long getValue(String arg1, BigDecimal arg2) {
         return ThreadLocalRandom.current().nextLong();
     }
 
-    @CachePut(name = "my_cache")
+    @CachePut(DummyCache.class)
     public Long putValue(String arg1, BigDecimal arg2) {
         return ThreadLocalRandom.current().nextLong();
     }
 
-    @CacheInvalidate(name = "my_cache")
+    @CacheInvalidate(DummyCache.class)
     public void evictValue(String arg1, BigDecimal arg2) {
         // do nothing
     }
@@ -144,37 +175,32 @@ public class CacheableTargetSync {
 }
 ```
 
-#### InvalidateAll
+##### InvalidateAll
 
 Для удаления всех значений из кэша через метод *evictAll()* следует проаннотировать его аннотацией *@CacheInvalidate* и указать параметр *invalidateAll = true*.
 
 Метод проаннотированный *@CacheInvalidate* будет вызван и затем будут удалены все из кэша определенного в *value*.
-Имя кэша из *value* соответствует его имени в файле конфигурации (hocon)
-
-В *value* указывается имя кеша где будет храниться значения.
-Место в каком кэше будет храниться значение, определяется его именем и его имплементацией.
-Реализация указывается в *tags* либо используется дефолтная если подключен дефолтный модуль (пример модуля *DefaultCaffeineCacheModule*/*DefaultRedisCacheModule*).
 
 ```java
 @Component
-public class CacheableTargetSync {
+public class CacheExample {
 
-    @Cacheable(name = "my_cache")
+    @Cacheable(DummyCache.class)
     public Long getValue(String arg1, BigDecimal arg2) {
         return ThreadLocalRandom.current().nextLong();
     }
 
-    @CachePut(name = "my_cache")
+    @CachePut(DummyCache.class)
     public Long putValue(String arg1, BigDecimal arg2) {
         return ThreadLocalRandom.current().nextLong();
     }
 
-    @CacheInvalidate(name = "my_cache")
+    @CacheInvalidate(DummyCache.class)
     public void evictValue(String arg1, BigDecimal arg2) {
         // do nothing
     }
 
-    @CacheInvalidate(name = "my_cache", invalidateAll = true)
+    @CacheInvalidate(DummyCache.class, invalidateAll = true)
     public void evictAll() {
         // do nothing
     }
@@ -189,22 +215,22 @@ public class CacheableTargetSync {
 @Component
 public class CacheableTargetMono {
 
-    @Cacheable(name = "my_cache")
+    @Cacheable(DummyCache.class)
     public Mono<Long> getValue(String arg1, BigDecimal arg2) {
         return Mono.just(ThreadLocalRandom.current().nextLong());
     }
 
-    @CachePut(name = "my_cache")
+    @CachePut(DummyCache.class)
     public Mono<Long> putValue(String arg1, BigDecimal arg2) {
         return Mono.just(ThreadLocalRandom.current().nextLong());
     }
 
-    @CacheInvalidate(name = "my_cache")
+    @CacheInvalidate(DummyCache.class)
     public Mono<Void> evictValue(String arg1, BigDecimal arg2) {
         return Mono.empty();
     }
 
-    @CacheInvalidate(name = "my_cache", invalidateAll = true)
+    @CacheInvalidate(DummyCache.class, invalidateAll = true)
     public Mono<Void> evictAll() {
         return Mono.empty();
     }
@@ -219,20 +245,26 @@ public class CacheableTargetMono {
 Конфигурация будет выглядеть следующим образом:
 ```java
 @KoraApp
-public interface ApplicationModules
-    extends RedisCacheModule,     // Только размеченные в аннотации
-    DefaultCaffeineCacheModule {  // Дефолтый кэш
-}
+public interface ApplicationModules extends RedisCacheModule, CaffeineCacheModule { }
+```
+
+Реализации:
+```java
+@Cache("my.caffeine.cache.config")
+public interface CacheCaffeine extends CaffeineCache<String, String> { }
+
+@Cache("my.redis.cache.config")
+public interface CacheRedis extends RedisCache<String, String> { }
 ```
 
 А сам класс с кешами так:
 ```java
 @Component
-public class CacheableTargetMono {
+public class CacheableExample {
 
-    @Cacheable(name = "caffeine_cache")
-    @Cacheable(name = "redis_cache", tags = RedisCacheManager.class)
-    public Mono<Long> getValueCaffeine(String arg1, BigDecimal arg2) {
+    @Cacheable(CacheCaffeine.class)
+    @Cacheable(CacheRedis.class)
+    public Mono<Long> getValueCaffeine(String arg1) {
         return Mono.just(ThreadLocalRandom.current().nextLong());
     }
 }
@@ -251,14 +283,14 @@ public class CacheableTargetMono {
 
 ```java
 @Component
-public class CacheableTargetSync {
+public class CacheExample {
 
-    @Cacheable(name = "my_cache")
+    @Cacheable(DummyCache.class)
     public Long getValue(String arg1, BigDecimal arg2) {
         return ThreadLocalRandom.current().nextLong();
     }
     
-    @Cacheable(name = "my_cache", parameters = {"arg1", "arg2"})
+    @Cacheable(value = DummyCache.class, parameters = {"arg1", "arg2"})
     public Long getValue(BigDecimal arg2, String arg3, String arg1) {
         return ThreadLocalRandom.current().nextLong();
     }
@@ -281,14 +313,13 @@ public class CacheableTargetSync {
 - `initialSize` - Начальный размер кэша (помогает избежать ресазинга в случае активного набухания кэша) *(Optional)*
 - `maximumSize` - Максимальный размер кэша (При достижении границы **или чуть ранее** будет исключать из кэша наименее актуальные значения) *(Optional)*
 
-Предоставляет модули *DefaultCaffeineCacheModule* для использования Caffeine как дефолт реализацию кеша для приложения,
-также *CaffeineCacheModule* для использования Caffeine кеша только где указаны соответсвующее теги в аннотации.
+Предоставляет модуль *CaffeineCacheModule* для использования Caffeine.
 
-Пример конфигурации для *my_cache* кэша:
+Пример конфигурации для *my.cache.config* кэша:
 ```hocon
-cache {
-  caffeine {
-    my_cache { 
+my {
+  cache {
+    config { 
       expireAfterWrite = 10s
       expireAfterAccess = 10s
       initialSize = 10
@@ -298,7 +329,7 @@ cache {
 }
 ```
 
-### Dependencies
+#### Dependencies
 
 **Java**:
 ```groovy
@@ -312,13 +343,7 @@ ksp "ru.tinkoff.kora:annotation-processors"
 implementation "ru.tinkoff.kora:cache-caffeine"
 ```
 
-[Default Module](#несколько-кешей):
-```java
-@KoraApp
-public interface ApplicationModules extends DefaultCaffeineCacheModule { }
-```
-
-Module для кеша с тэгом:
+Module:
 ```java
 @KoraApp
 public interface ApplicationModules extends CaffeineCacheModule { }
@@ -341,10 +366,9 @@ public interface ApplicationModules extends CaffeineCacheModule { }
 - expireAfterWrite - При записи устанавливает время [expiration](https://redis.io/commands/psetex/)
 - expireAfterAccess - При чтении устанавливает время [expiration](https://redis.io/commands/getex/)
 
-Предоставляет модули *DefaultRedisCacheModule* для использования Redis как дефолт реализацию кеша для приложения,
-также *RedisCacheModule* для использования Redis кеша только где указаны соответсвующее теги в аннотации.
+Предоставляет модули *RedisCacheModule* для использования Redis.
 
-Пример конфигурации для *my_cache* кэша.
+Пример конфигурации для *my.cache.config* кэша.
 
 Требуется обязательно сконфигурировать клиент Lettuce для доступа в Redis.
 
@@ -358,9 +382,10 @@ lettuce {
   socketTimeout = 15s
   commandTimeout = 15s
 }
-cache {
-  redis {
-    my_cache {
+
+my {
+  cache {
+   config {
       expireAfterWrite = 10s
       expireAfterAccess = 10s
     }
@@ -382,49 +407,43 @@ ksp "ru.tinkoff.kora:annotation-processors"
 implementation "ru.tinkoff.kora:cache-redis"
 ```
 
-[Default Module](#несколько-кешей):
-```java
-@KoraApp
-public interface ApplicationModules extends DefaultRedisCacheModule { }
-```
-
-Module для кеша с тэгом:
+Module:
 ```java
 @KoraApp
 public interface ApplicationModules extends RedisCacheModule { }
 ```
 
-### Loadable cache
+### Loadable Cache
 
 Библиотека предоставляет компонент для построения сущности, которая объединяет операции GET и PUT, без использования AOP аннотаций - `LoadableCache`
 
 #### Кеширование блокирующих операций
 
 Иногда у нас есть долгая операция, которую бы мы хотели кешировать и запускать на отдельном потоке исполнения при использовании асинхронного апи.   
-Для создания такого `LoadableCache` можно воспользоваться фабричным методом `LoadableCache.blocking`, он создаёт такой cache, который при вызове `LoadableCache.getAsync` вызовет метод `load`, из примера ниже, на переданном `ExecutorService`.
-При этом вызов `LoadableCache.get` вызовет 'load' на том же потоке 
+Для создания такого `CacheLoader` можно воспользоваться фабричным методом `CacheLoader.blocking`, он создаёт такой cache, который при вызове `CacheLoader.loadAsync` вызовет метод `load`, из примера ниже, на переданном `ExecutorService`.
+При этом вызов `CacheLoader.load` вызовет 'load' на том же потоке 
 
 ```java
 @Module
-interface SomeEntityModule {
-  default LoadableCache<SomeEntity> someEntityLoadCache(CacheManager<String, SomeEntity> cacheManager, SomeService someService, ExecutorService executor) {
-    return LoadableCache.blocking(cacheManager.getCache("some.service"), executor, someService::loadEntity);
+interface ApplicationModules {
+  default LoadableCache<String, String> someEntityLoadCache(DummyCache cache, SomeService someService, ExecutorService executor) {
+    return LoadableCache.create(cache, CacheLoader.blocking(someService::loadEntity, executor));
   }
 }
 
 @Component
-class OtherService {
-  private final LoadableCache<SomeEntity> someEntityLoadableCache;
+class ServiceExample {
+  private final LoadableCache<String, String> loadableCache;
   
-  public OtherService(LoadableCache<SomeEntity> someEntityLoadableCache) {
-      this.someEntityLoadableCache = someEntityLoadableCache;
+  public OtherService(LoadableCache<SomeEntity> loadableCache) {
+      this.loadableCache = loadableCache;
   }
 }
 ```
 
 #### Кеширование неблокирующих операций
 
-По аналогии с методом `LoadableCache.blocking`, существуют фабричные методы `LoadableCache.nonBlocking` и `LoadableCache.async`, которые просто умеют кешировать результат переданной функции без  
+По аналогии с методом `CacheLoader.blocking`, существуют фабричные методы `CacheLoader.nonBlocking` и `CacheLoader.async`, которые просто умеют кешировать результат переданной функции без `Executor`.
 
 ## Supported Types
 

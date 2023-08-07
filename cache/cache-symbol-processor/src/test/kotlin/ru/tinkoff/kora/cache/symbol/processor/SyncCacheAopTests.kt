@@ -1,40 +1,50 @@
 package ru.tinkoff.kora.cache.symbol.processor
 
 import com.google.devtools.ksp.KspExperimental
-import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
-import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCacheManager
-import ru.tinkoff.kora.cache.symbol.processor.testdata.CacheableTargetSync
-import ru.tinkoff.kora.cache.symbol.processor.testdata.CacheableTargetSyncMany
+import ru.tinkoff.kora.cache.CacheKey
+import ru.tinkoff.kora.cache.caffeine.CaffeineCacheConfig
+import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule
+import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCache2
+import ru.tinkoff.kora.cache.symbol.processor.testdata.CacheableSync
 import ru.tinkoff.kora.ksp.common.symbolProcess
 import java.math.BigDecimal
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @KspExperimental
-class SyncCacheAopTests : Assertions() {
+class SyncCacheAopTests : CaffeineCacheModule {
 
-    private val CACHED_SERVICE = "ru.tinkoff.kora.cache.symbol.processor.testdata.\$CacheableTargetSync__AopProxy"
+    private val CACHE_CLASS = "ru.tinkoff.kora.cache.symbol.processor.testcache.\$DummyCache2Impl"
+    private val SERVICE_CLASS = "ru.tinkoff.kora.cache.symbol.processor.testdata.\$CacheableSync__AopProxy"
 
-    private val cacheManager = DummyCacheManager<Any, Any>()
-    private var cachedService: CacheableTargetSync? = null
+    private var cache: DummyCache2? = null
+    private var cachedService: CacheableSync? = null
 
-    private fun getService(manager: DummyCacheManager<Any, Any>): CacheableTargetSync {
-        if(cachedService != null) {
-            return cachedService as CacheableTargetSync;
+    private fun getService(): CacheableSync {
+        if (cachedService != null) {
+            return cachedService as CacheableSync;
         }
 
         return try {
             val classLoader = symbolProcess(
-                CacheableTargetSync::class,
-                CacheKeySymbolProcessorProvider(),
+                listOf(DummyCache2::class, CacheableSync::class),
+                CacheSymbolProcessorProvider(),
                 AopSymbolProcessorProvider(),
             )
-            val serviceClass = classLoader.loadClass(CACHED_SERVICE) ?: throw IllegalArgumentException("Expected class not found: $CACHED_SERVICE")
-            val inst = serviceClass.constructors[0].newInstance(manager) as CacheableTargetSync
-            cachedService = inst
+
+            val cacheClass = classLoader.loadClass(CACHE_CLASS) ?: throw IllegalArgumentException("Expected class not found: $CACHE_CLASS")
+            cache = cacheClass.constructors[0].newInstance(
+                CacheRunner.getConfig(),
+                caffeineCacheFactory(null),
+                caffeineCacheTelemetry(null, null)
+            ) as DummyCache2
+
+            val serviceClass = classLoader.loadClass(SERVICE_CLASS) ?: throw IllegalArgumentException("Expected class not found: $SERVICE_CLASS")
+            val inst = serviceClass.constructors[0].newInstance(cache) as CacheableSync
             inst
         } catch (e: Exception) {
             throw IllegalStateException(e.message, e)
@@ -43,13 +53,13 @@ class SyncCacheAopTests : Assertions() {
 
     @BeforeEach
     fun reset() {
-        cacheManager.reset()
+        cache?.invalidateAll()
     }
 
     @Test
-    fun getFromCacheWhenWasCacheEmpty() {
+    fun getWhenWasCacheEmpty() {
         // given
-        val service = getService(cacheManager)
+        val service = getService()
         service.value = "1"
         assertNotNull(service)
 
@@ -64,9 +74,9 @@ class SyncCacheAopTests : Assertions() {
     }
 
     @Test
-    fun getFromCacheWhenCacheFilled() {
+    fun getWhenCacheFilled() {
         // given
-        val service = getService(cacheManager)
+        val service = getService()
         service.value = "1"
         assertNotNull(service)
 
@@ -82,9 +92,9 @@ class SyncCacheAopTests : Assertions() {
     }
 
     @Test
-    fun getFromCacheWrongKeyWhenCacheFilled() {
+    fun getWrongKeyWhenCacheFilled() {
         // given
-        val service = getService(cacheManager)
+        val service = getService()
         service.value = "1"
         assertNotNull(service)
 
@@ -101,9 +111,9 @@ class SyncCacheAopTests : Assertions() {
     }
 
     @Test
-    fun getFromCacheWhenCacheFilledOtherKey() {
+    fun getWhenCacheFilledOtherKey() {
         // given
-        val service = getService(cacheManager)
+        val service = getService()
         service.value = "1"
         assertNotNull(service)
 
@@ -120,9 +130,9 @@ class SyncCacheAopTests : Assertions() {
     }
 
     @Test
-    fun getFromCacheWhenCacheInvalidate() {
+    fun getWhenCacheInvalidate() {
         // given
-        val service = getService(cacheManager)
+        val service = getService()
         service.value = "1"
         assertNotNull(service)
 
@@ -130,18 +140,25 @@ class SyncCacheAopTests : Assertions() {
         val initial = service.getValue("1", BigDecimal.ZERO)
         val cached = service.putValue(BigDecimal.ZERO, "5", "1")
         assertEquals(initial, cached)
+
+        val cached2 = service.putValue(BigDecimal.ZERO, "5", "2")
+        assertEquals(initial, cached2)
+
         service.value = "2"
         service.evictValue("1", BigDecimal.ZERO)
 
         // then
+        assertNull(cache!!.get(CacheKey.of("1", BigDecimal.ZERO)))
+        assertEquals(cached2, cache!!.get(CacheKey.of("2", BigDecimal.ZERO)))
+
         val fromCache = service.getValue("1", BigDecimal.ZERO)
         assertNotEquals(cached, fromCache)
     }
 
     @Test
-    fun getFromCacheWhenCacheInvalidateAll() {
+    fun getWhenCacheInvalidateAll() {
         // given
-        val service = getService(cacheManager)
+        val service = getService()
         service.value = "1"
         assertNotNull(service)
 
@@ -149,10 +166,17 @@ class SyncCacheAopTests : Assertions() {
         val initial = service.getValue("1", BigDecimal.ZERO)
         val cached = service.putValue(BigDecimal.ZERO, "5", "1")
         assertEquals(initial, cached)
+
+        val cached2 = service.putValue(BigDecimal.ZERO, "5", "2")
+        assertEquals(initial, cached2)
+
         service.value = "2"
         service.evictAll()
 
         // then
+        assertNull(cache!!.get(CacheKey.of("1", BigDecimal.ZERO)))
+        assertNull(cache!!.get(CacheKey.of("2", BigDecimal.ZERO)))
+
         val fromCache = service.getValue("1", BigDecimal.ZERO)
         assertNotEquals(cached, fromCache)
     }

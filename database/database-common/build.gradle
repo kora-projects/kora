@@ -2,9 +2,8 @@ plugins {
     id "java-test-fixtures"
 }
 
-
 dependencies {
-    compileOnly("org.jetbrains:annotations:23.0.0")
+    compileOnly libs.jetbrains.annotations
 
     api project(":common")
     api project(":logging:logging-common")

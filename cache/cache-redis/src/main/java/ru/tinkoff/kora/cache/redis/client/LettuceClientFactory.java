@@ -5,12 +5,14 @@ import io.lettuce.core.cluster.ClusterClientOptions;
 import io.lettuce.core.cluster.RedisClusterClient;
 import io.lettuce.core.cluster.RedisClusterURIUtil;
 import io.lettuce.core.protocol.ProtocolVersion;
+import org.jetbrains.annotations.ApiStatus.Internal;
 
 import javax.annotation.Nonnull;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 
+@Internal
 public final class LettuceClientFactory {
 
     @Nonnull

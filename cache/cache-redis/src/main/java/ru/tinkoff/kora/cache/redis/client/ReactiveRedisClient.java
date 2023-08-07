@@ -2,17 +2,25 @@ package ru.tinkoff.kora.cache.redis.client;
 
 import reactor.core.publisher.Mono;
 
+import java.util.Map;
+
 public interface ReactiveRedisClient {
 
     Mono<byte[]> get(byte[] key);
 
+    Mono<Map<byte[], byte[]>> get(byte[][] keys);
+
     Mono<byte[]> getExpire(byte[] key, long expireAfterMillis);
 
-    Mono<Void> set(byte[] key, byte[] value);
+    Mono<Map<byte[], byte[]>> getExpire(byte[][] key, long expireAfterMillis);
 
-    Mono<Void> setExpire(byte[] key, byte[] value, long expireAfterMillis);
+    Mono<Boolean> set(byte[] key, byte[] value);
 
-    Mono<Void> del(byte[] key);
+    Mono<Boolean> setExpire(byte[] key, byte[] value, long expireAfterMillis);
 
-    Mono<Void> flushAll();
+    Mono<Long> del(byte[] key);
+
+    Mono<Long> del(byte[][] keys);
+
+    Mono<Boolean> flushAll();
 }

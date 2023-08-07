@@ -45,7 +45,7 @@ public record LettuceClientConfig(String uri,
             return ProtocolVersion.RESP2;
         } else {
             throw new IllegalArgumentException("Unknown protocol value '" + protocol
-                + "', expected value one of: " + Arrays.toString(ProtocolVersion.values()));
+                                               + "', expected value one of: " + Arrays.toString(ProtocolVersion.values()));
         }
     }
 }

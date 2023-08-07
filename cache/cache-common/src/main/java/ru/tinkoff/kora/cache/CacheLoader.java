@@ -4,6 +4,8 @@ import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.Collection;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 
@@ -19,6 +21,15 @@ public interface CacheLoader<K, V> {
     V load(@Nonnull K key);
 
     /**
+     * Computes or retrieves the value corresponding to {@code key}.
+     *
+     * @param keys to look value for
+     * @return value associated with key
+     */
+    @Nullable
+    Map<K, V> load(@Nonnull Collection<K> keys);
+
+    /**
      * Computes or retrieves the value corresponding to {@code key} asynchronously.
      *
      * @param key to look value for
@@ -27,69 +38,72 @@ public interface CacheLoader<K, V> {
     @Nonnull
     Mono<V> loadAsync(@Nonnull K key);
 
-    class BlockingCacheLoader<K, V> implements CacheLoader<K, V> {
-        private final ExecutorService executor;
-        private final Function<K, V> loader;
+    /**
+     * Computes or retrieves the value corresponding to {@code key} asynchronously.
+     *
+     * @param keys to look value for
+     * @return value associated with key or {@link Mono#empty()}
+     */
+    Mono<Map<K, V>> loadAsync(@Nonnull Collection<K> keys);
 
-        public BlockingCacheLoader(ExecutorService executor, Function<K, V> loader) {
-            this.executor = executor;
-            this.loader = loader;
-        }
-
-        @Nullable
-        @Override
-        public V load(@Nonnull K key) {
-            return loader.apply(key);
-        }
-
-        @Nonnull
-        @Override
-        public Mono<V> loadAsync(@Nonnull K key) {
-            return Mono.create(sink -> {
-                executor.submit(() -> {
-                    try {
-                        sink.success(loader.apply(key));
-                    } catch (Exception e) {
-                        sink.error(e);
-                    }
-                });
-            });
-        }
+    @Nonnull
+    static <K, V> CacheLoader<K, V> blocking(@Nonnull Function<K, V> loader,
+                                             @Nonnull ExecutorService executor) {
+        return new CacheLoaderImpls.BlockingCacheLoader<>(executor, loader);
     }
 
-    class NonBlockingCacheLoader<K, V> implements CacheLoader<K, V> {
-        private final Function<K, V> loader;
-
-        public NonBlockingCacheLoader(Function<K, V> loader) {this.loader = loader;}
-
-        @Nullable
-        @Override
-        public V load(@Nonnull K key) {
-            return loader.apply(key);
-        }
-
-        @Nonnull
-        @Override
-        public Mono<V> loadAsync(@Nonnull K key) {
-            return Mono.fromCallable(() -> loader.apply(key));
-        }
+    /**
+     * Create default loadable cache implementation for blocking operation
+     *
+     * @param executor   Executor to submit load task on async call
+     * @param loader     Blocking load operation
+     * @param loaderMany Blocking load for multiple keys
+     * @param <K>        Cache key
+     * @param <V>        Cache value
+     * @return default loadable cache instance
+     */
+    @Nonnull
+    static <K, V> CacheLoader<K, V> blocking(@Nonnull Function<K, V> loader,
+                                             @Nonnull Function<Collection<K>, Map<K, V>> loaderMany,
+                                             @Nonnull ExecutorService executor) {
+        return new CacheLoaderImpls.BlockingCacheLoader<>(executor, loader, loaderMany);
     }
 
-    class AsyncCacheLoader<K, V> implements CacheLoader<K, V> {
-        private final Function<K, Mono<V>> loader;
+    @Nonnull
+    static <K, V> CacheLoader<K, V> nonBlocking(@Nonnull Function<K, V> loader) {
+        return new CacheLoaderImpls.NonBlockingCacheLoader<>(loader);
+    }
 
-        public AsyncCacheLoader(Function<K, Mono<V>> loader) {this.loader = loader;}
+    /**
+     * Create default loadable cache implementation for non-blocking operation
+     *
+     * @param loader Some long computation
+     * @param <K>    Cache key
+     * @param <V>    Cache value
+     * @return default loadable cache instance
+     */
+    @Nonnull
+    static <K, V> CacheLoader<K, V> nonBlocking(@Nonnull Function<K, V> loader,
+                                                @Nonnull Function<Collection<K>, Map<K, V>> loaderMany) {
+        return new CacheLoaderImpls.NonBlockingCacheLoader<>(loader, loaderMany);
+    }
 
-        @Nullable
-        @Override
-        public V load(@Nonnull K key) {
-            return loader.apply(key).block();
-        }
+    /**
+     * Create default loadable cache implementation for async operation
+     *
+     * @param loader Async
+     * @param <K>    Cache key
+     * @param <V>    Cache value
+     * @return default loadable cache instance
+     */
+    @Nonnull
+    static <K, V> CacheLoader<K, V> async(@Nonnull Function<K, Mono<V>> loader) {
+        return new CacheLoaderImpls.AsyncCacheLoader<>(loader);
+    }
 
-        @Nonnull
-        @Override
-        public Mono<V> loadAsync(@Nonnull K key) {
-            return loader.apply(key);
-        }
+    @Nonnull
+    static <K, V> CacheLoader<K, V> async(@Nonnull Function<K, Mono<V>> loader,
+                                          @Nonnull Function<Collection<K>, Mono<Map<K, V>>> loaderMany) {
+        return new CacheLoaderImpls.AsyncCacheLoader<>(loader, loaderMany);
     }
 }

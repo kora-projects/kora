@@ -25,19 +25,4 @@ dependencies {
 }
 
 apply from: "${project.rootDir}/kotlin-plugin.gradle"
-kotlin {
-    sourceSets {
-        testGenerated {
-            kotlin.srcDir("build/generated/ksp/sources/kotlin")
-            kotlin.srcDir("build/in-test-generated-ksp/ksp/sources/kotlin")
-        }
-    }
-    sourceSets.main {
-        kotlin.srcDir("build/generated/ksp/main/kotlin")
-    }
-    sourceSets.test {
-        kotlin.srcDir("build/generated/ksp/test/kotlin")
-    }
-}
-
-apply from: "../../in-test-generated.gradle"
+apply from: "${project.rootDir}/in-test-generated.gradle"
