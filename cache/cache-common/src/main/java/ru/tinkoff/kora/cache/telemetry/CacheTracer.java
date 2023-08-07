@@ -12,5 +12,5 @@ public interface CacheTracer {
         void recordFailure(@Nullable Throwable throwable);
     }
 
-    CacheSpan trace(@Nonnull CacheTelemetry.Operation operation);
+    CacheSpan trace(@Nonnull CacheTelemetryOperation operation);
 }

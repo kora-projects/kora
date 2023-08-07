@@ -7,14 +7,15 @@ apply from: "${project.rootDir}/kotlin-plugin.gradle"
 
 dependencies {
     implementation project(":aop:aop-symbol-processor")
-    implementation project(":cache:cache-common")
 
     implementation libs.ksp.api
     implementation libs.kotlin.reflect
     implementation libs.kotlinpoet
     implementation libs.kotlinpoet.ksp
 
+    testImplementation libs.prometheus.collector.caffeine
     testImplementation project(":internal:test-logging")
+    testImplementation project(":cache:cache-caffeine")
     testImplementation testFixtures(project(":symbol-processor-common"))
     testImplementation(libs.kotlin.stdlib.lib)
     testImplementation(libs.kotlin.coroutines.reactor)
@@ -34,4 +35,4 @@ kotlin {
     }
 }
 
-apply from: "../../in-test-generated.gradle"
+apply from: "${project.rootDir}/in-test-generated.gradle"

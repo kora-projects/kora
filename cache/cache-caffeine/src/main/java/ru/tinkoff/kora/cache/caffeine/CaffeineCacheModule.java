@@ -1,39 +1,49 @@
 package ru.tinkoff.kora.cache.caffeine;
 
-import ru.tinkoff.kora.application.graph.TypeRef;
-import ru.tinkoff.kora.cache.CacheManager;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import io.prometheus.client.cache.caffeine.CacheMetricsCollector;
 import ru.tinkoff.kora.cache.telemetry.CacheMetrics;
-import ru.tinkoff.kora.cache.telemetry.CacheTelemetry;
-import ru.tinkoff.kora.cache.telemetry.DefaultCacheTelemetry;
+import ru.tinkoff.kora.cache.telemetry.CacheTracer;
 import ru.tinkoff.kora.common.DefaultComponent;
-import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 public interface CaffeineCacheModule {
 
-    @Tag(CaffeineCacheManager.class)
     @DefaultComponent
-    default CacheTelemetry defaultCacheTelemetry(@Nullable CacheMetrics metrics) {
-        return new DefaultCacheTelemetry(metrics, null);
+    default CaffeineCacheTelemetry caffeineCacheTelemetry(@Nullable CacheMetrics metrics, @Nullable CacheTracer tracer) {
+        return new CaffeineCacheTelemetry(metrics, tracer);
     }
 
-    default CaffeineCacheConfig caffeineCacheConfig(Config config, ConfigValueExtractor<CaffeineCacheConfig> extractor) {
-        return extractor.extract(config.get("cache"));
-    }
+    @DefaultComponent
+    default CaffeineCacheFactory caffeineCacheFactory(@Nullable CacheMetricsCollector cacheMetricsCollector) {
+        return new CaffeineCacheFactory() {
+            @Nonnull
+            @Override
+            public <K, V> Cache<K, V> build(@Nonnull String name, @Nonnull CaffeineCacheConfig config) {
+                final Caffeine<K, V> builder = (Caffeine<K, V>) Caffeine.newBuilder();
+                if (config.expireAfterWrite() != null)
+                    builder.expireAfterWrite(config.expireAfterWrite());
+                if (config.expireAfterAccess() != null)
+                    builder.expireAfterAccess(config.expireAfterAccess());
+                if (config.initialSize() != null)
+                    builder.initialCapacity(config.initialSize());
+                if (config.maximumSize() != null)
+                    builder.maximumSize(config.maximumSize());
 
-    default CaffeineCacheFactory caffeineCacheFactory() {
-        return new CaffeineCacheFactory();
-    }
-
-    @Tag(CaffeineCacheManager.class)
-    default <K, V> CacheManager<K, V> taggedCaffeineCacheManager(CaffeineCacheFactory factory,
-                                                                 CaffeineCacheConfig config,
-                                                                 @Tag(CaffeineCacheManager.class) CacheTelemetry telemetry,
-                                                                 TypeRef<K> keyRef,
-                                                                 TypeRef<V> valueRef) {
-        return new CaffeineCacheManager<>(factory, config, telemetry);
+                final Cache<K, V> cache;
+                if (cacheMetricsCollector != null) {
+                    cache = builder.recordStats().build();
+                    cacheMetricsCollector.addCache(name, cache);
+                } else {
+                    cache = builder.build();
+                }
+                return cache;
+            }
+        };
     }
 }

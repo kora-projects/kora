@@ -2,40 +2,61 @@ package ru.tinkoff.kora.cache.symbol.processor
 
 import com.google.devtools.ksp.KspExperimental
 import kotlinx.coroutines.runBlocking
-import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
 import ru.tinkoff.kora.cache.CacheKey
-import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCacheManager
-import ru.tinkoff.kora.cache.symbol.processor.testdata.suspended.CacheableTargetSuspendMany
+import ru.tinkoff.kora.cache.caffeine.CaffeineCacheConfig
+import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule
+import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCache2
+import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCache22
+import ru.tinkoff.kora.cache.symbol.processor.testdata.CacheableSyncMany
+import ru.tinkoff.kora.cache.symbol.processor.testdata.suspended.CacheableSuspendMany
 import ru.tinkoff.kora.ksp.common.symbolProcess
 import java.math.BigDecimal
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @KspExperimental
-class SuspendManyCacheAopTests : Assertions() {
+class SuspendManyCacheAopTests : CaffeineCacheModule {
 
-    private val CACHED_SERVICE = "ru.tinkoff.kora.cache.symbol.processor.testdata.suspended.\$CacheableTargetSuspendMany__AopProxy"
+    private val CACHE1_CLASS = "ru.tinkoff.kora.cache.symbol.processor.testcache.\$DummyCache2Impl"
+    private val CACHE2_CLASS = "ru.tinkoff.kora.cache.symbol.processor.testcache.\$DummyCache22Impl"
+    private val SERVICE_CLASS = "ru.tinkoff.kora.cache.symbol.processor.testdata.suspended.\$CacheableSuspendMany__AopProxy"
 
-    private val cacheManager = DummyCacheManager<Any, Any>()
-    private var cachedService: CacheableTargetSuspendMany? = null
+    private var cache1: DummyCache2? = null
+    private var cache2: DummyCache22? = null
+    private var cachedService: CacheableSyncMany? = null
 
-    private fun getService(manager: DummyCacheManager<Any, Any>): CacheableTargetSuspendMany {
-        if(cachedService != null) {
-            return cachedService as CacheableTargetSuspendMany;
+    private fun getService(): CacheableSuspendMany {
+        if (cachedService != null) {
+            return cachedService as CacheableSuspendMany;
         }
 
         return try {
             val classLoader = symbolProcess(
-                CacheableTargetSuspendMany::class,
-                CacheKeySymbolProcessorProvider(),
+                listOf(DummyCache2::class, DummyCache22::class, CacheableSuspendMany::class),
+                CacheSymbolProcessorProvider(),
                 AopSymbolProcessorProvider(),
             )
-            val serviceClass = classLoader.loadClass(CACHED_SERVICE) ?: throw IllegalArgumentException("Expected class not found: $CACHED_SERVICE")
-            val inst = serviceClass.constructors[0].newInstance(manager) as CacheableTargetSuspendMany
-            cachedService = inst
+
+            val cache1Class = classLoader.loadClass(CACHE1_CLASS) ?: throw IllegalArgumentException("Expected class not found: $CACHE1_CLASS")
+            cache1 = cache1Class.constructors[0].newInstance(
+                CacheRunner.getConfig(),
+                caffeineCacheFactory(null),
+                caffeineCacheTelemetry(null, null)
+            ) as DummyCache2
+
+            val cache2Class = classLoader.loadClass(CACHE2_CLASS) ?: throw IllegalArgumentException("Expected class not found: $CACHE2_CLASS")
+            cache2 = cache2Class.constructors[0].newInstance(
+                CacheRunner.getConfig(),
+                caffeineCacheFactory(null),
+                caffeineCacheTelemetry(null, null)
+            ) as DummyCache22
+
+            val serviceClass = classLoader.loadClass(SERVICE_CLASS) ?: throw IllegalArgumentException("Expected class not found: $SERVICE_CLASS")
+            val inst = serviceClass.constructors[0].newInstance(cache1, cache2) as CacheableSuspendMany
             inst
         } catch (e: Exception) {
             throw IllegalStateException(e.message, e)
@@ -44,13 +65,14 @@ class SuspendManyCacheAopTests : Assertions() {
 
     @BeforeEach
     fun reset() {
-        cacheManager.reset()
+        cache1?.invalidateAll()
+        cache2?.invalidateAll()
     }
 
     @Test
-    fun getFromCacheWhenWasCacheEmpty() {
+    fun getWhenWasCacheEmpty() {
         // given
-        val service = getService(cacheManager)
+        val service = getService()
         service.value = "1"
         assertNotNull(service)
 
@@ -65,27 +87,14 @@ class SuspendManyCacheAopTests : Assertions() {
     }
 
     @Test
-    fun getFromCacheLevel2AndThenSaveCacheLevel1() {
+    fun getLevel2AndThenSaveCacheLevel1() {
         // given
-        val service = getService(cacheManager)
-        val cache1 = cacheManager.getCache("suspend_cache")
-        val cache2 = cacheManager.getCache("suspend_cache_2")
+        val service = getService()
         service.value = "1"
         assertNotNull(service)
-        assertTrue(cache1.isEmpty())
-        assertTrue(cache2.isEmpty())
-        val cachedValue = "LEVEL_2"
-        val cachedKey: CacheKey = object : CacheKey {
-            override fun values(): List<Any> {
-                return listOf<Any>("1", BigDecimal.ZERO)
-            }
 
-            override fun toString(): String {
-                return "1" + "-" + BigDecimal.ZERO
-            }
-        }
-        cache2.put(cachedKey, cachedValue)
-        assertFalse(cache2.isEmpty())
+        val cachedValue = "LEVEL_2"
+        cache2!!.put(CacheKey.of("1", BigDecimal.ZERO), cachedValue)
 
         // when
         val valueFromLevel2 = runBlocking { service.getValue("1", BigDecimal.ZERO) }
@@ -95,14 +104,12 @@ class SuspendManyCacheAopTests : Assertions() {
         val valueFromLevel1 = runBlocking { service.getValue("1", BigDecimal.ZERO) }
         assertEquals(valueFromLevel2, valueFromLevel1)
         assertEquals(cachedValue, valueFromLevel1)
-        assertFalse(cache1.isEmpty())
-        assertFalse(cache2.isEmpty())
     }
 
     @Test
-    fun getFromCacheWhenCacheFilled() {
+    fun getWhenCacheFilled() {
         // given
-        val service = getService(cacheManager)
+        val service = getService()
         service.value = "1"
         assertNotNull(service)
 
@@ -118,9 +125,9 @@ class SuspendManyCacheAopTests : Assertions() {
     }
 
     @Test
-    fun getFromCacheWrongKeyWhenCacheFilled() {
+    fun getWrongKeyWhenCacheFilled() {
         // given
-        val service = getService(cacheManager)
+        val service = getService()
         service.value = "1"
         assertNotNull(service)
 
@@ -137,9 +144,9 @@ class SuspendManyCacheAopTests : Assertions() {
     }
 
     @Test
-    fun getFromCacheWhenCacheFilledOtherKey() {
+    fun getWhenCacheFilledOtherKey() {
         // given
-        val service = getService(cacheManager)
+        val service = getService()
         service.value = "1"
         assertNotNull(service)
 
@@ -156,9 +163,9 @@ class SuspendManyCacheAopTests : Assertions() {
     }
 
     @Test
-    fun getFromCacheWhenCacheInvalidate() {
+    fun getWhenCacheInvalidate() {
         // given
-        val service = getService(cacheManager)
+        val service = getService()
         service.value = "1"
         assertNotNull(service)
 
@@ -175,9 +182,9 @@ class SuspendManyCacheAopTests : Assertions() {
     }
 
     @Test
-    fun getFromCacheWhenCacheInvalidateAll() {
+    fun getWhenCacheInvalidateAll() {
         // given
-        val service = getService(cacheManager)
+        val service = getService()
         service.value = "1"
         assertNotNull(service)
 

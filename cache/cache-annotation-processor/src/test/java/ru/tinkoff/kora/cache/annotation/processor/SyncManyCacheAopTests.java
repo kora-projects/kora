@@ -7,36 +7,64 @@ import org.junit.jupiter.api.TestInstance;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
 import ru.tinkoff.kora.cache.CacheKey;
-import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache;
-import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCacheManager;
-import ru.tinkoff.kora.cache.annotation.processor.testdata.sync.CacheableTargetSyncMany;
+import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache2;
+import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache22;
+import ru.tinkoff.kora.cache.annotation.processor.testdata.sync.CacheableSyncMany;
+import ru.tinkoff.kora.cache.caffeine.CaffeineCacheConfig;
+import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule;
 
-import javax.annotation.Nonnull;
+import java.lang.reflect.Constructor;
 import java.math.BigDecimal;
-import java.util.Arrays;
 import java.util.List;
 
-@SuppressWarnings({"rawtypes", "unchecked"})
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class SyncManyCacheAopTests extends Assertions {
+class SyncManyCacheAopTests extends Assertions implements CaffeineCacheModule {
 
-    private static final String CACHED_SERVICE = "ru.tinkoff.kora.cache.annotation.processor.testdata.sync.$CacheableTargetSyncMany__AopProxy";
+    private static final String CACHED_IMPL_1 = "ru.tinkoff.kora.cache.annotation.processor.testcache.$DummyCache2Impl";
+    private static final String CACHED_IMPL_2 = "ru.tinkoff.kora.cache.annotation.processor.testcache.$DummyCache22Impl";
+    private static final String CACHED_SERVICE = "ru.tinkoff.kora.cache.annotation.processor.testdata.sync.$CacheableSyncMany__AopProxy";
 
-    private final DummyCacheManager<?, ?> cacheManager = new DummyCacheManager<>();
-    private CacheableTargetSyncMany service = null;
+    private DummyCache2 cache1 = null;
+    private DummyCache22 cache2 = null;
+    private CacheableSyncMany service = null;
 
-    private CacheableTargetSyncMany getService(DummyCacheManager<?, ?> manager) {
+    private CacheableSyncMany getService() {
         if (service != null) {
             return service;
         }
 
         try {
-            var classLoader = TestUtils.annotationProcess(CacheableTargetSyncMany.class, new AopAnnotationProcessor(), new CacheKeyAnnotationProcessor());
+            var classLoader = TestUtils.annotationProcess(List.of(DummyCache2.class, DummyCache22.class, CacheableSyncMany.class),
+                new AopAnnotationProcessor(), new CacheAnnotationProcessor());
+
+            var cacheClass1 = classLoader.loadClass(CACHED_IMPL_1);
+            if (cacheClass1 == null) {
+                throw new IllegalArgumentException("Expected class not found: " + CACHED_IMPL_1);
+            }
+
+            final Constructor<?> cacheConstructor1 = cacheClass1.getDeclaredConstructors()[0];
+            cacheConstructor1.setAccessible(true);
+            cache1 = (DummyCache2) cacheConstructor1.newInstance(CacheRunner.getConfig(),
+                caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+
+            var cacheClass2 = classLoader.loadClass(CACHED_IMPL_2);
+            if (cacheClass2 == null) {
+                throw new IllegalArgumentException("Expected class not found: " + CACHED_IMPL_2);
+            }
+
+            final Constructor<?> cacheConstructor2 = cacheClass2.getDeclaredConstructors()[0];
+            cacheConstructor2.setAccessible(true);
+            cache2 = (DummyCache22) cacheConstructor2.newInstance(CacheRunner.getConfig(),
+                caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+
             var serviceClass = classLoader.loadClass(CACHED_SERVICE);
             if (serviceClass == null) {
                 throw new IllegalArgumentException("Expected class not found: " + CACHED_SERVICE);
             }
-            service = (CacheableTargetSyncMany) serviceClass.getConstructors()[0].newInstance(manager, manager);
+
+            final Constructor<?> serviceConstructor = serviceClass.getDeclaredConstructors()[0];
+            serviceConstructor.setAccessible(true);
+            service = (CacheableSyncMany) serviceConstructor.newInstance(cache1, cache2);
             return service;
         } catch (Exception e) {
             throw new IllegalStateException(e);
@@ -44,14 +72,17 @@ class SyncManyCacheAopTests extends Assertions {
     }
 
     @BeforeEach
-    void reset() {
-        cacheManager.reset();
+    void cleanup() {
+        if (cache1 != null && cache2 != null) {
+            cache1.invalidateAll();
+            cache2.invalidateAll();
+        }
     }
 
     @Test
     void getFromCacheWhenWasCacheEmpty() {
         // given
-        final CacheableTargetSyncMany service = getService(cacheManager);
+        final CacheableSyncMany service = getService();
         service.value = "1";
         assertNotNull(service);
 
@@ -69,30 +100,12 @@ class SyncManyCacheAopTests extends Assertions {
     @Test
     void getFromCacheLevel2AndThenSaveCacheLevel1() {
         // given
-        final CacheableTargetSyncMany service = getService(cacheManager);
-        final DummyCache cache1 = cacheManager.getCache("sync_cache");
-        final DummyCache cache2 = cacheManager.getCache("sync_cache_2");
+        final CacheableSyncMany service = getService();
         service.value = "1";
         assertNotNull(service);
-        assertTrue(cache1.isEmpty());
-        assertTrue(cache2.isEmpty());
 
         var cachedValue = "LEVEL_2";
-        var cachedKey = new CacheKey() {
-            @Nonnull
-            @Override
-            public List<Object> values() {
-                return Arrays.asList("1", BigDecimal.ZERO);
-            }
-
-            @Override
-            public String toString() {
-                return "1" + "-" + BigDecimal.ZERO;
-            }
-        };
-
-        cache2.put(cachedKey, cachedValue);
-        assertFalse(cache2.isEmpty());
+        cache2.put(CacheKey.of("1", BigDecimal.ZERO), cachedValue);
 
         // when
         final String valueFromLevel2 = service.getValue("1", BigDecimal.ZERO);
@@ -102,14 +115,12 @@ class SyncManyCacheAopTests extends Assertions {
         final String valueFromLevel1 = service.getValue("1", BigDecimal.ZERO);
         assertEquals(valueFromLevel2, valueFromLevel1);
         assertEquals(cachedValue, valueFromLevel1);
-        assertFalse(cache1.isEmpty());
-        assertFalse(cache2.isEmpty());
     }
 
     @Test
     void getFromCacheWhenCacheFilled() {
         // given
-        final CacheableTargetSyncMany service = getService(cacheManager);
+        final CacheableSyncMany service = getService();
         service.value = "1";
         assertNotNull(service);
 
@@ -127,7 +138,7 @@ class SyncManyCacheAopTests extends Assertions {
     @Test
     void getFromCacheWrongKeyWhenCacheFilled() {
         // given
-        final CacheableTargetSyncMany service = getService(cacheManager);
+        final CacheableSyncMany service = getService();
         service.value = "1";
         assertNotNull(service);
 
@@ -146,7 +157,7 @@ class SyncManyCacheAopTests extends Assertions {
     @Test
     void getFromCacheWhenCacheFilledOtherKey() {
         // given
-        final CacheableTargetSyncMany service = getService(cacheManager);
+        final CacheableSyncMany service = getService();
         service.value = "1";
         assertNotNull(service);
 
@@ -165,7 +176,7 @@ class SyncManyCacheAopTests extends Assertions {
     @Test
     void getFromCacheWhenCacheInvalidate() {
         // given
-        final CacheableTargetSyncMany service = getService(cacheManager);
+        final CacheableSyncMany service = getService();
         service.value = "1";
         assertNotNull(service);
 
@@ -184,7 +195,7 @@ class SyncManyCacheAopTests extends Assertions {
     @Test
     void getFromCacheWhenCacheInvalidateAll() {
         // given
-        final CacheableTargetSyncMany service = getService(cacheManager);
+        final CacheableSyncMany service = getService();
         service.value = "1";
         assertNotNull(service);
 

@@ -5,150 +5,122 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import ru.tinkoff.kora.cache.testcache.DummyCache;
-import ru.tinkoff.kora.cache.testcache.DummyCacheManager;
-
-import java.util.function.Function;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SyncCacheAopTests extends Assertions {
 
-    private final DummyCacheManager<String, String> cacheFacade1 = new DummyCacheManager<>();
-    private final DummyCache<String, String> cacheFacade2 = new DummyCache<>("test");
+    private final DummyCache cache1 = new DummyCache("cache1");
 
     @BeforeEach
     void cleanup() {
-        cacheFacade1.reset();
-        cacheFacade2.invalidateAll();
+        cache1.invalidateAll();
     }
 
     @Test
-    void getFromCacheWhenWasCacheEmpty() {
+    void getWhenCacheEmpty() {
         // given
-        final DummyCacheManager<String, String> cacheFacade1 = new DummyCacheManager<>();
-        final DummyCache<String, String> cacheFacade2 = new DummyCache<>("test");
-        final CacheManager.Builder<String, String> builder = CacheManager.builder();
-        final CacheManager<String, String> service = builder
-            .addFacadeManager(cacheFacade1)
-            .addFacadeFunction(n -> cacheFacade2)
+        final DummyCache cache2 = new DummyCache("cache2");
+        final Cache<String, String> facade = CacheBuilder.builder(cache1)
+            .addCache(cache2)
             .build();
 
-        // when
         // then
-        final Cache<String, String> facadeCache = service.getCache("test");
-        assertNull(facadeCache.get("key1"));
+        assertNull(facade.get("key1"));
     }
 
     @Test
-    void getFromCacheForFacade1() {
+    void getForFacade1() {
         // given
-        final DummyCacheManager<String, String> cacheFacade1 = new DummyCacheManager<>();
-        final DummyCache<String, String> cacheFacade2 = new DummyCache<>("test");
-        final CacheManager.Builder<String, String> builder = CacheManager.builder();
-        final CacheManager<String, String> service = builder
-            .addFacadeManager(cacheFacade1)
-            .addFacadeFunction(name -> cacheFacade2)
+        final DummyCache cache2 = new DummyCache("cache2");
+        final Cache<String, String> facade = CacheBuilder.builder(cache1)
+            .addCache(cache2)
             .build();
 
         // when
         final String result = "value1";
-        cacheFacade1.getCache("test").put("key1", result);
+        cache1.put("key1", result);
 
         // then
-        final Cache<String, String> facadeCache = service.getCache("test");
-        assertEquals(result, facadeCache.get("key1"));
+        assertEquals(result, facade.get("key1"));
     }
 
     @Test
-    void getFromCacheForFacade2() {
+    void getForFacade2() {
         // given
-        final DummyCacheManager<String, String> cacheFacade1 = new DummyCacheManager<>();
-        final DummyCache<String, String> cacheFacade2 = new DummyCache<>("test");
-        final CacheManager.Builder<String, String> builder = CacheManager.builder();
-        final CacheManager<String, String> service = builder
-            .addFacadeManager(cacheFacade1)
-            .addFacadeFunction(name -> cacheFacade2)
+        final DummyCache cache2 = new DummyCache("cache2");
+        final Cache<String, String> facade = CacheBuilder.builder(cache1)
+            .addCache(cache2)
             .build();
 
         // when
         final String result = "value1";
-        cacheFacade2.put("key1", result);
+        cache2.put("key1", result);
 
         // then
-        final Cache<String, String> facadeCache = service.getCache("test");
-        assertEquals(result, facadeCache.get("key1"));
+        assertEquals(result, facade.get("key1"));
     }
 
     @Test
-    void putCacheForFacade() {
+    void putForFacade12() {
         // given
-        final DummyCacheManager<String, String> cacheFacade1 = new DummyCacheManager<>();
-        final DummyCache<String, String> cacheFacade2 = new DummyCache<>("test");
-        final CacheManager.Builder<String, String> builder = CacheManager.builder();
-        final CacheManager<String, String> service = builder
-            .addFacadeManager(cacheFacade1)
-            .addFacadeFunction(name -> cacheFacade2)
+        final DummyCache cache2 = new DummyCache("cache2");
+        final Cache<String, String> facade = CacheBuilder.builder(cache1)
+            .addCache(cache2)
             .build();
 
         // when
-        final Cache<String, String> facadeCache = service.getCache("test");
         final String result = "value1";
-        facadeCache.put("key1", result);
+        facade.put("key1", result);
 
         // then
-        assertEquals(result, facadeCache.get("key1"));
-        assertEquals(result, cacheFacade1.getCache("test").get("key1"));
-        assertEquals(result, cacheFacade2.get("key1"));
+        assertEquals(result, facade.get("key1"));
+        assertEquals(result, cache1.get("key1"));
+        assertEquals(result, cache2.get("key1"));
     }
 
     @Test
     void invalidateCacheForFacade() {
         // given
-        final DummyCacheManager<String, String> cacheFacade1 = new DummyCacheManager<>();
-        final DummyCache<String, String> cacheFacade2 = new DummyCache<>("test");
-        final CacheManager.Builder<String, String> builder = CacheManager.builder();
-        final CacheManager<String, String> service = builder
-            .addFacadeManager(cacheFacade1)
-            .addFacadeFunction(name -> cacheFacade2)
+        final DummyCache cache2 = new DummyCache("cache2");
+        final Cache<String, String> facade = CacheBuilder.builder(cache1)
+            .addCache(cache2)
             .build();
 
         final String result = "value1";
-        cacheFacade1.getCache("test").put("key1", result);
-        cacheFacade2.put("key1", result);
+        facade.put("key1", result);
+        assertEquals(result, facade.get("key1"));
+        assertEquals(result, cache1.get("key1"));
+        assertEquals(result, cache2.get("key1"));
 
         // when
-        final Cache<String, String> facadeCache = service.getCache("test");
-        assertNotNull(facadeCache.get("key1"));
-        facadeCache.invalidate("key1");
+        facade.invalidate("key1");
 
         // then
-        assertNull(facadeCache.get("key1"));
-        assertNull(cacheFacade1.getCache("test").get("key1"));
-        assertNull(cacheFacade2.get("key1"));
+        assertNull(facade.get("key1"));
+        assertNull(cache1.get("key1"));
+        assertNull(cache2.get("key1"));
     }
 
     @Test
     void invalidateAllCacheForFacade() {
         // given
-        final DummyCacheManager<String, String> cacheFacade1 = new DummyCacheManager<>();
-        final DummyCache<String, String> cacheFacade2 = new DummyCache<>("test");
-        final CacheManager.Builder<String, String> builder = CacheManager.builder();
-        final CacheManager<String, String> service = builder
-            .addFacadeManager(cacheFacade1)
-            .addFacadeFunction(name -> cacheFacade2)
+        final DummyCache cache2 = new DummyCache("cache2");
+        final Cache<String, String> facade = CacheBuilder.builder(cache1)
+            .addCache(cache2)
             .build();
 
         final String result = "value1";
-        cacheFacade1.getCache("test").put("key1", result);
-        cacheFacade2.put("key1", result);
+        facade.put("key1", result);
+        assertEquals(result, facade.get("key1"));
+        assertEquals(result, cache1.get("key1"));
+        assertEquals(result, cache2.get("key1"));
 
         // when
-        final Cache<String, String> facadeCache = service.getCache("test");
-        assertNotNull(facadeCache.get("key1"));
-        facadeCache.invalidateAll();
+        facade.invalidateAll();
 
         // then
-        assertNull(facadeCache.get("key1"));
-        assertNull(cacheFacade1.getCache("test").get("key1"));
-        assertNull(cacheFacade2.get("key1"));
+        assertNull(facade.get("key1"));
+        assertNull(cache1.get("key1"));
+        assertNull(cache2.get("key1"));
     }
 }

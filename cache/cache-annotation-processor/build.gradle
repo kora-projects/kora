@@ -1,16 +1,13 @@
 dependencies {
-    implementation project(":common")
-    implementation project(":cache:cache-common")
-
-    implementation project(":annotation-processor-common")
     implementation project(":aop:aop-annotation-processor")
 
     implementation libs.javapoet
     implementation libs.logback.classic
 
+    testImplementation libs.prometheus.collector.caffeine
     testImplementation testFixtures(project(":annotation-processor-common"))
     testImplementation project(":internal:test-logging")
-    testImplementation "com.google.testing.compile:compile-testing:0.19"
+    testImplementation project(":cache:cache-caffeine")
 }
 
 apply from: '../../in-test-generated.gradle'

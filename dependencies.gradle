@@ -30,6 +30,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             library('micrometer-core', 'io.micrometer', 'micrometer-core').versionRef('micrometer')
             library('micrometer-registry-prometheus', 'io.micrometer', 'micrometer-registry-prometheus').versionRef('micrometer')
             library('prometheus-jmx-collector', 'io.prometheus.jmx', 'collector').version("0.17.2")
+            library('prometheus-collector-caffeine', 'io.prometheus', 'simpleclient_caffeine').version("0.16.0")
 
             library('opentelemetry-sdk-trace', 'io.opentelemetry', 'opentelemetry-sdk-trace').version('1.26.0')
             library('opentelemetry-context', 'io.opentelemetry', 'opentelemetry-context').version('1.26.0')
@@ -50,7 +51,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             library('kotlin-reflect', 'org.jetbrains.kotlin', 'kotlin-reflect').versionRef('kotlin_')
             library('kotlin-annotation-processing', 'org.jetbrains.kotlin', 'kotlin-annotation-processing-embeddable').versionRef('kotlin_')
             library('kotlin-compiler', 'org.jetbrains.kotlin', 'kotlin-compiler-embeddable').versionRef('kotlin_')
-            library('jetbrains.annotations', 'org.jetbrains', 'annotations').version('23.1.0')
+            library('jetbrains.annotations', 'org.jetbrains', 'annotations').version('24.0.1')
 
             library('kotlin-coroutines-core', 'org.jetbrains.kotlinx', 'kotlinx-coroutines-core').versionRef('kotlin-coroutines')
             library('kotlin-coroutines-reactor', 'org.jetbrains.kotlinx', 'kotlinx-coroutines-reactor').versionRef('kotlin-coroutines')
@@ -103,6 +104,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
 
             library('caffeine', 'com.github.ben-manes.caffeine', 'caffeine').version('3.1.1')
 
+            library("awaitility", "org.awaitility", "awaitility").version("4.2.0")
             library("junit-jupiter", "org.junit.jupiter", "junit-jupiter").version("5.9.1")
             library("junit-platform-launcher", "org.junit.platform", "junit-platform-launcher").version("1.9.1")
             library("mockito-core", "org.mockito", "mockito-core").version("5.4.0")

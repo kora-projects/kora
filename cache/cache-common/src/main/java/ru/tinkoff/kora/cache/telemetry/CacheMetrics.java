@@ -5,7 +5,7 @@ import javax.annotation.Nullable;
 
 public interface CacheMetrics {
 
-    void recordSuccess(@Nonnull CacheTelemetry.Operation operation, long durationInNanos, @Nullable Object valueFromCache);
+    void recordSuccess(@Nonnull CacheTelemetryOperation operation, long durationInNanos, @Nullable Object valueFromCache);
 
-    void recordFailure(@Nonnull CacheTelemetry.Operation operation, long durationInNanos, @Nullable Throwable throwable);
+    void recordFailure(@Nonnull CacheTelemetryOperation operation, long durationInNanos, @Nullable Throwable throwable);
 }

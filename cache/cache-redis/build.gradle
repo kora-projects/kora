@@ -1,4 +1,6 @@
 dependencies {
+    compileOnly libs.jetbrains.annotations
+
     api project(":cache:cache-common")
     annotationProcessor project(':config:config-annotation-processor')
 
@@ -22,4 +24,4 @@ dependencies {
     testImplementation libs.testcontainers.junit.jupiter
 }
 
-apply from: "../../in-test-generated.gradle"
+apply from: "${project.rootDir}/in-test-generated.gradle"

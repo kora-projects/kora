@@ -1,46 +1,40 @@
 package ru.tinkoff.kora.cache.redis;
 
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
-import ru.tinkoff.kora.annotation.processor.common.TestUtils;
-import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
-import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
-import ru.tinkoff.kora.cache.annotation.processor.CacheKeyAnnotationProcessor;
-import ru.tinkoff.kora.cache.redis.testdata.AppWithConfig;
-import ru.tinkoff.kora.cache.redis.testdata.Box;
-import ru.tinkoff.kora.cache.redis.testdata.CacheableTargetMono;
-import ru.tinkoff.kora.cache.redis.testdata.CacheableTargetSync;
-import ru.tinkoff.kora.config.annotation.processor.processor.ConfigSourceAnnotationProcessor;
-import ru.tinkoff.kora.json.annotation.processor.JsonAnnotationProcessor;
-import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor;
+import ru.tinkoff.kora.cache.redis.client.LettuceClientConfig;
+import ru.tinkoff.kora.cache.redis.testdata.DummyCache;
+import ru.tinkoff.kora.test.redis.RedisParams;
 
-import java.lang.reflect.Constructor;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Supplier;
+import java.time.Duration;
 
-public abstract class CacheRunner extends Assertions {
+abstract class CacheRunner extends Assertions implements RedisCacheModule {
 
-    public static URI redisUri;
+    public static RedisCacheConfig getConfig() {
+        return new RedisCacheConfig() {
+            @Nullable
+            @Override
+            public Duration expireAfterWrite() {
+                return null;
+            }
 
-    protected static ApplicationGraphDraw createGraphDraw() throws Exception {
-        return createGraphDraw(AppWithConfig.class, CacheableTargetSync.class, CacheableTargetMono.class, Box.class);
+            @Nullable
+            @Override
+            public Duration expireAfterAccess() {
+                return null;
+            }
+        };
     }
 
-    @SuppressWarnings("unchecked")
-    protected static ApplicationGraphDraw createGraphDraw(Class<?> app, Class<?>... targetClasses) throws Exception {
-        try {
-            final List<Class<?>> classes = new ArrayList<>(List.of(targetClasses));
-            classes.add(app);
-            var classLoader = TestUtils.annotationProcess(classes, new KoraAppProcessor(), new JsonAnnotationProcessor(), new AopAnnotationProcessor(), new CacheKeyAnnotationProcessor(), new ConfigSourceAnnotationProcessor());
-            var clazz = classLoader.loadClass(app.getName() + "Graph");
-            var constructors = (Constructor<? extends Supplier<? extends ApplicationGraphDraw>>[]) clazz.getConstructors();
-            return constructors[0].newInstance().get();
-        } catch (Exception e) {
-            if (e.getCause() != null) {
-                throw (Exception) e.getCause();
-            }
-            throw e;
-        }
+    protected DummyCache createCache(RedisParams redisParams) {
+        var lettuceClientFactory = lettuceClientFactory();
+        var lettuceClientConfig = new LettuceClientConfig(redisParams.uri().toString(), null, null, null, null, null, null);
+        var lettuceCommander = lettuceCommander(lettuceClientFactory.build(lettuceClientConfig));
+        lettuceCommander.init().block(Duration.ofMinutes(1));
+
+        var syncRedisClient = lettuceCacheRedisClient(lettuceCommander);
+        var reactiveRedisClient = lettuceReactiveCacheRedisClient(lettuceCommander);
+        return new DummyCache(getConfig(), syncRedisClient, reactiveRedisClient, redisCacheTelemetry(null, null),
+            stringRedisKeyMapper(), stringRedisValueMapper());
     }
 }
