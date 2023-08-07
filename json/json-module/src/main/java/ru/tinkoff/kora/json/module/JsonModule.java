@@ -10,6 +10,8 @@ import ru.tinkoff.kora.json.module.http.client.JsonStringParameterConverter;
 import ru.tinkoff.kora.json.module.http.server.JsonReaderHttpServerRequestMapper;
 import ru.tinkoff.kora.json.module.http.server.JsonStringParameterReader;
 import ru.tinkoff.kora.json.module.http.server.JsonWriterHttpServerResponseMapper;
+import ru.tinkoff.kora.json.module.kafka.JsonKafkaDeserializer;
+import ru.tinkoff.kora.json.module.kafka.JsonKafkaSerializer;
 
 public interface JsonModule extends JsonCommonModule {
     @Json
@@ -40,5 +42,15 @@ public interface JsonModule extends JsonCommonModule {
     @Json
     default <T> JsonStringParameterReader<T> jsonStringParameterReader(JsonReader<T> reader) {
         return new JsonStringParameterReader<>(reader);
+    }
+
+    @Json
+    default <T> JsonKafkaDeserializer<T> jsonKafkaDeserializer(JsonReader<T> reader) {
+        return new JsonKafkaDeserializer<>(reader);
+    }
+
+    @Json
+    default <T> JsonKafkaSerializer<T> jsonKafkaSerializer(JsonWriter<T> writer) {
+        return new JsonKafkaSerializer<>(writer);
     }
 }
