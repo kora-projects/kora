@@ -25,7 +25,7 @@ final class PatternValidator<T extends CharSequence> implements Validator<T> {
     public @NotNull List<Violation> validate(T value, @Nonnull ValidationContext context) {
         if (value == null) {
             return List.of(context.violates("Should match RegEx " + pattern + " but was null"));
-        } else if (!pattern.matcher(value).find()) {
+        } else if (!pattern.matcher(value).matches()) {
             return List.of(context.violates("Should match RegEx " + pattern + " but was: " + value));
         }
 

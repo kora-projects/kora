@@ -29,6 +29,8 @@ class ValidationTests extends Assertions implements ValidatorModule {
             Arguments.of(new NotEmptyStringValidator<>(), "a", 0),
             Arguments.of(new PatternValidator<>("\\d", 0), "a", 1),
             Arguments.of(new PatternValidator<>("\\d", 0), "1", 0),
+            Arguments.of(new PatternValidator<>("[A-Z]+", 0), "AZ", 0),
+            Arguments.of(new PatternValidator<>("[A-Z]+", 0), "A1Z", 1),
             Arguments.of(new RangeBigDecimalValidator(1, 2, Range.Boundary.EXCLUSIVE_EXCLUSIVE), BigDecimal.valueOf(2.5), 1),
             Arguments.of(new RangeBigDecimalValidator(1, 2, Range.Boundary.EXCLUSIVE_EXCLUSIVE), BigDecimal.valueOf(0.5), 1),
             Arguments.of(new RangeBigDecimalValidator(1, 2, Range.Boundary.EXCLUSIVE_EXCLUSIVE), BigDecimal.valueOf(2), 1),
