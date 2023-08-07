@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.config.common;
 
 import ru.tinkoff.kora.application.graph.TypeRef;
+import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.util.Either;
 import ru.tinkoff.kora.config.common.extractor.*;
 
@@ -21,6 +22,11 @@ public interface DefaultConfigExtractorsModule {
 
     default <T> ConfigValueExtractor<Map<String, T>> mapConfigValueExtractor(ConfigValueExtractor<T> listValueExtractor) {
         return new MapConfigValueExtractor<>(listValueExtractor);
+    }
+
+    @DefaultComponent
+    default <T> OptionalConfigValueExtractor<T> optionalConfigValueExtractor(ConfigValueExtractor<T> extractor) {
+        return new OptionalConfigValueExtractor<>(extractor);
     }
 
     default <T extends Enum<T>> EnumConfigValueExtractor<T> enumConfigValueExtractor(TypeRef<T> typeRef) {
