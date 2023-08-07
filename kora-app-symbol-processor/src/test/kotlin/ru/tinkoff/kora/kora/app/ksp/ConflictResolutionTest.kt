@@ -57,4 +57,31 @@ class ConflictResolutionTest : AbstractSymbolProcessorTest() {
 
         assertThat(compileResult.isFailed()).isFalse()
     }
+
+    @Test
+    fun testDefaultComponentTemplateOverride() {
+        compile(
+            listOf<SymbolProcessorProvider>(KoraAppProcessorProvider()),
+            """
+            interface TestInterface <T>
+            """.trimIndent(), """
+            class TestImpl1 <T> : TestInterface <T> {}
+            """.trimIndent(), """
+            class TestImpl2 <T> : TestInterface <T> {}
+            """.trimIndent(), """
+            @KoraApp
+            interface ExampleApplication {
+                @Root
+                fun root(t: TestInterface<String>) = ""
+            
+                fun <T> testImpl1() = TestImpl1<T>()
+
+                @DefaultComponent
+                fun <T> testImpl2() = TestImpl2<T>()
+            }
+            """.trimIndent()
+        )
+
+        compileResult.assertSuccess()
+    }
 }

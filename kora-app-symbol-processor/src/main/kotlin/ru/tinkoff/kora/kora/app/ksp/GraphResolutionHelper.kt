@@ -237,13 +237,16 @@ object GraphResolutionHelper {
         if (result.isEmpty()) {
             return result
         }
-        if (result.size > 1) {
-            val exactMatch = result.filter { it.type == dependencyClaim.type }
-            if (exactMatch.isEmpty()) {
-                return result
-            } else {
-                return exactMatch
-            }
+        if (result.size == 1) {
+            return result
+        }
+        val exactMatch = result.filter { it.type == dependencyClaim.type }
+        if (exactMatch.isNotEmpty()) {
+            return exactMatch
+        }
+        val nonDefault = result.filter { !it.isDefault() }
+        if (nonDefault.isNotEmpty()) {
+            return nonDefault
         }
         return result
     }
