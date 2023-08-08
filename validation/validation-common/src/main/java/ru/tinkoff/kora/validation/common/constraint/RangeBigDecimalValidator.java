@@ -1,15 +1,12 @@
 package ru.tinkoff.kora.validation.common.constraint;
 
-import javax.annotation.Nonnull;
-
-import org.jetbrains.annotations.NotNull;
 import ru.tinkoff.kora.validation.common.ValidationContext;
 import ru.tinkoff.kora.validation.common.Validator;
 import ru.tinkoff.kora.validation.common.Violation;
 import ru.tinkoff.kora.validation.common.annotation.Range;
 
+import javax.annotation.Nonnull;
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Predicate;
@@ -24,7 +21,7 @@ final class RangeBigDecimalValidator implements Validator<BigDecimal> {
     private final Predicate<BigDecimal> toPredicate;
 
     RangeBigDecimalValidator(double fromDouble, double toDouble, Range.Boundary boundary) {
-        if(toDouble < fromDouble)
+        if (toDouble < fromDouble)
             throw new IllegalArgumentException("From can't be less than To, but From was " + fromDouble + " and To was " + toDouble);
 
         this.from = BigDecimal.valueOf(fromDouble);
@@ -43,7 +40,7 @@ final class RangeBigDecimalValidator implements Validator<BigDecimal> {
 
     @Nonnull
     @Override
-    public @NotNull List<Violation> validate(BigDecimal value, @Nonnull ValidationContext context) {
+    public List<Violation> validate(BigDecimal value, @Nonnull ValidationContext context) {
         if (value == null) {
             return List.of(context.violates("Should be in range from '" + from + "' to '" + to + "', but was null"));
         }

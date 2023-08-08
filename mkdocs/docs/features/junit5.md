@@ -203,7 +203,7 @@ class ComponentJUnitExtensionTests {
 class ComponentJUnitExtensionTests implements KoraAppTestConfigModifier {
 
     @Override
-    public @NotNull KoraConfigModification config() {
+    public @Nonnull KoraConfigModification config() {
         return KoraConfigModification.ofString("""
                                     myconfig {
                                       myproperty = 1
@@ -226,7 +226,7 @@ class ComponentJUnitExtensionTests implements KoraAppTestConfigModifier {
 class ComponentJUnitExtensionTests implements KoraAppTestGraphModifier {
 
     @Override
-    public @NotNull KoraGraphModification graph() {
+    public @Nonnull KoraGraphModification graph() {
         return KoraGraphModification.create()
             .addComponent(TypeRef.of(Supplier.class, Integer.class), () -> (Supplier<Integer>) () -> 1);
     }
@@ -246,7 +246,7 @@ class ComponentJUnitExtensionTests implements KoraAppTestGraphModifier {
 class ComponentJUnitExtensionTests implements KoraAppTestGraphModifier {
 
     @Override
-    public @NotNull KoraGraphModification graph() {
+    public @Nonnull KoraGraphModification graph() {
         return KoraGraphModification.create()
             .addComponent(TypeRef.of(Supplier.class, String.class), List.of(Supplier.class), () -> (Supplier<String>) () -> "?");
     }
@@ -266,7 +266,7 @@ class ComponentJUnitExtensionTests implements KoraAppTestGraphModifier {
 class ComponentJUnitExtensionTests implements KoraAppTestGraphModifier {
 
     @Override
-    public @NotNull KoraGraphModification graph() {
+    public @Nonnull KoraGraphModification graph() {
         return KoraGraphModification.create()
             .mockComponent(Component1.class);
     }
@@ -329,7 +329,7 @@ class ComponentJUnitExtensionTests implements KoraAppTestConfigModifier {
         .waitingFor(Wait.forListeningPort());
 
     @Override
-    public @NotNull KoraConfigModification config() {
+    public @Nonnull KoraConfigModification config() {
         return KoraConfigModification.ofString("""
                                     db {
                                       jdbcUrl = "%s"

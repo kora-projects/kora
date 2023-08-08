@@ -19,6 +19,7 @@ import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
 import ru.tinkoff.kora.logging.aspect.target.LogAspectTarget;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
+import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -415,7 +416,7 @@ public class LogAspectTestOld {
         assertNull(logsList.get(0).getMarker());
     }
 
-    @NotNull
+    @Nonnull
     private Map<String, String> getMarkerDataAsMap(StructuredArgument markerData) throws IOException {
 //        ObjectMapper mapper = new ObjectMapper();
         var markerBytes = markerString(markerData);

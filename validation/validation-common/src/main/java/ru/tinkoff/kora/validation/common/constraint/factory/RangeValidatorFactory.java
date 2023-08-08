@@ -1,9 +1,10 @@
 package ru.tinkoff.kora.validation.common.constraint.factory;
 
-import javax.annotation.Nonnull;
 import ru.tinkoff.kora.validation.common.Validator;
 import ru.tinkoff.kora.validation.common.ValidatorFactory;
 import ru.tinkoff.kora.validation.common.annotation.Range;
+
+import javax.annotation.Nonnull;
 
 public interface RangeValidatorFactory<T> extends ValidatorFactory<T> {
 

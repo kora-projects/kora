@@ -10,13 +10,15 @@ import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplication;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent1;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent12;
 
+import javax.annotation.Nonnull;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @KoraAppTest(TestApplication.class)
 public class ReplaceWithGraphTests implements KoraAppTestGraphModifier {
 
     @Override
-    public @NotNull KoraGraphModification graph() {
+    public @Nonnull KoraGraphModification graph() {
         return KoraGraphModification.create()
             .replaceComponent(TestComponent12.class, graph -> {
                 var component1 = graph.getFirst(TestComponent1.class);

@@ -1,12 +1,10 @@
 package ru.tinkoff.kora.validation.common.constraint;
 
-import javax.annotation.Nonnull;
-
-import org.jetbrains.annotations.NotNull;
 import ru.tinkoff.kora.validation.common.ValidationContext;
 import ru.tinkoff.kora.validation.common.Validator;
 import ru.tinkoff.kora.validation.common.Violation;
 
+import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -21,7 +19,7 @@ final class IterableValidator<T, I extends Iterable<T>> implements Validator<I> 
     }
 
     @Nonnull
-    public @NotNull List<Violation> validate(I iterable, @Nonnull ValidationContext context) {
+    public List<Violation> validate(I iterable, @Nonnull ValidationContext context) {
         if (iterable != null) {
             final List<Violation> violations = new ArrayList<>();
             final Iterator<T> iterator = iterable.iterator();
