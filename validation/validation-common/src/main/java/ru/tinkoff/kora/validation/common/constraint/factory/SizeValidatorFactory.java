@@ -1,8 +1,9 @@
 package ru.tinkoff.kora.validation.common.constraint.factory;
 
-import javax.annotation.Nonnull;
 import ru.tinkoff.kora.validation.common.Validator;
 import ru.tinkoff.kora.validation.common.ValidatorFactory;
+
+import javax.annotation.Nonnull;
 
 public interface SizeValidatorFactory<T> extends ValidatorFactory<T> {
 

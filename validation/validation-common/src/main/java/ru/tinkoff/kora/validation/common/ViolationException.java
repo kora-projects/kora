@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.validation.common;
 
 import javax.annotation.Nonnull;
-
 import java.util.List;
 
 public final class ViolationException extends RuntimeException {

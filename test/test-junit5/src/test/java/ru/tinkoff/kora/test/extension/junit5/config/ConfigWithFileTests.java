@@ -10,6 +10,8 @@ import ru.tinkoff.kora.test.extension.junit5.KoraConfigModification;
 import ru.tinkoff.kora.test.extension.junit5.TestComponent;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestConfigApplication;
 
+import javax.annotation.Nonnull;
+
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -17,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class ConfigWithFileTests implements KoraAppTestConfigModifier {
 
     @Override
-    public @NotNull KoraConfigModification config() {
+    public @Nonnull KoraConfigModification config() {
         return KoraConfigModification.ofResourceFile("application-raw.conf");
     }
 

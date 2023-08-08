@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.validation.common;
 
 import javax.annotation.Nonnull;
-
 import javax.annotation.concurrent.Immutable;
 
 /**

@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.validation.common.constraint;
 
-import org.jetbrains.annotations.NotNull;
 import ru.tinkoff.kora.validation.common.ValidationContext;
 import ru.tinkoff.kora.validation.common.Validator;
 import ru.tinkoff.kora.validation.common.Violation;
@@ -40,7 +39,7 @@ final class RangeLongNumberValidator<T extends Number> implements Validator<T> {
 
     @Nonnull
     @Override
-    public @NotNull List<Violation> validate(T value, @Nonnull ValidationContext context) {
+    public List<Violation> validate(T value, @Nonnull ValidationContext context) {
         if (value == null) {
             return List.of(context.violates("Should be in range from '" + from + "' to '" + to + "', but was null"));
         }

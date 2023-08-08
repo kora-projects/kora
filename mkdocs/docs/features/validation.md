@@ -297,9 +297,9 @@ public class Component {
 ```java
 final class MyValidStringValidator implements Validator<String> {
 
-    @NotNull
+    @Nonnull
     @Override
-    public List<Violation> validate(String value, @NotNull ValidationContext context) {
+    public List<Violation> validate(String value, @Nonnull ValidationContext context) {
         if (value == null) {
             return List.of(context.violates("Should be not empty, but was null"));
         } else if (value.isEmpty()) {
