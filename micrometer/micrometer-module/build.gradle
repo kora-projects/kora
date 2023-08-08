@@ -3,6 +3,9 @@ dependencies {
     api libs.micrometer.registry.prometheus
     api libs.prometheus.jmx.collector
     api libs.opentelemetry.semconv
+    api(libs.prometheus.collector.caffeine) {
+        exclude group: "com.github.ben-manes.caffeine"
+    }
     annotationProcessor project(':config:config-annotation-processor')
 
     compileOnly project(':http:http-server-common')
@@ -16,5 +19,4 @@ dependencies {
     compileOnly project(':resilient:resilient-kora')
     compileOnly project(':cache:cache-common')
     compileOnly project(':cache:cache-caffeine')
-    compileOnly libs.prometheus.collector.caffeine
 }

@@ -102,7 +102,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
 
             library('lettuce-core', 'io.lettuce', 'lettuce-core').version('6.2.0.RELEASE')
 
-            library('caffeine', 'com.github.ben-manes.caffeine', 'caffeine').version('3.1.1')
+            library('caffeine', 'com.github.ben-manes.caffeine', 'caffeine').version('3.1.7')
 
             library("awaitility", "org.awaitility", "awaitility").version("4.2.0")
             library("junit-jupiter", "org.junit.jupiter", "junit-jupiter").version("5.9.1")

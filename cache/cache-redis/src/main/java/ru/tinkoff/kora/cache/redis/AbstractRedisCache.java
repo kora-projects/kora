@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.cache.redis;
 
-import org.jetbrains.annotations.ApiStatus.Internal;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.cache.Cache;
@@ -12,7 +11,6 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-@Internal
 public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
 
     private final String name;

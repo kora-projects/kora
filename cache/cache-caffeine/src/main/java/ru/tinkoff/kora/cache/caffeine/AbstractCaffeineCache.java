@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.cache.caffeine;
 
-import org.jetbrains.annotations.ApiStatus.Internal;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
@@ -11,7 +10,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-@Internal
 public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V> {
 
     private final String name;
