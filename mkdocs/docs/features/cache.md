@@ -81,17 +81,13 @@ public interface DummyCache extends CaffeineCache<CacheKey.Key2<String, BigDecim
 
 Для кэширования и получения значения из кэша для метода *getValue()* следует проаннотировать его аннотацией *@Cacheable*.
 
-Метод проаннотированный *@Cacheable* будет пытаться взять значение по ключу из кэша который указан в *value*, в случае если значение для такого ключа не существует,
-будет вызван сам метод и его значение будет закэшированно для последующих операций и возвращено.
-Имя кэша из *value* соответствует его имени в конфигурации файла (hocon)
-
 Ключ для кэша составляет из аргументов метода, порядок аргументов имеет значение, в данном случае он будет составляться из значений *arg1* и *arg2*.
 
 ```java
 @Component
 public class CacheExample {
 
-    @Cacheable()
+    @Cacheable(DummyCache.class)
     public Long getValue(String arg1, BigDecimal arg2) {
         return ThreadLocalRandom.current().nextLong();
     }
@@ -200,7 +196,7 @@ public class CacheExample {
         // do nothing
     }
 
-    @CacheInvalidate(DummyCache.class, invalidateAll = true)
+    @CacheInvalidate(value = DummyCache.class, invalidateAll = true)
     public void evictAll() {
         // do nothing
     }
@@ -427,7 +423,7 @@ public interface ApplicationModules extends RedisCacheModule { }
 @Module
 interface ApplicationModules {
   default LoadableCache<String, String> someEntityLoadCache(DummyCache cache, SomeService someService, ExecutorService executor) {
-    return LoadableCache.create(cache, CacheLoader.blocking(someService::loadEntity, executor));
+    return cache.asLoadable(CacheLoader.blocking(someService::loadEntity, executor));
   }
 }
 

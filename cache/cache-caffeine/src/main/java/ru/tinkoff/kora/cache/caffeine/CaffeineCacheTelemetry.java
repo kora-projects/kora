@@ -9,7 +9,6 @@ import ru.tinkoff.kora.cache.telemetry.CacheTracer;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-//TODO caffeine metrics???
 public final class CaffeineCacheTelemetry {
 
     private static final String ORIGIN = "caffeine";
