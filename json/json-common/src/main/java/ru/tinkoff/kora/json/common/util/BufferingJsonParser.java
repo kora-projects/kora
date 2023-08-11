@@ -55,7 +55,24 @@ public class BufferingJsonParser extends ParserBase {
         var textCharacters = parser.getTextCharacters();
         var textOffset = parser.getTextOffset();
         var textLength = parser.getTextLength();
-        return new JsonSegment(token, Arrays.copyOfRange(textCharacters, textOffset, textOffset + textLength));
+        final boolean isNegative;
+        if (!token.isNumeric()) {
+            isNegative = false;
+        } else {
+            isNegative = isCurrentNumberNegative(parser);
+        }
+        return new JsonSegment(token, Arrays.copyOfRange(textCharacters, textOffset, textOffset + textLength), isNegative);
+    }
+
+    private boolean isCurrentNumberNegative(JsonParser parser) throws IOException {
+        return switch (parser.getNumberType()) {
+            case INT -> parser.getIntValue() < 0;
+            case LONG -> parser.getLongValue() < 0;
+            case BIG_INTEGER -> ((BigInteger) parser.getNumberValue()).signum() < 0;
+            case FLOAT -> parser.getFloatValue() < 0;
+            case DOUBLE -> parser.getDoubleValue() < 0;
+            case BIG_DECIMAL -> ((BigDecimal) parser.getNumberValue()).signum() < 0;
+        };
     }
 
     @Override
@@ -75,9 +92,9 @@ public class BufferingJsonParser extends ParserBase {
                 var token = this.delegate.nextToken();
                 if (token == JsonToken.FIELD_NAME) {
                     this._parsingContext.setCurrentName(this.delegate.currentName());
-                }
-                if (token.isNumeric()) {
-                    this.reset(this.delegate.getDecimalValue().signum() < 0, 0, 0, 0);
+                } else if (token.isNumeric()) {
+                    _numTypesValid = NR_UNKNOWN; // to force parsing
+                    _numberNegative = isCurrentNumberNegative(this.delegate);
                 }
                 this._textBuffer.resetWithShared(this.delegate.getTextCharacters(), this.delegate.getTextOffset(), this.delegate.getTextLength());
                 this._currToken = token;
@@ -86,6 +103,9 @@ public class BufferingJsonParser extends ParserBase {
         }
         if (this.currentToken >= this.tokens.size()) {
             var nextToken = this.delegate.nextToken();
+            if (nextToken == null) {
+                return null;
+            }
             var data = this.data(nextToken, this.delegate);
             this.currentToken++;
             this.tokens.add(data);
@@ -152,50 +172,5 @@ public class BufferingJsonParser extends ParserBase {
             return delegate.getTextOffset();
         }
         return 0;
-    }
-
-    @Override
-    public Number getNumberValue() throws IOException {
-        return super.getNumberValue();
-    }
-
-    @Override
-    public Number getNumberValueExact() throws IOException {
-        return super.getNumberValueExact();
-    }
-
-    @Override
-    public NumberType getNumberType() throws IOException {
-        return super.getNumberType();
-    }
-
-    @Override
-    public int getIntValue() throws IOException {
-        return super.getIntValue();
-    }
-
-    @Override
-    public long getLongValue() throws IOException {
-        return super.getLongValue();
-    }
-
-    @Override
-    public BigInteger getBigIntegerValue() throws IOException {
-        return super.getBigIntegerValue();
-    }
-
-    @Override
-    public float getFloatValue() throws IOException {
-        return super.getFloatValue();
-    }
-
-    @Override
-    public double getDoubleValue() throws IOException {
-        return super.getDoubleValue();
-    }
-
-    @Override
-    public BigDecimal getDecimalValue() throws IOException {
-        return super.getDecimalValue();
     }
 }
