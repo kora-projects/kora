@@ -89,6 +89,7 @@ class LogKoraAspect(val resolver: Resolver) : KoraAspect {
         val minimalParametersLogLevel = parametersByLevel.minOf { it.key }
         controlFlow("if (%N.%N())", loggerName, minimalParametersLogLevel.isEnabledMethod()) {
             controlFlow("val %N = %T.marker(%S) { gen -> ", DATA_IN_FIELD_NAME, structuredArgument, DATA_PARAMETER_NAME) {
+                addStatement("gen.writeStartObject()")
                 parametersByLevel.forEach { (level, parameters) ->
                     if (level <= inLogLevel) {
                         parameters.forEach { parameter ->
@@ -102,6 +103,7 @@ class LogKoraAspect(val resolver: Resolver) : KoraAspect {
                         }
                     }
                 }
+                addStatement("gen.writeEndObject()")
             }
             addStatement("%N.%N(%L, %S)", loggerName, inLogLevel.logMethod(), DATA_IN_FIELD_NAME, MESSAGE_IN)
             if (minimalParametersLogLevel > inLogLevel) {
@@ -131,7 +133,9 @@ class LogKoraAspect(val resolver: Resolver) : KoraAspect {
         }
         controlFlow("if (%N.%N())", loggerName, resultLogLevel.isEnabledMethod()) {
             controlFlow("val %L = %T.marker(%S) { gen -> ", DATA_OUT_FIELD_NAME, structuredArgument, DATA_PARAMETER_NAME) {
+                addStatement("gen.writeStartObject()")
                 appendFieldToMarkerGenerator(OUT_PARAMETER_NAME, RESULT_FIELD_NAME)
+                addStatement("gen.writeEndObject()")
             }
             addStatement("%N.%N(%L, %S)", loggerName, outLogLevel.logMethod(), DATA_OUT_FIELD_NAME, MESSAGE_OUT)
             if (resultLogLevel >= outLogLevel) {
