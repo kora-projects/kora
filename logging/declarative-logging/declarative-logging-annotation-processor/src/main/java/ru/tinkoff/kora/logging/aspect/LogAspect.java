@@ -77,16 +77,23 @@ public class LogAspect implements KoraAspect {
         }
         if (logOutLevel != null) {
             var logResultLevel = logResultLevel(executableElement, logOutLevel, env);
+            var resultWriter = CodeBlock.builder().add("gen -> {$>\n")
+                .add("gen.writeStartObject();\n")
+                .add("gen.writeStringField($S, String.valueOf($N));\n", "out", RESULT_VAR_NAME)
+                .add("gen.writeEndObject();")
+                .add("$<\n}")
+                .build();
+
             if (isVoid || logResultLevel == null) {
                 b.addStatement("$N.$L($S)", loggerFieldName, logOutLevel.toLowerCase(), MESSAGE_OUT);
             } else if (logOutLevel.equals(logResultLevel)) {
                 ifLogLevelEnabled(b, loggerFieldName, logOutLevel, () -> {
-                    b.addStatement("var $N = $T.marker($S, gen -> gen.writeStringField($S, String.valueOf($N)))", DATA_OUT_VAR_NAME, structuredArgument, "data", "out", RESULT_VAR_NAME);
+                    b.addStatement("var $N = $T.marker($S, $L)", DATA_OUT_VAR_NAME, structuredArgument, "data", resultWriter);
                     b.add("$N.$L($N, $S);", loggerFieldName, logOutLevel.toLowerCase(), DATA_OUT_VAR_NAME, MESSAGE_OUT);
                 }).add("\n");
             } else {
                 ifLogLevelEnabled(b, loggerFieldName, logResultLevel, () -> {
-                    b.addStatement("var $N = $T.marker($S, gen -> gen.writeStringField($S, String.valueOf($N)))", DATA_OUT_VAR_NAME, structuredArgument, "data", "out", RESULT_VAR_NAME);
+                    b.addStatement("var $N = $T.marker($S, $L)", DATA_OUT_VAR_NAME, structuredArgument, "data", resultWriter);
                     b.add("$N.$L($N, $S);", loggerFieldName, logOutLevel.toLowerCase(), DATA_OUT_VAR_NAME, MESSAGE_OUT);
                     b.add("$<\n} else {$>\n");
                     b.add("$N.$L($S);", loggerFieldName, logOutLevel.toLowerCase(), MESSAGE_OUT);
@@ -197,12 +204,15 @@ public class LogAspect implements KoraAspect {
         return b.build();
     }
 
-    record LogInMarker(CodeBlock codeBlock, String minLogLevel) {}
+    record LogInMarker(CodeBlock codeBlock, String minLogLevel) {
+    }
 
     /**
      * <pre> {@code var __dataIn = StructuredArgument.marker("data", gen -> {
+     *      gen.writeStartObject();
      *      gen.writeStringField("param1", String.valueOf(param1));
      *      gen.writeStringField("param2", String.valueOf(param2));
+     *      gen.writeEndObject();
      *  });
      * } </pre>
      */
@@ -220,6 +230,7 @@ public class LogAspect implements KoraAspect {
 
         var b = CodeBlock.builder();
         b.add("var $N = $T.marker($S, gen -> {$>", DATA_IN_VAR_NAME, structuredArgument, "data");
+        b.add("\ngen.writeStartObject();");
 
         var params = new HashMap<String, List<VariableElement>>();
         var minLevelIdx = Integer.MAX_VALUE;
@@ -245,6 +256,7 @@ public class LogAspect implements KoraAspect {
                 b.add("$<\n}");
             }
         }
+        b.add("\ngen.writeEndObject();");
 
         return new LogInMarker(b.add("$<\n});\n").build(), LEVELS.get(minLevelIdx));
     }
