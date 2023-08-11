@@ -18,7 +18,8 @@ public class JsonSegmentJsonParser extends ParserBase {
     }
 
     @Override
-    protected void _closeInput() throws IOException {}
+    protected void _closeInput() throws IOException {
+    }
 
     @Override
     public ObjectCodec getCodec() {
@@ -39,10 +40,14 @@ public class JsonSegmentJsonParser extends ParserBase {
         var segment = this.segments.get(currentSegment);
         var token = segment.token();
         this._currToken = token;
+        _textBuffer.resetWithShared(segment.data(), 0, segment.data().length);
         if (token == JsonToken.FIELD_NAME) {
             _parsingContext.setCurrentName(new String(segment.data()));
+        } else if (token.isNumeric()) {
+            _numTypesValid = NR_UNKNOWN;
+            _numberNegative = segment.isNumberNegative();
+            _intLength = segment.data().length;
         }
-        _textBuffer.resetWithShared(segment.data(), 0, segment.data().length);
         return token;
     }
 
