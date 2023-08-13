@@ -22,7 +22,7 @@ allprojects {
     group = "ru.tinkoff.kora"
     version = System.getenv().getOrDefault("KORA_VERSION", "0.14.0-SNAPSHOT")
     repositories {
-        mavenCentral()
+        maven { url = "https://artifactory.tcsbank.ru/artifactory/maven-all" }
     }
 }
 
@@ -295,21 +295,25 @@ def kspProjects = Set.of(
     'scheduling-ksp',
     'resilient-symbol-processor',
     'soap-client-symbol-processor',
-    'aop-symbol-processor'
+    'aop-symbol-processor',
+    'declarative-logging-symbol-processor'
 )
 
 tasks.register("ksp-test") {
     group("verification")
     description("Run ksp tests")
     project.getAllprojects().stream()
-        .filter((p) -> kspProjects.contains(p.name) && p.tasks.findByPath("test") != null)
-        .forEach((p) -> {
-            var name = p.name
-            if (p.depth == 2) {
-                name = p.parent.name + ":" + name
-            }
-            dependsOn(":" + name + ":test")
-        })
+      .filter((p) -> kspProjects.contains(p.name) && p.tasks.findByPath("test") != null)
+      .forEach((p) -> {
+          var name = p.name
+          if (p.depth == 2) {
+              name = p.parent.name + ":" + name
+          }
+          if (p.depth == 3) {
+              name = p.parent.parent.name + ":" + p.parent.name + ":" + name
+          }
+          dependsOn(":" + name + ":test")
+      })
 }
 
 

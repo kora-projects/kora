@@ -1,7 +1,6 @@
 pluginManagement {
     repositories {
-        gradlePluginPortal()
-        mavenCentral()
+        maven { url = "https://artifactory.tcsbank.ru/artifactory/maven-all" }
     }
 }
 
