@@ -299,8 +299,8 @@ public class KoraCodegen extends DefaultCodegen {
                 typeMapping.put("AnyType", objectType);
                 typeMapping.put("object", objectType);
             } else {
-                typeMapping.put("AnyType", "Any");
-                typeMapping.put("object", "Any");
+                typeMapping.put("AnyType", "kotlin.Any");
+                typeMapping.put("object", "kotlin.Any");
             }
             typeMapping.put("array", "List");
             typeMapping.put("set", "Set");
