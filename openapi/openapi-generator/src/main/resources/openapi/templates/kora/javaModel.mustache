@@ -92,8 +92,8 @@ public static String schema = """
 
 {{#allVars}}
 
-{{#isOverridden}}  @Override
-{{/isOverridden}}  public {{{classname}}} with{{#lambda.titlecase}}{{name}}{{/lambda.titlecase}}({{^required}}@javax.annotation.Nullable{{/required}} {{{datatypeWithEnum}}} {{name}}) {
+{{#vendorExtensions.x-discriminator-value}}{{#isOverridden}}  @Override
+{{/isOverridden}}{{/vendorExtensions.x-discriminator-value}}  public {{{classname}}} with{{#lambda.titlecase}}{{name}}{{/lambda.titlecase}}({{^required}}@javax.annotation.Nullable{{/required}} {{{datatypeWithEnum}}} {{name}}) {
     if (this.{{name}} == {{name}}) return this;
     return new {{{classname}}}({{#allVars}}
       {{name}}{{^-last}},{{/-last}}{{/allVars}}
