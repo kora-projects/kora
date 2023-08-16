@@ -35,7 +35,7 @@ final class DefaultKoraAppGraph implements KoraAppGraph {
     @Nullable
     @Override
     public <T> T getFirst(@Nonnull Class<T> type) {
-        return (T) getFirst(((Type) type));
+        return type.cast(getFirst(((Type) type)));
     }
 
     @Nullable
