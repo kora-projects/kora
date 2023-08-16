@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.config.common;
 
 import ru.tinkoff.kora.application.graph.ValueOf;
+import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.config.common.annotation.ApplicationConfig;
 import ru.tinkoff.kora.config.common.annotation.Environment;
 import ru.tinkoff.kora.config.common.annotation.SystemProperties;
@@ -29,6 +30,7 @@ public interface CommonConfigModule extends DefaultConfigExtractorsModule {
         return config.resolve();
     }
 
+    @Root
     default ConfigWatcher configRefresher(@ApplicationConfig Optional<ValueOf<Config>> applicationConfig) {
         return new ConfigWatcher(applicationConfig, 1000);
     }
