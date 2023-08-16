@@ -12,9 +12,7 @@ import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Graph;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Node;
-import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.common.Tag;
-import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTest.InitializeMode;
 
 import javax.annotation.Nonnull;
@@ -150,11 +148,11 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         var testInstance = context.getTestInstance().orElseThrow(() -> new ExtensionConfigurationException("@KoraAppTest can't get TestInstance for @TestComponent field injection"));
         for (var field : metadata.fieldsForInjection) {
             final Class<?>[] tags = parseTags(field);
-            final GraphCandidate candidate = new GraphCandidate(field.getType(), tags);
+            final GraphCandidate candidate = new GraphCandidate(field.getGenericType(), tags);
             logger.trace("Looking for test method '{}' field '{}' inject candidate: {}",
                 context.getDisplayName(), field.getName(), candidate);
 
-            final Object component = getComponentOrThrow(graphInitialized, candidate);
+            final Object component = getComponentFromGraph(graphInitialized, candidate);
             injectToField(testInstance, field, component);
         }
     }
@@ -252,7 +250,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         var graphCandidate = getGraphCandidate(parameterContext);
         logger.trace("Looking for test method '{}' parameter '{}' inject candidate: {}",
             context.getDisplayName(), parameterContext.getParameter().getName(), graphCandidate);
-        return getComponentOrThrow(koraTestContext.graph.initialized(), graphCandidate);
+        return getComponentFromGraph(koraTestContext.graph.initialized(), graphCandidate);
     }
 
     private static Optional<KoraGraphModification> getGraphModification(ApplicationGraphDraw graphDraw,
@@ -384,67 +382,42 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             .orElse(null);
     }
 
-    private static Object getComponentOrThrow(TestGraphInitialized graphInitialized, GraphCandidate candidate) {
-        return getComponent(graphInitialized, candidate)
-            .orElseThrow(() -> new ExtensionConfigurationException(candidate + " was not found in graph, expected type to implement " + Lifecycle.class
-                + " or be a @" + Component.class.getSimpleName() + " or be a @" + Root.class.getSimpleName()
-                + ", please check @KoraAppTest configuration"));
-    }
-
-    private static Optional<Object> getComponent(TestGraphInitialized graphInitialized, GraphCandidate candidate) {
-        try {
-            return getComponentFromGraph(graphInitialized, candidate);
-        } catch (Exception e) {
-            logger.warn(e.getMessage());
-            return Optional.empty();
-        }
-    }
-
-    private static Optional<Object> getComponentFromGraph(TestGraphInitialized graph, GraphCandidate candidate) {
+    private static Object getComponentFromGraph(TestGraphInitialized graph, GraphCandidate candidate) {
         if (KoraAppGraph.class.equals(candidate.type())) {
-            return Optional.of(graph.koraAppGraph());
+            return graph.koraAppGraph();
         }
         if (Graph.class.equals(candidate.type())) {
-            return Optional.of(graph.refreshableGraph());
+            return graph.refreshableGraph();
         }
-
-        if (candidate.tags().isEmpty()) {
-            return Optional.ofNullable(graph.graphDraw().findNodeByType(candidate.type()))
-                .map(v -> ((Object) graph.refreshableGraph().get(v)))
-                .or(() -> {
-                    // Try to find similar
-                    return graph.graphDraw().getNodes()
-                        .stream()
-                        .map(graph.refreshableGraph()::get)
-                        .filter(v -> {
-                            if (candidate.type() instanceof Class<?> tc) {
-                                return tc.isAssignableFrom(v.getClass());
-                            } else {
-                                return false;
-                            }
-                        })
-                        .findFirst();
-                });
-        } else {
-            return Optional.of(GraphUtils.findNodeByType(graph.graphDraw(), candidate.type(), candidate.tagsAsArray()))
-                .filter(l -> !l.isEmpty())
-                .map(v -> graph.refreshableGraph().get(v.iterator().next()))
-                .or(() -> {
-                    // Try to find similar
-                    return graph.graphDraw().getNodes()
-                        .stream()
-                        .filter(n -> Arrays.equals(n.tags(), candidate.tagsAsArray()))
-                        .map(graph.refreshableGraph()::get)
-                        .filter(v -> {
-                            if (candidate.type() instanceof Class<?> tc) {
-                                return tc.isAssignableFrom(v.getClass());
-                            } else {
-                                return false;
-                            }
-                        })
-                        .findFirst();
-                });
+        var nodes = graph.graphDraw().findNodesByType(candidate.type(), candidate.tagsAsArray());
+        if (nodes.size() == 1) {
+            return graph.refreshableGraph().get(nodes.get(0));
         }
+        if (nodes.size() > 1) {
+            throw new ExtensionConfigurationException(candidate + " expected to have one suitable component, got " + nodes.size());
+        }
+        if (candidate.type() instanceof Class<?> clazz) {
+            var objects = new ArrayList<Object>();
+            for (var node : graph.graphDraw().getNodes()) {
+                var object = graph.refreshableGraph().get(node);
+                if (clazz.isInstance(object)) {
+                    if (candidate.tags().isEmpty() && node.tags().length == 0) {
+                        objects.add(object);
+                    } else if (candidate.tags().size() == 1 && candidate.tags().get(0).getCanonicalName().equals("ru.tinkoff.kora.common.Tag.Any")) {
+                        objects.add(object);
+                    } else if (Arrays.equals(candidate.tagsAsArray(), node.tags())) {
+                        objects.add(object);
+                    }
+                }
+            }
+            if (objects.size() == 1) {
+                return objects.get(0);
+            }
+            if (objects.size() > 1) {
+                throw new ExtensionConfigurationException(candidate + " expected to have one suitable component, got " + objects.size());
+            }
+        }
+        throw new ExtensionConfigurationException(candidate + " was not found in graph, please check @KoraAppTest configuration");
     }
 
     private static Set<GraphCandidate> scanGraphRoots(TestMethodMetadata metadata, ExtensionContext context) {

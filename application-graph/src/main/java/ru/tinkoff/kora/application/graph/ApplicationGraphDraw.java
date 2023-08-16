@@ -4,10 +4,7 @@ import reactor.core.publisher.Mono;
 
 import javax.annotation.Nullable;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class ApplicationGraphDraw {
@@ -73,6 +70,22 @@ public class ApplicationGraphDraw {
             }
         }
         return null;
+    }
+
+    public List<Node<?>> findNodesByType(Type type, Class<?>[] tags) {
+        var result = new ArrayList<Node<?>>();
+        for (var graphNode : this.graphNodes) {
+            if (graphNode.type().equals(type)) {
+                if (tags.length == 0 && graphNode.tags().length == 0) {
+                    result.add(graphNode);
+                } else if (tags.length == 1 && tags[0].getCanonicalName().equals("ru.tinkoff.kora.common.Tag.Any")) {
+                    result.add(graphNode);
+                } else if (Arrays.equals(tags, graphNode.tags()) && graphNode.type().equals(type)) {
+                    result.add(graphNode);
+                }
+            }
+        }
+        return result;
     }
 
     public <T> void replaceNode(Node<T> node, Graph.Factory<? extends T> factory) {
