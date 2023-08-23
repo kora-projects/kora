@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.cache.annotation.processor;
 
-import org.jetbrains.annotations.Nullable;
-import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -11,7 +10,6 @@ import ru.tinkoff.kora.cache.CacheKey;
 import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache2;
 import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache22;
 import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.mono.CacheableMonoMany;
-import ru.tinkoff.kora.cache.caffeine.CaffeineCacheConfig;
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule;
 
 import java.lang.reflect.Constructor;
@@ -19,8 +17,11 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class MonoManyCacheAopTests extends Assertions implements CaffeineCacheModule {
+class MonoCacheManyAopTests implements CaffeineCacheModule {
 
     private static final String CACHED_IMPL_1 = "ru.tinkoff.kora.cache.annotation.processor.testcache.$DummyCache2Impl";
     private static final String CACHED_IMPL_2 = "ru.tinkoff.kora.cache.annotation.processor.testcache.$DummyCache22Impl";
@@ -46,7 +47,7 @@ class MonoManyCacheAopTests extends Assertions implements CaffeineCacheModule {
 
             final Constructor<?> cacheConstructor1 = cacheClass1.getDeclaredConstructors()[0];
             cacheConstructor1.setAccessible(true);
-            cache1 = (DummyCache2) cacheConstructor1.newInstance(CacheRunner.getConfig(),
+            cache1 = (DummyCache2) cacheConstructor1.newInstance(CacheRunner.getCaffeineConfig(),
                 caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
 
             var cacheClass2 = classLoader.loadClass(CACHED_IMPL_2);
@@ -56,7 +57,7 @@ class MonoManyCacheAopTests extends Assertions implements CaffeineCacheModule {
 
             final Constructor<?> cacheConstructor2 = cacheClass2.getDeclaredConstructors()[0];
             cacheConstructor2.setAccessible(true);
-            cache2 = (DummyCache22) cacheConstructor2.newInstance(CacheRunner.getConfig(),
+            cache2 = (DummyCache22) cacheConstructor2.newInstance(CacheRunner.getCaffeineConfig(),
                 caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
 
             var serviceClass = classLoader.loadClass(CACHED_SERVICE);
@@ -84,7 +85,7 @@ class MonoManyCacheAopTests extends Assertions implements CaffeineCacheModule {
     @Test
     void getFromCacheWhenWasCacheEmpty() {
         // given
-        final CacheableMonoMany service = getService();
+        var service = getService();
         service.value = "1";
         assertNotNull(service);
 
@@ -101,7 +102,7 @@ class MonoManyCacheAopTests extends Assertions implements CaffeineCacheModule {
     @Test
     void getFromCacheLevel2AndThenSaveCacheLevel1() {
         // given
-        final CacheableMonoMany service = getService();
+        var service = getService();
         service.value = "1";
         assertNotNull(service);
 
@@ -121,7 +122,7 @@ class MonoManyCacheAopTests extends Assertions implements CaffeineCacheModule {
     @Test
     void getFromCacheWhenCacheFilled() {
         // given
-        final CacheableMonoMany service = getService();
+        var service = getService();
         service.value = "1";
         assertNotNull(service);
 
@@ -139,7 +140,7 @@ class MonoManyCacheAopTests extends Assertions implements CaffeineCacheModule {
     @Test
     void getFromCacheWrongKeyWhenCacheFilled() {
         // given
-        final CacheableMonoMany service = getService();
+        var service = getService();
         service.value = "1";
         assertNotNull(service);
 
@@ -158,7 +159,7 @@ class MonoManyCacheAopTests extends Assertions implements CaffeineCacheModule {
     @Test
     void getFromCacheWhenCacheFilledOtherKey() {
         // given
-        final CacheableMonoMany service = getService();
+        var service = getService();
         service.value = "1";
         assertNotNull(service);
 
@@ -177,7 +178,7 @@ class MonoManyCacheAopTests extends Assertions implements CaffeineCacheModule {
     @Test
     void getFromCacheWhenCacheInvalidate() {
         // given
-        final CacheableMonoMany service = getService();
+        var service = getService();
         service.value = "1";
         assertNotNull(service);
 
@@ -196,7 +197,7 @@ class MonoManyCacheAopTests extends Assertions implements CaffeineCacheModule {
     @Test
     void getFromCacheWhenCacheInvalidateAll() {
         // given
-        final CacheableMonoMany service = getService();
+        var service = getService();
         service.value = "1";
         assertNotNull(service);
 

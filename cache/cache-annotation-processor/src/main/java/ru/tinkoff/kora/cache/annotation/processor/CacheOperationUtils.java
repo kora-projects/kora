@@ -131,12 +131,6 @@ public final class CacheOperationUtils {
     }
 
     private static List<AnnotationMirror> getRepeatedAnnotations(Element element,
-                                                                 Class<? extends Annotation> annotation,
-                                                                 Class<? extends Annotation> parentAnnotation) {
-        return getRepeatedAnnotations(element, annotation.getCanonicalName(), parentAnnotation.getCanonicalName());
-    }
-
-    private static List<AnnotationMirror> getRepeatedAnnotations(Element element,
                                                                  String annotation,
                                                                  String parentAnnotation) {
         final List<AnnotationMirror> repeated = element.getAnnotationMirrors().stream()

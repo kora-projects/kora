@@ -89,12 +89,7 @@ public interface RedisCacheModule extends JsonCommonModule, LettuceModule {
                 if (serializedValue == null) {
                     return null;
                 } else {
-                    int result = 0;
-                    for (int i = 0; i < 4; i++) {
-                        result <<= 8;
-                        result |= (serializedValue[i] & 0xFF);
-                    }
-                    return result;
+                    return Integer.valueOf(new String(serializedValue, StandardCharsets.UTF_8));
                 }
             }
         };
@@ -113,12 +108,7 @@ public interface RedisCacheModule extends JsonCommonModule, LettuceModule {
                 if (serializedValue == null) {
                     return null;
                 } else {
-                    long result = 0;
-                    for (int i = 0; i < 8; i++) {
-                        result <<= 8;
-                        result |= (serializedValue[i] & 0xFF);
-                    }
-                    return result;
+                    return Long.valueOf(new String(serializedValue, StandardCharsets.UTF_8));
                 }
             }
         };
@@ -134,7 +124,11 @@ public interface RedisCacheModule extends JsonCommonModule, LettuceModule {
 
             @Override
             public BigInteger read(byte[] serializedValue) {
-                return (serializedValue == null) ? null : new BigInteger(serializedValue);
+                if (serializedValue == null) {
+                    return null;
+                } else {
+                    return new BigInteger(new String(serializedValue, StandardCharsets.UTF_8));
+                }
             }
         };
     }
@@ -150,7 +144,7 @@ public interface RedisCacheModule extends JsonCommonModule, LettuceModule {
 
             @Override
             public UUID read(byte[] serializedValue) {
-                return (serializedValue == null) ? null : new UUID(serializedValue[0], serializedValue[1]);
+                return UUID.fromString(new String(serializedValue, StandardCharsets.UTF_8));
             }
         };
     }

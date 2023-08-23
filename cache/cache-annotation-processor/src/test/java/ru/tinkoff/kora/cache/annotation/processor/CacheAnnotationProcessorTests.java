@@ -14,8 +14,10 @@ import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.publisher.Ca
 import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.publisher.CacheableWrongPublisherPut;
 import ru.tinkoff.kora.cache.annotation.processor.testdata.sync.*;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class CacheAnnotationProcessorTests extends Assertions {
+class CacheAnnotationProcessorTests {
 
     @Test
     void cacheKeyMultipleAnnotationsOneMethod() {

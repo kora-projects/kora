@@ -1,15 +1,21 @@
 package ru.tinkoff.kora.cache.redis.client;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Map;
 
 public interface SyncRedisClient {
 
+    @Nullable
     byte[] get(byte[] key);
 
+    @Nonnull
     Map<byte[], byte[]> get(byte[][] keys);
 
+    @Nullable
     byte[] getExpire(byte[] key, long expireAfterMillis);
 
+    @Nonnull
     Map<byte[], byte[]> getExpire(byte[][] keys, long expireAfterMillis);
 
     void set(byte[] key, byte[] value);

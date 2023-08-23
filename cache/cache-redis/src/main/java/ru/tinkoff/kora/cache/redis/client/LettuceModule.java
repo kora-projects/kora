@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.cache.redis.client;
 
-import io.lettuce.core.AbstractRedisClient;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
@@ -16,12 +15,8 @@ public interface LettuceModule {
         return new LettuceClientFactory();
     }
 
-    default AbstractRedisClient lettuceRedisClient(LettuceClientFactory factory, LettuceClientConfig config) {
-        return factory.build(config);
-    }
-
-    default LettuceCommander lettuceCommander(AbstractRedisClient redisClient) {
-        return new DefaultLettuceCommander(redisClient);
+    default LettuceCommander lettuceCommander(LettuceClientFactory factory, LettuceClientConfig config) {
+        return new DefaultLettuceCommander(factory.build(config));
     }
 
     @DefaultComponent

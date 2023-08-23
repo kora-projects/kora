@@ -6,35 +6,42 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
-import ru.tinkoff.kora.cache.CacheKey;
-import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache2;
-import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache22;
-import ru.tinkoff.kora.cache.annotation.processor.testdata.sync.CacheableSyncMany;
-import ru.tinkoff.kora.cache.caffeine.CaffeineCacheConfig;
+import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache1;
+import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache12;
+import ru.tinkoff.kora.cache.annotation.processor.testdata.sync.CacheableSyncOneMany;
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule;
+import ru.tinkoff.kora.cache.redis.RedisCacheConfig;
+import ru.tinkoff.kora.cache.redis.RedisCacheModule;
+import ru.tinkoff.kora.cache.redis.RedisCacheTelemetry;
+import ru.tinkoff.kora.cache.redis.client.SyncRedisClient;
 
 import java.lang.reflect.Constructor;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class SyncManyCacheAopTests extends Assertions implements CaffeineCacheModule {
+class SyncCacheOneManyAopTests implements CaffeineCacheModule, RedisCacheModule {
 
-    private static final String CACHED_IMPL_1 = "ru.tinkoff.kora.cache.annotation.processor.testcache.$DummyCache2Impl";
-    private static final String CACHED_IMPL_2 = "ru.tinkoff.kora.cache.annotation.processor.testcache.$DummyCache22Impl";
-    private static final String CACHED_SERVICE = "ru.tinkoff.kora.cache.annotation.processor.testdata.sync.$CacheableSyncMany__AopProxy";
+    private static final String CACHED_IMPL_1 = "ru.tinkoff.kora.cache.annotation.processor.testcache.$DummyCache1Impl";
+    private static final String CACHED_IMPL_2 = "ru.tinkoff.kora.cache.annotation.processor.testcache.$DummyCache12Impl";
+    private static final String CACHED_SERVICE = "ru.tinkoff.kora.cache.annotation.processor.testdata.sync.$CacheableSyncOneMany__AopProxy";
 
-    private DummyCache2 cache1 = null;
-    private DummyCache22 cache2 = null;
-    private CacheableSyncMany service = null;
+    private DummyCache1 cache1 = null;
+    private DummyCache12 cache2 = null;
+    private CacheableSyncOneMany service = null;
 
-    private CacheableSyncMany getService() {
+    private CacheableSyncOneMany getService() {
         if (service != null) {
             return service;
         }
 
         try {
-            var classLoader = TestUtils.annotationProcess(List.of(DummyCache2.class, DummyCache22.class, CacheableSyncMany.class),
+            var classLoader = TestUtils.annotationProcess(List.of(DummyCache1.class, DummyCache12.class, CacheableSyncOneMany.class),
                 new AopAnnotationProcessor(), new CacheAnnotationProcessor());
 
             var cacheClass1 = classLoader.loadClass(CACHED_IMPL_1);
@@ -44,7 +51,7 @@ class SyncManyCacheAopTests extends Assertions implements CaffeineCacheModule {
 
             final Constructor<?> cacheConstructor1 = cacheClass1.getDeclaredConstructors()[0];
             cacheConstructor1.setAccessible(true);
-            cache1 = (DummyCache2) cacheConstructor1.newInstance(CacheRunner.getConfig(),
+            cache1 = (DummyCache1) cacheConstructor1.newInstance(CacheRunner.getCaffeineConfig(),
                 caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
 
             var cacheClass2 = classLoader.loadClass(CACHED_IMPL_2);
@@ -54,8 +61,10 @@ class SyncManyCacheAopTests extends Assertions implements CaffeineCacheModule {
 
             final Constructor<?> cacheConstructor2 = cacheClass2.getDeclaredConstructors()[0];
             cacheConstructor2.setAccessible(true);
-            cache2 = (DummyCache22) cacheConstructor2.newInstance(CacheRunner.getConfig(),
-                caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+            final Map<ByteBuffer, ByteBuffer> cache = new HashMap<>();
+            cache2 = (DummyCache12) cacheConstructor2.newInstance(CacheRunner.getRedisConfig(),
+                CacheRunner.syncRedisClient(cache), CacheRunner.reactiveRedisClient(cache), redisCacheTelemetry(null, null),
+                stringRedisKeyMapper(), stringRedisValueMapper());
 
             var serviceClass = classLoader.loadClass(CACHED_SERVICE);
             if (serviceClass == null) {
@@ -64,7 +73,7 @@ class SyncManyCacheAopTests extends Assertions implements CaffeineCacheModule {
 
             final Constructor<?> serviceConstructor = serviceClass.getDeclaredConstructors()[0];
             serviceConstructor.setAccessible(true);
-            service = (CacheableSyncMany) serviceConstructor.newInstance(cache1, cache2);
+            service = (CacheableSyncOneMany) serviceConstructor.newInstance(cache1, cache2);
             return service;
         } catch (Exception e) {
             throw new IllegalStateException(e);
@@ -82,16 +91,16 @@ class SyncManyCacheAopTests extends Assertions implements CaffeineCacheModule {
     @Test
     void getFromCacheWhenWasCacheEmpty() {
         // given
-        final CacheableSyncMany service = getService();
+        var service = getService();
         service.value = "1";
         assertNotNull(service);
 
         // when
-        final String notCached = service.getValue("1", BigDecimal.ZERO);
+        final String notCached = service.getValue("1");
         service.value = "2";
 
         // then
-        final String fromCache = service.getValue("1", BigDecimal.ZERO);
+        final String fromCache = service.getValue("1");
         assertEquals(notCached, fromCache);
         assertNotEquals("2", fromCache);
     }
@@ -100,19 +109,19 @@ class SyncManyCacheAopTests extends Assertions implements CaffeineCacheModule {
     @Test
     void getFromCacheLevel2AndThenSaveCacheLevel1() {
         // given
-        final CacheableSyncMany service = getService();
+        var service = getService();
         service.value = "1";
         assertNotNull(service);
 
         var cachedValue = "LEVEL_2";
-        cache2.put(CacheKey.of("1", BigDecimal.ZERO), cachedValue);
+        cache2.put("1", cachedValue);
 
         // when
-        final String valueFromLevel2 = service.getValue("1", BigDecimal.ZERO);
+        final String valueFromLevel2 = service.getValue("1");
         service.value = "2";
 
         // then
-        final String valueFromLevel1 = service.getValue("1", BigDecimal.ZERO);
+        final String valueFromLevel1 = service.getValue("1");
         assertEquals(valueFromLevel2, valueFromLevel1);
         assertEquals(cachedValue, valueFromLevel1);
     }
@@ -120,36 +129,36 @@ class SyncManyCacheAopTests extends Assertions implements CaffeineCacheModule {
     @Test
     void getFromCacheWhenCacheFilled() {
         // given
-        final CacheableSyncMany service = getService();
+        var service = getService();
         service.value = "1";
         assertNotNull(service);
 
         // when
-        final String initial = service.getValue("1", BigDecimal.ZERO);
+        final String initial = service.getValue("1");
         final String cached = service.putValue(BigDecimal.ZERO, "5", "1");
         assertEquals(initial, cached);
         service.value = "2";
 
         // then
-        final String fromCache = service.getValue("1", BigDecimal.ZERO);
+        final String fromCache = service.getValue("1");
         assertEquals(cached, fromCache);
     }
 
     @Test
     void getFromCacheWrongKeyWhenCacheFilled() {
         // given
-        final CacheableSyncMany service = getService();
+        var service = getService();
         service.value = "1";
         assertNotNull(service);
 
         // when
-        final String initial = service.getValue("1", BigDecimal.ZERO);
+        final String initial = service.getValue("1");
         final String cached = service.putValue(BigDecimal.ZERO, "5", "1");
         assertEquals(initial, cached);
         service.value = "2";
 
         // then
-        final String fromCache = service.getValue("2", BigDecimal.ZERO);
+        final String fromCache = service.getValue("2");
         assertNotEquals(cached, fromCache);
         assertEquals(service.value, fromCache);
     }
@@ -157,18 +166,18 @@ class SyncManyCacheAopTests extends Assertions implements CaffeineCacheModule {
     @Test
     void getFromCacheWhenCacheFilledOtherKey() {
         // given
-        final CacheableSyncMany service = getService();
+        var service = getService();
         service.value = "1";
         assertNotNull(service);
 
         // when
         final String cached = service.putValue(BigDecimal.ZERO, "5", "1");
         service.value = "2";
-        final String initial = service.getValue("2", BigDecimal.ZERO);
+        final String initial = service.getValue("2");
         assertNotEquals(cached, initial);
 
         // then
-        final String fromCache = service.getValue("2", BigDecimal.ZERO);
+        final String fromCache = service.getValue("2");
         assertNotEquals(cached, fromCache);
         assertEquals(initial, fromCache);
     }
@@ -176,38 +185,38 @@ class SyncManyCacheAopTests extends Assertions implements CaffeineCacheModule {
     @Test
     void getFromCacheWhenCacheInvalidate() {
         // given
-        final CacheableSyncMany service = getService();
+        var service = getService();
         service.value = "1";
         assertNotNull(service);
 
         // when
-        final String initial = service.getValue("1", BigDecimal.ZERO);
+        final String initial = service.getValue("1");
         final String cached = service.putValue(BigDecimal.ZERO, "5", "1");
         assertEquals(initial, cached);
         service.value = "2";
-        service.evictValue("1", BigDecimal.ZERO);
+        service.evictValue("1");
 
         // then
-        final String fromCache = service.getValue("1", BigDecimal.ZERO);
+        final String fromCache = service.getValue("1");
         assertNotEquals(cached, fromCache);
     }
 
     @Test
     void getFromCacheWhenCacheInvalidateAll() {
         // given
-        final CacheableSyncMany service = getService();
+        var service = getService();
         service.value = "1";
         assertNotNull(service);
 
         // when
-        final String initial = service.getValue("1", BigDecimal.ZERO);
+        final String initial = service.getValue("1");
         final String cached = service.putValue(BigDecimal.ZERO, "5", "1");
         assertEquals(initial, cached);
         service.value = "2";
         service.evictAll();
 
         // then
-        final String fromCache = service.getValue("1", BigDecimal.ZERO);
+        final String fromCache = service.getValue("1");
         assertNotEquals(cached, fromCache);
     }
 }
