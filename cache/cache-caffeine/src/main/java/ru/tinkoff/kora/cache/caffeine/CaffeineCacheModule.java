@@ -6,8 +6,6 @@ import io.prometheus.client.cache.caffeine.CacheMetricsCollector;
 import ru.tinkoff.kora.cache.telemetry.CacheMetrics;
 import ru.tinkoff.kora.cache.telemetry.CacheTracer;
 import ru.tinkoff.kora.common.DefaultComponent;
-import ru.tinkoff.kora.config.common.Config;
-import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
