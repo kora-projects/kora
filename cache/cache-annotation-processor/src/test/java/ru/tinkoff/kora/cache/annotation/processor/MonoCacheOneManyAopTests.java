@@ -6,44 +6,68 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
+import ru.tinkoff.kora.cache.CacheKey;
 import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache1;
-import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.mono.CacheableMonoOne;
+import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache12;
+import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache2;
+import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache22;
+import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.mono.CacheableMonoMany;
+import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.mono.CacheableMonoOneMany;
+import ru.tinkoff.kora.cache.annotation.processor.testdata.sync.CacheableSyncOneMany;
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule;
+import ru.tinkoff.kora.cache.redis.RedisCacheModule;
 
 import java.lang.reflect.Constructor;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class MonoCacheOneAopTests implements CaffeineCacheModule {
+class MonoCacheOneManyAopTests implements CaffeineCacheModule, RedisCacheModule {
 
-    private static final String CACHED_IMPL = "ru.tinkoff.kora.cache.annotation.processor.testcache.$DummyCache1Impl";
-    private static final String CACHED_SERVICE = "ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.mono.$CacheableMonoOne__AopProxy";
+    private static final String CACHED_IMPL_1 = "ru.tinkoff.kora.cache.annotation.processor.testcache.$DummyCache1Impl";
+    private static final String CACHED_IMPL_2 = "ru.tinkoff.kora.cache.annotation.processor.testcache.$DummyCache12Impl";
+    private static final String CACHED_SERVICE = "ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.mono.$CacheableMonoOneMany__AopProxy";
 
-    private DummyCache1 cache = null;
-    private CacheableMonoOne service = null;
+    private DummyCache1 cache1 = null;
+    private DummyCache12 cache2 = null;
+    private CacheableMonoOneMany service = null;
 
-    private CacheableMonoOne getService() {
+    private CacheableMonoOneMany getService() {
         if (service != null) {
             return service;
         }
 
         try {
-            var classLoader = TestUtils.annotationProcess(List.of(DummyCache1.class, CacheableMonoOne.class),
+            var classLoader = TestUtils.annotationProcess(List.of(DummyCache1.class, DummyCache12.class, CacheableMonoOneMany.class),
                 new AopAnnotationProcessor(), new CacheAnnotationProcessor());
 
-            var cacheClass = classLoader.loadClass(CACHED_IMPL);
-            if (cacheClass == null) {
-                throw new IllegalArgumentException("Expected class not found: " + CACHED_SERVICE);
+            var cacheClass1 = classLoader.loadClass(CACHED_IMPL_1);
+            if (cacheClass1 == null) {
+                throw new IllegalArgumentException("Expected class not found: " + CACHED_IMPL_1);
             }
 
-            final Constructor<?> cacheConstructor = cacheClass.getDeclaredConstructors()[0];
-            cacheConstructor.setAccessible(true);
-            cache = (DummyCache1) cacheConstructor.newInstance(CacheRunner.getCaffeineConfig(),
+            final Constructor<?> cacheConstructor1 = cacheClass1.getDeclaredConstructors()[0];
+            cacheConstructor1.setAccessible(true);
+            cache1 = (DummyCache1) cacheConstructor1.newInstance(CacheRunner.getCaffeineConfig(),
                 caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+
+            var cacheClass2 = classLoader.loadClass(CACHED_IMPL_2);
+            if (cacheClass2 == null) {
+                throw new IllegalArgumentException("Expected class not found: " + CACHED_IMPL_2);
+            }
+
+            final Constructor<?> cacheConstructor2 = cacheClass2.getDeclaredConstructors()[0];
+            cacheConstructor2.setAccessible(true);
+            final Map<ByteBuffer, ByteBuffer> cache = new HashMap<>();
+            cache2 = (DummyCache12) cacheConstructor2.newInstance(CacheRunner.getRedisConfig(),
+                CacheRunner.syncRedisClient(cache), CacheRunner.reactiveRedisClient(cache), redisCacheTelemetry(null, null),
+                stringRedisKeyMapper(), stringRedisValueMapper());
 
             var serviceClass = classLoader.loadClass(CACHED_SERVICE);
             if (serviceClass == null) {
@@ -52,7 +76,7 @@ class MonoCacheOneAopTests implements CaffeineCacheModule {
 
             final Constructor<?> serviceConstructor = serviceClass.getDeclaredConstructors()[0];
             serviceConstructor.setAccessible(true);
-            service = (CacheableMonoOne) serviceConstructor.newInstance(cache);
+            service = (CacheableMonoOneMany) serviceConstructor.newInstance(cache1, cache2);
             return service;
         } catch (Exception e) {
             throw new IllegalStateException(e);
@@ -61,8 +85,9 @@ class MonoCacheOneAopTests implements CaffeineCacheModule {
 
     @BeforeEach
     void cleanup() {
-        if (cache != null) {
-            cache.invalidateAll();
+        if (cache1 != null && cache2 != null) {
+            cache1.invalidateAll();
+            cache2.invalidateAll();
         }
     }
 
@@ -81,6 +106,26 @@ class MonoCacheOneAopTests implements CaffeineCacheModule {
         final String fromCache = service.getValue("1").block(Duration.ofMinutes(1));
         assertEquals(notCached, fromCache);
         assertNotEquals("2", fromCache);
+    }
+
+    @Test
+    void getFromCacheLevel2AndThenSaveCacheLevel1() {
+        // given
+        var service = getService();
+        service.value = "1";
+        assertNotNull(service);
+
+        var cachedValue = "LEVEL_2";
+        cache2.put("1", cachedValue);
+
+        // when
+        final String valueFromLevel2 = service.getValue("1").block(Duration.ofMinutes(1));
+        service.value = "2";
+
+        // then
+        final String valueFromLevel1 = service.getValue("1").block(Duration.ofMinutes(1));
+        assertEquals(valueFromLevel2, valueFromLevel1);
+        assertEquals(cachedValue, valueFromLevel1);
     }
 
     @Test

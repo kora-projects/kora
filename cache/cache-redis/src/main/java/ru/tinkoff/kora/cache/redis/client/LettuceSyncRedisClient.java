@@ -8,6 +8,7 @@ import io.lettuce.core.api.sync.RedisKeyCommands;
 import io.lettuce.core.api.sync.RedisServerCommands;
 import io.lettuce.core.api.sync.RedisStringCommands;
 
+import javax.annotation.Nonnull;
 import java.time.Duration;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -29,6 +30,7 @@ final class LettuceSyncRedisClient implements SyncRedisClient {
         return stringCommands.get(key);
     }
 
+    @Nonnull
     @Override
     public Map<byte[], byte[]> get(byte[][] keys) {
         return stringCommands.mget(keys).stream()
@@ -40,6 +42,7 @@ final class LettuceSyncRedisClient implements SyncRedisClient {
         return stringCommands.getex(key, GetExArgs.Builder.ex(Duration.ofMillis(expireAfterMillis)));
     }
 
+    @Nonnull
     @Override
     public Map<byte[], byte[]> getExpire(byte[][] keys, long expireAfterMillis) {
         throw new UnsupportedOperationException();

@@ -1,12 +1,10 @@
 package ru.tinkoff.kora.cache.annotation.processor.testcache;
 
-import ru.tinkoff.kora.cache.CacheKey;
 import ru.tinkoff.kora.cache.annotation.Cache;
 import ru.tinkoff.kora.cache.caffeine.CaffeineCache;
-
-import java.math.BigDecimal;
+import ru.tinkoff.kora.cache.redis.RedisCache;
 
 @Cache("dummy2")
-public interface DummyCache22 extends CaffeineCache<CacheKey.Key2<String, BigDecimal>, String> {
+public interface DummyCache12 extends RedisCache<String, String> {
 
 }

@@ -9,7 +9,6 @@ import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
 import ru.tinkoff.kora.cache.CacheKey;
 import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache2;
 import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.mono.CacheableMono;
-import ru.tinkoff.kora.cache.caffeine.CaffeineCacheConfig;
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule;
 
 import java.lang.reflect.Constructor;
@@ -17,8 +16,10 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class MonoCacheAopTests extends Assertions implements CaffeineCacheModule {
+class MonoCacheAopTests implements CaffeineCacheModule {
 
     private static final String CACHED_IMPL = "ru.tinkoff.kora.cache.annotation.processor.testcache.$DummyCache2Impl";
     private static final String CACHED_SERVICE = "ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.mono.$CacheableMono__AopProxy";
@@ -42,7 +43,7 @@ class MonoCacheAopTests extends Assertions implements CaffeineCacheModule {
 
             final Constructor<?> cacheConstructor = cacheClass.getDeclaredConstructors()[0];
             cacheConstructor.setAccessible(true);
-            cache = (DummyCache2) cacheConstructor.newInstance(CacheRunner.getConfig(),
+            cache = (DummyCache2) cacheConstructor.newInstance(CacheRunner.getCaffeineConfig(),
                 caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
 
             var serviceClass = classLoader.loadClass(CACHED_SERVICE);
