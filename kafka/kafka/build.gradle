@@ -1,4 +1,4 @@
-apply from: "${project.rootDir}/kotlin-plugin.gradle"
+apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
     api project(":common")

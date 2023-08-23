@@ -2,7 +2,7 @@ plugins {
     id "com.google.devtools.ksp"
     id "java-test-fixtures"
 }
-apply from: "${project.rootDir}/kotlin-plugin.gradle"
+apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
     api project(':common')// todo delete

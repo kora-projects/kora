@@ -1,7 +1,7 @@
 plugins {
     id "com.google.devtools.ksp"
 }
-apply from: "${project.rootDir}/kotlin-plugin.gradle"
+apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
     implementation project(':symbol-processor-common')
@@ -21,4 +21,4 @@ test {
     jvmArgs(['--enable-preview'])
 }
 
-apply from:'../../in-test-generated.gradle'
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
