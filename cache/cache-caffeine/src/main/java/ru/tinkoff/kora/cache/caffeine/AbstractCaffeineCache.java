@@ -4,10 +4,7 @@ import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
 import java.time.Duration;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 
 public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V> {
@@ -46,6 +43,15 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
 
         var telemetryContext = telemetry.create("GET_MANY", name);
         var values = caffeine.getAllPresent(keys);
+        telemetryContext.recordSuccess();
+        return values;
+    }
+
+    @Nonnull
+    @Override
+    public Map<K, V> getAll() {
+        var telemetryContext = telemetry.create("CAFFEINE_ALL", name);
+        var values = Collections.unmodifiableMap(caffeine.asMap());
         telemetryContext.recordSuccess();
         return values;
     }
