@@ -2,7 +2,7 @@ plugins {
     id "com.google.devtools.ksp"
     id "java-test-fixtures"
 }
-apply from: "${project.rootDir}/kotlin-plugin.gradle"
+apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 
 dependencies {
@@ -33,4 +33,4 @@ test {
     jvmArgs(['--enable-preview'])
 }
 
-apply from:'../../in-test-generated.gradle'
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

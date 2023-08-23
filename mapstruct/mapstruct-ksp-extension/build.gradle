@@ -7,5 +7,5 @@ dependencies {
     testImplementation 'jakarta.inject:jakarta.inject-api:2.0.1'
 }
 
-apply from: "${project.rootDir}/in-test-generated.gradle"
-apply from: "${project.rootDir}/kotlin-plugin.gradle"
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
+apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"

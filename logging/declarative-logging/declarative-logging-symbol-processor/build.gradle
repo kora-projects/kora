@@ -1,4 +1,4 @@
-apply from: "${project.rootDir}/kotlin-plugin.gradle"
+apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
     implementation project(':symbol-processor-common')
@@ -10,4 +10,4 @@ dependencies {
     testImplementation(libs.kotlin.coroutines.reactor)
 }
 
-apply from: "${project.rootDir}/in-test-generated.gradle"
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

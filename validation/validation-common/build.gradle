@@ -8,4 +8,4 @@ dependencies {
     testImplementation project(":internal:test-logging")
 }
 
-apply from: "${project.rootDir}/in-test-generated.gradle"
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

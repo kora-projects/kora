@@ -22,5 +22,5 @@ test {
     jvmArgs(['--enable-preview'])
 }
 
-apply from: "${project.rootDir}/kotlin-plugin.gradle"
-apply from: '../../in-test-generated.gradle'
+apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

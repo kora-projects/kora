@@ -3,7 +3,7 @@ plugins {
     id "java-test-fixtures"
 }
 
-apply from: "${project.rootDir}/kotlin-plugin.gradle"
+apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
     implementation project(":aop:aop-symbol-processor")
@@ -35,4 +35,4 @@ kotlin {
     }
 }
 
-apply from: "${project.rootDir}/in-test-generated.gradle"
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

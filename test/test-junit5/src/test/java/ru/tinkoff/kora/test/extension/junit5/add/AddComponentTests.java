@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.test.extension.junit5.add;
 
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
@@ -21,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class AddComponentTests implements KoraAppTestGraphModifier {
 
     @TestComponent
+    @Tag(LifecycleComponent.class)
     private TestComponent2 original;
     @Tag(TestComponent23.class)
     @TestComponent

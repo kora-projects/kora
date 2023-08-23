@@ -1,0 +1,119 @@
+def nonOtherTests = new HashSet<String>()
+
+def addDependency = { TaskProvider taskProvider, String dependency ->
+    taskProvider.configure { Task task ->
+        task.dependsOn(dependency)
+    }
+    nonOtherTests.add(dependency)
+}
+
+def testPostgres = tasks.register("test-postgres") {
+    group("verification")
+    description("Run tests with postgresql container")
+}
+addDependency(testPostgres, ':database:database-flyway:test')
+addDependency(testPostgres, ':database:database-jdbc:test')
+addDependency(testPostgres, ':database:database-r2dbc:test')
+addDependency(testPostgres, ':database:database-vertx:test')
+
+def testCassandra = tasks.register("test-cassandra") {
+    group("verification")
+    description("Run tests with cassandra container")
+}
+addDependency(testCassandra, ':database:database-cassandra:test')
+
+def testRedis = tasks.register("test-redis") {
+    group("verification")
+    description("Run tests with redis container")
+}
+addDependency(testRedis, ':cache:cache-redis:test')
+
+def testKafka = tasks.register("test-kafka") {
+    group("verification")
+    description("Run tests with kafka container")
+}
+addDependency(testKafka, ':kafka:kafka:test')
+
+def testOpenapi = tasks.register('test-openapi') {
+    group('verification')
+    description('Run openapi tests')
+}
+addDependency(testOpenapi, ':openapi:openapi-generator:test')
+
+def testJavaCodegen = tasks.register('test-java-codegen') {
+    group('verification')
+    description('Run java codegen tests')
+}
+addDependency(testJavaCodegen, ':kora-app-annotation-processor:test')
+addDependency(testJavaCodegen, ':aop:aop-annotation-processor:test')
+addDependency(testJavaCodegen, ':config:config-annotation-processor:test')
+addDependency(testJavaCodegen, ':json:json-annotation-processor:test')
+addDependency(testJavaCodegen, ':http:http-server-annotation-processor:test')
+addDependency(testJavaCodegen, ':http:http-client-annotation-processor:test')
+addDependency(testJavaCodegen, ':http:soap-client-annotation-processor:test')
+addDependency(testJavaCodegen, ':database:database-annotation-processor:test')
+addDependency(testJavaCodegen, ':kafka:kafka-annotation-processor:test')
+addDependency(testJavaCodegen, ':scheduling:scheduling-annotation-processor:test')
+addDependency(testJavaCodegen, ':resilient:resilient-annotation-processor:test')
+addDependency(testJavaCodegen, ':cache:cache-annotation-processor:test')
+addDependency(testJavaCodegen, ':validation:validation-annotation-processor:test')
+addDependency(testJavaCodegen, ':mapstruct:mapstruct-java-extension:test')
+addDependency(testJavaCodegen, ':logging:declarative-logging:declarative-logging-annotation-processor:test')
+
+def testKotlinCodegen = tasks.register('test-kotlin-codegen') {
+    group('verification')
+    description('Run kotlin codegen tests')
+}
+addDependency(testKotlinCodegen, ':kora-app-symbol-processor:test')
+addDependency(testKotlinCodegen, ':aop:aop-symbol-processor:test')
+addDependency(testKotlinCodegen, ':config:config-symbol-processor:test')
+addDependency(testKotlinCodegen, ':json:json-symbol-processor:test')
+addDependency(testKotlinCodegen, ':http:http-server-symbol-processor:test')
+addDependency(testKotlinCodegen, ':kafka:kafka-symbol-processor:test')
+addDependency(testKotlinCodegen, ':http:http-client-symbol-processor:test')
+addDependency(testKotlinCodegen, ':http:soap-client-symbol-processor:test')
+addDependency(testKotlinCodegen, ':database:database-symbol-processor:test')
+addDependency(testKotlinCodegen, ':scheduling:scheduling-ksp:test')
+addDependency(testKotlinCodegen, ':resilient:resilient-symbol-processor:test')
+addDependency(testKotlinCodegen, ':cache:cache-symbol-processor:test')
+addDependency(testKotlinCodegen, ':validation:validation-symbol-processor:test')
+addDependency(testKotlinCodegen, ':mapstruct:mapstruct-ksp-extension:test')
+addDependency(testKotlinCodegen, ':logging:declarative-logging:declarative-logging-symbol-processor:test')
+
+def testOther = tasks.register("test-other") {
+    group("verification")
+    description("Run other tests")
+    finalizedBy 'jacocoRootReport'
+}
+
+def jacocoRootReport = tasks.register("jacocoRootReport", JacocoReport) {
+    group = 'verification'
+    executionData project.fileTree(dir: '.', include: '**/build/jacoco/test.exec')
+
+    reports {
+        xml.required.set(true)
+        xml.destination(file("$buildDir/reports/jacoco/test/jacocoTestReport.xml"))
+        csv.required.set(false)
+        html.required.set(false)
+    }
+}
+
+
+subprojects {
+    tasks.configureEach { task ->
+        if (task.name == "test") {
+            if (nonOtherTests.add(task.path)) {
+                testOther.configure {
+                    it.dependsOn(task)
+                }
+            }
+        }
+        if (task.name == "jacocoTestReport") {
+            def report = (JacocoReport) task
+            jacocoRootReport.configure { root ->
+                root.additionalClassDirs report.allClassDirs
+                root.additionalSourceDirs report.allSourceDirs
+            }
+        }
+    }
+}

@@ -15,6 +15,7 @@ public interface TestApplication {
         return new GenericComponent.IntGenericComponent();
     }
 
+    @Root
     default LifecycleComponent lifecycleComponent1() {
         return () -> "1";
     }
