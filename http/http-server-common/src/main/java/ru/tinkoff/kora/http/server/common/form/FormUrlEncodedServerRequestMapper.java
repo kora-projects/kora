@@ -36,9 +36,11 @@ public final class FormUrlEncodedServerRequestMapper implements HttpServerReques
             }
             var pair = s.split("=");
             var name = URLDecoder.decode(pair[0].trim(), StandardCharsets.UTF_8);
-            var value = URLDecoder.decode(pair[1].trim(), StandardCharsets.UTF_8);
             var part = parts.computeIfAbsent(name, n -> new FormUrlEncoded.FormPart(n, new ArrayList<>()));
-            part.values().add(value);
+            if (pair.length > 1) {
+                var value = URLDecoder.decode(pair[1].trim(), StandardCharsets.UTF_8);
+                part.values().add(value);
+            }
         }
         return parts;
     }
