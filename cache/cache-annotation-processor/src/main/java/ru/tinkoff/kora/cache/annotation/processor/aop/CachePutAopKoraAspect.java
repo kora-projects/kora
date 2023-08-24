@@ -10,6 +10,7 @@ import ru.tinkoff.kora.cache.annotation.processor.CacheOperationUtils;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.type.PrimitiveType;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Future;
@@ -60,6 +61,14 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
         // cache super method
         builder.add("var _value = ").add(superMethod).add(";\n");
 
+        final boolean isOptional = MethodUtils.isOptional(method);
+        final boolean isPrimitive = method.getReturnType() instanceof PrimitiveType;
+        if(isOptional) {
+            builder.beginControlFlow("_value.ifPresent(_v ->");
+        } else if(!isPrimitive) {
+            builder.beginControlFlow("if(_value != null)");
+        }
+
         if (operation.parameters().size() == 1) {
             builder.add("""
                     var _key = $L;
@@ -75,8 +84,19 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
 
         // cache put
         for (var cache : cacheFields) {
-            builder.add(cache).add(".put(_key, _value);\n");
+            if (isOptional) {
+                builder.add(cache).add(".put(_key, _v);\n");
+            } else {
+                builder.add(cache).add(".put(_key, _value);\n");
+            }
         }
+
+        if(isOptional) {
+            builder.endControlFlow(")");
+        } else if(!isPrimitive) {
+            builder.endControlFlow();
+        }
+
         builder.add("return _value;");
 
         return builder.build();

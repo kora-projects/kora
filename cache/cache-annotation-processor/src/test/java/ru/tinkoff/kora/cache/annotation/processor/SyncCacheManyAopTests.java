@@ -97,7 +97,6 @@ class SyncCacheManyAopTests implements CaffeineCacheModule {
         assertNotEquals("2", fromCache);
     }
 
-
     @Test
     void getFromCacheLevel2AndThenSaveCacheLevel1() {
         // given
@@ -135,6 +134,45 @@ class SyncCacheManyAopTests implements CaffeineCacheModule {
         final String fromCache = service.getValue("1", BigDecimal.ZERO);
         assertEquals(cached, fromCache);
     }
+
+    @Test
+    void getOptionalFromCacheWhenWasCacheEmpty() {
+        // given
+        final CacheableSyncMany service = getService();
+        service.value = "1";
+        assertNotNull(service);
+
+        // when
+        var notCached = service.getValueOptional("1", BigDecimal.ZERO);
+        service.value = "2";
+
+        // then
+        var fromCache = service.getValueOptional("1", BigDecimal.ZERO);
+        assertEquals(notCached, fromCache);
+        assertNotEquals("2", fromCache);
+    }
+
+    @Test
+    void getOptionalFromCacheWhenCacheFilled() {
+        // given
+        final CacheableSyncMany service = getService();
+        service.value = "1";
+        assertNotNull(service);
+
+        // when
+        var initial = service.getValueOptional("1", BigDecimal.ZERO);
+        var cached = service.putValueOptional(BigDecimal.ZERO, "5", "1");
+        assertTrue(initial.isPresent());
+        assertTrue(cached.isPresent());
+        assertEquals(initial.get(), cached.get());
+        service.value = "2";
+
+        // then
+        var fromCache = service.getValueOptional("1", BigDecimal.ZERO);
+        assertTrue(fromCache.isPresent());
+        assertEquals(cached.get(), fromCache.get());
+    }
+
 
     @Test
     void getFromCacheWrongKeyWhenCacheFilled() {

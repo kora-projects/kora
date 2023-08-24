@@ -7,6 +7,7 @@ import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache2;
 import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache22;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 
 public class CacheableSyncMany {
 
@@ -18,10 +19,22 @@ public class CacheableSyncMany {
         return value;
     }
 
+    @Cacheable(DummyCache2.class)
+    @Cacheable(DummyCache22.class)
+    public Optional<String> getValueOptional(String arg1, BigDecimal arg2) {
+        return value.describeConstable();
+    }
+
     @CachePut(value = DummyCache2.class, parameters = {"arg1", "arg2"})
     @CachePut(value = DummyCache22.class, parameters = {"arg1", "arg2"})
     public String putValue(BigDecimal arg2, String arg3, String arg1) {
         return value;
+    }
+
+    @CachePut(value = DummyCache2.class, parameters = {"arg1", "arg2"})
+    @CachePut(value = DummyCache22.class, parameters = {"arg1", "arg2"})
+    public Optional<String> putValueOptional(BigDecimal arg2, String arg3, String arg1) {
+        return Optional.ofNullable(value);
     }
 
     @CacheInvalidate(DummyCache2.class)

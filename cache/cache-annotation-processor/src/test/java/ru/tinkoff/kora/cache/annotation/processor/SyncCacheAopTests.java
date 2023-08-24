@@ -102,6 +102,46 @@ class SyncCacheAopTests implements CaffeineCacheModule {
     }
 
     @Test
+    void getOptionalFromCacheWhenWasCacheEmpty() {
+        // given
+        var service = getService();
+        service.value = "1";
+        assertNotNull(service);
+
+        // when
+        var notCached = service.getValueOptional("1", BigDecimal.ZERO);
+        assertTrue(notCached.isPresent());
+        service.value = "2";
+
+        // then
+        var fromCache = service.getValueOptional("1", BigDecimal.ZERO);
+        assertTrue(fromCache.isPresent());
+        assertEquals(notCached.get(), fromCache.get());
+        assertNotEquals("2", fromCache.get());
+    }
+
+    @Test
+    void getOptionalFromCacheWhenCacheFilled() {
+        // given
+        var service = getService();
+        service.value = "1";
+        assertNotNull(service);
+
+        // when
+        var initial = service.getValueOptional("1", BigDecimal.ZERO);
+        assertTrue(initial.isPresent());
+        var cached = service.putValueOptional(BigDecimal.ZERO, "5", "1");
+        assertTrue(cached.isPresent());
+        assertEquals(initial.get(), cached.get());
+        service.value = "2";
+
+        // then
+        var fromCache = service.getValueOptional("1", BigDecimal.ZERO);
+        assertTrue(fromCache.isPresent());
+        assertEquals(cached.get(), fromCache.get());
+    }
+
+    @Test
     void getFromCacheWrongKeyWhenCacheFilled() {
         // given
         var service = getService();
