@@ -11,14 +11,15 @@ import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
 import io.micrometer.core.instrument.binder.system.UptimeMetrics;
 import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
-import io.prometheus.client.cache.caffeine.CacheMetricsCollector;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.ValueOf;
+import ru.tinkoff.kora.cache.caffeine.CaffeineCacheMetricCollector;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.micrometer.module.cache.MicrometerCacheMetrics;
+import ru.tinkoff.kora.micrometer.module.cache.caffeine.MicrometerCaffeineCacheMetricCollector;
 import ru.tinkoff.kora.micrometer.module.db.MicrometerDataBaseMetricWriterFactory;
 import ru.tinkoff.kora.micrometer.module.grpc.server.MicrometerGrpcServerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.http.client.MicrometerHttpClientMetricsFactory;
@@ -40,6 +41,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 public interface MetricsModule {
+
     default Initializer initializer(All<ValueOf<PrometheusMeterRegistryInitializer>> initializers) {
         return new Initializer(initializers.stream().map(ValueOf::get).toList());
     }
@@ -161,7 +163,7 @@ public interface MetricsModule {
     }
 
     @DefaultComponent
-    default CacheMetricsCollector cacheMetricsCollector() {
-        return new CacheMetricsCollector().register();
+    default CaffeineCacheMetricCollector caffeineCacheMetricsCollector(MeterRegistry meterRegistry) {
+        return new MicrometerCaffeineCacheMetricCollector(meterRegistry);
     }
 }
