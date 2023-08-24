@@ -11,7 +11,9 @@ import ru.tinkoff.kora.cache.annotation.processor.CacheOperationUtils;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.type.PrimitiveType;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Future;
 
@@ -74,16 +76,26 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
 
         }
 
+        final boolean isOptional = MethodUtils.isOptional(method);
         if (operation.cacheImplementations().size() == 1) {
-            return CodeBlock.builder()
-                .add(keyBlock)
-                .add(CodeBlock.of("""
-                    return $L.computeIfAbsent(_key, _k -> $L);
-                    """, cacheFields.get(0), superMethod))
-                .build();
+            if (isOptional) {
+                return CodeBlock.builder()
+                    .add(keyBlock)
+                    .add(CodeBlock.of("""
+                        return $T.ofNullable($L.computeIfAbsent(_key, _k -> $L.orElse(null)));
+                        """, Optional.class, cacheFields.get(0), superMethod))
+                    .build();
+            } else {
+                return CodeBlock.builder()
+                    .add(keyBlock)
+                    .add(CodeBlock.of("""
+                        return $L.computeIfAbsent(_key, _k -> $L);
+                        """, cacheFields.get(0), superMethod))
+                    .build();
+            }
         }
 
-        final StringBuilder builder = new StringBuilder();
+        final CodeBlock.Builder builder = CodeBlock.builder();
 
         // cache get
         for (int i = 0; i < cacheFields.size(); i++) {
@@ -92,35 +104,56 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
                 ? "var _value = "
                 : "_value = ";
 
-            builder.append(prefix)
-                .append(cache).append(".get(_key);\n")
-                .append("if(_value != null) {\n");
+            builder.add(prefix).add(cache).add(".get(_key);\n");
 
+            builder.beginControlFlow("if(_value != null)");
             // put value from cache into prev level caches
             for (int j = 0; j < i; j++) {
                 final String cachePrevPut = cacheFields.get(j);
-                builder.append("\t").append(cachePrevPut).append(".put(_key, _value);\n");
+                builder.add("\t").add(cachePrevPut).add(".put(_key, _value);\n");
             }
 
-            builder.append("""
-                        return _value;
-                     }
-                    """)
-                .append("\n");
+            if(isOptional) {
+                builder.add("return $T.of(_value);", Optional.class);
+            } else {
+                builder.add("return _value;");
+            }
+
+            builder.add("\n");
+            builder.endControlFlow();
+            builder.add("\n");
         }
 
         // cache super method
-        builder.append("_value = ").append(superMethod).append(";\n");
+        builder.add("var _result = ").add(superMethod).add(";\n");
 
         // cache put
-        for (final String cache : cacheFields) {
-            builder.append(cache).append(".put(_key, _value);\n");
+        final boolean isPrimitive = method.getReturnType() instanceof PrimitiveType;
+        if(isOptional) {
+            builder.beginControlFlow("_result.ifPresent(_v ->");
+        } else if(!isPrimitive) {
+            builder.beginControlFlow("if(_result != null)");
         }
-        builder.append("return _value;");
+
+        for (final String cache : cacheFields) {
+            if (isOptional) {
+                builder.add(cache).add(".put(_key, _v);\n");
+            } else {
+                builder.add(cache).add(".put(_key, _result);\n");
+            }
+        }
+
+        if(isOptional) {
+            builder.endControlFlow(")");
+        } else if(!isPrimitive) {
+            builder.endControlFlow();
+        }
+
+        builder.add("return _result;");
 
         return CodeBlock.builder()
             .add(keyBlock)
-            .add(builder.toString())
+            .add(builder.build())
             .build();
     }
 

@@ -25,6 +25,10 @@ public final class MethodUtils {
         return CommonUtils.isVoid(method.getReturnType());
     }
 
+    public static boolean isOptional(ExecutableElement method) {
+        return CommonUtils.isOptional(method.getReturnType());
+    }
+
     public static boolean isVoidGeneric(TypeMirror returnType) {
         if(returnType instanceof DeclaredType dt) {
             return CommonUtils.isVoid(dt.getTypeArguments().get(0));
