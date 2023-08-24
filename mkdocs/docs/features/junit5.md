@@ -73,7 +73,6 @@ public interface ApplicationModules {
 - `application` - обязательный параметр который указывает на класс аннотированный `@KoraApp`, представляющий собой граф всех зависимостей которые будут доступны в рамках теста.
 - `components` - список компонентов которые надо инициализировать в рамках теста, можно указать список компонентов и только они и будут инициализированы в рамках графа, 
 в случае отсутствия указанных компонентов, будет инициализирован весь граф.
-- `initializeMode` - когда инициализировать контекст графа, каждый раз для каждого тестового метода (стандартное поведение) либо один раз на тестовый класс.
 
 Пример:
 ```java
@@ -192,6 +191,24 @@ class ComponentJUnitExtensionTests {
 }
 ```
 
+## Lifecycle
+
+В случае если требуется инициализировать граф один раз в рамках всего тестового класса, следует проаннотировать тестовый класс с помощью `@TestInstance(TestInstance.Lifecycle.PER_CLASS)`:
+
+```java
+@KoraAppTest(ApplicationModules.class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+class PerClassTests {
+
+    @Test
+    void test1(KoraAppGraph graph) {
+        assertNotNull(graph);
+    }
+}
+```
+
+Стандартное поведение - инициализация графа каждый раз для каждого тестового метода.
+
 ## Config Modifier
 
 Для изменений/добавления конфига в рамках тестов предполагается чтобы тестовый класс реализовал интерфейс `KoraAppTestConfigModifier`, 
@@ -209,6 +226,34 @@ class ComponentJUnitExtensionTests implements KoraAppTestConfigModifier {
                                       myproperty = 1
                                     }
                                 """);
+    }
+}
+```
+
+В случае если надо подставить ENV переменную то можно также использовать этот механизм через SystemProperty:
+
+Предположим что есть такой конфиг:
+```hocon
+db {
+  jdbcUrl = ${POSTGRES_JDBC_URL}
+  username = ${POSTGRES_USER}
+  password = ${POSTGRES_PASS}
+  maxPoolSize = 10
+  poolName = "example"
+}
+```
+
+Тогда, чтобы использовать такой конфиг и передать в него лишь ENV переменные как значения требуется указать так:
+```java
+@KoraAppTest(value = ApplicationModules.class)
+class ComponentJUnitExtensionTests implements KoraAppTestConfigModifier {
+
+    @NotNull
+    @Override
+    public KoraConfigModification config() {
+        return KoraConfigModification.ofSystemProperty("POSTGRES_JDBC_URL", connection.params().jdbcUrl())
+            .withSystemProperty("POSTGRES_USER", connection.params().username())
+            .withSystemProperty("POSTGRES_PASS", connection.params().password());
     }
 }
 ```

@@ -1,14 +1,15 @@
 package ru.tinkoff.kora.test.extension.junit5.replace;
 
 import org.junit.jupiter.api.Test;
+import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTestGraphModifier;
 import ru.tinkoff.kora.test.extension.junit5.KoraGraphModification;
 import ru.tinkoff.kora.test.extension.junit5.TestComponent;
-import ru.tinkoff.kora.test.extension.junit5.testdata.LifecycleComponent;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplication;
 
 import javax.annotation.Nonnull;
+import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -16,16 +17,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class ReplaceTests implements KoraAppTestGraphModifier {
 
     @TestComponent
-    private LifecycleComponent replaced;
+    private Function<String, Integer> replaced;
 
     @Override
     public @Nonnull KoraGraphModification graph() {
         return KoraGraphModification.create()
-            .replaceComponent(LifecycleComponent.class, () -> (LifecycleComponent) () -> "?");
+            .replaceComponent(TypeRef.of(Function.class, String.class, Integer.class), () -> (Function<String, Integer>) (s) -> 25);
     }
 
     @Test
     void replaced() {
-        assertEquals("?", replaced.get());
+        assertEquals(25, replaced.apply("1"));
     }
 }

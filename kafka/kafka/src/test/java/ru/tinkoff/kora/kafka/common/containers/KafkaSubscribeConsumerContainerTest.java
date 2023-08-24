@@ -56,7 +56,7 @@ class KafkaSubscribeConsumerContainerTest {
         try {
             container.init().block();
             params.send("test-topic", 0, "1", 1);
-            assertThat(queue.poll(10, TimeUnit.SECONDS)).isEqualTo(1);
+            assertThat(queue.poll(20, TimeUnit.SECONDS)).isEqualTo(1);
             params.send("test-topic", 1, "2", 2);
             assertThat(queue.poll(10, TimeUnit.SECONDS)).isEqualTo(2);
             params.send("test-topic", 2, "err", "err");

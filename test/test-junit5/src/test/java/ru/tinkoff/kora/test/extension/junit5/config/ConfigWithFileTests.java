@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.test.extension.junit5.config;
 
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.ConfigValue;
