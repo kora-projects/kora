@@ -39,6 +39,14 @@ public interface RetryConfig {
 
     private static NamedConfig merge(NamedConfig namedConfig, NamedConfig defaultConfig) {
         if (defaultConfig == null) {
+            if(namedConfig.delayStep() == null) {
+                return new $RetryConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
+                    namedConfig.delay(),
+                    Duration.ZERO,
+                    namedConfig.attempts(),
+                    namedConfig.failurePredicateName());
+            }
+
             return namedConfig;
         }
 
