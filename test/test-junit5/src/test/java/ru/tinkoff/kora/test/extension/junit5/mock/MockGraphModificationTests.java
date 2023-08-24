@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.test.extension.junit5.mock;
 
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.common.Tag;

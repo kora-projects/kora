@@ -1,34 +1,21 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.common.KoraApp;
 
 import java.lang.annotation.*;
 
+/**
+ * In case you want to initialize {@link KoraAppGraph} per Test Class, annotate your Test Class with {@link TestInstance.Lifecycle#PER_CLASS},
+ * by default {@link TestInstance.Lifecycle#PER_METHOD} is used, indicating that new {@link KoraAppGraph} will be initialized each Test Method
+ */
 @ExtendWith(KoraJUnit5Extension.class)
 @Documented
 @Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface KoraAppTest {
-
-    enum InitializeMode {
-
-        /**
-         * {@link KoraAppTest#components()} instances are initialized each Test Class
-         */
-        PER_CLASS,
-
-        /**
-         * {@link KoraAppTest#components()} instances are initialized each Test Method
-         */
-        PER_METHOD
-    }
-
-    /**
-     * @return Context Initialization mode between different test executions
-     */
-    InitializeMode initializeMode() default InitializeMode.PER_METHOD;
 
     /**
      * @return class annotated with {@link KoraApp}

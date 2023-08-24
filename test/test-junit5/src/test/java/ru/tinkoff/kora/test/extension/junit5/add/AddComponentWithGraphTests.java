@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.test.extension.junit5.add;
 
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;

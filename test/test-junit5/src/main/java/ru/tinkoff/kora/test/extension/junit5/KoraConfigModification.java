@@ -23,19 +23,19 @@ public interface KoraConfigModification {
      * </pre>
      * Use system property to set `ENV_FIRST` and 'ENV_SECOND'
      * <code>
-     *      KoraConfigModification.ofString("""
-     *                                      myconfig {
-     *                                        myinnerconfig {
-     *                                          first = ${ENV_FIRST}
-     *                                          second = ${ENV_SECOND}
-     *                                        }
-     *                                      }
-     *                                      """)
-     *                                      .withSystemProperty("ENV_FIRST", "1")
-     *                                      .withSystemProperty("ENV_SECOND", "2");
+     * KoraConfigModification.ofString("""
+     * myconfig {
+     * myinnerconfig {
+     * first = ${ENV_FIRST}
+     * second = ${ENV_SECOND}
+     * }
+     * }
+     * """)
+     * .withSystemProperty("ENV_FIRST", "1")
+     * .withSystemProperty("ENV_SECOND", "2");
      * </code>
      *
-     * @param key system property key
+     * @param key   system property key
      * @param value system property value
      * @return self
      */
@@ -45,13 +45,13 @@ public interface KoraConfigModification {
     /**
      * Example below:
      * <code>
-     *      KoraConfigModification.ofString("""
-     *                                      myconfig {
-     *                                        myinnerconfig {
-     *                                          first = 1
-     *                                        }
-     *                                      }
-     *                                      """)
+     * KoraConfigModification.ofString("""
+     * myconfig {
+     * myinnerconfig {
+     * first = 1
+     * }
+     * }
+     * """)
      * </code>
      *
      * @param config application configuration with config as string
@@ -65,7 +65,7 @@ public interface KoraConfigModification {
     /**
      * File is located in "resources" directory than example below:
      * <code>
-     *      KoraConfigModification.ofFile("reference-raw.conf")
+     * KoraConfigModification.ofFile("reference-raw.conf")
      * </code>
      *
      * @param configFile application configuration with config file from "resources" directory
@@ -79,11 +79,11 @@ public interface KoraConfigModification {
     /**
      * Use system property to set `ENV_FIRST` and 'ENV_SECOND'
      * <code>
-     *     KoraConfigModification.ofSystemProperty("ENV_FIRST", "1")
-     *                           .withSystemProperty("ENV_SECOND", "2");
+     * KoraConfigModification.ofSystemProperty("ENV_FIRST", "1")
+     * .withSystemProperty("ENV_SECOND", "2");
      * </code>
      *
-     * @param key system property key
+     * @param key   system property key
      * @param value system property value
      * @return self
      */
