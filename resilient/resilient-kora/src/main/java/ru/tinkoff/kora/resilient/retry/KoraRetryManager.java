@@ -29,7 +29,7 @@ final class KoraRetryManager implements RetryManager {
         return retryableByName.computeIfAbsent(name, (k) -> {
             final RetryConfig.NamedConfig config = this.config.getNamedConfig(name);
             final RetryPredicate failurePredicate = getFailurePredicate(config);
-            logger.debug("Creating Repeater named '{}' with config {}", name, config);
+            logger.debug("Creating Retry named '{}' with config {}", name, config);
             return new KoraRetry(name, config, failurePredicate, metrics);
         });
     }
