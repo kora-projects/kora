@@ -2,7 +2,6 @@ package ru.tinkoff.kora.cache.caffeine;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import io.prometheus.client.cache.caffeine.CacheMetricsCollector;
 import ru.tinkoff.kora.cache.telemetry.CacheMetrics;
 import ru.tinkoff.kora.cache.telemetry.CacheTracer;
 import ru.tinkoff.kora.common.DefaultComponent;
@@ -18,7 +17,7 @@ public interface CaffeineCacheModule {
     }
 
     @DefaultComponent
-    default CaffeineCacheFactory caffeineCacheFactory(@Nullable CacheMetricsCollector cacheMetricsCollector) {
+    default CaffeineCacheFactory caffeineCacheFactory(@Nullable CaffeineCacheMetricCollector cacheMetricsCollector) {
         return new CaffeineCacheFactory() {
             @Nonnull
             @Override
@@ -36,7 +35,7 @@ public interface CaffeineCacheModule {
                 final Cache<K, V> cache;
                 if (cacheMetricsCollector != null) {
                     cache = builder.recordStats().build();
-                    cacheMetricsCollector.addCache(name, cache);
+                    cacheMetricsCollector.register(name, cache);
                 } else {
                     cache = builder.build();
                 }
