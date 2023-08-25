@@ -13,7 +13,6 @@ import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.ValueOf;
-import ru.tinkoff.kora.cache.caffeine.CaffeineCacheMetricCollector;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.config.common.Config;
@@ -163,7 +162,7 @@ public interface MetricsModule {
     }
 
     @DefaultComponent
-    default CaffeineCacheMetricCollector caffeineCacheMetricsCollector(MeterRegistry meterRegistry) {
+    default MicrometerCaffeineCacheMetricCollector caffeineCacheMetricsCollector(MeterRegistry meterRegistry) {
         return new MicrometerCaffeineCacheMetricCollector(meterRegistry);
     }
 }
