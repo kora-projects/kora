@@ -18,6 +18,11 @@ public interface TestApplication {
     }
 
     @Root
+    default GenericComponent.LongGenericComponent genericComponent3() {
+        return new GenericComponent.LongGenericComponent();
+    }
+
+    @Root
     default LifecycleComponent lifecycleComponent1() {
         return () -> "1";
     }

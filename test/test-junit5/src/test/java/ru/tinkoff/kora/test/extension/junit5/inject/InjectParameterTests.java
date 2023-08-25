@@ -26,7 +26,11 @@ public class InjectParameterTests {
     @TestComponent
     private GenericComponent<Integer> integerGenericComponentByInterface;
     @TestComponent
+    private GenericComponent<Long> longGenericComponentByInterface;
+    @TestComponent
     private GenericComponent.StringGenericComponent stringGenericComponent;
+    @TestComponent
+    private GenericComponent.LongGenericComponent longGenericComponent;
     @TestComponent
     @Tag(Tag.Any.class)
     private GenericComponent.IntGenericComponent integerGenericComponent;
@@ -50,9 +54,19 @@ public class InjectParameterTests {
     void testBean() {
         assertEquals("1", component1.get());
         assertEquals("12", component12.get());
+    }
+
+    @Test
+    void testGenericComponentByType() {
         assertThat(stringGenericComponentByInterface).isInstanceOf(GenericComponent.StringGenericComponent.class);
         assertThat(integerGenericComponentByInterface).isInstanceOf(GenericComponent.IntGenericComponent.class);
+        assertThat(longGenericComponentByInterface).isInstanceOf(GenericComponent.LongGenericComponent.class);
+    }
+
+    @Test
+    void testGenericComponentByGenericInterface() {
         assertThat(stringGenericComponent).isNotNull();
         assertThat(integerGenericComponent).isNotNull();
+        assertThat(longGenericComponent).isNotNull();
     }
 }
