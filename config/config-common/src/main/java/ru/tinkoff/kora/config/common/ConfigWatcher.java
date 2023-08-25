@@ -23,12 +23,12 @@ import java.util.function.Function;
 public class ConfigWatcher implements Lifecycle {
     private static final Logger log = LoggerFactory.getLogger(ConfigWatcher.class);
 
-    private final Optional<ValueOf<Config>> applicationConfig;
+    private final Optional<ValueOf<ConfigOrigin>> applicationConfig;
     private final AtomicBoolean isStarted = new AtomicBoolean(false);
     private final int checkTime;
     private volatile Thread thread;
 
-    public ConfigWatcher(Optional<ValueOf<Config>> applicationConfig, int checkTime) {
+    public ConfigWatcher(Optional<ValueOf<ConfigOrigin>> applicationConfig, int checkTime) {
         this.applicationConfig = applicationConfig;
         this.checkTime = checkTime;
     }
@@ -65,7 +65,7 @@ public class ConfigWatcher implements Lifecycle {
             return;
         }
         var config = this.applicationConfig.get().get();
-        var origins = this.parseOrigin(config.origin());
+        var origins = this.parseOrigin(config);
         if (origins.isEmpty()) {
             return;
         }

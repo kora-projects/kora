@@ -7,6 +7,7 @@ import ru.tinkoff.kora.config.common.annotation.Environment;
 import ru.tinkoff.kora.config.common.annotation.SystemProperties;
 import ru.tinkoff.kora.config.common.factory.MapConfigFactory;
 import ru.tinkoff.kora.config.common.factory.MergeConfigFactory;
+import ru.tinkoff.kora.config.common.origin.ConfigOrigin;
 
 import javax.annotation.Nullable;
 import java.util.Optional;
@@ -31,7 +32,7 @@ public interface CommonConfigModule extends DefaultConfigExtractorsModule {
     }
 
     @Root
-    default ConfigWatcher configRefresher(@ApplicationConfig Optional<ValueOf<Config>> applicationConfig) {
+    default ConfigWatcher configRefresher(@ApplicationConfig Optional<ValueOf<ConfigOrigin>> applicationConfig) {
         return new ConfigWatcher(applicationConfig, 1000);
     }
 }

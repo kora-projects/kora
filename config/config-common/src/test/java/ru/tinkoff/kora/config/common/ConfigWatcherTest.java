@@ -34,7 +34,7 @@ class ConfigWatcherTest {
     private Path dataDir = createOrUpdateDataDir(this.configDir, this.currentConfigDir);
     private Path configFile = createConfigFile(this.configDir, this.dataDir);
     private final ValueOf<Config> config = getConfig();
-    private final ConfigWatcher configWatcher = new ConfigWatcher(Optional.of(config), 50);
+    private final ConfigWatcher configWatcher = new ConfigWatcher(Optional.of(config.map(Config::origin)), 50);
 
     @BeforeEach
     void setUp() throws InterruptedException {

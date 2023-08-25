@@ -8,6 +8,5 @@ class CommonConfigModuleTest {
     @Test
     void testSystemProperties() {
         Assertions.assertNotNull(new CommonConfigModule() {}.systemProperties());
-        System.out.println(new CommonConfigModule() {}.systemProperties());
     }
 }
