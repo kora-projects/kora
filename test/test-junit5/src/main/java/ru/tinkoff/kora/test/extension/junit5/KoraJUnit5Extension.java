@@ -266,9 +266,9 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     @Override
     public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext context) throws ParameterResolutionException {
         return Arrays.stream(parameterContext.getParameter().getDeclaredAnnotations())
-                   .anyMatch(a -> a.annotationType().equals(TestComponent.class) || a.annotationType().equals(MockComponent.class))
-               || parameterContext.getParameter().getType().equals(KoraAppGraph.class)
-               || parameterContext.getParameter().getType().equals(Graph.class);
+            .anyMatch(a -> a.annotationType().equals(TestComponent.class) || a.annotationType().equals(MockComponent.class))
+            || parameterContext.getParameter().getType().equals(KoraAppGraph.class)
+            || parameterContext.getParameter().getType().equals(Graph.class);
     }
 
     @Override
@@ -474,7 +474,59 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                 throw new ExtensionConfigurationException(candidate + " expected to have one suitable component, got " + objects.size());
             }
         }
+        if (candidate.type() instanceof ParameterizedType parameterizedType) {
+            var objects = new ArrayList<Object>();
+            var clazz = (Class<?>) parameterizedType.getRawType();
+            for (var node : graph.graphDraw().getNodes()) {
+                var object = graph.refreshableGraph().get(node);
+                if (clazz.isInstance(object) && doesExtendOrImplement(object.getClass(), parameterizedType)) {
+
+                    if (candidate.tags().isEmpty() && node.tags().length == 0) {
+                        objects.add(object);
+                    } else if (candidate.tags().size() == 1 && candidate.tags().get(0).getCanonicalName().equals("ru.tinkoff.kora.common.Tag.Any")) {
+                        objects.add(object);
+                    } else if (Arrays.equals(candidate.tagsAsArray(), node.tags())) {
+                        objects.add(object);
+                    }
+                }
+            }
+            if (objects.size() == 1) {
+                return objects.get(0);
+            }
+            if (objects.size() > 1) {
+                throw new ExtensionConfigurationException(candidate + " expected to have one suitable component, got " + objects.size());
+            }
+        }
         throw new ExtensionConfigurationException(candidate + " was not found in graph, please check @KoraAppTest configuration");
+    }
+
+    private static boolean doesImplement(Class<?> aClass, ParameterizedType parameterizedType) {
+        for (var genericInterface : aClass.getGenericInterfaces()) {
+            if (genericInterface.equals(parameterizedType)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean doesExtendOrImplement(Class<?> aClass, ParameterizedType parameterizedType) {
+        if (doesImplement(aClass, parameterizedType)) {
+            return true;
+        }
+        var superclass = aClass.getGenericSuperclass();
+        if (superclass == null) {
+            return false;
+        }
+        if (superclass.equals(parameterizedType)) {
+            return true;
+        }
+        if (superclass instanceof Class<?> clazz) {
+            return doesExtendOrImplement(clazz, parameterizedType);
+        }
+        if (superclass instanceof ParameterizedType clazz) {
+            return doesExtendOrImplement((Class<?>) clazz.getRawType(), parameterizedType);
+        }
+        return false;
     }
 
     private static Set<GraphCandidate> scanGraphRoots(TestMethodMetadata metadata, ExtensionContext context) {
