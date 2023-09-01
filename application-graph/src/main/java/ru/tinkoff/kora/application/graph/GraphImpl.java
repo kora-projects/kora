@@ -403,7 +403,13 @@ final class GraphImpl implements RefreshableGraph, Lifecycle {
         private Mono<Void> init(BitSet root) {
             var dependencies = new AtomicIntegerArray(this.tmpArray.length());
             var visitor = new Object() {
+                private final BitSet processed = new BitSet(tmpArray.length());
+
                 public void apply(Node<?> node) {
+                    if (processed.get(node.index)) {
+                        return;
+                    }
+                    processed.set(node.index);
                     for (var dependentNode : node.getDependentNodes()) {
                         if (!dependentNode.isValueOf()) {
                             dependencies.incrementAndGet(dependentNode.index);
