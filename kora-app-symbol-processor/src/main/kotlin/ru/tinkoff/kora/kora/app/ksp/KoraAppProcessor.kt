@@ -71,7 +71,7 @@ class KoraAppProcessor(
                                 break
                             }
                         }
-                        val chain = frames.joinToString("\n            |            \n            ^            \n") {
+                        val chain = frames.joinToString("\n            ^            \n            |            \n") {
                             it.declaration.declarationString() + "   " + it.dependenciesToFind[it.currentDependency]
                         }
                         kspLogger.warn("Dependency resolve process: $chain")

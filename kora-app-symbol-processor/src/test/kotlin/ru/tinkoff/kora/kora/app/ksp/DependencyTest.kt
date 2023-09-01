@@ -63,4 +63,30 @@ open class DependencyTest : AbstractKoraAppProcessorTest() {
 //        )
     }
 
+    @Test
+    fun testCycleInGraphResolvedWithProxy() {
+        compile("""
+            @KoraApp
+            interface ExampleApplication {
+                fun class1(promise: Interface1): Class1 {
+                    return Class1()
+                }
+
+                fun class2(promise: PromiseOf<Class1>): Class2 {
+                    return Class2()
+                }
+
+                @Root
+                fun root(class2: Class2) = Any()
+
+                interface Interface1 {
+                    fun method() {}
+                    fun methodWithReservedNameParameter(`is`: String) {}
+
+                }
+                class Class1
+                class Class2 : Interface1
+            }
+        """.trimIndent())
+    }
 }

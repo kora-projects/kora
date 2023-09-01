@@ -159,7 +159,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                         }
                         var chain = frames.stream()
                             .map(c -> c.declaration().declarationString() + "   " + c.dependenciesToFind().get(c.currentDependency()))
-                            .collect(Collectors.joining("\n            |            \n            ^            \n"));
+                            .collect(Collectors.joining("\n            ^            \n            |            \n"));
                         this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Dependency resolve process: \n" + chain);
                     }
                 }
