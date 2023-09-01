@@ -383,6 +383,37 @@ class GraphTest {
         assertThat(o5.dependencies.get(0)).isSameAs(mock);
     }
 
+    @Test
+    void testRefreshWithTwoPathes() {
+        var draw = new ApplicationGraphDraw(GraphTest.class);
+
+        var object1 = new AtomicReference<>("");
+        var object2 = new AtomicReference<>("");
+        var object3 = new AtomicReference<>("");
+        var object4 = new AtomicReference<>("");
+        var counter = new AtomicInteger(0);
+
+        var n1 = draw.addNode0(TestObject.class, new Class[0], g -> "");
+        var n2 = draw.addNode0(TestObject.class, new Class[0], g -> object2.get(), n1);
+        var n3 = draw.addNode0(TestObject.class, new Class[0], g -> object3.get(), n1);
+        var n4 = draw.addNode0(TestObject.class, new Class[0], g -> object4.get(), n2, n3);
+        var n5 = draw.addNode0(TestObject.class, new Class[0], g -> counter.incrementAndGet(), n4);
+
+        var graph = draw.init().block();
+
+        graph.refresh(n1).block();
+        assertThat(counter).hasValue(1);
+        graph.refresh(n2).block();
+        assertThat(counter).hasValue(1);
+        graph.refresh(n3).block();
+        assertThat(counter).hasValue(1);
+
+        object2.set("1");
+        object4.set("1");
+        graph.refresh(n2).block();
+        assertThat(counter).hasValue(2);
+    }
+
     /**
      * <pre>
      * {@code
