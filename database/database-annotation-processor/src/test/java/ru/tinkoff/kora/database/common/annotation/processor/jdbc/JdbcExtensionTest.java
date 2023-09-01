@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.database.common.annotation.processor.jdbc;
 
 import org.junit.jupiter.api.Test;
+import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityJavaBean;
@@ -8,14 +9,16 @@ import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRec
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultColumnMapper;
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultSetMapper;
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcRowMapper;
+import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor;
 
 import java.sql.ResultSet;
 import java.util.List;
+import java.util.function.Predicate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
-public class JdbcExtensionTest {
+public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
     @Test
     void testTypes() throws Exception {
         TestUtils.testKoraExtension(
@@ -80,5 +83,40 @@ public class JdbcExtensionTest {
         verify(rs, times(2)).getString(1);
         verify(rs, times(2)).getString(2);
         verify(rs, times(3)).next();
+    }
+
+    @Test
+    public void testRowMapperWithTaggedField() {
+        compile(List.of(new KoraAppProcessor()), """
+            @ru.tinkoff.kora.common.KoraApp
+            public interface TestApp {
+                @ru.tinkoff.kora.common.Tag(TestRecord.class)
+                default ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultColumnMapper<String> taggedColumnMapper() {
+                    return java.sql.ResultSet::getString;
+                }
+                        
+              @Root
+              default String root(ru.tinkoff.kora.database.jdbc.mapper.result.JdbcRowMapper<TestRecord> r) {return "";}
+            }
+            """, """
+            public record TestRecord(@ru.tinkoff.kora.common.Tag(TestRecord.class) String value) {}
+            """);
+
+        compileResult.assertSuccess();
+        assertThat(compileResult.loadClass("$TestRecord_JdbcRowMapper"))
+            .isNotNull()
+            .isFinal()
+            .matches(doesImplement(JdbcRowMapper.class));
+    }
+
+    private static Predicate<Class<?>> doesImplement(Class<?> anInterface) {
+        return aClass -> {
+            for (var aClassInterface : aClass.getInterfaces()) {
+                if (aClassInterface.equals(anInterface)) {
+                    return true;
+                }
+            }
+            return false;
+        };
     }
 }
