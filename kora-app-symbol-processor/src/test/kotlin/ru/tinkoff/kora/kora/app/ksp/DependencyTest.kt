@@ -44,14 +44,14 @@ open class DependencyTest : AbstractKoraAppProcessorTest() {
         Assertions.assertThatThrownBy {
             compile(
                 """
-            @KoraApp
-            interface ExampleApplication {
-                class TestClass1
-                
-                @Root
-                fun test(@Tag(TestClass1::class) testClass: TestClass1) = ""
-            }
-            """.trimIndent()
+                @KoraApp
+                interface ExampleApplication {
+                    class TestClass1 
+                    
+                    @Root
+                    fun test(@Tag(TestClass1::class) testClass: TestClass1) = ""
+                }
+                """.trimIndent()
             )
         }
         Assertions.assertThat(compileResult.isFailed()).isTrue()
@@ -89,4 +89,43 @@ open class DependencyTest : AbstractKoraAppProcessorTest() {
             }
         """.trimIndent())
     }
+
+    @Test
+    fun testOptionalValueOf() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                fun component1() = "test"
+                
+                @Root
+                fun root1(t: java.util.Optional<ValueOf<String>>) = Any()
+                @Root
+                fun root2(t: java.util.Optional<ValueOf<Int>>) = Any()
+
+            }
+            """.trimIndent()
+        )
+        Assertions.assertThat(draw.nodes).hasSize(5)
+    }
+
+    @Test
+    fun testOptional() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                fun component1() = "test"
+                
+                @Root
+                fun root1(t: java.util.Optional<String>) = Any()
+                @Root
+                fun root2(t: java.util.Optional<Int>) = Any()
+
+            }
+            """.trimIndent()
+        )
+        Assertions.assertThat(draw.nodes).hasSize(5)
+    }
+
 }

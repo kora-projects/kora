@@ -7,6 +7,7 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.*
 import ru.tinkoff.kora.kora.app.ksp.component.ComponentDependency
+import ru.tinkoff.kora.kora.app.ksp.component.ComponentDependencyHelper
 import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim
 import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim.DependencyClaimType.*
 import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponent
@@ -159,15 +160,11 @@ object GraphBuilder {
                     val optionalDeclaration = ComponentDeclaration.OptionalComponent(dependencyClaim.type, dependencyClaim.tags)
                     processing.sourceDeclarations.add(optionalDeclaration)
                     stack.addLast(frame.copy(currentDependency = currentDependency))
+                    val type = dependencyClaim.type.arguments[0].type!!.resolve().makeNullable()
+                    val claim = ComponentDependencyHelper.parseClaim(type, dependencyClaim.tags, declaration.source)
                     stack.addLast(
                         ProcessingState.ResolutionFrame.Component(
-                            optionalDeclaration, listOf(
-                                DependencyClaim(
-                                    dependencyClaim.type.arguments[0].type!!.resolve().makeNotNullable(),
-                                    dependencyClaim.tags,
-                                    NULLABLE_ONE
-                                )
-                            )
+                            optionalDeclaration, listOf(claim)
                         )
                     )
                     continue@frame
@@ -199,7 +196,7 @@ object GraphBuilder {
                     }
                 }
                 val hints = ctx.dependencyHintProvider.findHints(dependencyClaim.type, dependencyClaim.tags)
-                val msg = if(dependencyClaim.tags.isEmpty()) {
+                val msg = if (dependencyClaim.tags.isEmpty()) {
                     StringBuilder(
                         "Required dependency type was not found and can't be auto created: ${dependencyClaim.type.toTypeName()}.\n" +
                             "Please check class for @${CommonClassNames.component.canonicalName} annotation or that required module with component is plugged in."
@@ -414,10 +411,10 @@ object GraphBuilder {
                 listOf(
                     ComponentDependency.PromisedProxyParameterDependency(
                         declaration, DependencyClaim(
-                            declaration.type,
-                            declaration.tags,
-                            ONE_REQUIRED
-                        )
+                        declaration.type,
+                        declaration.tags,
+                        ONE_REQUIRED
+                    )
                     )
                 )
             )
