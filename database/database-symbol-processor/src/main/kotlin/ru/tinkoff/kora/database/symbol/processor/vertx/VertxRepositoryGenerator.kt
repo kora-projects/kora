@@ -31,6 +31,7 @@ import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.parseMappingData
+import java.util.concurrent.CompletableFuture
 
 class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLogger: KSPLogger) : RepositoryGenerator {
     private val repositoryInterface = resolver.getClassDeclarationByName(resolver.getKSNameFromString(VertxTypes.repository.canonicalName))?.asStarProjectedType()
@@ -72,8 +73,8 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
         ParametersToTupleBuilder.generate(b, query, funDeclaration, parameters, batchParam, parameterMappers)
         val connectionParameter = parameters.asSequence().filterIsInstance<QueryParameter.ConnectionParameter>().firstOrNull()?.variable?.name?.asString()
 
-        b.addCode("return ")
         if (batchParam != null) {
+            b.addCode("var _future = ")
             if (connectionParameter == null) {
                 b.addCode("%T.batchCompletionStage(this._vertxConnectionFactory, _query, _batchParams)\n", VertxTypes.repositoryHelper)
             } else {
@@ -83,12 +84,15 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
                 b.addCode("  .thenApply {}")
             }
         } else if (isFlow) {
+            b.addCode("return ")
             if (connectionParameter == null) {
                 b.addCode("%T.flux(this._vertxConnectionFactory, _query, _tuple, %N).%M()\n", VertxTypes.repositoryHelper, resultMapperName, asFlow)
             } else {
                 b.addCode("%T.flux(%N, this._vertxConnectionFactory.telemetry(), _query, _tuple, %N).%M()\n", VertxTypes.repositoryHelper, connectionParameter, resultMapperName, asFlow)
             }
+            return b.build()
         } else {
+            b.addCode("var _future: %T = ", CompletableFuture::class.asClassName().parameterizedBy(function.returnType!!.toTypeName()))
             if (connectionParameter == null) {
                 b.addCode("%T.completionStage(this._vertxConnectionFactory, _query, _tuple", VertxTypes.repositoryHelper)
             } else {
@@ -105,9 +109,9 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
 
         }
         if (isSuspend) {
-            b.addCode("  .%M()", CommonClassNames.await)
+            b.addCode("return _future.%M()", CommonClassNames.await)
         } else if (!isFlow) {
-            b.addCode("  .toCompletableFuture().join()")
+            b.addCode("return _future.toCompletableFuture().join()")
             if (function.returnType!!.isMarkedNullable) {
                 b.addCode("!!")
             }
@@ -135,7 +139,7 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
             }
             return Mapper(mapperType, mapperName)
         }
-        val mapperType = VertxTypes.rowSetMapper.parameterizedBy(returnType.toTypeName())
+        val mapperType = VertxTypes.rowSetMapper.parameterizedBy(returnType.toTypeName().copy(false))
         if (resultSetMapper != null) {
             return Mapper(resultSetMapper, mapperType, mapperName)
         }

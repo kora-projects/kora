@@ -8,8 +8,6 @@ import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toTypeName
-import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
 import ru.tinkoff.kora.database.symbol.processor.DbUtils
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.addMapper
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.asFlow
@@ -75,10 +73,10 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         val isFlow = funDeclaration.isFlow()
         if (isSuspend || isFlow) {
             b.addCode("return ")
-            b.controlFlow("%T.deferContextual { _reactorCtx ->", if (isFlow) Flux::class else Mono::class) {
+            b.controlFlow("%T.deferContextual { _reactorCtx ->", if (isFlow) CommonClassNames.flux else CommonClassNames.mono) {
                 b.addStatement("val _telemetry = this._cassandraConnectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.Reactor.current(_reactorCtx), _query)")
                 b.addStatement("val _session = this._cassandraConnectionFactory.currentSession()")
-                b.addCode("%T.fromCompletionStage(_session.prepareAsync(_query.sql()))", Mono::class.java)
+                b.addCode("%T.fromCompletionStage(_session.prepareAsync(_query.sql()))", CommonClassNames.mono)
                 b.controlFlow(".%L { _st ->", if (isSuspend) "flatMap" else "flatMapMany") {
                     b.addStatement("var _stmt = _st.boundStatementBuilder()")
                     if (profile != null) {
@@ -87,7 +85,7 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
                     StatementSetterGenerator.generate(b, query, parameters, batchParam, parameterMappers)
                     b.addStatement("val _rrs = _session.executeReactive(_s)")
                     if (returnType == resolver.builtIns.unitType) {
-                        b.addStatement("%T.from(_rrs).then().thenReturn(%T)", Flux::class, Unit::class)
+                        b.addStatement("%T.from(_rrs).then().thenReturn(%T)", CommonClassNames.flux, UNIT)
                     } else {
                         b.addCode("%N.apply(_rrs)", resultMapper!!)
                         if (!function.returnType!!.isMarkedNullable) {
@@ -155,9 +153,8 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         val reactiveResultSetMapper = mappings.getMapping(CassandraTypes.reactiveResultSetMapper)
         val rowMapper = mappings.getMapping(CassandraTypes.rowMapper)
         if (method.modifiers.contains(Modifier.SUSPEND)) {
-            val mono = Mono::class.asClassName()
             val returnTypeName = returnType.toTypeName().copy(false)
-            val mapperType = CassandraTypes.reactiveResultSetMapper.parameterizedBy(returnTypeName, mono.parameterizedBy(returnTypeName))
+            val mapperType = CassandraTypes.reactiveResultSetMapper.parameterizedBy(returnTypeName, CommonClassNames.mono.parameterizedBy(returnTypeName))
             if (reactiveResultSetMapper != null) {
                 return Mapper(reactiveResultSetMapper, mapperType, mapperName)
             }
@@ -180,8 +177,7 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         if (returnType.isFlow()) {
             val flowParam = returnType.arguments[0]
             val returnTypeName = flowParam.toTypeName().copy(false)
-            val flux = Flux::class.asClassName()
-            val mapperType = CassandraTypes.reactiveResultSetMapper.parameterizedBy(returnTypeName, flux.parameterizedBy(returnTypeName))
+            val mapperType = CassandraTypes.reactiveResultSetMapper.parameterizedBy(returnTypeName, CommonClassNames.flux.parameterizedBy(returnTypeName))
             if (reactiveResultSetMapper != null) {
                 return Mapper(reactiveResultSetMapper, mapperType, mapperName)
             }

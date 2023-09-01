@@ -8,8 +8,6 @@ import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toTypeName
-import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
 import ru.tinkoff.kora.database.symbol.processor.DbUtils
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.addMapper
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.asFlow
@@ -75,12 +73,12 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
         val isSuspend = funDeclaration.isSuspend()
         val isFlow = funDeclaration.isFlow()
         b.addCode("return ")
-        b.controlFlow("%T.deferContextual { _reactorCtx ->", if (isFlow) Flux::class else Mono::class) {
+        b.controlFlow("%T.deferContextual { _reactorCtx ->", if (isFlow) CommonClassNames.flux else CommonClassNames.mono) {
             b.addStatement("val _telemetry = this._r2dbcConnectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.Reactor.current(_reactorCtx), _query)")
             b.controlFlow("_r2dbcConnectionFactory.withConnection%L { _con ->", if (isFlow) "Flux" else "") {
                 b.addStatement("val _stmt = _con.createStatement(_query.sql())")
                 R2dbcStatementSetterGenerator.generate(b, query, parameters, batchParam, parameterMappers)
-                b.addStatement("val _flux = %T.from<%T>(_stmt.execute())", Flux::class, R2dbcTypes.result)
+                b.addStatement("val _flux = %T.from<%T>(_stmt.execute())", CommonClassNames.flux, R2dbcTypes.result)
                 if (returnType == resolver.builtIns.unitType) {
                     b.addCode("_flux.flatMap { it.rowsUpdated }.then().thenReturn(Unit)")
                 } else if (returnType.toTypeName() == updateCount) {
@@ -135,8 +133,7 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
         if (method.isFlow()) {
             val flowParam = returnType.arguments[0]
             val returnTypeName = flowParam.toTypeName().copy(false)
-            val flux = Flux::class.asClassName()
-            val mapperType = R2dbcTypes.resultFluxMapper.parameterizedBy(returnTypeName, flux.parameterizedBy(returnTypeName))
+            val mapperType = R2dbcTypes.resultFluxMapper.parameterizedBy(returnTypeName, CommonClassNames.flux.parameterizedBy(returnTypeName))
             if (rowMapper != null) {
                 return Mapper(rowMapper, mapperType, mapperName) {
                     CodeBlock.of("%T.flux(%L)", R2dbcTypes.resultFluxMapper, it)
@@ -144,8 +141,8 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
             }
             return Mapper(mapperType, mapperName)
         }
-        val mono = Mono::class.asClassName()
-        val mapperType = R2dbcTypes.resultFluxMapper.parameterizedBy(returnType.toTypeName(), mono.parameterizedBy(returnType.toTypeName()))
+        val returnTypeName = returnType.toTypeName().copy(false)
+        val mapperType = R2dbcTypes.resultFluxMapper.parameterizedBy(returnTypeName, CommonClassNames.mono.parameterizedBy(returnTypeName))
         if (resultSetMapper != null) {
             return Mapper(resultSetMapper, mapperType, mapperName)
         }
@@ -160,10 +157,10 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
                 }
             }
         }
-        if (returnType == resolver.builtIns.unitType) {
+        if (returnTypeName == UNIT) {
             return null
         }
-        if (returnType.toTypeName() == updateCount) {
+        if (returnTypeName == updateCount) {
             return null
         }
         return Mapper(mapperType, mapperName)
