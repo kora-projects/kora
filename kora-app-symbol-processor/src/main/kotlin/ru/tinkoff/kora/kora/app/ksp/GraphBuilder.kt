@@ -288,7 +288,8 @@ object GraphBuilder {
     private fun generatePromisedProxy(ctx: ProcessingContext, claimTypeDeclaration: KSClassDeclaration): ComponentDeclaration {
         val resultClassName = claimTypeDeclaration.getOuterClassesAsPrefix() + claimTypeDeclaration.simpleName.asString() + "_PromisedProxy"
         val typeTpr = claimTypeDeclaration.typeParameters.toTypeParameterResolver()
-        val typeName = claimTypeDeclaration.toClassName().parameterizedBy(claimTypeDeclaration.typeParameters.map { it.toTypeVariableName(typeTpr) })
+        val typeParameters = claimTypeDeclaration.typeParameters.map { it.toTypeVariableName(typeTpr) }
+        val typeName = if (typeParameters.isEmpty())  claimTypeDeclaration.toClassName() else claimTypeDeclaration.toClassName().parameterizedBy(typeParameters)
         val promiseType = CommonClassNames.promiseOf.parameterizedBy(WildcardTypeName.producerOf(typeName))
         val type = TypeSpec.classBuilder(resultClassName)
             .generated(GraphBuilder::class)
@@ -348,7 +349,7 @@ object GraphBuilder {
                 if (i > 0) {
                     method.addCode(", ")
                 }
-                method.addCode("%L", param.name!!.getShortName())
+                method.addCode("%N", param.name!!.getShortName())
                 method.addParameter(param.name!!.getShortName(), param.type.toTypeName(funTpr))
             }
             method.addCode(")\n")
