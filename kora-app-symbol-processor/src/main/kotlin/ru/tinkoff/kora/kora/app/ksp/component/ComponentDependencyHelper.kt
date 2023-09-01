@@ -61,7 +61,7 @@ object ComponentDependencyHelper {
     }
 
 
-    private fun parseClaim(parameterType: KSType, tags: Set<String>, element: KSAnnotated): DependencyClaim {
+    fun parseClaim(parameterType: KSType, tags: Set<String>, element: KSAnnotated): DependencyClaim {
         if (parameterType.isError) {
             throw ProcessingErrorException("Dependency type is not resolvable in the current round of processing", element)
         }
