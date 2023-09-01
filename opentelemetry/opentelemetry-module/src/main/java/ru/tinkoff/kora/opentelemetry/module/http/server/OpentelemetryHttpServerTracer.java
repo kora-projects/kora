@@ -8,6 +8,7 @@ import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.common.HttpResultCode;
+import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTracer;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
@@ -52,7 +53,7 @@ public final class OpentelemetryHttpServerTracer implements HttpServerTracer {
         OpentelemetryContext.set(context, OpentelemetryContext.get(context).add(span));
 
         return (statusCode, resultCode, exception) -> {
-            if (statusCode >= 500 || exception != null || resultCode != HttpResultCode.SUCCESS) {
+            if (statusCode >= 500 || resultCode == HttpResultCode.CONNECTION_ERROR || exception != null && !(exception instanceof HttpServerResponse)) {
                 span.setStatus(StatusCode.ERROR);
             }
             if (exception != null) {
