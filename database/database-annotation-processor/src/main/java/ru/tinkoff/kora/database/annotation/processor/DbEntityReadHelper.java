@@ -58,22 +58,20 @@ public class DbEntityReadHelper {
                 var mapperType = mapper.mapperClass() != null
                     ? TypeName.get(mapper.mapperClass())
                     : ParameterizedTypeName.get(this.fieldMapperName, mapperTypeParameter);
-                if (mapper.mapperClass() != null && (mapper.mapperTags() == null || mapper.mapperTags().isEmpty())) {
-                    if (CommonUtils.hasDefaultConstructorAndFinal(this.types, mapper.mapperClass())) {
-                        fields.add(new RequiredField(FieldSpec.builder(TypeName.get(mapper.mapperClass()), mapperFieldName, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
-                            .initializer("new $T()", mapper.mapperClass())
-                            .build(), null));
-                    } else {
-                        var tag = mapper.toTagAnnotation();
-                        var param = ParameterSpec.builder(mapperType, mapperFieldName);
-                        if (tag != null) {
-                            param.addAnnotation(tag);
-                        }
-                        fields.add(new RequiredField(
-                            FieldSpec.builder(mapperType, mapperFieldName, Modifier.PRIVATE, Modifier.FINAL).build(),
-                            param.build()
-                        ));
+                var tag = mapper.toTagAnnotation();
+                if (mapper.mapperClass() != null && tag == null && CommonUtils.hasDefaultConstructorAndFinal(this.types, mapper.mapperClass())) {
+                    fields.add(new RequiredField(FieldSpec.builder(TypeName.get(mapper.mapperClass()), mapperFieldName, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+                        .initializer("new $T()", mapper.mapperClass())
+                        .build(), null));
+                } else {
+                    var param = ParameterSpec.builder(mapperType, mapperFieldName);
+                    if (tag != null) {
+                        param.addAnnotation(tag);
                     }
+                    fields.add(new RequiredField(
+                        FieldSpec.builder(mapperType, mapperFieldName, Modifier.PRIVATE, Modifier.FINAL).build(),
+                        param.build()
+                    ));
                 }
                 b.add("$T $L = $L;\n", type, fieldName, this.mapperCallGenerator.apply(fieldData));
             } else {
