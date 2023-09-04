@@ -83,6 +83,22 @@ class VertxResultsTest : AbstractVertxRepositoryTest() {
     }
 
     @Test
+    fun testReturnBatchUnit() {
+        val repository = compile(listOf<Any>(), """
+            @Repository
+            interface TestRepository : VertxRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                suspend fun test(@Batch value: List<String>)
+            }
+            
+            """.trimIndent())
+        whenever(executor.rowSet.rowCount()).thenReturn(42)
+        repository.invoke<Unit>("test", listOf("test1", "test2"))
+        verify(executor.connection).preparedQuery("INSERT INTO test(value) VALUES ($1)")
+        verify(executor.query).executeBatch(ArgumentMatchers.any(), ArgumentMatchers.any())
+    }
+
+    @Test
     fun testFinalResultSetMapper() {
         val repository = compile(listOf<Any>(), """
             @Repository
