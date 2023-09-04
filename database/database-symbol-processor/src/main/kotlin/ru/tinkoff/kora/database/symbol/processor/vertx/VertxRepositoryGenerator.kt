@@ -81,7 +81,7 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
                 b.addCode("%T.batchCompletionStage(%N, this._vertxConnectionFactory.telemetry(), _query, _batchParams)\n", VertxTypes.repositoryHelper, connectionParameter)
             }
             if (function.returnType == resolver.builtIns.unitType) {
-                b.addCode("  .thenApply {}")
+                b.addCode("  .thenApply {}\n")
             }
         } else if (isFlow) {
             b.addCode("return ")
