@@ -27,9 +27,9 @@ tracing {
     exportTimeout = "2 seconds"
     scheduleDelay = "200 ms"
     maxExportBatchSize = 10000
-    attributes {
-      "service.name" = "test-service"
-    }
+  }
+  attributes {
+    "service.name" = "test-service"
   }
 }
 ```

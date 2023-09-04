@@ -109,14 +109,6 @@ publishing {
             }
         }
     }
-    repositories {
-        maven { MavenArtifactRepository repo ->
-            credentials {
-                username = System.getenv().getOrDefault("REPO_USER", "")
-                password = System.getenv().getOrDefault("REPO_PASSWORD", "")
-            }
-        }
-    }
 }
 
 signing {

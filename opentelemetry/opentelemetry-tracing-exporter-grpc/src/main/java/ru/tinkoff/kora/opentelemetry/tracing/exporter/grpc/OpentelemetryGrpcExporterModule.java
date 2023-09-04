@@ -47,7 +47,7 @@ public interface OpentelemetryGrpcExporterModule extends NettyCommonModule, Open
 
     default OpentelemetryGrpcExporterConfig otlpGrpcSpanExporterConfig(Config config, ConfigValueExtractor<OpentelemetryGrpcExporterConfig.FromConfig> extractor) {
         var value = config.get("tracing.exporter");
-        if (value instanceof ConfigValue.NullValue) {
+        if (value instanceof ConfigValue.NullValue || value.asObject().get("endpoint").isNull()) {
             return new OpentelemetryGrpcExporterConfig.Empty();
         }
         return extractor.extract(value);
