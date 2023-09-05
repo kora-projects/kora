@@ -287,9 +287,11 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         final long started = System.nanoTime();
         var mockComponentFromParameters = metadata.parameterMocks();
         var mockComponentFromFields = metadata.classMetadata().fieldMocks();
+        var mockComponentFromConstructor = metadata.classMetadata().constructorMocks();
 
         var mocks = new HashSet<>(mockComponentFromParameters);
         mocks.addAll(mockComponentFromFields);
+        mocks.addAll(mockComponentFromConstructor);
 
         final KoraGraphModification koraGraphModification = context.getTestInstance()
             .filter(inst -> inst instanceof KoraAppTestGraphModifier)
