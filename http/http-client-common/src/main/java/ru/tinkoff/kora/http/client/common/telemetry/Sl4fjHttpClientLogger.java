@@ -54,7 +54,7 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
                            String resolvedUri,
                            @Nullable HttpHeaders headers,
                            @Nullable String body) {
-        var marker = StructuredArgument.marker("httpResponse", gen -> {
+        var marker = StructuredArgument.marker("httpRequest", gen -> {
             gen.writeStartObject();
             gen.writeStringField("authority", authority);
             gen.writeStringField("operation", operation);
