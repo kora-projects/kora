@@ -331,7 +331,7 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             fun test(entity: TestEntity)
         }
         """.trimIndent(), """
-        data class TestEntity(val id: Long, @Tag(TestRepository::class) val value: String?)    
+        data class TestEntity(val id: Long, @field:Tag(TestRepository::class) val value: String?)    
         """.trimIndent()
         )
 
