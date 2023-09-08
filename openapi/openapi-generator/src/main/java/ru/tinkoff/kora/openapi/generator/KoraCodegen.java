@@ -454,9 +454,9 @@ public class KoraCodegen extends DefaultCodegen {
                                 sb.append(" && ");
                             }
                             if (this.codegenMode.isJava()) {
-                                sb.append("!").append(property.name).append(".equals(\"").append(mapping).append("\")");
+                                sb.append("!String.valueOf(").append(property.name).append(").equals(\"").append(mapping).append("\")");
                             } else {
-                                sb.append(property.name).append(" != \"").append(mapping).append("\"");
+                                sb.append(property.name).append("?.toString() != \"").append(mapping).append("\"");
                             }
                         }
                         childModel.vendorExtensions.put("x-discriminator-values-check", sb.append(")").toString());
