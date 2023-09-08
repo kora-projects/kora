@@ -98,7 +98,6 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
     }
 
     companion object {
-        @OptIn(KspExperimental::class)
         fun parseEntity(type: KSType): DbEntity? {
             if (type.declaration !is KSClassDeclaration) {
                 return null
@@ -121,7 +120,11 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
                     val property = property(it)
                     val type = it.type.resolve()
                     val columnName = parseColumnName(it, nameConverter)
-                    val field = SimpleEntityField(property, type, columnName, it.parseMappingData())
+                    var mapping = property.parseMappingData()
+                    if (mapping.tags.isEmpty() && mapping.mapperClasses.isEmpty()) {
+                        mapping = it.parseMappingData()
+                    }
+                    val field = SimpleEntityField(property, type, columnName, mapping)
                     val embedded = it.findAnnotation(DbUtils.embeddedAnnotation)
                     if (embedded == null) {
                         return@map field
