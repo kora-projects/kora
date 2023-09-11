@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.cache.caffeine;
 
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.cache.Cache;
 
 import javax.annotation.Nonnull;

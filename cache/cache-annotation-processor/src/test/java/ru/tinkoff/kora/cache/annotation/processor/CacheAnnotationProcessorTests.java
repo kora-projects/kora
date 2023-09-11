@@ -1,8 +1,7 @@
 package ru.tinkoff.kora.cache.annotation.processor;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
+import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils.CompilationErrorException;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
@@ -14,11 +13,11 @@ import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.publisher.Ca
 import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.publisher.CacheableWrongPublisherPut;
 import ru.tinkoff.kora.cache.annotation.processor.testdata.sync.*;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class CacheAnnotationProcessorTests {
-
+class CacheAnnotationProcessorTests extends AbstractAnnotationProcessorTest {
     @Test
     void cacheKeyMultipleAnnotationsOneMethod() {
         assertThrows(CompilationErrorException.class, () -> TestUtils.annotationProcess(CacheableSyncWrongAnnotationMany.class, new AopAnnotationProcessor()));
@@ -82,5 +81,16 @@ class CacheAnnotationProcessorTests {
     @Test
     void cachePutForPublisherSignature() {
         assertThrows(CompilationErrorException.class, () -> TestUtils.annotationProcess(CacheableWrongPublisherPut.class, new AopAnnotationProcessor()));
+    }
+
+    @Test
+    public void testInnerClassCache() {
+        compile(List.of(new CacheAnnotationProcessor()), """
+            public interface OuterType {
+              @ru.tinkoff.kora.cache.annotation.Cache("test")
+              interface MyCache extends ru.tinkoff.kora.cache.caffeine.CaffeineCache<String, String>{}
+            }
+            """);
+        compileResult.assertSuccess();
     }
 }

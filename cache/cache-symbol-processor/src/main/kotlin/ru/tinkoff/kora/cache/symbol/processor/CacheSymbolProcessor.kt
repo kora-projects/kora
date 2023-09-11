@@ -17,6 +17,7 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.configValueExtractor
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 
 class CacheSymbolProcessor(
@@ -58,10 +59,7 @@ class CacheSymbolProcessor(
 
             val cacheImplBase = getCacheImplBase(cacheContractType)
             val implSpec = TypeSpec.classBuilder(getCacheImpl(cacheContract))
-                .addAnnotation(
-                    AnnotationSpec.builder(CommonClassNames.generated)
-                        .addMember(CodeBlock.of("%S", CacheSymbolProcessor::class.java.canonicalName)).build()
-                )
+                .generated(CacheSymbolProcessor::class)
                 .primaryConstructor(getCacheConstructor(cacheContractType))
                 .addSuperclassConstructorParameter(getCacheSuperConstructorCall(cacheContract, cacheContractType))
                 .superclass(cacheImplBase)
@@ -74,10 +72,7 @@ class CacheSymbolProcessor(
             fileImplSpec.writeTo(codeGenerator = environment.codeGenerator, aggregating = false)
 
             val moduleSpec = TypeSpec.interfaceBuilder(ClassName(packageName, "$${cacheImplName.simpleName}Module"))
-                .addAnnotation(
-                    AnnotationSpec.builder(CommonClassNames.generated)
-                        .addMember(CodeBlock.of("%S", CacheSymbolProcessor::class.java.canonicalName)).build()
-                )
+                .generated(CacheSymbolProcessor::class)
                 .addAnnotation(CommonClassNames.module)
                 .addFunction(getCacheMethodImpl(cacheContract, cacheContractType))
                 .addFunction(getCacheMethodConfig(cacheContract, cacheContractType, resolver))
@@ -139,7 +134,7 @@ class CacheSymbolProcessor(
         return FunSpec.builder(methodName)
             .addAnnotation(
                 AnnotationSpec.builder(CommonClassNames.tag)
-                    .addMember(cacheContractName.simpleName + "::class")
+                    .addMember("%T::class", cacheContractName)
                     .build()
             )
             .addModifiers(KModifier.PUBLIC)
@@ -155,8 +150,9 @@ class CacheSymbolProcessor(
         return ClassName(cacheImplName.packageName, "$${cacheImplName.simpleName}Impl")
     }
 
-    private fun getCacheMethodImpl(cacheImpl: KSClassDeclaration, cacheContract: ParameterizedTypeName): FunSpec {
-        val cacheImplName = getCacheImpl(cacheImpl)
+    private fun getCacheMethodImpl(cacheClass: KSClassDeclaration, cacheContract: ParameterizedTypeName): FunSpec {
+        val cacheImplName = getCacheImpl(cacheClass)
+        val cacheTypeName = cacheClass.toTypeName()
         val methodName = "${cacheImplName.simpleName}Impl"
         return when (cacheContract.rawType) {
             CAFFEINE_CACHE -> {
@@ -166,7 +162,7 @@ class CacheSymbolProcessor(
                         ParameterSpec.builder("config", CAFFEINE_CACHE_CONFIG)
                             .addAnnotation(
                                 AnnotationSpec.builder(CommonClassNames.tag)
-                                    .addMember("${cacheImpl.simpleName.getShortName()}::class")
+                                    .addMember("%T::class", cacheTypeName)
                                     .build()
                             )
                             .build()
@@ -174,7 +170,7 @@ class CacheSymbolProcessor(
                     .addParameter("factory", CAFFEINE_CACHE_FACTORY)
                     .addParameter("telemetry", CAFFEINE_TELEMETRY)
                     .addStatement("return %T(config, factory, telemetry)", cacheImplName)
-                    .returns(cacheImpl.toTypeName())
+                    .returns(cacheTypeName)
                     .build()
             }
             REDIS_CACHE -> {
@@ -188,7 +184,7 @@ class CacheSymbolProcessor(
                         ParameterSpec.builder("config", REDIS_CACHE_CONFIG)
                             .addAnnotation(
                                 AnnotationSpec.builder(CommonClassNames.tag)
-                                    .addMember("%T::class", cacheImpl.toTypeName())
+                                    .addMember("%T::class", cacheTypeName)
                                     .build()
                             )
                             .build()
@@ -199,7 +195,7 @@ class CacheSymbolProcessor(
                     .addParameter("keyMapper", keyMapperType)
                     .addParameter("valueMapper", valueMapperType)
                     .addStatement("return %L(config, syncClient, reactiveClient, telemetry, keyMapper, valueMapper)", cacheImplName)
-                    .returns(cacheImpl.toTypeName())
+                    .returns(cacheTypeName)
                     .build()
             }
             else -> {

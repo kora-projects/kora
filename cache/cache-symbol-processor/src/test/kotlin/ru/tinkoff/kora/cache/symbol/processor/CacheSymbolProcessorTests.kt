@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.cache.symbol.processor
 
-import com.google.devtools.ksp.KspExperimental
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
@@ -11,11 +10,11 @@ import ru.tinkoff.kora.cache.symbol.processor.testdata.reactive.mono.CacheableGe
 import ru.tinkoff.kora.cache.symbol.processor.testdata.reactive.mono.CacheablePutMono
 import ru.tinkoff.kora.cache.symbol.processor.testdata.reactive.publisher.CacheableGetPublisher
 import ru.tinkoff.kora.cache.symbol.processor.testdata.reactive.publisher.CacheablePutPublisher
+import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 import ru.tinkoff.kora.ksp.common.CompilationErrorException
 import ru.tinkoff.kora.ksp.common.symbolProcess
 
-@KspExperimental
-class CacheSymbolProcessorTests {
+class CacheSymbolProcessorTests : AbstractSymbolProcessorTest() {
 
     @Test
     fun cacheKeyArgumentMissing() {
@@ -99,5 +98,16 @@ class CacheSymbolProcessorTests {
         assertThrows(
             CompilationErrorException::class.java
         ) { symbolProcess(CacheablePutPublisher::class, AopSymbolProcessorProvider()) }
+    }
+
+    @Test
+    fun testInnerTypeCache() {
+        compile(listOf(CacheSymbolProcessorProvider()), """
+        interface OuterType {
+          @ru.tinkoff.kora.cache.annotation.Cache("test")
+          interface MyCache : ru.tinkoff.kora.cache.caffeine.CaffeineCache<String, String>
+        }
+        """.trimIndent())
+        compileResult.assertSuccess()
     }
 }
