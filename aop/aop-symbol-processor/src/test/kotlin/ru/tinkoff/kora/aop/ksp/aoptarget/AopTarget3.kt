@@ -31,7 +31,6 @@ open class AopTarget3 {
     class Aspect3(private val resolver: Resolver) : KoraAspect {
 
         override fun getSupportedAnnotationTypes(): Set<String> {
-            String
             return setOf(TestAnnotation3::class.java.canonicalName)
         }
 

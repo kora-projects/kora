@@ -5,7 +5,6 @@ import com.google.devtools.ksp.isProtected
 import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ksp.toClassName
@@ -15,6 +14,7 @@ import ru.tinkoff.kora.ksp.common.*
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
+import java.lang.IllegalStateException
 import kotlin.reflect.KClass
 
 class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: Resolver) {
@@ -24,32 +24,32 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
         private val constructorParams: MutableMap<ConstructorParamKey, String> = linkedMapOf()
         private val constructorInitializedParams: MutableMap<ConstructorInitializedParamKey, String> = linkedMapOf()
 
-        private data class ConstructorParamKey(val type: KSType, val annotations: List<AnnotationSpec>, val resolver: Resolver)
-        private data class ConstructorInitializedParamKey(val type: KSType, val initBlock: CodeBlock, val resolver: Resolver)
+        private data class ConstructorParamKey(val type: TypeName, val annotations: List<AnnotationSpec>, val resolver: Resolver)
+        private data class ConstructorInitializedParamKey(val type: TypeName, val initBlock: CodeBlock, val resolver: Resolver)
 
-        override fun constructorParam(type: KSType, annotations: List<AnnotationSpec>): String {
+        override fun constructorParam(type: TypeName, annotations: List<AnnotationSpec>): String {
             return constructorParams.computeIfAbsent(ConstructorParamKey(type, annotations, resolver)) { key ->
-                this.computeFieldName(key.type)!!
+                this.computeFieldName(key.type)
             }
         }
 
-        override fun constructorInitialized(type: KSType, initializer: CodeBlock): String {
+        override fun constructorInitialized(type: TypeName, initializer: CodeBlock): String {
             return constructorInitializedParams.computeIfAbsent(ConstructorInitializedParamKey(type, initializer, resolver)) { key ->
-                this.computeFieldName(key.type)!!
+                this.computeFieldName(key.type)
             }
         }
 
         fun addFields(typeBuilder: TypeSpec.Builder) {
             constructorParams.forEach { (fd, name) ->
                 typeBuilder.addProperty(
-                    PropertySpec.builder(name, fd.type.toTypeName(), KModifier.PRIVATE, KModifier.FINAL)
+                    PropertySpec.builder(name, fd.type, KModifier.PRIVATE, KModifier.FINAL)
                         .initializer(name)
                         .build()
                 )
             }
             constructorInitializedParams.forEach { (fd, name) ->
                 typeBuilder.addProperty(
-                    PropertySpec.builder(name, fd.type.toTypeName(), KModifier.PRIVATE, KModifier.FINAL).build()
+                    PropertySpec.builder(name, fd.type, KModifier.PRIVATE, KModifier.FINAL).build()
                 )
             }
         }
@@ -57,7 +57,7 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
         fun enrichConstructor(constructorBuilder: FunSpec.Builder) {
             constructorParams.forEach { (fd, name) ->
                 constructorBuilder.addParameter(
-                    ParameterSpec.builder(name, fd.type.toTypeName())
+                    ParameterSpec.builder(name, fd.type)
                         .addAnnotations(fd.annotations)
                         .build()
                 )
@@ -67,11 +67,9 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
             }
         }
 
-        private fun computeFieldName(type: KSType): String? {
-            var qualifiedType = type.makeNotNullable().toClassName().simpleName
-            val dotIndex = qualifiedType.lastIndexOf('.')
-            val shortName = if (dotIndex < 0) qualifiedType.replaceFirstChar { it.lowercaseChar() }
-            else qualifiedType.substring(dotIndex + 1).replaceFirstChar { it.lowercaseChar() }
+        private fun computeFieldName(type: TypeName): String {
+            val qualifiedType = if (type is ParameterizedTypeName) type.rawType else type as ClassName
+            val shortName = qualifiedType.simpleName.replaceFirstChar { it.lowercaseChar() }
             for (i in 1 until Int.MAX_VALUE) {
                 val name = shortName + i
                 if (fieldNames.add(name)) {
@@ -79,7 +77,7 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
                 }
             }
             // never gonna happen
-            return null
+            throw IllegalStateException()
         }
     }
 

@@ -38,41 +38,9 @@ public class AopProcessor {
         private final Map<ConstructorParamKey, String> constructorParams = new LinkedHashMap<>();
         private final Map<ConstructorInitializedParamKey, String> constructorInitializedParams = new LinkedHashMap<>();
 
-        private record ConstructorParamKey(TypeMirror type, List<AnnotationSpec> annotations, Types types) {
-            @Override
-            public boolean equals(Object obj) {
-                if (obj instanceof ConstructorParamKey that) {
-                    if (!that.annotations().equals(this.annotations())) {
-                        return false;
-                    }
-                    return this.types.isSameType(this.type(), that.type());
-                }
-                return false;
-            }
+        private record ConstructorParamKey(TypeName type, List<AnnotationSpec> annotations, Types types) {}
 
-            @Override
-            public int hashCode() {
-                return 31 * annotations().hashCode() + type().toString().hashCode();
-            }
-        }
-
-        private record ConstructorInitializedParamKey(TypeMirror type, CodeBlock initializer, Types types) {
-            @Override
-            public boolean equals(Object obj) {
-                if (obj instanceof ConstructorInitializedParamKey that) {
-                    if (!that.initializer.equals(this.initializer)) {
-                        return false;
-                    }
-                    return this.types.isSameType(this.type, that.type);
-                }
-                return false;
-            }
-
-            @Override
-            public int hashCode() {
-                return 31 * this.initializer.hashCode() + this.type.toString().hashCode();
-            }
-        }
+        private record ConstructorInitializedParamKey(TypeName type, CodeBlock initializer, Types types) {}
 
         private TypeFieldFactory(Types types) {
             this.types = types;
@@ -82,24 +50,24 @@ public class AopProcessor {
             for (var entry : this.constructorParams.entrySet()) {
                 var name = entry.getValue();
                 var fd = entry.getKey();
-                typeBuilder.addField(FieldSpec.builder(TypeName.get(fd.type()), name, Modifier.PRIVATE, Modifier.FINAL)
+                typeBuilder.addField(FieldSpec.builder(fd.type(), name, Modifier.PRIVATE, Modifier.FINAL)
                     .build());
             }
             for (var entry : this.constructorInitializedParams.entrySet()) {
                 var name = entry.getValue();
                 var fd = entry.getKey();
-                typeBuilder.addField(FieldSpec.builder(TypeName.get(fd.type()), name, Modifier.PRIVATE, Modifier.FINAL)
+                typeBuilder.addField(FieldSpec.builder(fd.type(), name, Modifier.PRIVATE, Modifier.FINAL)
                     .build());
             }
         }
 
         @Override
-        public String constructorParam(TypeMirror type, List<AnnotationSpec> annotations) {
+        public String constructorParam(TypeName type, List<AnnotationSpec> annotations) {
             return this.constructorParams.computeIfAbsent(new ConstructorParamKey(type, annotations, this.types), this::computeFieldName);
         }
 
         @Override
-        public String constructorInitialized(TypeMirror type, CodeBlock initializer) {
+        public String constructorInitialized(TypeName type, CodeBlock initializer) {
             return this.constructorInitializedParams.computeIfAbsent(new ConstructorInitializedParamKey(type, initializer, this.types), this::computeFieldName);
         }
 
@@ -107,7 +75,7 @@ public class AopProcessor {
             for (var entry : this.constructorParams.entrySet()) {
                 var name = entry.getValue();
                 var fd = entry.getKey();
-                constructorBuilder.addParameter(ParameterSpec.builder(TypeName.get(fd.type()), name)
+                constructorBuilder.addParameter(ParameterSpec.builder(fd.type(), name)
                     .addAnnotations(fd.annotations())
                     .build());
                 constructorBuilder.addCode("this.$L = $L;\n", name, name);

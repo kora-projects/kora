@@ -102,7 +102,6 @@ public class TagUtils {
         return Set.of();
     }
 
-
     public static AnnotationSpec makeAnnotationSpec(Set<String> tags) {
         var annotation = AnnotationSpec.builder(CommonClassNames.tag);
         var value = CodeBlock.builder();
@@ -112,7 +111,7 @@ public class TagUtils {
             if (i > 0) {
                 value.add(", ");
             }
-            value.add(tagsList.get(i)).add(".class");
+            value.add("$L.class", tagsList.get(i));
         }
         value.add("}");
         return annotation.addMember("value", value.build()).build();

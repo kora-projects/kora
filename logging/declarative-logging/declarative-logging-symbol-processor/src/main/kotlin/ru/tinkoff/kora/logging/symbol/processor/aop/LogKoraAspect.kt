@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.logging.symbol.processor.aop
 
-import com.google.devtools.ksp.getClassDeclarationByName
-import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSType
@@ -15,7 +13,7 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.nextControlFlow
 
-class LogKoraAspect(val resolver: Resolver) : KoraAspect {
+class LogKoraAspect : KoraAspect {
 
     private companion object {
         private const val RESULT_FIELD_NAME = "__result"
@@ -47,11 +45,11 @@ class LogKoraAspect(val resolver: Resolver) : KoraAspect {
         superCall: String,
         aspectContext: KoraAspect.AspectContext
     ): KoraAspect.ApplyResult {
-        val loggerFactoryFieldName = aspectContext.fieldFactory.constructorParam(resolver.getClassDeclarationByName(iLoggerFactoryType.canonicalName)!!.asStarProjectedType(), emptyList())
+        val loggerFactoryFieldName = aspectContext.fieldFactory.constructorParam(iLoggerFactoryType, emptyList())
         val declarationName = function.parentDeclaration?.qualifiedName?.asString()
         val loggerName = "${declarationName}.${function.simpleName.getShortName()}"
         val loggerFieldName = aspectContext.fieldFactory.constructorInitialized(
-            resolver.getClassDeclarationByName(loggerType.canonicalName)!!.asStarProjectedType(),
+            loggerType,
             CodeBlock.of("%N.getLogger(%S)", loggerFactoryFieldName, loggerName)
         )
 
@@ -115,7 +113,7 @@ class LogKoraAspect(val resolver: Resolver) : KoraAspect {
     }
 
     private fun CodeBlock.Builder.generateOutputLog(loggerName: String, function: KSFunctionDeclaration, superCall: String) {
-        addStatement("val %L = %L(%L)", RESULT_FIELD_NAME, superCall, function.parameters.joinToString(", ") { it.name!!.asString() })
+        addStatement("val %L = %L", RESULT_FIELD_NAME, function.superCall(superCall))
         val outLogLevel = function.outLogLevel()
         if (outLogLevel == null) {
             addStatement("return %N", RESULT_FIELD_NAME)
