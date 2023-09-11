@@ -6,6 +6,6 @@ import ru.tinkoff.kora.aop.symbol.processor.KoraAspectFactory
 
 class LogKoraAspectFactory : KoraAspectFactory {
     override fun create(resolver: Resolver): KoraAspect {
-        return LogKoraAspect(resolver)
+        return LogKoraAspect()
     }
 }

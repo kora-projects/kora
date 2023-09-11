@@ -3,8 +3,6 @@ package ru.tinkoff.kora.logging.aspect;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
-import org.slf4j.ILoggerFactory;
-import org.slf4j.Logger;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
@@ -41,15 +39,13 @@ public class LogAspect implements KoraAspect {
 
     @Override
     public ApplyResult apply(ExecutableElement executableElement, String superCall, AspectContext aspectContext) {
-        var loggerType = this.env.getElementUtils().getTypeElement(Logger.class.getCanonicalName()).asType();
-        var loggerFactoryType = this.env.getElementUtils().getTypeElement(ILoggerFactory.class.getCanonicalName()).asType();
         var loggerName = executableElement.getEnclosingElement() + "." + executableElement.getSimpleName();
         var loggerFactoryFieldName = aspectContext.fieldFactory().constructorParam(
-            loggerFactoryType,
+            loggerFactory,
             List.of()
         );
         var loggerFieldName = aspectContext.fieldFactory().constructorInitialized(
-            loggerType,
+            logger,
             CodeBlock.builder().add("$N.getLogger($S)", loggerFactoryFieldName, loggerName).build()
         );
 
@@ -71,9 +67,9 @@ public class LogAspect implements KoraAspect {
         }
         var isVoid = executableElement.getReturnType().getKind() == TypeKind.VOID;
         if (isVoid) {
-            b.add(this.buildSuperCallWithParameters(executableElement, superCall)).add(";");
+            b.add(KoraAspect.callSuper(executableElement, superCall)).add(";");
         } else {
-            b.add("var $N = $L;\n", RESULT_VAR_NAME, this.buildSuperCallWithParameters(executableElement, superCall));
+            b.add("var $N = $L;\n", RESULT_VAR_NAME, KoraAspect.callSuper(executableElement, superCall));
         }
         if (logOutLevel != null) {
             var logResultLevel = logResultLevel(executableElement, logOutLevel, env);
@@ -111,7 +107,7 @@ public class LogAspect implements KoraAspect {
         var logOutLevel = logOutLevel(executableElement, env);
         var b = CodeBlock.builder();
 
-        b.add("var $N = $L;\n", RESULT_VAR_NAME, this.buildSuperCallWithParameters(executableElement, superCall));
+        b.add("var $N = $L;\n", RESULT_VAR_NAME, KoraAspect.callSuper(executableElement, superCall));
         if (logInLevel != null) {
             var finalResultName = RESULT_VAR_NAME + "_final";
             b.add("var $N = $N;\n", finalResultName, RESULT_VAR_NAME);
@@ -156,29 +152,6 @@ public class LogAspect implements KoraAspect {
 
         return new ApplyResult.MethodBody(b.add("return $N;\n", RESULT_VAR_NAME).build());
     }
-
-    /**
-     * Generate calling of original method with params
-     *
-     * <p>Example result:</p>
-     * <pre>{@code super.<originalMethodName>(param1, param2)}</pre>
-     *
-     * @return
-     */
-    private CodeBlock buildSuperCallWithParameters(ExecutableElement executableElement, String superCall) {
-        var b = CodeBlock.builder()
-            .add(superCall).add("(");
-        for (int i = 0; i < executableElement.getParameters().size(); i++) {
-            var parameter = executableElement.getParameters().get(i);
-            if (i > 0) {
-                b.add(", ");
-            }
-            b.add("$N", parameter.getSimpleName());
-        }
-        b.add(")");
-        return b.build();
-    }
-
 
     private CodeBlock buildLogIn(ExecutableElement executableElement, String logInLevel, String loggerFieldName) {
         var b = CodeBlock.builder();

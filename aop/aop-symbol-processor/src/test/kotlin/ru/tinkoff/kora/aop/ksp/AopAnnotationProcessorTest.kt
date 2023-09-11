@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.aop.ksp
 
-import com.google.devtools.ksp.KspExperimental
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.platform.commons.util.ReflectionUtils
@@ -13,10 +12,8 @@ import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
 import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.ksp.common.symbolProcess
 
-@KspExperimental
 class AopAnnotationProcessorTest {
     @Test
-    @Throws(Exception::class)
     fun testAop1() {
         val classLoader: ClassLoader = symbolProcess(AopTarget1::class, AopSymbolProcessorProvider())
         val cl = classLoader.loadClass("ru.tinkoff.kora.aop.ksp.aoptarget.\$AopTarget1__AopProxy")
@@ -39,7 +36,6 @@ class AopAnnotationProcessorTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testAop2() {
         val classLoader: ClassLoader = symbolProcess(AopTarget2::class, AopSymbolProcessorProvider())
         val cl = classLoader.loadClass("ru.tinkoff.kora.aop.ksp.aoptarget.\$AopTarget2__AopProxy")
@@ -70,7 +66,6 @@ class AopAnnotationProcessorTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testAop3() {
         val classLoader: ClassLoader = symbolProcess(AopTarget3::class, AopSymbolProcessorProvider())
         val cl = classLoader.loadClass("ru.tinkoff.kora.aop.ksp.aoptarget.\$AopTarget3__AopProxy")
