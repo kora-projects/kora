@@ -29,11 +29,11 @@ public interface JdbcDatabaseConfig {
     }
 
     default Duration idleTimeout() {
-        return Duration.ofMinutes(60);
+        return Duration.ofMinutes(30);
     }
 
     default Duration maxLifetime() {
-        return Duration.ofMinutes(30);
+        return Duration.ofMinutes(60);
     }
 
     default Duration leakDetectionThreshold() {
