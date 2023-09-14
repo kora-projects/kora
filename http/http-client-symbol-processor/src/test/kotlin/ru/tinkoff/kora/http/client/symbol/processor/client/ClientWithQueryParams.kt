@@ -2,6 +2,7 @@ package ru.tinkoff.kora.http.client.symbol.processor.client
 
 import ru.tinkoff.kora.http.client.common.annotation.HttpClient
 import ru.tinkoff.kora.http.common.HttpMethod
+import ru.tinkoff.kora.http.common.annotation.Header
 import ru.tinkoff.kora.http.common.annotation.HttpRoute
 import ru.tinkoff.kora.http.common.annotation.Query
 import java.time.LocalDate
@@ -36,6 +37,21 @@ interface ClientWithQueryParams {
     @HttpRoute(method = HttpMethod.POST, path = "/nonStringParams")
     fun nonStringParams(@Query query1: Int, @Query query2: LocalDate, @Query query3: Int?)
 
-    @HttpRoute(method = HttpMethod.POST, path = "/multipleParams")
-    fun multipleParams(@Query query1: List<Int>, @Query query2: Iterable<String>?, @Query query3: List<LocalDate?>)
+    @HttpRoute(method = HttpMethod.POST, path = "/multipleQueryParams")
+    fun multipleQueriesLists(@Query query1: List<String>, @Query query2: List<Int?>?)
+
+    @HttpRoute(method = HttpMethod.POST, path = "/multipleQueryParams")
+    fun multipleQueriesSets(@Query query1: Set<String>, @Query query2: Set<Int?>?)
+
+    @HttpRoute(method = HttpMethod.POST, path = "/multipleQueryParams")
+    fun multipleQueriesCollections(@Query query1: Collection<String>, @Query query2: Collection<Int>?)
+
+    @HttpRoute(method = HttpMethod.POST, path = "/multipleHeaders")
+    fun multipleHeadersLists(@Header headers1: List<String>, @Header headers2: List<Int>?)
+
+    @HttpRoute(method = HttpMethod.POST, path = "/multipleHeaders")
+    fun multipleHeadersSets(@Header headers1: Set<String>, @Header headers2: Set<Int>?)
+
+    @HttpRoute(method = HttpMethod.POST, path = "/multipleHeaders")
+    fun multipleHeadersCollections(@Header headers1: Collection<String>, @Header headers2: Collection<Int>?)
 }
