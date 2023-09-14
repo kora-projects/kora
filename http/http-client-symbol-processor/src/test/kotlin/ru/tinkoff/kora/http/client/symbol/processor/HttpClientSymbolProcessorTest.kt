@@ -161,9 +161,18 @@ class HttpClientSymbolProcessorTest {
                 HttpClientOperationConfig_Impl(null),
                 HttpClientOperationConfig_Impl(null),
                 HttpClientOperationConfig_Impl(null),
+                HttpClientOperationConfig_Impl(null),
+                HttpClientOperationConfig_Impl(null),
+                HttpClientOperationConfig_Impl(null),
+                HttpClientOperationConfig_Impl(null),
+                HttpClientOperationConfig_Impl(null),
             ), arrayOf(
                 StringParameterConverter<LocalDate> { it.toString() },
-                StringParameterConverter<LocalDate> { it.toString() },
+                unitMono(),
+                unitMono(),
+                unitMono(),
+                unitMono(),
+                unitMono(),
                 unitMono(),
                 unitMono(),
                 unitMono(),
@@ -248,25 +257,178 @@ class HttpClientSymbolProcessorTest {
         client.nonStringParams(1, LocalDate.parse("2022-04-04"), null)
         server.reset()
 
+
         server.`when`(
-            HttpRequest.request("/multipleParams")
+            HttpRequest.request("/multipleQueryParams")
                 .withMethod("POST")
-                .withQueryStringParameter("query1", "1", "2")
-                .withQueryStringParameter("query2", "a", "b")
-                .withQueryStringParameter("query3", "2022-04-04", "2022-04-05")
+                .withQueryStringParameter("query1", "a", "b")
+                .withQueryStringParameter("query2", "1", "2")
         )
             .respond(HttpResponse.response())
-        client.multipleParams(listOf(1, 2), listOf("a", "b"), mutableListOf(LocalDate.parse("2022-04-04"), LocalDate.parse("2022-04-05")))
+        client.multipleQueriesLists(listOf("a", "b"), listOf(1, 2))
         server.reset()
 
         server.`when`(
-            HttpRequest.request("/multipleParams")
+            HttpRequest.request("/multipleQueryParams")
                 .withMethod("POST")
-                .withQueryStringParameter("query1", "1", "2")
-                .withQueryStringParameter("query3", "2022-04-04")
+                .withQueryStringParameter("query1", "a", "b")
         )
             .respond(HttpResponse.response())
-        client.multipleParams(listOf(1, 2), null, mutableListOf(LocalDate.parse("2022-04-04"), null))
+        client.multipleQueriesLists(listOf("a", "b"), listOf())
+        server.reset()
+
+        server.`when`(
+            HttpRequest.request("/multipleQueryParams")
+                .withMethod("POST")
+                .withQueryStringParameter("query1", "a", "b")
+        )
+            .respond(HttpResponse.response())
+        client.multipleQueriesLists(listOf("a", "b"), null)
+        server.reset()
+
+
+        server.`when`(
+            HttpRequest.request("/multipleQueryParams")
+                .withMethod("POST")
+                .withQueryStringParameter("query1", "a", "b")
+                .withQueryStringParameter("query2", "1", "2")
+        )
+            .respond(HttpResponse.response())
+        client.multipleQueriesSets(setOf("a", "b"), setOf(1, 2))
+        server.reset()
+
+        server.`when`(
+            HttpRequest.request("/multipleQueryParams")
+                .withMethod("POST")
+                .withQueryStringParameter("query1", "a", "b")
+        )
+            .respond(HttpResponse.response())
+        client.multipleQueriesSets(setOf("a", "b"), setOf())
+        server.reset()
+
+        server.`when`(
+            HttpRequest.request("/multipleQueryParams")
+                .withMethod("POST")
+                .withQueryStringParameter("query1", "a", "b")
+        )
+            .respond(HttpResponse.response())
+        client.multipleQueriesSets(setOf("a", "b"), null)
+        server.reset()
+
+
+        server.`when`(
+            HttpRequest.request("/multipleQueryParams")
+                .withMethod("POST")
+                .withQueryStringParameter("query1", "a", "b")
+                .withQueryStringParameter("query2", "1", "2")
+        )
+            .respond(HttpResponse.response())
+        client.multipleQueriesCollections(setOf("a", "b"), setOf(1, 2))
+        server.reset()
+
+        server.`when`(
+            HttpRequest.request("/multipleQueryParams")
+                .withMethod("POST")
+                .withQueryStringParameter("query1", "a", "b")
+        )
+            .respond(HttpResponse.response())
+        client.multipleQueriesCollections(setOf("a", "b"), setOf())
+        server.reset()
+
+        server.`when`(
+            HttpRequest.request("/multipleQueryParams")
+                .withMethod("POST")
+                .withQueryStringParameter("query1", "a", "b")
+        )
+            .respond(HttpResponse.response())
+        client.multipleQueriesCollections(setOf("a", "b"), null)
+        server.reset()
+
+
+        server.`when`(
+            HttpRequest.request("/multipleHeaders")
+                .withMethod("POST")
+                .withHeader("headers1", "a", "b")
+                .withHeader("headers2", "1", "2")
+        )
+            .respond(HttpResponse.response())
+        client.multipleHeadersLists(listOf("a", "b"), listOf(1, 2))
+        server.reset()
+
+        server.`when`(
+            HttpRequest.request("/multipleHeaders")
+                .withMethod("POST")
+                .withHeader("headers1", "a", "b")
+        )
+            .respond(HttpResponse.response())
+        client.multipleHeadersLists(listOf("a", "b"), listOf())
+        server.reset()
+
+        server.`when`(
+            HttpRequest.request("/multipleHeaders")
+                .withMethod("POST")
+                .withHeader("headers1", "a", "b")
+        )
+            .respond(HttpResponse.response())
+        client.multipleHeadersLists(listOf("a", "b"), null)
+        server.reset()
+
+
+        server.`when`(
+            HttpRequest.request("/multipleHeaders")
+                .withMethod("POST")
+                .withHeader("headers1", "a", "b")
+                .withHeader("headers2", "1", "2")
+        )
+            .respond(HttpResponse.response())
+        client.multipleHeadersSets(setOf("a", "b"), setOf(1, 2))
+        server.reset()
+
+        server.`when`(
+            HttpRequest.request("/multipleHeaders")
+                .withMethod("POST")
+                .withHeader("headers1", "a", "b")
+        )
+            .respond(HttpResponse.response())
+        client.multipleHeadersSets(setOf("a", "b"), setOf())
+        server.reset()
+
+        server.`when`(
+            HttpRequest.request("/multipleHeaders")
+                .withMethod("POST")
+                .withHeader("headers1", "a", "b")
+        )
+            .respond(HttpResponse.response())
+        client.multipleHeadersSets(setOf("a", "b"), null)
+        server.reset()
+
+
+        server.`when`(
+            HttpRequest.request("/multipleHeaders")
+                .withMethod("POST")
+                .withHeader("headers1", "a", "b")
+                .withHeader("headers2", "1", "2")
+        )
+            .respond(HttpResponse.response())
+        client.multipleHeadersCollections(setOf("a", "b"), setOf(1, 2))
+        server.reset()
+
+        server.`when`(
+            HttpRequest.request("/multipleHeaders")
+                .withMethod("POST")
+                .withHeader("headers1", "a", "b")
+        )
+            .respond(HttpResponse.response())
+        client.multipleHeadersCollections(setOf("a", "b"), setOf())
+        server.reset()
+
+        server.`when`(
+            HttpRequest.request("/multipleHeaders")
+                .withMethod("POST")
+                .withHeader("headers1", "a", "b")
+        )
+            .respond(HttpResponse.response())
+        client.multipleHeadersCollections(setOf("a", "b"), null)
         server.reset()
     }
 

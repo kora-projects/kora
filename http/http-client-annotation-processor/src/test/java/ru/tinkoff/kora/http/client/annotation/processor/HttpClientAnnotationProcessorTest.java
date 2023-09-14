@@ -41,6 +41,7 @@ import javax.annotation.Nullable;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -149,10 +150,25 @@ class HttpClientAnnotationProcessorTest {
                 new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
                 new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
                 new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
+                new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
+                new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
+                new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
+                new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
+                new $HttpClientOperationConfig_ConfigValueExtractor.HttpClientOperationConfig_Impl(null),
             },
             new Object[]{
                 (StringParameterConverter<Integer>) Object::toString,
                 (StringParameterConverter<Integer>) Object::toString,
+                (StringParameterConverter<Integer>) Object::toString,
+                (StringParameterConverter<Integer>) Object::toString,
+                (StringParameterConverter<Integer>) Object::toString,
+                (StringParameterConverter<Integer>) Object::toString,
+                (StringParameterConverter<Integer>) Object::toString,
+                voidMono(),
+                voidMono(),
+                voidMono(),
+                voidMono(),
+                voidMono(),
                 voidMono(),
                 voidMono(),
                 voidMono(),
@@ -221,27 +237,142 @@ class HttpClientAnnotationProcessorTest {
         server.reset();
 
 
-        server.when(request("/multipleParams")
+        server.when(request("/multipleQueryParams")
                 .withMethod("POST")
                 .withQueryStringParameter("query1", "foo", "bar")
                 .withQueryStringParameter("query2", "1", "2", "3"))
             .respond(HttpResponse.response());
-        client.multipleParams(List.of("foo", "bar"), List.of(1,2,3));
+        client.multipleQueriesLists(List.of("foo", "bar"), List.of(1,2,3));
         server.reset();
 
 
-        server.when(request("/multipleParams")
+        server.when(request("/multipleQueryParams")
                 .withMethod("POST")
                 .withQueryStringParameter("query1", "foo", "bar"))
             .respond(HttpResponse.response());
-        client.multipleParams(List.of("foo", "bar"), List.of());
+        client.multipleQueriesLists(List.of("foo", "bar"), List.of());
         server.reset();
 
-        server.when(request("/multipleParams")
+        server.when(request("/multipleQueryParams")
                 .withMethod("POST")
                 .withQueryStringParameter("query1", "foo", "bar"))
             .respond(HttpResponse.response());
-        client.multipleParams(List.of("foo", "bar"), null);
+        client.multipleQueriesLists(List.of("foo", "bar"), null);
+        server.reset();
+
+
+        server.when(request("/multipleQueryParams")
+                .withMethod("POST")
+                .withQueryStringParameter("query1", "foo", "bar")
+                .withQueryStringParameter("query2", "1", "2", "3"))
+            .respond(HttpResponse.response());
+        client.multipleQueriesSets(Set.of("foo", "bar"), Set.of(1,2,3));
+        server.reset();
+
+        server.when(request("/multipleQueryParams")
+                .withMethod("POST")
+                .withQueryStringParameter("query1", "foo", "bar"))
+            .respond(HttpResponse.response());
+        client.multipleQueriesSets(Set.of("foo", "bar"), Set.of());
+        server.reset();
+
+        server.when(request("/multipleQueryParams")
+                .withMethod("POST")
+                .withQueryStringParameter("query1", "foo", "bar"))
+            .respond(HttpResponse.response());
+        client.multipleQueriesSets(Set.of("foo", "bar"), null);
+        server.reset();
+
+
+        server.when(request("/multipleQueryParams")
+                .withMethod("POST")
+                .withQueryStringParameter("query1", "foo", "bar")
+                .withQueryStringParameter("query2", "1", "2", "3"))
+            .respond(HttpResponse.response());
+        client.multipleQueriesCollections(Set.of("foo", "bar"), Set.of(1,2,3));
+        server.reset();
+
+        server.when(request("/multipleQueryParams")
+                .withMethod("POST")
+                .withQueryStringParameter("query1", "foo", "bar"))
+            .respond(HttpResponse.response());
+        client.multipleQueriesCollections(Set.of("foo", "bar"), Set.of());
+        server.reset();
+
+        server.when(request("/multipleQueryParams")
+                .withMethod("POST")
+                .withQueryStringParameter("query1", "foo", "bar"))
+            .respond(HttpResponse.response());
+        client.multipleQueriesCollections(Set.of("foo", "bar"), null);
+        server.reset();
+
+
+        server.when(request("/multipleHeaders")
+                .withMethod("POST")
+                .withHeader("headers1", "foo", "bar")
+                .withHeader("headers2", "1", "2", "3"))
+            .respond(HttpResponse.response());
+        client.multipleHeadersLists(List.of("foo", "bar"), List.of(1,2,3));
+        server.reset();
+
+        server.when(request("/multipleHeaders")
+                .withMethod("POST")
+                .withHeader("headers1", "foo", "bar"))
+            .respond(HttpResponse.response());
+        client.multipleHeadersLists(List.of("foo", "bar"), List.of());
+        server.reset();
+
+        server.when(request("/multipleHeaders")
+                .withMethod("POST")
+                .withHeader("headers1", "foo", "bar"))
+            .respond(HttpResponse.response());
+        client.multipleHeadersLists(List.of("foo", "bar"), null);
+        server.reset();
+
+
+        server.when(request("/multipleHeaders")
+                .withMethod("POST")
+                .withHeader("headers1", "foo", "bar")
+                .withHeader("headers2", "1", "2", "3"))
+            .respond(HttpResponse.response());
+        client.multipleHeadersSets(Set.of("foo", "bar"), Set.of(1,2,3));
+        server.reset();
+
+        server.when(request("/multipleHeaders")
+                .withMethod("POST")
+                .withHeader("headers1", "foo", "bar"))
+            .respond(HttpResponse.response());
+        client.multipleHeadersSets(Set.of("foo", "bar"), Set.of());
+        server.reset();
+
+        server.when(request("/multipleHeaders")
+                .withMethod("POST")
+                .withHeader("headers1", "foo", "bar"))
+            .respond(HttpResponse.response());
+        client.multipleHeadersSets(Set.of("foo", "bar"), null);
+        server.reset();
+
+
+        server.when(request("/multipleHeaders")
+                .withMethod("POST")
+                .withHeader("headers1", "foo", "bar")
+                .withHeader("headers2", "1", "2", "3"))
+            .respond(HttpResponse.response());
+        client.multipleHeadersCollections(Set.of("foo", "bar"), Set.of(1,2,3));
+        server.reset();
+
+        server.when(request("/multipleHeaders")
+                .withMethod("POST")
+                .withHeader("headers1", "foo", "bar"))
+            .respond(HttpResponse.response());
+        client.multipleHeadersCollections(Set.of("foo", "bar"), Set.of());
+        server.reset();
+
+        server.when(request("/multipleHeaders")
+                .withMethod("POST")
+                .withHeader("headers1", "foo", "bar"))
+            .respond(HttpResponse.response());
+        client.multipleHeadersCollections(Set.of("foo", "bar"), null);
         server.reset();
     }
 

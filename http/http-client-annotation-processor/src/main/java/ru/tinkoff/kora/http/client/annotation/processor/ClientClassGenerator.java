@@ -43,7 +43,6 @@ public class ClientClassGenerator {
     private final TypeMirror responseMapperType;
     private final TypeMirror httpResponseType;
 
-    private final TypeMirror listTypeErasure;
     private final TypeMirror stringType;
 
     public ClientClassGenerator(ProcessingEnvironment processingEnv) {
@@ -60,7 +59,6 @@ public class ClientClassGenerator {
         this.parameterParser = new Parameter.ParameterParser(this.elements, this.types);
         this.httpResponseType = new ComparableTypeMirror(this.types, this.types.erasure(this.elements.getTypeElement(HttpClientResponse.class.getCanonicalName()).asType()));
 
-        this.listTypeErasure = this.types.erasure(this.elements.getTypeElement(List.class.getCanonicalName()).asType());
         this.stringType = this.elements.getTypeElement(String.class.getCanonicalName()).asType();
     }
 
@@ -108,10 +106,24 @@ public class ClientClassGenerator {
                     b.beginControlFlow("if ($L != null)", header.parameter());
                 }
 
-                if (requiresConverter(header.parameter().asType())) {
-                    b.addCode("_requestBuilder.header($S, $L.convert($L));\n", header.headerName(), getConverterName(methodData, header.parameter()), header.parameter());
+                String targetLiteral = header.parameter().getSimpleName().toString();
+                TypeMirror type = header.parameter().asType();
+                boolean isList = CommonUtils.isCollection(type);
+                if (isList) {
+                    type = ((DeclaredType) type).getTypeArguments().get(0);
+                    var paramName = "_" + targetLiteral + "_element";
+                    b.beginControlFlow("for (var $L : $L)", paramName, targetLiteral);
+                    targetLiteral = paramName;
+                }
+
+                if (requiresConverter(type)) {
+                    b.addCode("_requestBuilder.header($S, $L.convert($L));\n", header.headerName(), getConverterName(methodData, header.parameter()), targetLiteral);
                 } else {
-                    b.addCode("_requestBuilder.header($S, $T.toString($L));\n", header.headerName(), Objects.class, header.parameter());
+                    b.addCode("_requestBuilder.header($S, $T.toString($L));\n", header.headerName(), Objects.class, targetLiteral);
+                }
+
+                if (isList) {
+                    b.endControlFlow();
                 }
 
                 if (nullable) {
@@ -126,7 +138,7 @@ public class ClientClassGenerator {
                 }
                 String targetLiteral = query.parameter().getSimpleName().toString();
                 TypeMirror type = query.parameter().asType();
-                boolean isList = types.isSameType(types.erasure(type), this.listTypeErasure);
+                boolean isList = CommonUtils.isCollection(type);
                 if (isList) {
                     type = ((DeclaredType) type).getTypeArguments().get(0);
                     var paramName = "_" + targetLiteral + "_element";
@@ -514,7 +526,7 @@ public class ClientClassGenerator {
                 }
                 if (parameter instanceof Parameter.QueryParameter queryParameter) {
                     TypeMirror type = queryParameter.parameter().asType();
-                    if (types.isSameType(types.erasure(type), this.listTypeErasure)) {
+                    if (CommonUtils.isCollection(type)) {
                         type = ((DeclaredType) type).getTypeArguments().get(0);
                     }
 
@@ -527,6 +539,10 @@ public class ClientClassGenerator {
                 }
                 if (parameter instanceof Parameter.HeaderParameter headerParameter) {
                     TypeMirror type = headerParameter.parameter().asType();
+                    if (CommonUtils.isCollection(type)) {
+                        type = ((DeclaredType) type).getTypeArguments().get(0);
+                    }
+
                     if (requiresConverter(type)) {
                         result.put(
                             getConverterName(method, headerParameter.parameter()),

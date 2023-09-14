@@ -29,6 +29,7 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.extendsKeepAop
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.hasAopAnnotations
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.overridingKeepAop
+import ru.tinkoff.kora.ksp.common.CommonClassNames.isCollection
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.writeTagValue
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.findRepeatableAnnotation
@@ -86,7 +87,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
                     is Parameter.QueryParameter -> {
                         var parameterType = parameter.parameter.type.resolve()
-                        if (isIterable(parameterType)) {
+                        if (parameterType.isCollection()) {
                             parameterType = parameterType.arguments[0].type?.resolve() ?: return@forEach
                         }
 
@@ -96,7 +97,11 @@ class ClientClassGenerator(private val resolver: Resolver) {
                     }
 
                     is Parameter.HeaderParameter -> {
-                        val parameterType = parameter.parameter.type.resolve()
+                        var parameterType = parameter.parameter.type.resolve()
+                        if (parameterType.isCollection()) {
+                            parameterType = parameterType.arguments[0].type?.resolve() ?: return@forEach
+                        }
+
                         if (requiresConverter(parameterType)) {
                             result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
                         }
@@ -168,26 +173,57 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 }
             }
             if (parameter is Parameter.HeaderParameter) {
-                val parameterType = parameter.parameter.type.resolve()
-                if (parameterType.isMarkedNullable) {
-                    b.addCode("if (%L != null) ", parameter.parameter.name!!.asString())
-                }
-                if (!requiresConverter(parameterType)) {
-                    b.addStatement("_requestBuilder.header(%S, %T.toString(%L))", parameter.headerName, Objects::class, parameter.parameter.name!!.asString())
-                } else {
-                    b.addStatement("_requestBuilder.header(%S, %L.convert(%L))", parameter.headerName, getConverterName(methodData, parameter.parameter), parameter.parameter.name!!.asString())
-                }
-            }
-            if (parameter is Parameter.QueryParameter) {
                 var parameterType = parameter.parameter.type.resolve()
                 var literalName = parameter.parameter.name!!.asString()
-                val iterable = isIterable(parameterType)
+                val iterable = parameterType.isCollection()
                 val nullable = parameterType.isMarkedNullable
 
                 if (nullable) {
                     b.beginControlFlow("if (%N != null)", literalName)
                 }
 
+                if (iterable) {
+                    val argType = parameterType.arguments[0].type?.resolve()
+                    val iteratorName = literalName + "_iterator"
+                    val paramName = "_" + literalName + "_element"
+                    b.addStatement("val %N = %N.iterator()", iteratorName, literalName)
+                        .beginControlFlow("while (%N.hasNext())", parameter.parameter.name!!.asString() + "_iterator")
+                        .addStatement("val %N = %N.next()", paramName, iteratorName)
+                    literalName = paramName
+
+                    if (argType != null) {
+                        parameterType = argType
+                        if (argType.isMarkedNullable) {
+                            b.addCode("if (%L != null) ", literalName)
+                        }
+                    }
+                }
+
+                if (!requiresConverter(parameterType)) {
+                    b.addStatement("_requestBuilder.header(%S, %T.toString(%L))", parameter.headerName, Objects::class, literalName)
+                } else {
+                    b.addStatement("_requestBuilder.header(%S, %L.convert(%L))",
+                        parameter.headerName,
+                        getConverterName(methodData, parameter.parameter),
+                        literalName)
+                }
+
+                if (iterable) {
+                    b.endControlFlow().addCode("\n")
+                }
+                if (nullable) {
+                    b.endControlFlow()
+                }
+            }
+            if (parameter is Parameter.QueryParameter) {
+                var parameterType = parameter.parameter.type.resolve()
+                var literalName = parameter.parameter.name!!.asString()
+                val iterable = parameterType.isCollection()
+                val nullable = parameterType.isMarkedNullable
+
+                if (nullable) {
+                    b.beginControlFlow("if (%N != null)", literalName)
+                }
 
                 if (iterable) {
                     val argType = parameterType.arguments[0].type?.resolve()
