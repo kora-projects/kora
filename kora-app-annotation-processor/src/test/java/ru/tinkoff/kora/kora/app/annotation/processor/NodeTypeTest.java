@@ -23,7 +23,7 @@ public class NodeTypeTest extends AbstractKoraAppTest {
             }
             """);
         assertThat(draw.getNodes()).hasSize(2);
-        var root = draw.init().block().get(draw.getNodes().get(1));
+        var root = draw.init().get(draw.getNodes().get(1));
         var nodeType = (ParameterizedType) draw.getNodes().get(0).type();
         assertThat(nodeType.getRawType()).isEqualTo(Map.class);
         assertThat(nodeType.getActualTypeArguments()).containsExactly(String.class, root.getClass());

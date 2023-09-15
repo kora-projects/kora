@@ -96,7 +96,7 @@ open class AppRunner : Assertions() {
             val classLoader = getClassLoader(getProcessors(), classes)
             val clazz = classLoader.loadClass(app.qualifiedName + "Graph")
             val graphDraw = (clazz.constructors.first().newInstance() as Supplier<ApplicationGraphDraw>).get()
-            val graph = graphDraw.init().block()!!
+            val graph = graphDraw.init()
             InitializedGraph(graphDraw, graph)
         } catch (e: Exception) {
             throw e

@@ -10,6 +10,7 @@ import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils.CompilationErrorException;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Node;
+import ru.tinkoff.kora.application.graph.internal.NodeImpl;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.kora.app.annotation.processor.app.*;
 
@@ -39,7 +40,7 @@ class KoraAppProcessorTest {
     @Test
     void testGenericCase() throws Throwable {
         var graphDraw = testClass(AppWithComponents.class);
-        var graph = graphDraw.init().block();
+        var graph = graphDraw.init();
         Assertions.assertThat(graphDraw.getNodes()).hasSize(5);
     }
 
@@ -47,7 +48,8 @@ class KoraAppProcessorTest {
     void testOptionalComponents() throws Throwable {
         var graphDraw = testClass(AppWithOptionalComponents.class);
 
-        var graph = graphDraw.init().block();
+        var graph = graphDraw.init();
+
         Assertions.assertThat(graphDraw.getNodes()).hasSize(9);
 
         Assertions.assertThat(graph.get(findNodeOf(graphDraw, AppWithOptionalComponents.NotEmptyOptionalParameter.class)).value()).isNotNull();
@@ -84,7 +86,7 @@ class KoraAppProcessorTest {
         var node1 = graphDraw.getNodes().get(0);
         var node2 = graphDraw.getNodes().get(1);
         var node3 = graphDraw.getNodes().get(2);
-        var graph = graphDraw.init().block();
+        var graph = graphDraw.init();
         var value1 = graph.get(node1);
         var value2 = graph.get(node2);
         var value3 = graph.get(node3);
@@ -95,13 +97,14 @@ class KoraAppProcessorTest {
         var graphDraw = testClass(AppWithAllOfValueOf.class);
         var node1 = graphDraw.getNodes().get(0);
         var node2 = graphDraw.getNodes().get(1);
-        assertThat(node1.getDependentNodes()).hasSize(1);
+        assertThat(((NodeImpl<?>) node1).getDependentNodes()).hasSize(1);
 
-        var graph = graphDraw.init().block();
+        var graph = graphDraw.init();
+
         var node1Value1 = graph.get(node1);
         var node2Value1 = graph.get(node2);
 
-        graph.refresh(node1).block();
+        graph.refresh(node1);
 
         var node1Value2 = graph.get(node1);
         var node2Value2 = graph.get(node2);
@@ -113,7 +116,7 @@ class KoraAppProcessorTest {
     void appWithAllOf() throws Throwable {
         var graphDraw = testClass(AppWithAllOfComponents.class);
         Assertions.assertThat(graphDraw.getNodes()).hasSize(12);
-        var graph = graphDraw.init().block();
+        var graph = graphDraw.init();
 
         var classWithNonTaggedAllOf = this.findNodesOf(graphDraw, AppWithAllOfComponents.ClassWithAllOf.class, AppWithAllOfComponents.Superclass.class);
         Assertions.assertThat(classWithNonTaggedAllOf).hasSize(1);
@@ -176,24 +179,24 @@ class KoraAppProcessorTest {
     void appWithComonentDescriptorCollision() throws Throwable {
         var graphDraw = testClass(AppWithComponentCollision.class);
         Assertions.assertThat(graphDraw.getNodes()).hasSize(3);
-        var materializedGraph = graphDraw.init().block();
+        var materializedGraph = graphDraw.init();
         Assertions.assertThat(materializedGraph).isNotNull();
     }
 
 
     @Test
     void appWithFactory() throws Throwable {
-        testClass(AppWithFactories1.class).init().block();
-        testClass(AppWithFactories2.class).init().block();
-        testClass(AppWithFactories3.class).init().block();
-        testClass(AppWithFactories4.class).init().block();
-//        testClass(AppWithFactories5.class).init().block(); TODO больше не нужно
+        testClass(AppWithFactories1.class).init();
+        testClass(AppWithFactories2.class).init();
+        testClass(AppWithFactories3.class).init();
+        testClass(AppWithFactories4.class).init();
+//        testClass(AppWithFactories5.class).init();; TODO больше не нужно
         assertThatThrownBy(() -> testClass(AppWithFactories6.class))
             .isInstanceOf(CompilationErrorException.class)
             .hasMessageStartingWith("There's a cycle in graph:");
-        testClass(AppWithFactories7.class).init().block();
-        testClass(AppWithFactories8.class).init().block();
-        testClass(AppWithFactories9.class).init().block();
+        testClass(AppWithFactories7.class).init();
+        testClass(AppWithFactories8.class).init();
+        testClass(AppWithFactories9.class).init();
         assertThatThrownBy(() -> testClass(AppWithFactories10.class))
             .isInstanceOf(CompilationErrorException.class)
             .hasMessageStartingWith("Required dependency type was not found and can't be auto created: java.io.Closeable")
@@ -228,14 +231,14 @@ class KoraAppProcessorTest {
 //                    """.stripTrailing());
 //
 //            });
-        testClass(AppWithFactories12.class).init().block();
+        testClass(AppWithFactories12.class).init();
     }
 
     @Test
     void appWithExtension() throws Throwable {
         var graphDraw = testClass(AppWithExtension.class);
         Assertions.assertThat(graphDraw.getNodes()).hasSize(3);
-        var materializedGraph = graphDraw.init().block();
+        var materializedGraph = graphDraw.init();
         Assertions.assertThat(materializedGraph).isNotNull();
     }
 
@@ -243,7 +246,7 @@ class KoraAppProcessorTest {
     void extensionShouldHandleAnnotationsItProvidesAnnotationProcessorFor() throws Throwable {
         var graphDraw = testClass(AppWithProcessorExtension.class, List.of(new AppWithProcessorExtension.TestProcessor()));
         Assertions.assertThat(graphDraw.getNodes()).hasSize(2);
-        var materializedGraph = graphDraw.init().block();
+        var materializedGraph = graphDraw.init();
         Assertions.assertThat(materializedGraph).isNotNull();
     }
 
@@ -265,7 +268,7 @@ class KoraAppProcessorTest {
     void appWithMultipleTags() throws Throwable {
         var graphDraw = testClass(AppWithMultipleTags.class);
         Assertions.assertThat(graphDraw.getNodes()).hasSize(12);
-        var graph = graphDraw.init().block();
+        var graph = graphDraw.init();
         Assertions.assertThat(graph).isNotNull();
 
         var nonTaggedClass3 = findNodesOf(graphDraw, AppWithMultipleTags.Class3.class);
@@ -293,7 +296,7 @@ class KoraAppProcessorTest {
     void appWithWrappedComponent() throws Exception {
         var graphDraw = testClass(AppWithWrappedDependency.class);
         Assertions.assertThat(graphDraw.getNodes()).hasSize(7);
-        var materializedGraph = graphDraw.init().block();
+        var materializedGraph = graphDraw.init();
         Assertions.assertThat(materializedGraph).isNotNull();
     }
 
@@ -301,7 +304,7 @@ class KoraAppProcessorTest {
     void appWithNestedClasses() throws Exception {
         var graphDraw = testClass(AppWithNestedClasses.class);
         Assertions.assertThat(graphDraw.getNodes()).hasSize(2);
-        var materializedGraph = graphDraw.init().block();
+        var materializedGraph = graphDraw.init();
         Assertions.assertThat(materializedGraph).isNotNull();
     }
 
@@ -309,7 +312,7 @@ class KoraAppProcessorTest {
     void appWithLazyComponents() throws Exception {
         var graphDraw = testClass(AppWithLazyComponents.class);
         Assertions.assertThat(graphDraw.getNodes()).hasSize(3);
-        var materializedGraph = graphDraw.init().block();
+        var materializedGraph = graphDraw.init();
         Assertions.assertThat(materializedGraph).isNotNull();
     }
 
@@ -317,7 +320,7 @@ class KoraAppProcessorTest {
     void appWithModuleOf() throws Exception {
         var graphDraw = testClass(AppWithModuleOf.class);
         Assertions.assertThat(graphDraw.getNodes()).hasSize(2);
-        var materializedGraph = graphDraw.init().block();
+        var materializedGraph = graphDraw.init();
         Assertions.assertThat(materializedGraph).isNotNull();
     }
 
@@ -325,7 +328,7 @@ class KoraAppProcessorTest {
     void appWithClassWithComponentOf() throws Exception {
         var graphDraw = testClass(AppWithClassWithComponentOf.class);
         Assertions.assertThat(graphDraw.getNodes()).hasSize(5);
-        var materializedGraph = graphDraw.init().block();
+        var materializedGraph = graphDraw.init();
         Assertions.assertThat(materializedGraph).isNotNull();
     }
 
@@ -333,20 +336,20 @@ class KoraAppProcessorTest {
     void appWithPromiseOf() throws Exception {
         var graphDraw = testClass(AppWithPromiseOf.class);
         Assertions.assertThat(graphDraw.getNodes()).hasSize(6);
-        var materializedGraph = graphDraw.init().block();
+        var materializedGraph = graphDraw.init();
         Assertions.assertThat(materializedGraph).isNotNull();
 
-        materializedGraph.release().block();
+        materializedGraph.release();
     }
 
     @Test
     void appWithOverridenModule() throws Exception {
         var graphDraw = testClass(AppWithOverridenModule.class);
         Assertions.assertThat(graphDraw.getNodes()).hasSize(2);
-        var materializedGraph = graphDraw.init().block();
+        var materializedGraph = graphDraw.init();
         Assertions.assertThat(materializedGraph).isNotNull();
 
-        materializedGraph.release().block();
+        materializedGraph.release();
     }
 
     @Test
@@ -380,7 +383,7 @@ class KoraAppProcessorTest {
     void appWithDefaultComponent() throws Throwable {
         var graphDraw = testClass(AppWithDefaultComponent.class);
         Assertions.assertThat(graphDraw.getNodes()).hasSize(3);
-        var graph = graphDraw.init().block();
+        var graph = graphDraw.init();
         Assertions.assertThat(graph).isNotNull();
 
         var class1Nodes = findNodesOf(graphDraw, AppWithDefaultComponent.Class1.class);
@@ -401,7 +404,7 @@ class KoraAppProcessorTest {
 
     @SuppressWarnings("unchecked")
     <T> List<Node<? extends T>> findNodesOf(ApplicationGraphDraw graphDraw, Class<T> type, Class<?>... tags) {
-        var graph = graphDraw.init().block();
+        var graph = graphDraw.init();
         var anyTag = Arrays.asList(tags).contains(Tag.Any.class);
         var nonTagged = tags.length == 0;
         return graphDraw.getNodes().stream()

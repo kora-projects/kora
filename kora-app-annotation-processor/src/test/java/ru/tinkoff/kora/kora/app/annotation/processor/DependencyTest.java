@@ -29,7 +29,7 @@ public class DependencyTest extends AbstractKoraAppTest {
             }
             """);
         assertThat(draw.getNodes()).hasSize(6);
-        draw.init().block();
+        draw.init();
     }
 
     @Test
@@ -50,7 +50,7 @@ public class DependencyTest extends AbstractKoraAppTest {
             }
             """);
         assertThat(draw.getNodes()).hasSize(6);
-        draw.init().block();
+        draw.init();
     }
 
     @Test
@@ -72,7 +72,7 @@ public class DependencyTest extends AbstractKoraAppTest {
             }
             """);
         assertThat(draw.getNodes()).hasSize(6);
-        draw.init().block();
+        draw.init();
     }
 
     @Test
@@ -98,7 +98,7 @@ public class DependencyTest extends AbstractKoraAppTest {
             }
             """);
         assertThat(draw.getNodes()).hasSize(9);
-        draw.init().block();
+        draw.init();
     }
 
     @Test
@@ -123,7 +123,7 @@ public class DependencyTest extends AbstractKoraAppTest {
             }
             """);
         assertThat(draw.getNodes()).hasSize(5);
-        draw.init().block();
+        draw.init();
     }
 
     @Test
@@ -148,7 +148,7 @@ public class DependencyTest extends AbstractKoraAppTest {
             }
             """);
         assertThat(draw.getNodes()).hasSize(5);
-        draw.init().block();
+        draw.init();
     }
 
     @Test
@@ -174,7 +174,7 @@ public class DependencyTest extends AbstractKoraAppTest {
             }
             """);
         assertThat(draw.getNodes()).hasSize(5);
-        draw.init().block();
+        draw.init();
     }
 
     @Test
@@ -202,7 +202,7 @@ public class DependencyTest extends AbstractKoraAppTest {
             }
             """);
         assertThat(draw.getNodes()).hasSize(6);
-        draw.init().block();
+        draw.init();
     }
 
     @Test
@@ -217,7 +217,7 @@ public class DependencyTest extends AbstractKoraAppTest {
             }
             """);
         assertThat(draw.getNodes()).hasSize(2);
-        draw.init().block();
+        draw.init();
     }
 
     @Test
@@ -233,7 +233,7 @@ public class DependencyTest extends AbstractKoraAppTest {
             }
             """);
         assertThat(draw.getNodes()).hasSize(2);
-        draw.init().block();
+        draw.init();
     }
 
     @Test
@@ -275,7 +275,7 @@ public class DependencyTest extends AbstractKoraAppTest {
             }
             """);
         Assertions.assertThat(draw.getNodes()).hasSize(4);
-        draw.init().block();
+        draw.init();
     }
 
 }

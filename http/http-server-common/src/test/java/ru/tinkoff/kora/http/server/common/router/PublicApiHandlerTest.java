@@ -155,8 +155,7 @@ class PublicApiHandlerTest {
             }
 
             @Override
-            public Mono<Void> refresh() {
-                return Mono.empty();
+            public void refresh() {
             }
         };
     }

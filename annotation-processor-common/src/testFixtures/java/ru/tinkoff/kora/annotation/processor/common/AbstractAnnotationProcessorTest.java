@@ -185,7 +185,7 @@ public abstract class AbstractAnnotationProcessorTest {
 
         public GraphContainer(ApplicationGraphDraw draw) {
             this.draw = draw;
-            this.graph = draw.init().block();
+            this.graph = draw.init();
         }
 
         @Nullable

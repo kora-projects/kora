@@ -54,7 +54,7 @@ class TransactionalProducerImplTest {
             uncommitted.assign(Set.of(topicPartition));
             committed.poll(Duration.ofMillis(100));
             uncommitted.poll(Duration.ofMillis(100));
-            p.init().block();
+            p.init();
             try (var tx = p.begin()) {
                 tx.send(params.producerRecord(testTopic, key, "value1".getBytes(StandardCharsets.UTF_8))).get();
                 tx.send(params.producerRecord(testTopic, key, "value1".getBytes(StandardCharsets.UTF_8))).get();
@@ -83,7 +83,7 @@ class TransactionalProducerImplTest {
             assertThat(uncommitted.poll(Duration.ofSeconds(1))).hasSize(6);
             assertThat(committed.poll(Duration.ofSeconds(1))).hasSize(3);
         } finally {
-            p.release().block();
+            p.release();
         }
     }
 }

@@ -177,18 +177,13 @@ public class KafkaPublisherAnnotationProcessor extends AbstractKoraProcessor {
             .addMethod(MethodSpec.methodBuilder("init")
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addAnnotation(Override.class)
-                .returns(ParameterizedTypeName.get(CommonClassNames.mono, TypeName.VOID.box()))
-                .addCode("return ru.tinkoff.kora.common.util.ReactorUtils.ioMono(() -> {$>\n")
                 .addCode("var properties = this.config.driverProperties();\n")// todo process some props?
                 .addCode("this.delegate = new $T<>(properties, this.keySerializer, this.valueSerializer);\n", KafkaClassNames.kafkaProducer)
                 .addCode("this.telemetry = this.telemetryFactory.get(this.delegate, properties);\n", KafkaClassNames.kafkaProducer)
-                .addCode("$<\n});\n")
                 .build())
             .addMethod(MethodSpec.methodBuilder("release")
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addAnnotation(Override.class)
-                .returns(ParameterizedTypeName.get(CommonClassNames.mono, TypeName.VOID.box()))
-                .addCode("return ru.tinkoff.kora.common.util.ReactorUtils.ioMono(() -> {$>\n")
                 .beginControlFlow("if (this.delegate != null)")
                 .addStatement("this.delegate.close()")
                 .addStatement("this.delegate = null")
@@ -197,7 +192,6 @@ public class KafkaPublisherAnnotationProcessor extends AbstractKoraProcessor {
                 .addStatement("this.telemetry = null")
                 .endControlFlow()
                 .endControlFlow()
-                .addCode("$<\n});\n")
                 .build());
         for (var enclosedElement : this.elements.getTypeElement(KafkaClassNames.producer.canonicalName()).getEnclosedElements()) {
             if (enclosedElement instanceof ExecutableElement method) {
@@ -261,14 +255,12 @@ public class KafkaPublisherAnnotationProcessor extends AbstractKoraProcessor {
             .addMethod(MethodSpec.methodBuilder("init")
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addAnnotation(Override.class)
-                .returns(ParameterizedTypeName.get(CommonClassNames.mono, WildcardTypeName.subtypeOf(TypeName.OBJECT)))
-                .addStatement("return this.delegate.init()")
+                .addStatement("this.delegate.init()")
                 .build())
             .addMethod(MethodSpec.methodBuilder("release")
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addAnnotation(Override.class)
-                .returns(ParameterizedTypeName.get(CommonClassNames.mono, WildcardTypeName.subtypeOf(TypeName.OBJECT)))
-                .addStatement("return this.delegate.release()")
+                .addStatement("this.delegate.release()")
                 .build());
 
         JavaFile.builder(packageName, b.build())

@@ -71,8 +71,8 @@ public abstract class HttpClientTest extends HttpClientTestBase {
         var authority = "localhost:" + server.getPort();
         verify(this.logger).logRequest(eq(authority), eq(POST), eq("POST /"), eq("http://" + authority + "/"), ArgumentMatchers.argThat(a ->
                 a.getFirst("traceparent").startsWith("00-" + rootSpan.getSpanContext().getTraceId())
-                && !a.getFirst("traceparent").contains(rootSpan.getSpanContext().getSpanId())
-                && a.getFirst("content-type").equals("text/plain; charset=UTF-8")),
+                    && !a.getFirst("traceparent").contains(rootSpan.getSpanContext().getSpanId())
+                    && a.getFirst("content-type").equals("text/plain; charset=UTF-8")),
             eq("test-request"));
         verify(this.metrics).record(eq(200), ArgumentMatchers.longThat(l -> l > 0), eq("POST"), eq("localhost"), eq("http"), eq("/"));
     }
@@ -222,7 +222,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
 
     @ParameterizedTest
     @EnumSource
-    protected void testConnectionError(CallType type) {
+    protected void testConnectionError(CallType type) throws Exception {
         ctx.getLogger("ru.tinkoff.kora.http.client").setLevel(Level.OFF);
 
         var request = HttpClientRequest.post("http://google.com:1488/")
@@ -240,13 +240,13 @@ public abstract class HttpClientTest extends HttpClientTestBase {
 
         try {
             if (base instanceof Lifecycle lifecycle) {
-                lifecycle.init().block();
+                lifecycle.init();
             }
             assertThatThrownBy(() -> call(client, type, request))
                 .isInstanceOf(HttpClientConnectionException.class);
         } finally {
             if (base instanceof Lifecycle lifecycle) {
-                lifecycle.release().block();
+                lifecycle.release();
             }
         }
 

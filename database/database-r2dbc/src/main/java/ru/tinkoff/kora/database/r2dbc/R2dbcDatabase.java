@@ -192,13 +192,13 @@ public class R2dbcDatabase implements R2dbcConnectionFactory, Lifecycle {
     }
 
     @Override
-    public Mono<Void> init() {
-        return this.connectionFactory.warmup().then();
+    public void init() {
+        this.connectionFactory.warmup().block();
     }
 
     @Override
-    public Mono<Void> release() {
-        return this.connectionFactory.disposeLater();
+    public void release() {
+        this.connectionFactory.dispose();
     }
 
 }

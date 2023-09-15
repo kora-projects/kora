@@ -6,7 +6,6 @@ import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.LifecycleWrapper;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.config.common.Config;
@@ -22,7 +21,7 @@ public interface OpentelemetryGrpcExporterModule extends NettyCommonModule, Open
     @DefaultComponent
     default LifecycleWrapper<SpanExporter> spanExporter(OpentelemetryGrpcExporterConfig exporterConfig, EventLoopGroup eventLoopGroup) throws URISyntaxException {
         if (!(exporterConfig instanceof OpentelemetryGrpcExporterConfig.FromConfig config)) {
-            return new LifecycleWrapper<>(SpanExporter.composite(), v -> Mono.empty(), v -> Mono.empty());
+            return new LifecycleWrapper<>(SpanExporter.composite(), v -> {}, v -> {});
         }
         var uri = new URI(config.endpoint());
         final NettyChannelBuilder managedChannelBuilder = NettyChannelBuilder.forTarget(uri.getAuthority());
@@ -42,7 +41,7 @@ public interface OpentelemetryGrpcExporterModule extends NettyCommonModule, Open
             .setTimeout(config.exportTimeout())
             .setChannel(channel)
             .build();
-        return new LifecycleWrapper<>(exporter, e -> Mono.empty(), e -> Mono.fromRunnable(e::close));
+        return new LifecycleWrapper<>(exporter, e -> {}, SpanExporter::close);
     }
 
     default OpentelemetryGrpcExporterConfig otlpGrpcSpanExporterConfig(Config config, ConfigValueExtractor<OpentelemetryGrpcExporterConfig.FromConfig> extractor) {
@@ -56,7 +55,7 @@ public interface OpentelemetryGrpcExporterModule extends NettyCommonModule, Open
     @DefaultComponent
     default LifecycleWrapper<SpanProcessor> spanProcessor(OpentelemetryGrpcExporterConfig exporterConfig, SpanExporter spanExporter) {
         if (!(exporterConfig instanceof OpentelemetryGrpcExporterConfig.FromConfig config)) {
-            return new LifecycleWrapper<>(SpanProcessor.composite(), v -> Mono.empty(), v -> Mono.empty());
+            return new LifecycleWrapper<>(SpanProcessor.composite(), v -> {}, v -> {});
         }
         var spanProcessor = BatchSpanProcessor.builder(spanExporter)
             .setExporterTimeout(config.exportTimeout())
@@ -64,6 +63,6 @@ public interface OpentelemetryGrpcExporterModule extends NettyCommonModule, Open
             .setMaxQueueSize(config.maxQueueSize())
             .setScheduleDelay(config.scheduleDelay())
             .build();
-        return new LifecycleWrapper<>(spanProcessor, p -> Mono.empty(), p -> Mono.fromRunnable(p::close));
+        return new LifecycleWrapper<>(spanProcessor, p -> {}, SpanProcessor::close);
     }
 }

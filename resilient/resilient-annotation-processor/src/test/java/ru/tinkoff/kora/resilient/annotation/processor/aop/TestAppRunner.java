@@ -35,7 +35,7 @@ public abstract class TestAppRunner extends Assertions {
             var clazz = classLoader.loadClass(app.getName() + "Graph");
             var constructors = (Constructor<? extends Supplier<? extends ApplicationGraphDraw>>[]) clazz.getConstructors();
             var graphDraw = constructors[0].newInstance().get();
-            return new InitializedGraph(graphDraw.init().block(), graphDraw);
+            return new InitializedGraph(graphDraw.init(), graphDraw);
         } catch (Exception e) {
             if (e.getCause() != null) {
                 throw new IllegalStateException(e.getCause());

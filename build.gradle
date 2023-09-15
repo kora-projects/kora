@@ -212,6 +212,7 @@ subprojects {
 
     dependencies {
         api libs.jsr305
+        api libs.jakarta.annotations
 
         testImplementation project(":internal:test-logging")
         testImplementation libs.junit.jupiter

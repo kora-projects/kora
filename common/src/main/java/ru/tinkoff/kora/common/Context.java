@@ -2,7 +2,6 @@ package ru.tinkoff.kora.common;
 
 import kotlin.coroutines.CoroutineContext;
 import kotlinx.coroutines.ThreadContextElementKt;
-import kotlinx.coroutines.reactor.ReactorContextKt;
 import ru.tinkoff.kora.common.util.CoroutineContextElement;
 import ru.tinkoff.kora.common.util.ReactorContextHook;
 
@@ -93,13 +92,6 @@ public class Context {
             }
         }
 
-        public static CoroutineContext inject(CoroutineContext cctx, Context context) {
-            var reactorContext = Reactor.inject(reactor.util.context.Context.of(Context.class, cctx), context);
-            var coroutineContext = (CoroutineContext) (Object) ReactorContextKt.asCoroutineContext(reactorContext);
-
-            return cctx.plus(coroutineContext).plus(asCoroutineContext(context));
-        }
-
         public static CoroutineContext asCoroutineContext(Context ctx) {
             return ThreadContextElementKt.asContextElement(INSTANCE, ctx);
         }
@@ -137,6 +129,9 @@ public class Context {
     }
 
     static {
-        ReactorContextHook.init();
+        try {
+            ReactorContextHook.init();
+        } catch (NoClassDefFoundError ignore) {
+        }
     }
 }

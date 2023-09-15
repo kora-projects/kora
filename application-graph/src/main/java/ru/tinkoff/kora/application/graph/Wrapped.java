@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.application.graph;
 
-import reactor.core.publisher.Mono;
-
 public interface Wrapped<T> {
     T value();
 
@@ -22,8 +20,8 @@ public interface Wrapped<T> {
         }
 
         @Override
-        public Mono<Void> refresh() {
-            return this.value.refresh();
+        public void refresh() {
+            this.value.refresh();
         }
     }
 }

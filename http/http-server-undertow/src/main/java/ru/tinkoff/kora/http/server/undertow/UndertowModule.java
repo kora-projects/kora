@@ -3,7 +3,6 @@ package ru.tinkoff.kora.http.server.undertow;
 import io.undertow.Undertow;
 import org.xnio.Xnio;
 import org.xnio.XnioWorker;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.LifecycleWrapper;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.application.graph.Wrapped;
@@ -37,10 +36,9 @@ public interface UndertowModule extends HttpServerModule {
             .setDaemon(false)
             .setWorkerName("kora-undertow")
             .build();
-        return new LifecycleWrapper<>(worker, v -> Mono.empty(), v -> Mono.fromCallable(() -> {
+        return new LifecycleWrapper<>(worker, v -> {}, v -> {
             worker.shutdown();
             worker.awaitTermination(1, TimeUnit.MINUTES);
-            return null;
-        }));
+        });
     }
 }

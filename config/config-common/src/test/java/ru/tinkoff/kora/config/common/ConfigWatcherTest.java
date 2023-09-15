@@ -6,7 +6,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.config.common.factory.MapConfigFactory;
 import ru.tinkoff.kora.config.common.origin.ContainerConfigOrigin;
@@ -40,14 +39,14 @@ class ConfigWatcherTest {
     void setUp() throws InterruptedException {
         ((LoggerContext) LoggerFactory.getILoggerFactory()).getLogger(ConfigWatcher.class).setLevel(Level.TRACE);
         System.setProperty("config.file", configFile.toString());
-        this.configWatcher.init().block();
+        this.configWatcher.init();
         Thread.sleep(100);
     }
 
     @AfterEach
     void tearDown() {
         ((LoggerContext) LoggerFactory.getILoggerFactory()).getLogger(ConfigWatcher.class).setLevel(null);
-        this.configWatcher.release().block();
+        this.configWatcher.release();
         System.clearProperty("config.file");
     }
 
@@ -137,8 +136,12 @@ class ConfigWatcherTest {
             }
 
             @Override
-            public Mono<Void> refresh() {
-                return Mono.fromCallable(() -> this.config = this.load()).then();
+            public void refresh() {
+                try {
+                    this.config = this.load();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }
 
             private Config load() throws IOException {

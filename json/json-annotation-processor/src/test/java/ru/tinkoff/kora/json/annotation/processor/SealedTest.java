@@ -238,7 +238,7 @@ public class SealedTest extends AbstractJsonAnnotationProcessorTest {
         compileResult.assertSuccess();
         var supplier = (Supplier<ApplicationGraphDraw>) newObject("TestAppGraph");
         var draw = supplier.get();
-        var graph = draw.init().block();
+        var graph = draw.init();
         var rc = compileResult.loadClass("$TestInterfaceJsonReader");
         JsonReader<Object> reader = null;
         for (var node : draw.getNodes()) {
@@ -278,7 +278,7 @@ public class SealedTest extends AbstractJsonAnnotationProcessorTest {
         compileResult.assertSuccess();
         var supplier = (Supplier<ApplicationGraphDraw>) newObject("TestAppGraph");
         var draw = supplier.get();
-        var graph = draw.init().block();
+        var graph = draw.init();
         var wc = compileResult.loadClass("$TestInterfaceJsonWriter");
         JsonWriter<Object> writer = null;
         for (var node : draw.getNodes()) {

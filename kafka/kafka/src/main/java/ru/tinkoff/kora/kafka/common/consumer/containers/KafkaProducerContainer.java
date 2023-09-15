@@ -2,7 +2,6 @@ package ru.tinkoff.kora.kafka.common.consumer.containers;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.common.serialization.Serializer;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
 
@@ -29,13 +28,14 @@ public final class KafkaProducerContainer<K, V> implements Lifecycle, Wrapped<Ka
     }
 
     @Override
-    public Mono<Void> init() {
-        return Mono.fromRunnable(() -> producer = new KafkaProducer<>(properties, keySerializer, valueSerializer));
+    public void init() {
+        producer = new KafkaProducer<>(properties, keySerializer, valueSerializer);
     }
 
     @Override
-    public Mono<Void> release() {
-        return Mono.fromRunnable(() -> producer.close());
+    public void release() {
+        producer.close();
+        producer = null;
     }
 
     public KafkaProducer<K, V> producer() {

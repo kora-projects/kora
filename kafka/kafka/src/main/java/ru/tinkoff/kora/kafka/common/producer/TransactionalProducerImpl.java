@@ -5,9 +5,7 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.errors.TimeoutException;
 import org.apache.kafka.common.serialization.Serializer;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.Lifecycle;
-import ru.tinkoff.kora.common.util.ReactorUtils;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerTelemetry;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerTelemetryFactory;
 
@@ -118,19 +116,16 @@ public final class TransactionalProducerImpl<K, V> implements TransactionalProdu
     }
 
     @Override
-    public Mono<?> init() {
-        return Mono.empty();
+    public void init() {
     }
 
     @Override
-    public Mono<?> release() {
-        return ReactorUtils.ioMono(() -> {
-            if (this.isClosed.compareAndSet(false, true)) {
-                for (var p : this.pool) {
-                    p.producer().close();
-                    p.telemetry().close();
-                }
+    public void release() {
+        if (this.isClosed.compareAndSet(false, true)) {
+            for (var p : this.pool) {
+                p.producer().close();
+                p.telemetry().close();
             }
-        });
+        }
     }
 }

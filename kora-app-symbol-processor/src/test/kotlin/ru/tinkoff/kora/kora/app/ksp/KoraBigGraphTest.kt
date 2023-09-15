@@ -26,6 +26,6 @@ class KoraBigGraphTest : AbstractSymbolProcessorTest() {
         val `object` = appClass.getConstructor().newInstance() as Supplier<ApplicationGraphDraw>
         val draw = `object`.get()
         Assertions.assertThat(draw.nodes).hasSize(1500)
-        draw.init().block()
+        draw.init()
     }
 }

@@ -1,12 +1,9 @@
 package ru.tinkoff.kora.database.jdbc;
 
 import com.zaxxer.hikari.HikariDataSource;
-import reactor.core.Exceptions;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.common.Context;
-import ru.tinkoff.kora.common.util.ReactorUtils;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory;
 
@@ -52,19 +49,15 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
     }
 
     @Override
-    public Mono<Void> init() {
-        return ReactorUtils.ioMono(() -> {
-            try (var connection = this.dataSource.getConnection()) {
-                connection.isValid(1000);
-            } catch (SQLException e) {
-                throw Exceptions.propagate(e);
-            }
-        });
+    public void init() throws SQLException {
+        try (var connection = this.dataSource.getConnection()) {
+            connection.isValid(1000);
+        }
     }
 
     @Override
-    public Mono<Void> release() {
-        return ReactorUtils.ioMono(this.dataSource::close);
+    public void release() {
+        this.dataSource.close();
     }
 
     @Override

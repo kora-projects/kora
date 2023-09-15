@@ -1,15 +1,16 @@
 package ru.tinkoff.kora.application.graph;
 
-import reactor.core.publisher.Mono;
+import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.application.graph.internal.GraphImpl;
+import ru.tinkoff.kora.application.graph.internal.NodeImpl;
 
-import javax.annotation.Nullable;
 import java.lang.reflect.Type;
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class ApplicationGraphDraw {
 
-    private final List<Node<?>> graphNodes = new ArrayList<>();
+    private final List<NodeImpl<?>> graphNodes = new ArrayList<>();
     private final Class<?> root;
 
     public ApplicationGraphDraw(Class<?> root) {
@@ -24,34 +25,43 @@ public class ApplicationGraphDraw {
         return this.addNode0(type, tags, factory, List.of(), dependencies);
     }
 
-    public <T> Node<T> addNode0(Type type, Class<?>[] tags, Graph.Factory<? extends T> factory, List<Node<? extends GraphInterceptor<T>>> interceptors, Node<?>... dependencies) {
+    public <T> Node<T> addNode0(Type type, Class<?>[] tags, Graph.Factory<? extends T> factory, List<? extends Node<? extends GraphInterceptor<T>>> interceptors, Node<?>... dependencies) {
+        var dependenciesList = new ArrayList<NodeImpl<?>>();
         for (var dependency : dependencies) {
-            if (dependency.index >= 0 && dependency.graphDraw != this) {
+            dependenciesList.add((NodeImpl<?>) dependency);
+        }
+        var interceptorsList = new ArrayList<NodeImpl<? extends GraphInterceptor<T>>>();
+        for (var interceptor : interceptors) {
+            interceptorsList.add((NodeImpl<? extends GraphInterceptor<T>>) interceptor);
+        }
+        for (var dependency : dependencies) {
+            var node = (NodeImpl<?>) dependency;
+            if (node.index >= 0 && node.graphDraw != this) {
                 throw new IllegalArgumentException("Dependency is from another graph");
             }
         }
 
-        var node = new Node<>(this, this.graphNodes.size(), factory, type, List.of(dependencies), List.copyOf(interceptors), tags);
+        var node = new NodeImpl<>(this, this.graphNodes.size(), factory, type, dependenciesList, interceptorsList, tags);
         this.graphNodes.add(node);
-        for (var dependency : dependencies) {
+        for (var dependency : dependenciesList) {
             if (dependency.isValueOf()) {
-                dependency.addDependentNode(node.valueOf());
+                dependency.addDependentNode((NodeImpl<?>) node.valueOf());
             } else {
                 dependency.addDependentNode(node);
             }
         }
         for (var interceptor : interceptors) {
-            interceptor.intercepts(node);
+            var n = (NodeImpl<?>) interceptor;
+            n.intercepts(node);
         }
 
         return node;
     }
 
-    public Mono<RefreshableGraph> init() {
-        return Mono.defer(() -> {
-            var graph = new GraphImpl(this);
-            return graph.init().thenReturn(graph);
-        });
+    public RefreshableGraph init() {
+        var graph = new GraphImpl(this);
+        graph.init();
+        return graph;
     }
 
     public List<Node<?>> getNodes() {
@@ -89,11 +99,12 @@ public class ApplicationGraphDraw {
     }
 
     public <T> void replaceNode(Node<T> node, Graph.Factory<? extends T> factory) {
-        this.graphNodes.set(node.index, new Node<T>(
-            this, node.index, factory, node.type(), List.of(), List.of(), node.tags()
+        var casted = (NodeImpl<T>) node;
+        this.graphNodes.set(casted.index, new NodeImpl<T>(
+            this, casted.index, factory, node.type(), List.of(), List.of(), node.tags()
         ));
         for (var graphNode : graphNodes) {
-            graphNode.deleteDependentNode(node);
+            graphNode.deleteDependentNode(casted);
         }
     }
 
@@ -101,8 +112,8 @@ public class ApplicationGraphDraw {
         var draw = new ApplicationGraphDraw(this.root);
         for (var node : this.graphNodes) {
             class T {
-                static <T> void addNode(ApplicationGraphDraw draw, Node<T> node) {
-                    var dependencies = new Node<?>[node.getDependencyNodes().size()];
+                static <T> void addNode(ApplicationGraphDraw draw, NodeImpl<T> node) {
+                    var dependencies = new NodeImpl<?>[node.getDependencyNodes().size()];
                     for (int i = 0; i < dependencies.length; i++) {
                         var dependency = node.getDependencyNodes().get(i);
                         dependencies[i] = draw.graphNodes.get(dependency.index);
@@ -117,11 +128,11 @@ public class ApplicationGraphDraw {
 
     public ApplicationGraphDraw subgraph(List<Node<?>> excludeTransitive, Iterable<Node<?>> rootNodes) {
         var seen = new TreeMap<Integer, Integer>();
-        var excludeTransitiveSet = excludeTransitive.stream().map(n -> n.index).collect(Collectors.toSet());
+        var excludeTransitiveSet = excludeTransitive.stream().map(n -> ((NodeImpl<?>) n).index).collect(Collectors.toSet());
 
         var subgraph = new ApplicationGraphDraw(this.root);
         var visitor = new Object() {
-            public <T> Node<T> accept(Node<T> node) {
+            public <T> Node<T> accept(NodeImpl<T> node) {
                 if (!seen.containsKey(node.index)) {
                     var dependencies = new ArrayList<Node<?>>();
                     var interceptors = new ArrayList<Node<? extends GraphInterceptor<T>>>();
@@ -141,26 +152,29 @@ public class ApplicationGraphDraw {
 
                         @Override
                         public <Q> Q get(Node<Q> node1) {
+                            var casted = (NodeImpl<Q>) node1;
                             @SuppressWarnings("unchecked")
-                            var realNode = (Node<Q>) subgraph.graphNodes.get(seen.get(node1.index));
+                            var realNode = (Node<Q>) subgraph.graphNodes.get(seen.get(casted.index));
                             return graph.get(realNode);
                         }
 
                         @Override
                         public <Q> ValueOf<Q> valueOf(Node<? extends Q> node1) {
+                            var casted = (NodeImpl<? extends Q>) node1;
                             @SuppressWarnings("unchecked")
-                            var realNode = (Node<Q>) subgraph.graphNodes.get(seen.get(node1.index));
+                            var realNode = (Node<Q>) subgraph.graphNodes.get(seen.get(casted.index));
                             return graph.valueOf(realNode);
                         }
 
                         @Override
                         public <Q> PromiseOf<Q> promiseOf(Node<Q> node1) {
+                            var casted = (NodeImpl<Q>) node1;
                             @SuppressWarnings("unchecked")
-                            var realNode = (Node<Q>) subgraph.graphNodes.get(seen.get(node1.index));
+                            var realNode = (Node<Q>) subgraph.graphNodes.get(seen.get(casted.index));
                             return graph.promiseOf(realNode);
                         }
                     });
-                    var newNode = subgraph.addNode0(node.type(), node.tags(), factory, interceptors, dependencies.toArray(new Node<?>[0]));
+                    var newNode = (NodeImpl<T>) subgraph.addNode0(node.type(), node.tags(), factory, interceptors, dependencies.toArray(new Node<?>[0]));
                     seen.put(node.index, newNode.index);
                     return newNode;
                 }
@@ -171,7 +185,8 @@ public class ApplicationGraphDraw {
             }
         };
         for (var rootNode : rootNodes) {
-            visitor.accept(this.graphNodes.get(rootNode.index));
+            var casted = (NodeImpl<?>) rootNode;
+            visitor.accept(this.graphNodes.get(casted.index));
         }
         return subgraph;
     }

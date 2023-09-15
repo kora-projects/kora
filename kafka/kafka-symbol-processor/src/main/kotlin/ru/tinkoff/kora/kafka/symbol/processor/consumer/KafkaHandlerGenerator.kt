@@ -85,7 +85,7 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger, resolver: Resolver
             }
 
             if (function.modifiers.contains(Modifier.SUSPEND)) {
-                b.beginControlFlow("kotlinx.coroutines.runBlocking(%T.Kotlin.inject(%T.Unconfined, %T.current()))", context, dispatchers, context)
+                b.beginControlFlow("kotlinx.coroutines.runBlocking(%T.Unconfined + %T.Kotlin.asCoroutineContext(%T.current()))", dispatchers, context, context)
             }
 
             addCode("controller.%N(", function.simpleName.asString())
@@ -134,7 +134,7 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger, resolver: Resolver
         b.returns(handlerType)
         b.controlFlow("return %T { consumer, tctx, records ->", handlerType) {
             if (function.modifiers.contains(Modifier.SUSPEND)) {
-                b.beginControlFlow("kotlinx.coroutines.runBlocking(%T.Kotlin.inject(%T.Unconfined, %T.current()))", context, dispatchers, context)
+                b.beginControlFlow("kotlinx.coroutines.runBlocking(%T.Unconfined + %T.Kotlin.asCoroutineContext(%T.current()))", dispatchers, context, context)
             }
             addCode("controller.%N(", function.simpleName.asString())
             for ((i, it) in parameters.withIndex()) {
@@ -225,7 +225,7 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger, resolver: Resolver
                 endControlFlow()
             }
             if (functionDeclaration.modifiers.contains(Modifier.SUSPEND)) {
-                beginControlFlow("kotlinx.coroutines.runBlocking(%T.Kotlin.inject(%T.Unconfined, %T.current()))", context, dispatchers, context)
+                beginControlFlow("kotlinx.coroutines.runBlocking(%T.Unconfined + %T.Kotlin.asCoroutineContext(%T.current()))", dispatchers, context,  context)
             }
 
             add("controller.%N(", functionDeclaration.simpleName.asString())

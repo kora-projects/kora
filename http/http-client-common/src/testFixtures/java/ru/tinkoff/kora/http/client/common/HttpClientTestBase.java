@@ -61,19 +61,19 @@ public abstract class HttpClientTestBase {
     protected abstract HttpClient createClient(HttpClientConfig config);
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         ctx.getLogger("ROOT").setLevel(Level.OFF);
         ctx.getLogger("ru.tinkoff.kora.http.client").setLevel(Level.ALL);
         OpentelemetryContext.set(Context.current(), rootTelemetry.add(rootSpan));
         if (this.baseClient instanceof Lifecycle lifecycle) {
-            lifecycle.init().block();
+            lifecycle.init();
         }
     }
 
     @AfterEach
-    void tearDown() {
+    void tearDown() throws Exception {
         if (this.baseClient instanceof Lifecycle lifecycle) {
-            lifecycle.release().block();
+            lifecycle.release();
         }
         server.stop();
         Context.clear();

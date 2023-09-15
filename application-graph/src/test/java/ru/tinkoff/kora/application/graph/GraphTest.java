@@ -7,8 +7,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
+import ru.tinkoff.kora.application.graph.internal.NodeImpl;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -254,7 +253,7 @@ class GraphTest {
         var value1 = graph.graph.valueOf(graph.node1());
         var oldObject1 = graph.object1();
 
-        value1.refresh().block();
+        value1.refresh();
 
         assertThat(oldObject1).isNotSameAs(graph.object1());
     }
@@ -335,7 +334,7 @@ class GraphTest {
         var draw = g.draw;
         g.object5Factory.nextIsInitError();
 
-        assertThatThrownBy(() -> draw.init().block())
+        assertThatThrownBy(() -> draw.init())
             .isExactlyInstanceOf(RuntimeException.class)
             .hasMessage("mock");
 
@@ -348,7 +347,7 @@ class GraphTest {
         var object2 = graph.object2();
         var beforeRefresh = System.nanoTime();
 
-        graph.graph.valueOf(graph.node4()).refresh().block();
+        graph.graph.valueOf(graph.node4()).refresh();
 
         assertThat(object2.refreshTime).isGreaterThan(beforeRefresh);
     }
@@ -358,7 +357,7 @@ class GraphTest {
         var graph = ReferenceGraph.graph();
         var subgraphDraw = graph.draw.subgraph(List.of(), List.of(graph.object4Node));
         assertThat(subgraphDraw.getNodes()).hasSize(5);
-        var subgraph = subgraphDraw.init().block();
+        var subgraph = subgraphDraw.init();
     }
 
     @Test
@@ -366,15 +365,13 @@ class GraphTest {
         var graph = ReferenceGraph.graph();
         var draw = graph.draw.copy();
         var mock = Mockito.mock(TestObject.class);
-        Mockito.when(mock.init()).thenReturn(Mono.empty());
-        Mockito.when(mock.release()).thenReturn(Mono.empty());
 
         draw.replaceNode(graph.object2Node, g -> mock);
-        var newGraph = draw.init().block();
+        var newGraph = draw.init();
 
         @SuppressWarnings("unchecked")
         var object5Node = (Node<TestObject>) draw.getNodes().stream()
-            .filter(n -> n.factory == graph.object5Factory)
+            .filter(n -> ((NodeImpl<TestObject>) n).factory == graph.object5Factory)
             .findFirst()
             .get();
 
@@ -399,18 +396,18 @@ class GraphTest {
         var n4 = draw.addNode0(TestObject.class, new Class[0], g -> object4.get(), n2, n3);
         var n5 = draw.addNode0(TestObject.class, new Class[0], g -> counter.incrementAndGet(), n4);
 
-        var graph = draw.init().block();
+        var graph = draw.init();
 
-        graph.refresh(n1).block();
+        graph.refresh(n1);
         assertThat(counter).hasValue(1);
-        graph.refresh(n2).block();
+        graph.refresh(n2);
         assertThat(counter).hasValue(1);
-        graph.refresh(n3).block();
+        graph.refresh(n3);
         assertThat(counter).hasValue(1);
 
         object2.set("1");
         object4.set("1");
-        graph.refresh(n2).block();
+        graph.refresh(n2);
         assertThat(counter).hasValue(2);
     }
 
@@ -444,18 +441,22 @@ class GraphTest {
         private final TestObjectFactory object5Factory = factory(object2Node);
         private final Node<TestObject> object5Node = draw.addNode0(TestObject.class, TAGS, object5Factory, object2Node);
 
-        private final RefreshableGraph graph = this.draw.init().block();
+        private final RefreshableGraph graph = this.draw.init();
 
         public static ReferenceGraph graph() {
             return new ReferenceGraph();
         }
 
         public void refresh(Node<?> node) {
-            this.graph.refresh(node).block();
+            this.graph.refresh(node);
         }
 
         public void release() {
-            this.graph.release().block();
+            try {
+                this.graph.release();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
 
         public TestObject root() {
@@ -562,56 +563,48 @@ class GraphTest {
         }
 
         @Override
-        public Mono<Void> init() {
-            return Mono.<Void>fromRunnable(() -> {
-                this.initTime = System.nanoTime();
-                for (var dependency : dependencies) {
-                    if (dependency instanceof ValueOf<?> valueOf) {
-                        assert valueOf.get() != null;
-                    }
+        public void init() {
+            this.initTime = System.nanoTime();
+            for (var dependency : dependencies) {
+                if (dependency instanceof ValueOf<?> valueOf) {
+                    assert valueOf.get() != null;
                 }
-                if (this.type == TestObjectFactory.Type.INIT_ERROR) {
-                    throw new RuntimeException("mock");
-                }
-            }).subscribeOn(Schedulers.parallel());
+            }
+            if (this.type == TestObjectFactory.Type.INIT_ERROR) {
+                throw new RuntimeException("mock");
+            }
         }
 
         @Override
-        public Mono<Void> release() {
-            return Mono.<Void>fromRunnable(() -> {
-                for (var dependency : dependencies) {
-                    if (dependency instanceof ValueOf<?> valueOf) {
-                        assert valueOf.get() != null;
-                    }
+        public void release() {
+            for (var dependency : dependencies) {
+                if (dependency instanceof ValueOf<?> valueOf) {
+                    assert valueOf.get() != null;
                 }
-                this.releaseTime = System.nanoTime();
-                if (this.type == TestObjectFactory.Type.RELEASE_ERROR) {
-                    throw new RuntimeException();
-                }
-            }).subscribeOn(Schedulers.parallel());
+            }
+            this.releaseTime = System.nanoTime();
+            if (this.type == TestObjectFactory.Type.RELEASE_ERROR) {
+                throw new RuntimeException();
+            }
         }
 
 
         @Override
-        public Mono<TestObject> init(TestObject value) {
-            return Mono.fromCallable(() -> {
-                value.interceptInitTime = System.nanoTime();
-                if (this.type == TestObjectFactory.Type.INTERCEPT_INIT_ERROR) {
-                    throw new RuntimeException();
-                }
-                return value;
-            }).subscribeOn(Schedulers.parallel());
+        public TestObject init(TestObject value) {
+            value.interceptInitTime = System.nanoTime();
+            if (this.type == TestObjectFactory.Type.INTERCEPT_INIT_ERROR) {
+                throw new RuntimeException();
+            }
+            return value;
         }
 
         @Override
-        public Mono<TestObject> release(TestObject value) {
-            return Mono.fromCallable(() -> {
-                value.interceptReleaseTime = System.nanoTime();
-                if (this.type == TestObjectFactory.Type.INTERCEPT_RELEASE_ERROR) {
-                    throw new RuntimeException();
-                }
-                return value;
-            }).subscribeOn(Schedulers.parallel());
+        public TestObject release(TestObject value) {
+            value.interceptReleaseTime = System.nanoTime();
+            if (this.type == TestObjectFactory.Type.INTERCEPT_RELEASE_ERROR) {
+                throw new RuntimeException();
+            }
+            return value;
         }
 
         @Override

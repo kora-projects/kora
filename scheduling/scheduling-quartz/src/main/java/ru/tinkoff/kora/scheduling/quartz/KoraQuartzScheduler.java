@@ -4,11 +4,8 @@ import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.impl.StdSchedulerFactory;
-import reactor.core.Exceptions;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
-import ru.tinkoff.kora.common.util.ReactorUtils;
 
 import java.util.Properties;
 
@@ -23,33 +20,21 @@ public class KoraQuartzScheduler implements Wrapped<Scheduler>, Lifecycle {
     }
 
     @Override
-    public Mono<?> init() {
-        return ReactorUtils.ioMono(() -> {
-            try {
-                // TODO real scheduler
-                var factory = new StdSchedulerFactory();
-                factory.initialize(this.properties);
-                this.scheduler = factory.getScheduler();
-                this.scheduler.setJobFactory(this.jobFactory);
-                this.scheduler.start();
-                this.scheduler.checkExists(JobKey.jobKey("_that_job_should_not_exist"));
-            } catch (SchedulerException e) {
-                throw Exceptions.propagate(e);
-            }
-        });
+    public void init() throws SchedulerException {
+        // TODO real scheduler
+        var factory = new StdSchedulerFactory();
+        factory.initialize(this.properties);
+        this.scheduler = factory.getScheduler();
+        this.scheduler.setJobFactory(this.jobFactory);
+        this.scheduler.start();
+        this.scheduler.checkExists(JobKey.jobKey("_that_job_should_not_exist"));
     }
 
     @Override
-    public Mono<?> release() {
-        return ReactorUtils.ioMono(() -> {
-            if (this.scheduler != null) {
-                try {
-                    this.scheduler.shutdown(true);
-                } catch (SchedulerException e) {
-                    throw Exceptions.propagate(e);
-                }
-            }
-        });
+    public void release() throws SchedulerException {
+        if (this.scheduler != null) {
+            this.scheduler.shutdown(true);
+        }
     }
 
 

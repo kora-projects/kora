@@ -52,8 +52,8 @@ class WebServiceClientAnnotationProcessorTest {
     private static final org.slf4j.Logger log = LoggerFactory.getLogger(WebServiceClientAnnotationProcessorTest.class);
 
     @AfterEach
-    void afterEach() {
-        httpClient.release().block();
+    void afterEach() throws IOException {
+        httpClient.release();
     }
 
     @Test

@@ -8,7 +8,7 @@ import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.fail
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw
-import ru.tinkoff.kora.application.graph.Node
+import ru.tinkoff.kora.application.graph.internal.NodeImpl
 import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.kora.app.ksp.app.*
 import ru.tinkoff.kora.kora.app.ksp.app.AppWithOptionalComponents.*
@@ -27,7 +27,7 @@ class KoraAppKspTest {
     fun testCompile() {
         val graphDraw = testClass(AppWithComponentsKotlin::class)
         Assertions.assertThat(graphDraw.nodes).hasSize(10)
-        val materializedGraph = graphDraw.init().block()
+        val materializedGraph = graphDraw.init()
 
         Assertions.assertThat(materializedGraph).isNotNull
     }
@@ -35,14 +35,14 @@ class KoraAppKspTest {
     @Test
     fun testGenericCase() {
         val graphDraw = testClass(AppWithComponents::class)
-        val graph = graphDraw.init().block()
+        val graph = graphDraw.init()
         Assertions.assertThat(graphDraw.nodes).hasSize(5)
     }
 
     @Test
     fun testNullableComponents() {
         val graphDraw = testClass(AppWithNullableComponents::class)
-        val graph = graphDraw.init().block()
+        val graph = graphDraw.init()
         Assertions.assertThat(graphDraw.nodes).hasSize(3)
 
         Assertions.assertThat(
@@ -76,7 +76,7 @@ class KoraAppKspTest {
     @Test
     fun testOptionalComponents() {
         val graphDraw = testClass(AppWithOptionalComponents::class)
-        val graph = graphDraw.init().block()
+        val graph = graphDraw.init()
         Assertions.assertThat(graphDraw.nodes).hasSize(9)
         Assertions.assertThat<PresentInGraph>(
             graph.get(
@@ -134,7 +134,7 @@ class KoraAppKspTest {
         val node1 = graphDraw.nodes[0]
         val node2 = graphDraw.nodes[1]
         val node3 = graphDraw.nodes[2]
-        val graph = graphDraw.init().block()
+        val graph = graphDraw.init()
         val value1 = graph[node1]
         val value2 = graph[node2]
         val value3 = graph[node3]
@@ -143,13 +143,13 @@ class KoraAppKspTest {
     @Test
     fun appWithAllOfValueOf() {
         val graphDraw = testClass(AppWithAllOfValueOf::class)
-        val node1 = graphDraw.nodes[0]
+        val node1 = graphDraw.nodes[0] as NodeImpl<*>
         val node2 = graphDraw.nodes[1]
         Assertions.assertThat(node1.dependentNodes).hasSize(1)
-        val graph = graphDraw.init().block()
+        val graph = graphDraw.init()
         val node1Value1 = graph[node1]
         val node2Value1 = graph[node2]
-        graph.refresh(node1).block()
+        graph.refresh(node1)
         val node1Value2 = graph[node1]
         val node2Value2 = graph[node2]
         Assertions.assertThat(node1Value1).isNotSameAs(node1Value2)
@@ -160,7 +160,7 @@ class KoraAppKspTest {
     fun appWithAllOf() {
         val graphDraw = testClass(AppWithAllOfComponents::class)
         Assertions.assertThat(graphDraw.nodes).hasSize(12)
-        val graph = graphDraw.init().block()
+        val graph = graphDraw.init()
         val classWithNonTaggedAllOf = findNodesOf(
             graphDraw,
             AppWithAllOfComponents.ClassWithAllOf::class.java,
@@ -225,21 +225,21 @@ class KoraAppKspTest {
     fun appWithComponentDescriptorCollision() {
         val graphDraw = testClass(AppWithComponentCollision::class)
         Assertions.assertThat(graphDraw.nodes).hasSize(3)
-        val materializedGraph = graphDraw.init().block()
+        val materializedGraph = graphDraw.init()
         Assertions.assertThat(materializedGraph).isNotNull
     }
 
     @Test
     fun appWithFactory() {
-        testClass(AppWithFactories1::class).init().block()
+        testClass(AppWithFactories1::class).init()
 
-        testClass(AppWithFactories2::class).init().block()
+        testClass(AppWithFactories2::class).init()
 
-        testClass(AppWithFactories3::class).init().block()
+        testClass(AppWithFactories3::class).init()
 
-        testClass(AppWithFactories4::class).init().block()
+        testClass(AppWithFactories4::class).init()
 
-//        testClass(AppWithFactories5::class).init().block() delete or fix?
+//        testClass(AppWithFactories5::class).init() delete or fix?
 
         Assertions.assertThatThrownBy { testClass(AppWithFactories6::class) }
             .isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
@@ -248,11 +248,11 @@ class KoraAppKspTest {
                 }
             }
 
-        testClass(AppWithFactories7::class).init().block()
+        testClass(AppWithFactories7::class).init()
 
-        testClass(AppWithFactories8::class).init().block()
+        testClass(AppWithFactories8::class).init()
 
-        testClass(AppWithFactories9::class).init().block()
+        testClass(AppWithFactories9::class).init()
         Assertions.assertThatThrownBy { testClass(AppWithFactories10::class) }
             .isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
                 SoftAssertions.assertSoftly { s: SoftAssertions ->
@@ -271,7 +271,7 @@ class KoraAppKspTest {
 //                }
 //            } delete or fix?
 
-        testClass(AppWithFactories12::class).init().block()
+        testClass(AppWithFactories12::class).init()
 
     }
 
@@ -279,7 +279,7 @@ class KoraAppKspTest {
     fun appWithExtension() {
         val graphDraw = testClass(AppWithExtension::class)
         Assertions.assertThat(graphDraw.nodes).hasSize(4)
-        val materializedGraph = graphDraw.init().block()
+        val materializedGraph = graphDraw.init()
         Assertions.assertThat(materializedGraph).isNotNull
     }
 
@@ -287,7 +287,7 @@ class KoraAppKspTest {
     fun extensionShouldHandleAnnotationsItProvidesAnnotationProcessorFor() {
         val graphDraw = testClass(AppWithProcessorExtension::class, listOf(AppWithProcessorExtension.TestProcessorProvider()))
         Assertions.assertThat(graphDraw.nodes).hasSize(2)
-        val materializedGraph = graphDraw.init().block()
+        val materializedGraph = graphDraw.init()
         Assertions.assertThat(materializedGraph).isNotNull
     }
 
@@ -310,11 +310,11 @@ class KoraAppKspTest {
     fun appWithMultipleTags() {
         val graphDraw = testClass(AppWithMultipleTags::class)
         Assertions.assertThat(graphDraw.nodes).hasSize(12)
-        val graph = graphDraw.init().block()
+        val graph = graphDraw.init()
         Assertions.assertThat(graph).isNotNull
         val nonTaggedClass3 = findNodesOf(graphDraw, AppWithMultipleTags.Class3::class.java)
         Assertions.assertThat(nonTaggedClass3).hasSize(1)
-        val anyTaggedClass3 = findNodesOf(graphDraw, AppWithMultipleTags.Class3::class.java, AppWithMultipleTags::class.java) as List<Node<AppWithMultipleTags.Class3>>
+        val anyTaggedClass3 = findNodesOf(graphDraw, AppWithMultipleTags.Class3::class.java, AppWithMultipleTags::class.java) as List<NodeImpl<AppWithMultipleTags.Class3>>
         Assertions.assertThat(anyTaggedClass3).hasSize(1)
         Assertions.assertThat(graph[anyTaggedClass3[0]].class1s).hasSize(4)
         val tag1TaggedClass3 =
@@ -338,7 +338,7 @@ class KoraAppKspTest {
     fun appWithWrappedComponent() {
         val graphDraw = testClass(AppWithWrappedDependency::class)
         Assertions.assertThat(graphDraw.nodes).hasSize(7)
-        val materializedGraph = graphDraw.init().block()
+        val materializedGraph = graphDraw.init()
         Assertions.assertThat(materializedGraph).isNotNull
     }
 
@@ -346,7 +346,7 @@ class KoraAppKspTest {
     fun appWithNestedClasses() {
         val graphDraw = testClass(AppWithNestedClasses::class)
         Assertions.assertThat(graphDraw.nodes).hasSize(2)
-        val materializedGraph = graphDraw.init().block()
+        val materializedGraph = graphDraw.init()
         Assertions.assertThat(materializedGraph).isNotNull
     }
 
@@ -354,7 +354,7 @@ class KoraAppKspTest {
     fun appWithLazyComponents() {
         val graphDraw = testClass(AppWithLazyComponents::class)
         Assertions.assertThat(graphDraw.nodes).hasSize(3)
-        val materializedGraph = graphDraw.init().block()
+        val materializedGraph = graphDraw.init()
         Assertions.assertThat(materializedGraph).isNotNull
     }
 
@@ -362,7 +362,7 @@ class KoraAppKspTest {
     fun appWithModuleOf() {
         val graphDraw = testClass(AppWithModuleOf::class)
         Assertions.assertThat(graphDraw.nodes).hasSize(2)
-        val materializedGraph = graphDraw.init().block()
+        val materializedGraph = graphDraw.init()
         Assertions.assertThat(materializedGraph).isNotNull
     }
 
@@ -370,7 +370,7 @@ class KoraAppKspTest {
     fun appWithClassWithComponentOf() {
         val graphDraw = testClass(AppWithClassWithComponentOf::class)
         Assertions.assertThat(graphDraw.nodes).hasSize(5)
-        val materializedGraph = graphDraw.init().block()
+        val materializedGraph = graphDraw.init()
         Assertions.assertThat(materializedGraph).isNotNull
     }
 
@@ -378,27 +378,27 @@ class KoraAppKspTest {
     fun appWithInterceptor() {
         val graphDraw = testClass(AppWithInterceptor::class)
         Assertions.assertThat(graphDraw.nodes).hasSize(4)
-        val materializedGraph = graphDraw.init().block()
+        val materializedGraph = graphDraw.init()
         Assertions.assertThat(materializedGraph).isNotNull
-        materializedGraph.release().block()
+        materializedGraph.release()
     }
 
     @Test
     fun appWithPromiseOf() {
         val graphDraw = testClass(AppWithPromiseOf::class)
         Assertions.assertThat(graphDraw.nodes).hasSize(5)
-        val materializedGraph = graphDraw.init().block()
+        val materializedGraph = graphDraw.init()
         Assertions.assertThat(materializedGraph).isNotNull
-        materializedGraph.release().block()
+        materializedGraph.release()
     }
 
     @Test
     fun appWithOverridenModule() {
         val graphDraw = testClass(AppWithOverridenModule::class)
         Assertions.assertThat(graphDraw.nodes).hasSize(2)
-        val materializedGraph = graphDraw.init().block()
+        val materializedGraph = graphDraw.init()
         Assertions.assertThat(materializedGraph).isNotNull
-        materializedGraph.release().block()
+        materializedGraph.release()
     }
 
     @Test
@@ -411,7 +411,7 @@ class KoraAppKspTest {
     fun appWithCycleProxy() {
         val graphDraw = testClass(AppWithCycleProxy::class)
         Assertions.assertThat(graphDraw.nodes).hasSize(7)
-        val graph = graphDraw.init().block();
+        val graph = graphDraw.init();
         Assertions.assertThat(graph).isNotNull;
     }
 
@@ -431,14 +431,14 @@ class KoraAppKspTest {
 //        val appClazz = classLoader.loadClass(AppWithAppPartApp::class.java.name + "Graph")
     }
 
-    private fun <T> findNodeOf(graphDraw: ApplicationGraphDraw, type: Class<T>, vararg tags: Class<*>): Node<T> {
+    private fun <T> findNodeOf(graphDraw: ApplicationGraphDraw, type: Class<T>, vararg tags: Class<*>): NodeImpl<T> {
         val nodes = findNodesOf(graphDraw, type, *tags)
         check(nodes.size == 1)
         return nodes[0]
     }
 
-    private fun <T> findNodesOf(graphDraw: ApplicationGraphDraw, type: Class<T>, vararg tags: Class<*>): List<Node<T>> {
-        val graph = graphDraw.init().block()
+    private fun <T> findNodesOf(graphDraw: ApplicationGraphDraw, type: Class<T>, vararg tags: Class<*>): List<NodeImpl<T>> {
+        val graph = graphDraw.init()
         val anyTag = listOf(*tags).contains(Tag.Any::class.java)
         val nonTagged = tags.isEmpty()
         return graphDraw.nodes
@@ -451,7 +451,7 @@ class KoraAppKspTest {
                     return@filter node.tags().isEmpty()
                 }
                 return@filter tags.all { listOf(*node.tags()).contains(it) }
-            }.map { it as Node<T> }
+            }.map { it as NodeImpl<T> }
             .toList()
     }
 
