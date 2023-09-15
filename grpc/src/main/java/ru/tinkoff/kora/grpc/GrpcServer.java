@@ -28,35 +28,26 @@ public class GrpcServer implements Lifecycle, ReadinessProbe {
     }
 
     @Override
-    public Mono<Void> init() {
-        return Mono.create(sink -> {
-            logger.debug("Starting gRPC Server...");
-            final long started = System.nanoTime();
+    public void init() throws IOException {
+        logger.debug("Starting gRPC Server...");
+        final long started = System.nanoTime();
 
-            var builder = nettyServerBuilder.get();
-            this.server = builder.build();
-            try {
-                this.server.start();
-                this.state.set(GrpcServerState.RUN);
-                logger.info("gRPC Server started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
-                sink.success();
-            } catch (IOException e) {
-                sink.error(e);
-            }
-        });
+        var builder = nettyServerBuilder.get();
+        this.server = builder.build();
+        this.server.start();
+        this.state.set(GrpcServerState.RUN);
+        logger.info("gRPC Server started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
     }
 
     @Override
-    public Mono<Void> release() {
-        return Mono.fromRunnable(() -> {
-            logger.debug("gRPC Server stopping...");
-            final long started = System.nanoTime();
+    public void release() {
+        logger.debug("gRPC Server stopping...");
+        final long started = System.nanoTime();
 
-            state.set(GrpcServerState.SHUTDOWN);
-            server.shutdown();
+        state.set(GrpcServerState.SHUTDOWN);
+        server.shutdown();
 
-            logger.info("gRPC Server stopped in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
-        });
+        logger.info("gRPC Server stopped in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
     }
 
     @Override

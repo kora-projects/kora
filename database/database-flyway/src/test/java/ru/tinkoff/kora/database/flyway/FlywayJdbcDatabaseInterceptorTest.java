@@ -10,6 +10,7 @@ import ru.tinkoff.kora.test.postgres.PostgresParams;
 import ru.tinkoff.kora.test.postgres.PostgresTestContainer;
 
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Properties;
 
@@ -17,7 +18,7 @@ import java.util.Properties;
 public class FlywayJdbcDatabaseInterceptorTest {
 
     @Test
-    public void testFlywayInterceptor(PostgresParams params) {
+    public void testFlywayInterceptor(PostgresParams params) throws SQLException {
         var config = new $JdbcDatabaseConfig_ConfigValueExtractor.JdbcDatabaseConfig_Impl(
             params.user(),
             params.password(),
@@ -34,11 +35,11 @@ public class FlywayJdbcDatabaseInterceptorTest {
             new Properties()
         );
         var dataBase = new JdbcDatabase(config, new DefaultDataBaseTelemetryFactory(null, null, null));
-        dataBase.init().block();
+        dataBase.init();
         try {
 
             var interceptor = new FlywayJdbcDatabaseInterceptor();
-            Assertions.assertSame(dataBase, interceptor.init(dataBase).block(), "FlywayJdbcDatabaseInterceptor should return same reference on init");
+            Assertions.assertSame(dataBase, interceptor.init(dataBase), "FlywayJdbcDatabaseInterceptor should return same reference on init");
 
             dataBase.inTx((Connection connection) -> {
                 var resultSet = connection
@@ -52,9 +53,9 @@ public class FlywayJdbcDatabaseInterceptorTest {
                 );
             });
 
-            Assertions.assertSame(dataBase, interceptor.release(dataBase).block(), "FlywayJdbcDatabaseInterceptor should return same reference on release");
+            Assertions.assertSame(dataBase, interceptor.release(dataBase), "FlywayJdbcDatabaseInterceptor should return same reference on release");
         } finally {
-            dataBase.release().block();
+            dataBase.release();
         }
 
     }

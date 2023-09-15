@@ -8,7 +8,6 @@ import org.mockito.Mockito;
 import org.mockito.internal.util.MockUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Graph;
 import ru.tinkoff.kora.application.graph.Lifecycle;
@@ -149,14 +148,10 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
     private static void prepareMocks(TestGraphInitialized graphInitialized) {
         logger.trace("Resetting mocks...");
-        for (Node<?> node : graphInitialized.graphDraw().getNodes()) {
+        for (var node : graphInitialized.graphDraw().getNodes()) {
             var mockCandidate = graphInitialized.refreshableGraph().get(node);
             if (MockUtil.isMock(mockCandidate) || MockUtil.isSpy(mockCandidate)) {
                 Mockito.reset(mockCandidate);
-                if (mockCandidate instanceof Lifecycle lifecycle) {
-                    Mockito.when(lifecycle.init()).thenReturn(Mono.empty());
-                    Mockito.when(lifecycle.release()).thenReturn(Mono.empty());
-                }
             }
         }
     }

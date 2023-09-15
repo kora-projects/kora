@@ -18,7 +18,7 @@ open class DependencyTest : AbstractKoraAppProcessorTest() {
             """.trimIndent()
         )
         Assertions.assertThat(draw.nodes).hasSize(2)
-        draw.init().block()
+        draw.init()
     }
 
     @Test
@@ -36,7 +36,7 @@ open class DependencyTest : AbstractKoraAppProcessorTest() {
             """.trimIndent()
         )
         Assertions.assertThat(draw.nodes).hasSize(2)
-        draw.init().block()
+        draw.init()
     }
 
     @Test

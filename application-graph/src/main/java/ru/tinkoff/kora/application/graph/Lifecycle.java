@@ -1,9 +1,7 @@
 package ru.tinkoff.kora.application.graph;
 
-import reactor.core.publisher.Mono;
-
 public interface Lifecycle {
-    Mono<?> init();
+    void init() throws Exception;
 
-    Mono<?> release();
+    void release() throws Exception;
 }

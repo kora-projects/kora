@@ -19,13 +19,14 @@ public class BindableServiceReloadTest {
             log.setLevel(Level.TRACE);
         }
     }
+
     @Test
     public void bindableServiceReloadTest() throws Exception {
         var cl = TestUtils.annotationProcess(Application.class, new KoraAppProcessor());
         var graphObject = cl.loadClass(Application.class.getCanonicalName() + "Impl").getConstructors()[0].newInstance();
         var graph = (ApplicationGraphDraw) cl.loadClass(Application.class.getCanonicalName() + "Graph").getMethod("graph").invoke(graphObject);
-        var refreshableGraph = graph.init().block();
-        var channel =         ManagedChannelBuilder.forAddress("localhost", 8090).usePlaintext().build();
+        var refreshableGraph = graph.init();
+        var channel = ManagedChannelBuilder.forAddress("localhost", 8090).usePlaintext().build();
 
         try {
             var stub = EventsGrpc.newBlockingStub(channel);
@@ -46,7 +47,7 @@ public class BindableServiceReloadTest {
                 .findFirst()
                 .get();
 
-            refreshableGraph.refresh(resNode).block();
+            refreshableGraph.refresh(resNode);
 
             Assertions
                 .assertThat(stub.sendEvent(SendEventRequest.newBuilder().setEvent("foo").build()).getRes())
@@ -54,7 +55,7 @@ public class BindableServiceReloadTest {
 
         } finally {
             channel.shutdown();
-            refreshableGraph.release().block();
+            refreshableGraph.release();
         }
     }
 }

@@ -675,22 +675,30 @@ public abstract class HttpServerTestKit {
         var config = new HttpServerConfig_Impl(0, 0, "/metrics", "/system/readiness", "/system/liveness", ignoreTrailingSlash, 1, 10, Duration.ofMillis(1));
         var publicApiHandler = new PublicApiHandler(All.of(handlerList), All.of(interceptorsList), valueOf(new DefaultHttpServerTelemetry(this.metrics, this.logger, null)), valueOf(config));
         this.httpServer = this.httpServer(valueOf(config), publicApiHandler);
-        this.httpServer.init().block();
+        try {
+            this.httpServer.init();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     protected void startPrivateHttpServer() {
         this.privateHttpServer = this.privateHttpServer(config, privateApiHandler);
-        this.privateHttpServer.init().block();
+        try {
+            this.privateHttpServer.init();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @AfterEach
-    void tearDown() {
+    void tearDown() throws Exception {
         if (this.httpServer != null) {
-            this.httpServer.release().block();
+            this.httpServer.release();
             this.httpServer = null;
         }
         if (this.privateHttpServer != null) {
-            this.privateHttpServer.release().block();
+            this.privateHttpServer.release();
             this.privateHttpServer = null;
         }
         this.readinessProbePromise.setValue(readinessProbe);
@@ -705,8 +713,7 @@ public abstract class HttpServerTestKit {
             }
 
             @Override
-            public Mono<Void> refresh() {
-                return Mono.empty();
+            public void refresh() {
             }
         };
     }

@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.app;
 
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.Component;
@@ -28,14 +27,10 @@ public interface AppWithClassWithComponentOf {
         }
 
         @Override
-        public Mono<Void> init() {
-            return Mono.empty();
-        }
+        public void init() {}
 
         @Override
-        public Mono<Void> release() {
-            return Mono.empty();
-        }
+        public void release() {}
     }
 
     @Component

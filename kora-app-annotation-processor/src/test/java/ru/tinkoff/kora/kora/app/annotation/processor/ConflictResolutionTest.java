@@ -46,7 +46,7 @@ public class ConflictResolutionTest extends AbstractKoraAppTest {
             }
             """);
         assertThat(draw.getNodes()).hasSize(2);
-        var g = draw.init().block();
+        var g = draw.init();
         assertThat(g.get(draw.getNodes().get(0))).isInstanceOf(this.compileResult.loadClass("TestImpl2"));
     }
 
@@ -70,7 +70,7 @@ public class ConflictResolutionTest extends AbstractKoraAppTest {
             }
             """);
         assertThat(draw.getNodes()).hasSize(2);
-        var g = draw.init().block();
+        var g = draw.init();
         assertThat(g.get(draw.getNodes().get(0))).isInstanceOf(this.compileResult.loadClass("TestImpl2"));
     }
 

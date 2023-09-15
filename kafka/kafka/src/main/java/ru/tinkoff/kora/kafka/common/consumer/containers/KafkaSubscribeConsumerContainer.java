@@ -10,7 +10,6 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.kafka.common.KafkaUtils.NamedThreadFactory;
@@ -141,38 +140,36 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
     }
 
     @Override
-    public Mono<Void> init() {
-        return Mono.fromRunnable(() -> {
-            if (config.threads() > 0 && this.isActive.compareAndSet(false, true)) {
-                logger.debug("Kafka Consumer '{}' starting...", consumerPrefix);
-                final long started = System.nanoTime();
+    public void init() {
+        if (config.threads() > 0 && this.isActive.compareAndSet(false, true)) {
+            logger.debug("Kafka Consumer '{}' starting...", consumerPrefix);
+            final long started = System.nanoTime();
 
-                executorService = Executors.newFixedThreadPool(config.threads(), new NamedThreadFactory(consumerPrefix));
-                for (int i = 0; i < config.threads(); i++) {
-                    executorService.execute(() -> launchPollLoop(started));
-                }
+            executorService = Executors.newFixedThreadPool(config.threads(), new NamedThreadFactory(consumerPrefix));
+            for (int i = 0; i < config.threads(); i++) {
+                executorService.execute(() -> launchPollLoop(started));
             }
-        });
+
+            logger.info("Started Kafka Consumer '{}' took {}", consumerPrefix, Duration.ofNanos(System.nanoTime() - started));
+        }
     }
 
     @Override
-    public Mono<Void> release() {
-        return Mono.fromRunnable(() -> {
-            if (isActive.compareAndSet(true, false)) {
-                logger.debug("Kafka Consumer '{}' stopping...", consumerPrefix);
-                final long started = System.nanoTime();
+    public void release() {
+        if (isActive.compareAndSet(true, false)) {
+            logger.debug("Kafka Consumer '{}' stopping...", consumerPrefix);
+            final long started = System.nanoTime();
 
-                for (var consumer : consumers) {
-                    consumer.wakeup();
-                }
-                consumers.clear();
-                if (executorService != null) {
-                    executorService.shutdownNow();
-                }
-
-                logger.info("Kafka Consumer '{}' stopped in {}", consumerPrefix, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+            for (var consumer : consumers) {
+                consumer.wakeup();
             }
-        });
+            consumers.clear();
+            if (executorService != null) {
+                executorService.shutdownNow();
+            }
+
+            logger.info("Kafka Consumer '{}' stopped in {}", consumerPrefix, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        }
     }
 
     private Consumer<K, V> buildConsumer() {

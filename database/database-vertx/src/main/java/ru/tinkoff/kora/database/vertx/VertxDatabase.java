@@ -169,25 +169,13 @@ public class VertxDatabase implements Lifecycle, Wrapped<Pool>, VertxConnectionF
     }
 
     @Override
-    public Mono<Void> init() {
-        return Mono.create(sink -> this.pool.query("SELECT 1").execute(result -> {
-            if (result.succeeded()) {
-                sink.success();
-            } else {
-                sink.error(result.cause());
-            }
-        }));
+    public void init() {
+        this.pool.query("SELECT 1").execute().toCompletionStage().toCompletableFuture().join();
     }
 
     @Override
-    public Mono<Void> release() {
-        return Mono.create(sink -> sink.onRequest(l -> this.pool.close(event -> {
-            if (event.succeeded()) {
-                sink.success();
-            } else {
-                sink.error(event.cause());
-            }
-        })));
+    public void release() {
+        this.pool.close().toCompletionStage().toCompletableFuture().join();
     }
 
     @Override

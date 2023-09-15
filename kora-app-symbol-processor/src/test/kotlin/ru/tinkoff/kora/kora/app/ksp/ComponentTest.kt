@@ -20,7 +20,7 @@ class ComponentTest : AbstractKoraAppProcessorTest() {
             """.trimIndent()
         )
         Assertions.assertThat(draw.nodes).hasSize(2)
-        draw.init().block()
+        draw.init()
     }
 
     @Test
@@ -51,6 +51,6 @@ class ComponentTest : AbstractKoraAppProcessorTest() {
             """.trimIndent()
         )
         Assertions.assertThat(draw.nodes).hasSize(3)
-        draw.init().block()
+        draw.init()
     }
 }

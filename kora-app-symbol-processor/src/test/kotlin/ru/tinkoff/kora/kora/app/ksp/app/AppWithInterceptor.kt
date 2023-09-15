@@ -10,7 +10,6 @@ import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.writeTo
-import reactor.core.publisher.Mono
 import ru.tinkoff.kora.application.graph.GraphInterceptor
 import ru.tinkoff.kora.common.KoraApp
 import ru.tinkoff.kora.common.annotation.Root
@@ -36,12 +35,12 @@ interface AppWithInterceptor {
 
     class Class1
     class Interceptor : GraphInterceptor<Class1> {
-        override fun init(value: Class1): Mono<Class1> {
-            return Mono.just(value)
+        override fun init(value: Class1): Class1 {
+            return value
         }
 
-        override fun release(value: Class1): Mono<Class1> {
-            return Mono.just(value)
+        override fun release(value: Class1): Class1 {
+            return value
         }
     }
 

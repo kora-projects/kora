@@ -175,24 +175,18 @@ class KafkaPublisherSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseS
             )
             .addFunction(FunSpec.builder("init")
                 .addModifiers(KModifier.OVERRIDE)
-                .returns(CommonClassNames.mono.parameterizedBy(STAR))
-                .controlFlow("return ru.tinkoff.kora.common.util.ReactorUtils.ioMono() {") {
-                    addStatement("val properties = this.config.driverProperties()") // todo process some props?
-                    addStatement("this.delegate = %T(properties, this.keySerializer, this.valueSerializer)", KafkaClassNames.kafkaProducer)
-                    addStatement("this.telemetry = this.telemetryFactory.get(this.delegate, properties)")
-                }
+                .addStatement("val properties = this.config.driverProperties()") // todo process some props?
+                .addStatement("this.delegate = %T(properties, this.keySerializer, this.valueSerializer)", KafkaClassNames.kafkaProducer)
+                .addStatement("this.telemetry = this.telemetryFactory.get(this.delegate, properties)")
                 .build())
             .addFunction(FunSpec.builder("release")
                 .addModifiers(KModifier.OVERRIDE)
-                .returns(CommonClassNames.mono.parameterizedBy(STAR))
-                .controlFlow("return ru.tinkoff.kora.common.util.ReactorUtils.ioMono() {") {
-                    controlFlow("delegate?.let") {
+                .controlFlow("delegate?.let") {
+                    addStatement("it.close()")
+                    addStatement("delegate = null")
+                    controlFlow("telemetry?.let") {
                         addStatement("it.close()")
-                        addStatement("delegate = null")
-                        controlFlow("telemetry?.let") {
-                            addStatement("it.close()")
-                            addStatement("telemetry = null")
-                        }
+                        addStatement("telemetry = null")
                     }
                 }
                 .build()
@@ -269,14 +263,12 @@ class KafkaPublisherSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseS
             )
             .addFunction(FunSpec.builder("init")
                 .addModifiers(KModifier.OVERRIDE)
-                .returns(CommonClassNames.mono.parameterizedBy(STAR))
-                .addStatement("return delegate.init()")
+                .addStatement("delegate.init()")
                 .build()
             )
             .addFunction(FunSpec.builder("release")
                 .addModifiers(KModifier.OVERRIDE)
-                .returns(CommonClassNames.mono.parameterizedBy(STAR))
-                .addStatement("return delegate.release()")
+                .addStatement("delegate.release()")
                 .build()
             )
 

@@ -63,14 +63,14 @@ class HttpClientSymbolProcessorTest {
         ctx.getLogger("ru.tinkoff.kora.http.client").level = Level.ALL
         ctx.getLogger(GithubClient::class.java).level = Level.ALL
         if (baseClient is Lifecycle) {
-            baseClient.init().block()
+            baseClient.init()
         }
     }
 
     @AfterEach
     fun tearDown() {
         if (baseClient is Lifecycle) {
-            baseClient.release().block()
+            baseClient.release()
         }
         server.stop()
         Context.clear()

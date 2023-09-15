@@ -2,7 +2,6 @@ package ru.tinkoff.kora.scheduling.jdk;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 
 import java.util.concurrent.Executors;
@@ -22,28 +21,20 @@ public class DefaultJdkSchedulingExecutor implements Lifecycle, JdkSchedulingExe
     }
 
     @Override
-    public Mono<?> init() {
-        return Mono.fromRunnable(() -> {
-            var counter = new AtomicInteger();
-            this.service = Executors.newScheduledThreadPool(config.threads(), r -> {
-                var name = "kora-scheduling-" + counter.incrementAndGet();
-                var t = new Thread(r, name);
-                t.setDaemon(false);
-                return t;
-            });
+    public void init() {
+        var counter = new AtomicInteger();
+        this.service = Executors.newScheduledThreadPool(config.threads(), r -> {
+            var name = "kora-scheduling-" + counter.incrementAndGet();
+            var t = new Thread(r, name);
+            t.setDaemon(false);
+            return t;
         });
     }
 
     @Override
-    public Mono<?> release() {
-        return Mono.fromRunnable(() -> {
-            this.service.shutdownNow();
-            try {
-                this.service.awaitTermination(10, TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        });
+    public void release() throws InterruptedException {
+        this.service.shutdownNow();
+        this.service.awaitTermination(10, TimeUnit.SECONDS);
     }
 
     @Override

@@ -2,7 +2,6 @@ package ru.tinkoff.kora.config.common;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.config.common.origin.ConfigOrigin;
@@ -34,30 +33,26 @@ public class ConfigWatcher implements Lifecycle {
     }
 
     @Override
-    public Mono<Void> init() {
-        return Mono.fromRunnable(() -> {
-            if (this.applicationConfig.isEmpty()) {
-                return;
-            }
-            if (this.isStarted.compareAndSet(false, true)) {
-                this.thread = new Thread(this::watchJob);
-                this.thread.setName("config-reload");
-                this.thread.start();
-            }
-        });
+    public void init() {
+        if (this.applicationConfig.isEmpty()) {
+            return;
+        }
+        if (this.isStarted.compareAndSet(false, true)) {
+            this.thread = new Thread(this::watchJob);
+            this.thread.setName("config-reload");
+            this.thread.start();
+        }
     }
 
     @Override
-    public Mono<Void> release() {
-        return Mono.fromRunnable(() -> {
-            if (this.applicationConfig.isEmpty()) {
-                return;
-            }
-            if (this.isStarted.compareAndSet(true, false)) {
-                this.thread.interrupt();
-                this.thread = null;
-            }
-        });
+    public void release() {
+        if (this.applicationConfig.isEmpty()) {
+            return;
+        }
+        if (this.isStarted.compareAndSet(true, false)) {
+            this.thread.interrupt();
+            this.thread = null;
+        }
     }
 
     private void watchJob() {
@@ -112,7 +107,7 @@ public class ConfigWatcher implements Lifecycle {
             }
             try {
                 if (!changed.isEmpty()) {
-                    this.applicationConfig.get().refresh().block();
+                    this.applicationConfig.get().refresh();
                     log.info("Config refreshed");
                     state.putAll(changed);
                 }

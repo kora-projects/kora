@@ -3,7 +3,6 @@ package ru.tinkoff.kora.scheduling.jdk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.scheduling.common.telemetry.SchedulingTelemetry;
@@ -29,18 +28,16 @@ public abstract class AbstractJob implements Lifecycle {
     }
 
     @Override
-    public final Mono<?> init() {
-        return Mono.fromRunnable(() -> {
-            if (this.started.compareAndSet(false, true)) {
-                logger.debug("Scheduled Job '{}#{}' starting...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
-                final long started = System.nanoTime();
+    public final void init() {
+        if (this.started.compareAndSet(false, true)) {
+            logger.debug("Scheduled Job '{}#{}' starting...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
+            final long started = System.nanoTime();
 
-                this.scheduledFuture = this.schedule(this.service, this::runJob);
+            this.scheduledFuture = this.schedule(this.service, this::runJob);
 
-                logger.info("Started Scheduled Job '{}#{}' started in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(),
-                    Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
-            }
-        });
+            logger.info("Started Scheduled Job '{}#{}' started in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(),
+                Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        }
     }
 
     private void runJob() {
@@ -60,19 +57,16 @@ public abstract class AbstractJob implements Lifecycle {
     protected abstract ScheduledFuture<?> schedule(JdkSchedulingExecutor service, Runnable command);
 
     @Override
-    public final Mono<?> release() {
-        return Mono.fromRunnable(() -> {
-            if (this.started.compareAndSet(true, false)) {
-                logger.debug("Scheduled Job '{}#{}' stopping...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
-                final long started = System.nanoTime();
+    public final void release() {
+        if (this.started.compareAndSet(true, false)) {
+            logger.debug("Scheduled Job '{}#{}' stopping...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
+            final long started = System.nanoTime();
 
-                var f = this.scheduledFuture;
-                this.scheduledFuture = null;
-                f.cancel(true);
+            var f = this.scheduledFuture;
+            this.scheduledFuture = null;
+            f.cancel(true);
 
-                logger.info("Scheduled Job '{}#{}' stopped in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(),
-                    Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
-            }
-        });
+            logger.info("Scheduled Job '{}#{}' stopped in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(), Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        }
     }
 }

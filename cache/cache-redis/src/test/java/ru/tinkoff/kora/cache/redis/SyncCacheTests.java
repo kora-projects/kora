@@ -15,7 +15,7 @@ class SyncCacheTests extends CacheRunner {
     private DummyCache cache = null;
 
     @BeforeEach
-    void setup(RedisParams redisParams) {
+    void setup(RedisParams redisParams) throws Exception {
         redisParams.execute(cmd -> cmd.flushall(FlushMode.SYNC));
         if (cache == null) {
             cache = createCache(redisParams);

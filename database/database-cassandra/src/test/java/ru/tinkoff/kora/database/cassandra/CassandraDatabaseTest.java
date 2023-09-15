@@ -52,10 +52,10 @@ class CassandraDatabaseTest {
     private static void withDb(CassandraParams params, Consumer<CassandraDatabase> consumer) {
         var db = createCassandraDatabase(params);
         try {
-            db.init().block();
+            db.init();
             consumer.accept(db);
         } finally {
-            db.release().block();
+            db.release();
         }
     }
 

@@ -17,6 +17,6 @@ public class KoraBigGraphTest extends AbstractKoraAppTest {
         sb.append("}\n");
         var draw = compile(sb.toString());
         assertThat(draw.getNodes()).hasSize(1500);
-        draw.init().block();
+        draw.init();
     }
 }

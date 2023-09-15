@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.test.extension.junit5.testdata;
 
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.common.annotation.Root;
 
@@ -13,7 +12,7 @@ public class TestComponent3 implements LifecycleComponent {
     }
 
     @Override
-    public Mono<?> init() {
-        return Mono.error(() -> new IllegalStateException("OPS"));
+    public void init() {
+        throw new IllegalStateException("OPS");
     }
 }

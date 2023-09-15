@@ -26,11 +26,11 @@ abstract class CacheRunner extends Assertions implements RedisCacheModule {
         };
     }
 
-    protected DummyCache createCache(RedisParams redisParams) {
+    protected DummyCache createCache(RedisParams redisParams) throws Exception {
         var lettuceClientFactory = lettuceClientFactory();
         var lettuceClientConfig = new LettuceClientConfig(redisParams.uri().toString(), null, null, null, null, null, null);
         var lettuceCommander = lettuceCommander(lettuceClientFactory, lettuceClientConfig);
-        lettuceCommander.init().block(Duration.ofMinutes(1));
+        lettuceCommander.init();
 
         var syncRedisClient = lettuceCacheRedisClient(lettuceCommander);
         var reactiveRedisClient = lettuceReactiveCacheRedisClient(lettuceCommander);

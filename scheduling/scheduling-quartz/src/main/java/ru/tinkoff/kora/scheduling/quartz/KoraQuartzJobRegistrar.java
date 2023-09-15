@@ -3,7 +3,6 @@ package ru.tinkoff.kora.scheduling.quartz;
 import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 
 import java.time.Duration;
@@ -22,34 +21,31 @@ public class KoraQuartzJobRegistrar implements Lifecycle {
     }
 
     @Override
-    public final Mono<?> init() {
-        return Mono.fromCallable(() -> {
-            final List<String> quartzJobsNames = quartzJobList.stream()
-                .map(q -> q.getClass().getCanonicalName())
-                .toList();
+    public final void init() throws SchedulerException {
+        final List<String> quartzJobsNames = quartzJobList.stream()
+            .map(q -> q.getClass().getCanonicalName())
+            .toList();
 
-            logger.debug("Quartz Jobs {} starting...", quartzJobsNames);
-            final long started = System.nanoTime();
+        logger.debug("Quartz Jobs {} starting...", quartzJobsNames);
+        var started = System.nanoTime();
 
-            for (var koraQuartzJob : this.quartzJobList) {
-                var job = JobBuilder.newJob(koraQuartzJob.getClass())
-                    .withIdentity(koraQuartzJob.getClass().getCanonicalName())
-                    .build();
+        for (var koraQuartzJob : this.quartzJobList) {
+            var job = JobBuilder.newJob(koraQuartzJob.getClass())
+                .withIdentity(koraQuartzJob.getClass().getCanonicalName())
+                .build();
 
-                if (this.scheduler.checkExists(job.getKey())) {
-                    var newTrigger = koraQuartzJob.getTrigger();
-                    var existsTrigger = this.scheduler.getTrigger(newTrigger.getKey());
-                    if (triggersEqual(existsTrigger, newTrigger)) {
-                        continue;
-                    }
-                    this.scheduler.deleteJob(job.getKey());
+            if (this.scheduler.checkExists(job.getKey())) {
+                var newTrigger = koraQuartzJob.getTrigger();
+                var existsTrigger = this.scheduler.getTrigger(newTrigger.getKey());
+                if (triggersEqual(existsTrigger, newTrigger)) {
+                    continue;
                 }
-                this.scheduler.scheduleJob(job, koraQuartzJob.getTrigger());
+                this.scheduler.deleteJob(job.getKey());
             }
+            this.scheduler.scheduleJob(job, koraQuartzJob.getTrigger());
+        }
 
-            logger.info("Quartz Jobs {} started in {}", quartzJobsNames, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
-            return null;
-        });
+        logger.info("Quartz Jobs {} started in {}", quartzJobsNames, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
     }
 
     private boolean triggersEqual(Trigger oldTrigger, Trigger newTrigger) {
@@ -71,7 +67,6 @@ public class KoraQuartzJobRegistrar implements Lifecycle {
     }
 
     @Override
-    public final Mono<?> release() {
-        return Mono.empty();
+    public final void release() {
     }
 }

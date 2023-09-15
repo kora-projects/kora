@@ -14,7 +14,7 @@ object GraphUtil {
     }
 
     class GraphContainer(val draw: ApplicationGraphDraw) {
-        private val graph = draw.init().block()!!
+        private val graph = draw.init()!!
 
         fun <T : Any> findByType(type: Class<T>) = draw.nodes.asSequence()
             .map { graph.get(it) }

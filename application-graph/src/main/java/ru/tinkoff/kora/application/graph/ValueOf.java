@@ -1,14 +1,12 @@
 package ru.tinkoff.kora.application.graph;
 
-import reactor.core.publisher.Mono;
-
 import java.util.Optional;
 import java.util.function.Function;
 
 public interface ValueOf<T> {
     T get();
 
-    Mono<Void> refresh();
+    void refresh();
 
     default <Q> ValueOf<Q> map(Function<T, Q> mapper) {
         return new ValueOf<>() {
@@ -19,8 +17,8 @@ public interface ValueOf<T> {
             }
 
             @Override
-            public Mono<Void> refresh() {
-                return ValueOf.this.refresh();
+            public void refresh() {
+                ValueOf.this.refresh();
             }
         };
     }
@@ -33,8 +31,8 @@ public interface ValueOf<T> {
             }
 
             @Override
-            public Mono<Void> refresh() {
-                return ValueOf.this.refresh();
+            public void refresh() {
+                ValueOf.this.refresh();
             }
         };
     }
@@ -47,8 +45,8 @@ public interface ValueOf<T> {
             }
 
             @Override
-            public Mono<Void> refresh() {
-                return Mono.empty();
+            public void refresh() {
+
             }
         };
     }
@@ -61,8 +59,8 @@ public interface ValueOf<T> {
             }
 
             @Override
-            public Mono<Void> refresh() {
-                return Mono.empty();
+            public void refresh() {
+
             }
         };
     }

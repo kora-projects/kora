@@ -34,7 +34,7 @@ final class TestGraph implements AutoCloseable {
             var config = meta.config();
             try {
                 config.setup(graph);
-                final RefreshableGraph initGraph = graph.init().block(Duration.ofMinutes(10));
+                final RefreshableGraph initGraph = graph.init();
                 this.graphInitialized = new TestGraphInitialized(initGraph, graph, new DefaultKoraAppGraph(graph, initGraph));
                 logger.info("@KoraAppTest graph initialization took: {}", Duration.ofNanos(System.nanoTime() - started));
             } catch (IOException e) {
@@ -58,7 +58,13 @@ final class TestGraph implements AutoCloseable {
         if (graphInitialized != null) {
             final long started = System.nanoTime();
             logger.debug("@KoraAppTest graph releasing...");
-            graphInitialized.refreshableGraph().release().block(Duration.ofMinutes(10));
+            try {
+                graphInitialized.refreshableGraph().release();
+            } catch (RuntimeException | Error e) {
+                throw e;
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
             graphInitialized = null;
             logger.info("@KoraAppTest graph releasing took: {}", Duration.ofNanos(System.nanoTime() - started));
         }

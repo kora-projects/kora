@@ -3,10 +3,8 @@ package ru.tinkoff.kora.jms;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.common.Context;
-import ru.tinkoff.kora.common.util.ReactorUtils;
 import ru.tinkoff.kora.jms.telemetry.JmsConsumerTelemetry;
 import ru.tinkoff.kora.jms.telemetry.JmsConsumerTelemetryFactory;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
@@ -40,35 +38,31 @@ public class JmsMessageListenerContainer implements Lifecycle {
     }
 
     @Override
-    public Mono<Void> init() {
-        return ReactorUtils.ioMono(() -> {
-            if (this.isStarted.compareAndSet(false, true)) {
-                if (this.config.threads() == 0) {
-                    return;
-                }
-                this.executorService = Executors.newFixedThreadPool(this.config.threads());
-                for (int i = 0; i < this.config.threads(); i++) {
-                    this.executorService.submit(this::connectLoop);
-                }
+    public void init() {
+        if (this.isStarted.compareAndSet(false, true)) {
+            if (this.config.threads() == 0) {
+                return;
             }
-        });
+            this.executorService = Executors.newFixedThreadPool(this.config.threads());
+            for (int i = 0; i < this.config.threads(); i++) {
+                this.executorService.submit(this::connectLoop);
+            }
+        }
     }
 
     @Override
-    public Mono<Void> release() {
-        return ReactorUtils.ioMono(() -> {
-            if (this.isStarted.compareAndSet(true, false)) {
-                if (this.config.threads() == 0) {
-                    return;
-                }
-                this.executorService.shutdownNow();
-                try {
-                    this.executorService.awaitTermination(10, TimeUnit.SECONDS);
-                    this.executorService = null;
-                } catch (InterruptedException ignore) {
-                }
+    public void release() {
+        if (this.isStarted.compareAndSet(true, false)) {
+            if (this.config.threads() == 0) {
+                return;
             }
-        });
+            this.executorService.shutdownNow();
+            try {
+                this.executorService.awaitTermination(10, TimeUnit.SECONDS);
+                this.executorService = null;
+            } catch (InterruptedException ignore) {
+            }
+        }
     }
 
     private void connectLoop() {

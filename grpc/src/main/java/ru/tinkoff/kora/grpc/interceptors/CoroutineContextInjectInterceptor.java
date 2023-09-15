@@ -37,7 +37,7 @@ public class CoroutineContextInjectInterceptor {
         @Nonnull
         @Override
         public CoroutineContext coroutineContext(@Nonnull ServerCall<?, ?> serverCall, @Nonnull Metadata metadata) {
-            return Context.Kotlin.inject(this.rootContext, Context.current());
+            return this.rootContext.plus(Context.Kotlin.asCoroutineContext(Context.current()));
         }
     }
 

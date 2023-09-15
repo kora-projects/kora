@@ -4,7 +4,6 @@ import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.DefaultHttpHeaders;
 import org.asynchttpclient.RequestBuilder;
 import org.asynchttpclient.uri.Uri;
-import reactor.core.Exceptions;
 import reactor.core.Fuseable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -94,18 +93,11 @@ public class AsyncHttpClient implements HttpClient, Lifecycle {
     }
 
     @Override
-    public Mono<Void> init() {
-        return Mono.empty();
+    public void init() {
     }
 
     @Override
-    public Mono<Void> release() {
-        return Mono.fromRunnable(() -> {
-            try {
-                this.client.close();
-            } catch (IOException e) {
-                throw Exceptions.propagate(e);
-            }
-        });
+    public void release() throws IOException {
+        this.client.close();
     }
 }

@@ -4,9 +4,7 @@ import io.undertow.Undertow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xnio.XnioWorker;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.ValueOf;
-import ru.tinkoff.kora.common.util.ReactorUtils;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.PrivateHttpServer;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
@@ -14,6 +12,7 @@ import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 
 public class UndertowPrivateHttpServer implements PrivateHttpServer {
 
@@ -31,39 +30,40 @@ public class UndertowPrivateHttpServer implements PrivateHttpServer {
     }
 
     @Override
-    public Mono<Void> release() {
-        return Mono.delay(this.config.get().shutdownWait())
-            .then(ReactorUtils.ioMono(() -> {
-                logger.debug("Private HTTP Server (Undertow) stopping...");
-                final long started = System.nanoTime();
-                if (this.undertow != null) {
-                    this.undertow.stop();
-                    this.undertow = null;
-                }
-                logger.info("Private HTTP Server (Undertow) stopped in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
-            }));
+    public void release() {
+        try {
+            Thread.sleep(this.config.get().shutdownWait().toMillis());
+        } catch (InterruptedException e) {
+        }
+        logger.debug("Private HTTP Server (Undertow) stopping...");
+        final long started = System.nanoTime();
+        if (this.undertow != null) {
+            this.undertow.stop();
+            this.undertow = null;
+        }
+        logger.info("Private HTTP Server (Undertow) stopped in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
     }
 
     @Override
-    public Mono<Void> init() {
-        return Mono.create(sink -> {
-            // dirty hack to start undertow thread as non daemon
-            var t = new Thread(() -> {
-                logger.debug("Private HTTP Server (Undertow) starting...");
-                final long started = System.nanoTime();
-                try {
-                    this.undertow = this.createServer();
-                    this.undertow.start();
-                    var data = StructuredArgument.marker( "port", this.port() );
-                    logger.info(data, "Private HTTP Server (Undertow) started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
-                    sink.success();
-                } catch (Throwable e) {
-                    sink.error(e);
-                }
-            }, "undertow-private-init");
-            t.setDaemon(false);
-            t.start();
-        });
+    public void init() throws InterruptedException {
+        // dirty hack to start undertow thread as non daemon
+        var f = new CompletableFuture<Void>();
+        var t = new Thread(() -> {
+            logger.debug("Private HTTP Server (Undertow) starting...");
+            final long started = System.nanoTime();
+            try {
+                this.undertow = this.createServer();
+                this.undertow.start();
+                var data = StructuredArgument.marker("port", this.port());
+                logger.info(data, "Private HTTP Server (Undertow) started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+                f.complete(null);
+            } catch (Throwable e) {
+                f.completeExceptionally(e);
+            }
+        }, "undertow-private-init");
+        t.setDaemon(false);
+        t.start();
+        f.join();
     }
 
     private Undertow createServer() {

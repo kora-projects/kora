@@ -61,19 +61,19 @@ class HttpClientAnnotationProcessorTest {
     );
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         ctx.getLogger("ROOT").setLevel(Level.OFF);
         ctx.getLogger("ru.tinkoff.kora.http.client").setLevel(Level.ALL);
         ctx.getLogger(GithubClient.class).setLevel(Level.ALL);
         if (this.baseClient instanceof Lifecycle lifecycle) {
-            lifecycle.init().block();
+            lifecycle.init();
         }
     }
 
     @AfterEach
-    void tearDown() {
+    void tearDown() throws Exception {
         if (this.baseClient instanceof Lifecycle lifecycle) {
-            lifecycle.release().block();
+            lifecycle.release();
         }
         server.stop();
         Context.clear();
@@ -289,7 +289,7 @@ class HttpClientAnnotationProcessorTest {
                 .withQueryStringParameter("query1", "foo", "bar")
                 .withQueryStringParameter("query2", "1", "2", "3"))
             .respond(HttpResponse.response());
-        client.multipleQueriesCollections(Set.of("foo", "bar"), Set.of(1,2,3));
+        client.multipleQueriesCollections(Set.of("foo", "bar"), Set.of(1, 2, 3));
         server.reset();
 
         server.when(request("/multipleQueryParams")

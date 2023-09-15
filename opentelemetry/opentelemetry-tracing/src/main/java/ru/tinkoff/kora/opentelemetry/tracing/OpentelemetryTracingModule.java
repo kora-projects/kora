@@ -8,7 +8,6 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.SpanLimits;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.samplers.Sampler;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.LifecycleWrapper;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.config.common.Config;
@@ -59,8 +58,8 @@ public interface OpentelemetryTracingModule extends OpentelemetryModule {
                 .addSpanProcessor(spanProcessor)
                 .setResource(resource)
                 .build(),
-            p -> Mono.empty(),
-            p -> Mono.fromRunnable(p::close)
+            p -> {},
+            SdkTracerProvider::close
         );
     }
 

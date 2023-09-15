@@ -57,7 +57,7 @@ class KafkaAssignConsumerContainerTest {
             }
         });
         try {
-            container.init().block();
+            container.init();
             params.withProducer(new IntegerSerializer(), producer -> {
                 var latch = new CountDownLatch(100);
                 for (int i = 0; i < 100; i++) {
@@ -104,7 +104,7 @@ class KafkaAssignConsumerContainerTest {
             Thread.sleep(2000);
             assertThat(deque.size()).isEqualTo(100);
         } finally {
-            container.release().block();
+            container.release();
         }
     }
 }

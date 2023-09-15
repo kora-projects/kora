@@ -6,7 +6,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerMetrics;
 import ru.tinkoff.kora.micrometer.module.MetricsConfig.KafkaConsumerMetricsConfig;
@@ -59,24 +58,21 @@ public class MicrometerKafkaConsumerMetrics implements KafkaConsumerMetrics, Lif
     }
 
     @Override
-    public Mono<?> init() {
-        return Mono.empty();
+    public void init() {
     }
 
     @Override
-    public Mono<?> release() {
-        return Mono.fromRunnable(() -> {
-            var metrics = new ArrayList<>(this.metrics.values());
-            this.metrics.clear();
-            for (var metric : metrics) {
-                metric.close();
-            }
-            var lagMetrics = new ArrayList<>(this.lagMetrics.values());
-            this.lagMetrics.clear();
-            for (var lagMetric : lagMetrics) {
-                lagMetric.gauge.close();
-            }
-        });
+    public void release() {
+        var metrics = new ArrayList<>(this.metrics.values());
+        this.metrics.clear();
+        for (var metric : metrics) {
+            metric.close();
+        }
+        var lagMetrics = new ArrayList<>(this.lagMetrics.values());
+        this.lagMetrics.clear();
+        for (var lagMetric : lagMetrics) {
+            lagMetric.gauge.close();
+        }
     }
 
     private static class LagGauge {

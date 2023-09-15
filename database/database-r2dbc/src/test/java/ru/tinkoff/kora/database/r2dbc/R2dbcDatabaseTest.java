@@ -42,7 +42,7 @@ class R2dbcDatabaseTest {
         try {
             consumer.accept(db);
         } finally {
-            db.release().block();
+            db.release();
         }
     }
 

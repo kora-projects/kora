@@ -51,11 +51,11 @@ class VertxConnectionFactoryTest {
             true
         );
         var db = new VertxDatabase(config, eventLoopGroup, new DefaultDataBaseTelemetryFactory(null, null, null));
-        db.init().block();
+        db.init();
         try {
             consumer.accept(db);
         } finally {
-            db.release().block();
+            db.release();
         }
     }
 

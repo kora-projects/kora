@@ -2,9 +2,7 @@ package ru.tinkoff.kora.database.cassandra;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import reactor.core.Exceptions;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.Lifecycle;
-import ru.tinkoff.kora.common.util.ReactorUtils;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory;
 
@@ -38,24 +36,20 @@ public final class CassandraDatabase implements CassandraConnectionFactory, Life
 
 
     @Override
-    public Mono<Void> init() {
-        return ReactorUtils.ioMono(() -> {
-            try {
-                cqlSession = new CassandraSessionBuilder().build(config);
-            } catch (Exception e) {
-                throw Exceptions.propagate(e);
-            }
-        });
+    public void init() {
+        try {
+            cqlSession = new CassandraSessionBuilder().build(config);
+        } catch (Exception e) {
+            throw Exceptions.propagate(e);
+        }
     }
 
     @Override
-    public Mono<Void> release() {
-        return Mono.defer(() -> {
-            if (cqlSession != null) {
-                return ReactorUtils.ioMono(cqlSession::close);
-            } else {
-                return Mono.empty();
-            }
-        });
+    public void release() {
+        var s = cqlSession;
+        if (s != null) {
+            s.close();
+            cqlSession = null;
+        }
     }
 }

@@ -28,7 +28,7 @@ class JdbcDatabaseTest {
         }
     }
 
-    private static void withDb(PostgresParams params, Consumer<JdbcDatabase> consumer) {
+    private static void withDb(PostgresParams params, Consumer<JdbcDatabase> consumer) throws SQLException {
         var config = new $JdbcDatabaseConfig_ConfigValueExtractor.JdbcDatabaseConfig_Impl(
             params.user(),
             params.password(),
@@ -45,16 +45,16 @@ class JdbcDatabaseTest {
             new Properties()
         );
         var db = new JdbcDatabase(config, new DefaultDataBaseTelemetryFactory(null, null, null));
-        db.init().block();
+        db.init();
         try {
             consumer.accept(db);
         } finally {
-            db.release().block();
+            db.release();
         }
     }
 
     @Test
-    void testQuery(PostgresParams params) {
+    void testQuery(PostgresParams params) throws SQLException {
         var tableName = PostgresTestContainer.randomName("test_table");
         params.execute("""
             CREATE TABLE %s(id BIGSERIAL, value VARCHAR);
@@ -84,7 +84,7 @@ class JdbcDatabaseTest {
     }
 
     @Test
-    void testTransaction(PostgresParams params) {
+    void testTransaction(PostgresParams params) throws SQLException {
         var tableName = "test_table_" + PostgresTestContainer.randomName("test_table");
         params.execute("CREATE TABLE %s(id BIGSERIAL, value VARCHAR);".formatted(tableName));
         var id = "INSERT INTO %s(value) VALUES ('test1');".formatted(tableName);
