@@ -14,7 +14,7 @@ abstract class AbstractKafkaListenerAnnotationProcessorTest : AbstractSymbolProc
             import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
             import ru.tinkoff.kora.kafka.common.exceptions.RecordKeyDeserializationException;
             import ru.tinkoff.kora.kafka.common.exceptions.RecordValueDeserializationException;
-            
+            import org.apache.kafka.common.header.Headers;
             """.trimIndent()
     }
 

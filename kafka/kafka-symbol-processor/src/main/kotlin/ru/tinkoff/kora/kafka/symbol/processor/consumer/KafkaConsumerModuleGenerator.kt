@@ -26,6 +26,7 @@ class KafkaConsumerModuleGenerator(
             if (kafkaListener == null) {
                 continue
             }
+
             val configTagData = kafkaConfigGenerator.generate(function, kafkaListener)
             classBuilder.addFunction(configTagData.configFunction)
             classBuilder.addType(configTagData.tag)

@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.kafka.common.config;
+package ru.tinkoff.kora.kafka.common.consumer;
 
 import ru.tinkoff.kora.common.util.Either;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
@@ -11,7 +11,7 @@ import java.util.Properties;
 import java.util.regex.Pattern;
 
 @ConfigValueExtractor
-public interface KafkaConsumerConfig {
+public interface KafkaListenerConfig {
     Properties driverProperties();
 
     @Nullable
@@ -43,11 +43,11 @@ public interface KafkaConsumerConfig {
         return Duration.ofMinutes(1);
     }
 
-    default KafkaConsumerConfig withDriverPropertiesOverrides(Map<String, Object> overrides) {
+    default KafkaListenerConfig withDriverPropertiesOverrides(Map<String, Object> overrides) {
         var props = new Properties();
         props.putAll(driverProperties());
         props.putAll(overrides);
-        return new $KafkaConsumerConfig_ConfigValueExtractor.KafkaConsumerConfig_Impl(
+        return new $KafkaListenerConfig_ConfigValueExtractor.KafkaListenerConfig_Impl(
             props,
             topics(),
             topicsPattern(),

@@ -16,7 +16,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class TagUtils {
+public final class TagUtils {
+
+    private TagUtils() { }
 
     private static Set<String> parseTagValue0(AnnotatedConstruct element) {
         for (var annotationMirror : element.getAnnotationMirrors()) {
@@ -27,6 +29,7 @@ public class TagUtils {
                     .map(TypeMirror::toString)
                     .collect(Collectors.toSet());
             }
+
             var annotationElement = type.asElement();
             for (var annotatedWith : annotationElement.getAnnotationMirrors()) {
                 var annotationType = annotatedWith.getAnnotationType();

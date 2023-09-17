@@ -3,49 +3,63 @@ package ru.tinkoff.kora.kafka.symbol.processor.consumer
 import org.apache.kafka.common.serialization.Deserializer
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import ru.tinkoff.kora.application.graph.ValueOf
 import ru.tinkoff.kora.common.Tag
-import ru.tinkoff.kora.kafka.common.config.KafkaConsumerConfig
+import ru.tinkoff.kora.kafka.common.consumer.KafkaListenerConfig
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.KafkaRecordHandler
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry
 
 class KafkaListenerKeyAndValueTest : AbstractKafkaListenerAnnotationProcessorTest() {
     @Test
     fun testProcessValue() {
-        compile("""
+        compile(
+            """
             class KafkaListenerClass {
                 @KafkaListener("test.config.path")
                 fun process(value: String) {
                 }
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
     }
 
     @Test
     fun testProcessValueSuspend() {
-        compile("""
+        compile(
+            """
             class KafkaListenerClass {
                 @KafkaListener("test.config.path")
                 suspend fun process(value: String) {
                 }
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
     }
 
     @Test
     fun testProcessValueWithTag() {
-        compile("""
+        compile(
+            """
             class KafkaListenerClass {
                 @KafkaListener("test.config.path")
                 fun process(@Tag(KafkaListenerClass::class) value: String) {
                 }
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
         compileResult.assertSuccess()
         val module = compileResult.loadClass("KafkaListenerClassModule")
-        val container = module.getMethod("kafkaListenerClassProcessContainer", KafkaConsumerConfig::class.java, KafkaRecordHandler::class.java, Deserializer::class.java, Deserializer::class.java, KafkaConsumerTelemetry::class.java)
+        val container = module.getMethod(
+            "kafkaListenerClassProcessContainer",
+            KafkaListenerConfig::class.java,
+            ValueOf::class.java,
+            Deserializer::class.java,
+            Deserializer::class.java,
+            KafkaConsumerTelemetry::class.java
+        )
         val valueDeserializer = container.parameters[3]
 
         val valueTag = valueDeserializer.getAnnotation(Tag::class.java)
@@ -56,28 +70,39 @@ class KafkaListenerKeyAndValueTest : AbstractKafkaListenerAnnotationProcessorTes
 
     @Test
     fun testProcessKeyAndValue() {
-        compile("""
+        compile(
+            """
             class KafkaListenerClass {
                 @KafkaListener("test.config.path")
                 fun process(key: String, value: String) {
                 }
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
     }
 
     @Test
     fun testProcessKeyAndValueWithTag() {
-        compile("""
+        compile(
+            """
             class KafkaListenerClass {
                 @KafkaListener("test.config.path")
                 fun process(@Tag(KafkaListenerClass::class) key: String, @Tag(String::class) value: String) {
                 }
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
         val module = compileResult.loadClass("KafkaListenerClassModule")
-        val container = module.getMethod("kafkaListenerClassProcessContainer", KafkaConsumerConfig::class.java, KafkaRecordHandler::class.java, Deserializer::class.java, Deserializer::class.java, KafkaConsumerTelemetry::class.java)
+        val container = module.getMethod(
+            "kafkaListenerClassProcessContainer",
+            KafkaListenerConfig::class.java,
+            ValueOf::class.java,
+            Deserializer::class.java,
+            Deserializer::class.java,
+            KafkaConsumerTelemetry::class.java
+        )
         val keyDeserializer = container.parameters[2]
         val valueDeserializer = container.parameters[3]
 
@@ -92,37 +117,43 @@ class KafkaListenerKeyAndValueTest : AbstractKafkaListenerAnnotationProcessorTes
 
     @Test
     fun testProcessValueAndValueException() {
-        compile("""
+        compile(
+            """
             class KafkaListenerClass {
                 @KafkaListener("test.config.path")
                 fun process(value: String?, exception: RecordValueDeserializationException?) {
                 }
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
     }
 
     @Test
     fun testProcessValueAndException() {
-        compile("""
+        compile(
+            """
             class KafkaListenerClass {
                 @KafkaListener("test.config.path")
                 fun process(value: String?, exception: Exception?) {
                 }
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
     }
 
     @Test
     fun testProcessValueAndConsumer() {
-        compile("""
+        compile(
+            """
             class KafkaListenerClass {
                 @KafkaListener("test.config.path")
                 fun process(consumer: Consumer<*,*>, value: String?, exception: Exception?) {
                 }
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
     }
 }

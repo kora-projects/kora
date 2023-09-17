@@ -7,15 +7,16 @@ import java.time.Duration;
 import java.util.Properties;
 
 @ConfigValueExtractor
-public interface PublisherConfig {
-    Properties driverProperties();
+public interface KafkaPublisherConfig {
 
-    @Nullable
-    TransactionConfig transaction();
+    Properties driverProperties();
 
     @ConfigValueExtractor
     interface TransactionConfig {
-        String idPrefix();
+
+        default String idPrefix() {
+            return "kora-app-";
+        }
 
         default int maxPoolSize() {
             return 10;
@@ -24,5 +25,14 @@ public interface PublisherConfig {
         default Duration maxWaitTime() {
             return Duration.ofSeconds(10);
         }
+    }
+
+    @ConfigValueExtractor
+    interface TopicConfig {
+
+        String topic();
+
+        @Nullable
+        Integer partition();
     }
 }

@@ -5,48 +5,61 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.common.Tag
-import ru.tinkoff.kora.kafka.common.config.KafkaConsumerConfig
+import ru.tinkoff.kora.kafka.common.consumer.KafkaListenerConfig
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.KafkaRecordsHandler
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry
 
 class KafkaListenerRecordsTest : AbstractKafkaListenerAnnotationProcessorTest() {
     @Test
     fun testProcessRecords() {
-        compile("""
+        compile(
+            """
             class KafkaListenerClass {
                 @KafkaListener("test.config.path")
                 fun process(event: ConsumerRecords<ByteArray, String>) {
                 }
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
     }
 
     @Test
     fun testProcessRecordsSuspend() {
-        compile("""
+        compile(
+            """
             class KafkaListenerClass {
                 @KafkaListener("test.config.path")
                 suspend fun process(event: ConsumerRecords<ByteArray, String>) {
                 }
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
     }
 
     @Test
     @Disabled("Is not supported by ksp yet")
     fun testProcessRecordsWithTags() {
-        compile("""
+        compile(
+            """
             class KafkaListenerClass {
                 @KafkaListener("test.config.path")
                 fun process(event: ConsumerRecords<@Tag(KafkaListener::class) String, @Tag(String::class) String>) {
                 }
             }
-            """.trimIndent())
+            """.trimIndent()
+        )
 
         val module = compileResult.loadClass("KafkaListenerModule")
-        val container = module.getMethod("kafkaListenerProcessContainer", KafkaConsumerConfig::class.java, KafkaRecordsHandler::class.java, Deserializer::class.java, Deserializer::class.java, KafkaConsumerTelemetry::class.java)
+        val container = module.getMethod(
+            "kafkaListenerProcessContainer",
+            KafkaListenerConfig::class.java,
+            KafkaRecordsHandler::class.java,
+            Deserializer::class.java,
+            Deserializer::class.java,
+            KafkaConsumerTelemetry::class.java
+        )
         val keyDeserializer = container.parameters[2]
         val valueDeserializer = container.parameters[3]
 
@@ -61,49 +74,57 @@ class KafkaListenerRecordsTest : AbstractKafkaListenerAnnotationProcessorTest() 
 
     @Test
     fun testProcessRecordsAnyKeyType() {
-        compile("""
+        compile(
+            """
             class KafkaListenerClass {
                 @KafkaListener("test.config.path")
                 fun process(event: ConsumerRecords<*, String>) {
                 }
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
     }
 
     @Test
     fun testProcessRecordsAndConsumer() {
-        compile("""
+        compile(
+            """
             class KafkaListenerClass {
                 @KafkaListener("test.config.path")
                 fun process(consumer: Consumer<*, *>, event: ConsumerRecords<String, String>) {
                 }
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
     }
 
     @Test
     fun testProcessRecordsAndConsumerAndTelemetry() {
-        compile("""
+        compile(
+            """
             class KafkaListenerClass {
                 @KafkaListener("test.config.path")
                 fun process(consumer: Consumer<*, *>, event: ConsumerRecords<ByteArray, String>, telemetry: KafkaConsumerTelemetry.KafkaConsumerRecordsTelemetryContext<*, *>) {
                 }
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
     }
 
     @Test
     fun testProcessRecordsAndTelemetry() {
-        compile("""
+        compile(
+            """
             class KafkaListenerClass {
                 @KafkaListener("test.config.path")
                 fun process(telemetry: KafkaConsumerTelemetry.KafkaConsumerRecordsTelemetryContext<*, *>, event: ConsumerRecords<ByteArray, String>) {
                 }
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
     }
 }

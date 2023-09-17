@@ -3,9 +3,9 @@ package ru.tinkoff.kora.kafka.annotation.processor.consumer;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
+import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.Tag;
-import ru.tinkoff.kora.kafka.common.config.KafkaConsumerConfig;
-import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.KafkaRecordHandler;
+import ru.tinkoff.kora.kafka.common.consumer.KafkaListenerConfig;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,7 +40,7 @@ public class KafkaListenerRecordTest extends AbstractKafkaListenerAnnotationProc
 
         compileResult.assertSuccess();
         var module = compileResult.loadClass("KafkaListenerClassModule");
-        var container = module.getMethod("kafkaListenerClassProcessContainer", KafkaConsumerConfig.class, KafkaRecordHandler.class, Deserializer.class, Deserializer.class, KafkaConsumerTelemetry.class);
+        var container = module.getMethod("kafkaListenerClassProcessContainer", KafkaListenerConfig.class, ValueOf.class, Deserializer.class, Deserializer.class, KafkaConsumerTelemetry.class);
         var keyDeserializer = container.getParameters()[2];
         var valueDeserializer = container.getParameters()[3];
 
@@ -233,5 +233,4 @@ public class KafkaListenerRecordTest extends AbstractKafkaListenerAnnotationProc
             .hasValueError()
         );
     }
-
 }

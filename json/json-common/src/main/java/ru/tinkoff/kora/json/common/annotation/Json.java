@@ -10,7 +10,7 @@ import java.lang.annotation.Target;
 /**
  * Indicates that class will be serialized into/from JSON
  */
-@Target({ElementType.TYPE, ElementType.PARAMETER, ElementType.METHOD})
+@Target({ElementType.TYPE, ElementType.PARAMETER, ElementType.METHOD, ElementType.TYPE_USE})
 @Retention(RetentionPolicy.RUNTIME)
 @Tag(Json.class)
 public @interface Json {
