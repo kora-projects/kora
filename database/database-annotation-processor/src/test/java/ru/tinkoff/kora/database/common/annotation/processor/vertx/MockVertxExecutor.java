@@ -8,7 +8,6 @@ import io.vertx.sqlclient.*;
 import io.vertx.sqlclient.desc.ColumnDescriptor;
 import io.vertx.sqlclient.impl.RowDesc;
 import org.mockito.Mockito;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 import ru.tinkoff.kora.database.vertx.VertxConnectionFactory;
 
@@ -124,12 +123,12 @@ public class MockVertxExecutor implements VertxConnectionFactory {
     }
 
     @Override
-    public <T> Mono<T> withConnection(Function<SqlConnection, Mono<T>> callback) {
+    public <T> CompletionStage<T> withConnection(Function<SqlConnection, CompletionStage<T>> callback) {
         return callback.apply(connection);
     }
 
     @Override
-    public <T> Mono<T> inTx(Function<SqlConnection, Mono<T>> callback) {
+    public <T> CompletionStage<T> inTx(Function<SqlConnection, CompletionStage<T>> callback) {
         return callback.apply(connection);
     }
 }

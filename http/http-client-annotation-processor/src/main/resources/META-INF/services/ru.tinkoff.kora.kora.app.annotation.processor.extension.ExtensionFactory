@@ -1,1 +1,2 @@
 ru.tinkoff.kora.http.client.annotation.processor.extension.HttpClientLinkerExtensionFactory
+ru.tinkoff.kora.http.client.annotation.processor.extension.HttpClientResponseMapperKoraExtensionFactory

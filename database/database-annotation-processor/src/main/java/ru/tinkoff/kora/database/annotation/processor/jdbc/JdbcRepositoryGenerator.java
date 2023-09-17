@@ -1,11 +1,7 @@
 package ru.tinkoff.kora.database.annotation.processor.jdbc;
 
 import com.squareup.javapoet.*;
-import reactor.core.publisher.Mono;
-import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
-import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
-import ru.tinkoff.kora.annotation.processor.common.Visitors;
+import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils.Mapper;
@@ -134,7 +130,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         var returnType = methodType.getReturnType();
         final boolean isMono = CommonUtils.isMono(returnType);
         if (isMono) {
-            b.addCode("return $T.fromCompletionStage(() -> $T.supplyAsync(() -> {$>\n", Mono.class, CompletableFuture.class);
+            b.addCode("return $T.fromCompletionStage(() -> $T.supplyAsync(() -> {$>\n", CommonClassNames.mono, CompletableFuture.class);
             returnType = ((DeclaredType) returnType).getTypeArguments().get(0);
         }
         var connection = parameters.stream().filter(QueryParameter.ConnectionParameter.class::isInstance).findFirst()

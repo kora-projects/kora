@@ -1,12 +1,11 @@
 package ru.tinkoff.kora.http.server.common.form;
 
-import reactor.core.publisher.Mono;
-import ru.tinkoff.kora.common.util.ReactorUtils;
 import ru.tinkoff.kora.http.common.form.FormUrlEncoded;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponseException;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
 
+import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -15,17 +14,22 @@ import java.util.Map;
 
 public final class FormUrlEncodedServerRequestMapper implements HttpServerRequestMapper<FormUrlEncoded> {
     @Override
-    public Mono<FormUrlEncoded> apply(HttpServerRequest request) {
+    public FormUrlEncoded apply(HttpServerRequest request) {
         var contentType = request.headers().getFirst("content-type");
         if (contentType == null || !contentType.equalsIgnoreCase("application/x-www-form-urlencoded")) {
-            request.body().subscribe();
-            return Mono.error(HttpServerResponseException.of(415, "Expected content type: 'application/x-www-form-urlencoded'"));
+            var rs = HttpServerResponseException.of(415, "Expected content type: 'application/x-www-form-urlencoded'");
+            try {
+                request.body().close();
+            } catch (IOException e) {
+                rs.addSuppressed(e);
+            }
+            throw rs;
         }
-        return ReactorUtils.toByteArrayMono(request.body()).map(bytes -> {
-            var str = new String(bytes, StandardCharsets.UTF_8);
-            var parts = FormUrlEncodedServerRequestMapper.read(str);
-            return new FormUrlEncoded(parts);
-        });
+        var bytes = request.body().collectArray().toCompletableFuture().join();
+        var str = new String(bytes, StandardCharsets.UTF_8);
+        var parts = FormUrlEncodedServerRequestMapper.read(str);
+        return new FormUrlEncoded(parts);
+
     }
 
     public static Map<String, FormUrlEncoded.FormPart> read(String body) {

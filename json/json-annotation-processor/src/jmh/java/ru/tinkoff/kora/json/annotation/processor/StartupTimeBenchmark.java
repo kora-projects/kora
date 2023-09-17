@@ -34,10 +34,10 @@ public class StartupTimeBenchmark {
 
     @Benchmark
     public byte[] kora() throws Exception {
-        return new StartupTimeBenchmarkTestRecordJsonWriter(
-            new SomeBeanJsonWriter(),
-            new ClassicBeanJsonWriter(),
-            new BeanWithPropertyConstructorJsonWriter(new SomeBeanJsonWriter()))
+        return new $StartupTimeBenchmarkTestRecordJsonWriter(
+            new $SomeBeanJsonWriter(),
+            new $ClassicBeanJsonWriter(),
+            new $BeanWithPropertyConstructorJsonWriter(new $SomeBeanJsonWriter()))
             .toByteArray(TestRecord.test());
     }
 

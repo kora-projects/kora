@@ -1,13 +1,21 @@
 package ru.tinkoff.kora.http.server.common;
 
-import okhttp3.*;
+import jakarta.annotation.Nullable;
+import okhttp3.ConnectionPool;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.mockito.AdditionalMatchers;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import org.mockito.verification.VerificationMode;
+import org.reactivestreams.FlowAdapters;
+import org.reactivestreams.Publisher;
+import reactor.adapter.JdkFlowAdapter;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -16,23 +24,28 @@ import reactor.util.function.Tuples;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.PromiseOf;
 import ru.tinkoff.kora.application.graph.ValueOf;
+import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.liveness.LivenessProbe;
 import ru.tinkoff.kora.common.liveness.LivenessProbeFailure;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
-import ru.tinkoff.kora.common.util.ByteBufferFluxInputStream;
+import ru.tinkoff.kora.common.util.ByteBufferPublisherInputStream;
+import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.common.util.ReactorUtils;
 import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.HttpResultCode;
+import ru.tinkoff.kora.http.common.body.HttpBody;
+import ru.tinkoff.kora.http.common.body.HttpOutBody;
 import ru.tinkoff.kora.http.server.common.$HttpServerConfig_ConfigValueExtractor.HttpServerConfig_Impl;
+import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
 import ru.tinkoff.kora.http.server.common.telemetry.DefaultHttpServerTelemetry;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerLogger;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerMetrics;
 import ru.tinkoff.kora.http.server.common.telemetry.PrivateApiMetrics;
 
-import javax.annotation.Nonnull;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -43,7 +56,6 @@ import java.util.concurrent.*;
 import java.util.function.Function;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
 
 import static java.time.Instant.now;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -68,6 +80,9 @@ public abstract class HttpServerTestKit {
 
     private volatile HttpServer httpServer = null;
     private volatile PrivateHttpServer privateHttpServer = null;
+    OkHttpClient b = new OkHttpClient.Builder()
+        .build();
+
     private final OkHttpClient client = new OkHttpClient.Builder()
         .connectionPool(new ConnectionPool(0, 1, TimeUnit.MICROSECONDS))
         .build();
@@ -79,99 +94,268 @@ public abstract class HttpServerTestKit {
 
     protected abstract PrivateHttpServer privateHttpServer(ValueOf<HttpServerConfig> config, PrivateApiHandler privateApiHandler);
 
-    @Test
-    void testLivenessSuccess() throws IOException {
-        when(livenessProbe.probe()).thenReturn(Mono.empty());
-        this.startPrivateHttpServer();
+    @Nested
+    public class PrivateApiTest {
+        @Test
+        void testLivenessSuccess() throws IOException {
+            when(livenessProbe.probe()).thenReturn(CompletableFuture.completedFuture(null));
+            startPrivateHttpServer();
 
-        var request = privateApiRequest(config.get().privateApiHttpLivenessPath())
-            .get()
-            .build();
+            var request = privateApiRequest(config.get().privateApiHttpLivenessPath())
+                .get()
+                .build();
 
-        try (var response = client.newCall(request).execute()) {
-            assertThat(response.code()).isEqualTo(200);
-            assertThat(response.body().string()).isEqualTo("OK");
+            try (var response = client.newCall(request).execute()) {
+                assertThat(response.code()).isEqualTo(200);
+                assertThat(response.body().string()).isEqualTo("OK");
+            }
+        }
+
+
+        @Test
+        void testLivenessFailure() throws IOException {
+            when(livenessProbe.probe()).thenReturn(CompletableFuture.completedFuture(new LivenessProbeFailure("Failure")));
+            startPrivateHttpServer();
+
+            var request = privateApiRequest(config.get().privateApiHttpLivenessPath())
+                .get()
+                .build();
+
+            try (var response = client.newCall(request).execute()) {
+                assertThat(response.code()).isEqualTo(503);
+                assertThat(response.body().string()).isEqualTo("Failure");
+            }
+        }
+
+        @Test
+        void testLivenessFailureOnUninitializedProbe() throws IOException {
+            livenessProbePromise.setValue(null);
+            startPrivateHttpServer();
+
+            var request = privateApiRequest(config.get().privateApiHttpLivenessPath())
+                .get()
+                .build();
+
+            try (var response = client.newCall(request).execute()) {
+                assertThat(response.code()).isEqualTo(503);
+                assertThat(response.body().string()).isEqualTo("Probe is not ready yet");
+            }
+        }
+
+        @Test
+        void testReadinessSuccess() throws IOException {
+            when(readinessProbe.probe()).thenReturn(CompletableFuture.completedFuture(null));
+            startPrivateHttpServer();
+
+            var request = privateApiRequest(config.get().privateApiHttpReadinessPath())
+                .get()
+                .build();
+
+            try (var response = client.newCall(request).execute()) {
+                assertThat(response.code()).isEqualTo(200);
+                assertThat(response.body().string()).isEqualTo("OK");
+            }
+        }
+
+        @Test
+        void testReadinessFailure() throws IOException {
+            when(readinessProbe.probe()).thenReturn(CompletableFuture.completedFuture(new ReadinessProbeFailure("Failed")));
+            startPrivateHttpServer();
+
+            var request = privateApiRequest(config.get().privateApiHttpReadinessPath())
+                .get()
+                .build();
+
+            try (var response = client.newCall(request).execute()) {
+                assertThat(response.code()).isEqualTo(503);
+                assertThat(response.body().string()).isEqualTo("Failed");
+            }
+        }
+
+        @Test
+        void testReadinessFailureOnUninitializedProbe() throws IOException {
+            readinessProbePromise.setValue(null);
+            startPrivateHttpServer();
+
+            var request = privateApiRequest(config.get().privateApiHttpReadinessPath())
+                .get()
+                .build();
+
+            try (var response = client.newCall(request).execute()) {
+                assertThat(response.code()).isEqualTo(503);
+                assertThat(response.body().string()).isEqualTo("Probe is not ready yet");
+            }
         }
     }
 
-    @Test
-    void testLivenessFailure() throws IOException {
-        when(livenessProbe.probe()).thenReturn(Mono.just(new LivenessProbeFailure("Failure")));
-        this.startPrivateHttpServer();
 
-        var request = privateApiRequest(config.get().privateApiHttpLivenessPath())
-            .get()
-            .build();
+    @Nested
+    public class PublicApiTest {
+        @Test
+        void testCompletedFullResponseBody() throws IOException {
+            var httpResponse = HttpServerResponse.of(200, HttpBody.plaintext("hello world"));
+            var handler = handler(GET, "/", (ctx, request) -> {
+                return CompletableFuture.completedFuture(httpResponse);
+            });
 
-        try (var response = client.newCall(request).execute()) {
-            assertThat(response.code()).isEqualTo(503);
-            assertThat(response.body().string()).isEqualTo("Failure");
+            startServer(handler);
+
+            var request = request("/")
+                .get()
+                .build();
+
+            try (var response = client.newCall(request).execute()) {
+                assertThat(response.code()).isEqualTo(200);
+                assertThat(response.body().string()).isEqualTo("hello world");
+            }
+            verifyResponse("GET", "/", 200, HttpResultCode.SUCCESS, "localhost", "http", ArgumentMatchers::isNull, anyLong());
         }
+
+        @Test
+        void testAsyncFullResponseBody() throws IOException {
+            var httpResponse = HttpServerResponse.of(200, HttpBody.plaintext("hello world"));
+            var handler = handler(GET, "/", (ctx, request) -> {
+                var f = new CompletableFuture<HttpServerResponse>();
+                ForkJoinPool.commonPool().submit(() -> {
+                    Thread.sleep(100);
+                    return f.complete(httpResponse);
+                });
+                return f;
+            });
+
+            startServer(handler);
+
+            var request = request("/")
+                .get()
+                .build();
+
+            try (var response = client.newCall(request).execute()) {
+                assertThat(response.code()).isEqualTo(200);
+                assertThat(response.body().string()).isEqualTo("hello world");
+            }
+            verifyResponse("GET", "/", 200, HttpResultCode.SUCCESS, "localhost", "http", ArgumentMatchers::isNull, anyLong());
+        }
+
+        @Test
+        void testReactiveResponseBody() throws IOException {
+            var handler = handler(GET, "/", (ctx, request) -> {
+                var body = new HttpOutBody() {
+
+                    @Override
+                    public void close() throws IOException {
+
+                    }
+
+                    @Override
+                    public int contentLength() {
+                        return -1;
+                    }
+
+                    @Nullable
+                    @Override
+                    public String contentType() {
+                        return null;
+                    }
+
+                    @Override
+                    public void write(OutputStream os) throws IOException {
+                        throw new IllegalStateException();
+                    }
+
+                    @Override
+                    public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
+                        Flux.<ByteBuffer>create(fluxSink -> {
+                            for (int i = 0; i < 10; i++) {
+                                fluxSink.next(ByteBuffer.wrap("hello world".getBytes(StandardCharsets.UTF_8)));
+                            }
+                            fluxSink.complete();
+                        }).subscribe(FlowAdapters.toSubscriber(subscriber));
+                    }
+                };
+                var httpResponse = HttpServerResponse.of(200, body);
+                return CompletableFuture.completedFuture(httpResponse);
+            });
+
+            startServer(handler);
+
+            var request = request("/")
+                .get()
+                .build();
+
+            try (var response = client.newCall(request).execute()) {
+                assertThat(response.code()).isEqualTo(200);
+                assertThat(response.body().string()).isEqualTo("hello worldhello worldhello worldhello worldhello worldhello worldhello worldhello worldhello worldhello world");
+            }
+            verifyResponse("GET", "/", 200, HttpResultCode.SUCCESS, "localhost", "http", ArgumentMatchers::isNull, anyLong());
+        }
+
+        @Test
+        void testStreamingResponseBody() throws IOException {
+            var handler = handler(GET, "/", (ctx, request) -> {
+                var body = new HttpOutBody() {
+
+                    @Override
+                    public void close() throws IOException {
+
+                    }
+
+                    @Override
+                    public int contentLength() {
+                        return -1;
+                    }
+
+                    @Nullable
+                    @Override
+                    public String contentType() {
+                        return null;
+                    }
+
+                    @Override
+                    public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
+                        throw new IllegalStateException();
+                    }
+
+                    @Override
+                    public void write(OutputStream os) throws IOException {
+                        for (int i = 0; i < 10; i++) {
+                            try {
+                                Thread.sleep(10);
+                            } catch (InterruptedException e) {
+                                throw new IOException(e);
+                            }
+                            os.write("hello world".getBytes(StandardCharsets.UTF_8));
+                        }
+
+                    }
+                };
+                var f = new CompletableFuture<HttpServerResponse>();
+                ForkJoinPool.commonPool().submit(() -> {
+                    var httpResponse = HttpServerResponse.of(200, body);
+                    Thread.sleep(10);
+                    return f.complete(httpResponse);
+                });
+                return f;
+            });
+
+            startServer(handler);
+
+            var request = request("/")
+                .get()
+                .build();
+
+            try (var response = client.newCall(request).execute()) {
+                assertThat(response.code()).isEqualTo(200);
+                assertThat(response.body().string()).isEqualTo("hello worldhello worldhello worldhello worldhello worldhello worldhello worldhello worldhello worldhello world");
+            }
+            verifyResponse("GET", "/", 200, HttpResultCode.SUCCESS, "localhost", "http", ArgumentMatchers::isNull, anyLong());
+        }
+
+        //todo request body tests
     }
 
     @Test
-    void testLivenessFailureOnUninitializedProbe() throws IOException {
-        this.livenessProbePromise.setValue(null);
-        this.startPrivateHttpServer();
-
-        var request = privateApiRequest(config.get().privateApiHttpLivenessPath())
-            .get()
-            .build();
-
-        try (var response = client.newCall(request).execute()) {
-            assertThat(response.code()).isEqualTo(503);
-            assertThat(response.body().string()).isEqualTo("Probe is not ready yet");
-        }
-    }
-
-    @Test
-    void testReadinessSuccess() throws IOException {
-        when(readinessProbe.probe()).thenReturn(Mono.empty());
-        this.startPrivateHttpServer();
-
-        var request = privateApiRequest(config.get().privateApiHttpReadinessPath())
-            .get()
-            .build();
-
-        try (var response = client.newCall(request).execute()) {
-            assertThat(response.code()).isEqualTo(200);
-            assertThat(response.body().string()).isEqualTo("OK");
-        }
-    }
-
-    @Test
-    void testReadinessFailure() throws IOException {
-        when(readinessProbe.probe()).thenReturn(Mono.just(new ReadinessProbeFailure("Failed")));
-        this.startPrivateHttpServer();
-
-        var request = privateApiRequest(config.get().privateApiHttpReadinessPath())
-            .get()
-            .build();
-
-        try (var response = client.newCall(request).execute()) {
-            assertThat(response.code()).isEqualTo(503);
-            assertThat(response.body().string()).isEqualTo("Failed");
-        }
-    }
-
-    @Test
-    void testReadinessFailureOnUninitializedProbe() throws IOException {
-        this.readinessProbePromise.setValue(null);
-        this.startPrivateHttpServer();
-
-        var request = privateApiRequest(config.get().privateApiHttpReadinessPath())
-            .get()
-            .build();
-
-        try (var response = client.newCall(request).execute()) {
-            assertThat(response.code()).isEqualTo(503);
-            assertThat(response.body().string()).isEqualTo("Probe is not ready yet");
-        }
-    }
-
-    @Test
-    void testHelloWorld() throws IOException {
-        var httpResponse = new SimpleHttpServerResponse(200, "text/plain", HttpHeaders.of(), ByteBuffer.wrap("hello world".getBytes(StandardCharsets.UTF_8)));
+    void testHelloWorld() throws IOException, InterruptedException {
+        var httpResponse = HttpServerResponse.of(200, HttpBody.plaintext("hello world"));
         var handler = handler(GET, "/", request -> Mono.delay(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 500))).thenReturn(httpResponse));
 
         this.startServer(handler);
@@ -185,6 +369,7 @@ public abstract class HttpServerTestKit {
             assertThat(response.code()).isEqualTo(200);
             assertThat(response.body().string()).isEqualTo("hello world");
         }
+        Thread.sleep(1000);
         verifyResponse("GET", "/", 200, HttpResultCode.SUCCESS, "localhost", "http", ArgumentMatchers::isNull, anyLong());
     }
 
@@ -192,9 +377,9 @@ public abstract class HttpServerTestKit {
     void serverWithBigResponse() throws IOException {
         var data = new byte[10 * 1024 * 1024];
         ThreadLocalRandom.current().nextBytes(data);
-        var httpResponse = new SimpleHttpServerResponse(200, "text/plain", HttpHeaders.of(), 10 * 1024 * 1024, Mono.fromCallable(() -> ByteBuffer.wrap(data))
-            .delayElement(Duration.ofMillis(100))
-            .flux());
+        var httpResponse = new SimpleHttpServerResponse(200, HttpHeaders.of(), HttpOutBody.of("text/plain", 10 * 1024 * 1024,
+            JdkFlowAdapter.publisherToFlowPublisher(Mono.just(ByteBuffer.wrap(data)).delayElement(Duration.ofMillis(100))))
+        );
         var handler = handler(GET, "/", request -> Mono.delay(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 500))).thenReturn(httpResponse));
 
         this.startServer(handler);
@@ -221,7 +406,7 @@ public abstract class HttpServerTestKit {
             System.arraycopy(bytes, 0, data, i * 1024, 1024);
         }
 
-        var httpResponse = new SimpleHttpServerResponse(200, "text/plain", HttpHeaders.of(), 102400, Flux.fromIterable(dataList).map(ByteBuffer::wrap));
+        var httpResponse = new SimpleHttpServerResponse(200, HttpHeaders.of(), HttpOutBody.of("text/plain", 102400, JdkFlowAdapter.publisherToFlowPublisher(Flux.fromIterable(dataList).map(ByteBuffer::wrap))));
         var handler = handler(GET, "/", request -> Mono.delay(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 500))).thenReturn(httpResponse));
 
         this.startServer(handler);
@@ -240,39 +425,28 @@ public abstract class HttpServerTestKit {
 
     @Test
     void testHelloWorldParallel() throws ExecutionException, InterruptedException {
-        var httpResponse = new SimpleHttpServerResponse(200, "text/plain", HttpHeaders.of(), ByteBuffer.wrap("hello world".getBytes(StandardCharsets.UTF_8)));
+        var httpResponse = HttpServerResponse.of(200, HttpBody.plaintext("hello world"));
         var handler = handler(GET, "/", request -> Mono.delay(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 500))).thenReturn(httpResponse));
 
         this.startServer(handler);
         var request = request("/")
             .get()
             .build();
-        var start = now();
 
 
         var futures = new ArrayList<CompletableFuture<Tuple2<Integer, String>>>();
         for (int i = 0; i < 100; i++) {
             var future = new CompletableFuture<Tuple2<Integer, String>>();
-            var dispatcher = new Dispatcher();
-            dispatcher.setMaxRequests(100);
-            dispatcher.setMaxRequestsPerHost(100);
-            client.newBuilder()
-                .dispatcher(dispatcher)
-                .build()
-                .newCall(request).enqueue(new Callback() {
-                    @Override
-                    public void onFailure(@Nonnull Call call, @Nonnull IOException e) {
-                        future.completeExceptionally(e);
-                    }
-
-                    @Override
-                    public void onResponse(@Nonnull Call call, @Nonnull Response response) throws IOException {
-                        future.complete(Tuples.of(response.code(), response.body().string()));
-                    }
-                });
+            ForkJoinPool.commonPool().submit(() -> {
+                try (var response = client.newCall(request).execute()) {
+                    future.complete(Tuples.of(response.code(), response.body().string()));
+                } catch (IOException e) {
+                    future.completeExceptionally(e);
+                }
+            });
             futures.add(future);
         }
-        CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
+        CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
         for (var future : futures) {
             assertThat(future.get().getT1()).isEqualTo(200);
             assertThat(future.get().getT2()).isEqualTo("hello world");
@@ -282,7 +456,7 @@ public abstract class HttpServerTestKit {
 
     @Test
     void testUnknownPath() throws IOException {
-        var httpResponse = new SimpleHttpServerResponse(200, "text/plain", HttpHeaders.of(), ByteBuffer.wrap("hello world".getBytes(StandardCharsets.UTF_8)));
+        var httpResponse = HttpServerResponse.of(200, HttpBody.plaintext("hello world"));
         var handler = handler(GET, "/", request -> Mono.delay(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 500))).thenReturn(httpResponse));
         this.startServer(handler);
 
@@ -300,10 +474,10 @@ public abstract class HttpServerTestKit {
 
     @Test
     void testTimeoutAndBrokenPipe() {
-        var bytes = ByteBuffer.wrap("hello world".getBytes(StandardCharsets.UTF_8));
-        var body = Mono.fromCallable(bytes::slice).repeat(5).publishOn(Schedulers.parallel());
-        var httpResponse = httpResponse(200, bytes.remaining() * 5, "text/plain", body);
-        var handler = handler(GET, "/", request -> Mono.delay(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 500))).thenReturn(httpResponse));
+        var bytes = ByteBuffer.wrap("hello world".repeat(1024).getBytes(StandardCharsets.UTF_8));
+        var body = Mono.fromCallable(bytes::slice).repeat(1024).delayElements(Duration.ofMillis(1)).publishOn(Schedulers.parallel());
+        var httpResponse = httpResponse(200, -1, "text/plain", body);
+        var handler = handler(GET, "/", request -> Mono.delay(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 200))).thenReturn(httpResponse));
         this.startServer(handler);
 
         var request = request("/")
@@ -320,7 +494,7 @@ public abstract class HttpServerTestKit {
         })
             .isInstanceOf(IOException.class);
         var duration = Duration.between(start, now()).toNanos();
-        verifyResponse("GET", "/", 200, HttpResultCode.CONNECTION_ERROR, "localhost", "http", ArgumentMatchers::notNull, () -> longThat(argument -> argument >= duration), timeout(1000));
+        verifyResponse("GET", "/", 200, HttpResultCode.CONNECTION_ERROR, "localhost", "http", ArgumentMatchers::notNull, () -> longThat(argument -> argument >= duration), timeout(10000));
     }
 
     @Test
@@ -470,13 +644,11 @@ public abstract class HttpServerTestKit {
 
     @Test
     void testEmptyBodyHandling() throws IOException {
-        var handler = handler(POST, "/", request -> ReactorUtils.toByteArrayMono(request.body())
+        var handler = handler(POST, "/", request -> ReactorUtils.toByteArrayMono(JdkFlowAdapter.flowPublisherToFlux(request.body()))
             .thenReturn(new SimpleHttpServerResponse(
                 200,
-                "application/octet-stream",
                 HttpHeaders.of(),
-                0,
-                Flux.empty()
+                null
             )));
         this.startServer(handler);
 
@@ -491,12 +663,12 @@ public abstract class HttpServerTestKit {
 
     @Test
     void testRequestBody() throws IOException {
-        var httpResponse = new SimpleHttpServerResponse(200, "text/plain", HttpHeaders.of(), ByteBuffer.wrap("hello world".getBytes(StandardCharsets.UTF_8)));
+        var httpResponse = HttpServerResponse.of(200, HttpBody.plaintext("hello world"));
         var executor = Executors.newSingleThreadExecutor();
         var size = 20 * 1024 * 1024;
         var handler = handler(POST, "/", request -> Mono.create(sink -> {
             executor.submit(() -> {
-                try (var is = new ByteBufferFluxInputStream(request.body())) {
+                try (var is = new ByteBufferPublisherInputStream(request.body())) {
                     var data = is.readAllBytes();
                     org.junit.jupiter.api.Assertions.assertTrue(data.length == size);
                     sink.success(httpResponse);
@@ -523,28 +695,28 @@ public abstract class HttpServerTestKit {
 
     @Test
     void testInterceptor() throws IOException {
-        var httpResponse = new SimpleHttpServerResponse(200, "text/plain", HttpHeaders.of(), ByteBuffer.wrap("hello world".getBytes(StandardCharsets.UTF_8)));
+        var httpResponse = HttpServerResponse.of(200, HttpBody.plaintext("hello world"));
         var handler = handler(GET, "/", request -> Mono.delay(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 500))).thenReturn(httpResponse));
         var interceptor1 = new HttpServerInterceptor() {
             @Override
-            public Mono<HttpServerResponse> intercept(HttpServerRequest request, Function<HttpServerRequest, Mono<HttpServerResponse>> chain) {
+            public CompletionStage<HttpServerResponse> intercept(Context ctx, HttpServerRequest request, InterceptChain chain) throws Exception {
                 var header = request.headers().getFirst("test-header1");
                 if (header != null) {
-                    request.body().subscribe();
-                    return Mono.just(new SimpleHttpServerResponse(500, "text/plain", HttpHeaders.of(), ByteBuffer.wrap("error".getBytes(StandardCharsets.UTF_8))));
+                    request.body().close();
+                    return CompletableFuture.completedFuture(HttpServerResponse.of(500, HttpBody.plaintext("error")));
                 }
-                return chain.apply(request);
+                return chain.process(ctx, request);
             }
         };
         var interceptor2 = new HttpServerInterceptor() {
             @Override
-            public Mono<HttpServerResponse> intercept(HttpServerRequest request, Function<HttpServerRequest, Mono<HttpServerResponse>> chain) {
+            public CompletionStage<HttpServerResponse> intercept(Context ctx, HttpServerRequest request, InterceptChain chain) throws Exception {
                 var header = request.headers().getFirst("test-header2");
                 if (header != null) {
-                    request.body().subscribe();
-                    return Mono.just(new SimpleHttpServerResponse(400, "text/plain", HttpHeaders.of(), ByteBuffer.wrap("error".getBytes(StandardCharsets.UTF_8))));
+                    request.body().subscribe(FlowUtils.drain());
+                    return CompletableFuture.completedFuture(HttpServerResponse.of(400, HttpBody.plaintext("error")));
                 }
-                return chain.apply(request);
+                return chain.process(ctx, request);
             }
         };
 
@@ -610,21 +782,15 @@ public abstract class HttpServerTestKit {
     }
 
 
-    private static HttpServerResponse httpResponse(int code, int contentLength, String contentType, Flux<? extends ByteBuffer> body) {
+    private static HttpServerResponse httpResponse(int code, int contentLength, String contentType, Publisher<? extends ByteBuffer> body) {
+        return httpResponse(code, contentLength, contentType, FlowAdapters.toFlowPublisher(body));
+    }
+
+    private static HttpServerResponse httpResponse(int code, int contentLength, String contentType, Flow.Publisher<? extends ByteBuffer> body) {
         return new HttpServerResponse() {
             @Override
             public int code() {
                 return code;
-            }
-
-            @Override
-            public int contentLength() {
-                return contentLength;
-            }
-
-            @Override
-            public String contentType() {
-                return contentType;
             }
 
             @Override
@@ -633,8 +799,8 @@ public abstract class HttpServerTestKit {
             }
 
             @Override
-            public Flux<? extends ByteBuffer> body() {
-                return body;
+            public HttpOutBody body() {
+                return HttpOutBody.of(contentType, contentLength, body);
             }
         };
     }
@@ -653,8 +819,27 @@ public abstract class HttpServerTestKit {
             }
 
             @Override
-            public Mono<HttpServerResponse> handle(HttpServerRequest request) {
-                return handler.apply(request);
+            public CompletionStage<HttpServerResponse> handle(Context ctx, HttpServerRequest request) {
+                return handler.apply(request).toFuture();
+            }
+        };
+    }
+
+    private static HttpServerRequestHandler handler(String method, String route, HttpServerRequestHandler.HandlerFunction handler) {
+        return new HttpServerRequestHandler() {
+            @Override
+            public String method() {
+                return method;
+            }
+
+            @Override
+            public String routeTemplate() {
+                return route;
+            }
+
+            @Override
+            public CompletionStage<HttpServerResponse> handle(Context ctx, HttpServerRequest request) throws Exception {
+                return handler.apply(ctx, request);
             }
         };
     }
@@ -668,12 +853,8 @@ public abstract class HttpServerTestKit {
     }
 
     protected void startServer(boolean ignoreTrailingSlash, List<HttpServerInterceptor> interceptors, HttpServerRequestHandler... handlers) {
-        var interceptorsList = interceptors.stream().map(HttpServerTestKit::valueOf).toList();
-        var handlerList = Stream.of(handlers)
-            .map(HttpServerTestKit::valueOf)
-            .toList();
         var config = new HttpServerConfig_Impl(0, 0, "/metrics", "/system/readiness", "/system/liveness", ignoreTrailingSlash, 1, 10, Duration.ofMillis(1));
-        var publicApiHandler = new PublicApiHandler(All.of(handlerList), All.of(interceptorsList), valueOf(new DefaultHttpServerTelemetry(this.metrics, this.logger, null)), valueOf(config));
+        var publicApiHandler = new PublicApiHandler(List.of(handlers), interceptors, new DefaultHttpServerTelemetry(this.metrics, this.logger, null), config);
         this.httpServer = this.httpServer(valueOf(config), publicApiHandler);
         try {
             this.httpServer.init();
@@ -735,7 +916,9 @@ public abstract class HttpServerTestKit {
     private static class SettablePromiseOf<T> implements PromiseOf<T> {
         private T value;
 
-        private SettablePromiseOf(T value) {this.value = value;}
+        private SettablePromiseOf(T value) {
+            this.value = value;
+        }
 
         public void setValue(T value) {
             this.value = value;

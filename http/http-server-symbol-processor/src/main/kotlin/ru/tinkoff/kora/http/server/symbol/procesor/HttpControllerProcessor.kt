@@ -1,9 +1,8 @@
 package ru.tinkoff.kora.http.server.symbol.procesor
 
-import com.google.devtools.ksp.KspExperimental
-import com.google.devtools.ksp.getAnnotationsByType
-import com.google.devtools.ksp.isAnnotationPresent
-import com.google.devtools.ksp.processing.*
+import com.google.devtools.ksp.processing.CodeGenerator
+import com.google.devtools.ksp.processing.Resolver
+import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.validate
@@ -12,30 +11,29 @@ import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.writeTo
-import ru.tinkoff.kora.http.common.annotation.HttpRoute
-import ru.tinkoff.kora.http.server.common.annotation.HttpController
-import ru.tinkoff.kora.http.server.symbol.procesor.exception.HttpProcessorException
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
+import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.visitClass
 
-@KspExperimental
 class HttpControllerProcessor(
     environment: SymbolProcessorEnvironment
 ) : BaseSymbolProcessor(environment) {
     private val codeGenerator: CodeGenerator = environment.codeGenerator
+    private val routeProcessor = RouteProcessor()
 
-    private lateinit var routeProcessor: RouteProcessor
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
-        routeProcessor = RouteProcessor(resolver)
-        val symbols = resolver.getSymbolsWithAnnotation(HttpController::class.qualifiedName.toString())
+        val symbols = resolver.getSymbolsWithAnnotation(HttpServerClassNames.httpController.canonicalName)
         val unableToProcess = symbols.filterNot { it.validate() }.toList()
         for (symbol in symbols.filter { it.validate() }) {
             symbol.visitClass { declaration ->
                 try {
                     processController(declaration)
-                } catch (e: HttpProcessorException) {
+                } catch (e: ProcessingErrorException) {
                     e.printError(kspLogger)
                 } catch (e: Exception) {
                     throw RuntimeException(e)
@@ -57,21 +55,16 @@ class HttpControllerProcessor(
             packageName = packageName,
             fileName = moduleName
         )
-        val rootPath = declaration.getAnnotationsByType(HttpController::class).first().value
-        val routes = declaration.getAllFunctions().filter { it.isAnnotationPresent(HttpRoute::class) }
+
+        val rootPath = declaration.findAnnotation(HttpServerClassNames.httpController)!!
+            .findValueNoDefault<String>("value")
+            ?.trim()
+            ?: ""
+        val routes = declaration.getAllFunctions().filter { it.isAnnotationPresent(HttpServerClassNames.httpRoute) }
         routes.forEach { function ->
             val funBuilder = routeProcessor.buildHttpRouteFunction(declaration, rootPath, function)
             moduleBuilder.addFunction(funBuilder.build())
         }
         fileSpec.addType(moduleBuilder.build()).build().writeTo(codeGenerator = codeGenerator, aggregating = false)
-    }
-}
-
-@KspExperimental
-class HttpControllerProcessorProvider : SymbolProcessorProvider {
-    override fun create(
-        environment: SymbolProcessorEnvironment
-    ): SymbolProcessor {
-        return HttpControllerProcessor(environment)
     }
 }

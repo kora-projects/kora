@@ -2,12 +2,15 @@ package ru.tinkoff.kora.http.server.undertow;
 
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.SameThreadExecutor;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.http.server.common.PrivateApiHandler;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.Flow;
 
 public class UndertowPrivateApiHandler {
     private final PrivateApiHandler privateApiHandler;
@@ -19,22 +22,59 @@ public class UndertowPrivateApiHandler {
     public void handleRequest(HttpServerExchange exchange) {
         var path = exchange.getRequestPath() + "?" + exchange.getQueryString();
 
-        exchange.dispatch(SameThreadExecutor.INSTANCE, () -> Mono.from(this.privateApiHandler.handle(path))
-            .subscribe(response -> {
+        exchange.dispatch(SameThreadExecutor.INSTANCE, () -> this.privateApiHandler.handle(path)
+            .whenComplete((response, error) -> {
+                if (error != null) {
+                    exchange.setStatusCode(500);
+                    exchange.getResponseSender().send(error.getMessage(), StandardCharsets.UTF_8);
+                    return;
+                }
+                if (response == null) {
+                    exchange.setStatusCode(500);
+                    exchange.endExchange();
+                    return;
+                }
                 exchange.setStatusCode(response.code());
-                exchange.setResponseContentLength(response.contentLength());
-                Flux.from(response.body())
-                    .collectList()
-                    .subscribe(body -> {
-                        var arr = body.toArray(ByteBuffer[]::new);
-                        exchange.getResponseSender().send(arr);
-                    }, error -> {
+                var body = response.body();
+                if (body == null) {
+                    exchange.endExchange();
+                    return;
+                }
+                exchange.setResponseContentLength(body.contentLength());
+                body.subscribe(new Flow.Subscriber<ByteBuffer>() {
+                    private final List<ByteBuffer> buf = Collections.synchronizedList(new ArrayList<>());
+
+                    @Override
+                    public void onSubscribe(Flow.Subscription subscription) {
+                        subscription.request(Long.MAX_VALUE);
+                    }
+
+                    @Override
+                    public void onNext(ByteBuffer item) {
+                        buf.add(item);
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable) {
                         exchange.setStatusCode(500);
                         exchange.getResponseSender().send(error.getMessage(), StandardCharsets.UTF_8);
-                    });
-            }, error -> {
-                exchange.setStatusCode(500);
-                exchange.getResponseSender().send(error.getMessage(), StandardCharsets.UTF_8);
+                        try {
+                            body.close();
+                        } catch (IOException ignore) {
+                        }
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        var arr = buf.toArray(ByteBuffer[]::new);
+                        exchange.getResponseSender().send(arr);
+                        try {
+                            body.close();
+                        } catch (IOException ignore) {
+                        }
+                    }
+                });
+
             }));
     }
 }

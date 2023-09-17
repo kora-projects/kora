@@ -1,23 +1,8 @@
 package ru.tinkoff.kora.http.client.annotation.processor;
 
 import com.squareup.javapoet.*;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.annotation.processor.common.ComparableTypeMirror;
-import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.common.annotation.Generated;
-import ru.tinkoff.kora.http.client.common.HttpClient;
-import ru.tinkoff.kora.http.client.common.HttpClientException;
-import ru.tinkoff.kora.http.client.common.HttpClientResponseException;
-import ru.tinkoff.kora.http.client.common.annotation.ResponseCodeMapper;
-import ru.tinkoff.kora.http.client.common.request.HttpClientRequestBuilder;
-import ru.tinkoff.kora.http.client.common.request.HttpClientRequestMapper;
-import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
-import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper;
-import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryFactory;
-import ru.tinkoff.kora.http.client.common.writer.StringParameterConverter;
-import ru.tinkoff.kora.http.common.annotation.HttpRoute;
 
 import javax.annotation.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -27,39 +12,24 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
+import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import static ru.tinkoff.kora.http.client.annotation.processor.HttpClientClassNames.*;
+
 public class ClientClassGenerator {
-    private static final ClassName interceptWithClassName = ClassName.get("ru.tinkoff.kora.http.common.annotation", "InterceptWith");
-    private static final ClassName interceptWithContainerClassName = ClassName.get("ru.tinkoff.kora.http.common.annotation", "InterceptWith", "InterceptWithContainer");
     private final ProcessingEnvironment processingEnv;
     private final Elements elements;
     private final Types types;
-    private final TypeElement requestMapperType;
-    private final ReturnType.ReturnTypeParser returnTypeParser;
-    private final Parameter.ParameterParser parameterParser;
-    private final TypeMirror responseMapperType;
-    private final TypeMirror httpResponseType;
-
-    private final TypeMirror stringType;
 
     public ClientClassGenerator(ProcessingEnvironment processingEnv) {
         this.processingEnv = processingEnv;
         this.elements = this.processingEnv.getElementUtils();
         this.types = this.processingEnv.getTypeUtils();
-        this.returnTypeParser = new ReturnType.ReturnTypeParser(processingEnv, this.elements, this.types);
-        this.requestMapperType = this.elements.getTypeElement(HttpClientRequestMapper.class.getCanonicalName());
-        var httpClientResponseMapperElement = this.elements.getTypeElement(HttpClientResponseMapper.class.getCanonicalName());
-        this.responseMapperType = httpClientResponseMapperElement != null
-            ? this.types.erasure(httpClientResponseMapperElement.asType())
-            : null;
-
-        this.parameterParser = new Parameter.ParameterParser(this.elements, this.types);
-        this.httpResponseType = new ComparableTypeMirror(this.types, this.types.erasure(this.elements.getTypeElement(HttpClientResponse.class.getCanonicalName()).asType()));
-
-        this.stringType = this.elements.getTypeElement(String.class.getCanonicalName()).asType();
     }
 
     public TypeSpec generate(TypeElement element) {
@@ -71,8 +41,8 @@ public class ClientClassGenerator {
         builder.addMethod(this.buildConstructor(builder, element, methods));
 
         for (var method : methods) {
-            builder.addField(HttpClient.class, method.element().getSimpleName() + "Client", Modifier.PRIVATE, Modifier.FINAL);
-            builder.addField(int.class, method.element().getSimpleName() + "RequestTimeout", Modifier.PRIVATE, Modifier.FINAL);
+            builder.addField(HttpClientClassNames.httpClient, method.element().getSimpleName() + "Client", Modifier.PRIVATE, Modifier.FINAL);
+            builder.addField(Duration.class, method.element().getSimpleName() + "RequestTimeout", Modifier.PRIVATE, Modifier.FINAL);
             builder.addField(String.class, method.element().getSimpleName() + "Url", Modifier.PRIVATE, Modifier.FINAL);
             var methodSpec = this.buildMethod(method);
             builder.addMethod(methodSpec);
@@ -83,15 +53,16 @@ public class ClientClassGenerator {
     private MethodSpec buildMethod(MethodData methodData) {
         var method = methodData.element();
         var b = CommonUtils.overridingKeepAop(method)
-            .addException(HttpClientException.class);
+            .addException(httpClientException);
         var methodClientName = method.getSimpleName() + "Client";
         var methodRequestTimeout = method.getSimpleName() + "RequestTimeout";
-        var httpRoute = method.getAnnotation(HttpRoute.class);
+        var httpRoute = AnnotationUtils.findAnnotation(method, HttpClientClassNames.httpRoute);
+        var httpMethod = AnnotationUtils.parseAnnotationValueWithoutDefault(httpRoute, "method");
         b.addCode("""
             var _client = this.$L;
             var _requestBuilder = new $T($S, this.$LUrl)
               .requestTimeout(this.$L);
-            """, methodClientName, HttpClientRequestBuilder.class, httpRoute.method(), method.getSimpleName(), methodRequestTimeout);
+            """, methodClientName, httpClientRequestBuilder, httpMethod, method.getSimpleName(), methodRequestTimeout);
         for (var parameter : methodData.parameters()) {
             if (parameter instanceof Parameter.PathParameter path) {
                 if (requiresConverter(path.parameter().asType())) {
@@ -106,9 +77,9 @@ public class ClientClassGenerator {
                     b.beginControlFlow("if ($L != null)", header.parameter());
                 }
 
-                String targetLiteral = header.parameter().getSimpleName().toString();
-                TypeMirror type = header.parameter().asType();
-                boolean isList = CommonUtils.isCollection(type);
+                var targetLiteral = header.parameter().getSimpleName().toString();
+                var type = header.parameter().asType();
+                var isList = CommonUtils.isCollection(type);
                 if (isList) {
                     type = ((DeclaredType) type).getTypeArguments().get(0);
                     var paramName = "_" + targetLiteral + "_element";
@@ -136,9 +107,9 @@ public class ClientClassGenerator {
                 if (nullable) {
                     b.beginControlFlow("if ($L != null)", query.parameter());
                 }
-                String targetLiteral = query.parameter().getSimpleName().toString();
-                TypeMirror type = query.parameter().asType();
-                boolean isList = CommonUtils.isCollection(type);
+                var targetLiteral = query.parameter().getSimpleName().toString();
+                var type = query.parameter().asType();
+                var isList = CommonUtils.isCollection(type);
                 if (isList) {
                     type = ((DeclaredType) type).getTypeArguments().get(0);
                     var paramName = "_" + targetLiteral + "_element";
@@ -168,67 +139,189 @@ public class ClientClassGenerator {
         for (var parameter : methodData.parameters()) {
             if (parameter instanceof Parameter.BodyParameter body) {
                 var requestMapperName = method.getSimpleName() + "RequestMapper";
-                b.addCode("_requestBuilder = this.$L.apply(new $T<>(_requestBuilder, $L));\n", requestMapperName, HttpClientRequestMapper.Request.class, body.parameter());
+                b.addCode("try {$>\n");
+                b.addCode("_requestBuilder = this.$N.apply($T.current(), _requestBuilder, $L);$<\n", requestMapperName, CommonClassNames.context, body.parameter());
+                b.addCode("} catch (Exception _e) {$>\n");
+                b.addCode("throw new $T(_e);$<\n", httpClientEncoderException);
+                b.addCode("}\n");
             }
         }
 
         b.addStatement("var _request = _requestBuilder.build()");
-        var publisherType = methodData.returnType() instanceof ReturnType.FluxReturnType
-            ? Flux.class
-            : Mono.class;
-        var responseProcess = CodeBlock.builder();
-        if (methodData.responseMapper != null && methodData.responseMapper.mapperClass() != null || httpResponseType.equals(methodData.returnType().publisherParameter())) {
-            var responseMapperName = method.getSimpleName() + "ResponseMapper";
-            responseProcess.add("""
-                      return this.$L.apply(_response);
-                """, responseMapperName);
-        } else if (methodData.codeMappers().isEmpty()) {
-            var responseMapperName = method.getSimpleName() + "ResponseMapper";
-            responseProcess.add("""
-                      var _code = _response.code();
-                      if (_code >= 200 && _code < 300) {
-                          return this.$L.apply(_response);
-                      } else {
-                          return $T.fromResponse(_response);
-                      }
-                """, responseMapperName, HttpClientResponseException.class);
+
+        if (CommonUtils.isMono(method.getReturnType())) {
+            b.addCode(buildCallMono(methodData));
+        } else if (CommonUtils.isFuture(method.getReturnType())) {
+            b.addCode(buildCallFuture(methodData));
         } else {
-            responseProcess.add("      var _code = _response.code();\n");
-            responseProcess.add("      return switch (_code) {\n");
+            b.addCode(buildCallBlocking(methodData));
+        }
+        return b.build();
+    }
+
+    private CodeBlock mapBlockingResponse(MethodData methodData, TypeMirror resultType) {
+        var b = CodeBlock.builder();
+        if (methodData.responseMapper != null) {
+            var responseMapperName = methodData.element.getSimpleName() + "ResponseMapper";
+            b.addStatement("return this.$N.apply(_response)", responseMapperName);
+        } else if (methodData.codeMappers().isEmpty()) {
+            b.addStatement("var _code = _response.code()");
+            b.beginControlFlow("if (_code >= 200 && _code < 300)");
+            if (resultType.getKind() == TypeKind.VOID) {
+                b.addStatement("return");
+            } else if (resultType instanceof DeclaredType dt && dt.asElement().toString().equals("java.lang.Void")) {
+                b.addStatement("return null");
+            } else {
+                var responseMapperName = methodData.element().getSimpleName() + "ResponseMapper";
+                b.addStatement("return this.$N.apply(_response)", responseMapperName);
+            }
+            b.nextControlFlow("else");
+            b.addStatement("throw $T.fromResponseFuture(_response).get()", httpClientResponseException);
+            b.endControlFlow();
+        } else {
+            b.addStatement("var _code = _response.code()");
+            b.add("return switch (_code) {\n");
             ResponseCodeMapperData defaultMapper = null;
             for (var codeMapper : methodData.codeMappers()) {
-                if (codeMapper.code() == ResponseCodeMapper.DEFAULT) {
+                if (codeMapper.code() == -1) {
                     defaultMapper = codeMapper;
                 } else {
-                    var responseMapperName = "" + method.getSimpleName() + codeMapper.code() + "ResponseMapper";
-                    responseProcess.add("        case $L -> this.$L.apply(_response);\n", codeMapper.code(), responseMapperName);
+                    var responseMapperName = "" + methodData.element().getSimpleName() + codeMapper.code() + "ResponseMapper";
+                    if (isMapperAssignable(methodData.element.getReturnType(), codeMapper.type, codeMapper.mapper)) {
+                        b.add("  case $L -> this.$L.apply(_response);\n", codeMapper.code(), responseMapperName);
+                    } else {
+                        b.add("  case $L -> throw this.$L.apply(_response);\n", codeMapper.code(), responseMapperName);
+                    }
                 }
             }
             if (defaultMapper == null) {
-                responseProcess.add("        default -> $T.fromResponse(_response);\n", HttpClientResponseException.class);
+                b.add("  default -> {\n");
+                b.add("    throw $T.fromResponseFuture(_response).get();\n", httpClientResponseException);
+                b.add("  }\n");
             } else {
-                responseProcess.add("        default -> this.$L.apply(_response);\n", method.getSimpleName() + "DefaultResponseMapper");
+                if (isMapperAssignable(methodData.element.getReturnType(), defaultMapper.type, defaultMapper.mapper)) {
+                    b.add("  default -> this.$L.apply(_response);\n", methodData.element().getSimpleName() + "DefaultResponseMapper");
+                } else {
+                    b.add("  default -> throw this.$L.apply(_response);\n", methodData.element().getSimpleName() + "DefaultResponseMapper");
+                }
             }
-            responseProcess.add("      };\n");
+            b.add("};\n");
         }
-        b.addCode("""
-            var _result = $T.usingWhen(
-                _client.execute(_request),
-                _response -> {
-            $L
-                },
-                $T::close
-            );
-            """, publisherType, responseProcess.build(), HttpClientResponse.class);
+        return b.build();
+    }
 
+    private CodeBlock buildCallBlocking(MethodData method) {
+        var b = CodeBlock.builder();
+        b.beginControlFlow("try (var _response = _client.execute(_request).toCompletableFuture().get())");
+        b.add(mapBlockingResponse(method, method.element().getReturnType()));
+        b.nextControlFlow("catch (java.util.concurrent.ExecutionException e)")
+            .addStatement("if (e.getCause() instanceof RuntimeException re) throw re")
+            .addStatement("if (e.getCause() instanceof Error er) throw er")
+            .addStatement("throw new $T(e.getCause())", unknownHttpClientException);
+        b.nextControlFlow("catch (RuntimeException e)")
+            .addStatement("throw e");
+        b.nextControlFlow("catch (Exception e)")
+            .addStatement("throw new $T(e)", unknownHttpClientException);
+        b.endControlFlow();// try response
+        return b.build();
+    }
 
-        if (methodData.returnType() instanceof ReturnType.FluxReturnType || methodData.returnType() instanceof ReturnType.MonoReturnType) {
-            b.addCode("return _result;\n");
-        } else if (methodData.returnType() instanceof ReturnType.SimpleReturnType simple) {
-            b.addCode("return _result.block();\n");
+    private CodeBlock mapFutureResponse(MethodData methodData, TypeMirror resultType) {
+        var b = CodeBlock.builder();
+        if (methodData.responseMapper != null) {
+            var responseMapperName = methodData.element.getSimpleName() + "ResponseMapper";
+            b.addStatement("_result = this.$N.apply(_response)", responseMapperName);
+        } else if (methodData.codeMappers().isEmpty()) {
+            b.addStatement("var _code = _response.code()");
+            b.beginControlFlow("if (_code >= 200 && _code < 300)");
+            if (resultType instanceof DeclaredType dt && dt.asElement().toString().equals("java.lang.Void")) {
+                b.addStatement("_result = $T.completedFuture(null)", CompletableFuture.class);
+            } else {
+                var responseMapperName = methodData.element().getSimpleName() + "ResponseMapper";
+                b.addStatement("_result = this.$N.apply(_response)", responseMapperName);
+            }
+            b.nextControlFlow("else");
+            b.addStatement("return $T.fromResponse(_response)", httpClientResponseException);
+            b.endControlFlow();
         } else {
-            b.addCode("_result.block();\n");
+            b.addStatement("var _code = _response.code()");
+            b.add("_result = switch (_code) {\n");
+            ResponseCodeMapperData defaultMapper = null;
+            for (var codeMapper : methodData.codeMappers()) {
+                if (codeMapper.code() == -1) {
+                    defaultMapper = codeMapper;
+                } else {
+                    var responseMapperName = "" + methodData.element().getSimpleName() + codeMapper.code() + "ResponseMapper";
+                    if (isMapperAssignable(resultType, codeMapper.type, codeMapper.mapper)) {
+                        b.add("  case $L -> this.$L.apply(_response);\n", codeMapper.code(), responseMapperName);
+                    } else {
+                        b.add("  case $L -> this.$L.apply(_response).thenCompose($T::failedFuture);\n", codeMapper.code(), responseMapperName, CompletableFuture.class);
+                    }
+                }
+            }
+            if (defaultMapper == null) {
+                b.add("  default -> $T.fromResponse(_response);\n", httpClientResponseException);
+            } else {
+                var responseMapperName = methodData.element().getSimpleName() + "DefaultResponseMapper";
+                if (isMapperAssignable(resultType, defaultMapper.type, defaultMapper.mapper)) {
+                    b.add("  default -> this.$L.apply(_response);\n", responseMapperName);
+                } else {
+                    b.add("  default -> this.$L.apply(_response).thenCompose($T::failedFuture);\n", responseMapperName, CompletableFuture.class);
+                }
+            }
+            b.add("};\n");
         }
+        return b.build();
+    }
+
+    private CodeBlock buildCallFuture(MethodData method) {
+        var returnType = (DeclaredType) method.element().getReturnType();
+        var returnTypeContent = returnType.getTypeArguments().get(0);
+        var b = CodeBlock.builder();
+        b.add("return _client.execute(_request)$>\n")
+            .add(".thenCompose(_response -> {$>\n");
+        b.addStatement("$T _result", ParameterizedTypeName.get(ClassName.get(CompletionStage.class), WildcardTypeName.subtypeOf(TypeName.get(returnTypeContent))));
+        b.beginControlFlow("try");
+        b.add(mapFutureResponse(method, returnTypeContent));
+        b.nextControlFlow("catch (Throwable _e)");
+        b.addStatement("_result = $T.failedFuture(_e)", CompletableFuture.class);
+        b.endControlFlow();
+        b.add("return _result.whenComplete((__r, _err) -> {$>\n");
+        b.add("try {\n");
+        b.add("  _response.close();\n");
+        b.add("} catch (Exception _ex) {\n");
+        b.add("   _err.addSuppressed(_ex);\n");
+        b.add("}$<\n"); // try
+        b.add("});$<\n");// whenComplete
+        b.add("}).<$T>thenApply(_r -> _r)", TypeName.get(returnTypeContent));// thenCompose response
+        if (method.element.getReturnType() instanceof DeclaredType dt && dt.asElement().toString().equals(CompletableFuture.class.getCanonicalName())) {
+            b.add(".toCompletableFuture()");
+        }
+        b.add(";$<\n");
+        return b.build();
+    }
+
+    private CodeBlock buildCallMono(MethodData method) {
+        var returnType = (DeclaredType) method.element().getReturnType();
+        var returnTypeContent = returnType.getTypeArguments().get(0);
+        var b = CodeBlock.builder();
+        b.add("return $T.fromFuture(() -> _client.execute(_request)$>\n", CommonClassNames.mono)
+            .add(".thenCompose(_response -> {$>\n");
+        b.addStatement("$T _result", ParameterizedTypeName.get(ClassName.get(CompletionStage.class), WildcardTypeName.subtypeOf(TypeName.get(returnTypeContent))));
+        b.beginControlFlow("try");
+        b.add(mapFutureResponse(method, returnTypeContent));
+        b.nextControlFlow("catch (Throwable _e)");
+        b.addStatement("_result = $T.failedFuture(_e)", CompletableFuture.class);
+        b.endControlFlow();
+        b.add("return _result.whenComplete((__r, _err) -> {$>\n");
+        b.add("try {\n");
+        b.add("  _response.close();\n");
+        b.add("} catch (Exception _ex) {\n");
+        b.add("   _err.addSuppressed(_ex);\n");
+        b.add("}$<\n"); // try
+        b.add("});$<\n");// whenComplete
+        b.add("}).<$T>thenApply(_r -> _r).toCompletableFuture()", TypeName.get(returnTypeContent));// thenCompose response
+        b.add(");$<\n");
         return b.build();
     }
 
@@ -237,15 +330,16 @@ public class ClientClassGenerator {
 
         var packageName = this.processingEnv.getElementUtils().getPackageOf(element).getQualifiedName().toString();
         var configClassName = HttpClientUtils.configName(element);
-        var telemetryTag = CommonUtils.parseAnnotationClassValue(element, ru.tinkoff.kora.http.client.common.annotation.HttpClient.class.getCanonicalName(), "telemetryTag");
-        var httpClientTag = CommonUtils.parseAnnotationClassValue(element, ru.tinkoff.kora.http.client.common.annotation.HttpClient.class.getCanonicalName(), "httpClientTag");
-        var clientParameter = ParameterSpec.builder(TypeName.get(HttpClient.class), "httpClient");
-        if (httpClientTag.length > 0) {
-            clientParameter.addAnnotation(AnnotationSpec.builder(Tag.class).addMember("value", CommonUtils.writeTagAnnotationValue(httpClientTag)).build());
+        var annotation = Objects.requireNonNull(AnnotationUtils.findAnnotation(element, httpClientAnnotation));
+        var telemetryTag = AnnotationUtils.<List<TypeMirror>>parseAnnotationValueWithoutDefault(annotation, "telemetryTag");
+        var httpClientTag = AnnotationUtils.<List<TypeMirror>>parseAnnotationValueWithoutDefault(annotation, "httpClientTag");
+        var clientParameter = ParameterSpec.builder(httpClient, "httpClient");
+        if (httpClientTag != null && !httpClientTag.isEmpty()) {
+            clientParameter.addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value", TagUtils.writeTagAnnotationValue(httpClientTag)).build());
         }
-        var telemetryParameter = ParameterSpec.builder(TypeName.get(HttpClientTelemetryFactory.class), "telemetryFactory");
-        if (telemetryTag.length > 0) {
-            telemetryParameter.addAnnotation(AnnotationSpec.builder(Tag.class).addMember("value", CommonUtils.writeTagAnnotationValue(telemetryTag)).build());
+        var telemetryParameter = ParameterSpec.builder(httpClientTelemetryFactory, "telemetryFactory");
+        if (telemetryTag != null && !telemetryTag.isEmpty()) {
+            telemetryParameter.addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value", TagUtils.writeTagAnnotationValue(telemetryTag)).build());
         }
         record Interceptor(TypeName type, @Nullable AnnotationSpec tag) {}
         var interceptorParser = (Function<AnnotationMirror, Interceptor>) a -> {
@@ -300,14 +394,14 @@ public class ClientClassGenerator {
             for (var parameter : methodData.parameters()) {
                 if (parameter instanceof Parameter.BodyParameter bodyParameter) {
                     var requestMapperType = bodyParameter.mapper() != null && bodyParameter.mapper().mapperClass() != null
-                        ? bodyParameter.mapper().mapperClass()
-                        : this.types.getDeclaredType(this.requestMapperType, bodyParameter.parameter().asType());
+                        ? TypeName.get(bodyParameter.mapper().mapperClass())
+                        : ParameterizedTypeName.get(httpClientRequestMapper, TypeName.get(bodyParameter.parameter().asType()));
                     var paramName = method.getSimpleName() + "RequestMapper";
-                    tb.addField(TypeName.get(requestMapperType), paramName, Modifier.PRIVATE, Modifier.FINAL);
+                    tb.addField(requestMapperType, paramName, Modifier.PRIVATE, Modifier.FINAL);
                     var tags = bodyParameter.mapper() != null
                         ? bodyParameter.mapper().toTagAnnotation()
                         : null;
-                    var constructorParameter = ParameterSpec.builder(TypeName.get(requestMapperType), paramName);
+                    var constructorParameter = ParameterSpec.builder(requestMapperType, paramName);
                     if (tags != null) {
                         constructorParameter.addAnnotation(tags);
                     }
@@ -318,40 +412,68 @@ public class ClientClassGenerator {
             if (methodData.codeMappers().isEmpty()) {
                 var responseMapperName = method.getSimpleName() + "ResponseMapper";
                 if (methodData.responseMapper() != null && methodData.responseMapper().mapperClass() != null && CommonUtils.hasDefaultConstructorAndFinal(this.types, methodData.responseMapper().mapperClass())) {
-                    var mapperTypeName = TypeName.get(methodData.responseMapper().mapperClass());
-                    var responseMapperField = FieldSpec.builder(mapperTypeName, responseMapperName)
-                        .addModifiers(Modifier.STATIC)
-                        .initializer(CodeBlock.of("new $T()", mapperTypeName))
-                        .build();
+                    var responseMapperTypeElement = (TypeElement) ((DeclaredType) methodData.responseMapper.mapperClass()).asElement();
+                    var mapperClassName = ClassName.get(responseMapperTypeElement);
+                    var b = !responseMapperTypeElement.getTypeParameters().isEmpty()
+                        ? FieldSpec.builder(ParameterizedTypeName.get(mapperClassName, TypeName.get(method.getReturnType())), responseMapperName)
+                        .initializer(CodeBlock.of("new $T<>()", mapperClassName))
+                        : FieldSpec.builder(mapperClassName, responseMapperName)
+                        .initializer(CodeBlock.of("new $T()", mapperClassName));
+                    var responseMapperField = b.addModifiers(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL).build();
                     tb.addField(responseMapperField);
                 } else {
-                    var responseMapperType = methodData.responseMapper() != null && methodData.responseMapper().mapperClass() != null
-                        ? TypeName.get(methodData.responseMapper().mapperClass())
-                        : methodData.returnType().responseMapperType();
+                    var isVoid = method.getReturnType().getKind() == TypeKind.VOID;
+                    var isFutureOfVoid = (CommonUtils.isFuture(method.getReturnType()) || CommonUtils.isMono(method.getReturnType()))
+                        && method.getReturnType() instanceof DeclaredType dt
+                        && dt.getTypeArguments().get(0).toString().equals("java.lang.Void");
+                    if (!isVoid && !isFutureOfVoid) {
+                        final TypeName responseMapperType;
+                        if (methodData.responseMapper() != null && methodData.responseMapper().mapperClass() != null) {
+                            responseMapperType = TypeName.get(methodData.responseMapper().mapperClass());
+                        } else if (CommonUtils.isMono(methodData.element.getReturnType()) || CommonUtils.isFuture(methodData.element.getReturnType())) {
+                            responseMapperType = ParameterizedTypeName.get(
+                                HttpClientClassNames.httpClientResponseMapper,
+                                ParameterizedTypeName.get(
+                                    ClassName.get(CompletionStage.class),
+                                    ((ParameterizedTypeName) methodData.returnType()).typeArguments.get(0)
+                                )
+                            );
+                        } else {
+                            responseMapperType = ParameterizedTypeName.get(
+                                HttpClientClassNames.httpClientResponseMapper,
+                                methodData.returnType()
+                            );
+                        }
 
-                    var responseMapperParameter = ParameterSpec.builder(responseMapperType, responseMapperName);
-                    var responseMapperTags = methodData.responseMapper() != null
-                        ? methodData.responseMapper().toTagAnnotation()
-                        : null;
-                    if (responseMapperTags != null) {
-                        responseMapperParameter.addAnnotation(responseMapperTags);
+                        var responseMapperParameter = ParameterSpec.builder(responseMapperType, responseMapperName);
+                        var responseMapperTags = methodData.responseMapper() != null
+                            ? methodData.responseMapper().toTagAnnotation()
+                            : null;
+                        if (responseMapperTags != null) {
+                            responseMapperParameter.addAnnotation(responseMapperTags);
+                        }
+                        tb.addField(responseMapperType, responseMapperName, Modifier.PRIVATE, Modifier.FINAL);
+                        builder.addParameter(responseMapperParameter.build());
+                        builder.addStatement("this.$L = $L", responseMapperName, responseMapperName);
                     }
-                    tb.addField(responseMapperType, responseMapperName, Modifier.PRIVATE, Modifier.FINAL);
-                    builder.addParameter(responseMapperParameter.build());
-                    builder.addStatement("this.$L = $L", responseMapperName, responseMapperName);
                 }
             } else {
                 for (var codeMapper : methodData.codeMappers()) {
                     var responseMapperName = "" + method.getSimpleName() + (codeMapper.code() > 0 ? codeMapper.code() : "Default") + "ResponseMapper";
                     if (codeMapper.mapper() != null && CommonUtils.hasDefaultConstructorAndFinal(this.types, codeMapper.mapper())) {
-                        var mapperTypeName = TypeName.get(codeMapper.mapper());
-                        var responseMapperField = FieldSpec.builder(mapperTypeName, responseMapperName)
-                            .addModifiers(Modifier.STATIC)
+                        var mapperTypeElement = (TypeElement) codeMapper.mapper().asElement();
+                        var mapperTypeName = ClassName.get(mapperTypeElement);
+                        var b = mapperTypeElement.getTypeParameters().isEmpty()
+                            ? FieldSpec.builder(mapperTypeName, responseMapperName)
                             .initializer(CodeBlock.of("new $T()", mapperTypeName))
-                            .build();
+                            : FieldSpec.builder(ParameterizedTypeName.get(mapperTypeName, TypeName.get(method.getReturnType())), responseMapperName)
+                            .initializer(CodeBlock.of("new $T<>()", mapperTypeName));
+                        var responseMapperField = b.addModifiers(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL).build();
                         tb.addField(responseMapperField);
                     } else {
-                        var responseMapperType = codeMapper.responseMapperType(methodData.returnType().publisherType());
+                        var responseMapperType = CommonUtils.isMono(method.getReturnType()) || CommonUtils.isFuture(method.getReturnType())
+                            ? codeMapper.futureResponseMapperType(method.getReturnType())
+                            : codeMapper.responseMapperType(method.getReturnType());
                         var responseMapperParameter = ParameterSpec.builder(responseMapperType, responseMapperName);
                         var responseMapperTags = methodData.responseMapper() != null
                             ? methodData.responseMapper().toTagAnnotation()
@@ -366,7 +488,9 @@ public class ClientClassGenerator {
                 }
             }
             var name = method.getSimpleName();
-            builder.addCode("var $L = config.apply(httpClient, $T.class, $S, config.$LConfig(), telemetryFactory, $S);\n", name, element, name, name, method.getAnnotation(HttpRoute.class).path());
+            var httpRoute = AnnotationUtils.findAnnotation(method, HttpClientClassNames.httpRoute);
+            var httpPath = AnnotationUtils.parseAnnotationValueWithoutDefault(httpRoute, "path");
+            builder.addCode("var $L = config.apply(httpClient, $T.class, $S, config.$LConfig(), telemetryFactory, $S);\n", name, element, name, name, httpPath);
             builder.addCode("this.$LUrl = $L.url();\n", name, name);
             builder.addCode("this.$LClient = $L.client()", name, name);
             if (!methodInterceptors.isEmpty() || !classInterceptors.isEmpty()) {
@@ -403,26 +527,76 @@ public class ClientClassGenerator {
         return builder.build();
     }
 
-    record ResponseCodeMapperData(int code, @Nullable TypeMirror type, @Nullable TypeMirror mapper) {
-        public TypeName responseMapperType(ClassName publisherType) {
+    private boolean isMapperAssignable(TypeMirror resultType, @Nullable TypeMirror mappingType, @Nullable DeclaredType mappingMapper) {
+        assert mappingType != null || mappingMapper != null;
+        if (mappingType != null) {
+            return types.isAssignable(mappingType, resultType);
+        }
+        var responseMapperType = TypeUtils.findSupertype(mappingMapper, httpClientResponseMapper);
+        var typeArg = responseMapperType.getTypeArguments().get(0);
+        if (CommonUtils.isFuture(typeArg)) {
+            typeArg = ((DeclaredType) typeArg).getTypeArguments().get(0);
+        }
+        return typeArg.getKind() == TypeKind.TYPEVAR || types.isAssignable(typeArg, resultType);
+    }
+
+    record ResponseCodeMapperData(int code, @Nullable TypeMirror type, @Nullable DeclaredType mapper) {
+        public TypeName responseMapperType(TypeMirror returnType) {
             if (this.mapper() != null) {
-                return TypeName.get(this.mapper());
+                var mapperElement = (TypeElement) this.mapper().asElement();
+                if (mapperElement.getTypeParameters().isEmpty()) {
+                    return TypeName.get(this.mapper());
+                } else {
+                    if (this.type() != null) {
+                        var publisherParam = TypeName.get(this.type());
+                        return ParameterizedTypeName.get(ClassName.get(mapperElement), publisherParam);
+                    } else {
+                        var publisherParam = TypeName.get(returnType);
+                        return ParameterizedTypeName.get(ClassName.get(mapperElement), publisherParam);
+                    }
+                }
             }
-            var publisherParam = TypeName.get(this.type());
-            return ParameterizedTypeName.get(
-                ClassName.get(HttpClientResponseMapper.class),
-                publisherParam,
-                ParameterizedTypeName.get(publisherType, publisherParam)
-            );
+            if (this.type() != null) {
+                var publisherParam = TypeName.get(this.type());
+                return ParameterizedTypeName.get(httpClientResponseMapper, publisherParam);
+            } else {
+                var publisherParam = TypeName.get(returnType);
+                return ParameterizedTypeName.get(httpClientResponseMapper, publisherParam);
+            }
+        }
+
+        public TypeName futureResponseMapperType(TypeMirror returnType) {
+            if (this.mapper() != null) {
+                var mapperElement = (TypeElement) this.mapper().asElement();
+                if (mapperElement.getTypeParameters().isEmpty()) {
+                    return TypeName.get(this.mapper());
+                } else {
+                    if (this.type() != null) {
+                        var publisherParam = TypeName.get(this.type());
+                        return ParameterizedTypeName.get(ClassName.get(mapperElement), publisherParam);
+                    } else {
+                        var publisherParam = TypeName.get(returnType);
+                        return ParameterizedTypeName.get(ClassName.get(mapperElement), publisherParam);
+                    }
+                }
+            }
+            if (this.type() != null) {
+                var publisherParam = TypeName.get(this.type());
+                return ParameterizedTypeName.get(httpClientResponseMapper, ParameterizedTypeName.get(ClassName.get(CompletionStage.class), publisherParam));
+            } else {
+                var publisherParam = TypeName.get(returnType);
+                return ParameterizedTypeName.get(httpClientResponseMapper, ParameterizedTypeName.get(ClassName.get(CompletionStage.class), publisherParam));
+            }
         }
     }
 
     record MethodData(
         ExecutableElement element,
-        ReturnType returnType,
+        TypeName returnType,
         @Nullable CommonUtils.MappingData responseMapper,
         List<ResponseCodeMapperData> codeMappers,
-        List<Parameter> parameters) {}
+        List<Parameter> parameters) {
+    }
 
     private List<MethodData> parseMethods(TypeElement element) {
         var result = new ArrayList<MethodData>();
@@ -436,87 +610,48 @@ public class ClientClassGenerator {
             }
             var parameters = new ArrayList<Parameter>();
             for (int i = 0; i < method.getParameters().size(); i++) {
-                var parameter = this.parameterParser.parseParameter(method, i);
+                var parameter = Parameter.parse(method, i);
                 parameters.add(parameter);
             }
-            var returnType = this.returnTypeParser.parseReturnType(method);
+            var returnType = TypeName.get(method.getReturnType());
             var responseCodeMappers = this.parseMapperData(method);
 
-            var responseMapper = CommonUtils.parseMapping(method).getMapping(this.types, this.responseMapperType);
+            var responseMapper = CommonUtils.parseMapping(method).getMapping(httpClientResponseMapper);
             result.add(new MethodData(method, returnType, responseMapper, responseCodeMappers, parameters));
         }
         return result;
     }
 
     private List<ResponseCodeMapperData> parseMapperData(ExecutableElement element) {
-        var mappersOptional = element.getAnnotationMirrors().stream()
-            .filter(a -> a.getAnnotationType().toString().equals(ResponseCodeMapper.ResponseCodeMappers.class.getCanonicalName()))
-            .findFirst();
-        final List<AnnotationMirror> annotations;
-        if (mappersOptional.isEmpty()) {
-            annotations = element.getAnnotationMirrors().stream()
-                .map(AnnotationMirror.class::cast)
-                .filter(a -> a.getAnnotationType().toString().equals(ResponseCodeMapper.class.getCanonicalName()))
-                .toList();
-        } else {
-            @SuppressWarnings("unchecked")
-            var mappersArray = (List<AnnotationValue>) mappersOptional.get().getElementValues().values().iterator().next().getValue();
-            annotations = mappersArray.stream()
-                .map(AnnotationValue::getValue)
-                .map(AnnotationMirror.class::cast)
-                .toList();
-        }
+        var annotations = AnnotationUtils.findAnnotations(element, responseCodeMapper, responseCodeMappers);
         if (annotations.isEmpty()) {
             return List.of();
         }
         return annotations.stream()
             .map(a -> this.parseMapperData(element, a))
-            .filter(Objects::nonNull)
             .toList();
     }
 
-    @Nullable
     private ResponseCodeMapperData parseMapperData(ExecutableElement method, AnnotationMirror annotation) {
-        var code = annotation.getElementValues().entrySet()
-            .stream()
-            .filter(a -> a.getKey().getSimpleName().toString().equals("code"))
-            .map(a -> a.getValue().getValue())
-            .map(Integer.class::cast)
-            .findFirst()
-            .get();
-
-        var type = annotation.getElementValues().entrySet()
-            .stream()
-            .filter(a -> a.getKey().getSimpleName().toString().equals("type"))
-            .map(a -> a.getValue().getValue())
-            .map(TypeMirror.class::cast)
-            .findFirst()
-            .orElse(null);
-
-        var mapper = annotation.getElementValues().entrySet()
-            .stream()
-            .filter(a -> a.getKey().getSimpleName().toString().equals("mapper"))
-            .map(a -> a.getValue().getValue())
-            .map(TypeMirror.class::cast)
-            .findFirst()
-            .orElse(null);
+        var code = Objects.requireNonNull(AnnotationUtils.<Integer>parseAnnotationValueWithoutDefault(annotation, "code"));
+        var type = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(annotation, "type");
+        var mapper = AnnotationUtils.<DeclaredType>parseAnnotationValueWithoutDefault(annotation, "mapper");
         if (mapper == null && type == null) {
             var returnType = method.getReturnType();
             if (returnType.getKind() == TypeKind.VOID) {
                 returnType = elements.getTypeElement("java.lang.Void").asType();
             }
-            return new ResponseCodeMapperData(code, returnType, mapper);
+            return new ResponseCodeMapperData(code, returnType, null);
         }
-
         return new ResponseCodeMapperData(code, type, mapper);
     }
 
     private Map<String, ParameterizedTypeName> parseParameterConverters(List<MethodData> methods) {
         var result = new HashMap<String, ParameterizedTypeName>();
-        for (MethodData method : methods) {
-            for (Parameter parameter : method.parameters) {
+        for (var method : methods) {
+            for (var parameter : method.parameters) {
                 if (parameter instanceof Parameter.PathParameter pathParameter) {
-                    TypeMirror type = pathParameter.parameter().asType();
+                    var type = pathParameter.parameter().asType();
                     if (requiresConverter(type)) {
                         result.put(
                             getConverterName(method, pathParameter.parameter()),
@@ -525,7 +660,7 @@ public class ClientClassGenerator {
                     }
                 }
                 if (parameter instanceof Parameter.QueryParameter queryParameter) {
-                    TypeMirror type = queryParameter.parameter().asType();
+                    var type = queryParameter.parameter().asType();
                     if (CommonUtils.isCollection(type)) {
                         type = ((DeclaredType) type).getTypeArguments().get(0);
                     }
@@ -538,11 +673,10 @@ public class ClientClassGenerator {
                     }
                 }
                 if (parameter instanceof Parameter.HeaderParameter headerParameter) {
-                    TypeMirror type = headerParameter.parameter().asType();
+                    var type = headerParameter.parameter().asType();
                     if (CommonUtils.isCollection(type)) {
                         type = ((DeclaredType) type).getTypeArguments().get(0);
                     }
-
                     if (requiresConverter(type)) {
                         result.put(
                             getConverterName(method, headerParameter.parameter()),
@@ -555,8 +689,16 @@ public class ClientClassGenerator {
         return result;
     }
 
+    private final Set<String> primitiveTypes = Set.of("java.lang.String", "java.lang.Integer", "java.lang.Long", "java.lang.Boolean");
+
     private boolean requiresConverter(TypeMirror type) {
-        return !type.getKind().isPrimitive() && !types.isSameType(stringType, type);
+        if (type.getKind().isPrimitive()) {
+            return false;
+        }
+        if (type instanceof DeclaredType dt) {
+            return !primitiveTypes.contains(dt.asElement().toString());
+        }
+        return false;
     }
 
     private String getConverterName(MethodData method, VariableElement parameter) {
@@ -564,6 +706,6 @@ public class ClientClassGenerator {
     }
 
     private ParameterizedTypeName getConverterTypeName(TypeMirror type) {
-        return ParameterizedTypeName.get(ClassName.get(StringParameterConverter.class), TypeName.get(type));
+        return ParameterizedTypeName.get(stringParameterConverter, TypeName.get(type));
     }
 }

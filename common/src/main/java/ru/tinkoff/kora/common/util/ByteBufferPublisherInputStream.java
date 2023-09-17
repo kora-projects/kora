@@ -1,14 +1,15 @@
 package ru.tinkoff.kora.common.util;
 
+import jakarta.annotation.Nonnull;
 import reactor.core.Exceptions;
 
-import javax.annotation.Nonnull;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class ByteBufferPublisherInputStream extends InputStream implements Flow.Subscriber<ByteBuffer> {
     private final BlockingQueue<Signal> queue = new ArrayBlockingQueue<>(4);
@@ -28,7 +29,7 @@ public class ByteBufferPublisherInputStream extends InputStream implements Flow.
         if (read <= 0) {
             return -1;
         }
-        return b[0];
+        return b[0] & 0xFF;
     }
 
     @Override
@@ -97,12 +98,14 @@ public class ByteBufferPublisherInputStream extends InputStream implements Flow.
         }
     }
 
+    private final AtomicLong size = new AtomicLong(0);
+
     @Override
     public void onNext(ByteBuffer byteBuffer) {
         if (this.completed) {
             return;
         }
-        this.demand.decrementAndGet();
+        this.demand.getAndDecrement();
         this.queue.offer(Signal.next(byteBuffer));
     }
 
@@ -116,7 +119,7 @@ public class ByteBufferPublisherInputStream extends InputStream implements Flow.
         this.queue.offer(Signal.complete());
     }
 
-    private static class Signal {
+    private static final class Signal {
         private static final Signal COMPLETE = new Signal(null, null);
         private final ByteBuffer value;
         private final Throwable error;

@@ -6,7 +6,6 @@ import java.util.List;
 
 public sealed interface All<T> extends List<T> permits AllImpl {
     @SafeVarargs
-    @SuppressWarnings("varargs")
     static <T> All<T> of(T... values) {
         return new AllImpl<>(values);
     }

@@ -1,13 +1,17 @@
 package ru.tinkoff.kora.http.server.common;
 
-import reactor.core.publisher.Mono;
+import ru.tinkoff.kora.common.Context;
 
-import java.util.function.Function;
+import java.util.concurrent.CompletionStage;
 
 public interface HttpServerInterceptor {
-    Mono<HttpServerResponse> intercept(HttpServerRequest request, Function<HttpServerRequest, Mono<HttpServerResponse>> chain);
+    CompletionStage<HttpServerResponse> intercept(Context context, HttpServerRequest request, InterceptChain chain) throws Exception;
+
+    interface InterceptChain {
+        CompletionStage<HttpServerResponse> process(Context ctx, HttpServerRequest request) throws Exception;
+    }
 
     static HttpServerInterceptor noop() {
-        return (request, chain) -> chain.apply(request);
+        return (context, request, chain) -> chain.process(context, request);
     }
 }

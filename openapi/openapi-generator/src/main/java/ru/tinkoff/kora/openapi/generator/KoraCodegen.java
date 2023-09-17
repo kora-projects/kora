@@ -48,21 +48,32 @@ public class KoraCodegen extends DefaultCodegen {
     private final Logger LOGGER = LoggerFactory.getLogger(KoraCodegen.class);
 
     private enum Mode {
-        JAVA_CLIENT, JAVA_SERVER, REACTIVE_CLIENT, REACTIVE_SERVER, KOTLIN_CLIENT, KOTLIN_SERVER;
+        JAVA_CLIENT,
+        JAVA_SERVER,
+        ASYNC_JAVA_CLIENT,
+        ASYNC_JAVA_SERVER,
+        REACTIVE_CLIENT,
+        REACTIVE_SERVER,
+        KOTLIN_CLIENT,
+        KOTLIN_SERVER,
+        KOTLIN_SUSPEND_CLIENT,
+        KOTLIN_SUSPEND_SERVER,
+        ;
 
         public boolean isServer() {
             return switch (this) {
-                case JAVA_CLIENT, REACTIVE_CLIENT, KOTLIN_CLIENT -> false;
-                case JAVA_SERVER, REACTIVE_SERVER, KOTLIN_SERVER -> true;
+                case JAVA_CLIENT, ASYNC_JAVA_CLIENT, REACTIVE_CLIENT, KOTLIN_CLIENT, KOTLIN_SUSPEND_CLIENT -> false;
+                case JAVA_SERVER, ASYNC_JAVA_SERVER, REACTIVE_SERVER, KOTLIN_SERVER, KOTLIN_SUSPEND_SERVER -> true;
             };
         }
 
         public boolean isJava() {
-            return this != KOTLIN_CLIENT && this != KOTLIN_SERVER;
+            return this != KOTLIN_CLIENT && this != KOTLIN_SERVER && this != KOTLIN_SUSPEND_CLIENT && this != KOTLIN_SUSPEND_SERVER;
         }
     }
 
-    record TagData(@Nullable String httpClientTag, @Nullable String telemetryTag) {}
+    record TagData(@Nullable String httpClientTag, @Nullable String telemetryTag) {
+    }
 
     @Override
     public String getName() {
@@ -222,14 +233,26 @@ public class KoraCodegen extends DefaultCodegen {
         switch (this.codegenMode) {
             case JAVA_CLIENT -> {
                 this.additionalProperties.put("isClient", true);
+                this.additionalProperties.put("isBlocking", true);
                 modelTemplateFiles.put("javaModel.mustache", ".java");
                 apiTemplateFiles.put("javaClientApi.mustache", ".java");
                 apiTemplateFiles.put("javaApiResponses.mustache", "Responses.java");
                 apiTemplateFiles.put("javaClientResponseMappers.mustache", "ClientResponseMappers.java");
                 apiTemplateFiles.put("javaClientRequestMappers.mustache", "ClientRequestMappers.java");
             }
+            case REACTIVE_CLIENT, ASYNC_JAVA_CLIENT -> {
+                this.additionalProperties.put("isClient", true);
+                this.additionalProperties.put("isAsync", this.codegenMode == Mode.ASYNC_JAVA_CLIENT);
+                this.additionalProperties.put("isReactive", this.codegenMode == Mode.REACTIVE_CLIENT);
+                modelTemplateFiles.put("javaModel.mustache", ".java");
+                apiTemplateFiles.put("javaClientApi.mustache", ".java");
+                apiTemplateFiles.put("javaApiResponses.mustache", "Responses.java");
+                apiTemplateFiles.put("javaClientAsyncResponseMappers.mustache", "ClientResponseMappers.java");
+                apiTemplateFiles.put("javaClientRequestMappers.mustache", "ClientRequestMappers.java");
+            }
             case JAVA_SERVER -> {
                 this.additionalProperties.put("isClient", false);
+                this.additionalProperties.put("isBlocking", true);
                 apiTemplateFiles.put("javaServerApi.mustache", "Controller.java");
                 apiTemplateFiles.put("javaServerApiDelegate.mustache", "Delegate.java");
                 apiTemplateFiles.put("javaApiResponses.mustache", "Responses.java");
@@ -237,16 +260,10 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("javaServerResponseMappers.mustache", "ServerResponseMappers.java");
                 modelTemplateFiles.put("javaModel.mustache", ".java");
             }
-            case REACTIVE_CLIENT -> {
-                this.additionalProperties.put("isClient", true);
-                modelTemplateFiles.put("javaModel.mustache", ".java");
-                apiTemplateFiles.put("javaApiResponses.mustache", "Responses.java");
-                apiTemplateFiles.put("javaClientResponseMappers.mustache", "ClientResponseMappers.java");
-                apiTemplateFiles.put("javaClientRequestMappers.mustache", "ClientRequestMappers.java");
-                apiTemplateFiles.put("reactiveClientApi.mustache", ".java");
-            }
-            case REACTIVE_SERVER -> {
+            case REACTIVE_SERVER, ASYNC_JAVA_SERVER -> {
                 this.additionalProperties.put("isClient", false);
+                this.additionalProperties.put("isAsync", this.codegenMode == Mode.ASYNC_JAVA_SERVER);
+                this.additionalProperties.put("isReactive", this.codegenMode == Mode.REACTIVE_SERVER);
                 apiTemplateFiles.put("reactiveServerApi.mustache", "Controller.java");
                 apiTemplateFiles.put("reactiveServerApiDelegate.mustache", "Delegate.java");
                 apiTemplateFiles.put("javaApiResponses.mustache", "Responses.java");
@@ -254,16 +271,22 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("javaServerResponseMappers.mustache", "ServerResponseMappers.java");
                 modelTemplateFiles.put("javaModel.mustache", ".java");
             }
-            case KOTLIN_CLIENT -> {
+            case KOTLIN_CLIENT, KOTLIN_SUSPEND_CLIENT -> {
                 this.additionalProperties.put("isClient", true);
+                this.additionalProperties.put("isSuspend", this.codegenMode == Mode.KOTLIN_SUSPEND_CLIENT);
                 modelTemplateFiles.put("kotlinModel.mustache", ".kt");
                 apiTemplateFiles.put("kotlinClientApi.mustache", ".kt");
                 apiTemplateFiles.put("kotlinApiResponses.mustache", "Responses.kt");
+                if (this.codegenMode == Mode.KOTLIN_SUSPEND_CLIENT) {
+                    apiTemplateFiles.put("kotlinClientAsyncResponseMappers.mustache", "ClientResponseMappers.kt");
+                } else {
+                    apiTemplateFiles.put("kotlinClientResponseMappers.mustache", "ClientResponseMappers.kt");
+                }
                 apiTemplateFiles.put("kotlinClientRequestMappers.mustache", "ClientRequestMappers.kt");
-                apiTemplateFiles.put("kotlinClientResponseMappers.mustache", "ClientResponseMappers.kt");
             }
-            case KOTLIN_SERVER -> {
+            case KOTLIN_SERVER, KOTLIN_SUSPEND_SERVER -> {
                 this.additionalProperties.put("isClient", false);
+                this.additionalProperties.put("isSuspend", this.codegenMode == Mode.KOTLIN_SUSPEND_SERVER);
                 modelTemplateFiles.put("kotlinModel.mustache", ".kt");
                 apiTemplateFiles.put("kotlinServerApi.mustache", "Controller.kt");
                 apiTemplateFiles.put("kotlinServerApiDelegate.mustache", "Delegate.kt");
@@ -280,7 +303,7 @@ public class KoraCodegen extends DefaultCodegen {
         }
 
         embeddedTemplateDir = templateDir = "openapi/templates/kora";
-        if (this.codegenMode == Mode.KOTLIN_CLIENT || this.codegenMode == Mode.KOTLIN_SERVER) {
+        if (!this.codegenMode.isJava()) {
             languageSpecificPrimitives = new HashSet<>(
                 Arrays.asList(
                     "ByteArray",
@@ -1227,7 +1250,8 @@ public class KoraCodegen extends DefaultCodegen {
         }
         var httpClientAnnotationParams = new HashMap<String, String>();
 
-        record AuthMethodGroup(String name, List<CodegenSecurity> methods) {}
+        record AuthMethodGroup(String name, List<CodegenSecurity> methods) {
+        }
         var authMethods = (List<AuthMethodGroup>) this.vendorExtensions.computeIfAbsent("authMethods", k -> new ArrayList<AuthMethodGroup>());
         var tags = (Set<String>) this.vendorExtensions.computeIfAbsent("tags", k -> new TreeSet<String>());
         var operations = (Map<String, Object>) objs.get("operations");
@@ -1539,19 +1563,19 @@ public class KoraCodegen extends DefaultCodegen {
         var securitySchemas = openAPI.getComponents().getSecuritySchemes();
         if (!Objects.requireNonNullElse(securitySchemas, Map.of()).isEmpty()) {
             switch (this.codegenMode) {
-                case JAVA_CLIENT, REACTIVE_CLIENT -> {
+                case JAVA_CLIENT, ASYNC_JAVA_CLIENT, REACTIVE_CLIENT -> {
                     var securitySchemaClass = apiFileFolder() + File.separator + "ApiSecurity.java";
                     this.supportingFiles.add(new SupportingFile("javaClientSecuritySchema.mustache", securitySchemaClass));
                 }
-                case JAVA_SERVER, REACTIVE_SERVER -> {
+                case JAVA_SERVER, ASYNC_JAVA_SERVER, REACTIVE_SERVER -> {
                     var securitySchemaClass = apiFileFolder() + File.separator + "ApiSecurity.java";
                     this.supportingFiles.add(new SupportingFile("javaServerSecuritySchema.mustache", securitySchemaClass));
                 }
-                case KOTLIN_CLIENT -> {
+                case KOTLIN_CLIENT, KOTLIN_SUSPEND_CLIENT -> {
                     var securitySchemaClass = apiFileFolder() + File.separator + "ApiSecurity.kt";
                     this.supportingFiles.add(new SupportingFile("kotlinClientSecuritySchema.mustache", securitySchemaClass));
                 }
-                case KOTLIN_SERVER -> {
+                case KOTLIN_SERVER, KOTLIN_SUSPEND_SERVER -> {
                     var securitySchemaClass = apiFileFolder() + File.separator + "ApiSecurity.kt";
                     this.supportingFiles.add(new SupportingFile("kotlinServerSecuritySchema.mustache", securitySchemaClass));
                 }
@@ -1917,5 +1941,6 @@ public class KoraCodegen extends DefaultCodegen {
     }
 
     @Override
-    public void postProcess() {}
+    public void postProcess() {
+    }
 }

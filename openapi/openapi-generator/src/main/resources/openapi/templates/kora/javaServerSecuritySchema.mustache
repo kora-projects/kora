@@ -12,14 +12,17 @@ import ru.tinkoff.kora.common.Module;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.Principal;
+
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.http.server.common.HttpServerInterceptor;
+import ru.tinkoff.kora.http.server.common.HttpServerInterceptor.InterceptChain;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.HttpServerResponseException;
-import reactor.core.publisher.Mono;
-
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 import ru.tinkoff.kora.http.common.auth.*;
 import ru.tinkoff.kora.http.server.common.auth.*;
@@ -45,38 +48,61 @@ public interface ApiSecurity {
             this.{{#lambda.camelcase}}{{name}}{{/lambda.camelcase}} = {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}};{{/methods}}
         }
 
-        public Mono<HttpServerResponse> intercept(HttpServerRequest request, Function<HttpServerRequest, Mono<HttpServerResponse>> chain) {
-            return Mono.deferContextual(ctx -> {
-                var context = Context.Reactor.current(ctx);{{#methods}}{{#isApiKey}}{{#isKeyInHeader}}
-                var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("{{keyParamName}}");{{/isKeyInHeader}}{{#isKeyInQuery}}
-                var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query = request.queryParams().get("{{keyParamName}}");
-                var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query == null || {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query.isEmpty()
-                  ? null
-                  : {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query.iterator().next();
-                {{/isKeyInQuery}}{{#isKeyInCookie}}
-                  throw new IllegalStateException("TODO");// TODO
-                {{/isKeyInCookie}}
-                {{/isApiKey}}{{#isBasicBasic}}
-                var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("Authorization");
-                {{/isBasicBasic}}{{#isBasicBearer}}
-                var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("Authorization");
-                {{/isBasicBearer}}{{#isOAuth}}
-                var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("Authorization");
-                {{/isOAuth}}
+        @Override
+        public CompletionStage<HttpServerResponse> intercept(Context ctx, HttpServerRequest request, InterceptChain chain) {
+        var future = new CompletableFuture<Principal>();{{#methods}}{{#isApiKey}}{{#isKeyInHeader}}
+            var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("{{keyParamName}}");{{/isKeyInHeader}}{{#isKeyInQuery}}
+            var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query = request.queryParams().get("{{keyParamName}}");
+            var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query == null || {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query.isEmpty()
+              ? null
+              : {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query.iterator().next();
+            {{/isKeyInQuery}}{{#isKeyInCookie}}
+              throw new IllegalStateException("TODO");// TODO
+            {{/isKeyInCookie}}
+            {{/isApiKey}}{{#isBasicBasic}}
+            var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("Authorization");
+            {{/isBasicBasic}}{{#isBasicBearer}}
+            var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("Authorization");
+            {{/isBasicBearer}}{{#isOAuth}}
+            var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("Authorization");
+            {{/isOAuth}}
 
 
-                var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}} = this.{{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}.extract(request, {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token){{^isOAuth}};{{/isOAuth}}{{#isOAuth}}{{#vendorExtensions.hasScopes}}
-                  .<Principal>handle((principal, sink) -> { {{#scopes}}
-                     if (!principal.scopes().contains("{{scope}}")) throw HttpServerResponseException.of(403, "");{{/scopes}}
-                     sink.next(principal);
-                  }){{/vendorExtensions.hasScopes}};{{/isOAuth}}{{/methods}}{{#methods}}{{#vendorExtensions.isFirst}}
+            var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}} = this.{{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}.extract(request, {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token){{^isOAuth}};{{/isOAuth}}{{#isOAuth}}{{#vendorExtensions.hasScopes}}
+              .<Principal>thenApply((principal) -> { {{#scopes}}
+                 if (!principal.scopes().contains("{{scope}}")) throw HttpServerResponseException.of(403, "");{{/scopes}}
+                 return principal;
+              }){{/vendorExtensions.hasScopes}};{{/isOAuth}}{{/methods}}
+            {{#methods}}
 
-                return {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}{{/vendorExtensions.isFirst}}{{/methods}}{{#methods}}{{^vendorExtensions.isFirst}}
-                  .switchIfEmpty(Mono.defer(() -> {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}})){{/vendorExtensions.isFirst}}{{/methods}}
-                  .switchIfEmpty(Mono.error(() -> HttpServerResponseException.of(403, "")))
-                  .doOnNext(principal -> Principal.set(context, principal))
-                  .then(Mono.defer(() -> chain.apply(request)));
+            {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}.whenComplete(({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_principal, {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_error) -> {
+                if ({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_error != null) { future.completeExceptionally({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_error); }
+                else if ({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_principal != null) { future.complete({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_principal); }
+                else { {{#vendorExtensions.isLast}}
+                  future.completeExceptionally(HttpServerResponseException.of(403, ""));{{/vendorExtensions.isLast}}{{^vendorExtensions.isLast}}
+
+{{/vendorExtensions.isLast}}
+            {{/methods}}
+            {{#methods}}
+
+                }
             });
+            {{/methods}}
+
+
+
+            return future
+              .thenCompose(principal -> {
+                if (principal == null) {
+                  throw HttpServerResponseException.of(403, "");
+                }
+                Principal.set(ctx, principal);
+                try {
+                  return chain.process(ctx, request);
+                } catch (Exception e) {
+                  throw new CompletionException(e);
+                }
+              });
         }
     }
 

@@ -3,8 +3,8 @@ package ru.tinkoff.kora.http.client.symbol.processor
 import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.*
-import ru.tinkoff.kora.http.client.common.declarative.DeclarativeHttpClientConfig
-import ru.tinkoff.kora.http.client.common.declarative.HttpClientOperationConfig
+import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.declarativeHttpClientConfig
+import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientOperationConfig
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import java.time.Duration
 
@@ -23,17 +23,17 @@ class ConfigClassGenerator {
             .addReturnFun("requestTimeout", Duration::class.asTypeName().copy(true))
 
         functions.forEach { function ->
-            tb.addProperty(PropertySpec.builder("${function}Config", HttpClientOperationConfig::class.asTypeName().copy(true)).initializer("${function}Config").build())
+            tb.addProperty(PropertySpec.builder("${function}Config", httpClientOperationConfig.copy(true)).initializer("${function}Config").build())
         }
         val constructor = FunSpec.constructorBuilder()
             .addParameter("url", String::class)
             .addParameter("requestTimeout", Duration::class.asTypeName().copy(true))
         functions.forEach { function ->
-            constructor.addParameter("${function}Config", HttpClientOperationConfig::class.asTypeName().copy(true))
+            constructor.addParameter("${function}Config", httpClientOperationConfig.copy(true))
         }
 
         tb.primaryConstructor(constructor.build())
-        tb.addSuperinterface(DeclarativeHttpClientConfig::class)
+        tb.addSuperinterface(declarativeHttpClientConfig)
         return tb.build()
     }
 

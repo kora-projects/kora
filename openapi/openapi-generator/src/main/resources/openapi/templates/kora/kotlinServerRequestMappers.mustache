@@ -3,7 +3,9 @@ package {{package}}
 import ru.tinkoff.kora.http.server.common.form.MultipartReader
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper
 import ru.tinkoff.kora.http.server.common.HttpServerRequest
-import reactor.core.publisher.Mono
+{{#isSuspend}}
+import java.util.concurrent.CompletionStage;
+{{/isSuspend}}
 
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
 interface {{classname}}ServerRequestMappers {
@@ -13,10 +15,10 @@ interface {{classname}}ServerRequestMappers {
   class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper{{#vendorExtensions.requiresFormParamMappers}}({{#vendorExtensions.formParamMappers}}
     private val {{paramName}}Converter: ru.tinkoff.kora.http.server.common.handler.StringParameterReader<{{paramType}}>,
 {{/vendorExtensions.formParamMappers}}
-  ){{/vendorExtensions.requiresFormParamMappers}}: HttpServerRequestMapper<{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> {
-    override fun apply(request: HttpServerRequest): Mono<{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> {
+  ){{/vendorExtensions.requiresFormParamMappers}}: HttpServerRequestMapper<{{#isSuspend}}CompletionStage<{{/isSuspend}}{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam{{#isSuspend}}>{{/isSuspend}}> {
+    override fun apply(request: HttpServerRequest): {{#isSuspend}}CompletionStage<{{/isSuspend}}{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam{{#isSuspend}}>{{/isSuspend}} {
 {{#vendorExtensions.urlEncodedForm}}
-      return ru.tinkoff.kora.common.util.ReactorUtils.toByteArrayMono(request.body()).handle { bytes, sink ->
+      return request.body().collectArray().thenApply { bytes ->
         val bodyString = bytes.decodeToString()
         val formData = ru.tinkoff.kora.http.server.common.form.FormUrlEncodedServerRequestMapper.read(bodyString)
 {{#formParams}}
@@ -28,45 +30,44 @@ interface {{classname}}ServerRequestMappers {
         val {{paramName}} = if ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) null else {{paramName}}Part.values().first()
 {{/vendorExtensions.requiresMapper}}{{#required}}
         if ({{paramName}} == null) {
-          sink.error(ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form key '{{baseName}}' is required"))
-          return@handle
+          throw ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form key '{{baseName}}' is required")
         }
 {{/required}}{{/isArray}}{{/formParams}}
-        sink.next({{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(
+        {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(
           {{#formParams}}{{paramName}}{{^-last}}, {{/-last}}{{/formParams}}
-        ))
-      }{{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
+        )
+      }{{^isSuspend}}.toCompletableFuture().get(){{/isSuspend}}{{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
       class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState {
-      {{#formParams}}  @javax.annotation.Nullable
+      {{#formParams}}
       {{#isFile}}  var {{paramName}}: ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile? = null
       {{/isFile}}{{^isFile}}  var {{paramName}}: {{{dataType}}}? = null
       {{/isFile}}{{/formParams}}
       }
       return MultipartReader.read(request)
-        .reduce({{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState()) { state, part ->
-          when (part.name()) {
-            {{#formParams}}
-                    "{{baseName}}" -> {
-                {{#isFile}}  state.{{paramName}} = part
-                {{/isFile}}{{^isFile}}  state.{{paramName}} = part.content().decodeToString()
-                {{/isFile}}
-                    }
-            {{/formParams}}
-            else -> {}
+        .thenApply { parts ->
+          val state = {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState()
+          for (part in parts) {
+            when (part.name()) {
+              {{#formParams}}
+                      "{{baseName}}" -> {
+                  {{#isFile}}  state.{{paramName}} = part
+                  {{/isFile}}{{^isFile}}  state.{{paramName}} = part.content().decodeToString()
+                  {{/isFile}}
+                      }
+              {{/formParams}}
+              else -> {}
+            }
           }
-          state
-        }
-        .handle { state, sink ->
           {{#formParams}}{{#required}}
           if (state.{{paramName}} == null) {
-            sink.error(ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form key '{{baseName}}' is required"))
-            return@handle
+            throw ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form key '{{baseName}}' is required")
           }
           {{/required}}{{/formParams}}
-          sink.next({{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(
+          {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(
             {{#formParams}}state.{{paramName}}{{#required}}!!{{/required}}{{^-last}}, {{/-last}}{{/formParams}}
-          ))
-        }{{/vendorExtensions.multipartForm}}
+          )
+        }{{^isSuspend}}.toCompletableFuture().get(){{/isSuspend}}
+        {{/vendorExtensions.multipartForm}}
     }
   }
 {{/hasFormParams}}

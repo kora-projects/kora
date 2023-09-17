@@ -2,7 +2,7 @@ package ru.tinkoff.kora.cache.annotation.processor.aop;
 
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
-import reactor.core.publisher.Flux;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.cache.annotation.processor.CacheOperation;
@@ -36,7 +36,7 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
         if (MethodUtils.isFuture(method)) {
             throw new ProcessingErrorException("@CachePut can't be applied for types assignable from " + Future.class, method);
         } else if (MethodUtils.isFlux(method)) {
-            throw new ProcessingErrorException("@CachePut can't be applied for types assignable from " + Flux.class, method);
+            throw new ProcessingErrorException("@CachePut can't be applied for types assignable from " + CommonClassNames.flux, method);
         }
 
         final CacheOperation operation = CacheOperationUtils.getCacheMeta(method);
@@ -127,7 +127,7 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
 
             builder.add("return ")
                 .add(superMethod)
-                .add(".flatMap(_result -> $T.merge($T.of(\n", Flux.class, List.class);
+                .add(".flatMap(_result -> $T.merge($T.of(\n", CommonClassNames.flux, List.class);
 
             // cache put
             for (int i = 0; i < cacheFields.size(); i++) {

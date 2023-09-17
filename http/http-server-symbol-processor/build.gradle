@@ -11,6 +11,7 @@ dependencies {
     api project(':common')
     api project(':http:http-server-common')
     api project(':symbol-processor-common')
+    api project(':kora-app-symbol-processor')
 
     implementation libs.ksp.api
     implementation libs.kotlin.reflect
@@ -21,12 +22,9 @@ dependencies {
     testImplementation testFixtures(project(':annotation-processor-common'))
     testImplementation testFixtures(project(':symbol-processor-common'))
     testImplementation project(':json:json-common')
-    testImplementation libs.jackson.databind
     testImplementation libs.mockito.kotlin
-    testImplementation libs.byte.buddy.core
-    testImplementation libs.byte.buddy.agent
     testImplementation(libs.kotlin.stdlib.lib)
-    testImplementation(libs.kotlin.coroutines.reactor)
+    testImplementation(libs.kotlin.coroutines.jdk8)
 }
 
 test {

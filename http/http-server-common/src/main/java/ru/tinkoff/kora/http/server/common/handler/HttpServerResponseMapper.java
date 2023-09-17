@@ -1,9 +1,12 @@
 package ru.tinkoff.kora.http.server.common.handler;
 
-import reactor.core.publisher.Mono;
+import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.Mapping;
+import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 
+import java.io.IOException;
+
 public interface HttpServerResponseMapper<T> extends Mapping.MappingFunction {
-    Mono<? extends HttpServerResponse> apply(T result);
+    HttpServerResponse apply(Context ctx, HttpServerRequest request, T result) throws IOException;
 }

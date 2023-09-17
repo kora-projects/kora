@@ -1,10 +1,12 @@
 package ru.tinkoff.kora.http.server.annotation.processor.server;
 
-import reactor.core.publisher.Flux;
 import ru.tinkoff.kora.http.common.HttpHeaders;
+import ru.tinkoff.kora.http.common.body.HttpBody;
+import ru.tinkoff.kora.http.common.body.HttpInBody;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
@@ -12,19 +14,27 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-class SimpleHttpServerRequest implements HttpServerRequest {
+public class SimpleHttpServerRequest implements HttpServerRequest {
     private final String method;
+    private final String route;
     private final String path;
     private final byte[] body;
     private final Map.Entry<String, String>[] headers;
     private final Map<String, String> routeParams;
 
-    public SimpleHttpServerRequest(String method, String path, byte[] body, Map.Entry<String, String>[] headers, Map<String, String> routeParams) {
+    public SimpleHttpServerRequest(String method, String route, String path, byte[] body, Map.Entry<String, String>[] headers, Map<String, String> routeParams) {
         this.method = method;
+        this.route = route;
         this.path = path;
         this.body = body;
         this.headers = headers;
         this.routeParams = routeParams;
+    }
+
+    public static SimpleHttpServerRequest of(String method, String path, String body) {
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        Map.Entry<String, String>[] headers = new Map.Entry[0];
+        return new SimpleHttpServerRequest(method, path, path, body.getBytes(StandardCharsets.UTF_8), headers, Map.of());
     }
 
     @Override
@@ -35,6 +45,11 @@ class SimpleHttpServerRequest implements HttpServerRequest {
     @Override
     public String path() {
         return path;
+    }
+
+    @Override
+    public String route() {
+        return this.route;
     }
 
     @Override
@@ -77,7 +92,7 @@ class SimpleHttpServerRequest implements HttpServerRequest {
     }
 
     @Override
-    public Flux<ByteBuffer> body() {
-        return Flux.just(ByteBuffer.wrap(body));
+    public HttpInBody body() {
+        return HttpBody.of(headers().getFirst("content-type"), ByteBuffer.wrap(body));
     }
 }

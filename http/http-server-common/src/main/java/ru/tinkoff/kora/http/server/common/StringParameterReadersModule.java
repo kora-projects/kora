@@ -45,32 +45,32 @@ public interface StringParameterReadersModule {
 
 
     @DefaultComponent
-    default StringParameterReader<Integer> javaUtilIntegerStringParameterReader(){
-        return StringParameterReader.of(Integer::parseInt,"Parameter has incorrect value '%s' for 'Integer' type"::formatted);
+    default StringParameterReader<Integer> javaUtilIntegerStringParameterReader() {
+        return StringParameterReader.of(Integer::parseInt, "Parameter has incorrect value '%s' for 'Integer' type"::formatted);
     }
 
     @DefaultComponent
-    default StringParameterReader<Double> javaUtilDoubleStringParameterReader(){
-        return StringParameterReader.of(Double::parseDouble,"Parameter has incorrect value '%s' for 'Double' type"::formatted);
+    default StringParameterReader<Double> javaUtilDoubleStringParameterReader() {
+        return StringParameterReader.of(Double::parseDouble, "Parameter has incorrect value '%s' for 'Double' type"::formatted);
     }
 
     @DefaultComponent
-    default StringParameterReader<Long> javaUtilLongStringParameterReader(){
-        return StringParameterReader.of(Long::parseLong,"Parameter has incorrect value '%s' for 'Long' type"::formatted);
+    default StringParameterReader<Long> javaUtilLongStringParameterReader() {
+        return StringParameterReader.of(Long::parseLong, "Parameter has incorrect value '%s' for 'Long' type"::formatted);
     }
 
     @DefaultComponent
-    default StringParameterReader<Float> javaUtilFloatStringParameterReader(){
-        return StringParameterReader.of(Float::parseFloat,"Parameter has incorrect value '%s' for 'Float' type"::formatted);
+    default StringParameterReader<Float> javaUtilFloatStringParameterReader() {
+        return StringParameterReader.of(Float::parseFloat, "Parameter has incorrect value '%s' for 'Float' type"::formatted);
     }
 
     @DefaultComponent
-    default StringParameterReader<UUID> javaUtilUUIDStringParameterReader(){
-        return StringParameterReader.of(UUID::fromString,"Parameter has incorrect value '%s' for 'UUID' type"::formatted);
+    default StringParameterReader<UUID> javaUtilUUIDStringParameterReader() {
+        return StringParameterReader.of(UUID::fromString, "Parameter has incorrect value '%s' for 'UUID' type"::formatted);
     }
 
     @DefaultComponent
-    default StringParameterReader<Boolean> javaUtilBooleanStringParameterReader(){
-        return StringParameterReader.of(Boolean::parseBoolean,"Parameter has incorrect value '%s' for 'Boolean' type"::formatted);
+    default StringParameterReader<Boolean> javaUtilBooleanStringParameterReader() {
+        return StringParameterReader.of(Boolean::parseBoolean, "Parameter has incorrect value '%s' for 'Boolean' type"::formatted);
     }
 }

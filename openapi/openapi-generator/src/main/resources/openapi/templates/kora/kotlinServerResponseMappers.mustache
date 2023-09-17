@@ -2,11 +2,12 @@ package {{package}}
 
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseEntityMapper
+import ru.tinkoff.kora.http.server.common.HttpServerRequest
 import ru.tinkoff.kora.http.server.common.HttpServerResponse
 import ru.tinkoff.kora.http.server.common.HttpServerResponseEntity
 import ru.tinkoff.kora.http.server.common.SimpleHttpServerResponse
 import ru.tinkoff.kora.http.common.HttpHeaders
-import reactor.core.publisher.Mono
+import ru.tinkoff.kora.common.Context
 import {{package}}.{{classname}}Responses.*
 
 {{#imports}}import {{import}}
@@ -32,7 +33,7 @@ interface {{classname}}ServerResponseMappers {
     {{/dataType}}
     {{/responses}}
 
-    override fun apply(rs: {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse): Mono<out HttpServerResponse> { {{^vendorExtensions.singleResponse}}
+    override fun apply(ctx: Context, rq: HttpServerRequest, rs: {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse): HttpServerResponse { {{^vendorExtensions.singleResponse}}
       when (rs) {
       {{/vendorExtensions.singleResponse}}{{#responses}}{{^vendorExtensions.singleResponse}}
         is {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{^vendorExtensions.singleResponse}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse{{/vendorExtensions.singleResponse}} -> {
@@ -43,11 +44,11 @@ interface {{classname}}ServerResponseMappers {
           {{/headers}}
           )
           {{^dataType}}
-          return Mono.just(SimpleHttpServerResponse({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, "application/octet-stream", headers, null))
+          return HttpServerResponse.of({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers)
           {{/dataType}}
           {{#dataType}}
           val entity = HttpServerResponseEntity({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, rs.content, headers)
-          return response{{code}}Delegate.apply(entity)
+          return response{{code}}Delegate.apply(ctx, rq, entity)
           {{/dataType}}{{^vendorExtensions.singleResponse}}
         }{{/vendorExtensions.singleResponse}}
       {{/responses}}{{^vendorExtensions.singleResponse}}

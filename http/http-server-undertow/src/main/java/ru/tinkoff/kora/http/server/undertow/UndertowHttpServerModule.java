@@ -2,6 +2,7 @@ package ru.tinkoff.kora.http.server.undertow;
 
 import org.xnio.XnioWorker;
 import ru.tinkoff.kora.application.graph.ValueOf;
+import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor;
@@ -20,6 +21,7 @@ public interface UndertowHttpServerModule extends UndertowModule {
         return new UndertowHttpServer(config, handler, worker);
     }
 
+    @DefaultComponent
     default BlockingRequestExecutor undertowBlockingRequestExecutor(XnioWorker xnioWorker) {
         return new BlockingRequestExecutor.Default(xnioWorker);
     }

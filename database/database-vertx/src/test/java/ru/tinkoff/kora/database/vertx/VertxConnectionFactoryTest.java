@@ -2,12 +2,11 @@ package ru.tinkoff.kora.database.vertx;
 
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.vertx.sqlclient.Tuple;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
 import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.database.common.telemetry.DefaultDataBaseTelemetryFactory;
 import ru.tinkoff.kora.test.postgres.PostgresParams;
@@ -73,14 +72,14 @@ class VertxConnectionFactoryTest {
         var sql = "SELECT * FROM test_table WHERE value = $1";
         record Entity(long id, String value) {}
         withDb(params, db -> {
-            db.withConnection(connection -> VertxRepositoryHelper.mono(db, new QueryContext(id, sql), Tuple.of("test1"), rows -> {
-                    assertThat(rows.size() == 1);
-                    var row = rows.iterator().next();
-                    return new Entity(row.getLong(0), row.getString(1));
-                }))
-                .as(StepVerifier::create)
-                .expectNext(new Entity(1, "test1"))
-                .verifyComplete();
+            var future = db.withConnection(connection -> VertxRepositoryHelper.completionStage(db, new QueryContext(id, sql), Tuple.of("test1"), rows -> {
+                assertThat(rows.size() == 1);
+                var row = rows.iterator().next();
+                return new Entity(row.getLong(0), row.getString(1));
+            }));
+            Assertions.assertThat(future)
+                .succeedsWithin(Duration.ofMinutes(1))
+                .isEqualTo(new Entity(1, "test1"));
         });
     }
 
@@ -91,10 +90,11 @@ class VertxConnectionFactoryTest {
         var sql = "INSERT INTO test_table(value) VALUES ('test1');";
 
         withDb(params, vertxDatabase -> {
-            vertxDatabase.inTx(connection -> VertxRepositoryHelper.mono(vertxDatabase, new QueryContext(id, sql), Tuple.tuple(), rs -> "")
-                    .then(Mono.error(new RuntimeException("test"))))
-                .as(StepVerifier::create)
-                .verifyError();
+            var f1 = vertxDatabase.inTx(connection -> VertxRepositoryHelper.completionStage(vertxDatabase, new QueryContext(id, sql), Tuple.tuple(), rs -> "")
+                .thenApply(v -> {
+                    throw new RuntimeException("test");
+                }));
+            Assertions.assertThat(f1).failsWithin(Duration.ofMinutes(1));
 
             PostgresParams.ResultSetMapper<List<String>, RuntimeException> extractor = rs -> {
                 var result = new ArrayList<String>();
@@ -112,9 +112,8 @@ class VertxConnectionFactoryTest {
             assertThat(values).hasSize(0);
 
 
-            vertxDatabase.inTx(connection -> VertxRepositoryHelper.mono(vertxDatabase, new QueryContext(id, sql), Tuple.tuple(), rs -> ""))
-                .as(StepVerifier::create)
-                .verifyComplete();
+            var f2 = vertxDatabase.inTx(connection -> VertxRepositoryHelper.completionStage(vertxDatabase, new QueryContext(id, sql), Tuple.tuple(), rs -> ""));
+            Assertions.assertThat(f2).succeedsWithin(Duration.ofMinutes(1));
 
             values = params.query("SELECT value FROM test_table", extractor);
             assertThat(values).hasSize(1);

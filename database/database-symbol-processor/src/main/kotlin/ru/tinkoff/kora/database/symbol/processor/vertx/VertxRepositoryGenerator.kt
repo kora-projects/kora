@@ -86,9 +86,9 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
         } else if (isFlow) {
             b.addCode("return ")
             if (connectionParameter == null) {
-                b.addCode("%T.flux(this._vertxConnectionFactory, _query, _tuple, %N).%M()\n", VertxTypes.repositoryHelper, resultMapperName, asFlow)
+                b.addCode("%T.Flux.flux(this._vertxConnectionFactory, _query, _tuple, %N).%M()\n", VertxTypes.repositoryHelper, resultMapperName, asFlow)
             } else {
-                b.addCode("%T.flux(%N, this._vertxConnectionFactory.telemetry(), _query, _tuple, %N).%M()\n", VertxTypes.repositoryHelper, connectionParameter, resultMapperName, asFlow)
+                b.addCode("%T.Flux.flux(%N, this._vertxConnectionFactory.telemetry(), _query, _tuple, %N).%M()\n", VertxTypes.repositoryHelper, connectionParameter, resultMapperName, asFlow)
             }
             return b.build()
         } else {

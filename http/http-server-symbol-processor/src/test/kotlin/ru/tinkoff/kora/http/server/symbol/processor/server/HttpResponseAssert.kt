@@ -2,37 +2,30 @@ package ru.tinkoff.kora.http.server.symbol.processor.server
 
 import org.assertj.core.api.AbstractByteArrayAssert
 import org.assertj.core.api.Assertions
-import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
+import ru.tinkoff.kora.common.util.FlowUtils
 import ru.tinkoff.kora.http.common.HttpHeaders
 import ru.tinkoff.kora.http.server.common.HttpServerResponse
-import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.util.*
 
 class HttpResponseAssert(httpResponse: HttpServerResponse) {
     private val code: Int
-    private val contentLength: Int
-    private val contentType: String
+    private val contentLength: Int?
+    private val contentType: String?
     private val headers: HttpHeaders
     private val body: ByteArray
 
     init {
         this.code = httpResponse.code()
-        contentLength = httpResponse.contentLength()
-        contentType = httpResponse.contentType()
+        contentLength = httpResponse.body()?.contentLength()
+        contentType = httpResponse.body()?.contentType()
         headers = httpResponse.headers()
-        body = Flux.from(httpResponse.body())
-            .reduce(ByteArray(0)) { bytes: ByteArray, byteBuffer: ByteBuffer? ->
-                val newArr = Arrays.copyOf(bytes, bytes.size + byteBuffer!!.remaining())
-                byteBuffer[newArr, bytes.size, byteBuffer.remaining()]
-                newArr
-            }
-            .switchIfEmpty(Mono.just(ByteArray(0)))
-            .block()
+        body = httpResponse.body()
+            ?.let { FlowUtils.toByteArrayFuture(it).get() }
+            ?: byteArrayOf()
     }
 
-    fun verifyStatus(expected: Int): HttpResponseAssert {
+    fun hasStatus(expected: Int): HttpResponseAssert {
         Assertions.assertThat(this.code)
             .withFailMessage(
                 "Expected response code %d, got %d(%s)",
@@ -51,7 +44,7 @@ class HttpResponseAssert(httpResponse: HttpServerResponse) {
         return this
     }
 
-    fun verifyBody(expected: ByteArray?): HttpResponseAssert {
+    fun hasBody(expected: ByteArray?): HttpResponseAssert {
         Assertions.assertThat(body)
             .withFailMessage {
                 val expectedBase64 = Base64.getEncoder().encodeToString(expected).indent(4)
@@ -62,7 +55,7 @@ class HttpResponseAssert(httpResponse: HttpServerResponse) {
         return this
     }
 
-    fun verifyBody(expected: String): HttpResponseAssert {
+    fun hasBody(expected: String): HttpResponseAssert {
         val bodyString = String(body, StandardCharsets.UTF_8)
         Assertions.assertThat(bodyString)
             .withFailMessage {
@@ -75,7 +68,14 @@ class HttpResponseAssert(httpResponse: HttpServerResponse) {
         return this
     }
 
-    fun verifyBody(): AbstractByteArrayAssert<*> {
+    fun hasBody(): AbstractByteArrayAssert<*> {
         return Assertions.assertThat(body)
+    }
+
+    fun hasHeader(key: String, value: String): HttpResponseAssert {
+        val actualValue = headers.getFirst(key)
+        Assertions.assertThat(actualValue).isEqualTo(value)
+
+        return this
     }
 }

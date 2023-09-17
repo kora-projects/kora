@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.http.client.symbol.processor
 
-import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessor
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
@@ -10,7 +9,7 @@ import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.ksp.writeTo
-import ru.tinkoff.kora.http.client.common.annotation.HttpClient
+import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientAnnotation
 import ru.tinkoff.kora.kora.app.ksp.isClassExists
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 import ru.tinkoff.kora.ksp.common.visitClass
@@ -20,13 +19,12 @@ class HttpClientSymbolProcessor(val environment: SymbolProcessorEnvironment) : B
     private lateinit var configGenerator: ConfigClassGenerator
     private lateinit var configModuleGenerator: ConfigModuleGenerator
 
-    @KspExperimental
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
         clientGenerator = ClientClassGenerator(resolver)
         configGenerator = ConfigClassGenerator()
         configModuleGenerator = ConfigModuleGenerator(resolver)
 
-        val symbols = resolver.getSymbolsWithAnnotation(HttpClient::class.qualifiedName!!).toList()
+        val symbols = resolver.getSymbolsWithAnnotation(httpClientAnnotation.canonicalName).toList()
         symbols.forEach {
             it.visitClass { declaration ->
                 if (declaration.classKind == ClassKind.INTERFACE) {
@@ -37,7 +35,6 @@ class HttpClientSymbolProcessor(val environment: SymbolProcessorEnvironment) : B
         return emptyList()
     }
 
-    @KspExperimental
     private fun generateClient(declaration: KSClassDeclaration, resolver: Resolver) {
         val packageName = declaration.packageName.asString()
         val client = clientGenerator.generate(declaration)

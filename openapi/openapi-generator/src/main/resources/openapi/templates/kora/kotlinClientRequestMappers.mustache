@@ -4,7 +4,7 @@ import ru.tinkoff.kora.http.client.common.form.UrlEncodedWriter
 import ru.tinkoff.kora.http.client.common.form.MultipartWriter
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequestMapper
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequestBuilder
-import reactor.core.publisher.Mono
+import ru.tinkoff.kora.common.Context
 
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
 interface {{classname}}ClientRequestMappers {
@@ -15,31 +15,31 @@ interface {{classname}}ClientRequestMappers {
   class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper{{#vendorExtensions.requiresFormParamMappers}}({{#vendorExtensions.formParamMappers}}
     private val {{paramName}}Converter: ru.tinkoff.kora.http.client.common.writer.StringParameterConverter<{{paramType}}>,
 {{/vendorExtensions.formParamMappers}}  ){{/vendorExtensions.requiresFormParamMappers}}: HttpClientRequestMapper<{{classname}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> {
-    override fun apply(request: HttpClientRequestMapper.Request<{{classname}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam>): HttpClientRequestBuilder {
+    override fun apply(ctx: Context, request: HttpClientRequestBuilder, value: {{classname}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam): HttpClientRequestBuilder {
       {{#vendorExtensions.urlEncodedForm}}
       val b = UrlEncodedWriter(){{#formParams}}
-      request.parameter().{{paramName}}?.let { {{#vendorExtensions.requiresMapper}}
+      value.{{paramName}}?.let { {{#vendorExtensions.requiresMapper}}
         b.add("{{baseName}}", {{paramName}}Converter.convert(it))
 {{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}
         b.add("{{baseName}}", "${it}")
 {{/vendorExtensions.requiresMapper}}
       }
 {{/formParams}}
-      return b.write(request.builder())
+      return b.write(request)
 {{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
       val l = mutableListOf<ru.tinkoff.kora.http.common.form.FormMultipart.FormPart>(){{#formParams}}
-              if (request.parameter().{{paramName}} != null) {
+              if (value.{{paramName}} != null) {
           {{#isFile}}
-                  val file = request.parameter().{{paramName}}
+                  val file = value.{{paramName}}
                   if (file != null) l += file
           {{/isFile}}{{^isFile}}
                   l += ru.tinkoff.kora.http.common.form.FormMultipart.data(
                   "{{baseName}}",
-                  "${request.parameter().{{paramName}}}"
+                  "${value.{{paramName}}}"
                   ){{/isFile}}
               }
       {{/formParams}}
-      return MultipartWriter.write(request.builder(), l)
+      return MultipartWriter.write(request, l)
 {{/vendorExtensions.multipartForm}}
     }
   }

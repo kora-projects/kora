@@ -1,16 +1,13 @@
 package ru.tinkoff.kora.http.client.symbol.processor
 
-import com.google.devtools.ksp.KspExperimental
-import com.google.devtools.ksp.getAnnotationsByType
-import com.google.devtools.ksp.getClassDeclarationByName
-import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSValueParameter
-import ru.tinkoff.kora.http.client.common.request.HttpClientRequestMapper
-import ru.tinkoff.kora.http.common.annotation.Header
-import ru.tinkoff.kora.http.common.annotation.Path
-import ru.tinkoff.kora.http.common.annotation.Query
+import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.header
+import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientRequestMapper
+import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.path
+import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.query
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.MappingData
 import ru.tinkoff.kora.ksp.common.parseMappingData
 
@@ -23,29 +20,26 @@ interface Parameter {
 
     data class BodyParameter(val parameter: KSValueParameter, val mapper: MappingData?) : Parameter
 
-    class ParameterParser(private val resolver: Resolver) {
-        private val requestMapperType: KSType? = resolver
-            .getClassDeclarationByName(HttpClientRequestMapper::class.qualifiedName!!)?.asStarProjectedType()
-
-        @KspExperimental
+    companion object {
         fun parseParameter(method: KSFunctionDeclaration, parameterIndex: Int): Parameter {
             val parameter = method.parameters[parameterIndex]
-            val header = parameter.getAnnotationsByType(Header::class).firstOrNull()
-            val path = parameter.getAnnotationsByType(Path::class).firstOrNull()
-            val query = parameter.getAnnotationsByType(Query::class).firstOrNull()
+            val header = parameter.findAnnotation(header)
+            val path = parameter.findAnnotation(path)
+            val query = parameter.findAnnotation(query)
+            val parameterName = parameter.name!!.asString()
             if (header != null) {
-                val name = header.value.ifEmpty { parameter.name!!.asString() }
+                val name = header.findValueNoDefault<String>("value").orEmpty().ifEmpty { parameterName }
                 return HeaderParameter(parameter, name)
             }
             if (path != null) {
-                val name = path.value.ifEmpty { parameter.name!!.asString() }
+                val name = path.findValueNoDefault<String>("value").orEmpty().ifEmpty { parameterName }
                 return PathParameter(parameter, name)
             }
             if (query != null) {
-                val name = query.value.ifEmpty { parameter.name!!.asString() }
+                val name = query.findValueNoDefault<String>("value").orEmpty().ifEmpty { parameterName }
                 return QueryParameter(parameter, name)
             }
-            val mapping = parameter.parseMappingData().getMapping(requestMapperType!!)
+            val mapping = parameter.parseMappingData().getMapping(httpClientRequestMapper)
             return BodyParameter(parameter, mapping)
         }
     }

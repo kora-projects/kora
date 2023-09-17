@@ -116,15 +116,17 @@ object CommonClassNames {
             || isMap()
     }
 
-    fun KSType.isMono() = this.toClassName().canonicalName == mono.canonicalName
-    fun KSType.isFlux() = this.toClassName().canonicalName == flux.canonicalName
-    fun KSType.isFlow() = this.toClassName().canonicalName == flow.canonicalName
-    fun KSType.isPublisher() = this.toClassName().canonicalName == publisher.canonicalName
+    fun KSType.isMono() = declaration is KSClassDeclaration && declaration.qualifiedName!!.asString() == mono.canonicalName
+    fun KSType.isFlux() = declaration is KSClassDeclaration && declaration.qualifiedName!!.asString() == flux.canonicalName
+    fun KSType.isFlow() = declaration is KSClassDeclaration && declaration.qualifiedName!!.asString() == flow.canonicalName
+    fun KSType.isPublisher() = declaration is KSClassDeclaration && declaration.qualifiedName!!.asString() == publisher.canonicalName
 
     fun KSType.isFuture(): Boolean {
+        if (declaration !is KSClassDeclaration) {
+            return false
+        }
         val className = this.toClassName()
-        return className.canonicalName == Future::class.qualifiedName
-            || className.canonicalName == CompletionStage::class.qualifiedName
+        return className.canonicalName == CompletionStage::class.qualifiedName
             || className.canonicalName == CompletableFuture::class.qualifiedName
     }
 

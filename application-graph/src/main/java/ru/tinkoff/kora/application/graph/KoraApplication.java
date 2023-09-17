@@ -26,8 +26,9 @@ public final class KoraApplication {
             }
             var thread = new Thread(() -> {
                 try {
+                    log.info("Application shutdown");
                     graph.release();
-                    log.error("Application released");
+                    log.info("Application released");
                 } catch (Exception e) {
                     log.error("Application release error", e);
                     try {

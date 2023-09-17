@@ -27,6 +27,7 @@ dependencies {
 
     testImplementation libs.kotlin.annotation.processing
     testImplementation libs.kotlin.compiler
+    testImplementation libs.reactor.core
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

@@ -2,17 +2,14 @@ package ru.tinkoff.kora.json.jackson.module.http.server;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.TypeRef;
-import ru.tinkoff.kora.http.common.HttpHeaders;
+import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
-import ru.tinkoff.kora.http.server.common.SimpleHttpServerResponse;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper;
+import ru.tinkoff.kora.json.jackson.module.http.JacksonHttpOutBody;
 
-import java.nio.ByteBuffer;
-
-public class JacksonHttpServerResponseMapper<T> implements HttpServerResponseMapper<T> {
+public final class JacksonHttpServerResponseMapper<T> implements HttpServerResponseMapper<T> {
     private final ObjectWriter objectMapper;
 
     public JacksonHttpServerResponseMapper(ObjectMapper objectMapper, TypeRef<T> typeRef) {
@@ -20,10 +17,8 @@ public class JacksonHttpServerResponseMapper<T> implements HttpServerResponseMap
     }
 
     @Override
-    public Mono<HttpServerResponse> apply(Object result) {
-        return Mono.fromCallable(() -> {
-            var resultBytes = this.objectMapper.writeValueAsBytes(result);
-            return new SimpleHttpServerResponse(200, "application/json", HttpHeaders.of(), resultBytes.length, Flux.just(ByteBuffer.wrap(resultBytes)));
-        });
+    public HttpServerResponse apply(Context ctx, HttpServerRequest request, T result) {
+        var body = new JacksonHttpOutBody<>(objectMapper, ctx, result);
+        return HttpServerResponse.of(200, body);
     }
 }

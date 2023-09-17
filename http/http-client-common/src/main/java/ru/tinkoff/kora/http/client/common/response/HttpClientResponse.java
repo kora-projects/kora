@@ -1,19 +1,31 @@
 package ru.tinkoff.kora.http.client.common.response;
 
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.http.common.HttpHeaders;
+import ru.tinkoff.kora.http.common.body.HttpInBody;
 
-import java.nio.ByteBuffer;
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 
-public interface HttpClientResponse {
+public interface HttpClientResponse extends Closeable {
     int code();
 
     HttpHeaders headers();
 
-    Flux<ByteBuffer> body();
+    HttpInBody body();
 
-    Mono<Void> close();
+    @Override
+    void close() throws IOException;
 
-    record Default(int code, HttpHeaders headers, Flux<ByteBuffer> body, Mono<Void> close) implements HttpClientResponse {}
+    record Default(int code, HttpHeaders headers, HttpInBody body, Runnable closer) implements HttpClientResponse {
+
+        @Override
+        public void close() throws IOException {
+            try {
+                closer.run();
+            } catch (UncheckedIOException e) {
+                throw e.getCause();
+            }
+        }
+    }
 }

@@ -27,11 +27,4 @@ public interface HttpClientModule extends HttpClientRequestMapperModule, HttpCli
         return new DefaultHttpClientTelemetryFactory(loggerFactory, tracingFactory, metricsFactory);
     }
 
-    default FormUrlEncodedClientRequestMapper formUrlEncodedClientRequestMapper() {
-        return new FormUrlEncodedClientRequestMapper();
-    }
-
-    default FormMultipartClientRequestMapper formMultipartClientRequestMapper() {
-        return new FormMultipartClientRequestMapper();
-    }
 }

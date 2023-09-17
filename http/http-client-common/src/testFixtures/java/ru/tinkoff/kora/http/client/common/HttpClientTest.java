@@ -12,9 +12,12 @@ import org.mockito.Mockito;
 import org.mockserver.matchers.Times;
 import org.mockserver.model.Header;
 import ru.tinkoff.kora.application.graph.Lifecycle;
+import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.client.common.interceptor.TelemetryInterceptor;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.telemetry.DefaultHttpClientTelemetry;
+import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.opentelemetry.module.http.client.OpentelemetryHttpClientTracer;
 
 import java.nio.charset.StandardCharsets;
@@ -56,8 +59,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
         when(this.logger.logRequestBody()).thenReturn(true);
 
         var request = HttpClientRequest.post("/")
-            .header("content-type", "text/plain; charset=UTF-8")
-            .body("test-request".getBytes(StandardCharsets.UTF_8))
+            .body(HttpBody.plaintext("test-request"))
             .build();
 
         call(type, request)
@@ -71,8 +73,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
         var authority = "localhost:" + server.getPort();
         verify(this.logger).logRequest(eq(authority), eq(POST), eq("POST /"), eq("http://" + authority + "/"), ArgumentMatchers.argThat(a ->
                 a.getFirst("traceparent").startsWith("00-" + rootSpan.getSpanContext().getTraceId())
-                    && !a.getFirst("traceparent").contains(rootSpan.getSpanContext().getSpanId())
-                    && a.getFirst("content-type").equals("text/plain; charset=UTF-8")),
+                    && !a.getFirst("traceparent").contains(rootSpan.getSpanContext().getSpanId())),
             eq("test-request"));
         verify(this.metrics).record(eq(200), ArgumentMatchers.longThat(l -> l > 0), eq("POST"), eq("localhost"), eq("http"), eq("/"));
     }
@@ -277,5 +278,22 @@ public abstract class HttpClientTest extends HttpClientTestBase {
             .isEmpty();
 
         server.verify(expectedRequest);
+    }
+
+    @ParameterizedTest
+    @EnumSource
+    protected void testRequestBodyPublisherError(CallType type) {
+        ctx.getLogger("ru.tinkoff.kora.http.client").setLevel(Level.OFF);
+        var request = HttpClientRequest.post("/")
+            .body(FlowUtils.fromCallable(Context.current(), () -> {
+                throw new RuntimeException();
+            }))
+            .build();
+
+        assertThatThrownBy(() -> call(type, request)
+            .assertCode(200)
+            .assertBody()
+            .isEmpty()
+        ).isInstanceOf(HttpClientEncoderException.class);
     }
 }

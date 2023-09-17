@@ -1,21 +1,19 @@
 package ru.tinkoff.kora.http.client.symbol.processor.extension
 
-import com.google.devtools.ksp.KspExperimental
-import com.google.devtools.ksp.getAnnotationsByType
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
-import ru.tinkoff.kora.http.client.common.annotation.HttpClient
+import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientAnnotation
 import ru.tinkoff.kora.http.client.symbol.processor.clientName
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.hasAopAnnotations
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 
-@KspExperimental
 class HttpClientKoraExtension : KoraExtension {
     override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
         if (tags.isNotEmpty()) return null
@@ -23,7 +21,7 @@ class HttpClientKoraExtension : KoraExtension {
         if (declaration !is KSClassDeclaration || declaration.classKind != ClassKind.INTERFACE) {
             return null
         }
-        if (declaration.getAnnotationsByType(HttpClient::class).firstOrNull() == null) {
+        if (declaration.findAnnotation(httpClientAnnotation) == null) {
             return null
         }
         return lambda@{

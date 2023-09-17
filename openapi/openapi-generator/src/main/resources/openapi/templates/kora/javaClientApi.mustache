@@ -7,6 +7,11 @@ package {{package}};
 
 {{#imports}}import {{import}};
 {{/imports}}
+{{#isAsync}}
+import java.util.concurrent.CompletionStage;
+{{/isAsync}}{{#isReactive}}
+import reactor.core.publisher.Mono;
+{{/isReactive}}
 
 import java.util.List;
 import java.util.Map;
@@ -15,7 +20,7 @@ import ru.tinkoff.kora.http.common.annotation.HttpRoute;
 import ru.tinkoff.kora.http.common.annotation.Path;
 import ru.tinkoff.kora.http.common.annotation.Header;
 import ru.tinkoff.kora.http.common.annotation.Query;
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.http.client.common.annotation.ResponseCodeMapper;
 import ru.tinkoff.kora.common.Mapping;
 {{#hasAuthMethods}}
@@ -57,8 +62,10 @@ public interface {{classname}} {
     })
     {{/implicitHeaders}}{{#responses}}
     @ResponseCodeMapper(code = {{#isDefault}}-1{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, mapper = {{classname}}ClientResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper.class){{/responses}}{{#hasAuthMethods}}
-    @InterceptWith(tag = @Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}.class), value = HttpClientInterceptor.class){{/hasAuthMethods}}
-    {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {{operationId}}({{>javaAnnotatedParams}}
+    @InterceptWith(tag = @Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}.class), value = HttpClientInterceptor.class){{/hasAuthMethods}}{{#isAsync}}
+    CompletionStage<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>{{/isAsync}}{{#isReactive}}
+    Mono<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>{{/isReactive}}{{#isBlocking}}
+    {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{/isBlocking}} {{operationId}}({{>javaAnnotatedParams}}
     );
 
 {{>javaFormParams}}

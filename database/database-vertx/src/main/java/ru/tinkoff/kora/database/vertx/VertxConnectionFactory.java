@@ -17,7 +17,7 @@ public interface VertxConnectionFactory {
 
     DataBaseTelemetry telemetry();
 
-    <T> Mono<T> withConnection(Function<SqlConnection, Mono<T>> callback);
+    <T> CompletionStage<T> withConnection(Function<SqlConnection, CompletionStage<T>> callback);
 
-    <T> Mono<T> inTx(Function<SqlConnection, Mono<T>> callback);
+    <T> CompletionStage<T> inTx(Function<SqlConnection, CompletionStage<T>> callback);
 }

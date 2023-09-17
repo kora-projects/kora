@@ -1,11 +1,11 @@
 package ru.tinkoff.kora.http.client.common.interceptor;
 
-import reactor.core.publisher.Mono;
+import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 
 import java.util.Objects;
-import java.util.function.Function;
+import java.util.concurrent.CompletionStage;
 
 public final class ApiKeyHttpClientInterceptor implements HttpClientInterceptor {
     private final String parameterName;
@@ -23,13 +23,13 @@ public final class ApiKeyHttpClientInterceptor implements HttpClientInterceptor 
     }
 
     @Override
-    public Mono<HttpClientResponse> processRequest(Function<HttpClientRequest, Mono<HttpClientResponse>> chain, HttpClientRequest request) {
+    public CompletionStage<HttpClientResponse> processRequest(Context ctx, InterceptChain chain, HttpClientRequest request) throws Exception {
         var modifiedRequest = switch (this.parameterLocation) {
             case HEADER -> request.toBuilder().header(this.parameterName, this.secret);
             case QUERY -> request.toBuilder().queryParam(this.parameterName, this.secret);
             case COOKIE -> throw new IllegalStateException("TODO: cookies");
         };
 
-        return chain.apply(modifiedRequest.build());
+        return chain.process(ctx, modifiedRequest.build());
     }
 }

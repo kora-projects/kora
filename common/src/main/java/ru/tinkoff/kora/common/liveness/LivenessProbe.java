@@ -1,11 +1,12 @@
 package ru.tinkoff.kora.common.liveness;
 
-import reactor.core.publisher.Mono;
+import java.util.concurrent.CompletionStage;
 
 public interface LivenessProbe {
     /**
      * Perform liveness probe
-     * @return Mono.empty() if probe succeeds or probe failure
+     *
+     * @return empty future if probe succeeds or probe failure
      */
-    Mono<LivenessProbeFailure> probe();
+    CompletionStage<LivenessProbeFailure> probe();
 }

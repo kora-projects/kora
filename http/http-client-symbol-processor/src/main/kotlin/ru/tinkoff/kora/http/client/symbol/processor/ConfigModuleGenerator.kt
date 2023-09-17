@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.http.client.symbol.processor
 
-import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.*
@@ -13,7 +12,6 @@ import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 
 class ConfigModuleGenerator(val resolver: Resolver) {
 
-    @KspExperimental
     fun generate(declaration: KSClassDeclaration): FileSpec {
         val lowercaseName = StringBuilder(declaration.simpleName.asString())
         lowercaseName.setCharAt(0, lowercaseName[0].lowercaseChar())

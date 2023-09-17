@@ -1,17 +1,18 @@
 package ru.tinkoff.kora.http.client.annotation.processor;
 
 import com.squareup.javapoet.*;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.common.Module;
 import ru.tinkoff.kora.common.annotation.Generated;
-import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
-import ru.tinkoff.kora.http.client.common.annotation.HttpClient;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import java.util.Optional;
+
+import static ru.tinkoff.kora.http.client.annotation.processor.HttpClientClassNames.httpClientAnnotation;
 
 public class ConfigModuleGenerator {
     private final Elements elements;
@@ -24,15 +25,16 @@ public class ConfigModuleGenerator {
         var lowercaseName = new StringBuilder(element.getSimpleName());
         lowercaseName.setCharAt(0, Character.toLowerCase(lowercaseName.charAt(0)));
         var packageName = this.elements.getPackageOf(element).getQualifiedName().toString();
-        var configPath = element.getAnnotation(HttpClient.class).configPath();
-        if (configPath.isBlank()) {
+
+        var configPath = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(AnnotationUtils.findAnnotation(element, httpClientAnnotation), "configPath");
+        if (configPath == null || configPath.isBlank()) {
             configPath = "httpClient." + lowercaseName;
         }
 
         var configName = HttpClientUtils.configName(element);
         var moduleName = HttpClientUtils.moduleName(element);
         var configClass = ClassName.get(packageName, configName);
-        var extractorClass = ParameterizedTypeName.get(ClassName.get(ConfigValueExtractor.class), configClass);
+        var extractorClass = ParameterizedTypeName.get(CommonClassNames.configValueExtractor, configClass);
 
         var type = TypeSpec.interfaceBuilder(moduleName)
             .addModifiers(Modifier.PUBLIC)

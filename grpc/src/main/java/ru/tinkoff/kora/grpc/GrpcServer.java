@@ -4,7 +4,6 @@ import io.grpc.Server;
 import io.grpc.netty.NettyServerBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
@@ -12,6 +11,8 @@ import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class GrpcServer implements Lifecycle, ReadinessProbe {
@@ -51,11 +52,11 @@ public class GrpcServer implements Lifecycle, ReadinessProbe {
     }
 
     @Override
-    public Mono<ReadinessProbeFailure> probe() {
+    public CompletionStage<ReadinessProbeFailure> probe() {
         return switch (this.state.get()) {
-            case INIT -> Mono.just(new ReadinessProbeFailure("GRPC Server init"));
-            case RUN -> Mono.empty();
-            case SHUTDOWN -> Mono.just(new ReadinessProbeFailure("GRPC Server shutdown"));
+            case INIT -> CompletableFuture.completedFuture(new ReadinessProbeFailure("GRPC Server init"));
+            case RUN -> CompletableFuture.completedFuture(null);
+            case SHUTDOWN -> CompletableFuture.completedFuture(new ReadinessProbeFailure("GRPC Server shutdown"));
         };
     }
 

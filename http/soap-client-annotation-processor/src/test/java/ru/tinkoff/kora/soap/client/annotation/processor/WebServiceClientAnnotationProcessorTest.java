@@ -42,6 +42,8 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -114,25 +116,27 @@ class WebServiceClientAnnotationProcessorTest {
             assertThat(response)
                 .hasFieldOrPropertyWithValue("val1", "test");
 
-            var monoResponse = (Mono<?>) invoke(client, "testReactive", Mono.class, request);
-            var monoResolvedResponse = monoResponse.block();
+            var monoResponse = (CompletionStage<?>) invoke(client, "testAsync", CompletionStage.class, request);
+            var monoResolvedResponse = monoResponse.toCompletableFuture().get();
             assertThat(monoResolvedResponse)
                 .hasFieldOrPropertyWithValue("val1", "test");
-
 
             rsKind.set(RsKind.FAILURE1);
             assertThatThrownBy(() -> invoke(client, "test", responseType, request))
                 .isInstanceOf(cl.loadClass("ru.tinkoff.kora.simple.service.TestError1Msg"));
-            assertThatThrownBy(() -> ((Mono<?>) invoke(client, "testReactive", Mono.class, request)).block())
-                .extracting(Exceptions::unwrap, InstanceOfAssertFactories.throwable(Exception.class))
-                .isInstanceOf(cl.loadClass("ru.tinkoff.kora.simple.service.TestError1Msg"));
+            assertThat(((CompletionStage<?>) invoke(client, "testAsync", CompletionStage.class, request)))
+                .failsWithin(Duration.ofSeconds(10))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf((Class<? extends Throwable>) cl.loadClass("ru.tinkoff.kora.simple.service.TestError1Msg"));
+
 
             rsKind.set(RsKind.FAILURE2);
             assertThatThrownBy(() -> invoke(client, "test", responseType, request))
                 .isInstanceOf(cl.loadClass("ru.tinkoff.kora.simple.service.TestError2Msg"));
-            assertThatThrownBy(() -> ((Mono<?>) invoke(client, "testReactive", Mono.class, request)).block())
-                .extracting(Exceptions::unwrap, InstanceOfAssertFactories.throwable(Exception.class))
-                .isInstanceOf(cl.loadClass("ru.tinkoff.kora.simple.service.TestError2Msg"));
+            assertThat(((CompletionStage<?>) invoke(client, "testAsync", CompletionStage.class, request)))
+                .failsWithin(Duration.ofSeconds(10))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf((Class<? extends Throwable>) cl.loadClass("ru.tinkoff.kora.simple.service.TestError2Msg"));
         }
     }
 
@@ -240,8 +244,8 @@ class WebServiceClientAnnotationProcessorTest {
     private Object invoke(Object object, String methodName, Class<?> returnType, Object... args) throws Throwable {
         var objectType = object.getClass();
         var argTypes = Arrays.stream(args).<Class<?>>map(Object::getClass).toList();
-        if (Mono.class.isAssignableFrom(objectType)) {
-            objectType = Mono.class;
+        if (CompletionStage.class.isAssignableFrom(objectType)) {
+            objectType = CompletionStage.class;
         }
         var mt = MethodType.methodType(returnType, argTypes);
         return MethodHandles.lookup()

@@ -1,8 +1,6 @@
 package ru.tinkoff.kora.database.annotation.processor.cassandra;
 
 import com.squareup.javapoet.*;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
@@ -98,10 +96,10 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
         var isMono = CommonUtils.isMono(returnType);
         if (isMono || isFlux) {
             b.addCode("return ");
-            b.beginControlFlow("$T.deferContextual(_reactorCtx ->", isFlux ? Flux.class : Mono.class);
+            b.beginControlFlow("$T.deferContextual(_reactorCtx ->", isFlux ? CommonClassNames.flux : CommonClassNames.mono);
             b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.Reactor.current(_reactorCtx), _query)");
             b.addStatement("var _session = this._connectionFactory.currentSession()");
-            b.addCode("return $T.fromCompletionStage(_session.prepareAsync(_query.sql()))", Mono.class);
+            b.addCode("return $T.fromCompletionStage(_session.prepareAsync(_query.sql()))", CommonClassNames.mono);
             if (isMono) {
                 b.beginControlFlow(".flatMap(_st ->");
             } else {

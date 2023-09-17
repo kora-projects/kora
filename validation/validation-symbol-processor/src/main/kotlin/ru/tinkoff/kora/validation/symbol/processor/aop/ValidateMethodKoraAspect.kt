@@ -6,9 +6,8 @@ import com.google.devtools.ksp.symbol.KSValueParameter
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
-import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
 import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
+import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
@@ -33,9 +32,9 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             if (method.isFuture()) {
                 throw ProcessingErrorException("@Validate Return Value can't be applied for types assignable from ${Future::class.java}", method)
             } else if (method.isMono()) {
-                throw ProcessingErrorException("@Validate Return Value can't be applied for types assignable from ${Mono::class.java}", method)
+                throw ProcessingErrorException("@Validate Return Value can't be applied for types assignable from ${CommonClassNames.mono}", method)
             } else if (method.isFlux()) {
-                throw ProcessingErrorException("@Validate Return Value can't be applied for types assignable from ${Flux::class.java}", method)
+                throw ProcessingErrorException("@Validate Return Value can't be applied for types assignable from ${CommonClassNames.flux}", method)
             } else if (method.isVoid()) {
                 throw ProcessingErrorException("@Validate Return Value can't be applied for types assignable from ${Void::class.java}", method)
             }

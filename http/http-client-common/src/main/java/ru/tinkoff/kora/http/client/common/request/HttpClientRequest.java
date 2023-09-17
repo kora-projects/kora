@@ -1,12 +1,13 @@
 package ru.tinkoff.kora.http.client.common.request;
 
-import reactor.core.publisher.Flux;
 import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.HttpMethod;
+import ru.tinkoff.kora.http.common.body.HttpOutBody;
 
 import javax.annotation.Nullable;
-import java.nio.ByteBuffer;
+import java.time.Duration;
 import java.util.List;
+import java.util.Objects;
 
 public interface HttpClientRequest {
     String method();
@@ -19,7 +20,7 @@ public interface HttpClientRequest {
 
     HttpHeaders headers();
 
-    Flux<ByteBuffer> body();
+    HttpOutBody body();
 
     String resolvedUri();
 
@@ -27,11 +28,21 @@ public interface HttpClientRequest {
 
     String operation();
 
-    int requestTimeout();
+    @Nullable
+    Duration requestTimeout();
 
-    record TemplateParam(String name, String value) {}
+    record TemplateParam(String name, String value) {
+        public TemplateParam {
+            Objects.requireNonNull(name);
+            Objects.requireNonNull(value);
+        }
+    }
 
-    record QueryParam(String name, @Nullable String value) {}
+    record QueryParam(String name, @Nullable String value) {
+        public QueryParam {
+            Objects.requireNonNull(name);
+        }
+    }
 
     default HttpClientRequestBuilder toBuilder() {
         return new HttpClientRequestBuilder(this);
@@ -84,10 +95,11 @@ public interface HttpClientRequest {
         List<QueryParam> queryParams,
         List<TemplateParam> templateParams,
         HttpHeaders headers,
-        Flux<ByteBuffer> body,
-        int requestTimeout,
+        HttpOutBody body,
+        Duration requestTimeout,
         String resolvedUri,
         String authority,
         String operation
-    ) implements HttpClientRequest {}
+    ) implements HttpClientRequest {
+    }
 }

@@ -46,11 +46,15 @@ class KoraCodegenTest {
         var result = new ArrayList<SwaggerParams>();
         var modes = new String[]{
             "java_client",
-            "java_server",
+            "async_java_client",
             "reactive_client",
+            "java_server",
             "reactive_server",
+            "async_java_server",
             "kotlin_client",
-            "kotlin_server"
+            "kotlin_suspend_client",
+            "kotlin_server",
+            "kotlin_suspend_server",
         };
         var files = new String[]{
             "/example/petstoreV3_form.yaml",

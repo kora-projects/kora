@@ -5,24 +5,26 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.All;
-import ru.tinkoff.kora.application.graph.ValueOf;
+import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.common.HttpHeaders;
+import ru.tinkoff.kora.http.common.body.HttpBody;
+import ru.tinkoff.kora.http.common.body.HttpInBody;
 import ru.tinkoff.kora.http.server.common.$HttpServerConfig_ConfigValueExtractor.HttpServerConfig_Impl;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
-import ru.tinkoff.kora.http.server.common.HttpServerRequestHandler;
-import ru.tinkoff.kora.http.server.common.HttpServerResponseSender;
-import ru.tinkoff.kora.http.server.common.SimpleHttpServerResponse;
+import ru.tinkoff.kora.http.server.common.HttpServerResponse;
+import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandlerImpl;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetry;
 
 import java.time.Duration;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
-import static org.mockito.ArgumentMatchers.argThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
 class PublicApiHandlerProcessTests {
@@ -56,20 +58,19 @@ class PublicApiHandlerProcessTests {
     @MethodSource("dataWhenDefault")
     void processRequestWhenDefault(String method, String route, String path, int responseCode, int expectedCode) {
         // given
-        var handlers = All.of(valueOf(handler(method, route)));
+        var handlers = List.of(handler(method, route));
         var telemetry = Mockito.mock(HttpServerTelemetry.class);
         when(telemetry.get(any(), anyString())).thenReturn(mock(HttpServerTelemetry.HttpServerTelemetryContext.class));
         var config = config(false);
-        var handler = new PublicApiHandler(handlers, All.of(), valueOf(telemetry), valueOf(config));
+        var handler = new PublicApiHandler(handlers, All.of(), telemetry, config);
 
         // when
-        var request = new PublicApiHandler.PublicApiRequest(method, path, "foo", "http", HttpHeaders.EMPTY, Map.of(), Flux.empty());
-        var responseSender = mock(HttpServerResponseSender.class);
-        when(responseSender.send(any())).thenReturn(Mono.just(new HttpServerResponseSender.Success(responseCode)));
+        var request = new PublicApiRequestImpl(method, path, "foo", "http", HttpHeaders.EMPTY, Map.of(), HttpBody.empty());
 
         // then
-        handler.process(request, responseSender);
-        verify(responseSender).send(argThat(argument -> argument.code() == expectedCode));
+        var rs = handler.process(Context.clear(), request);
+        var httpRs = rs.response().join();
+        assertThat(httpRs.code()).isEqualTo(expectedCode);
     }
 
     static Stream<Arguments> dataWhenIgnoreTrailingSlash() {
@@ -102,40 +103,37 @@ class PublicApiHandlerProcessTests {
     @MethodSource("dataWhenIgnoreTrailingSlash")
     void processRequestWhenIgnoreTrailingSlash(String method, String route, String path, int responseCode, int expectedCode) {
         // given
-        var handlers = All.of(valueOf(handler(method, route)));
+        var handlers = List.of(handler(method, route));
         var telemetry = Mockito.mock(HttpServerTelemetry.class);
         when(telemetry.get(any(), anyString())).thenReturn(mock(HttpServerTelemetry.HttpServerTelemetryContext.class));
         var config = config(true);
-        var handler = new PublicApiHandler(handlers, All.of(), valueOf(telemetry), valueOf(config));
+        var handler = new PublicApiHandler(handlers, All.of(), telemetry, config);
 
         // when
-        var request = new PublicApiHandler.PublicApiRequest(method, path, "foo", "http", HttpHeaders.EMPTY, Map.of(), Flux.empty());
-        var responseSender = mock(HttpServerResponseSender.class);
-        when(responseSender.send(any())).thenReturn(Mono.just(new HttpServerResponseSender.Success(responseCode)));
+        var request = new PublicApiRequestImpl(method, path, "foo", "http", HttpHeaders.EMPTY, Map.of(), HttpBody.empty());
 
         // then
-        handler.process(request, responseSender);
-        verify(responseSender).send(argThat(argument -> argument.code() == expectedCode));
+        var rs = handler.process(Context.clear(), request);
+        var httpRs = rs.response().join();
+        assertThat(httpRs.code()).isEqualTo(expectedCode);
     }
 
     @Test
     void testWildcard() {
         var handlers = All.of(
-            valueOf(handler("GET", "/baz")),
-            valueOf(handler("POST", "/*"))
+            handler("GET", "/baz"),
+            handler("POST", "/*")
         );
         var telemetry = Mockito.mock(HttpServerTelemetry.class);
         when(telemetry.get(any(), anyString())).thenReturn(mock(HttpServerTelemetry.HttpServerTelemetryContext.class));
         var config = config(false);
-        var handler = new PublicApiHandler(handlers, All.of(), valueOf(telemetry), valueOf(config));
+        var handler = new PublicApiHandler(handlers, All.of(), telemetry, config);
 
-        var responseSender = mock(HttpServerResponseSender.class);
-        when(responseSender.send(any())).thenReturn(Mono.just(new HttpServerResponseSender.Success(200)));
+        var request = new PublicApiRequestImpl("POST", "/baz", "test", "http", HttpHeaders.EMPTY, Map.of(), HttpBody.empty());
+        var rs = handler.process(Context.clear(), request);
+        var httpRs = rs.response().join();
 
-        var request = new PublicApiHandler.PublicApiRequest("POST", "/baz", "test", "http", HttpHeaders.EMPTY, Map.of(), Flux.empty());
-        handler.process(request, responseSender);
-
-        verify(responseSender).send(argThat(argument -> argument.code() == 200));
+        assertThat(httpRs.code()).isEqualTo(200);
     }
 
     private HttpServerConfig config(boolean ignoreTrailingSlash) {
@@ -145,19 +143,17 @@ class PublicApiHandlerProcessTests {
     }
 
     private HttpServerRequestHandler handler(String method, String route) {
-        return new HttpServerRequestHandlerImpl(method, route, httpServerRequest -> Mono.just(new SimpleHttpServerResponse(200, "application/octet-stream", HttpHeaders.EMPTY, null)));
+        return new HttpServerRequestHandlerImpl(method, route, (ctx, httpServerRequest) -> CompletableFuture.completedFuture(HttpServerResponse.of(200)));
     }
 
-    private <T> ValueOf<T> valueOf(T object) {
-        return new ValueOf<>() {
-            @Override
-            public T get() {
-                return object;
-            }
-
-            @Override
-            public void refresh() {
-            }
-        };
+    private record PublicApiRequestImpl(
+        String method,
+        String path,
+        String hostName,
+        String scheme,
+        HttpHeaders headers,
+        Map<String, ? extends Collection<String>> queryParams,
+        HttpInBody body
+    ) implements PublicApiRequest {
     }
 }

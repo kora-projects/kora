@@ -1,10 +1,7 @@
 package ru.tinkoff.kora.http.client.annotation.processor;
 
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.http.client.common.request.HttpClientRequestMapper;
-import ru.tinkoff.kora.http.common.annotation.Header;
-import ru.tinkoff.kora.http.common.annotation.Path;
-import ru.tinkoff.kora.http.common.annotation.Query;
 
 import javax.annotation.Nullable;
 import javax.lang.model.element.ExecutableElement;
@@ -12,6 +9,8 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
+
+import static ru.tinkoff.kora.http.client.annotation.processor.HttpClientClassNames.httpClientRequestMapper;
 
 public interface Parameter {
     record HeaderParameter(VariableElement parameter, String headerName) implements Parameter {}
@@ -24,46 +23,35 @@ public interface Parameter {
 
     record ContinuationParameter(VariableElement parameter) implements Parameter {}
 
-    class ParameterParser {
-        private final Elements elements;
-        private final Types types;
-        private final TypeMirror requestMapperType;
+    static Parameter parse(ExecutableElement method, int parameterIndex) {
+        var parameter = method.getParameters().get(parameterIndex);
 
-        public ParameterParser(Elements elements, Types types) {
-            this.elements = elements;
-            this.types = types;
-            var httpClientRequestMapperElement = this.elements.getTypeElement(HttpClientRequestMapper.class.getCanonicalName());
-            this.requestMapperType = httpClientRequestMapperElement != null
-                ? this.types.erasure(httpClientRequestMapperElement.asType())
-                : null;
+        var header = AnnotationUtils.findAnnotation(parameter, HttpClientClassNames.header);
+        var path = AnnotationUtils.findAnnotation(parameter, HttpClientClassNames.path);
+        var query = AnnotationUtils.findAnnotation(parameter, HttpClientClassNames.query);
+        if (header != null) {
+            var headerValue = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(header, "value");
+            var name = headerValue == null || headerValue.isBlank()
+                ? parameter.getSimpleName().toString()
+                : headerValue;
+            return new HeaderParameter(parameter, name);
         }
-
-        public Parameter parseParameter(ExecutableElement method, int parameterIndex) {
-            var parameter = method.getParameters().get(parameterIndex);
-            var header = parameter.getAnnotation(Header.class);
-            var path = parameter.getAnnotation(Path.class);
-            var query = parameter.getAnnotation(Query.class);
-            if (header != null) {
-                var name = header.value().isEmpty()
-                    ? parameter.getSimpleName().toString()
-                    : header.value();
-                return new HeaderParameter(parameter, name);
-            }
-            if (path != null) {
-                var name = path.value().isEmpty()
-                    ? parameter.getSimpleName().toString()
-                    : path.value();
-                return new PathParameter(parameter, name);
-            }
-            if (query != null) {
-                var name = query.value().isEmpty()
-                    ? parameter.getSimpleName().toString()
-                    : query.value();
-                return new QueryParameter(parameter, name);
-            }
-            var mapping = CommonUtils.parseMapping(parameter)
-                .getMapping(this.types, this.requestMapperType);
-            return new BodyParameter(parameter, mapping);
+        if (path != null) {
+            var pathValue = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(path, "value");
+            var name = pathValue == null || pathValue.isBlank()
+                ? parameter.getSimpleName().toString()
+                : pathValue;
+            return new PathParameter(parameter, name);
         }
+        if (query != null) {
+            var queryValue = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(query, "value");
+            var name = queryValue == null || queryValue.isBlank()
+                ? parameter.getSimpleName().toString()
+                : queryValue;
+            return new QueryParameter(parameter, name);
+        }
+        var mapping = CommonUtils.parseMapping(parameter)
+            .getMapping(httpClientRequestMapper);
+        return new BodyParameter(parameter, mapping);
     }
 }

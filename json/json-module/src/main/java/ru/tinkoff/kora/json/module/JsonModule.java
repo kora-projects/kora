@@ -4,12 +4,11 @@ import ru.tinkoff.kora.json.common.JsonCommonModule;
 import ru.tinkoff.kora.json.common.JsonReader;
 import ru.tinkoff.kora.json.common.JsonWriter;
 import ru.tinkoff.kora.json.common.annotation.Json;
+import ru.tinkoff.kora.json.module.http.client.JsonAsyncHttpClientResponseMapper;
 import ru.tinkoff.kora.json.module.http.client.JsonHttpClientRequestMapper;
 import ru.tinkoff.kora.json.module.http.client.JsonHttpClientResponseMapper;
 import ru.tinkoff.kora.json.module.http.client.JsonStringParameterConverter;
-import ru.tinkoff.kora.json.module.http.server.JsonReaderHttpServerRequestMapper;
-import ru.tinkoff.kora.json.module.http.server.JsonStringParameterReader;
-import ru.tinkoff.kora.json.module.http.server.JsonWriterHttpServerResponseMapper;
+import ru.tinkoff.kora.json.module.http.server.*;
 import ru.tinkoff.kora.json.module.kafka.JsonKafkaDeserializer;
 import ru.tinkoff.kora.json.module.kafka.JsonKafkaSerializer;
 
@@ -20,8 +19,18 @@ public interface JsonModule extends JsonCommonModule {
     }
 
     @Json
+    default <T> JsonReaderAsyncHttpServerRequestMapper<T> jsonReaderAsyncHttpServerRequestMapper(JsonReader<T> reader) {
+        return new JsonReaderAsyncHttpServerRequestMapper<>(reader);
+    }
+
+    @Json
     default <T> JsonWriterHttpServerResponseMapper<T> jsonResponseMapper(JsonWriter<T> writer) {
         return new JsonWriterHttpServerResponseMapper<>(writer);
+    }
+
+    @Json
+    default <T> JsonWriterHttpServerEntityResponseMapper<T> jsonResponseEntityMapper(JsonWriter<T> writer) {
+        return new JsonWriterHttpServerEntityResponseMapper<>(writer);
     }
 
     @Json
@@ -32,6 +41,11 @@ public interface JsonModule extends JsonCommonModule {
     @Json
     default <T> JsonHttpClientResponseMapper<T> jsonHttpClientResponseMapper(JsonReader<T> jsonReader) {
         return new JsonHttpClientResponseMapper<>(jsonReader);
+    }
+
+    @Json
+    default <T> JsonAsyncHttpClientResponseMapper<T> jsonAsyncHttpClientResponseMapper(JsonReader<T> jsonReader) {
+        return new JsonAsyncHttpClientResponseMapper<>(jsonReader);
     }
 
     @Json

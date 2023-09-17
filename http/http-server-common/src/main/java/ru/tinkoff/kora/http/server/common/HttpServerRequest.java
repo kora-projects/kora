@@ -1,9 +1,8 @@
 package ru.tinkoff.kora.http.server.common;
 
-import reactor.core.publisher.Flux;
 import ru.tinkoff.kora.http.common.HttpHeaders;
+import ru.tinkoff.kora.http.common.body.HttpInBody;
 
-import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Map;
 
@@ -12,11 +11,13 @@ public interface HttpServerRequest {
 
     String path();
 
+    String route();
+
     HttpHeaders headers();
 
     Map<String, ? extends Collection<String>> queryParams();
 
     Map<String, String> pathParams();
 
-    Flux<ByteBuffer> body();
+    HttpInBody body();
 }

@@ -1,27 +1,22 @@
 package ru.tinkoff.kora.resilient.symbol.processor.aop
 
-import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ksp.toClassName
-import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
 import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
+import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
-import ru.tinkoff.kora.ksp.common.exception.ProcessingError
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import java.util.concurrent.Future
-import javax.tools.Diagnostic
 
-@KspExperimental
 class FallbackKoraAspect(val resolver: Resolver) : KoraAspect {
 
     companion object {
@@ -36,9 +31,9 @@ class FallbackKoraAspect(val resolver: Resolver) : KoraAspect {
         if (method.isFuture()) {
             throw ProcessingErrorException("@Fallback can't be applied for types assignable from ${Future::class.java}", method)
         } else if (method.isMono()) {
-            throw ProcessingErrorException("@Fallback can't be applied for types assignable from ${Mono::class.java}", method)
+            throw ProcessingErrorException("@Fallback can't be applied for types assignable from ${CommonClassNames.mono}", method)
         } else if (method.isFlux()) {
-            throw ProcessingErrorException("@Fallback can't be applied for types assignable from ${Flux::class.java}", method)
+            throw ProcessingErrorException("@Fallback can't be applied for types assignable from ${CommonClassNames.flux}", method)
         }
 
         val annotation = method.annotations.filter { a -> a.annotationType.resolve().toClassName().canonicalName == ANNOTATION_TYPE }.first()

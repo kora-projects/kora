@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.database.annotation.processor.model;
 
-import reactor.core.publisher.Flux;
-
 import javax.annotation.Nullable;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
@@ -29,13 +27,18 @@ public class QueryTemplate {
             .map(TemplateModel.TemplateParam::paramName)
             .filter(Objects::nonNull)
             .distinct()
-            .collect(Collectors.toMap((key) -> key, (paramName) ->
-                Flux.zip(Flux.fromIterable(method.getParameters()), Flux.fromIterable(methodType.getParameterTypes()))
-                    .toStream()
-                    .filter(p -> p.getT1().getSimpleName().toString().equals(paramName) && p.getT2() instanceof DeclaredType && ((DeclaredType) p.getT2()).asElement().getKind().isClass())
-                    .findFirst()
-                    .map(t -> TemplateModel.parseEntityModel(elements, types, ((TypeElement) ((DeclaredType) t.getT2()).asElement())))
-                    .orElseThrow(() -> new RuntimeException(String.format("Unknown parameter '%s' for query `%s`", paramName, source)))
+            .collect(Collectors.toMap((key) -> key, (paramName) -> {
+                    for (int i = 0; i < method.getParameters().size(); i++) {
+                        var parameter = method.getParameters().get(i);
+                        var parameterType = methodType.getParameterTypes().get(i);
+                        if (parameter.getSimpleName().toString().equals(paramName)) {
+                            if (parameterType instanceof DeclaredType dt && dt.asElement().getKind().isClass()) {
+                               return TemplateModel.parseEntityModel(elements, types, (TypeElement) dt.asElement());
+                            }
+                        }
+                    }
+                    throw new RuntimeException(String.format("Unknown parameter '%s' for query `%s`", paramName, source));
+                }
             ));
 
         var templatesParams = new HashMap<String, Map<String, String>>(templates.size());

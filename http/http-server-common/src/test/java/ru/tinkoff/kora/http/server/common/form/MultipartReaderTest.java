@@ -1,19 +1,25 @@
 package ru.tinkoff.kora.http.server.common.form;
 
+import jakarta.annotation.Nullable;
 import org.assertj.core.data.Index;
 import org.assertj.core.presentation.Representation;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
+import reactor.adapter.JdkFlowAdapter;
 import reactor.core.publisher.Flux;
 import ru.tinkoff.kora.http.common.HttpHeaders;
+import ru.tinkoff.kora.http.common.body.HttpBody;
+import ru.tinkoff.kora.http.common.body.HttpInBody;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Flow;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -53,8 +59,7 @@ class MultipartReaderTest {
             Map.entry("content-type", "multipart/form-data; boundary=\"boundary\"")
         }, Map.of());
         var result = MultipartReader.read(request)
-            .collectList()
-            .block();
+            .toCompletableFuture().join();
 
         assertThat(result)
             .satisfies(part -> {
@@ -117,8 +122,7 @@ class MultipartReaderTest {
             Map.entry("content-type", "multipart/form-data; boundary=\"boundary\"")
         }, Map.of());
         var result = MultipartReader.read(request)
-            .collectList()
-            .block();
+            .toCompletableFuture().join();
 
         assertThat(result)
             .satisfies(part -> {
@@ -165,8 +169,7 @@ class MultipartReaderTest {
             Map.entry("content-type", "multipart/form-data; boundary=X-INSOMNIA-BOUNDARY")
         }, Map.of());
         var result = MultipartReader.read(request)
-            .collectList()
-            .block();
+            .toCompletableFuture().join();
 
         assertThat(result)
             .satisfies(part -> {
@@ -189,17 +192,17 @@ class MultipartReaderTest {
             --A-B--MIME-BOUNDARY--b96857b1a70d2dc4-17e9b561ad7--Y-Z
             Content-Disposition: form-data; name="field1"
             Content-Type: text/plain
-            
+                        
             value1
             --A-B--MIME-BOUNDARY--b96857b1a70d2dc4-17e9b561ad7--Y-Z
             Content-Disposition: form-data; name="field2"; filename="example.txt"
             Content-Type: text/plain
-            
+                        
             """;
-        var length =  12;
+        var length = 12;
         var f = Flux.fromStream(body.lines())
             .map(l -> StandardCharsets.UTF_8.encode(l + "\r\n"))
-            .concatWith(Flux.fromStream(IntStream.range(0,length).mapToObj(i -> {
+            .concatWith(Flux.fromStream(IntStream.range(0, length).mapToObj(i -> {
                 var b = new byte[1024 * 1024];
                 ThreadLocalRandom.current().nextBytes(b);
                 return ByteBuffer.wrap(b);
@@ -210,8 +213,7 @@ class MultipartReaderTest {
             Map.entry("content-type", " multipart/related; boundary=A-B--MIME-BOUNDARY--b96857b1a70d2dc4-17e9b561ad7--Y-Z; type=\"application/xop+xml\"; start-info=\"application/soap+xml\"")
         }, Map.of());
         var result = MultipartReader.read(request)
-            .collectList()
-            .block();
+            .toCompletableFuture().join();
 
         assertThat(result)
             .satisfies(part -> {
@@ -264,6 +266,11 @@ class MultipartReaderTest {
         }
 
         @Override
+        public String route() {
+            return this.path;
+        }
+
+        @Override
         public HttpHeaders headers() {
             @SuppressWarnings({"unchecked", "rawtypes"})
             Map.Entry<String, List<String>>[] entries = new Map.Entry[headers.length];
@@ -303,8 +310,29 @@ class MultipartReaderTest {
         }
 
         @Override
-        public Flux<ByteBuffer> body() {
-            return body;
+        public HttpInBody body() {
+            return new HttpInBody() {
+                @Override
+                public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
+                    JdkFlowAdapter.publisherToFlowPublisher(body).subscribe(subscriber);
+                }
+
+                @Override
+                public int contentLength() {
+                    return -1;
+                }
+
+                @Nullable
+                @Override
+                public String contentType() {
+                    return null;
+                }
+
+                @Override
+                public void close() throws IOException {
+
+                }
+            };
         }
 
     }

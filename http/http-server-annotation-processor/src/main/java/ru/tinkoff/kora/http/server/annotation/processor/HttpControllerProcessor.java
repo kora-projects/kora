@@ -2,7 +2,6 @@ package ru.tinkoff.kora.http.server.annotation.processor;
 
 import com.squareup.javapoet.JavaFile;
 import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
-import ru.tinkoff.kora.http.server.common.annotation.HttpController;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -13,12 +12,14 @@ import javax.tools.Diagnostic;
 import java.io.IOException;
 import java.util.Set;
 
+import static ru.tinkoff.kora.http.server.annotation.processor.HttpServerClassNames.httpController;
+
 public class HttpControllerProcessor extends AbstractKoraProcessor {
     private boolean initialized = false;
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(HttpController.class.getCanonicalName());
+        return Set.of(httpController.canonicalName());
     }
 
     @Override
@@ -29,8 +30,8 @@ public class HttpControllerProcessor extends AbstractKoraProcessor {
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
-        var httpController = processingEnv.getElementUtils().getTypeElement(HttpController.class.getCanonicalName());
-        if (httpController == null) {
+        var httpControllerElement = processingEnv.getElementUtils().getTypeElement(httpController.canonicalName());
+        if (httpControllerElement == null) {
             return;
         }
         this.initialized = true;
@@ -41,7 +42,8 @@ public class HttpControllerProcessor extends AbstractKoraProcessor {
         if (!this.initialized) {
             return false;
         }
-        for (var controller : roundEnv.getElementsAnnotatedWith(HttpController.class)) {
+        var httpControllerElement = processingEnv.getElementUtils().getTypeElement(httpController.canonicalName());
+        for (var controller : roundEnv.getElementsAnnotatedWith(httpControllerElement)) {
             this.processController(controller, roundEnv);
         }
         return false;

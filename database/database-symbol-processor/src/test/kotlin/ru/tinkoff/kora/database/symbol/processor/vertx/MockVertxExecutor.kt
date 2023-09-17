@@ -10,11 +10,11 @@ import io.vertx.sqlclient.impl.RowDesc
 import org.mockito.Mockito
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
-import reactor.core.publisher.Mono
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry.DataBaseTelemetryContext
 import ru.tinkoff.kora.database.vertx.VertxConnectionFactory
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CompletionStage
 import java.util.function.Function
 
 class MockVertxExecutor : VertxConnectionFactory {
@@ -69,11 +69,11 @@ class MockVertxExecutor : VertxConnectionFactory {
 
     override fun telemetry() = telemetry
 
-    override fun <T : Any?> withConnection(callback: Function<SqlConnection, Mono<T>>?): Mono<T> {
+    override fun <T : Any?> withConnection(callback: Function<SqlConnection, CompletionStage<T>>): CompletionStage<T> {
         TODO("Not yet implemented")
     }
 
-    override fun <T : Any?> inTx(callback: Function<SqlConnection, Mono<T>>?): Mono<T> {
+    override fun <T : Any?> inTx(callback: Function<SqlConnection, CompletionStage<T>>): CompletionStage<T> {
         TODO("Not yet implemented")
     }
 

@@ -1,45 +1,42 @@
 package ru.tinkoff.kora.http.server.common.handler;
 
-import reactor.core.publisher.Mono;
-import reactor.core.publisher.Operators;
 import ru.tinkoff.kora.common.Context;
 
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Objects;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
 
 public interface BlockingRequestExecutor {
-    <T> Mono<T> execute(Callable<T> handler);
+    <T> CompletionStage<T> execute(Context context, Callable<T> handler);
 
-    static <T> Mono<T> defaultExecute(Consumer<Runnable> executor, Callable<T> handler) {
-        return Mono.create(sink -> sink.onRequest(l -> executor.accept(() -> {
-            var cancelled = new AtomicBoolean(false);
-            sink.onCancel(() -> cancelled.set(true));
-            var reactorCtx = sink.contextView();
-            Context.Reactor.current(reactorCtx).inject();
-            T result;
+    static <T> CompletionStage<T> defaultExecute(Context context, Consumer<Runnable> executor, Callable<T> handler) {
+        var future = new CompletableFuture<T>();
+        executor.accept(() -> {
+            var oldCtx = Context.current();
+            context.inject();
             try {
-                result = handler.call();
-            } catch (Throwable e) {
-                sink.error(e);
-                Context.clear();
-                return;
-            }
-            if (cancelled.get()) {
-                Operators.onNextDropped(result, reactor.util.context.Context.of(reactorCtx));
-                Context.clear();
-                return;
-            }
-            try {
-                sink.success(result);
-            } catch (Throwable e) {
-                Operators.onErrorDropped(e, reactor.util.context.Context.of(reactorCtx));
+                T result;
+                try {
+                    result = handler.call();
+                } catch (CompletionException e) {
+                    future.completeExceptionally(e.getCause());
+                    return;
+                } catch (ExecutionException e) {
+                    future.completeExceptionally(Objects.requireNonNullElse(e.getCause(), e));
+                    return;
+                } catch (Throwable e) {
+                    future.completeExceptionally(e);
+                    return;
+                }
+                if (future.isCancelled()) {
+                    return;
+                }
+                future.complete(result);
             } finally {
-                Context.clear();
+                oldCtx.inject();
             }
-        })));
-
+        });
+        return future;
     }
 
     class Default implements BlockingRequestExecutor {
@@ -49,8 +46,9 @@ public interface BlockingRequestExecutor {
             this.executorService = executorService;
         }
 
-        public final <T> Mono<T> execute(Callable<T> handler) {
-            return defaultExecute(this.executorService::execute, handler);
+        @Override
+        public final <T> CompletionStage<T> execute(Context context, Callable<T> handler) {
+            return defaultExecute(context, this.executorService::execute, handler);
         }
     }
 }

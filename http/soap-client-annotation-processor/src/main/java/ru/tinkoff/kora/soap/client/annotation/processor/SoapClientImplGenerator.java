@@ -2,8 +2,6 @@ package ru.tinkoff.kora.soap.client.annotation.processor;
 
 import com.squareup.javapoet.*;
 import org.w3c.dom.Node;
-import reactor.core.publisher.Mono;
-import reactor.core.publisher.SynchronousSink;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 
@@ -15,9 +13,12 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 public class SoapClientImplGenerator {
+    private static final ClassName synchronousSink = ClassName.get("reactor.core.publisher", "SynchronousSink");
     private final ProcessingEnvironment processingEnv;
 
     public SoapClientImplGenerator(ProcessingEnvironment processingEnv) {
@@ -118,20 +119,26 @@ public class SoapClientImplGenerator {
             var monoParam = method.getReturnType().getKind() == TypeKind.VOID
                 ? this.processingEnv.getElementUtils().getTypeElement("java.lang.Void").asType()
                 : method.getReturnType();
-            var reactiveReturnType = ParameterizedTypeName.get(ClassName.get(Mono.class), ClassName.get(monoParam));
+            var reactiveReturnType = ParameterizedTypeName.get(ClassName.get(CompletionStage.class), ClassName.get(monoParam));
 
 
-            var reactiveM = MethodSpec.methodBuilder(method.getSimpleName() + "Reactive")
+            var reactiveM = MethodSpec.methodBuilder(method.getSimpleName() + "Async")
                 .addModifiers(Modifier.PUBLIC)
                 .returns(reactiveReturnType);
             for (var parameter : method.getParameters()) {
                 reactiveM.addParameter(TypeName.get(parameter.asType()), parameter.getSimpleName().toString());
             }
             this.addMapRequest(reactiveM, method, soapClasses);
-            reactiveM.addCode("return this.$L.callReactive(__requestEnvelope)\n", executorFieldName);
-            reactiveM.addCode("  .handle(($T __response, $T __sink) -> {$>$>\n", soapClasses.soapResult(), ParameterizedTypeName.get(ClassName.get(SynchronousSink.class), TypeName.get(monoParam)));
+            reactiveM.addCode("var __future = new $T<$T>();\n", CompletableFuture.class, monoParam);
+            reactiveM.addCode("this.$L.callAsync(__requestEnvelope)\n", executorFieldName);
+            reactiveM.addCode("  .whenComplete((__response, __throwable) -> {$>$>\n", soapClasses.soapResult(), ParameterizedTypeName.get(synchronousSink, TypeName.get(monoParam)));
+            reactiveM.addCode("if (__throwable != null) {\n");
+            reactiveM.addCode("  __future.completeExceptionally(__throwable);\n");
+            reactiveM.addCode("  return;\n");
+            reactiveM.addCode("}\n");
             this.addMapResponse(reactiveM, method, soapClasses, true);
             reactiveM.addCode("$<$<\n});\n");
+            reactiveM.addCode("return __future;\n");
             builder.addMethod(reactiveM.build());
 
         }
@@ -243,7 +250,7 @@ public class SoapClientImplGenerator {
                     .get();
                 m.addCode("if (__detail instanceof $T __error) {\n", detailType);
                 if (isReactive) {
-                    m.addCode("  __sink.error(new $T(__failure.faultMessage(), __error));\n", thrownType);
+                    m.addCode("  __future.completeExceptionally(new $T(__failure.faultMessage(), __error));\n", thrownType);
                     m.addCode("  return;\n", thrownType);
                 } else {
                     m.addCode("  throw new $T(__failure.faultMessage(), __error);\n", thrownType);
@@ -252,7 +259,7 @@ public class SoapClientImplGenerator {
             }
             if (isReactive) {
                 m.addCode("{\n");
-                m.addCode("  __sink.error(new $T(__failure.faultMessage(), __fault));\n", soapClasses.soapFaultException());
+                m.addCode("  __future.completeExceptionally(new $T(__failure.faultMessage(), __fault));\n", soapClasses.soapFaultException());
                 m.addCode("  return;\n}\n");
             } else {
                 m.addCode("\n  throw new $T(__failure.faultMessage(), __fault);\n", soapClasses.soapFaultException());
@@ -261,7 +268,7 @@ public class SoapClientImplGenerator {
         }
 
         if (isReactive) {
-            m.addCode("__sink.error(new $T(__failure.faultMessage(), __fault));\n", soapClasses.soapFaultException());
+            m.addCode("__future.completeExceptionally(new $T(__failure.faultMessage(), __fault));\n", soapClasses.soapFaultException());
             m.addCode("return;$<\n}\n");
         } else {
             m.addCode("throw new $T(__failure.faultMessage(), __fault);$<\n}\n", soapClasses.soapFaultException());
@@ -275,7 +282,7 @@ public class SoapClientImplGenerator {
             if (webResult != null) {
                 var webResultName = (String) findAnnotationValue(webResult, "name");
                 if (isReactive) {
-                    m.addCode("__sink.next(__responseBodyWrapper.get$L());\n", CommonUtils.capitalize(webResultName));
+                    m.addCode("__future.complete(__responseBodyWrapper.get$L());\n", CommonUtils.capitalize(webResultName));
                 } else {
                     m.addCode("return __responseBodyWrapper.get$L();\n", CommonUtils.capitalize(webResultName));
                 }
@@ -289,14 +296,14 @@ public class SoapClientImplGenerator {
                     var webParamName = findAnnotationValue(webParam, "name");
                     m.addCode("$L.value = __responseBodyWrapper.get$L();\n", parameter, CommonUtils.capitalize(webParamName.toString()));
                     if (isReactive) {
-                        m.addCode("__sink.complete();\n");
+                        m.addCode("__future.complete(null);\n");
                     }
                 }
             }
         } else {
             if (method.getReturnType().getKind() == TypeKind.VOID) {
                 if (isReactive) {
-                    m.addCode("__sink.complete();\n");
+                    m.addCode("__future.complete(null);\n");
                 }
                 if (this.isRpcBuilding(method, soapClasses)) {
                     m.addCode("var __document = ($T) __success.body();\n", Node.class);
@@ -330,7 +337,7 @@ public class SoapClientImplGenerator {
                 }
             } else {
                 if (isReactive) {
-                    m.addCode("__sink.next(($T) __success.body());\n", method.getReturnType());
+                    m.addCode("__future.complete(($T) __success.body());\n", method.getReturnType());
                 } else {
                     m.addCode("return ($T) __success.body();\n", method.getReturnType());
                 }
