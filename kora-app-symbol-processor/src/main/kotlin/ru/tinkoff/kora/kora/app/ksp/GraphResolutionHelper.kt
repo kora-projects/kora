@@ -128,8 +128,10 @@ object GraphResolutionHelper {
         )
     }
 
+
     fun findDependencyDeclarationsFromTemplate(
         ctx: ProcessingContext,
+        @Suppress("UNUSED_PARAMETER")
         forDeclaration: ComponentDeclaration,
         templateDeclarations: List<ComponentDeclaration>,
         dependencyClaim: DependencyClaim

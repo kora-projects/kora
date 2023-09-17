@@ -26,10 +26,10 @@ public class HttpServerUtils {
     }
 
     public static Interceptor parseInterceptor(AnnotationMirror a) {
-        var interceptorType = ((TypeMirror) CommonUtils.parseAnnotationValueWithoutDefault(a, "value"));
+        var interceptorType = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(a, "value");
         var interceptorTypeName = ClassName.get(Objects.requireNonNull(interceptorType));
         @Nullable
-        var interceptorTag = (AnnotationMirror) CommonUtils.parseAnnotationValueWithoutDefault(a, "tag");
+        var interceptorTag = AnnotationUtils.<AnnotationMirror>parseAnnotationValueWithoutDefault(a, "tag");
         var interceptorTagAnnotationSpec = interceptorTag == null ? null : AnnotationSpec.get(interceptorTag);
         return new Interceptor(interceptorTypeName, interceptorTagAnnotationSpec);
     }

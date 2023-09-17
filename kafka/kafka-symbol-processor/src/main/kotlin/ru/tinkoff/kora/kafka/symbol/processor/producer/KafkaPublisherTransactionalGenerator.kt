@@ -71,7 +71,7 @@ class KafkaPublisherTransactionalGenerator(
         val publisherPackageName = publisherTypeElement.packageName.asString()
         val implementationName = typeElement.generatedClassName("Impl")
         val publisherImplementationTypeName = ClassName(publisherPackageName, publisherTypeElement.generatedClassName("Impl"))
-        val b = typeElement.extendsKeepAop(resolver, implementationName)
+        val b = typeElement.extendsKeepAop(implementationName)
             .addSuperinterface(CommonClassNames.lifecycle)
             .addOriginatingKSFile(typeElement.containingFile!!)
             .addProperty(PropertySpec.builder("delegate", KafkaClassNames.transactionalPublisherImpl.parameterizedBy(publisherImplementationTypeName), KModifier.PRIVATE, KModifier.FINAL)

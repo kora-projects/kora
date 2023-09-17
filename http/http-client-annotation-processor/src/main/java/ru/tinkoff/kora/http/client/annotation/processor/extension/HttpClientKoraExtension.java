@@ -2,6 +2,7 @@ package ru.tinkoff.kora.http.client.annotation.processor.extension;
 
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.http.client.annotation.processor.HttpClientAnnotationProcessor;
 import ru.tinkoff.kora.http.client.annotation.processor.HttpClientClassNames;
 import ru.tinkoff.kora.http.client.annotation.processor.HttpClientUtils;
@@ -55,7 +56,7 @@ public class HttpClientKoraExtension implements KoraExtension {
                 return ExtensionResult.nextRound();
             }
             if (CommonUtils.hasAopAnnotations(typeElement)) {
-                var aopProxy = CommonUtils.getOuterClassesAsPrefix(maybeGenerated) + maybeGenerated.getSimpleName() + "__AopProxy";
+                var aopProxy = NameUtils.generatedType(maybeGenerated, "_AopProxy");
                 var aopProxyElement = this.elements.getTypeElement(packageName + "." + aopProxy);
                 if (aopProxyElement == null) {
                     // aop annotation processor will handle it

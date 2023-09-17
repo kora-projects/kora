@@ -1,10 +1,7 @@
 package ru.tinkoff.kora.scheduling.annotation.processor;
 
 import com.squareup.javapoet.*;
-import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
-import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
-import ru.tinkoff.kora.annotation.processor.common.RecordClassBuilder;
+import ru.tinkoff.kora.annotation.processor.common.*;
 
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -12,7 +9,6 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.io.IOException;
@@ -20,6 +16,9 @@ import java.util.Optional;
 import java.util.function.Predicate;
 
 public class QuartzSchedulingGenerator {
+    public static ClassName scheduleWithTrigger = ClassName.get("ru.tinkoff.kora.scheduling.quartz", "ScheduleWithTrigger");
+    public static ClassName scheduleWithCron = ClassName.get("ru.tinkoff.kora.scheduling.quartz", "ScheduleWithCron");
+
     private static final ClassName koraQuartzJobClassName = ClassName.get("ru.tinkoff.kora.scheduling.quartz", "KoraQuartzJob");
     private static final ClassName schedulingTelemetryClassName = ClassName.get("ru.tinkoff.kora.scheduling.common.telemetry", "SchedulingTelemetry");
     private static final ClassName schedulingTelemetryFactoryClassName = ClassName.get("ru.tinkoff.kora.scheduling.common.telemetry", "SchedulingTelemetryFactory");
@@ -30,16 +29,11 @@ public class QuartzSchedulingGenerator {
     private final Types types;
     private final Elements elements;
     private final Filer filer;
-    private final TypeMirror scheduleWithTriggerTypeMirror;
-    private final TypeMirror scheduleWithCronTypeMirror;
 
     public QuartzSchedulingGenerator(ProcessingEnvironment processingEnv) {
         this.types = processingEnv.getTypeUtils();
         this.elements = processingEnv.getElementUtils();
         this.filer = processingEnv.getFiler();
-
-        this.scheduleWithTriggerTypeMirror = this.elements.getTypeElement("ru.tinkoff.kora.scheduling.quartz.ScheduleWithTrigger").asType();
-        this.scheduleWithCronTypeMirror = this.elements.getTypeElement("ru.tinkoff.kora.scheduling.quartz.ScheduleWithCron").asType();
     }
 
     public void generate(TypeElement type, ExecutableElement method, TypeSpec.Builder module, SchedulingTrigger trigger) throws IOException {
@@ -53,17 +47,18 @@ public class QuartzSchedulingGenerator {
             .addParameter(TypeName.get(typeMirror), "object");
 
 
-        if (this.types.isSameType(trigger.triggerAnnotation().getAnnotationType(), this.scheduleWithTriggerTypeMirror)) {
-            var tag = CommonUtils.<AnnotationMirror>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "value");
+        var annotationType = ClassName.get((TypeElement) trigger.triggerAnnotation().getAnnotationType().asElement());
+        if (annotationType.equals(scheduleWithTrigger)) {
+            var tag = AnnotationUtils.<AnnotationMirror>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "value");
             var triggerParameter = ParameterSpec.builder(triggerClassName, "trigger").addAnnotation(AnnotationSpec.get(tag)).build();
             component.addParameter(triggerParameter);
-        } else if (this.types.isSameType(trigger.triggerAnnotation().getAnnotationType(), this.scheduleWithCronTypeMirror)) {
-            var identity = Optional.ofNullable(CommonUtils.<String>parseAnnotationValue(elements, trigger.triggerAnnotation(), "identity"))
+        } else if (annotationType.equals(scheduleWithCron)) {
+            var identity = Optional.ofNullable(AnnotationUtils.<String>parseAnnotationValue(elements, trigger.triggerAnnotation(), "identity"))
                 .filter(Predicate.not(String::isBlank))
                 .orElse(type.getQualifiedName() + "#" + method.getSimpleName());
-            var cron = CommonUtils.<String>parseAnnotationValue(elements, trigger.triggerAnnotation(), "value");
+            var cron = AnnotationUtils.<String>parseAnnotationValue(elements, trigger.triggerAnnotation(), "value");
             var cronSchedule = CodeBlock.of("$S", cron);
-            var configPath = CommonUtils.<String>parseAnnotationValue(elements, trigger.triggerAnnotation(), "config");
+            var configPath = AnnotationUtils.<String>parseAnnotationValue(elements, trigger.triggerAnnotation(), "config");
             if (configPath != null && !configPath.isBlank()) {
                 var configClassName = this.generateCronConfigRecord(type, method, cron);
                 var b = MethodSpec.methodBuilder(configClassName.simpleName())
@@ -111,7 +106,7 @@ public class QuartzSchedulingGenerator {
     }
 
     private ClassName generateCronConfigRecord(TypeElement type, ExecutableElement method, String defaultCron) throws IOException {
-        var configRecordName = CommonUtils.getOuterClassesAsPrefix(method) + "CronConfig";
+        var configRecordName = NameUtils.getOuterClassesAsPrefix(method) + "CronConfig";
         var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
 
         var rb = new RecordClassBuilder(configRecordName)
@@ -128,7 +123,7 @@ public class QuartzSchedulingGenerator {
 
 
     private ClassName generateJobClass(TypeElement type, ExecutableElement method) throws IOException {
-        var className = CommonUtils.getOuterClassesAsPrefix(type) + type.getSimpleName() + "_" + method.getSimpleName() + "_Job";
+        var className = NameUtils.generatedType(type, method.getSimpleName() + "_Job");
         var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
         var typeMirror = type.asType();
         var callJob = method.getParameters().isEmpty()

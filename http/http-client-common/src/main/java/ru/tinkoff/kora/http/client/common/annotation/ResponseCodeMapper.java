@@ -16,6 +16,7 @@ public @interface ResponseCodeMapper {
 
     Class<?> type() default Object.class;
 
+    @SuppressWarnings("rawtypes")
     Class<? extends HttpClientResponseMapper> mapper() default DefaultHttpClientResponseMapper.class;
 
     class DefaultHttpClientResponseMapper implements HttpClientResponseMapper<Object> {

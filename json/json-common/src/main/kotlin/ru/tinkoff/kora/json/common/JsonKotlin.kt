@@ -1,12 +1,12 @@
 package ru.tinkoff.kora.json.common
 
 object JsonKotlin {
-    @SuppressWarnings("unchecked")
+    @Suppress("UNCHECKED_CAST")
     fun <T> writerForNullable(writer: JsonWriter<T>): JsonWriter<T?> {
         return writer as JsonWriter<T?>
     }
 
-    @SuppressWarnings("unchecked")
+    @Suppress("UNCHECKED_CAST")
     fun <T> readerForNullable(reader: JsonReader<T>): JsonReader<T?> {
         return reader as JsonReader<T?>
     }

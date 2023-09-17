@@ -13,7 +13,6 @@ import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClient
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientAnnotation
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientEncoderException
-import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientException
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientRequestBuilder
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientRequestMapper
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientResponseException
@@ -55,9 +54,9 @@ class ClientClassGenerator(private val resolver: Resolver) {
     fun generate(declaration: KSClassDeclaration): TypeSpec {
         val typeName = declaration.clientName()
         val methods: List<MethodData> = this.parseMethods(declaration)
-        val builder = declaration.extendsKeepAop(resolver, typeName)
+        val builder = declaration.extendsKeepAop(typeName)
             .generated(ClientClassGenerator::class)
-        if (hasAopAnnotations(resolver, declaration)) {
+        if (hasAopAnnotations(declaration)) {
             builder.addModifiers(KModifier.OPEN)
         }
         builder.primaryConstructor(this.buildConstructor(builder, declaration, methods))
@@ -74,8 +73,8 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
     private fun parseParametersConverters(methods: List<MethodData>): Map<String, ParameterizedTypeName> {
         val result = hashMapOf<String, ParameterizedTypeName>()
-        methods.forEach { method ->
-            method.parameters.forEach { parameter ->
+        for (method in methods) {
+            for (parameter in method.parameters) {
                 when (parameter) {
                     is Parameter.PathParameter -> {
                         val parameterType = parameter.parameter.type.resolve()
@@ -87,7 +86,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                     is Parameter.QueryParameter -> {
                         var parameterType = parameter.parameter.type.resolve()
                         if (parameterType.isCollection()) {
-                            parameterType = parameterType.arguments[0].type?.resolve() ?: return@forEach
+                            parameterType = parameterType.arguments[0].type?.resolve() ?: continue
                         }
 
                         if (requiresConverter(parameterType)) {
@@ -98,7 +97,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                     is Parameter.HeaderParameter -> {
                         var parameterType = parameter.parameter.type.resolve()
                         if (parameterType.isCollection()) {
-                            parameterType = parameterType.arguments[0].type?.resolve() ?: return@forEach
+                            parameterType = parameterType.arguments[0].type?.resolve() ?: continue
                         }
 
                         if (requiresConverter(parameterType)) {

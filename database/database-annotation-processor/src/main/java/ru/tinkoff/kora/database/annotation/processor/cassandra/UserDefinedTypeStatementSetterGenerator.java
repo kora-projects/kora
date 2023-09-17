@@ -4,6 +4,7 @@ package ru.tinkoff.kora.database.annotation.processor.cassandra;
 import com.squareup.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -34,7 +35,7 @@ public class UserDefinedTypeStatementSetterGenerator {
     public void generateMapper(TypeMirror typeMirror) {
         var element = this.types.asElement(typeMirror);
         var packageName = this.elements.getPackageOf(element);
-        var typeSpec = TypeSpec.classBuilder(CommonUtils.getOuterClassesAsPrefix(element) + element.getSimpleName().toString() + "_CassandraParameterColumnMapper")
+        var typeSpec = TypeSpec.classBuilder(NameUtils.generatedType(element, CassandraTypes.PARAMETER_COLUMN_MAPPER))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, TypeName.get(typeMirror)));
         var entity = Objects.requireNonNull(DbEntity.parseEntity(this.types, typeMirror));
@@ -67,7 +68,7 @@ public class UserDefinedTypeStatementSetterGenerator {
         var element = this.types.asElement(typeMirror);
         var packageName = this.elements.getPackageOf(element);
         var listType = ParameterizedTypeName.get(CommonClassNames.list, TypeName.get(typeMirror));
-        var typeSpec = TypeSpec.classBuilder(CommonUtils.getOuterClassesAsPrefix(element) + element.getSimpleName().toString() + "_List_CassandraParameterColumnMapper")
+        var typeSpec = TypeSpec.classBuilder(NameUtils.generatedType(element, "List_CassandraParameterColumnMapper"))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, listType));
         var entity = Objects.requireNonNull(DbEntity.parseEntity(this.types, typeMirror));

@@ -17,6 +17,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@SuppressWarnings("unchecked")
 public class AnnotationConfigTest extends AbstractConfigTest {
     @Test
     public void testIntSupported() {
@@ -85,7 +86,7 @@ public class AnnotationConfigTest extends AbstractConfigTest {
             @ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor
             public interface TestConfig {
               default String value1() { return "default-value"; }
-              
+
               @Nullable
               String value2();
             }
@@ -111,7 +112,7 @@ public class AnnotationConfigTest extends AbstractConfigTest {
             @ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor
             public interface TestConfig {
               java.time.Duration value();
-              
+
               @Nullable
               java.time.Duration value2();
             }
@@ -131,7 +132,7 @@ public class AnnotationConfigTest extends AbstractConfigTest {
               @Mapping(TestExtractor.class)
               @Tag(TestExtractor.class)
               java.time.Duration value1();
-              
+
               @Nullable
               @Mapping(TestFinalExtractor.class)
               java.time.Duration value2();
@@ -241,22 +242,22 @@ public class AnnotationConfigTest extends AbstractConfigTest {
             @ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor
             public class TestConfig {
               private String value;
-              
+
               public String getValue() {
                 return this.value;
               }
-              
+
               public void setValue(String value) {
                 this.value = value;
               }
-              
+
               @Override
               public boolean equals(Object obj) {
                 return obj instanceof TestConfig that && java.util.Objects.equals(this.value, that.value);
               }
-              
+
               public int hashCode() { return java.util.Objects.hashCode(value); }
-              
+
               @Override
               public String toString() {
                 return "TestConfig[%s]".formatted(value);
@@ -277,20 +278,20 @@ public class AnnotationConfigTest extends AbstractConfigTest {
             @ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor
             public class TestConfig {
               private String value = "default-value";
-              
+
               public String getValue() {
                 return this.value;
               }
-              
+
               public void setValue(String value) {
                 this.value = value;
               }
-              
+
               @Override
               public boolean equals(Object obj) {
                 return obj instanceof TestConfig that && java.util.Objects.equals(this.value, that.value);
               }
-              
+
               public int hashCode() { return java.util.Objects.hashCode(value); }
             }
             """);
@@ -313,29 +314,29 @@ public class AnnotationConfigTest extends AbstractConfigTest {
             public class TestConfig {
               @Nullable
               private final String value1;
-              
+
               private final String value2;
-              
+
               public TestConfig(String value1, @Nullable String value2) {
                 this.value1 = value1;
                 this.value2 = value2;
               }
-              
+
               public String getValue1() {
                 return this.value1;
               }
-                            
+
               public String getValue2() {
                 return this.value2;
               }
-              
+
               @Override
               public boolean equals(Object obj) {
                 return obj instanceof TestConfig that && java.util.Objects.equals(this.value1, that.value1) && java.util.Objects.equals(this.value2, that.value2);
               }
-              
+
               public int hashCode() { return java.util.Objects.hash(value1, value2); }
-              
+
               public String toString() {
                 return "TestConfig(value1=%s, value2=%s)".formatted(this.value1, this.value2);
               }
@@ -357,27 +358,27 @@ public class AnnotationConfigTest extends AbstractConfigTest {
               private final String value1;
               @Nullable
               private final String value2;
-              
+
               public TestConfig(String value1, @Nullable String value2) {
                 this.value1 = value1;
                 this.value2 = value2;
               }
-              
+
               public String value1() {
                 return this.value1;
               }
-                            
+
               public String value2() {
                 return this.value2;
               }
-              
+
               @Override
               public boolean equals(Object obj) {
                 return obj instanceof TestConfig that && java.util.Objects.equals(this.value1, that.value1) && java.util.Objects.equals(this.value2, that.value2);
               }
-              
+
               public int hashCode() { return java.util.Objects.hash(value1, value2); }
-              
+
               public String toString() {
                 return "TestConfig(value1=%s, value2=%s)".formatted(this.value1, this.value2);
               }

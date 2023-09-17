@@ -154,9 +154,9 @@ public class AopProcessor {
             .superclass(typeElement.asType())
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
 
-        var tag = CommonUtils.findAnnotation(this.elements, this.types, typeElement, this.tagAnnotationTypeMirror);
-        if (tag != null) {
-            typeBuilder.addAnnotation(AnnotationSpec.get(tag));
+        var tag = TagUtils.parseTagValue(typeElement);
+        if (tag != null && !tag.isEmpty()) {
+            typeBuilder.addAnnotation(TagUtils.makeAnnotationSpec(tag));
         }
         if (AnnotationUtils.isAnnotationPresent(typeElement, CommonClassNames.root)) {
             typeBuilder.addAnnotation(CommonClassNames.root);

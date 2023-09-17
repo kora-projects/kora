@@ -69,7 +69,7 @@ public class R2dbcParametersTest extends AbstractR2dbcRepositoryTest {
     public void testEntityFieldMapping() {
         var repository = compileR2dbc(List.of(), """
             public final class StringToJsonbParameterMapper implements R2dbcParameterColumnMapper<String> {
-                
+
                 @Override
                 public void apply(Statement stmt, int index, String value) {
                     stmt.bind(index, java.util.Map.of("test", value));
@@ -77,7 +77,6 @@ public class R2dbcParametersTest extends AbstractR2dbcRepositoryTest {
             }
             """, """
             public record SomeEntity(long id, @Mapping(StringToJsonbParameterMapper.class) String value) {}
-                
             """, """
             @Repository
             public interface TestRepository extends R2dbcRepository {
@@ -96,7 +95,7 @@ public class R2dbcParametersTest extends AbstractR2dbcRepositoryTest {
     public void testNativeParameterWithMapping() {
         var repository = compileR2dbc(List.of(), """
             public final class StringToJsonbParameterMapper implements R2dbcParameterColumnMapper<String> {
-                
+
                 @Override
                 public void apply(Statement stmt, int index, String value) {
                     stmt.bind(index, java.util.Map.of("test", value));
@@ -229,7 +228,6 @@ public class R2dbcParametersTest extends AbstractR2dbcRepositoryTest {
         var mapper = Mockito.mock(R2dbcParameterColumnMapper.class);
         var repository = compileR2dbc(List.of(mapper), """
             public record SomeEntity(long id, @Tag(SomeEntity.class) String value) {}
-                
             """, """
             @Repository
             public interface TestRepository extends R2dbcRepository {

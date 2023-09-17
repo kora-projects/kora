@@ -34,7 +34,7 @@ public abstract class AbstractJsonAnnotationProcessorTest extends AbstractAnnota
     @SuppressWarnings("unchecked")
     protected JsonReader<Object> reader(String forClass, Object... params) {
         try {
-            return (JsonReader<Object>) this.compileResult.loadClass("$" + forClass + "JsonReader")
+            return (JsonReader<Object>) this.compileResult.loadClass("$" + forClass + "_JsonReader")
                 .getConstructors()[0]
                 .newInstance(params);
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
@@ -45,7 +45,7 @@ public abstract class AbstractJsonAnnotationProcessorTest extends AbstractAnnota
     @SuppressWarnings("unchecked")
     protected JsonWriter<Object> writer(String forClass, Object... params) {
         try {
-            return (JsonWriter<Object>) this.compileResult.loadClass("$" + forClass + "JsonWriter")
+            return (JsonWriter<Object>) this.compileResult.loadClass("$" + forClass + "_JsonWriter")
                 .getConstructors()[0]
                 .newInstance(params);
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {

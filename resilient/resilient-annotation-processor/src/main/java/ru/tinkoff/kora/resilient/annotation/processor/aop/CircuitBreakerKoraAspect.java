@@ -98,14 +98,14 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
 
         return CodeBlock.builder().add("""
             var _circuitBreaker = $L;
-                        
+
             return Mono.defer(() -> {
                   _circuitBreaker.acquire();
                   return $L
                       .doOnSuccess(r -> _circuitBreaker.releaseOnSuccess())
                       .doOnError(_circuitBreaker::releaseOnError);
             });
-                 """, circuitBreakerField, superMethod.toString()).build();
+            """, circuitBreakerField, superMethod.toString()).build();
     }
 
     private CodeBlock buildBodyFlux(ExecutableElement method, String superCall, String circuitBreakerField) {
@@ -113,14 +113,14 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
 
         return CodeBlock.builder().add("""
             var _circuitBreaker = $L;
-                        
+
             return Flux.defer(() -> {
                   _circuitBreaker.acquire();
                   return $L
                       .doOnComplete(() -> _circuitBreaker.releaseOnSuccess())
                       .doOnError(_circuitBreaker::releaseOnError);
             });
-                 """, circuitBreakerField, superMethod.toString()).build();
+            """, circuitBreakerField, superMethod.toString()).build();
     }
 
     private CodeBlock buildMethodCall(ExecutableElement method, String call) {

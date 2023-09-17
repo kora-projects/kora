@@ -9,6 +9,7 @@ import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.internal.NodeImpl;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -18,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class GraphTest {
-    private static final Class<?>[] TAGS = new Class[0];
+    private static final Class<?>[] TAGS = new Class<?>[0];
 
     static {
         if (LoggerFactory.getLogger(ReferenceGraph.class) instanceof Logger log) {
@@ -390,11 +391,11 @@ class GraphTest {
         var object4 = new AtomicReference<>("");
         var counter = new AtomicInteger(0);
 
-        var n1 = draw.addNode0(TestObject.class, new Class[0], g -> "");
-        var n2 = draw.addNode0(TestObject.class, new Class[0], g -> object2.get(), n1);
-        var n3 = draw.addNode0(TestObject.class, new Class[0], g -> object3.get(), n1);
-        var n4 = draw.addNode0(TestObject.class, new Class[0], g -> object4.get(), n2, n3);
-        var n5 = draw.addNode0(TestObject.class, new Class[0], g -> counter.incrementAndGet(), n4);
+        var n1 = draw.addNode0(TestObject.class, new Class<?>[0], g -> "");
+        var n2 = draw.addNode0(TestObject.class, new Class<?>[0], g -> object2.get(), n1);
+        var n3 = draw.addNode0(TestObject.class, new Class<?>[0], g -> object3.get(), n1);
+        var n4 = draw.addNode0(TestObject.class, new Class<?>[0], g -> object4.get(), n2, n3);
+        var n5 = draw.addNode0(TestObject.class, new Class<?>[0], g -> counter.incrementAndGet(), n4);
 
         var graph = draw.init();
 
@@ -657,8 +658,12 @@ class GraphTest {
         private final ConcurrentLinkedDeque<TestObject> objects = new ConcurrentLinkedDeque<>();
         private final List<Node<TestObject>> dependencies;
 
+        @SafeVarargs
         private TestObjectFactory(Node<TestObject>... dependencies) {
-            this.dependencies = List.of(dependencies);
+            this.dependencies = new ArrayList<>(dependencies.length);
+            for (var dependency : dependencies) {
+                this.dependencies.add(dependency);
+            }
         }
 
         private enum Type {

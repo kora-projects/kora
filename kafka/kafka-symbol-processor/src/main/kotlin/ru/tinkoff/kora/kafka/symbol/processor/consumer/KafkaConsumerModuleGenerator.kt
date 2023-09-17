@@ -36,7 +36,7 @@ class KafkaConsumerModuleGenerator(
             val handler = kafkaHandlerGenerator.generate(function, parameters)
             classBuilder.addFunction(handler.funSpec)
 
-            val container = kafkaContainerGenerator.generate(declaration, function, handler, parameters)
+            val container = kafkaContainerGenerator.generate(function, handler, parameters)
             classBuilder.addFunction(container)
         }
         val packageName = declaration.packageName.asString()

@@ -32,8 +32,8 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
         val xmlSeeAlso = findAnnotation(service, soapClasses.xmlSeeAlsoType()!!)
         xmlSeeAlso?.arguments?.forEach { arg ->
             if (arg.name!!.asString() == "value") {
-                val types = (arg.value as List<KSType>)
-                jaxbClasses.addAll(types.map { it.toTypeName() })
+                val types = (arg.value as List<*>)
+                jaxbClasses.addAll(types.map { (it as KSType).toTypeName() })
             }
         }
         val webService = findAnnotation(service, soapClasses.webServiceType()!!)!!
@@ -153,7 +153,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
                 .addAnnotation(
                     AnnotationSpec.builder(soapClasses.xmlRootElementClassName()!!)
                         .addMember("namespace", "%S", targetNamespace)
-                        .addMember("name", "%S", operationName!!)
+                        .addMember("name", "%S", operationName)
                         .build()
                 )
             for (parameter in method.parameters) {

@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.aop.annotation.processor;
 
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 
 import javax.annotation.Nullable;
 import javax.lang.model.element.ExecutableElement;
@@ -9,7 +10,7 @@ import javax.lang.model.element.TypeElement;
 
 public class AopUtils {
     public static String aopProxyName(TypeElement typeElement) {
-        return CommonUtils.getOuterClassesAsPrefix(typeElement) + typeElement.getSimpleName() + "__AopProxy";
+        return NameUtils.generatedType(typeElement, "_AopProxy");
     }
 
     @Nullable

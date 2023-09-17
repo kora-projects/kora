@@ -84,7 +84,7 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         b.controlFlow("try") {
             controlFlow("_conToClose.use") {
                 controlFlow("_conToUse!!.prepareStatement(_query.sql()).use { _stmt ->") {
-                    StatementSetterGenerator.generate(b, method, query, parameters, batchParam, parameterMappers)
+                    StatementSetterGenerator.generate(b, query, parameters, batchParam, parameterMappers)
                     if (methodType.returnType!! == resolver.builtIns.unitType) {
                         if (batchParam != null) {
                             addStatement("_stmt.executeBatch()")

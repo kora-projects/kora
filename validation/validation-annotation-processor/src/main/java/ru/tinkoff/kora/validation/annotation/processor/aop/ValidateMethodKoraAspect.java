@@ -331,14 +331,12 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             builder.add("""
                     return $L
                         .map(_result -> {
-                        """, superMethod.toString())
+                    """, superMethod.toString())
                 .indent().indent().indent().indent()
                 .add(validationReturnCode)
                 .add("return _result;")
                 .unindent().unindent().unindent().unindent()
-                .add("""
-                                    
-                    })""");
+                .add("\n\n})");
         } else {
             builder.add("return $L", superMethod.toString());
         }

@@ -98,16 +98,19 @@ public class VertxEventLoopGroupTransport extends Transport {
             }
 
             @Override
+            @Deprecated
             public ChannelFuture register(ChannelPromise promise) {
                 return this.eventLoopGroup.register(promise);
             }
 
             @Override
+            @Deprecated
             public ChannelFuture register(Channel channel, ChannelPromise promise) {
                 return this.eventLoopGroup.register(channel, promise);
             }
 
             @Override
+            @Deprecated
             public void shutdown() {
 
             }
@@ -233,7 +236,7 @@ public class VertxEventLoopGroupTransport extends Transport {
         if (this.type == TransportType.EPOLL) {
             if (!domainSocket) {
                 if (options.isTcpFastOpen()) {
-                    bootstrap.option(EpollChannelOption.TCP_FASTOPEN_CONNECT, options.isTcpFastOpen());
+                    bootstrap.option(ChannelOption.TCP_FASTOPEN_CONNECT, options.isTcpFastOpen());
                 }
                 bootstrap.option(EpollChannelOption.TCP_QUICKACK, options.isTcpQuickAck());
                 bootstrap.option(EpollChannelOption.TCP_CORK, options.isTcpCork());
@@ -248,7 +251,7 @@ public class VertxEventLoopGroupTransport extends Transport {
             if (!domainSocket) {
                 bootstrap.option(EpollChannelOption.SO_REUSEPORT, options.isReusePort());
                 if (options.isTcpFastOpen()) {
-                    bootstrap.option(EpollChannelOption.TCP_FASTOPEN, options.isTcpFastOpen() ? 256 : 0);
+                    bootstrap.option(ChannelOption.TCP_FASTOPEN, options.isTcpFastOpen() ? 256 : 0);
                 }
                 bootstrap.childOption(EpollChannelOption.TCP_QUICKACK, options.isTcpQuickAck());
                 bootstrap.childOption(EpollChannelOption.TCP_CORK, options.isTcpCork());

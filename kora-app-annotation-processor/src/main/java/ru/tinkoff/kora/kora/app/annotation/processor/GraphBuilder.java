@@ -3,6 +3,7 @@ package ru.tinkoff.kora.kora.app.annotation.processor;
 import com.squareup.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ComponentDependency;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ComponentDependencyHelper;
@@ -283,7 +284,7 @@ public class GraphBuilder {
     }
 
     private static ComponentDeclaration generatePromisedProxy(ProcessingContext ctx, TypeElement typeElement) {
-        var resultClassName = CommonUtils.getOuterClassesAsPrefix(typeElement) + typeElement.getSimpleName() + "_PromisedProxy";
+        var resultClassName = NameUtils.generatedType(typeElement, "PromisedProxy");
         var typeMirror = typeElement.asType();
         var typeName = TypeName.get(typeMirror);
         var promiseType = ParameterizedTypeName.get(CommonClassNames.promiseOf, WildcardTypeName.subtypeOf(typeName));

@@ -89,6 +89,7 @@ public record KoraLoggingEvent(
     }
 
     @Override
+    @Deprecated
     public Map<String, String> getMdc() {
         return this.mdcPropertyMap;
     }

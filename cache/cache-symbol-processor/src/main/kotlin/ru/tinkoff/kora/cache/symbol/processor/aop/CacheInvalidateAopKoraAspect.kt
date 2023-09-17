@@ -39,7 +39,7 @@ class CacheInvalidateAopKoraAspect(private val resolver: Resolver) : AbstractAop
         val cacheFields = getCacheFields(operation, resolver, aspectContext)
 
         val body = if (operation.type == CacheOperation.Type.EVICT_ALL) {
-            buildBodySyncAll(method, operation, superCall, cacheFields)
+            buildBodySyncAll(method, superCall, cacheFields)
         } else {
             buildBodySync(method, operation, superCall, cacheFields)
         }
@@ -95,7 +95,6 @@ class CacheInvalidateAopKoraAspect(private val resolver: Resolver) : AbstractAop
 
     private fun buildBodySyncAll(
         method: KSFunctionDeclaration,
-        operation: CacheOperation,
         superCall: String,
         cacheFields: List<String>
     ): CodeBlock {

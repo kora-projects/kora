@@ -1,6 +1,8 @@
 package ru.tinkoff.kora.database.annotation.processor.extension;
 
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.KoraExtension;
@@ -35,12 +37,12 @@ public class RepositoryKoraExtension implements KoraExtension {
         if (element.getKind() != ElementKind.INTERFACE && (element.getKind() != ElementKind.CLASS || !element.getModifiers().contains(Modifier.ABSTRACT))) {
             return null;
         }
-        if (CommonUtils.findDirectAnnotation(element, DbUtils.REPOSITORY_ANNOTATION) == null) {
+        if (AnnotationUtils.findAnnotation(element, DbUtils.REPOSITORY_ANNOTATION) == null) {
             return null;
         }
         var typeElement = (TypeElement) this.types.asElement(typeMirror);
         var packageElement = this.elements.getPackageOf(typeElement);
-        var repositoryName = CommonUtils.getOuterClassesAsPrefix(typeElement) + typeElement.getSimpleName().toString() + "_Impl";
+        var repositoryName = NameUtils.generatedType(typeElement, "Impl");
         var packageName = packageElement.getQualifiedName();
         return () -> {
             var repositoryElement = this.elements.getTypeElement(packageElement.getQualifiedName() + "." + repositoryName);
@@ -51,7 +53,7 @@ public class RepositoryKoraExtension implements KoraExtension {
             if (!CommonUtils.hasAopAnnotations(repositoryElement)) {
                 return CommonUtils.findConstructors(repositoryElement, m -> m.contains(Modifier.PUBLIC)).stream().map(ExtensionResult::fromExecutable).findFirst().orElseThrow();
             }
-            var aopProxy = CommonUtils.getOuterClassesAsPrefix(repositoryElement) + repositoryElement.getSimpleName() + "__AopProxy";
+            var aopProxy = NameUtils.generatedType(repositoryElement, "_AopProxy");
             var aopProxyElement = this.elements.getTypeElement(packageName + "." + aopProxy);
             if (aopProxyElement == null) {
                 // aop annotation processor will handle it

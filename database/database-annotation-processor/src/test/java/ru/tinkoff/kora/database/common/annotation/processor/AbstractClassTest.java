@@ -18,16 +18,15 @@ public class AbstractClassTest extends AbstractJdbcRepositoryTest {
             @Repository
             public abstract class TestRepository implements JdbcRepository {
                 private final String field;
-                        
+
                 public TestRepository(@Nullable String field) {
                     this.field = field;
                 }
-                        
+
                 @Query("INSERT INTO table(value) VALUES (:value)")
                 public abstract void abstractMethod(String value);
-                        
+
                 public void nonAbstractMethod() {
-                        
                 }
             }
             """);
@@ -44,16 +43,15 @@ public class AbstractClassTest extends AbstractJdbcRepositoryTest {
             public abstract class TestRepository implements JdbcRepository {
                 @Query("INSERT INTO table(value) VALUES (:value)")
                 public abstract void abstractMethod(String value);
-                        
+
                 public void nonAbstractMethod() {
-                        
                 }
             }
             """, """
             @KoraApp
             public interface TestApp {
                 default ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory factory() { return null; }
-                
+
                 @Root
                 default Integer someRoot(TestRepository repository) { return 1; }
             }

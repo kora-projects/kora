@@ -56,27 +56,27 @@ public interface SoapClasses {
 
     TypeName jaxbExceptionTypeName();
 
-    TypeMirror xmlSeeAlsoType();
+    ClassName xmlSeeAlsoType();
 
-    TypeMirror webMethodType();
+    ClassName webMethodType();
 
-    TypeMirror responseWrapperType();
+    ClassName responseWrapperType();
 
-    TypeMirror requestWrapperType();
+    ClassName requestWrapperType();
 
-    TypeMirror webResultType();
+    ClassName webResultType();
 
-    TypeMirror webParamType();
+    ClassName webParamType();
 
     TypeName xmlToolsType();
 
     TypeMirror holderTypeErasure();
 
-    TypeMirror webFaultType();
+    ClassName webFaultType();
 
-    TypeMirror webServiceType();
+    ClassName webServiceType();
 
-    TypeMirror soapBindingType();
+    ClassName soapBindingType();
 
     ClassName xmlRootElementClassName();
 
@@ -106,33 +106,33 @@ public interface SoapClasses {
         }
 
         @Override
-        public TypeMirror xmlSeeAlsoType() {
-            return elements.getTypeElement("jakarta.xml.bind.annotation.XmlSeeAlso").asType();
+        public ClassName xmlSeeAlsoType() {
+            return ClassName.get("jakarta.xml.bind.annotation", "XmlSeeAlso");
         }
 
         @Override
-        public TypeMirror webMethodType() {
-            return elements.getTypeElement("jakarta.jws.WebMethod").asType();
+        public ClassName webMethodType() {
+            return ClassName.get("jakarta.jws", "WebMethod");
         }
 
         @Override
-        public TypeMirror responseWrapperType() {
-            return elements.getTypeElement("jakarta.xml.ws.ResponseWrapper").asType();
+        public ClassName responseWrapperType() {
+            return ClassName.get("jakarta.xml.ws", "ResponseWrapper");
         }
 
         @Override
-        public TypeMirror requestWrapperType() {
-            return elements.getTypeElement("jakarta.xml.ws.RequestWrapper").asType();
+        public ClassName requestWrapperType() {
+            return ClassName.get("jakarta.xml.ws","RequestWrapper");
         }
 
         @Override
-        public TypeMirror webResultType() {
-            return elements.getTypeElement("jakarta.jws.WebResult").asType();
+        public ClassName webResultType() {
+            return ClassName.get("jakarta.jws", "WebResult");
         }
 
         @Override
-        public TypeMirror webParamType() {
-            return elements.getTypeElement("jakarta.jws.WebParam").asType();
+        public ClassName webParamType() {
+            return ClassName.get("jakarta.jws", "WebParam");
         }
 
         @Override
@@ -146,18 +146,18 @@ public interface SoapClasses {
         }
 
         @Override
-        public TypeMirror webFaultType() {
-            return elements.getTypeElement("jakarta.xml.ws.WebFault").asType();
+        public ClassName webFaultType() {
+            return ClassName.get("jakarta.xml.ws", "WebFault");
         }
 
         @Override
-        public TypeMirror webServiceType() {
-            return elements.getTypeElement("jakarta.jws.WebService").asType();
+        public ClassName webServiceType() {
+            return ClassName.get("jakarta.jws", "WebService");
         }
 
         @Override
-        public TypeMirror soapBindingType() {
-            return elements.getTypeElement("jakarta.jws.soap.SOAPBinding").asType();
+        public ClassName soapBindingType() {
+            return ClassName.get("jakarta.jws.soap", "SOAPBinding");
         }
 
         @Override
@@ -201,33 +201,33 @@ public interface SoapClasses {
         }
 
         @Override
-        public TypeMirror xmlSeeAlsoType() {
-            return elements.getTypeElement("javax.xml.bind.annotation.XmlSeeAlso").asType();
+        public ClassName xmlSeeAlsoType() {
+            return ClassName.get("javax.xml.bind.annotation", "XmlSeeAlso");
         }
 
         @Override
-        public TypeMirror webMethodType() {
-            return elements.getTypeElement("javax.jws.WebMethod").asType();
+        public ClassName webMethodType() {
+            return ClassName.get("javax.jws", "WebMethod");
         }
 
         @Override
-        public TypeMirror responseWrapperType() {
-            return elements.getTypeElement("javax.xml.ws.ResponseWrapper").asType();
+        public ClassName responseWrapperType() {
+            return ClassName.get("javax.xml.ws", "ResponseWrapper");
         }
 
         @Override
-        public TypeMirror requestWrapperType() {
-            return elements.getTypeElement("javax.xml.ws.RequestWrapper").asType();
+        public ClassName requestWrapperType() {
+            return ClassName.get("javax.xml.ws", "RequestWrapper");
         }
 
         @Override
-        public TypeMirror webResultType() {
-            return elements.getTypeElement("javax.jws.WebResult").asType();
+        public ClassName webResultType() {
+            return ClassName.get("javax.jws", "WebResult");
         }
 
         @Override
-        public TypeMirror webParamType() {
-            return elements.getTypeElement("javax.jws.WebParam").asType();
+        public ClassName webParamType() {
+            return ClassName.get("javax.jws", "WebParam");
         }
 
         @Override
@@ -241,18 +241,18 @@ public interface SoapClasses {
         }
 
         @Override
-        public TypeMirror webFaultType() {
-            return elements.getTypeElement("javax.xml.ws.WebFault").asType();
+        public ClassName webFaultType() {
+            return ClassName.get("javax.xml.ws", "WebFault");
         }
 
         @Override
-        public TypeMirror webServiceType() {
-            return elements.getTypeElement("javax.jws.WebService").asType();
+        public ClassName webServiceType() {
+            return ClassName.get("javax.jws", "WebService");
         }
 
         @Override
-        public TypeMirror soapBindingType() {
-            return elements.getTypeElement("javax.jws.soap.SOAPBinding").asType();
+        public ClassName soapBindingType() {
+            return ClassName.get("javax.jws.soap", "SOAPBinding");
         }
 
 

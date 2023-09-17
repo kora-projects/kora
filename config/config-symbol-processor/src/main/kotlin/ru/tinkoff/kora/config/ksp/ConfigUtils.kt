@@ -87,7 +87,7 @@ object ConfigUtils {
             }
         }
 
-        fun parseDataClassFields(type: KSType, typeDecl: KSClassDeclaration) {
+        fun parseDataClassFields(typeDecl: KSClassDeclaration) {
             require(typeDecl.classKind == ClassKind.CLASS) { "Method expecting class" }
             require(typeDecl.modifiers.contains(Modifier.DATA))
             if (typeDecl.modifiers.contains(Modifier.ABSTRACT)) {
@@ -167,7 +167,7 @@ object ConfigUtils {
         } else if (element.classKind == ClassKind.INTERFACE) {
             parseInterfaceFields(type, element)
         } else if (element.classKind == ClassKind.CLASS && element.modifiers.contains(Modifier.DATA)) {
-            parseDataClassFields(type, element)
+            parseDataClassFields(element)
         } else if (element.classKind == ClassKind.CLASS && element.getConstructors().any { it.modifiers.contains(Modifier.PUBLIC) && it.parameters.isEmpty() }) {
             parsePojoFields(type, element)
         } else {

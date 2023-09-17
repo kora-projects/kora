@@ -105,7 +105,7 @@ public class FallbackKoraAspect implements KoraAspect {
         return CodeBlock.builder().add("""
             return $L
                 .onErrorResume(e -> $L.canFallback(e), e -> $L);
-                 """, superMethod.toString(), fieldFallback, fallbackMethod).build();
+            """, superMethod.toString(), fieldFallback, fallbackMethod).build();
     }
 
     private CodeBlock buildBodyFlux(ExecutableElement method, FallbackMeta fallbackCall, String superCall, String fieldFallback) {
@@ -114,7 +114,7 @@ public class FallbackKoraAspect implements KoraAspect {
         return CodeBlock.builder().add("""
             return $L
                 .onErrorResume(e -> $L.canFallback(e), e -> $L);
-                 """, superMethod.toString(), fieldFallback, fallbackMethod).build();
+            """, superMethod.toString(), fieldFallback, fallbackMethod).build();
     }
 
     private CodeBlock buildMethodCall(ExecutableElement method, String call) {

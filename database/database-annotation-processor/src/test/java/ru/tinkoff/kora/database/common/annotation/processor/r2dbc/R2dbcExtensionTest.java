@@ -41,7 +41,7 @@ public class R2dbcExtensionTest {
                 TypeRef.of(R2dbcRowMapper.class, TestRow.class),
             }
         );
-        var k = cl.loadClass("ru.tinkoff.kora.database.common.annotation.processor.r2dbc.$R2dbcExtensionTest_TestRowR2dbcRowMapper");
+        var k = cl.loadClass("ru.tinkoff.kora.database.common.annotation.processor.r2dbc.$R2dbcExtensionTest_TestRow_R2dbcRowMapper");
         var mapper = (R2dbcRowMapper<TestRow>) k.getConstructors()[0].newInstance();
         var row = mock(Row.class);
 

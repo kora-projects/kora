@@ -221,25 +221,24 @@ public class SealedTest extends AbstractJsonAnnotationProcessorTest {
     @SuppressWarnings("unchecked")
     public void testSealedInterfaceJsonReaderExtension() throws IOException, ClassNotFoundException {
         compile(List.of(new JsonAnnotationProcessor(), new KoraAppProcessor()), """
-                @Json
-                @JsonDiscriminatorField("@type")
-                public sealed interface TestInterface {
-                    record Impl1(String value) implements TestInterface {}
-                    record Impl2(int value) implements TestInterface {}
-                }
-                """,
-            """
-                @KoraApp
-                public interface TestApp {
-                    @Root
-                    default String root(ru.tinkoff.kora.json.common.JsonReader<TestInterface> writer) { return ""; }
-                }
-                    """);
+            @Json
+            @JsonDiscriminatorField("@type")
+            public sealed interface TestInterface {
+                record Impl1(String value) implements TestInterface {}
+                record Impl2(int value) implements TestInterface {}
+            }
+            """, """
+            @KoraApp
+            public interface TestApp {
+                @Root
+                default String root(ru.tinkoff.kora.json.common.JsonReader<TestInterface> writer) { return ""; }
+            }
+            """);
         compileResult.assertSuccess();
         var supplier = (Supplier<ApplicationGraphDraw>) newObject("TestAppGraph");
         var draw = supplier.get();
         var graph = draw.init();
-        var rc = compileResult.loadClass("$TestInterfaceJsonReader");
+        var rc = compileResult.loadClass("$TestInterface_JsonReader");
         JsonReader<Object> reader = null;
         for (var node : draw.getNodes()) {
             var object = graph.get(node);
@@ -261,25 +260,24 @@ public class SealedTest extends AbstractJsonAnnotationProcessorTest {
     @SuppressWarnings("unchecked")
     public void testSealedInterfaceWriterJsonExtension() throws IOException, ClassNotFoundException {
         compile(List.of(new JsonAnnotationProcessor(), new KoraAppProcessor()), """
-                @Json
-                @JsonDiscriminatorField("@type")
-                public sealed interface TestInterface {
-                    record Impl1(String value) implements TestInterface {}
-                    record Impl2(int value) implements TestInterface {}
-                }
-                """,
-            """
-                @KoraApp
-                public interface TestApp {
-                    @Root
-                    default String root(ru.tinkoff.kora.json.common.JsonWriter<TestInterface> writer) { return ""; }
-                }
-                    """);
+            @Json
+            @JsonDiscriminatorField("@type")
+            public sealed interface TestInterface {
+                record Impl1(String value) implements TestInterface {}
+                record Impl2(int value) implements TestInterface {}
+            }
+            """, """
+            @KoraApp
+            public interface TestApp {
+                @Root
+                default String root(ru.tinkoff.kora.json.common.JsonWriter<TestInterface> writer) { return ""; }
+            }
+            """);
         compileResult.assertSuccess();
         var supplier = (Supplier<ApplicationGraphDraw>) newObject("TestAppGraph");
         var draw = supplier.get();
         var graph = draw.init();
-        var wc = compileResult.loadClass("$TestInterfaceJsonWriter");
+        var wc = compileResult.loadClass("$TestInterface_JsonWriter");
         JsonWriter<Object> writer = null;
         for (var node : draw.getNodes()) {
             var object = graph.get(node);

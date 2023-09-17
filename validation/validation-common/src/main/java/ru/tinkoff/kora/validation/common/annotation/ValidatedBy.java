@@ -13,5 +13,6 @@ import java.lang.annotation.*;
 @Target(value = {ElementType.ANNOTATION_TYPE})
 public @interface ValidatedBy {
 
+    @SuppressWarnings("rawtypes")
     Class<? extends ValidatorFactory> value();
 }

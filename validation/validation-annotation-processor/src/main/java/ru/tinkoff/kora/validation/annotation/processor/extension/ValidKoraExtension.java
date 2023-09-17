@@ -2,6 +2,7 @@ package ru.tinkoff.kora.validation.annotation.processor.extension;
 
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.KoraExtension;
@@ -57,7 +58,7 @@ public final class ValidKoraExtension implements KoraExtension {
 
         var validatedTypeElement = types.asElement(validatorArgumentType);
         var packageElement = elements.getPackageOf(validatedTypeElement).getQualifiedName().toString();
-        var validatorName = CommonUtils.getOuterClassesAsPrefix(validatedTypeElement) + validatedTypeElement.getSimpleName() + "_Validator";
+        var validatorName = NameUtils.generatedType(validatedTypeElement, ValidMeta.VALIDATOR_TYPE);
         var componentElement = elements.getTypeElement(packageElement + "." + validatorName);
 
         if (componentElement != null) {

@@ -43,6 +43,7 @@ import java.util.stream.Stream;
 
 import static org.openapitools.codegen.utils.StringUtils.*;
 
+@SuppressWarnings({"rawtypes","unchecked"})
 public class KoraCodegen extends DefaultCodegen {
 
     private final Logger LOGGER = LoggerFactory.getLogger(KoraCodegen.class);

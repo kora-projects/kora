@@ -174,6 +174,7 @@ public abstract class AbstractAnnotationProcessorTest {
         try {
             var type = compileResult.loadClass(appName + "Graph");
             var constructor = type.getConstructors()[0];
+            @SuppressWarnings("unchecked")
             var supplier = (Supplier<ApplicationGraphDraw>) constructor.newInstance();
             var draw = supplier.get();
             return new GraphContainer(draw);

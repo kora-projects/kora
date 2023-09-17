@@ -61,119 +61,6 @@ public class CommonUtils {
         }
     }
 
-    @Nullable
-    public static AnnotationMirror findAnnotation(Elements elements, Types types, Element element, TypeMirror annotationType) {
-        for (var a : elements.getAllAnnotationMirrors(element)) {
-            if (types.isSameType(a.getAnnotationType(), annotationType)) {
-                return a;
-            }
-        }
-        return null;
-    }
-
-    @Nullable
-    public static AnnotationMirror findAnnotation(Elements elements, Element element, ClassName annotationType) {
-        for (var a : elements.getAllAnnotationMirrors(element)) {
-            if (a.getAnnotationType().toString().equals(annotationType.canonicalName())) {
-                return a;
-            }
-        }
-        return null;
-    }
-
-    @Nullable
-    public static AnnotationMirror findDirectAnnotation(Element element, ClassName annotationType) {
-        for (var a : element.getAnnotationMirrors()) {
-            if (a.getAnnotationType().toString().equals(annotationType.canonicalName())) {
-                return a;
-            }
-        }
-        return null;
-    }
-
-    public static List<AnnotationMirror> findRepeatableAnnotationsOnElement(Element element, ClassName annotationType, ClassName containerClassName) {
-        var result = new ArrayList<AnnotationMirror>(2);
-        for (var a : element.getAnnotationMirrors()) {
-            var annotationTypeName = (TypeElement) a.getAnnotationType().asElement();
-            if (annotationTypeName.getQualifiedName().contentEquals(annotationType.canonicalName())) {
-                result.add(a);
-            }
-        }
-        for (var a : element.getAnnotationMirrors()) {
-            var containerAnnotationType = (TypeElement) a.getAnnotationType().asElement();
-            if (containerAnnotationType.getQualifiedName().contentEquals(containerClassName.canonicalName())) {
-                @SuppressWarnings("unchecked")
-                var value = (List<AnnotationValue>) a.getElementValues().values().iterator().next().getValue();
-                for (var annotationValue : value) {
-                    var am = (AnnotationMirror) annotationValue.getValue();
-                    result.add(am);
-                }
-            }
-        }
-        return result;
-    }
-
-    @Nullable
-    @SuppressWarnings("unchecked")
-    public static <T> T parseAnnotationValue(Elements elements, @Nullable AnnotationMirror annotationMirror, String name) {
-        if (annotationMirror == null) {
-            return null;
-        }
-        var annotationValues = elements.getElementValuesWithDefaults(annotationMirror);
-        for (var entry : annotationValues.entrySet()) {
-            if (entry.getKey().getSimpleName().contentEquals(name)) {
-                var value = entry.getValue();
-                if (value == null) {
-                    return null;
-                }
-                return (T) value.getValue();
-            }
-        }
-        return null;
-    }
-
-    @Nullable
-    @SuppressWarnings("unchecked")
-    public static <T> T parseAnnotationValueWithoutDefault(@Nullable AnnotationMirror annotationMirror, String name) {
-        if (annotationMirror == null) {
-            return null;
-        }
-        var annotationValues = annotationMirror.getElementValues();
-        for (var entry : annotationValues.entrySet()) {
-            if (entry.getKey().getSimpleName().contentEquals(name)) {
-                var value = entry.getValue();
-                if (value == null) {
-                    return (T) value;
-                }
-                if (value.getValue() instanceof List<?> list) {
-                    var result = list.stream().map(v -> (AnnotationValue) v).map(AnnotationValue::getValue).toList();
-                    return (T) result;
-                }
-                return (T) value.getValue();
-            }
-        }
-        return null;
-    }
-
-    @Deprecated
-    public static String getOuterClassesAsPrefix(Element element) {
-        return NameUtils.getOuterClassesAsPrefix(element);
-    }
-
-    public static String generatedName(Element element, ClassName suffix) {
-        return generatedName(element, suffix.simpleName());
-    }
-
-    public static String generatedName(Element element, String suffix) {
-        var prefix = new StringBuilder("$");
-        var parent = element.getEnclosingElement();
-        while (parent.getKind() != ElementKind.PACKAGE) {
-            prefix.insert(1, parent.getSimpleName().toString() + "_");
-            parent = parent.getEnclosingElement();
-        }
-        return prefix.toString() + element.getSimpleName() + "_" + suffix;
-    }
-
     public static List<ExecutableElement> findConstructors(TypeElement typeElement, Predicate<Set<Modifier>> modifiersFilter) {
         var result = new ArrayList<ExecutableElement>();
         for (var element : typeElement.getEnclosedElements()) {
@@ -224,15 +111,6 @@ public class CommonUtils {
             result.add((ExecutableElement) element);
         }
         return result;
-    }
-
-    public static TypeMirror[] parseTagValue(Element element) {
-        return parseAnnotationClassValue(element, Tag.class.getName());
-    }
-
-    public static boolean isFinal(Types types, TypeMirror mapperClass) {
-        var element = (TypeElement) types.asElement(mapperClass);
-        return element.getModifiers().contains(Modifier.FINAL);
     }
 
     public record MappersData(@Nullable List<TypeMirror> mapperClasses, Set<String> mapperTags) {
@@ -345,46 +223,18 @@ public class CommonUtils {
         return new MappersData(mapping, tag);
     }
 
-    public static TypeMirror[] parseAnnotationClassValue(Element element, String annotationName) {
-        return parseAnnotationClassValue(element, annotationName, "value");
-    }
-
-    @SuppressWarnings("unchecked")
-    public static TypeMirror[] parseAnnotationClassValue(Element element, String annotationName, String fieldName) {
-        return element.getAnnotationMirrors()
-            .stream()
-            .filter(m -> ((TypeElement) (m.getAnnotationType().asElement())).getQualifiedName().toString().equals(annotationName))
-            .findFirst()
-            .map(m -> m.getElementValues().entrySet()
-                .stream()
-                .filter(e -> e.getKey().getSimpleName().toString().equals(fieldName))
-                .map(Map.Entry::getValue)
-                .map(AnnotationValue::getValue)
-                .flatMap(l -> ((List<AnnotationValue>) l).stream())
-                .map(AnnotationValue::getValue)
-                .map(TypeMirror.class::cast)
-                .toArray(TypeMirror[]::new)
-            )
-            .orElseGet(() -> new TypeMirror[0]);
-    }
-
-    public static CodeBlock writeTagAnnotationValue(TypeMirror[] tag) {
-        var b = CodeBlock.builder()
-            .add("{");
-        for (var typeMirrorValue : tag) {
-            b.add("$T.class, ", typeMirrorValue);
-        }
-        return b.add("}").build();
-    }
-
-
+    @Nullable
     public static Class<?> getNamingStrategyConverterClass(Element element) {
-        var typeMirrors = parseAnnotationClassValue(element, NamingStrategy.class.getName());
-        if (typeMirrors.length == 0) return null;
-        var mirror = typeMirrors[0];
-        if (mirror instanceof DeclaredType) {
-            if (((DeclaredType) mirror).asElement() instanceof TypeElement) {
-                var className = ((TypeElement) ((DeclaredType) mirror).asElement()).getQualifiedName().toString();
+        var annotation = AnnotationUtils.findAnnotation(element, CommonClassNames.namingStrategy);
+        if (annotation == null) {
+            return null;
+        }
+        var typeMirrors = AnnotationUtils.<List<TypeMirror>>parseAnnotationValueWithoutDefault(annotation, "value");
+        if (typeMirrors == null || typeMirrors.isEmpty()) return null;
+        var mirror = typeMirrors.get(0);
+        if (mirror instanceof DeclaredType dt) {
+            if (dt.asElement() instanceof TypeElement te) {
+                var className = te.getQualifiedName().toString();
                 try {
                     return Class.forName(className);
                 } catch (ClassNotFoundException e) {

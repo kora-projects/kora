@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
-import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 
 import javax.annotation.Nullable;
@@ -20,7 +20,7 @@ public class JsonUtils {
     }
 
     public static String jsonWriterName(Element typeElement) {
-        return CommonUtils.getOuterClassesAsPrefix(typeElement) + typeElement.getSimpleName() + "JsonWriter";
+        return NameUtils.generatedType(typeElement, "JsonWriter");
     }
 
     public static String jsonWriterName(Types types, TypeMirror typeMirror) {
@@ -30,7 +30,7 @@ public class JsonUtils {
     }
 
     public static String jsonReaderName(TypeElement typeElement) {
-        return CommonUtils.getOuterClassesAsPrefix(typeElement) + typeElement.getSimpleName() + "JsonReader";
+        return NameUtils.generatedType(typeElement, "JsonReader");
     }
 
     public static String jsonReaderName(Types types, TypeMirror typeMirror) {

@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.kafka.symbol.processor.consumer
 
-import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.ParameterSpec
@@ -16,7 +15,7 @@ import ru.tinkoff.kora.ksp.common.TagUtils.tag
 import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 
 class KafkaContainerGenerator {
-    fun generate(controller: KSClassDeclaration, functionDeclaration: KSFunctionDeclaration, handler: HandlerFunction, parameters: List<ConsumerParameter>): FunSpec {
+    fun generate(functionDeclaration: KSFunctionDeclaration, handler: HandlerFunction, parameters: List<ConsumerParameter>): FunSpec {
         val keyType = handler.keyType
         val valueType = handler.valueType
         val handlerType = handler.funSpec.returnType!! as ParameterizedTypeName

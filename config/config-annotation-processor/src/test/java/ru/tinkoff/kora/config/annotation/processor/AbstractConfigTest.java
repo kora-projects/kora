@@ -27,9 +27,11 @@ public abstract class AbstractConfigTest extends AbstractAnnotationProcessorTest
             .toArray();
 
         try {
-            return (ConfigValueExtractor<Object>) this.compileResult.loadClass("$TestConfig_ConfigValueExtractor")
+            @SuppressWarnings("unchecked")
+            var result = (ConfigValueExtractor<Object>) this.compileResult.loadClass("$TestConfig_ConfigValueExtractor")
                 .getConstructors()[0]
                 .newInstance(args);
+            return result;
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }

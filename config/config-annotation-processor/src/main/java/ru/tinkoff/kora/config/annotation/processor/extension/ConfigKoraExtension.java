@@ -2,6 +2,7 @@ package ru.tinkoff.kora.config.annotation.processor.extension;
 
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.config.annotation.processor.ConfigClassNames;
 import ru.tinkoff.kora.config.annotation.processor.ConfigParserGenerator;
 import ru.tinkoff.kora.config.annotation.processor.ConfigUtils;
@@ -51,7 +52,7 @@ public final class ConfigKoraExtension implements KoraExtension {
         }
         var element = ((TypeElement) types.asElement(paramType));
         var packageElement = this.elements.getPackageOf(element);
-        var mapperName = CommonUtils.generatedName(element, ConfigClassNames.configValueExtractor);
+        var mapperName = NameUtils.generatedType(element, ConfigClassNames.configValueExtractor);
         if (AnnotationUtils.isAnnotationPresent(element, ConfigClassNames.configValueExtractorAnnotation)) {
             return () -> {
                 var maybeGenerated = this.elements.getTypeElement(packageElement.getQualifiedName() + "." + mapperName);

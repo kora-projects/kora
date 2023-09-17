@@ -64,7 +64,7 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
         compile(List.of(new KoraAppProcessor()), """
             @ru.tinkoff.kora.common.KoraApp
             public interface TestApp extends ru.tinkoff.kora.database.cassandra.CassandraModule {
-             
+
               @Root
               default String root(ru.tinkoff.kora.database.cassandra.mapper.result.CassandraResultSetMapper<java.util.List<TestRecord>> r) {return "";}
             }

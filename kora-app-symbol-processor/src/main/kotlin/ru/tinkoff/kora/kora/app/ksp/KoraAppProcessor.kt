@@ -295,7 +295,7 @@ class KoraAppProcessor(
         for (componentSymbol in componentOfSymbols) {
             componentSymbol.visitClass { componentDeclaration ->
                 if (componentDeclaration.classKind == ClassKind.CLASS && !componentDeclaration.modifiers.contains(Modifier.ABSTRACT)) {
-                    if (hasAopAnnotations(resolver, componentSymbol)) {
+                    if (hasAopAnnotations(componentSymbol)) {
                         kspLogger.info("Component found, waiting for aop proxy: ${componentSymbol.location}", componentSymbol)
                     } else {
                         kspLogger.info("Component found: ${componentDeclaration.toClassName().canonicalName}", componentSymbol)

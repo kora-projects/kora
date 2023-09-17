@@ -211,7 +211,7 @@ public class DependencyTest extends AbstractKoraAppTest {
             @KoraApp
             public interface ExampleApplication {
                 final class TestClass1 {}
-                
+
                 @Root
                 default String test(TestClass1 testClass) { return ""; }
             }
@@ -227,7 +227,7 @@ public class DependencyTest extends AbstractKoraAppTest {
             public interface ExampleApplication {
                 @Tag(TestClass1.class)
                 final class TestClass1 {}
-                
+
                 @Root
                 default String test(@Tag(TestClass1.class) TestClass1 testClass) { return ""; }
             }
@@ -242,7 +242,7 @@ public class DependencyTest extends AbstractKoraAppTest {
             @KoraApp
             public interface ExampleApplication {
                 final class TestClass1 {}
-                
+
                 @Root
                 default String test(@Tag(TestClass1.class) TestClass1 testClass) { return ""; }
             }

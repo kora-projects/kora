@@ -6,7 +6,7 @@ import java.util.function.Function;
 
 record GraphAddition(Function<KoraAppGraph, ?> function, GraphCandidate candidate) implements GraphModification {
 
-    private static final Class<?>[] TAGS_EMPTY = new Class[]{};
+    private static final Class<?>[] TAGS_EMPTY = new Class<?>[]{};
 
     @Override
     public void accept(ApplicationGraphDraw graphDraw) {

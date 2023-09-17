@@ -45,7 +45,7 @@ public class OpentelemetryJmsConsumerTracer implements JmsConsumerTracer {
             .spanBuilder(destinationString + " receive")
             .setSpanKind(SpanKind.CONSUMER)
             .setAttribute(SemanticAttributes.MESSAGING_SYSTEM, "jms")
-            .setAttribute(SemanticAttributes.MESSAGING_DESTINATION, destinationString)
+            .setAttribute(SemanticAttributes.MESSAGING_DESTINATION_NAME, destinationString)
             .setAttribute(SemanticAttributes.MESSAGING_DESTINATION_KIND, destinationKind)
             .setAttribute(SemanticAttributes.MESSAGING_MESSAGE_ID, message.getJMSMessageID());
 

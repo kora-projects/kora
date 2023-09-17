@@ -17,11 +17,11 @@ public class NameUtils {
         return prefix.toString();
     }
 
-    public static String generatedType(TypeElement from, String postfix) {
+    public static String generatedType(Element from, String postfix) {
         return NameUtils.getOuterClassesAsPrefix(from) + from.getSimpleName() + "_" + postfix;
     }
 
-    public static String generatedType(TypeElement from, ClassName postfix) {
+    public static String generatedType(Element from, ClassName postfix) {
         return NameUtils.getOuterClassesAsPrefix(from) + from.getSimpleName() + "_" + postfix.simpleName();
     }
 }

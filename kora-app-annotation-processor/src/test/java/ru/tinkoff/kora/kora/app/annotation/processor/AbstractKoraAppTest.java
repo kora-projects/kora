@@ -29,6 +29,7 @@ public abstract class AbstractKoraAppTest extends AbstractAnnotationProcessorTes
 
         try {
             var appClass = compileResult.loadClass("ExampleApplicationGraph");
+            @SuppressWarnings("unchecked")
             var object = (Supplier<ApplicationGraphDraw>) appClass.getConstructor().newInstance();
             return object.get();
         } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {

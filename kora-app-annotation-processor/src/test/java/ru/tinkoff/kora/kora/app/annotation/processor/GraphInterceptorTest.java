@@ -11,7 +11,7 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
         var draw = compile("""
             import ru.tinkoff.kora.application.graph.GraphInterceptor;
             import reactor.core.publisher.Mono;
-                        
+
             @KoraApp
             public interface ExampleApplication {
                 class TestRoot {}
@@ -20,7 +20,7 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
                     public TestClass init(TestClass value) {
                         return value;
                     }
-                
+
                     public TestClass release(TestClass value) {
                         return value;
                     }
@@ -30,11 +30,11 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
                 default TestRoot root(TestClass testClass) {
                     return new TestRoot();
                 }
-                
+
                 default TestInterceptor interceptor() {
                     return new TestInterceptor();
                 }
-                
+
                 default TestClass testClass() {
                     return new TestClass();
                 }
@@ -50,7 +50,7 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
         var draw = compile("""
             import ru.tinkoff.kora.application.graph.GraphInterceptor;
             import reactor.core.publisher.Mono;
-                        
+
             @KoraApp
             public interface ExampleApplication {
                 class TestRoot {}
@@ -58,7 +58,7 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
                     public TestRoot init(TestRoot value) {
                         return value;
                     }
-                
+
                     public TestRoot release(TestRoot value) {
                         return value;
                     }
@@ -68,7 +68,7 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
                 default TestRoot root() {
                     return new TestRoot();
                 }
-                
+
                 default TestInterceptor interceptor() {
                     return new TestInterceptor();
                 }

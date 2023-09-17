@@ -4,6 +4,7 @@ import com.squareup.javapoet.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.database.annotation.processor.cassandra.CassandraRepositoryGenerator;
@@ -40,7 +41,7 @@ public class RepositoryBuilder {
     @Nullable
     public TypeSpec build(TypeElement repositoryElement) throws ProcessingErrorException, IOException {
         log.info("Generating Repository for {}", repositoryElement);
-        var name = CommonUtils.getOuterClassesAsPrefix(repositoryElement) + repositoryElement.getSimpleName().toString() + "_Impl";
+        var name = NameUtils.generatedType(repositoryElement, "Impl");
         var builder = CommonUtils.extendsKeepAop(repositoryElement, name)
             .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", CodeBlock.of("$S", RepositoryBuilder.class.getCanonicalName())).build())
             .addOriginatingElement(repositoryElement);

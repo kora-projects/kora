@@ -135,7 +135,7 @@ sealed interface ComponentDependency {
     data class PromisedProxyParameterDependency(val declaration: ComponentDeclaration, override val claim: DependencyClaim) : ComponentDependency {
         override fun write(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>): CodeBlock {
             val dependencies = GraphResolutionHelper.findDependency(ctx, declaration, resolvedComponents, this.claim)
-            return CodeBlock.of("it.promiseOf(self.%N.%N)", dependencies!!.component!!.holderName, dependencies!!.component!!.fieldName)
+            return CodeBlock.of("it.promiseOf(self.%N.%N)", dependencies!!.component!!.holderName, dependencies.component!!.fieldName)
         }
 
     }

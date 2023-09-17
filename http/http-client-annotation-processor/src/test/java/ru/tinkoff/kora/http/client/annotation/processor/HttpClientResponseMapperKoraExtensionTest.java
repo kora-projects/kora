@@ -14,7 +14,7 @@ public class HttpClientResponseMapperKoraExtensionTest extends AbstractAnnotatio
         compile(List.of(new KoraAppProcessor()), """
             import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper;
             import java.util.concurrent.CompletionStage;
-                        
+
             @KoraApp
             public interface TestApp {
               default HttpClientResponseMapper<CompletionStage<String>> stringMapper() {
