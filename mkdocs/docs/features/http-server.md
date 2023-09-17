@@ -50,8 +50,8 @@ public interface HttpServerRequestHandler {
 import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.HttpMethod;
 import ru.tinkoff.kora.http.common.annotation.HttpRoute;
+import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
-import ru.tinkoff.kora.http.server.common.SimpleHttpServerResponse;
 import ru.tinkoff.kora.http.server.common.annotation.HttpController;
 
 import java.nio.charset.StandardCharsets;
@@ -60,11 +60,9 @@ import java.nio.charset.StandardCharsets;
 public final class HelloWorldController {
     @HttpRoute(method = HttpMethod.GET, path = "/hello/world")
     public HttpServerResponse helloWorld() {
-        return new SimpleHttpServerResponse(
+        return HttpServerResponse.of(
             200,
-            "text/plain",
-            HttpHeaders.of(),
-            StandardCharsets.UTF_8.encode("Hello world")
+            HttpBody.plaintext("Hello world")
         );
     }
 }
@@ -113,7 +111,7 @@ public final class HelloWorldController {
 ```java
 import ru.tinkoff.kora.common.Module;
 import ru.tinkoff.kora.common.Tag;
-import ru.tinkoff.kora.http.server.common.HttpServerRequestHandler;
+import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandlerImpl;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper;

@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.http.client.common.form;
 
 import org.junit.jupiter.api.Test;
-import ru.tinkoff.kora.common.util.ReactorUtils;
+import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.common.form.FormMultipart;
 
@@ -35,10 +35,10 @@ class MultipartWriterTest {
             FormMultipart.file("field2", "example1.txt", "text/plain", "value2".getBytes(StandardCharsets.UTF_8)),
             FormMultipart.file("field3", "example2.txt", "text/plain", "value3".getBytes(StandardCharsets.UTF_8))
         )).build();
-        var s = ReactorUtils.toByteArrayMono(b.body())
-            .map(_b -> new String(_b, StandardCharsets.UTF_8))
-            .block();
+        var s = FlowUtils.toByteArrayFuture(b.body())
+            .thenApply(_b -> new String(_b, StandardCharsets.UTF_8))
+            .join();
         assertThat(s).isEqualTo(e);
-        assertThat(b.headers().getFirst("content-type")).isEqualTo("multipart/form-data;boundary=\"boundary\"");
+        assertThat(b.body().contentType()).isEqualTo("multipart/form-data;boundary=\"boundary\"");
     }
 }

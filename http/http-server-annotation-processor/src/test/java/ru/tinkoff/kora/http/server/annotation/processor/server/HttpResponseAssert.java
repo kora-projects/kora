@@ -2,13 +2,11 @@ package ru.tinkoff.kora.http.server.annotation.processor.server;
 
 import org.assertj.core.api.AbstractByteArrayAssert;
 import org.assertj.core.api.Assertions;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Base64;
 
 public class HttpResponseAssert {
@@ -21,34 +19,27 @@ public class HttpResponseAssert {
 
     public HttpResponseAssert(HttpServerResponse httpResponse) {
         this.code = httpResponse.code();
-        this.contentLength = httpResponse.contentLength();
-        this.contentType = httpResponse.contentType();
+        this.contentLength = httpResponse.body() == null ? -1 : httpResponse.body().contentLength();
+        this.contentType = httpResponse.body() == null ? null : httpResponse.body().contentType();
         this.headers = httpResponse.headers();
-        this.body = Flux.from(httpResponse.body())
-            .reduce(new byte[0], (bytes, byteBuffer) -> {
-                var newArr = Arrays.copyOf(bytes, bytes.length + byteBuffer.remaining());
-                byteBuffer.get(newArr, bytes.length, byteBuffer.remaining());
-                return newArr;
-            })
-            .switchIfEmpty(Mono.just(new byte[0]))
-            .block();
+        this.body = httpResponse.body() == null ? new byte[0] : FlowUtils.toByteArrayFuture(httpResponse.body()).join();
     }
 
-    public HttpResponseAssert verifyStatus(int expected) {
+    public HttpResponseAssert hasStatus(int expected) {
         Assertions.assertThat(this.code)
             .withFailMessage("Expected response code %d, got %d(%s)", expected, this.code, new String(this.body, StandardCharsets.UTF_8))
             .isEqualTo(expected);
         return this;
     }
 
-    public HttpResponseAssert verifyContentLength(int expected) {
+    public HttpResponseAssert hasContentLength(int expected) {
         Assertions.assertThat(this.contentLength)
             .withFailMessage("Expected response body length %d, got %d", this.contentLength, expected)
             .isEqualTo(expected);
         return this;
     }
 
-    public HttpResponseAssert verifyBody(byte[] expected) {
+    public HttpResponseAssert hasBody(byte[] expected) {
 
         Assertions.assertThat(this.body)
             .withFailMessage(() -> {
@@ -61,7 +52,19 @@ public class HttpResponseAssert {
         return this;
     }
 
-    public HttpResponseAssert verifyBody(String expected) {
+    public HttpResponseAssert hasNoBody() {
+
+        Assertions.assertThat(this.body)
+            .withFailMessage(() -> {
+                var gotBase64 = Base64.getEncoder().encodeToString(this.body).indent(4);
+
+                return "Expected response body: \nempty\n\n\tgot: \n%s".formatted(gotBase64);
+            })
+            .isEqualTo(new byte[0]);
+        return this;
+    }
+
+    public HttpResponseAssert hasBody(String expected) {
         var bodyString = new String(this.body, StandardCharsets.UTF_8);
 
         Assertions.assertThat(bodyString)
@@ -70,7 +73,15 @@ public class HttpResponseAssert {
         return this;
     }
 
-    public AbstractByteArrayAssert<?> verifyBody() {
+    public AbstractByteArrayAssert<?> hasBody() {
         return Assertions.assertThat(this.body);
+    }
+
+    public HttpResponseAssert hasHeader(String header, String value) {
+        var actualValue = this.headers.getFirst(header);
+
+        Assertions.assertThat(actualValue).isEqualTo(value);
+
+        return this;
     }
 }

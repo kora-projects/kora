@@ -132,9 +132,9 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
                 }
             } else {
                 if (connectionParam == null) {
-                    b.addCode("$T.batchMono(this._connectionFactory, _query, _batchParams)\n", VertxTypes.REPOSITORY_HELPER);
+                    b.addCode("$T.Reactor.batchMono(this._connectionFactory, _query, _batchParams)\n", VertxTypes.REPOSITORY_HELPER);
                 } else {
-                    b.addCode("$T.batchMono($N, this._connectionFactory.telemetry(), _query, _batchParams)\n", VertxTypes.REPOSITORY_HELPER, connectionParam.name());
+                    b.addCode("$T.Reactor.batchMono($N, this._connectionFactory.telemetry(), _query, _batchParams)\n", VertxTypes.REPOSITORY_HELPER, connectionParam.name());
                 }
                 if (isVoid) {
                     b.addCode("  .then()\n");
@@ -142,15 +142,15 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
             }
         } else if (isFlux) {
             if (connectionParam == null) {
-                b.addCode("$T.flux(this._connectionFactory, _query, _tuple, $L)\n", VertxTypes.REPOSITORY_HELPER, resultMapperName);
+                b.addCode("$T.Reactor.flux(this._connectionFactory, _query, _tuple, $L)\n", VertxTypes.REPOSITORY_HELPER, resultMapperName);
             } else {
-                b.addCode("$T.flux($N, this._connectionFactory.telemetry(), _query, _tuple, $L)\n", VertxTypes.REPOSITORY_HELPER, connectionParam.name(), resultMapperName);
+                b.addCode("$T.Reactor.flux($N, this._connectionFactory.telemetry(), _query, _tuple, $L)\n", VertxTypes.REPOSITORY_HELPER, connectionParam.name(), resultMapperName);
             }
         } else if (isMono) {
             if (connectionParam == null) {
-                b.addCode("$T.mono(this._connectionFactory, _query, _tuple, $L)\n", VertxTypes.REPOSITORY_HELPER, resultMapper);
+                b.addCode("$T.Reactor.mono(this._connectionFactory, _query, _tuple, $L)\n", VertxTypes.REPOSITORY_HELPER, resultMapper);
             } else {
-                b.addCode("$T.mono($N, this._connectionFactory.telemetry(), _query, _tuple, $L)\n", VertxTypes.REPOSITORY_HELPER, connectionParam.name(), resultMapper);
+                b.addCode("$T.Reactor.mono($N, this._connectionFactory.telemetry(), _query, _tuple, $L)\n", VertxTypes.REPOSITORY_HELPER, connectionParam.name(), resultMapper);
             }
         } else {
             if (connectionParam == null) {

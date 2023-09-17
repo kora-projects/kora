@@ -1,12 +1,11 @@
 package ru.tinkoff.kora.database.vertx;
 
 import io.netty.channel.EventLoopGroup;
-import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Transaction;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.common.Context;
@@ -14,8 +13,8 @@ import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory;
 import ru.tinkoff.kora.vertx.common.VertxUtil;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 public class VertxDatabase implements Lifecycle, Wrapped<Pool>, VertxConnectionFactory {
@@ -65,107 +64,91 @@ public class VertxDatabase implements Lifecycle, Wrapped<Pool>, VertxConnectionF
     }
 
     @Override
-    public <T> Mono<T> withConnection(Function<SqlConnection, Mono<T>> callback) {
-        return Mono.deferContextual(reactorContext -> {
-            var ctx = Context.Reactor.current(reactorContext);
-            var currentConnection = ctx.get(this.connectionKey);
-            if (currentConnection != null) {
-                return callback.apply(currentConnection);
-            }
-            return Mono.<T>create(sink -> this.pool.withConnection(connection -> {
-                    ctx.set(this.connectionKey, connection);
+    public <T> CompletionStage<T> withConnection(Function<SqlConnection, CompletionStage<T>> callback) {
+        var ctx = Context.current();
+        var currentConnection = ctx.get(this.connectionKey);
+        if (currentConnection != null) {
+            return callback.apply(currentConnection);
+        }
 
-                    var complete = new AtomicBoolean();
-
-                    return Future.<T>future(promise -> {
+        return this.pool.withConnection(connection -> {
+            ctx.set(this.connectionKey, connection);
+            var f = Promise.<T>promise();
+            var old = Context.current();
+            try {
+                ctx.inject();
+                callback.apply(connection).whenComplete((result, error) -> {
+                    var old1 = Context.current();
+                    try {
                         ctx.inject();
-                        callback.apply(connection).subscribe(
-                            v -> {
-                                if (complete.compareAndSet(false, true)) {
-                                    promise.complete(v);
-                                }
-                            },
-                            promise::fail,
-                            () -> {
-                                if (complete.compareAndSet(false, true)) {
-                                    promise.complete();
-                                }
-                            },
-                            Context.Reactor.inject(reactorContext, ctx)
-                        );
-                    });
-                }, asyncResult -> {
-                    if (asyncResult.failed()) {
-                        sink.error(asyncResult.cause());
-                    } else {
-                        sink.success(asyncResult.result());
+                        if (error != null) {
+                            f.fail(error);
+                        } else {
+                            f.complete(result);
+                        }
+                    } finally {
+                        old1.inject();
                     }
-                    ctx.remove(this.connectionKey);
-                }))
-                .contextWrite(c -> Context.Reactor.inject(c, ctx));
-        });
+                });
+            } finally {
+                old.inject();
+            }
+            return f.future();
+        }).toCompletionStage();
     }
 
     @Override
-    public <T> Mono<T> inTx(Function<SqlConnection, Mono<T>> callback) {
-        return this.withConnection(connection -> Mono.deferContextual(reactorContext -> {
-            var ctx = Context.Reactor.current(reactorContext);
+    public <T> CompletionStage<T> inTx(Function<SqlConnection, CompletionStage<T>> callback) {
+        var ctx = Context.current();
+        return this.withConnection(connection -> {
             var currentTransaction = ctx.get(this.transactionKey);
             if (currentTransaction != null) {
                 return callback.apply(connection);
             }
-            return Mono.create(sink -> connection.begin(txEvent -> {
+            var future = new CompletableFuture<T>();
+            connection.begin(txEvent -> {
                 ctx.inject();
                 if (txEvent.failed()) {
-                    sink.error(txEvent.cause());
+                    future.completeExceptionally(txEvent.cause());
                     return;
                 }
                 var tx = txEvent.result();
                 ctx.set(this.transactionKey, tx);
-                var completed = new AtomicBoolean(false);
-                callback.apply(connection).subscribe(
-                    result -> {},
-                    error -> {
-                        if (completed.compareAndSet(false, true)) {
-                            tx.rollback(v -> {
-                                var oldCtx = Context.current();
-                                try {
-                                    ctx.inject();
-                                    if (v.failed()) {
-                                        error.addSuppressed(v.cause());
-                                    }
-                                    sink.error(error);
-                                } finally {
-                                    ctx.remove(this.transactionKey);
-                                    oldCtx.inject();
+                callback.apply(connection).whenComplete((result, error) -> {
+                    if (error != null) {
+                        tx.rollback(v -> {
+                            var oldCtx = Context.current();
+                            try {
+                                ctx.inject();
+                                if (v.failed()) {
+                                    error.addSuppressed(v.cause());
                                 }
-                            });
-                        }
-                    },
-                    () -> {
-                        if (completed.compareAndSet(false, true)) {
-                            tx.commit(v -> {
-                                var oldCtx1 = Context.current();
-                                try {
-                                    ctx.inject();
-                                    if (v.succeeded()) {
-                                        sink.success();
-                                    } else {
-                                        sink.error(v.cause());
-                                    }
-                                } finally {
-                                    ctx.remove(this.transactionKey);
-                                    oldCtx1.inject();
+                                future.completeExceptionally(error);
+                            } finally {
+                                ctx.remove(this.transactionKey);
+                                oldCtx.inject();
+                            }
+                        });
+                    } else {
+                        tx.commit(v -> {
+                            var oldCtx1 = Context.current();
+                            try {
+                                ctx.inject();
+                                if (v.succeeded()) {
+                                    future.complete(result);
+                                } else {
+                                    future.completeExceptionally(v.cause());
                                 }
-                            });
-                        } else {
-                            ctx.remove(this.transactionKey);
-                        }
-                    },
-                    Context.Reactor.inject(reactorContext, ctx)
-                );
-            }));
-        }));
+                            } finally {
+                                ctx.remove(this.transactionKey);
+                                oldCtx1.inject();
+                            }
+                        });
+                    }
+                });
+            });
+            return future;
+        });
     }
 
     @Override

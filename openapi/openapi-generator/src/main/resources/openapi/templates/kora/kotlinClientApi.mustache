@@ -7,7 +7,6 @@ package {{package}}
 
 {{#imports}}import {{import}}
 {{/imports}}
-import reactor.core.publisher.Mono
 import ru.tinkoff.kora.http.client.common.annotation.HttpClient;
 import ru.tinkoff.kora.http.common.annotation.HttpRoute;
 import ru.tinkoff.kora.http.client.common.annotation.ResponseCodeMapper;
@@ -55,7 +54,7 @@ interface {{classname}} {
     {{/implicitHeaders}}{{#responses}}
     @ResponseCodeMapper(code = {{#isDefault}}-1{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, mapper = {{classname}}ClientResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper::class){{/responses}}{{#hasAuthMethods}}
     @InterceptWith(tag = Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}::class), value = HttpClientInterceptor::class){{/hasAuthMethods}}
-    suspend fun {{operationId}}({{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse
+    {{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}({{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse
 
 {{#hasFormParams}}
     data class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(

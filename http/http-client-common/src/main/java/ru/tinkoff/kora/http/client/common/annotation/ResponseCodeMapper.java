@@ -16,9 +16,9 @@ public @interface ResponseCodeMapper {
 
     Class<?> type() default Object.class;
 
-    Class<? extends HttpClientResponseMapper<?, ?>> mapper() default DefaultHttpClientResponseMapper.class;
+    Class<? extends HttpClientResponseMapper> mapper() default DefaultHttpClientResponseMapper.class;
 
-    class DefaultHttpClientResponseMapper implements HttpClientResponseMapper<Object, Mono<Object>> {
+    class DefaultHttpClientResponseMapper implements HttpClientResponseMapper<Object> {
 
         @Override
         public Mono<Object> apply(HttpClientResponse response) {

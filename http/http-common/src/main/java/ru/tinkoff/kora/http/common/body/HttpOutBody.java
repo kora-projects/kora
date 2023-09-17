@@ -1,0 +1,96 @@
+package ru.tinkoff.kora.http.common.body;
+
+
+import javax.annotation.Nullable;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.Flow;
+
+public interface HttpOutBody extends HttpBody, Flow.Publisher<ByteBuffer> {
+    static HttpOutBody of(String contentType, Flow.Publisher<? extends ByteBuffer> content) {
+        return new StreamingHttpOutBody(contentType, -1, content);
+    }
+
+    static HttpOutBody of(String contentType, int length, Flow.Publisher<? extends ByteBuffer> content) {
+        return new StreamingHttpOutBody(contentType, length, content);
+    }
+
+    static HttpOutBody octetStream(Flow.Publisher<? extends ByteBuffer> content) {
+        return new StreamingHttpOutBody("application/octet-stream", -1, content);
+    }
+
+    static HttpOutBody octetStream(int length, Flow.Publisher<? extends ByteBuffer> content) {
+        return new StreamingHttpOutBody("application/octet-stream", length, content);
+    }
+
+    int contentLength();
+
+    @Nullable
+    String contentType();
+
+    @Override
+    void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber);
+
+    default void write(OutputStream os) throws IOException {
+        var f = new CompletableFuture<Void>();
+        this.subscribe(new Flow.Subscriber<ByteBuffer>() {
+            Flow.Subscription s;
+
+            @Override
+            public void onSubscribe(Flow.Subscription s) {
+                s.request(Long.MAX_VALUE);
+                this.s = s;
+            }
+
+            @Override
+            public void onNext(ByteBuffer byteBuffer) {
+                if (byteBuffer.hasArray()) {
+                    try {
+                        os.write(byteBuffer.array(), byteBuffer.arrayOffset(), byteBuffer.remaining());
+                    } catch (IOException e) {
+                        this.s.cancel();
+                        f.completeExceptionally(e);
+                    }
+                } else {
+                    var arr = new byte[byteBuffer.remaining()];
+                    byteBuffer.get(arr);
+                    try {
+                        os.write(arr);
+                    } catch (IOException e) {
+                        this.s.cancel();
+                        f.completeExceptionally(e);
+                    }
+                }
+            }
+
+            @Override
+            public void onError(Throwable t) {
+                f.completeExceptionally(t);
+            }
+
+            @Override
+            public void onComplete() {
+                try {
+                    os.flush();
+                    f.complete(null);
+                } catch (IOException e) {
+                    f.completeExceptionally(e);
+                }
+            }
+        });
+        try {
+            f.join();
+        } catch (CompletionException e) {
+            if (e.getCause() instanceof IOException ioException) {
+                throw ioException;
+            }
+            if (e.getCause() instanceof RuntimeException re) {
+                throw re;
+            }
+            throw new IOException(e.getCause());
+        }
+    }
+}

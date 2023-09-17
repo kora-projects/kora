@@ -8,7 +8,7 @@ import javax.annotation.Nullable;
 
 public interface HttpClientTelemetry {
 
-    interface HttpServerTelemetryContext {
+    interface HttpClientTelemetryContext {
         HttpClientRequest request();
 
         HttpClientResponse close(@Nullable HttpClientResponse response, @Nullable Throwable exception);
@@ -16,5 +16,5 @@ public interface HttpClientTelemetry {
 
     boolean isEnabled();
 
-    HttpServerTelemetryContext get(Context ctx, HttpClientRequest request);
+    HttpClientTelemetryContext get(Context ctx, HttpClientRequest request);
 }

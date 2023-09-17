@@ -5,6 +5,8 @@ import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
+import org.reactivestreams.FlowAdapters;
+import org.reactivestreams.Publisher;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.compile.ByteArrayJavaFileObject;
 import ru.tinkoff.kora.annotation.processor.common.compile.KoraCompileTestJavaFileManager;
@@ -23,6 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Flow;
 import java.util.concurrent.Future;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -241,6 +244,24 @@ public abstract class AbstractAnnotationProcessorTest {
             this.object = object;
         }
 
+        public TestObject(Class<?> objectClass, List<Object> arguments) {
+            try {
+                var realArgs = new Object[arguments.size()];
+                for (int i = 0; i < realArgs.length; i++) {
+                    var arg = arguments.get(i);
+                    if (arg instanceof GeneratedResultCallback<?> gr) {
+                        arg = gr.get();
+                    }
+                    realArgs[i] = arg;
+                }
+                this.object = objectClass.getConstructors()[0].newInstance(realArgs);
+                this.objectClass = objectClass;
+            } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+
         @SuppressWarnings("unchecked")
         public <T> T invoke(String methodName, Object... args) {
             for (var method : objectClass.getDeclaredMethods()) {
@@ -248,8 +269,11 @@ public abstract class AbstractAnnotationProcessorTest {
                     method.setAccessible(true);
                     try {
                         var result = method.invoke(this.object, args);
-                        if (result instanceof Mono<?> mono) {
-                            return (T) mono.block();
+                        if (result instanceof Publisher<?> mono) {
+                            return (T) Mono.from(mono).block();
+                        }
+                        if (result instanceof Flow.Publisher<?> mono) {
+                            return (T) Mono.from(FlowAdapters.toPublisher(mono)).block();
                         }
                         if (result instanceof Future<?> future) {
                             return (T) future.get();
@@ -258,10 +282,14 @@ public abstract class AbstractAnnotationProcessorTest {
                     } catch (InvocationTargetException e) {
                         if (e.getTargetException() instanceof RuntimeException re) {
                             throw re;
-                        } else {
-                            throw new RuntimeException(e);
                         }
-                    } catch (IllegalAccessException | ExecutionException | InterruptedException e) {
+                        throw new RuntimeException(e);
+                    } catch (ExecutionException e) {
+                        if (e.getCause() instanceof RuntimeException re) {
+                            throw re;
+                        }
+                        throw new RuntimeException(e);
+                    } catch (IllegalAccessException | InterruptedException e) {
                         throw new RuntimeException(e);
                     }
                 }

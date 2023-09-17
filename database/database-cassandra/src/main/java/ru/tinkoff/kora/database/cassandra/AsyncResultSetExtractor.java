@@ -13,11 +13,7 @@ import java.util.concurrent.CompletionStage;
 public class AsyncResultSetExtractor {
     public static <T> CompletionStage<List<T>> extractAndMapRows(AsyncResultSet resultSet, List<T> previousResults, CassandraRowMapper<T> rowMapper) {
         for (var row : resultSet.currentPage()) {
-            try {
-                previousResults.add(rowMapper.apply(row));
-            } catch (Throwable throwable) {
-                throw Exceptions.propagate(throwable);
-            }
+            previousResults.add(rowMapper.apply(row));
         }
         if (resultSet.hasMorePages()) {
             return resultSet.fetchNextPage().thenCompose(nextRs -> extractAndMapRows(nextRs, previousResults, rowMapper));

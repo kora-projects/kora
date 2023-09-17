@@ -6,6 +6,8 @@ import java.util.List;
 
 
 public class CommonClassNames {
+    public static final ClassName context = ClassName.get("ru.tinkoff.kora.common", "Context");
+    public static final ClassName flowUtils = ClassName.get("ru.tinkoff.kora.common.util", "FlowUtils");
     public static final ClassName publisher = ClassName.get("org.reactivestreams", "Publisher");
     public static final ClassName mono = ClassName.get("reactor.core.publisher", "Mono");
     public static final ClassName flux = ClassName.get("reactor.core.publisher", "Flux");

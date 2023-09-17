@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.http.client.common;
 
 import org.assertj.core.api.AbstractByteArrayAssert;
-import ru.tinkoff.kora.http.client.common.response.BlockingHttpResponse;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.common.HttpHeaders;
 
@@ -12,10 +11,6 @@ public record ResponseWithBody(int code, HttpHeaders headers, byte[] body) {
     }
 
     public ResponseWithBody(HttpClientResponse response, byte[] body) {
-        this(response.code(), response.headers(), body);
-    }
-
-    public ResponseWithBody(BlockingHttpResponse response, byte[] body) {
         this(response.code(), response.headers(), body);
     }
 

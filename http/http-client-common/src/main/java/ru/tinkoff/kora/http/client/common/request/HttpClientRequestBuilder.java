@@ -1,12 +1,16 @@
 package ru.tinkoff.kora.http.client.common.request;
 
-import reactor.core.publisher.Flux;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.http.common.HttpHeaders;
+import ru.tinkoff.kora.http.common.body.HttpBody;
+import ru.tinkoff.kora.http.common.body.HttpOutBody;
 
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.ByteBuffer;
+import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.Flow;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -16,8 +20,9 @@ public class HttpClientRequestBuilder {
     private List<HttpClientRequest.TemplateParam> templateParams = new ArrayList<>();
     private List<HttpClientRequest.QueryParam> queryParams = new ArrayList<>();
     private HashMap<String, List<String>> headers = new HashMap<>();
-    private Flux<ByteBuffer> body = Flux.empty();
-    private int requestTimeout = -1;
+    private HttpOutBody body = HttpBody.empty();
+    @Nullable
+    private Duration requestTimeout;
 
     public HttpClientRequestBuilder(String method, String uriTemplate) {
         this.method = method;
@@ -130,25 +135,55 @@ public class HttpClientRequestBuilder {
     }
 
     public HttpClientRequestBuilder requestTimeout(int requestTimeout) {
+        this.requestTimeout = Duration.ofMillis(requestTimeout);
+
+        return this;
+    }
+
+    public HttpClientRequestBuilder requestTimeout(@Nullable Duration requestTimeout) {
         this.requestTimeout = requestTimeout;
 
         return this;
     }
 
-    public HttpClientRequestBuilder body(Flux<ByteBuffer> body) {
-        this.body = body;
+    public HttpClientRequestBuilder body(HttpOutBody body) {
+        this.body = Objects.requireNonNull(body);
+
+        return this;
+    }
+
+    public HttpClientRequestBuilder body(Flow.Publisher<ByteBuffer> body) {
+        this.body = HttpOutBody.of(null, body);
+
+        return this;
+    }
+
+    public HttpClientRequestBuilder body(String contentType, Flow.Publisher<ByteBuffer> body) {
+        this.body = HttpOutBody.of(contentType, body);
 
         return this;
     }
 
     public HttpClientRequestBuilder body(ByteBuffer body) {
-        this.body = Flux.just(body);
+        this.body = HttpBody.of(null, body);
+
+        return this;
+    }
+
+    public HttpClientRequestBuilder body(String contentType, ByteBuffer body) {
+        this.body = HttpBody.of(contentType, body);
 
         return this;
     }
 
     public HttpClientRequestBuilder body(byte[] body) {
-        this.body = Flux.just(ByteBuffer.wrap(body));
+        this.body = HttpBody.of(null, body);
+
+        return this;
+    }
+
+    public HttpClientRequestBuilder body(String contentType, byte[] body) {
+        this.body = HttpBody.of(contentType, body);
 
         return this;
     }

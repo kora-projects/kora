@@ -1,7 +1,8 @@
 package ru.tinkoff.kora.http.server.common;
 
-import reactor.core.publisher.Flux;
 import ru.tinkoff.kora.http.common.HttpHeaders;
+import ru.tinkoff.kora.http.common.body.HttpBody;
+import ru.tinkoff.kora.http.common.body.HttpOutBody;
 
 import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
@@ -13,10 +14,6 @@ public class HttpServerResponseException extends RuntimeException implements Htt
     private final String contentType;
     private final ByteBuffer body;
     private final HttpHeaders headers;
-
-    public HttpServerResponseException(int code, String contentType, String message, ByteBuffer body, HttpHeaders headers) {
-        this(null, message, code, contentType, body, headers);
-    }
 
     public HttpServerResponseException(@Nullable Throwable cause, String message, int code, String contentType, ByteBuffer body, HttpHeaders headers) {
         super(message, cause);
@@ -40,32 +37,22 @@ public class HttpServerResponseException extends RuntimeException implements Htt
     }
 
     @Override
-    public int contentLength() {
-        return this.body.remaining();
-    }
-
-    @Override
-    public String contentType() {
-        return this.contentType;
-    }
-
-    @Override
     public HttpHeaders headers() {
         return this.headers;
     }
 
     @Override
-    public Flux<? extends ByteBuffer> body() {
-        return Flux.just(this.body.slice());
+    public HttpOutBody body() {
+        return HttpBody.of(contentType, this.body.slice());
     }
 
     @Override
     public String toString() {
         return "HttpResponseException{" +
-               "message=" + getMessage() +
-               "code=" + code +
-               ", contentType='" + contentType + '\'' +
-               ", headers=" + headers +
-               '}';
+            "message=" + getMessage() +
+            "code=" + code +
+            ", contentType='" + contentType + '\'' +
+            ", headers=" + headers +
+            '}';
     }
 }

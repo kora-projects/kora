@@ -1,12 +1,13 @@
 package ru.tinkoff.kora.http.server.common.telemetry;
 
-import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
+import ru.tinkoff.kora.http.server.common.router.PublicApiRequest;
 
 import javax.annotation.Nullable;
 
 public final class DefaultHttpServerTelemetry implements HttpServerTelemetry {
     private static final String UNMATCHED_ROUTE_TEMPLATE = "UNKNOWN_ROUTE";
-    private static final HttpServerTelemetryContext NOOP_CTX = (statusCode, resultCode, httpHeaders, exception) -> { };
+    private static final HttpServerTelemetryContext NOOP_CTX = (statusCode, resultCode, httpHeaders, exception) -> {
+    };
 
     @Nullable
     private final HttpServerMetrics metrics;
@@ -22,7 +23,7 @@ public final class DefaultHttpServerTelemetry implements HttpServerTelemetry {
     }
 
     @Override
-    public HttpServerTelemetryContext get(PublicApiHandler.PublicApiRequest request, @Nullable String routeTemplate) {
+    public HttpServerTelemetryContext get(PublicApiRequest request, @Nullable String routeTemplate) {
         var metrics = this.metrics;
         var logger = this.logger;
         var tracer = this.tracer;

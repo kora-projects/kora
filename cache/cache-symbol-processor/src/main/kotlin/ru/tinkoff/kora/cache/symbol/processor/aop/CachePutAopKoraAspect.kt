@@ -5,11 +5,10 @@ import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
-import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
 import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
 import ru.tinkoff.kora.cache.symbol.processor.CacheOperation
 import ru.tinkoff.kora.cache.symbol.processor.CacheOperationUtils.Companion.getCacheOperation
+import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
@@ -31,9 +30,9 @@ class CachePutAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheAs
         if (method.isFuture()) {
             throw ProcessingErrorException("@CachePut can't be applied for types assignable from ${Future::class.java}", method)
         } else if (method.isMono()) {
-            throw ProcessingErrorException("@CachePut can't be applied for types assignable from ${Mono::class.java}", method)
+            throw ProcessingErrorException("@CachePut can't be applied for types assignable from ${CommonClassNames.mono}", method)
         } else if (method.isFlux()) {
-            throw ProcessingErrorException("@CachePut can't be applied for types assignable from ${Flux::class.java}", method)
+            throw ProcessingErrorException("@CachePut can't be applied for types assignable from ${CommonClassNames.flux}", method)
         }
 
         val operation = getCacheOperation(method)

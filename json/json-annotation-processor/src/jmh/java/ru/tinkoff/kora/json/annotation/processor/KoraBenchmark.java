@@ -16,37 +16,37 @@ public class KoraBenchmark extends BaseBenchmark {
     private JsonReader<SomeBean> someBeanReader;
     private JsonWriter<List<SomeBean>> someBeanListJsonWriter;
     private JsonReader<List<SomeBean>> someBeanListJsonReader;
-    private BeanWithPropertyConstructorJsonReader beanWithConstructorReader;
+    private $BeanWithPropertyConstructorJsonReader beanWithConstructorReader;
     private JsonReader<List<BeanWithPropertyConstructor>> beanWithConstructorListReader;
-    private ClassicBeanJsonWriter classicBeanWriter;
-    private ClassicBeanJsonReader classicBeanReader;
+    private $ClassicBeanJsonWriter classicBeanWriter;
+    private $ClassicBeanJsonReader classicBeanReader;
     private JsonWriter<List<ClassicBean>> classicBeanListWriter;
     private ListJsonReader<ClassicBean> classicBeanListReader;
-    private MediaItemJsonWriter mediaItemWriter;
-    private MediaItemJsonReader mediaItemReader;
-    private BeanWithPropertyConstructorJsonWriter beanWithConstructorWriter;
+    private $MediaItemJsonWriter mediaItemWriter;
+    private $MediaItemJsonReader mediaItemReader;
+    private $BeanWithPropertyConstructorJsonWriter beanWithConstructorWriter;
     private ListJsonWriter<BeanWithPropertyConstructor> beanWithConstructorListWriter;
-    private SimpleRecordJsonReader ottsDtoJsonReader;
-    private SimpleRecordJsonWriter ottsDtoJsonWriter;
+    private $SimpleRecordJsonReader ottsDtoJsonReader;
+    private $SimpleRecordJsonWriter ottsDtoJsonWriter;
 
     @Setup
     public void setup() throws Exception {
-        someBeanWriter = new SomeBeanJsonWriter();
-        someBeanReader = new SomeBeanJsonReader();
+        someBeanWriter = new $SomeBeanJsonWriter();
+        someBeanReader = new $SomeBeanJsonReader();
         someBeanListJsonWriter = new ListJsonWriter<>(someBeanWriter);
         someBeanListJsonReader = new ListJsonReader<>(someBeanReader);
-        beanWithConstructorReader = new BeanWithPropertyConstructorJsonReader(someBeanReader);
+        beanWithConstructorReader = new $BeanWithPropertyConstructorJsonReader(someBeanReader);
         beanWithConstructorListReader = new ListJsonReader<>(beanWithConstructorReader);
-        beanWithConstructorWriter = new BeanWithPropertyConstructorJsonWriter(someBeanWriter);
+        beanWithConstructorWriter = new $BeanWithPropertyConstructorJsonWriter(someBeanWriter);
         beanWithConstructorListWriter = new ListJsonWriter<>(beanWithConstructorWriter);
-        classicBeanWriter = new ClassicBeanJsonWriter();
-        classicBeanReader = new ClassicBeanJsonReader();
+        classicBeanWriter = new $ClassicBeanJsonWriter();
+        classicBeanReader = new $ClassicBeanJsonReader();
         classicBeanListWriter = new ListJsonWriter<>(classicBeanWriter);
         classicBeanListReader = new ListJsonReader<>(classicBeanReader);
-        mediaItemWriter = new MediaItemJsonWriter(new ListJsonWriter<>(new MediaItemPhotoJsonWriter()), new MediaItemContentJsonWriter());
-        mediaItemReader = new MediaItemJsonReader(new ListJsonReader<>(new MediaItemPhotoJsonReader()), new MediaItemContentJsonReader());
-        ottsDtoJsonReader = new SimpleRecordJsonReader();
-        ottsDtoJsonWriter = new SimpleRecordJsonWriter();
+        mediaItemWriter = new $MediaItemJsonWriter(new ListJsonWriter<>(new $MediaItemPhotoJsonWriter()), new $MediaItemContentJsonWriter());
+        mediaItemReader = new $MediaItemJsonReader(new ListJsonReader<>(new $MediaItemPhotoJsonReader()), new $MediaItemContentJsonReader());
+        ottsDtoJsonReader = new $SimpleRecordJsonWriter();
+        ottsDtoJsonWriter = new $SimpleRecordJsonWriter();
         super.setup();
     }
 

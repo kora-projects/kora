@@ -10,6 +10,7 @@ dependencies {
     implementation libs.logback.classic
 
     testFixturesImplementation project(':common')
+    testFixturesImplementation libs.reactor.core
 
     testFixturesImplementation libs.classgraph
     testFixturesImplementation libs.junit.jupiter

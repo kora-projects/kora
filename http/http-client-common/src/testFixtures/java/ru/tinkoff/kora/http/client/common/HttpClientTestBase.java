@@ -14,17 +14,12 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.mockito.Mockito;
 import org.mockserver.integration.ClientAndServer;
 import org.slf4j.LoggerFactory;
-import reactor.core.Exceptions;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.common.Context;
-import ru.tinkoff.kora.common.util.ReactorUtils;
 import ru.tinkoff.kora.http.client.HttpClientTestBaseKt;
 import ru.tinkoff.kora.http.client.common.interceptor.RootUriInterceptor;
 import ru.tinkoff.kora.http.client.common.interceptor.TelemetryInterceptor;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
-import ru.tinkoff.kora.http.client.common.response.BlockingHttpResponse;
-import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.client.common.telemetry.DefaultHttpClientTelemetry;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientLogger;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientMetrics;
@@ -32,6 +27,7 @@ import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 import ru.tinkoff.kora.opentelemetry.module.http.client.OpentelemetryHttpClientTracer;
 
 import java.io.IOException;
+import java.util.concurrent.ExecutionException;
 
 import static java.time.Duration.ofMillis;
 
@@ -48,7 +44,7 @@ public abstract class HttpClientTestBase {
         .setNoParent()
         .startSpan();
     protected final OpentelemetryContext rootTelemetry = OpentelemetryContext.get(Context.current());
-    private final HttpClient baseClient = this.createClient(new $HttpClientConfig_ConfigValueExtractor.HttpClientConfig_Impl(ofMillis(100), ofMillis(500), null, false));
+    private final HttpClient baseClient = this.createClient(new $HttpClientConfig_ConfigValueExtractor.HttpClientConfig_Impl(ofMillis(100), ofMillis(500000), null, false));
 
     private final HttpClient client = this.baseClient
         .with(new TelemetryInterceptor(new DefaultHttpClientTelemetry(
@@ -82,7 +78,9 @@ public abstract class HttpClientTestBase {
 
 
     protected enum CallType {
-        BLOCKING, REACTIVE, KOTLIN
+        BLOCKING,
+        REACTIVE,
+        KOTLIN,
     }
 
     protected ResponseWithBody call(HttpClientTest.CallType type, HttpClientRequest request) {
@@ -98,27 +96,32 @@ public abstract class HttpClientTestBase {
     }
 
     private ResponseWithBody callReactive(HttpClient client, HttpClientRequest request) {
-        try {
-            return Mono.usingWhen(
-                    client.execute(request),
-                    response -> ReactorUtils.toByteArrayMono(response.body()).map(body -> new ResponseWithBody(response, body)),
-                    HttpClientResponse::close
-                )
-                .block();
-        } catch (Exception e) {
-            var unwrapped = Exceptions.unwrap(e);
-            if (unwrapped instanceof RuntimeException re) {
+        try (var response = client.execute(request).toCompletableFuture().get()) {
+            var body = response.body().collectArray().toCompletableFuture().get();
+            return new ResponseWithBody(response, body);
+        } catch (ExecutionException e) {
+            if (e.getCause() instanceof RuntimeException re) {
                 throw re;
             }
-            throw new RuntimeException(unwrapped);
+            throw new RuntimeException(e.getCause());
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
     private ResponseWithBody callBlocking(HttpClient client, HttpClientRequest request) {
-        try (var response = BlockingHttpResponse.from(client.execute(request));
-             var body = response.body()) {
-            return new ResponseWithBody(response, body.readAllBytes());
-        } catch (IOException e) {
+        try (var response = client.execute(request).toCompletableFuture().get();
+             var body = response.body();
+             var is = body.getInputStream()) {
+            return new ResponseWithBody(response, is.readAllBytes());
+        } catch (ExecutionException e) {
+            if (e.getCause() instanceof RuntimeException re) {
+                throw re;
+            }
+            throw new RuntimeException(e.getCause());
+        } catch (IOException | InterruptedException e) {
             throw new RuntimeException(e);
         }
     }

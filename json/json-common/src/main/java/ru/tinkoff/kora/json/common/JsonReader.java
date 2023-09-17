@@ -28,6 +28,14 @@ public interface JsonReader<T> {
     }
 
     @Nullable
+    default T read(byte[] bytes, int offset, int length) throws IOException {
+        try (var parser = JsonCommonModule.JSON_FACTORY.createParser(bytes, offset, length)) {
+            parser.nextToken();
+            return this.read(parser);
+        }
+    }
+
+    @Nullable
     default T read(String str) throws IOException {
         try (var parser = JsonCommonModule.JSON_FACTORY.createParser(str)) {
             parser.nextToken();

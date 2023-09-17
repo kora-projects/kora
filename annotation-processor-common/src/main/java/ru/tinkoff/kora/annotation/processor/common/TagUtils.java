@@ -116,4 +116,13 @@ public class TagUtils {
         value.add("}");
         return annotation.addMember("value", value.build()).build();
     }
+
+    public static CodeBlock writeTagAnnotationValue(List<TypeMirror> tag) {
+        var b = CodeBlock.builder()
+            .add("{");
+        for (var typeMirrorValue : tag) {
+            b.add("$T.class, ", typeMirrorValue);
+        }
+        return b.add("}").build();
+    }
 }

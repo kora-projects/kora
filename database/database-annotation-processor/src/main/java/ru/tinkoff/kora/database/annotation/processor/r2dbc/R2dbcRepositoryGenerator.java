@@ -1,12 +1,7 @@
 package ru.tinkoff.kora.database.annotation.processor.r2dbc;
 
 import com.squareup.javapoet.*;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
-import ru.tinkoff.kora.annotation.processor.common.TagUtils;
-import ru.tinkoff.kora.annotation.processor.common.Visitors;
+import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
@@ -106,7 +101,7 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
             : method.getReturnType();
 
         b.addCode("var _result = ");
-        b.addCode("$T.deferContextual(_reactorCtx -> {$>\n", isFlux ? Flux.class : Mono.class);
+        b.addCode("$T.deferContextual(_reactorCtx -> {$>\n", isFlux ? CommonClassNames.flux : CommonClassNames.mono);
         b.addCode("var _telemetry = this._connectionFactory.telemetry().createContext($T.Reactor.current(_reactorCtx), _query);\n", Context.class);
         var connectionName = "_con";
         if (connectionParameter == null) {
@@ -117,7 +112,7 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
         b.addCode("var _stmt = $N.createStatement(_query.sql());\n", connectionName);
 
         R2dbcStatementSetterGenerator.generate(b, method, query, parameters, batchParam, parameterMappers);
-        b.addCode("var _flux = $T.<$T>from(_stmt.execute());\n", Flux.class, R2dbcTypes.RESULT);
+        b.addCode("var _flux = $T.<$T>from(_stmt.execute());\n", CommonClassNames.flux, R2dbcTypes.RESULT);
 
         var mappings = CommonUtils.parseMapping(method);
         var resultFluxMapper = mappings.getMapping(R2dbcTypes.RESULT_FLUX_MAPPER);
@@ -217,7 +212,7 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
         }
 
         var monoParam = TypeName.get(returnType).box();
-        var mapperType = ParameterizedTypeName.get(R2dbcTypes.RESULT_FLUX_MAPPER, monoParam, ParameterizedTypeName.get(ClassName.get(Mono.class), monoParam));
+        var mapperType = ParameterizedTypeName.get(R2dbcTypes.RESULT_FLUX_MAPPER, monoParam, ParameterizedTypeName.get(CommonClassNames.mono, monoParam));
         if (resultFluxMapper != null) {
             return Optional.of(new DbUtils.Mapper(resultFluxMapper.mapperClass(), mapperType, resultFluxMapper.mapperTags()));
         }

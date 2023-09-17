@@ -1,12 +1,11 @@
 package ru.tinkoff.kora.http.client.common.interceptor;
 
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetry;
 
-import java.util.function.Function;
+import java.util.concurrent.CompletionStage;
 
 public class TelemetryInterceptor implements HttpClientInterceptor {
     private final HttpClientTelemetry telemetry;
@@ -16,20 +15,40 @@ public class TelemetryInterceptor implements HttpClientInterceptor {
     }
 
     @Override
-    public Mono<HttpClientResponse> processRequest(Function<HttpClientRequest, Mono<HttpClientResponse>> chain, HttpClientRequest request) {
+    public CompletionStage<HttpClientResponse> processRequest(Context ctx, InterceptChain chain, HttpClientRequest request) throws Exception {
         if (!this.telemetry.isEnabled()) {
-            return chain.apply(request);
+            return chain.process(ctx, request);
         }
-
-        return Mono.deferContextual(rctx -> {
-            var ctx = Context.Reactor.current(rctx).fork();
+        try {
+            var fork = ctx.fork();
+            var telemetryContext = this.telemetry.get(fork, request);
+            if (telemetryContext == null) {
+                return chain.process(ctx, request);
+            }
+            fork.inject();
+            return chain.process(fork, telemetryContext.request())
+                .whenComplete((rs, error) -> {
+                    if (error != null) {
+                        var old = Context.current();
+                        try {
+                            fork.inject();
+                            telemetryContext.close(null, error);
+                        } finally {
+                            old.inject();
+                        }
+                    }
+                })
+                .thenApply(rs -> {
+                    var old = Context.current();
+                    try {
+                        fork.inject();
+                        return telemetryContext.close(rs, null);
+                    } finally {
+                        old.inject();
+                    }
+                });
+        } finally {
             ctx.inject();
-            var telemetryContext = this.telemetry.get(ctx, request);
-
-            return chain.apply(telemetryContext.request())
-                .doOnError(e -> telemetryContext.close(null, e))
-                .map(response -> telemetryContext.close(response, null))
-                .contextWrite(c -> Context.Reactor.inject(c, ctx));
-        });
+        }
     }
 }

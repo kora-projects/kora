@@ -32,6 +32,6 @@ dependencies {
     testFixturesImplementation libs.reactor.test
 
     testFixturesImplementation(libs.kotlin.stdlib.lib)
-    testFixturesImplementation(libs.kotlin.coroutines.reactor)
+    testFixturesImplementation(libs.kotlin.coroutines.jdk8)
 
 }

@@ -46,24 +46,12 @@ public class UndertowPrivateHttpServer implements PrivateHttpServer {
 
     @Override
     public void init() throws InterruptedException {
-        // dirty hack to start undertow thread as non daemon
-        var f = new CompletableFuture<Void>();
-        var t = new Thread(() -> {
-            logger.debug("Private HTTP Server (Undertow) starting...");
-            final long started = System.nanoTime();
-            try {
-                this.undertow = this.createServer();
-                this.undertow.start();
-                var data = StructuredArgument.marker("port", this.port());
-                logger.info(data, "Private HTTP Server (Undertow) started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
-                f.complete(null);
-            } catch (Throwable e) {
-                f.completeExceptionally(e);
-            }
-        }, "undertow-private-init");
-        t.setDaemon(false);
-        t.start();
-        f.join();
+        logger.debug("Private HTTP Server (Undertow) starting...");
+        final long started = System.nanoTime();
+        this.undertow = this.createServer();
+        this.undertow.start();
+        var data = StructuredArgument.marker("port", this.port());
+        logger.info(data, "Private HTTP Server (Undertow) started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
     }
 
     private Undertow createServer() {

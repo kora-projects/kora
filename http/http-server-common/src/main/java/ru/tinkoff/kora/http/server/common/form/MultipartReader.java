@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.http.server.common.form;
 
-import reactor.core.publisher.Flux;
 import ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponseException;
@@ -10,13 +9,17 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.function.Function;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Flow;
 import java.util.regex.Pattern;
 
 public class MultipartReader {
     private static final Pattern boundaryPattern = Pattern.compile(".*(\\s|;)boundary=\"?(?<boundary>[^;\"]+).*");
 
-    public static Flux<MultipartFile> read(HttpServerRequest r) {
+    public static CompletionStage<List<MultipartFile>> read(HttpServerRequest r) {
         var contentType = r.headers().getFirst("content-type");
         if (contentType == null) {
             throw HttpServerResponseException.of(400, "content-type header is required");
@@ -26,15 +29,19 @@ public class MultipartReader {
             throw HttpServerResponseException.of(400, "content-type header is invalid");
         }
         var boundary = m.group("boundary");
-        return r.body().flatMap(new MultipartDecoder(boundary));
+        var future = new CompletableFuture<List<MultipartFile>>();
+        var decoder = new MultipartDecoder(boundary, future);
+        r.body().subscribe(decoder);
+        return future;
     }
 
-    private static class MultipartDecoder implements Function<ByteBuffer, Flux<MultipartFile>> {
+    private static class MultipartDecoder implements Flow.Subscriber<ByteBuffer> {
         private static final Pattern namePattern = Pattern.compile(".*form-data;.*(\\s|;)name=\"(?<name>.*?)\".*", Pattern.CASE_INSENSITIVE);
         private static final Pattern fileNamePattern = Pattern.compile(".*form-data;.*(\\s|;)filename=\"(?<filename>.*?)\".*", Pattern.CASE_INSENSITIVE);
         private static final int SIZE_STEP = 4 * 1024 * 1024; // 4 mb
         private final byte[] boundary;
         private final byte[] boundaryBuf;
+        private final CompletableFuture<List<MultipartFile>> future;
         private ByteBuffer buf = null;
         private State state = State.BEGIN;
         private int readPosition = 0;
@@ -42,22 +49,26 @@ public class MultipartReader {
         private ContentDisposition currentContentDisposition;
         private int lastBodyPosition = 0;
 
-        public MultipartDecoder(String boundary) {
+        private final List<MultipartFile> parts = Collections.synchronizedList(new ArrayList<>());
+
+        public MultipartDecoder(String boundary, CompletableFuture<List<MultipartFile>> future) {
             this.boundary = boundary.getBytes(StandardCharsets.US_ASCII);
             this.boundaryBuf = new byte[this.boundary.length];
+            this.future = future;
         }
 
         @Override
-        public Flux<MultipartFile> apply(ByteBuffer byteBuffer) {
-            if (this.state == State.ERROR) {
-                return Flux.error(new IllegalStateException());
-            }
-            if (this.state == State.CLOSE) {
-                return Flux.empty();
+        public void onSubscribe(Flow.Subscription subscription) {
+            subscription.request(Long.MAX_VALUE);
+        }
+
+        @Override
+        public void onNext(ByteBuffer byteBuffer) {
+            if (future.isDone()) {
+                return;
             }
             this.ensureWritable(byteBuffer);
             this.buf.put(byteBuffer);
-            var parts = new ArrayList<MultipartFile>();
             loop:
             for (; ; ) {
                 var readPosition = this.readPosition;
@@ -67,16 +78,17 @@ public class MultipartReader {
                             break loop;
                         }
                         if (this.buf.get(this.readPosition) != '-' || this.buf.get(this.readPosition + 1) != '-') {
-                            return Flux.error(HttpServerResponseException.of(400, "Invalid beginning of multipart body"));
+                            future.completeExceptionally(HttpServerResponseException.of(400, "Invalid beginning of multipart body"));
+                            return;
                         }
                         readPosition += 2;
                         this.buf.get(readPosition, this.boundaryBuf);
                         if (!Arrays.equals(this.boundary, this.boundaryBuf)) {
-                            return Flux.error(HttpServerResponseException.of(400, "Invalid beginning of multipart body"));
+                            future.completeExceptionally(HttpServerResponseException.of(400, "Invalid beginning of multipart body"));
                         }
                         readPosition += this.boundary.length;
                         if (this.buf.get(readPosition) != '\r' || this.buf.get(readPosition + 1) != '\n') {
-                            return Flux.error(HttpServerResponseException.of(400, "Invalid beginning of multipart body"));
+                            future.completeExceptionally(HttpServerResponseException.of(400, "Invalid beginning of multipart body"));
                         }
                         readPosition += 2;
                         this.readPosition = readPosition;
@@ -96,7 +108,8 @@ public class MultipartReader {
                         } else {
                             var contentDisposition = this.parseContentDisposition();
                             if (contentDisposition == null) {
-                                return Flux.error(HttpServerResponseException.of(400, "Multipart part is missing content-disposition header"));
+                                future.completeExceptionally(HttpServerResponseException.of(400, "Multipart part is missing content-disposition header"));
+                                return;
                             }
                             this.currentContentDisposition = contentDisposition;
                             this.state = State.READ_BODY;
@@ -126,7 +139,7 @@ public class MultipartReader {
                                     array
                                 ));
                                 if (this.buf.get(i + 4 + this.boundary.length) == '-' || this.buf.get(i + 4 + this.boundary.length + 1) == '-') {
-                                    this.state = State.CLOSE;
+                                    this.future.complete(this.parts);
                                     break loop;
                                 }
                                 this.readPosition = i + 4 + this.boundary.length + 2;
@@ -144,11 +157,22 @@ public class MultipartReader {
                         }
                         break loop;
                     }
-                    case CLOSE -> {}
-                    case ERROR -> {}
                 }
             }
-            return Flux.fromIterable(parts);
+        }
+
+        @Override
+        public void onError(Throwable throwable) {
+            if (!future.isDone()) {
+                future.completeExceptionally(throwable);
+            }
+        }
+
+        @Override
+        public void onComplete() {
+            if (!future.isDone()) {
+                future.complete(this.parts);
+            }
         }
 
         private record ContentDisposition(String name, @Nullable String filename) {}
@@ -209,7 +233,7 @@ public class MultipartReader {
 
 
         private enum State {
-            BEGIN, READ_HEADERS, READ_BODY, ERROR, CLOSE
+            BEGIN, READ_HEADERS, READ_BODY
         }
 
         private void ensureWritable(ByteBuffer byteBuffer) {

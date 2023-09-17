@@ -2,6 +2,7 @@ dependencies {
     api project(":common")
     api project(":database:database-common")
     api libs.cassandra.driver
+    compileOnly libs.reactor.core
 
     annotationProcessor project(':config:config-annotation-processor')
 

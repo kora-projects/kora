@@ -9,7 +9,7 @@ import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
-import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
+import ru.tinkoff.kora.http.server.common.router.PublicApiRequest;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTracer;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 
@@ -36,7 +36,7 @@ public final class OpentelemetryHttpServerTracer implements HttpServerTracer {
     }
 
     @Override
-    public HttpServerSpan createSpan(String template, PublicApiHandler.PublicApiRequest routerRequest) {
+    public HttpServerSpan createSpan(String template, PublicApiRequest routerRequest) {
 
         var context = Context.current();
         var parentCtx = W3CTraceContextPropagator.getInstance().extract(root(), routerRequest, PublicApiRequestTextMapGetter.INSTANCE);
@@ -63,11 +63,11 @@ public final class OpentelemetryHttpServerTracer implements HttpServerTracer {
         };
     }
 
-    private static class PublicApiRequestTextMapGetter implements TextMapGetter<PublicApiHandler.PublicApiRequest> {
+    private static class PublicApiRequestTextMapGetter implements TextMapGetter<PublicApiRequest> {
         private static final PublicApiRequestTextMapGetter INSTANCE = new PublicApiRequestTextMapGetter();
 
         @Override
-        public Iterable<String> keys(PublicApiHandler.PublicApiRequest carrier) {
+        public Iterable<String> keys(PublicApiRequest carrier) {
             return () -> new Iterator<>() {
                 final Iterator<Map.Entry<String, List<String>>> i = carrier.headers().iterator();
 
@@ -84,7 +84,7 @@ public final class OpentelemetryHttpServerTracer implements HttpServerTracer {
         }
 
         @Override
-        public String get(PublicApiHandler.PublicApiRequest carrier, String key) {
+        public String get(PublicApiRequest carrier, String key) {
             return carrier.headers().getFirst(key);
         }
     }

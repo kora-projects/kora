@@ -6,6 +6,7 @@ import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTe
 import ru.tinkoff.kora.database.annotation.processor.RepositoryAnnotationProcessor;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.List;
 
 public abstract class AbstractRepositoryTest extends AbstractAnnotationProcessorTest {
@@ -24,22 +25,10 @@ public abstract class AbstractRepositoryTest extends AbstractAnnotationProcessor
         }
 
         Assertions.assertThat(compileResult.warnings()).hasSize(0);
-
-        try {
-            var repositoryClass = compileResult.loadClass("$TestRepository_Impl");
-            var realArgs = new Object[arguments.size() + 1];
-            realArgs[0] = connectionFactory;
-            System.arraycopy(arguments.toArray(), 0, realArgs, 1, arguments.size());
-            for (int i = 0; i < realArgs.length; i++) {
-                if (realArgs[i] instanceof GeneratedResultCallback<?> gr) {
-                    realArgs[i] = gr.get();
-                }
-            }
-            var repository = repositoryClass.getConstructors()[0].newInstance(realArgs);
-            return new TestObject(repositoryClass, repository);
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-            throw new RuntimeException(e);
-        }
+        var realArgs = new ArrayList<Object>(arguments);
+        realArgs.add(0, connectionFactory);
+        var repositoryClass = compileResult.loadClass("$TestRepository_Impl");
+        return new TestObject(repositoryClass, realArgs);
     }
 
     protected TestObject compileForArgs(List<?> arguments, @Language("java") String... sources) {

@@ -1,11 +1,12 @@
 package ru.tinkoff.kora.http.client.common.interceptor;
 
-import reactor.core.publisher.Mono;
+import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.client.common.auth.HttpClientTokenProvider;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 
-import java.util.function.Function;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 public class BasicAuthHttpClientInterceptor implements HttpClientInterceptor {
     private final HttpClientTokenProvider tokenProvider;
@@ -15,10 +16,17 @@ public class BasicAuthHttpClientInterceptor implements HttpClientInterceptor {
     }
 
     @Override
-    public Mono<HttpClientResponse> processRequest(Function<HttpClientRequest, Mono<HttpClientResponse>> chain, HttpClientRequest request) {
-        return this.tokenProvider.getToken(request).flatMap(token -> {
-            var modifiedRequest = request.toBuilder().header("authorization", "Basic " + token).build();
-            return chain.apply(modifiedRequest);
+    public CompletionStage<HttpClientResponse> processRequest(Context ctx, InterceptChain chain, HttpClientRequest request) {
+        return this.tokenProvider.getToken(request).thenCompose(token -> {
+            try {
+                if (token == null) {
+                    return chain.process(ctx, request);
+                }
+                var modifiedRequest = request.toBuilder().header("authorization", "Basic " + token).build();
+                return chain.process(ctx, modifiedRequest);
+            } catch (Throwable t) {
+                return CompletableFuture.failedFuture(t);
+            }
         });
     }
 }

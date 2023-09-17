@@ -1,6 +1,7 @@
 dependencies {
     api libs.jackson.databind
 
+    compileOnly libs.reactor.core
     compileOnly project(":http:http-server-common")
     compileOnly project(":http:http-client-common")
 }

@@ -1,13 +1,12 @@
 package ru.tinkoff.kora.http.client.common;
 
-import reactor.core.publisher.Mono;
-import ru.tinkoff.kora.common.util.ReactorUtils;
-import ru.tinkoff.kora.http.client.common.response.BlockingHttpResponse;
+import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.common.HttpHeaders;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 public class HttpClientResponseException extends HttpClientException {
     private final int code;
@@ -21,18 +20,32 @@ public class HttpClientResponseException extends HttpClientException {
         this.bytes = bytes;
     }
 
-    public static HttpClientException fromResponse(BlockingHttpResponse response) {
-        try {
-            var bytes = response.body().readAllBytes();
-            return new HttpClientResponseException(response.code(), response.headers(), bytes);
-        } catch (IOException e) {
-            return new HttpClientConnectionException(e);
-        }
+    public static <T> CompletionStage<T> fromResponse(HttpClientResponse response) {
+        return FlowUtils.toByteArrayFuture(response.body(), 4096)
+            .handle((bytes, error) -> {
+                if (bytes == null) {
+                    bytes = new byte[0];
+                }
+                var e = new HttpClientResponseException(response.code(), response.headers(), bytes);
+                if (error != null) {
+                    e.addSuppressed(error);
+                }
+                throw e;
+            });
     }
 
-    public static <T> Mono<T> fromResponse(HttpClientResponse response) {
-        return ReactorUtils.toByteArrayMono(response.body(), 4096)
-            .handle((bytes, sink) -> sink.error(new HttpClientResponseException(response.code(), response.headers(), bytes)));
+    public static CompletableFuture<HttpClientResponseException> fromResponseFuture(HttpClientResponse response) {
+        return FlowUtils.toByteArrayFuture(response.body(), 4096)
+            .handle((bytes, error) -> {
+                if (bytes == null) {
+                    bytes = new byte[0];
+                }
+                var e = new HttpClientResponseException(response.code(), response.headers(), bytes);
+                if (error != null) {
+                    e.addSuppressed(error);
+                }
+                return e;
+            });
     }
 
     public int getCode() {

@@ -1,11 +1,12 @@
 package ru.tinkoff.kora.common.readiness;
 
-import reactor.core.publisher.Mono;
+import java.util.concurrent.CompletionStage;
 
 public interface ReadinessProbe {
     /**
      * Perform readiness probe
-     * @return Mono.empty() if probe succeeds or probe failure
+     *
+     * @return Empty future or null if probe succeeds or probe failure
      */
-    Mono<ReadinessProbeFailure> probe();
+    CompletionStage<ReadinessProbeFailure> probe();
 }

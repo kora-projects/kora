@@ -6,18 +6,18 @@ apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 
 dependencies {
     api project(':annotation-processor-common')
+    api project(':kora-app-annotation-processor')
     api libs.reactive.streams
     api libs.javapoet
 
-    api project(':common')
-    api project(':http:http-server-common')
-
     testImplementation testFixtures(project(':annotation-processor-common'))
+    testImplementation project(':http:http-server-common')
     testImplementation project(':json:json-common')
     testImplementation libs.jackson.databind
     testImplementation libs.mockito.kotlin
     testImplementation libs.byte.buddy.core
     testImplementation libs.byte.buddy.agent
+    testImplementation libs.reactor.core
 }
 
 test {

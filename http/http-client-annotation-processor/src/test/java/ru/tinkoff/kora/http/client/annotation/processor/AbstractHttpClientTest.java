@@ -1,79 +1,63 @@
 package ru.tinkoff.kora.http.client.annotation.processor;
 
 import org.intellij.lang.annotations.Language;
+import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest;
 import ru.tinkoff.kora.http.client.common.HttpClient;
-import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
+import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetry;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryFactory;
 
-import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow;
+import java.util.function.Function;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public abstract class AbstractHttpClientTest extends AbstractAnnotationProcessorTest {
-    protected HttpClientResponse httpResponse = mock(HttpClientResponse.class);
     protected HttpClient httpClient = mock(HttpClient.class);
     protected HttpClientTelemetry telemetry = mock(HttpClientTelemetry.class);
     protected HttpClientTelemetryFactory telemetryFactory = mock(HttpClientTelemetryFactory.class);
-    protected TestClient client;
+    protected TestObject client;
 
-    public AbstractHttpClientTest() {
-        this.reset();
+    @BeforeEach
+    public void init() {
+        Mockito.reset(httpClient, telemetry, telemetryFactory);
     }
 
-    public void reset() {
-        Mockito.reset(httpResponse, httpClient, telemetry, telemetryFactory);
-        when(httpResponse.code()).thenReturn(200);
-        when(httpResponse.close()).thenReturn(Mono.empty());
-        when(httpResponse.body()).thenReturn(Flux.just(ByteBuffer.allocate(0)));
-        when(httpClient.execute(any())).thenReturn(Mono.just(httpResponse));
-    }
-
-    protected static class TestClient {
-        private final Class<?> repositoryClass;
-        private final Object repositoryObject;
-
-        protected TestClient(Class<?> clientClass, Object clientInstance) {
-            this.repositoryClass = clientClass;
-            this.repositoryObject = clientInstance;
-        }
-
-        @SuppressWarnings("unchecked")
-        public <T> T invoke(String method, Object... args) {
-            for (var repositoryClassMethod : repositoryClass.getMethods()) {
-                if (repositoryClassMethod.getName().equals(method) && repositoryClassMethod.getParameters().length == args.length) {
-                    try {
-                        var result = repositoryClassMethod.invoke(this.repositoryObject, args);
-                        if (result instanceof Mono<?> mono) {
-                            return (T) mono.block();
-                        }
-                        if (result instanceof Future<?> future) {
-                            return (T) future.get();
-                        }
-                        return (T) result;
-                    } catch (InvocationTargetException e) {
-                        if (e.getTargetException() instanceof RuntimeException re) {
-                            throw re;
-                        } else {
-                            throw new RuntimeException(e);
-                        }
-                    } catch (IllegalAccessException | ExecutionException | InterruptedException e) {
-                        throw new RuntimeException(e);
+    protected void onRequest(String method, String path, Function<TestHttpClientResponse, TestHttpClientResponse> responseConsumer) {
+        when(httpClient.execute(Mockito.argThat(argument -> argument.method().equalsIgnoreCase(method) && argument.resolvedUri().equalsIgnoreCase(path))))
+            .thenAnswer(invocation -> {
+                var f = new CompletableFuture<Void>();
+                invocation.getArgument(0, HttpClientRequest.class).body().subscribe(new Flow.Subscriber<ByteBuffer>() {
+                    @Override
+                    public void onSubscribe(Flow.Subscription subscription) {
+                        subscription.request(Long.MAX_VALUE);
                     }
-                }
-            }
-            throw new IllegalArgumentException();
-        }
+
+                    @Override
+                    public void onNext(ByteBuffer item) {
+
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable) {
+                        f.completeExceptionally(throwable);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        f.complete(null);
+                    }
+                });
+                f.get();
+                return CompletableFuture.completedFuture(responseConsumer.apply(TestHttpClientResponse.response(200)));
+            });
     }
 
     @Override
@@ -85,42 +69,30 @@ public abstract class AbstractHttpClientTest extends AbstractAnnotationProcessor
             import ru.tinkoff.kora.http.client.common.*;
             import ru.tinkoff.kora.http.common.annotation.*;
             import ru.tinkoff.kora.http.client.common.annotation.HttpClient;
+            import ru.tinkoff.kora.http.client.common.interceptor.HttpClientInterceptor;
+            import ru.tinkoff.kora.http.client.common.interceptor.HttpClientInterceptor.InterceptChain;
             import reactor.core.publisher.Mono;
             import reactor.core.publisher.Flux;
+            import java.util.concurrent.CompletionStage;
+            import java.util.concurrent.CompletableFuture;
             """;
     }
 
-    protected void compileClient(List<Object> arguments, @Language("java") String... sources) {
+    protected TestObject compileClient(List<Object> arguments, @Language("java") String... sources) {
         compile(List.of(new HttpClientAnnotationProcessor()), sources);
         if (compileResult.isFailed()) {
             throw compileResult.compilationException();
         }
 
-        try {
-            var clientClass = compileResult.loadClass("$TestClient_ClientImpl");
-            var configParams = new Object[compileResult.loadClass("$TestClient_Config").getConstructors()[0].getParameterCount()];
-            configParams[0] = "http://test-url:8080";
+        var clientClass = compileResult.loadClass("$TestClient_ClientImpl");
+        var configParams = new Object[compileResult.loadClass("$TestClient_Config").getConstructors()[0].getParameterCount()];
+        configParams[0] = "http://test-url:8080";
 
-            var realArgs = new Object[arguments.size() + 3];
-            realArgs[0] = httpClient;
-            realArgs[1] = newObject("$TestClient_Config", configParams);
-            realArgs[2] = telemetryFactory;
-            System.arraycopy(arguments.toArray(Object[]::new), 0, realArgs, 3, arguments.size());
-            for (int i = 0; i < realArgs.length; i++) {
-                if (realArgs[i] instanceof GeneratedResultCallback<?> gen) {
-                    realArgs[i] = gen.get();
-                }
-            }
-            var instance = clientClass.getConstructors()[0].newInstance(realArgs);
-            this.client = new TestClient(clientClass, instance);
-        } catch (InvocationTargetException e) {
-            if (e.getTargetException() instanceof RuntimeException re) {
-                throw re;
-            } else {
-                throw new RuntimeException(e.getTargetException());
-            }
-        } catch (InstantiationException | IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
+
+        var realArgs = new ArrayList<>(arguments);
+        realArgs.add(0, httpClient);
+        realArgs.add(1, newObject("$TestClient_Config", configParams));
+        realArgs.add(2, telemetryFactory);
+        return this.client = new TestObject(clientClass, realArgs);
     }
 }

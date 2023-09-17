@@ -17,17 +17,17 @@ public interface DeclarativeHttpClientConfig {
         var builder = root;
         var url = this.url() + operationPath;
         var requestTimeout = (this.requestTimeout() == null)
-            ? -1
-            : this.requestTimeout().toMillis();
+            ? null
+            : this.requestTimeout();
 
         if (operationConfig != null && operationConfig.requestTimeout() != null) {
-            requestTimeout = operationConfig.requestTimeout().toMillis();
+            requestTimeout = operationConfig.requestTimeout();
         }
 
         var telemetry = telemetryFactory.get(clientClass.getCanonicalName() + "." + operationName);
         if (telemetry != null) {
             builder = builder.with(new TelemetryInterceptor(telemetry));
         }
-        return new DeclarativeHttpClientOperationData(builder, url, Math.toIntExact(requestTimeout));
+        return new DeclarativeHttpClientOperationData(builder, url, requestTimeout);
     }
 }

@@ -1,35 +1,31 @@
 package ru.tinkoff.kora.http.client.common.response;
 
-import kotlin.Unit;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import ru.tinkoff.kora.common.util.ReactorUtils;
-
 import java.nio.ByteBuffer;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Flow;
 
 public interface HttpClientResponseMapperModule {
-    default HttpClientResponseMapper<byte[], Mono<byte[]>> byteArrayHttpClientResponseMapper() {
-        return response -> ReactorUtils.toByteArrayMono(response.body());
+    default HttpClientResponseMapper<byte[]> byteArrayHttpClientResponseMapper() {
+        return response -> response.body().collectArray().toCompletableFuture().join();
     }
 
-    default HttpClientResponseMapper<ByteBuffer, Mono<ByteBuffer>> byteBufferHttpClientResponseMapper() {
-        return response -> ReactorUtils.toByteBufferMono(response.body());
+    default HttpClientResponseMapper<ByteBuffer> byteBufferHttpClientResponseMapper() {
+        return response -> response.body().collectBuf().toCompletableFuture().join();
     }
 
-    default HttpClientResponseMapper<HttpClientResponse, Mono<HttpClientResponse>> noopClientResponseMapper() {
-        return Mono::just;
+    default HttpClientResponseMapper<CompletionStage<byte[]>> byteArrayCompletionStageHttpClientResponseMapper() {
+        return response -> response.body().collectArray();
     }
 
-    default HttpClientResponseMapper<ByteBuffer, Flux<ByteBuffer>> byteBufferFluxHttpClientResponseMapper() {
+    default HttpClientResponseMapper<CompletionStage<ByteBuffer>> byteBufferCompletionStageHttpClientResponseMapper() {
+        return response -> response.body().collectBuf();
+    }
+
+    default HttpClientResponseMapper<HttpClientResponse> noopClientResponseMapper() {
+        return r -> r;
+    }
+
+    default HttpClientResponseMapper<Flow.Publisher<ByteBuffer>> byteBufferFluxHttpClientResponseMapper() {
         return HttpClientResponse::body;
     }
-
-    default HttpClientResponseMapper<Unit, Mono<Unit>> unitHttpClientResponseMapper() {
-        return response -> response.close().thenReturn(Unit.INSTANCE);
-    }
-
-    default HttpClientResponseMapper<Void, Mono<Void>> voidHttpClientResponseMapper() {
-        return HttpClientResponse::close;
-    }
-
 }

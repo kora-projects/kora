@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.http.server.symbol.processor.server
 
-import reactor.core.publisher.Flux
 import ru.tinkoff.kora.http.common.HttpHeaders
+import ru.tinkoff.kora.http.common.body.HttpBody
+import ru.tinkoff.kora.http.common.body.HttpInBody
 import ru.tinkoff.kora.http.server.common.HttpServerRequest
-import java.nio.ByteBuffer
 import java.util.*
 
 internal class SimpleHttpServerRequest(
@@ -18,6 +18,10 @@ internal class SimpleHttpServerRequest(
     }
 
     override fun path(): String {
+        return path
+    }
+
+    override fun route(): String {
         return path
     }
 
@@ -43,11 +47,12 @@ internal class SimpleHttpServerRequest(
         params.split("&".toRegex()).forEach { param ->
             val eq = param.indexOf('=')
             if (eq <= 0) {
-                return result
+                result[param] = ArrayDeque()
+            } else {
+                val name = param.substring(0, eq)
+                val value = param.substring(eq + 1)
+                result[name]?.add(value) ?: result.put(name, ArrayDeque<String>().apply { this.add(value) })
             }
-            val name = param.substring(0, eq)
-            val value = param.substring(eq + 1)
-            result[name]?.add(value) ?: result.put(name, ArrayDeque<String>().apply { this.add(value) })
         }
         return result
     }
@@ -56,7 +61,7 @@ internal class SimpleHttpServerRequest(
         return routeParams
     }
 
-    override fun body(): Flux<ByteBuffer> {
-        return Flux.just(ByteBuffer.wrap(body))
+    override fun body(): HttpInBody {
+        return HttpBody.octetStream(body)
     }
 }

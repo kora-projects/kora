@@ -11,16 +11,16 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @ParametersAreNonnullByDefault
 public final class RequestHandlerUtils {
 
-    private RequestHandlerUtils() {}
+    private RequestHandlerUtils() {
+    }
 
     /*
-     * Path: String, UUID, Integer, Long, Double, Enum
+     * Path: String, UUID, Integer, Long, Double
      */
     @Nonnull
     public static String parseStringPathParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
@@ -81,20 +81,6 @@ public final class RequestHandlerUtils {
         try {
             return Double.parseDouble(result);
         } catch (NumberFormatException e) {
-            throw HttpServerResponseException.of(400, "Path parameter %s(%s) has invalid value".formatted(name, result));
-        }
-    }
-
-    @Nonnull
-    public static <T extends Enum<T>> T parseEnumPathParameter(HttpServerRequest request, Class<T> enumType, String name) throws HttpServerResponseException {
-        var result = request.pathParams().get(name);
-        if (result == null) {
-            throw HttpServerResponseException.of(400, "Path parameter '%s' is required".formatted(name));
-        }
-
-        try {
-            return Enum.valueOf(enumType, result);
-        } catch (Exception exception) {
             throw HttpServerResponseException.of(400, "Path parameter %s(%s) has invalid value".formatted(name, result));
         }
     }
@@ -219,7 +205,7 @@ public final class RequestHandlerUtils {
     }
 
     /*
-     * Query: String, Integer, Long, Double, Boolean, Enum, UUID
+     * Query: String, Integer, Long, Double, Boolean, UUID
      */
     @Nonnull
     public static UUID parseUuidQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
@@ -324,34 +310,6 @@ public final class RequestHandlerUtils {
         }
     }
 
-    @Nonnull
-    public static <T extends Enum<T>> T parseEnumQueryParameter(HttpServerRequest request, Class<T> type, String name) throws HttpServerResponseException {
-        var result = parseOptionalEnumQueryParameter(request, type, name);
-        if (result == null) {
-            throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
-        }
-        return result;
-    }
-
-    @Nullable
-    public static <T extends Enum<T>> T parseOptionalEnumQueryParameter(HttpServerRequest request, Class<T> type, String name) throws HttpServerResponseException {
-        var result = request.queryParams().get(name);
-        if (result == null || result.isEmpty()) {
-            return null;
-        }
-
-        var first = result.iterator().next().trim();
-        if (first.isEmpty()) {
-            throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid blank string value".formatted(name));
-        }
-
-        try {
-            return Enum.valueOf(type, first);
-        } catch (Exception exception) {
-            throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, result));
-        }
-    }
-
     public static boolean parseBooleanQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var result = parseOptionalBooleanQueryParameter(request, name);
         if (result == null) {
@@ -408,7 +366,7 @@ public final class RequestHandlerUtils {
     }
 
     /*
-     * Query: List<String>, List<Integer>, List<Long>, List<Double>, List<Boolean>, List<UUID>, List<Enum>
+     * Query: List<String>, List<Integer>, List<Long>, List<Double>, List<Boolean>, List<UUID>
      */
     @Nonnull
     public static List<Integer> parseIntegerListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
@@ -425,22 +383,21 @@ public final class RequestHandlerUtils {
         if (result == null) {
             return null;
         }
-
-        return result.stream()
-            .filter(Objects::nonNull)
-            .map(v -> {
-                v = v.trim();
-                if (v.isEmpty()) {
+        var list = new ArrayList<Integer>(result.size());
+        for (var str : result) {
+            if (str != null) {
+                str = str.trim();
+                if (str.isEmpty()) {
                     throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid blank string value".formatted(name));
                 }
-
                 try {
-                    return Integer.parseInt(v);
+                    list.add(Integer.parseInt(str));
                 } catch (NumberFormatException e) {
-                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, v));
+                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, str));
                 }
-            })
-            .toList();
+            }
+        }
+        return list;
     }
 
     @Nonnull
@@ -592,38 +549,5 @@ public final class RequestHandlerUtils {
                 }
             })
             .toList();
-    }
-
-    @Nonnull
-    public static <T extends Enum<T>> List<T> parseEnumListQueryParameter(HttpServerRequest request, Class<T> type, String name) throws HttpServerResponseException {
-        var result = parseOptionalEnumListQueryParameter(request, type, name);
-        if (result == null) {
-            throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
-        }
-        return result;
-    }
-
-    @Nullable
-    public static <T extends Enum<T>> List<T> parseOptionalEnumListQueryParameter(HttpServerRequest request, Class<T> type, String name) throws HttpServerResponseException {
-        var result = request.queryParams().get(name);
-        if (result == null) {
-            return null;
-        }
-
-        return result.stream()
-            .filter(Objects::nonNull)
-            .map(v -> {
-                v = v.trim();
-                if (v.isEmpty()) {
-                    throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid blank string value".formatted(name));
-                }
-
-                try {
-                    return Enum.valueOf(type, v);
-                } catch (Exception exception) {
-                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, result));
-                }
-            })
-            .collect(Collectors.toList());
     }
 }

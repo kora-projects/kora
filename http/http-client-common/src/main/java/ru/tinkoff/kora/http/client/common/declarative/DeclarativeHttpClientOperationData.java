@@ -1,7 +1,10 @@
 package ru.tinkoff.kora.http.client.common.declarative;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.http.client.common.HttpClient;
 
-public record DeclarativeHttpClientOperationData(HttpClient client, String url, int requestTimeout) {
+import java.time.Duration;
+
+public record DeclarativeHttpClientOperationData(HttpClient client, String url, @Nullable Duration requestTimeout) {
 
 }

@@ -3,7 +3,6 @@ package ru.tinkoff.kora.http.client.annotation.processor;
 import com.squareup.javapoet.JavaFile;
 import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.http.client.common.annotation.HttpClient;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -12,6 +11,8 @@ import javax.lang.model.element.TypeElement;
 import java.io.IOException;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static ru.tinkoff.kora.http.client.annotation.processor.HttpClientClassNames.httpClientAnnotation;
 
 public class HttpClientAnnotationProcessor extends AbstractKoraProcessor {
     private ClientClassGenerator clientGenerator;
@@ -22,7 +23,7 @@ public class HttpClientAnnotationProcessor extends AbstractKoraProcessor {
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
-        var httpClient = processingEnv.getElementUtils().getTypeElement(HttpClient.class.getCanonicalName());
+        var httpClient = processingEnv.getElementUtils().getTypeElement(httpClientAnnotation.canonicalName());
         if (httpClient == null) {
             return;
         }
@@ -34,7 +35,7 @@ public class HttpClientAnnotationProcessor extends AbstractKoraProcessor {
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(HttpClient.class.getCanonicalName());
+        return Set.of(httpClientAnnotation.canonicalName());
     }
 
     @Override
@@ -46,7 +47,7 @@ public class HttpClientAnnotationProcessor extends AbstractKoraProcessor {
             return false;
         }
         var elements = annotations.stream()
-            .filter(a -> a.getQualifiedName().contentEquals(HttpClient.class.getCanonicalName()))
+            .filter(a -> a.getQualifiedName().contentEquals(httpClientAnnotation.canonicalName()))
             .flatMap(a -> roundEnv.getElementsAnnotatedWith(a).stream())
             .collect(Collectors.toSet());
 

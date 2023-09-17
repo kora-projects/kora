@@ -1,97 +1,88 @@
 package ru.tinkoff.kora.http.server.symbol.procesor
 
-import com.google.devtools.ksp.*
-import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
-import ru.tinkoff.kora.common.Context
-import ru.tinkoff.kora.common.Tag
-import ru.tinkoff.kora.http.common.annotation.Header
-import ru.tinkoff.kora.http.common.annotation.HttpRoute
-import ru.tinkoff.kora.http.common.annotation.Path
-import ru.tinkoff.kora.http.common.annotation.Query
-import ru.tinkoff.kora.http.server.common.HttpServerRequestHandler
-import ru.tinkoff.kora.http.server.common.handler.*
+import ru.tinkoff.kora.http.server.symbol.procesor.HttpServerClassNames.header
+import ru.tinkoff.kora.http.server.symbol.procesor.HttpServerClassNames.httpRoute
+import ru.tinkoff.kora.http.server.symbol.procesor.HttpServerClassNames.httpServerRequest
+import ru.tinkoff.kora.http.server.symbol.procesor.HttpServerClassNames.httpServerRequestHandler
+import ru.tinkoff.kora.http.server.symbol.procesor.HttpServerClassNames.httpServerRequestHandlerImpl
+import ru.tinkoff.kora.http.server.symbol.procesor.HttpServerClassNames.httpServerRequestMapper
+import ru.tinkoff.kora.http.server.symbol.procesor.HttpServerClassNames.httpServerResponse
+import ru.tinkoff.kora.http.server.symbol.procesor.HttpServerClassNames.httpServerResponseException
+import ru.tinkoff.kora.http.server.symbol.procesor.HttpServerClassNames.httpServerResponseMapper
+import ru.tinkoff.kora.http.server.symbol.procesor.HttpServerClassNames.interceptWith
+import ru.tinkoff.kora.http.server.symbol.procesor.HttpServerClassNames.interceptWithContainer
+import ru.tinkoff.kora.http.server.symbol.procesor.HttpServerClassNames.path
+import ru.tinkoff.kora.http.server.symbol.procesor.HttpServerClassNames.query
+import ru.tinkoff.kora.http.server.symbol.procesor.HttpServerClassNames.stringParameterReader
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
+import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.CommonClassNames.await
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.findRepeatableAnnotation
-import ru.tinkoff.kora.ksp.common.parseAnnotationValue
+import ru.tinkoff.kora.ksp.common.makeTagAnnotationSpec
 import ru.tinkoff.kora.ksp.common.parseMappingData
+import java.util.concurrent.CompletionStage
 
 
-@OptIn(KspExperimental::class)
-class RouteProcessor(private val resolver: Resolver) {
-    private val listErasure = resolver.getClassDeclarationByName(List::class.qualifiedName!!)!!.asStarProjectedType()
-    private val uuidType = resolver.getClassDeclarationByName("java.util.UUID")!!.asType(listOf())
-    private val responseMapperType = HttpServerResponseMapper::class.qualifiedName?.let { className -> resolver.getClassDeclarationByName(className)?.asStarProjectedType() }
-    private val monoMemberName = MemberName("kotlinx.coroutines.reactor", "mono")
-    private val awaitSingleOrNull = MemberName("kotlinx.coroutines.reactor", "awaitSingleOrNull")
-    private val awaitSingle = MemberName("kotlinx.coroutines.reactor", "awaitSingle")
-    private val requestMapper = HttpServerRequestMapper::class.asClassName()
-    private val stringParameterReader = StringParameterReader::class.asClassName()
-    private val interceptWithClassName = ClassName("ru.tinkoff.kora.http.common.annotation", "InterceptWith")
-    private val interceptWithContainerClassName = ClassName("ru.tinkoff.kora.http.common.annotation", "InterceptWith", "InterceptWithContainer")
-    private val dispatchersClassName = ClassName("kotlinx.coroutines", "Dispatchers")
-    private val simpleHttpServerResponse = ClassName("ru.tinkoff.kora.http.server.common", "SimpleHttpServerResponse")
-    private val httpHeaders = ClassName("ru.tinkoff.kora.http.common", "HttpHeaders")
+class RouteProcessor {
+    private val future = MemberName("kotlinx.coroutines.future", "future")
+    private val coroutineScope = MemberName("kotlinx.coroutines", "CoroutineScope")
+    private val dispatchers = ClassName("kotlinx.coroutines", "Dispatchers")
 
+    data class Route(val method: String, val pathTemplate: String)
 
-    data class RequestMappingData(val method: String, val pathTemplate: String)
-
-    @OptIn(KspExperimental::class)
     internal fun buildHttpRouteFunction(declaration: KSClassDeclaration, rootPath: String, function: KSFunctionDeclaration): FunSpec.Builder {
-        val requestMappingData = extractRequestMappingData(rootPath, function)
+        val requestMappingData = extractRoute(rootPath, function)
         val parent = function.parent as KSClassDeclaration
-        val funName = funName(requestMappingData)
+        val funName = requestMappingData.funName()
         val returnType = function.returnType!!.resolve()
-        val interceptors = sequenceOf(
-            declaration.findRepeatableAnnotation(interceptWithClassName, interceptWithContainerClassName),
-            function.findRepeatableAnnotation(interceptWithClassName, interceptWithContainerClassName)
-        )
-            .flatMap { it }
-            .map { parseInterceptor(it) }
+        val returnTypeName = returnType.toTypeName()
+        val interceptors = declaration.findRepeatableAnnotation(interceptWith, interceptWithContainer).asSequence()
+            .plus(function.findRepeatableAnnotation(interceptWith, interceptWithContainer))
+            .map { it.parseInterceptor() }
             .distinct()
             .toList()
 
-        val mapperClassName = HttpServerResponseMapper::class.asClassName().parameterizedBy(function.returnType!!.toTypeName())
         val funBuilder = FunSpec.builder(funName)
-            .returns(HttpServerRequestHandler::class)
-            .addParameter(
-                ParameterSpec.builder(
-                    "_controller",
-                    parent.toClassName()
-                ).build()
-            )
-        val awaitCode = if (returnType.isMarkedNullable) awaitSingleOrNull else awaitSingle
-        val mapping = function.parseMappingData().getMapping(responseMapperType!!)
-        if (mapping != null) {
-            val responseMapperType = if (mapping.mapper != null) mapping.mapper!!.toTypeName() else mapperClassName
-            val b = ParameterSpec.builder("_responseMapper", responseMapperType)
-            mapping.toTagAnnotation()?.let {
-                b.addAnnotation(it)
-            }
-            funBuilder.addParameter(b.build())
-        } else if (returnType != resolver.builtIns.unitType) {
-            funBuilder.addParameter(ParameterSpec.builder("_responseMapper", mapperClassName).build())
-        }
-
-
+            .returns(httpServerRequestHandler)
+            .addParameter("_controller", parent.toClassName())
         val isSuspend = function.modifiers.contains(Modifier.SUSPEND)
         val isBlocking = !isSuspend
-        funBuilder.controlFlow(
-            "return %T.%L(%S) { _request ->",
-            HttpServerRequestHandlerImpl::class,
-            requestMappingData.method.lowercase(),
-            requestMappingData.pathTemplate,
-        ) {
+        val bodyParams = mutableListOf<KSValueParameter>()
+        function.parameters.forEach {
+            val type = it.type.toTypeName()
+            when {
+                it.isAnnotationPresent(query) -> funBuilder.addQueryParameterMapper(it)
+                it.isAnnotationPresent(path) -> funBuilder.addPathParameterMapper(it)
+                it.isAnnotationPresent(header) -> funBuilder.addHeaderParameterMapper(it)
+                else -> {
+                    val type = it.type.toTypeName()
+                    if (type != CommonClassNames.context && type != httpServerRequest) {
+                        funBuilder.addRequestParameterMapper(it, isBlocking)
+                        bodyParams.add(it)
+                    }
+                }
+            }
+        }
+        funBuilder.addResponseMapper(function)
+        if (isBlocking) {
+            funBuilder.addParameter("_executor", HttpServerClassNames.blockingRequestExecutor)
+        }
+
+        funBuilder.controlFlow("return %T.of(%S, %S) { _ctx, _request ->", httpServerRequestHandlerImpl, requestMappingData.method, requestMappingData.pathTemplate) {
             var requestName = "_request"
             for (i in interceptors.indices) {
                 val interceptor = interceptors[i]
                 val interceptorName = "_interceptor" + (i + 1)
                 val newRequestName = "_request" + (i + 1)
-                funBuilder.beginControlFlow("%L.intercept(%L) { %L ->", interceptorName, requestName, newRequestName)
+                funBuilder.beginControlFlow("%N.intercept(_ctx, %N) { _ctx, %N ->", interceptorName, requestName, newRequestName)
                 requestName = newRequestName
                 val builder = ParameterSpec.builder(interceptorName, interceptor.type)
                 if (interceptor.tag != null) {
@@ -99,23 +90,53 @@ class RouteProcessor(private val resolver: Resolver) {
                 }
                 funBuilder.addParameter(builder.build())
             }
-            funBuilder.controlFlow(" %M(%T.Unconfined + %T.Kotlin.asCoroutineContext(%T.current())) { ", monoMemberName, dispatchersClassName, Context::class, Context::class) {
-                val params = generateFunctionParameters(requestName, function, funBuilder)
-                if (isBlocking) {
-                    funBuilder.addParameter("_executor", BlockingRequestExecutor::class)
-                    funBuilder.addStatement(
-                        "val response = _executor.execute{ _controller.%L(%L)}.%M()",
-                        function.simpleName.asString(),
-                        params,
-                        awaitCode,
-                    )
-                } else {
-                    funBuilder.addStatement("val response = _controller.%L(%L)", function.simpleName.asString(), params)
+            function.parameters.forEach { funBuilder.generateParameterDeclaration(it, requestName) }
+            val params = function.parameters.joinToString(",") { it.name!!.asString() }
+            if (isBlocking) {
+                funBuilder.controlFlow("_executor.execute(_ctx) {") {
+                    for (param in bodyParams) {
+                        val paramName = param.name!!.asString()
+                        val paramType = param.type.toTypeName()
+                        val mapperName = "_${paramName}Mapper"
+                        val castedMapperName = httpServerRequestMapper.parameterizedBy(paramType.copy(true))
+                        funBuilder.addStatement("val %N = (%N as %T).apply(%N)", paramName, mapperName, castedMapperName, requestName)
+                        if (!paramType.isNullable) {
+                            funBuilder.controlFlow("if (%N == null)", paramName) {
+                                addStatement("throw %T.of(400, %S)", httpServerResponseException, "Parameter $paramName is not nullable, but got null from mapper")
+                            }
+                        }
+                    }
+                    addStatement("val _result = _controller.%L(%L)", function.simpleName.asString(), params)
+                    if (returnTypeName == UNIT) {
+                        addStatement("return@execute %T.of(200)", httpServerResponse)
+                    } else if (returnTypeName == httpServerResponse) {
+                        addStatement("return@execute _result")
+                    } else {
+                        addStatement("return@execute _responseMapper.apply(_ctx, _request, _result)")
+                    }
                 }
-                if (returnType == resolver.builtIns.unitType) {
-                    addStatement("%T(200, %S, %T.of(), null)", simpleHttpServerResponse, "application/octet-stream", httpHeaders)
-                } else {
-                    addStatement("_responseMapper.apply(response).%M()", awaitCode)
+            } else {
+                funBuilder.controlFlow("%M(%T.Unconfined + %T.Kotlin.asCoroutineContext(_ctx)).%M {", coroutineScope, dispatchers, CommonClassNames.context, future) {
+                    for (param in bodyParams) {
+                        val paramName = param.name!!.asString()
+                        val paramType = param.type.toTypeName()
+                        val mapperName = "_${paramName}Mapper"
+                        val castedMapperName = httpServerRequestMapper.parameterizedBy(CompletionStage::class.asClassName().parameterizedBy(paramType.copy(true)))
+                        funBuilder.addStatement("val %N = (%N as %T).apply(%N).%M()", paramName, mapperName, castedMapperName, requestName, await)
+                        if (!paramType.isNullable) {
+                            funBuilder.controlFlow("if (%N == null)", paramName) {
+                                addStatement("throw %T.of(400, %S)", httpServerResponseException, "Parameter $paramName is not nullable, but got null from mapper")
+                            }
+                        }
+                    }
+                    addStatement("val _result = _controller.%L(%L)", function.simpleName.asString(), params)
+                    if (returnTypeName == UNIT) {
+                        addStatement("return@future %T.of(200)", httpServerResponse)
+                    } else if (returnTypeName == httpServerResponse) {
+                        addStatement("return@future _result")
+                    } else {
+                        addStatement("return@future _responseMapper.apply(_ctx, _request, _result)")
+                    }
                 }
             }
         }
@@ -128,381 +149,170 @@ class RouteProcessor(private val resolver: Resolver) {
         return funBuilder
     }
 
-    private fun generateFunctionParameters(
-        requestName: String,
-        function: KSFunctionDeclaration,
-        funBuilder: FunSpec.Builder
-    ): String {
-        for (param in function.parameters) {
-            generateParameterDeclaration(requestName, param, funBuilder)
+    private fun FunSpec.Builder.generateParameterDeclaration(param: KSValueParameter, requestName: String) {
+        param.findAnnotation(query)?.let {
+            return parseQueryParameter(param, it)
         }
-        return function.parameters.joinToString(",") { it.name!!.asString() }
-
-    }
-
-    @OptIn(KspExperimental::class)
-    private fun generateParameterDeclaration(
-        requestName: String,
-        param: KSValueParameter,
-        funBuilder: FunSpec.Builder
-    ) {
-        when {
-            param.isAnnotationPresent(Query::class) -> {
-                val name = param.getAnnotationsByType(Query::class).first().value
-                addExtractorToFunction("Query", name, param, funBuilder)
-            }
-
-            param.isAnnotationPresent(Header::class) -> {
-                val name = param.getAnnotationsByType(Header::class).first().value
-                addExtractorToFunction("Header", name, param, funBuilder)
-            }
-
-            param.isAnnotationPresent(Path::class) -> {
-                val name = param.getAnnotationsByType(Path::class).first().value
-                addExtractorToFunction("Path", name, param, funBuilder)
-            }
-
-            else -> {
-                generateMappedParamDeclaration(requestName, param, funBuilder)
-            }
+        param.findAnnotation(header)?.let {
+            return parseHeaderParameter(param, it)
+        }
+        param.findAnnotation(path)?.let {
+            return parsePathParameter(param, it)
+        }
+        val type = param.type.toTypeName()
+        if (type == CommonClassNames.context) {
+            addStatement("val %N = _ctx", param.name!!.asString())
+        }
+        if (type == httpServerRequest) {
+            addStatement("val %N = %N", param.name!!.asString(), requestName)
         }
     }
 
-    @OptIn(KspExperimental::class)
-    private fun extractRequestMappingData(rootPath: String, declaration: KSFunctionDeclaration): RequestMappingData {
-        val httpRoute = declaration.getAnnotationsByType(HttpRoute::class).first()
-        return RequestMappingData(httpRoute.method, "$rootPath${httpRoute.path}")
+    private fun extractRoute(rootPath: String, declaration: KSFunctionDeclaration): Route {
+        val httpRoute = declaration.findAnnotation(httpRoute)!!
+        val method = httpRoute.findValueNoDefault<String>("method")!!
+        val path = httpRoute.findValueNoDefault<String>("path")!!
+        return Route(method, "$rootPath${path}")
     }
 
-    private fun funName(requestMappingData: RequestMappingData): String {
-        val suffix = if (requestMappingData.pathTemplate.endsWith("/")) "_trailing_slash" else ""
-        return requestMappingData.method.lowercase() + requestMappingData.pathTemplate.split(Regex("[^A-Za-z0-9]+"))
-            .filter { it.isNotBlank() }
-            .joinToString("_", "_", suffix)
-    }
-
-    private fun generateParamDeclaration(
-        extractorFunctionData: ExtractorFunction,
-        name: String,
-        valueParameter: KSValueParameter
-    ): CodeBlock {
-        val requiredName = name.ifBlank { valueParameter.name!!.asString() }
-
-        return CodeBlock.of(
-            "val %L = %M(_request, %S)\n",
-            valueParameter.name!!.asString(),
-            extractorFunctionData.memberName,
-            requiredName
-        )
-    }
-
-    private fun generateMappedParamDeclaration(requestName: String, valueParameter: KSValueParameter, funBuilder: FunSpec.Builder) {
-        val paramName = valueParameter.name?.asString()
-        val mappingData = valueParameter.parseMappingData()
-        val mapping = mappingData.getMapping(requestMapper)
-
-        val isNullable = valueParameter.type.resolve().nullability == Nullability.NULLABLE
-        val awaitCode = if (isNullable) awaitSingleOrNull else awaitSingle
-        val mapperType = mapping?.mapper?.toTypeName() ?: requestMapper.parameterizedBy(valueParameter.type.toTypeName())
-        val mapperParameter = ParameterSpec.builder("_${paramName}Mapper", mapperType)
-        mapping?.toTagAnnotation()?.let {
-            mapperParameter.addAnnotation(it)
-        }
-        funBuilder.addParameter(mapperParameter.build())
-        funBuilder.addCode("val $paramName = _${paramName}Mapper.apply(%N).%M()\n", requestName, awaitCode)
-    }
-
-
-    private fun addExtractorToFunction(paramType: String, name: String, valueParameter: KSValueParameter, funBuilder: FunSpec.Builder) {
-        val typeArguments = valueParameter.type.element?.typeArguments ?: emptyList()
-        val parameterTypeRef = valueParameter.type
-        val parameterType = parameterTypeRef.resolve()
-        if (listErasure.isAssignableFrom(parameterType) || listErasure.makeNullable().isAssignableFrom(parameterType)) {
-            val listTypeArgument = typeArguments.first().type!!
-            when (val arg = listTypeArgument.resolve()) {
-                resolver.builtIns.intType, resolver.builtIns.intType.makeNullable() -> {
-                    if (paramType == "Query") {
-                        if (parameterType.isMarkedNullable) {
-                            funBuilder.addCode(generateParamDeclaration(ExtractorFunction.INT_LIST_NULLABLE_QUERY, name, valueParameter))
-                        } else {
-                            funBuilder.addCode(generateParamDeclaration(ExtractorFunction.INT_LIST_QUERY, name, valueParameter))
-                        }
-                        return
-                    }
-                }
-
-                resolver.builtIns.stringType, resolver.builtIns.stringType.makeNullable() -> {
-                    when (paramType) {
-                        "Query" -> {
-                            if (parameterType.isMarkedNullable) {
-                                funBuilder.addCode(generateParamDeclaration(ExtractorFunction.STRING_LIST_NULLABLE_QUERY, name, valueParameter))
-                            } else {
-                                funBuilder.addCode(generateParamDeclaration(ExtractorFunction.STRING_LIST_QUERY, name, valueParameter))
-                            }
-                            return
-                        }
-
-                        "Header" -> {
-                            if (parameterType.isMarkedNullable) {
-                                funBuilder.addCode(generateParamDeclaration(ExtractorFunction.LIST_STRING_HEADER, name, valueParameter))
-                            } else {
-                                funBuilder.addCode(generateParamDeclaration(ExtractorFunction.LIST_STRING_NULLABLE_HEADER, name, valueParameter))
-                            }
-                            return
-                        }
-                    }
-                }
-
-                resolver.builtIns.doubleType, resolver.builtIns.doubleType.makeNullable() -> {
-                    if (paramType == "Query") {
-                        if (parameterType.isMarkedNullable) {
-                            funBuilder.addCode(generateParamDeclaration(ExtractorFunction.DOUBLE_LIST_NULLABLE_QUERY, name, valueParameter))
-                        } else {
-                            funBuilder.addCode(generateParamDeclaration(ExtractorFunction.DOUBLE_LIST_QUERY, name, valueParameter))
-                        }
-                        return
-                    }
-                }
-
-                resolver.builtIns.booleanType, resolver.builtIns.booleanType.makeNullable() -> {
-                    if (paramType == "Query") {
-                        if (parameterType.isMarkedNullable) {
-                            funBuilder.addCode(generateParamDeclaration(ExtractorFunction.BOOLEAN_LIST_NULLABLE_QUERY, name, valueParameter))
-                        } else {
-                            funBuilder.addCode(generateParamDeclaration(ExtractorFunction.BOOLEAN_LIST_QUERY, name, valueParameter))
-                        }
-                        return
-                    }
-                }
-
-                resolver.builtIns.longType, resolver.builtIns.longType.makeNullable() -> {
-                    if (paramType == "Query") {
-                        if (parameterType.isMarkedNullable) {
-                            funBuilder.addCode(generateParamDeclaration(ExtractorFunction.LONG_LIST_NULLABLE_QUERY, name, valueParameter))
-                        } else {
-                            funBuilder.addCode(generateParamDeclaration(ExtractorFunction.LONG_LIST_QUERY, name, valueParameter))
-                        }
-                        return
-                    }
-                }
-
-                uuidType -> {
-                    if (paramType == "Query") {
-                        if (parameterType.isMarkedNullable) {
-                            funBuilder.addCode(generateParamDeclaration(ExtractorFunction.UUID_LIST_NULLABLE_QUERY, name, valueParameter))
-                        } else {
-                            funBuilder.addCode(generateParamDeclaration(ExtractorFunction.UUID_LIST_QUERY, name, valueParameter))
-                        }
-                        return
-                    }
-                }
-
-                else -> {
-                    val parameterName = valueParameter.name!!.asString()
-                    if (paramType == "Query") {
-                        val extractor = if (parameterType.isMarkedNullable) {
-                            ExtractorFunction.STRING_LIST_NULLABLE_QUERY
-                        } else {
-                            ExtractorFunction.STRING_LIST_QUERY
-                        }
-                        val nullChecker = if (parameterType.isMarkedNullable) {
-                            "?"
-                        } else {
-                            ""
-                        }
-                        funBuilder.addParameter("_${parameterName}StringParameterReader", stringParameterReader.parameterizedBy(arg.toTypeName()))
-                        funBuilder.addStatement(
-                            "val %L = %M(_request, %S)$nullChecker.map { _${parameterName}StringParameterReader.read(it) }",
-                            parameterName,
-                            extractor.memberName,
-                            name
-                        )
-                        return
-                    }
-                    if (paramType == "Header") {
-                        val extractor = if (parameterType.isMarkedNullable) {
-                            ExtractorFunction.LIST_STRING_NULLABLE_HEADER
-                        } else {
-                            ExtractorFunction.LIST_STRING_HEADER
-                        }
-                        val nullChecker = if (parameterType.isMarkedNullable) {
-                            "?"
-                        } else {
-                            ""
-                        }
-                        funBuilder.addParameter("_${parameterName}StringParameterReader", stringParameterReader.parameterizedBy(arg.toTypeName()))
-                        funBuilder.addStatement(
-                            "val %L = %M(_request, %S)$nullChecker.map { _${parameterName}StringParameterReader.read(it) }",
-                            parameterName,
-                            extractor,
-                            name
-                        )
-                        return
-                    }
-                }
+    private fun FunSpec.Builder.parsePathParameter(parameter: KSValueParameter, annotation: KSAnnotation) {
+        val name = annotation.findValueNoDefault<String>("value").let {
+            if (it.isNullOrBlank()) {
+                parameter.name!!.asString()
+            } else {
+                it
             }
         }
+        val parameterName = parameter.name!!.asString()
+        val parameterTypeName = parameter.type.toTypeName()
+        val extractor = ExtractorFunctions.path[parameterTypeName]
+        if (extractor != null) {
+            addStatement("val %N = %M(_request, %S)", parameterName, extractor, name)
+        } else {
+            val stringExtractor = ExtractorFunctions.path[STRING]!!
+            val readerParameterName = "_${parameterName}StringParameterReader"
+            addStatement("val %N = %N.read(%M(_request, %S))", parameterName, readerParameterName, stringExtractor, name)
+        }
+    }
 
-        val isNullable = parameterType.isMarkedNullable
-        when (parameterType) {
-            resolver.builtIns.stringType, resolver.builtIns.stringType.makeNullable() -> {
-                when (paramType) {
-                    "Query" -> if (isNullable) {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.STRING_NULLABLE_QUERY, name, valueParameter))
-                        return
-                    } else {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.STRING_QUERY, name, valueParameter))
-                        return
-                    }
-
-                    "Header" -> if (isNullable) {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.STRING_NULLABLE_HEADER, name, valueParameter))
-                        return
-                    } else {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.STRING_HEADER, name, valueParameter))
-                        return
-                    }
-
-                    "Path" -> {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.STRING_PATH, name, valueParameter))
-                        return
-                    }
-                }
-            }
-
-            resolver.builtIns.intType, resolver.builtIns.intType.makeNullable() -> {
-                when (paramType) {
-                    "Query" -> if (isNullable) {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.INT_NULLABLE_QUERY, name, valueParameter))
-                        return
-                    } else {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.INT_QUERY, name, valueParameter))
-                        return
-                    }
-
-                    "Path" -> {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.INT_PATH, name, valueParameter))
-                        return
-                    }
-                }
-            }
-
-            resolver.builtIns.longType, resolver.builtIns.longType.makeNullable() -> {
-                when (paramType) {
-                    "Query" -> if (isNullable) {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.LONG_NULLABLE_QUERY, name, valueParameter))
-                        return
-                    } else {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.LONG_QUERY, name, valueParameter))
-                        return
-                    }
-
-                    "Path" -> {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.LONG_PATH, name, valueParameter))
-                        return
-                    }
-                }
-            }
-
-            resolver.builtIns.doubleType, resolver.builtIns.doubleType.makeNullable() -> {
-                when (paramType) {
-                    "Query" -> if (isNullable) {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.DOUBLE_NULLABLE_QUERY, name, valueParameter))
-                        return
-                    } else {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.DOUBLE_QUERY, name, valueParameter))
-                        return
-                    }
-
-                    "Path" -> {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.DOUBLE_PATH, name, valueParameter))
-                        return
-                    }
-                }
-            }
-
-            resolver.builtIns.booleanType, resolver.builtIns.booleanType.makeNullable() -> {
-                when (paramType) {
-                    "Query" -> if (isNullable) {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.BOOLEAN_NULLABLE_QUERY, name, valueParameter))
-                        return
-                    } else {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.BOOLEAN_QUERY, name, valueParameter))
-                        return
-                    }
-                }
-            }
-
-            uuidType -> {
-                when (paramType) {
-                    "Query" -> if (isNullable) {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.UUID_NULLABLE_QUERY, name, valueParameter))
-                        return
-                    } else {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.UUID_QUERY, name, valueParameter))
-                        return
-                    }
-
-                    "Path" -> {
-                        funBuilder.addCode(generateParamDeclaration(ExtractorFunction.UUID_PATH, name, valueParameter))
-                        return
-                    }
-                }
+    private fun FunSpec.Builder.parseHeaderParameter(parameter: KSValueParameter, annotation: KSAnnotation) {
+        val name = annotation.findValueNoDefault<String>("value").let {
+            if (it.isNullOrBlank()) {
+                parameter.name!!.asString()
+            } else {
+                it
             }
         }
-
-        val parameterName = valueParameter.name!!.asString()
-        val readerParameterName = "_${parameterName}StringParameterReader"
-        funBuilder.addParameter(readerParameterName, stringParameterReader.parameterizedBy(parameterType.makeNotNullable().toTypeName()))
-
-        when (paramType) {
-            "Query" -> {
-                if (isNullable) {
-                    funBuilder.addStatement("val %L = %M(_request, %S)?.let(%L::read)", parameterName, ExtractorFunction.STRING_NULLABLE_QUERY.memberName, name, readerParameterName)
-                } else {
-                    funBuilder.addStatement("val %L = %L.read(%M(_request, %S))", parameterName, readerParameterName, ExtractorFunction.STRING_QUERY.memberName, name)
-                }
-
-                return
+        val parameterName = parameter.name!!.asString()
+        val parameterTypeName = parameter.type.toTypeName()
+        val extractor = ExtractorFunctions.header[parameterTypeName]
+        if (extractor != null) {
+            addStatement("val %N = %M(_request, %S)", parameterName, extractor, name)
+        } else {
+            if (parameterTypeName.isNullable) {
+                val stringExtractor = ExtractorFunctions.header[STRING.copy(true)]!!
+                val readerParameterName = "_${parameterName}StringParameterReader"
+                addStatement("val %N = %M(_request, %S)?.let(%N::read)", stringExtractor, name, parameterName, readerParameterName)
+            } else {
+                val stringExtractor = ExtractorFunctions.header[STRING]!!
+                val readerParameterName = "_${parameterName}StringParameterReader"
+                addStatement("val %N = %N.read(%M(_request, %S))", parameterName, readerParameterName, stringExtractor, name)
             }
+        }
+    }
 
-            "Header" -> {
-                if (isNullable) {
-                    funBuilder.addStatement("val %L = %M(_request, %S)?.let(%L::read)", parameterName, ExtractorFunction.STRING_NULLABLE_HEADER.memberName, name, readerParameterName)
-                } else {
-                    funBuilder.addStatement("val %L = %L.read(%M(_request, %S))", parameterName, readerParameterName, ExtractorFunction.STRING_HEADER.memberName, name)
-                }
+    private fun FunSpec.Builder.parseQueryParameter(parameter: KSValueParameter, annotation: KSAnnotation) {
+        val name = annotation.findValueNoDefault<String>("value").let {
+            if (it.isNullOrBlank()) {
+                parameter.name!!.asString()
+            } else {
+                it
             }
+        }
+        val parameterName = parameter.name!!.asString()
+        val parameterTypeName = parameter.type.toTypeName()
+        val extractor = ExtractorFunctions.query[parameterTypeName]
+        if (extractor != null) {
+            addStatement("val %N = %M(_request, %S)", parameterName, extractor, name)
+        } else {
+            if (parameterTypeName.isNullable) {
+                val stringExtractor = ExtractorFunctions.query[STRING.copy(true)]!!
+                val readerParameterName = "_${parameterName}StringParameterReader"
+                addStatement("val %N = %M(_request, %S)?.let(%N::read)", stringExtractor, name, parameterName, readerParameterName)
+            } else {
+                val stringExtractor = ExtractorFunctions.query[STRING]!!
+                val readerParameterName = "_${parameterName}StringParameterReader"
+                addStatement("val %N = %N.read(%M(_request, %S))", parameterName, readerParameterName, stringExtractor, name)
+            }
+        }
+    }
 
-            "Path" -> {
-                funBuilder.addStatement("val %L = %L.read(%M(_request, %S))", parameterName, readerParameterName, ExtractorFunction.STRING_PATH.memberName, name)
-                return
-            }
+    private fun FunSpec.Builder.addQueryParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.query, parameter)
+    private fun FunSpec.Builder.addPathParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.path, parameter)
+    private fun FunSpec.Builder.addHeaderParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.header, parameter)
+    private fun FunSpec.Builder.addRequestParameterMapper(parameter: KSValueParameter, isBlocking: Boolean) {
+        val paramName = parameter.name!!.asString()
+        val paramType = parameter.type.toTypeName()
+        val mapperName = "_${paramName}Mapper"
+        if (isBlocking) {
+            addParameter(mapperName, httpServerRequestMapper.parameterizedBy(paramType.copy(false)))
+        } else {
+            addParameter(mapperName, httpServerRequestMapper.parameterizedBy(CompletionStage::class.asClassName().parameterizedBy(paramType.copy(false))))
+        }
+
+    }
+
+    private fun FunSpec.Builder.addStringParameterMapper(knownMappers: Map<TypeName, MemberName>, parameter: KSValueParameter) {
+        val parameterName = parameter.name!!.asString()
+        val parameterTypeName = parameter.type.toTypeName()
+        val extractor = knownMappers[parameterTypeName]
+        if (extractor == null) {
+            val readerParameterName = "_${parameterName}StringParameterReader"
+            addParameter(readerParameterName, stringParameterReader.parameterizedBy(parameterTypeName.copy(false)))
         }
     }
 
     data class Interceptor(val type: TypeName, val tag: AnnotationSpec?)
 
-    private fun parseInterceptor(it: KSAnnotation): Interceptor {
-        val interceptorType = parseAnnotationValue<KSType>(it, "value")!!.toTypeName()
-        val interceptorTag = parseAnnotationValue<KSAnnotation>(it, "tag")
+    private fun KSAnnotation.parseInterceptor(): Interceptor {
+        val interceptorType = this.findValueNoDefault<KSType>("value")!!.toTypeName()
+        val interceptorTag = findValueNoDefault<KSAnnotation>("tag")
         val interceptorTagAnnotationSpec = if (interceptorTag == null) {
             null
         } else {
-            val tag = AnnotationSpec.builder(Tag::class)
-            val builder = CodeBlock.builder().add("value = [")
             val tags = interceptorTag.arguments[0].value!! as List<KSType>
             if (tags.isNotEmpty()) {
-                for (t in tags) {
-                    builder.add("%T::class, ", t.toTypeName())
-                }
-                builder.add("]")
-                tag.addMember(builder.build()).build()
+                tags.makeTagAnnotationSpec()
             } else {
                 null
             }
         }
         return Interceptor(interceptorType, interceptorTagAnnotationSpec)
+    }
+
+
+    private fun Route.funName(): String {
+        val suffix = if (pathTemplate.endsWith("/")) "_trailing_slash" else ""
+        return method.lowercase() + pathTemplate.split(Regex("[^A-Za-z0-9]+"))
+            .filter { it.isNotBlank() }
+            .joinToString("_", "_", suffix)
+    }
+
+
+    private fun FunSpec.Builder.addResponseMapper(function: KSFunctionDeclaration) {
+        val returnTypeName = function.returnType!!.toTypeName()
+        val mapperClassName = httpServerResponseMapper.parameterizedBy(returnTypeName)
+        val mapping = function.parseMappingData().getMapping(httpServerResponseMapper)
+        if (mapping != null) {
+            val responseMapperType = if (mapping.mapper != null) mapping.mapper!!.toTypeName() else mapperClassName
+            val b = ParameterSpec.builder("_responseMapper", responseMapperType)
+            mapping.toTagAnnotation()?.let {
+                b.addAnnotation(it)
+            }
+            addParameter(b.build())
+        } else if (returnTypeName != UNIT && returnTypeName != httpServerResponse) {
+            addParameter(ParameterSpec.builder("_responseMapper", mapperClassName).build())
+        }
     }
 }
 

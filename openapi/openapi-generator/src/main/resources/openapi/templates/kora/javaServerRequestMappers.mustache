@@ -3,7 +3,9 @@ package {{package}};
 import ru.tinkoff.kora.http.server.common.form.MultipartReader;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
-import reactor.core.publisher.Mono;
+{{^isBlocking}}
+import java.util.concurrent.CompletionStage;
+{{/isBlocking}}
 
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
 public interface {{classname}}ServerRequestMappers {
@@ -11,7 +13,9 @@ public interface {{classname}}ServerRequestMappers {
 {{#operation}}
 {{#hasFormParams}}
 
-  public static final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper implements HttpServerRequestMapper<{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> {
+  final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper implements HttpServerRequestMapper<
+  {{#isBlocking}}{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam{{/isBlocking}}{{^isBlocking}}
+  CompletionStage<{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam>{{/isBlocking}}> {
 {{#vendorExtensions.requiresFormParamMappers}}
     {{#vendorExtensions.formParamMappers}}
     private ru.tinkoff.kora.http.server.common.handler.StringParameterReader<{{paramType}}> {{paramName}}Converter;
@@ -28,40 +32,36 @@ public interface {{classname}}ServerRequestMappers {
 
 {{/vendorExtensions.requiresFormParamMappers}}
 
-    @Override
-    public Mono<{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> apply(HttpServerRequest request) {
-      {{#vendorExtensions.urlEncodedForm}}
-              return ru.tinkoff.kora.common.util.ReactorUtils.toByteArrayMono(request.body()).handle((bytes, sink) -> {
-              var bodyString = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
-              var formData = ru.tinkoff.kora.http.server.common.form.FormUrlEncodedServerRequestMapper.read(bodyString);
-          {{#formParams}}
-                  var {{paramName}}Part = formData.get("{{baseName}}");{{#isArray}}
-                      var {{paramName}} = {{paramName}}Part == null ? java.util.List.of() : {{paramName}}Part;
-              {{/isArray}}{{^isArray}}
-                  {{#required}}
-                          if ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) {
-                          sink.error(ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form key '{{baseName}}' is required"));
-                          return;
-                          }
-                          {{#vendorExtensions.requiresMapper}}
-                          var {{paramName}} = {{paramName}}Converter.read({{paramName}}Part.values().get(0));
-                          {{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}
-                          var {{paramName}} = {{paramName}}Part.values().get(0);
-                          {{/vendorExtensions.requiresMapper}}
-                  {{/required}}{{^required}}
-                          {{#vendorExtensions.requiresMapper}}
-                          var {{paramName}} = ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) ? null : {{paramName}}Converter.read({{paramName}}Part.values().get(0));
-                          {{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}
-                          var {{paramName}} = ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) ? null : {{paramName}}Part.values().get(0);
-                          {{/vendorExtensions.requiresMapper}}
-                  {{/required}}
+    @Override public {{#isBlocking}}
+    {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam{{/isBlocking}}{{^isBlocking}}
+    CompletionStage<{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam>{{/isBlocking}} apply(HttpServerRequest request) throws Exception {
+{{#vendorExtensions.urlEncodedForm}}
+      return request.body().collectArray().toCompletableFuture().thenApply(bytes -> {
+          var bodyString = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+          var formData = ru.tinkoff.kora.http.server.common.form.FormUrlEncodedServerRequestMapper.read(bodyString);{{#formParams}}
+          var {{paramName}}Part = formData.get("{{baseName}}");{{#isArray}}
+          var {{paramName}} = {{paramName}}Part == null ? java.util.List.of() : {{paramName}}Part;
+          {{/isArray}}{{^isArray}}{{#required}}
+          if ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) {
+            throw ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form key '{{baseName}}' is required");
+          }
+          {{#vendorExtensions.requiresMapper}}
+          var {{paramName}} = {{paramName}}Converter.read({{paramName}}Part.values().get(0));
+          {{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}
+          var {{paramName}} = {{paramName}}Part.values().get(0);
+          {{/vendorExtensions.requiresMapper}}{{/required}}{{^required}}
+          {{#vendorExtensions.requiresMapper}}
+          var {{paramName}} = ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) ? null : {{paramName}}Converter.read({{paramName}}Part.values().get(0));
+          {{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}
+          var {{paramName}} = ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) ? null : {{paramName}}Part.values().get(0);
+          {{/vendorExtensions.requiresMapper}}{{/required}}
         {{/isArray}}
         {{/formParams}}
 
-        sink.next(new {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(
+        return new {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(
           {{#formParams}}{{paramName}}{{^-last}}, {{/-last}}{{/formParams}}
-        ));
-      });{{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
+        );
+      }){{#isBlocking}}.get(){{/isBlocking}};{{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
       class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState {
       {{#formParams}}  @javax.annotation.Nullable
       {{#isFile}}  ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile {{paramName}} = null;
@@ -69,30 +69,30 @@ public interface {{classname}}ServerRequestMappers {
       {{/isFile}}{{/formParams}}
       }
       return MultipartReader.read(request)
-        .reduce(new {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState(), (state, part) -> {
-          switch (part.name()) {
-            default:
-              break;{{#formParams}}
-              case "{{baseName}}":
-          {{#isFile}}  state.{{paramName}} = part;
-              break;
-          {{/isFile}}{{^isFile}}  state.{{paramName}} = new String(part.content(), java.nio.charset.StandardCharsets.UTF_8);
-              break;
-          {{/isFile}}{{/formParams}}
+        .thenApply(parts -> {
+          var state = new {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState();
+          for (var part : parts) {
+            switch (part.name()) {
+              default:
+                break;{{#formParams}}
+                case "{{baseName}}":
+            {{#isFile}}  state.{{paramName}} = part;
+                break;
+            {{/isFile}}{{^isFile}}  state.{{paramName}} = new String(part.content(), java.nio.charset.StandardCharsets.UTF_8);
+                break;
+            {{/isFile}}{{/formParams}}
+            }
           }
-          return state;
-        })
-        .handle((state, sink) -> {
           {{#formParams}}{{#required}}
           if (state.{{paramName}} == null) {
-            sink.error(ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form key '{{baseName}}' is required"));
-            return;
+            throw ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form key '{{baseName}}' is required");
           }
           {{/required}}{{/formParams}}
-          sink.next(new {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(
+          return new {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(
             {{#formParams}}state.{{paramName}}{{^-last}}, {{/-last}}{{/formParams}}
-          ));
-        });{{/vendorExtensions.multipartForm}}
+          );
+        })
+        {{#isBlocking}}.toCompletableFuture().join(){{/isBlocking}};{{/vendorExtensions.multipartForm}}
     }
   }
 {{/hasFormParams}}

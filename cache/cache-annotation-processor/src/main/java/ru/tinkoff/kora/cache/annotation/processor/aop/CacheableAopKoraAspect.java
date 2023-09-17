@@ -2,8 +2,7 @@ package ru.tinkoff.kora.cache.annotation.processor.aop;
 
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
-import reactor.core.publisher.Flux;
-import reactor.core.scheduler.Schedulers;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.cache.annotation.processor.CacheOperation;
@@ -38,7 +37,7 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
         if (MethodUtils.isFuture(method)) {
             throw new ProcessingErrorException("@Cacheable can't be applied for types assignable from " + Future.class, method);
         } else if (MethodUtils.isFlux(method)) {
-            throw new ProcessingErrorException("@Cacheable can't be applied for types assignable from " + Flux.class, method);
+            throw new ProcessingErrorException("@Cacheable can't be applied for types assignable from " + CommonClassNames.flux, method);
         }
 
         final CacheOperation operation = CacheOperationUtils.getCacheMeta(method);
@@ -181,11 +180,10 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
             // put value from cache into prev level caches
             if (i > 1) {
                 builder.add("\n").add("""
-                        .publishOn($T.boundedElastic())
                         .doOnSuccess(_fromCache -> {
                             if(_fromCache != null) {
                                 $T.merge($T.of(
-                    """, Schedulers.class, Flux.class, List.class);
+                    """, CommonClassNames.flux, List.class);
 
                 for (int j = 0; j < i; j++) {
                     final String prevCache = cacheFields.get(j);
@@ -216,7 +214,7 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
 
         // cache put
         if (cacheFields.size() > 1) {
-            builder.add(".flatMap(_result -> $T.merge($T.of(\n", Flux.class, List.class);
+            builder.add(".flatMap(_result -> $T.merge($T.of(\n", CommonClassNames.flux, List.class);
             for (int i = 0; i < cacheFields.size(); i++) {
                 final String cache = cacheFields.get(i);
                 final String suffix = (i == cacheFields.size() - 1)

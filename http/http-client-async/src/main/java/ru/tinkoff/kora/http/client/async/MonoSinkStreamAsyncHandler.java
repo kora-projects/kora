@@ -1,41 +1,30 @@
 package ru.tinkoff.kora.http.client.async;
 
+import org.asynchttpclient.AsyncHandler;
 import org.asynchttpclient.HttpResponseBodyPart;
 import org.asynchttpclient.HttpResponseStatus;
-import org.asynchttpclient.handler.StreamedAsyncHandler;
-import org.reactivestreams.Publisher;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.MonoSink;
 import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.http.client.async.response.EmptyAsyncHttpClientResponse;
+import ru.tinkoff.kora.http.client.async.response.QueuePublisher;
+import ru.tinkoff.kora.http.client.async.response.SingleBufferAsyncHttpClientResponse;
+import ru.tinkoff.kora.http.client.async.response.StreamingAsyncHttpClientResponse;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 
+import java.nio.ByteBuffer;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
-class MonoSinkStreamAsyncHandler implements StreamedAsyncHandler<Object> {
-    private final MonoSink<HttpClientResponse> sink;
+class MonoSinkStreamAsyncHandler implements AsyncHandler<Object> {
+    private final CompletableFuture<HttpClientResponse> future;
     private final AtomicReference<RequestPhase> phase = new AtomicReference<>(RequestPhase.REQUESTED);
     private final Context context;
-    private volatile HttpResponseStatus responseStatus;
-    private volatile io.netty.handler.codec.http.HttpHeaders headers;
+    private HttpResponseStatus responseStatus;
+    private io.netty.handler.codec.http.HttpHeaders headers;
+    private QueuePublisher<ByteBuffer> publisher;
 
-    public MonoSinkStreamAsyncHandler(Context context, MonoSink<HttpClientResponse> sink) {
-        this.sink = sink;
+    public MonoSinkStreamAsyncHandler(Context context, CompletableFuture<HttpClientResponse> future) {
+        this.future = future;
         this.context = context;
-    }
-
-    @Override
-    public State onStream(Publisher<HttpResponseBodyPart> publisher) {
-        if (this.phase.compareAndSet(RequestPhase.REQUESTED, RequestPhase.BODY_STREAM_RECEIVED)) {
-            var oldContext = Context.current();
-            try {
-                Context.Reactor.current(sink.contextView()).inject();
-                this.sink.success(new AsyncHttpClientResponse(this.context, this.responseStatus, this.headers, publisher));
-            } finally {
-                oldContext.inject();
-            }
-        }
-
-        return State.CONTINUE;
     }
 
     @Override
@@ -54,6 +43,37 @@ class MonoSinkStreamAsyncHandler implements StreamedAsyncHandler<Object> {
 
     @Override
     public State onBodyPartReceived(HttpResponseBodyPart bodyPart) {
+        if (this.phase.compareAndSet(RequestPhase.REQUESTED, RequestPhase.BODY_STREAM_RECEIVED)) {
+            var oldContext = Context.current();
+            try {
+                this.context.inject();
+                if (bodyPart.length() <= 0) {
+                    if (bodyPart.isLast()) {
+                        this.future.complete(new EmptyAsyncHttpClientResponse(this.responseStatus, this.headers));
+                    }
+                    return State.CONTINUE;
+                }
+                var buf = ByteBuffer.allocate(bodyPart.length());
+                buf.put(bodyPart.getBodyByteBuffer());
+                buf.rewind();
+                if (bodyPart.isLast()) {
+                    this.future.complete(new SingleBufferAsyncHttpClientResponse(context, this.responseStatus, this.headers, buf));
+                    return State.CONTINUE;
+                }
+                var s = publisher = new QueuePublisher<ByteBuffer>();
+                s.next(buf);
+                this.future.complete(new StreamingAsyncHttpClientResponse(this.responseStatus, this.headers, s));
+            } finally {
+                oldContext.inject();
+            }
+        } else {
+            if (bodyPart.length() > 0) {
+                this.publisher.next(bodyPart.getBodyByteBuffer());
+            }
+            if (bodyPart.isLast()) {
+                this.publisher.complete();
+            }
+        }
         return State.CONTINUE;
     }
 
@@ -62,11 +82,13 @@ class MonoSinkStreamAsyncHandler implements StreamedAsyncHandler<Object> {
         if (this.phase.compareAndSet(RequestPhase.REQUESTED, RequestPhase.ERROR)) {
             var oldContext = Context.current();
             try {
-                Context.Reactor.current(sink.contextView()).inject();
-                this.sink.error(t);
+                this.context.inject();
+                this.future.completeExceptionally(t);
             } finally {
                 oldContext.inject();
             }
+        } else {
+            this.publisher.error(t);
         }
     }
 
@@ -76,8 +98,8 @@ class MonoSinkStreamAsyncHandler implements StreamedAsyncHandler<Object> {
         if (this.phase.compareAndSet(RequestPhase.REQUESTED, RequestPhase.BODY_STREAM_RECEIVED)) {
             var oldContext = Context.current();
             try {
-                Context.Reactor.current(sink.contextView()).inject();
-                this.sink.success(new AsyncHttpClientResponse(this.context, this.responseStatus, this.headers, Flux.empty()));
+                this.context.inject();
+                this.future.complete(new EmptyAsyncHttpClientResponse(this.responseStatus, this.headers));
             } finally {
                 oldContext.inject();
             }

@@ -2,10 +2,12 @@ package {{package}};
 
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
+import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponseEntity;
-import ru.tinkoff.kora.http.server.common.SimpleHttpServerResponse;
 import ru.tinkoff.kora.http.common.HttpHeaders;
-import reactor.core.publisher.Mono;
+import ru.tinkoff.kora.common.Context;
+
+
 import {{package}}.{{classname}}Responses.*;
 
 {{#imports}}import {{import}};
@@ -40,26 +42,24 @@ public interface {{classname}}ServerResponseMappers {
     }
 
     @Override
-    public Mono<? extends HttpServerResponse> apply({{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse response) { {{#responses}}{{^vendorExtensions.singleResponse}}
+    public HttpServerResponse apply(Context ctx, HttpServerRequest request, {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse response) throws java.io.IOException { {{#responses}}{{^vendorExtensions.singleResponse}}
       if (response instanceof {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse rs) { {{/vendorExtensions.singleResponse}}{{#vendorExtensions.singleResponse}}
       var rs = response;{{/vendorExtensions.singleResponse}}
-        var headers = HttpHeaders.of(
-        {{#headers}}
+        var headers = HttpHeaders.of({{#headers}}
           java.util.Map.entry("{{baseName}}", java.util.List.of(rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}())){{^-last}},{{/-last}}
-        {{/headers}}
-        );
+        {{/headers}});
         {{^dataType}}
-        return Mono.just(new SimpleHttpServerResponse({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, "application/octet-stream", headers, null));
+        return HttpServerResponse.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers);
         {{/dataType}}
         {{#dataType}}
         var entity = new HttpServerResponseEntity<>({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, rs.content(), headers);
-        return this.response{{code}}Delegate.apply(entity);
+        return this.response{{code}}Delegate.apply(ctx, request, entity);
         {{/dataType}}
-      {{^vendorExtensions.singleResponse}}
-      }{{/vendorExtensions.singleResponse}}{{/responses}}
-      {{^vendorExtensions.singleResponse}}
-      throw new IllegalStateException();
-      {{/vendorExtensions.singleResponse}}
+        {{^vendorExtensions.singleResponse}}
+        }{{/vendorExtensions.singleResponse}}{{/responses}}
+        {{^vendorExtensions.singleResponse}}
+        throw new IllegalStateException();
+        {{/vendorExtensions.singleResponse}}
     }
   }
 

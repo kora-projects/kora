@@ -1,0 +1,111 @@
+package ru.tinkoff.kora.http.server.symbol.processor
+
+import org.intellij.lang.annotations.Language
+import ru.tinkoff.kora.common.Context
+import ru.tinkoff.kora.http.common.body.HttpBody
+import ru.tinkoff.kora.http.server.common.HttpServerRequest
+import ru.tinkoff.kora.http.server.common.HttpServerResponse
+import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler
+import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper
+import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper
+import ru.tinkoff.kora.http.server.symbol.procesor.HttpControllerProcessorProvider
+import ru.tinkoff.kora.http.server.symbol.processor.server.HttpResponseAssert
+import ru.tinkoff.kora.http.server.symbol.processor.server.SimpleHttpServerRequest
+import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
+import java.lang.invoke.MethodHandles
+import java.lang.reflect.InvocationTargetException
+import java.lang.reflect.Method
+import java.lang.reflect.Proxy
+import java.nio.charset.StandardCharsets
+import java.util.concurrent.CompletionStage
+
+abstract class AbstractHttpControllerTest : AbstractSymbolProcessorTest() {
+    override fun commonImports() = super.commonImports() + """
+        import ru.tinkoff.kora.common.*;
+        import ru.tinkoff.kora.http.server.common.annotation.*;
+        import ru.tinkoff.kora.http.common.*;
+        import ru.tinkoff.kora.http.common.annotation.*;
+        import ru.tinkoff.kora.http.common.body.*;
+        import ru.tinkoff.kora.http.server.common.HttpServerResponseEntity;
+        import ru.tinkoff.kora.http.server.common.HttpServerResponse;
+        import ru.tinkoff.kora.http.server.common.HttpServerRequest;
+        import ru.tinkoff.kora.http.server.common.HttpServerInterceptor;
+        import ru.tinkoff.kora.http.common.HttpMethod.*;
+        import java.util.concurrent.CompletionStage;
+        import java.util.concurrent.CompletableFuture;
+    """.trimIndent()
+
+
+    protected class HttpControllerModule(private val controller: Any, private val moduleInterface: Class<*>, private val moduleObject: Any) {
+        private fun getHandlerMethod(name: String): Method? {
+            for (method in moduleInterface.getMethods()) {
+                if (method.name == name) {
+                    return method
+                }
+            }
+            return null
+        }
+
+        fun getHandler(methodName: String, vararg args: Any?): HttpServerRequestHandler {
+            val fullArgs = arrayOfNulls<Any>(args.size + 1)
+            fullArgs[0] = controller
+            System.arraycopy(args, 0, fullArgs, 1, args.size)
+            val method = getHandlerMethod(methodName)!!
+            return try {
+                method.invoke(moduleObject, *fullArgs) as HttpServerRequestHandler
+            } catch (e: InvocationTargetException) {
+                throw e.targetException
+            }
+        }
+    }
+
+    protected fun compile(@Language("kotlin") vararg sources: String): HttpControllerModule {
+        val compileResult = compile(listOf(HttpControllerProcessorProvider()), *sources)
+        if (compileResult.isFailed()) {
+            throw compileResult.compilationException()
+        }
+        val moduleClass = compileResult.loadClass("ControllerModule")
+        val controllerClass = compileResult.loadClass("Controller")
+        val moduleObject = Proxy.newProxyInstance(compileResult.classLoader, arrayOf(moduleClass)) { proxy: Any, method: Method?, args: Array<Any?> ->
+            MethodHandles.privateLookupIn(moduleClass, MethodHandles.lookup())
+                .`in`(moduleClass)
+                .unreflectSpecial(method, moduleClass)
+                .bindTo(proxy)
+                .invokeWithArguments(*args)
+        }
+        val controller = controllerClass.getConstructor().newInstance()
+        return HttpControllerModule(controller, moduleClass, moduleObject)
+    }
+
+    protected fun strResponseMapper(): HttpServerResponseMapper<String> {
+        return HttpServerResponseMapper { ctx: Context?, request: HttpServerRequest, result: String -> HttpServerResponse.of(200, HttpBody.plaintext(result)) }
+    }
+
+    protected fun asyncStringRequestMapper(): HttpServerRequestMapper<CompletionStage<String>> {
+        return HttpServerRequestMapper { request: HttpServerRequest -> request.body().collectArray().thenApply { b: ByteArray? -> String(b!!, StandardCharsets.UTF_8) } }
+    }
+
+    protected fun stringRequestMapper(): HttpServerRequestMapper<String> {
+        return HttpServerRequestMapper { request: HttpServerRequest -> String(request.body().inputStream.readAllBytes(), StandardCharsets.UTF_8) }
+    }
+
+    protected fun assertThat(handler: HttpServerRequestHandler, method: String, relativeUrl: String): HttpResponseAssert {
+        return assertThat(handler, method, relativeUrl, "")
+    }
+
+    protected fun assertThat(handler: HttpServerRequestHandler, method: String, relativeUrl: String, body: String): HttpResponseAssert {
+        try {
+            return HttpResponseAssert(handler.handle(Context.clear(), request(method, relativeUrl, body)).toCompletableFuture().join())
+        } catch (e: Throwable) {
+            if (e is HttpServerResponse) {
+                return HttpResponseAssert(e)
+            }
+            throw e
+        }
+    }
+
+    protected fun request(method: String, url: String, body: String): HttpServerRequest {
+        return SimpleHttpServerRequest(method, url, body.toByteArray(), emptyArray(), mapOf())
+    }
+
+}
