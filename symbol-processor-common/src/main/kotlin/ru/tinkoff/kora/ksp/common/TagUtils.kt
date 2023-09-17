@@ -11,11 +11,11 @@ object TagUtils {
     val ignoreList = setOf("Component", "DefaultComponent")
 
     fun KSAnnotated.parseTags(): Set<String> {
-        return TagUtils.parseTagValue(this)
+        return parseTagValue(this)
     }
 
     fun KSType.parseTags(): Set<String> {
-        return TagUtils.parseTagValue(this)
+        return parseTagValue(this)
     }
 
     fun ParameterSpec.Builder.tag(tag: Set<String>): ParameterSpec.Builder {

@@ -4,6 +4,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.assertj.core.api.ThrowingConsumer;
 import org.intellij.lang.annotations.Language;
@@ -15,10 +16,11 @@ import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTe
 import ru.tinkoff.kora.annotation.processor.common.CompileResult;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.TypeRef;
+import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
-import ru.tinkoff.kora.kafka.common.config.KafkaConsumerConfig;
+import ru.tinkoff.kora.kafka.common.consumer.KafkaListenerConfig;
 import ru.tinkoff.kora.kafka.common.consumer.containers.ConsumerRecordWrapper;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.KafkaRecordHandler;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.KafkaRecordsHandler;
@@ -157,6 +159,7 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
             import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
             import ru.tinkoff.kora.kafka.common.exceptions.RecordKeyDeserializationException;
             import ru.tinkoff.kora.kafka.common.exceptions.RecordValueDeserializationException;
+            import org.apache.kafka.common.header.Headers;
             """;
     }
 
@@ -179,8 +182,8 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
             this.tagValue = new Class<?>[]{compileResult.loadClass("KafkaListenerClassModule$KafkaListenerClassProcessTag")};
         }
 
-        protected <K, V> ListenerModuleAssertions<K, V>.RecordHandlerAssertions handler(Class<K> keyType, Class<V> valueType) {
-            return new ListenerModuleAssertions<>(keyType, valueType)
+        protected <K, V> ListenerModuleAssertions<K, V>.RecordHandlerAssertions handler(Class<? extends K> keyType, Class<? extends V> valueType) {
+            return new ListenerModuleAssertions<K, V>(keyType, valueType)
                 .verifyConfig()
                 .verifyRecordContainer()
                 .verifyRecordHandler();
@@ -197,7 +200,7 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
             private final Type keyType;
             private final Type valueType;
 
-            public ListenerModuleAssertions(Class<K> keyType, Class<V> valueType) {
+            public ListenerModuleAssertions(Class<? extends K> keyType, Class<? extends V> valueType) {
                 this.keyType = keyType;
                 this.valueType = valueType;
             }
@@ -205,9 +208,9 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
 
             public ListenerModuleAssertions<K, V> verifyConfig() {
                 var configMethod = Arrays.stream(moduleClass.getMethods()).filter(m -> m.getName().equals("kafkaListenerClassProcessConfig")).findFirst().orElseThrow();
-                assertThat(configMethod.getReturnType()).isEqualTo(KafkaConsumerConfig.class);
+                assertThat(configMethod.getReturnType()).isEqualTo(KafkaListenerConfig.class);
                 assertThat(configMethod.getParameters()[0].getType()).isEqualTo(Config.class);
-                assertThat(configMethod.getParameters()[1].getParameterizedType()).isEqualTo(TypeRef.of(ConfigValueExtractor.class, KafkaConsumerConfig.class));
+                assertThat(configMethod.getParameters()[1].getParameterizedType()).isEqualTo(TypeRef.of(ConfigValueExtractor.class, KafkaListenerConfig.class));
                 assertThat(configMethod.getAnnotation(Tag.class).value()).isEqualTo(tagValue);
 
                 return this;
@@ -216,7 +219,7 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
             private Method assertContainer() {
                 var containerMethod = Arrays.stream(moduleClass.getMethods()).filter(m -> m.getName().equals("kafkaListenerClassProcessContainer")).findFirst().orElseThrow();
                 assertThat(containerMethod.getReturnType()).isEqualTo(Lifecycle.class);
-                assertThat(containerMethod.getParameters()[0].getType()).isEqualTo(KafkaConsumerConfig.class);
+                assertThat(containerMethod.getParameters()[0].getType()).isEqualTo(KafkaListenerConfig.class);
                 assertThat(containerMethod.getParameters()[0].getAnnotation(Tag.class).value()).isEqualTo(tagValue);
                 assertThat(containerMethod.getParameters()[2].getParameterizedType()).isEqualTo(TypeRef.of(Deserializer.class, keyType));
                 assertThat(containerMethod.getParameters()[3].getParameterizedType()).isEqualTo(TypeRef.of(Deserializer.class, valueType));
@@ -227,7 +230,10 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
 
             public ListenerModuleAssertions<K, V> verifyRecordContainer() {
                 var containerMethod = assertContainer();
-                assertThat(containerMethod.getParameters()[1].getParameterizedType()).isEqualTo(TypeRef.of(KafkaRecordHandler.class, keyType, valueType));
+                assertThat(containerMethod.getParameters()[1].getParameterizedType()).isEqualTo(TypeRef.of(
+                    ValueOf.class,
+                    TypeRef.of(KafkaRecordHandler.class, keyType, valueType)
+                ));
                 assertThat(containerMethod.getParameters()[1].getAnnotation(Tag.class).value()).isEqualTo(tagValue);
 
                 return this;
@@ -235,7 +241,10 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
 
             public ListenerModuleAssertions<K, V> verifyRecordsContainer() {
                 var containerMethod = assertContainer();
-                assertThat(containerMethod.getParameters()[1].getParameterizedType()).isEqualTo(TypeRef.of(KafkaRecordsHandler.class, keyType, valueType));
+                assertThat(containerMethod.getParameters()[1].getParameterizedType()).isEqualTo(TypeRef.of(
+                    ValueOf.class,
+                    TypeRef.of(KafkaRecordsHandler.class, keyType, valueType)
+                ));
                 assertThat(containerMethod.getParameters()[1].getAnnotation(Tag.class).value()).isEqualTo(tagValue);
 
                 return this;
@@ -391,6 +400,18 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
 
                 public InvocationAssertions<K, V> assertValue(int i, V value) {
                     assertThat(invocation.getArgument(i, Object.class)).isNotNull().isEqualTo(value);
+
+                    return this;
+                }
+
+                public InvocationAssertions<K, V> assertHeadersIsNotEmpty(int i) {
+                    assertThat(invocation.getArgument(i, Headers.class)).isNotNull().isNotEmpty();
+
+                    return this;
+                }
+
+                public InvocationAssertions<K, V> assertHeadersIsEmpty(int i) {
+                    assertThat(invocation.getArgument(i, Headers.class)).isNotNull().isEmpty();
 
                     return this;
                 }

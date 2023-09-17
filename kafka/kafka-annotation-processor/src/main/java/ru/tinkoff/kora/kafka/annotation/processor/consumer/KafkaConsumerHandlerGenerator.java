@@ -13,15 +13,15 @@ import java.util.List;
 import java.util.Set;
 
 import static ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames.*;
+import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.prepareConsumerTagName;
 import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.prepareMethodName;
-import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.prepareTagName;
 
 public class KafkaConsumerHandlerGenerator {
 
     public HandlerMethod generate(ExecutableElement executableElement, List<ConsumerParameter> parameters) {
         var controller = (TypeElement) executableElement.getEnclosingElement();
         var methodName = prepareMethodName(executableElement, "Handler");
-        var tagName = prepareTagName(executableElement);
+        var tagName = prepareConsumerTagName(executableElement);
         var tagsBlock = CodeBlock.of("$L.class", tagName);
         var tag = AnnotationSpec.builder(CommonClassNames.tag).addMember("value", tagsBlock).build();
         var methodBuilder = MethodSpec.methodBuilder(methodName)
@@ -42,7 +42,7 @@ public class KafkaConsumerHandlerGenerator {
         }
     }
 
-    record HandlerMethod(MethodSpec method, TypeName keyType, Set<String> keyTag, TypeName valueType, Set<String> valueTag) {}
+    public record HandlerMethod(MethodSpec method, TypeName keyType, Set<String> keyTag, TypeName valueType, Set<String> valueTag) {}
 
     private HandlerMethod generateRecord(ExecutableElement executableElement, List<ConsumerParameter> parameters, MethodSpec.Builder methodBuilder) {
         var b = CodeBlock.builder();
@@ -71,8 +71,12 @@ public class KafkaConsumerHandlerGenerator {
         methodBuilder.returns(ParameterizedTypeName.get(recordHandler, keyType, valueType));
         b.add("return (consumer, tctx, record) -> {$>\n");
         if (catchesKeyException || catchesValueException) {
-            if (catchesKeyException) b.add("$T keyException = null;\n", recordKeyDeserializationException);
-            if (catchesValueException) b.add("$T valueException = null;\n", recordValueDeserializationException);
+            if (catchesKeyException) {
+                b.add("$T keyException = null;\n", recordKeyDeserializationException);
+            }
+            if (catchesValueException) {
+                b.add("$T valueException = null;\n", recordValueDeserializationException);
+            }
             b.add("try {$>\n");
             if (catchesKeyException) {
                 b.add("record.key();\n");
@@ -125,6 +129,7 @@ public class KafkaConsumerHandlerGenerator {
     private HandlerMethod generateKeyValue(ExecutableElement executableElement, List<ConsumerParameter> parameters, MethodSpec.Builder methodBuilder) {
         var keyParameter = (ConsumerParameter.Unknown) null;
         var valueParameter = (ConsumerParameter.Unknown) null;
+        var headersParameter = (ConsumerParameter.Headers) null;
         for (var parameter : parameters) {
             if (parameter instanceof ConsumerParameter.Unknown u) {
                 if (valueParameter == null) {
@@ -138,6 +143,8 @@ public class KafkaConsumerHandlerGenerator {
                     );
                     throw new ProcessingErrorException(message, parameter.element());
                 }
+            } else if (parameter instanceof ConsumerParameter.Headers headers) {
+                headersParameter = headers;
             }
         }
         if (valueParameter == null) {
@@ -163,11 +170,22 @@ public class KafkaConsumerHandlerGenerator {
         methodBuilder.returns(ParameterizedTypeName.get(recordHandler, keyType, valueType));
         var b = CodeBlock.builder();
         b.add("return (consumer, tctx, record) -> {$>\n");
-        if (catchesKeyException) b.add("$T keyException = null;\n", recordKeyDeserializationException);
-        if (catchesValueException) b.add("$T valueException = null;\n", recordValueDeserializationException);
-        if (keyParameter != null) b.add("$T key = null;\n", keyType);
+        if (catchesKeyException) {
+            b.add("$T keyException = null;\n", recordKeyDeserializationException);
+        }
+        if (catchesValueException) {
+            b.add("$T valueException = null;\n", recordValueDeserializationException);
+        }
+        if (keyParameter != null) {
+            b.add("$T key = null;\n", keyType);
+        }
         b.add("$T value = null;\n", valueType);
-        if (catchesKeyException || catchesValueException) b.add("try {$>\n");
+        if (headersParameter != null) {
+            b.add("var headers = record.headers();\n");
+        }
+        if (catchesKeyException || catchesValueException) {
+            b.add("try {$>\n");
+        }
         if (keyParameter != null) {
             b.add("key = record.key();\n");
         }
@@ -201,6 +219,8 @@ public class KafkaConsumerHandlerGenerator {
                 } else {
                     b.add("valueException");
                 }
+            } else if (parameter instanceof ConsumerParameter.Headers) {
+                b.add("headers");
             } else if (parameter instanceof ConsumerParameter.Unknown) {
                 if (keyParameter == null || keySeen) {
                     b.add("value");
@@ -247,7 +267,9 @@ public class KafkaConsumerHandlerGenerator {
         b.add("return (consumer, tctx, records) -> {$>\n");
         b.add("controller.$N(", executableElement.getSimpleName());
         for (int i = 0; i < parameters.size(); i++) {
-            if (i > 0) b.add(", ");
+            if (i > 0) {
+                b.add(", ");
+            }
             var parameter = parameters.get(i);
             if (parameter instanceof ConsumerParameter.Consumer) {
                 b.add("consumer");

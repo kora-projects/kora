@@ -1,13 +1,13 @@
 package ru.tinkoff.kora.kafka.common;
 
-import ru.tinkoff.kora.kafka.common.config.KafkaConsumerConfig;
+import ru.tinkoff.kora.kafka.common.consumer.KafkaListenerConfig;
 
 import javax.annotation.Nonnull;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class KafkaUtils {
-    public static String getConsumerPrefix(KafkaConsumerConfig config) {
+    public static String getConsumerPrefix(KafkaListenerConfig config) {
         if (config.topics() != null) {
             return String.join(";", config.topics());
         } else if (config.topicsPattern() != null) {

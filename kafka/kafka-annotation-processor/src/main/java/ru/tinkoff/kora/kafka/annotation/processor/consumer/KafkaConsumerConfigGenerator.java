@@ -10,13 +10,13 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import java.util.Objects;
 
+import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.prepareConsumerTagName;
 import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.prepareMethodName;
-import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.prepareTagName;
 
 public class KafkaConsumerConfigGenerator {
 
     public KafkaConfigData generate(ExecutableElement executableElement, AnnotationMirror listenerAnnotation) {
-        var tagName = prepareTagName(executableElement);
+        var tagName = prepareConsumerTagName(executableElement);
         var tagBuilder = TypeSpec.classBuilder(tagName).addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL);
         var configPath = AnnotationUtils.parseAnnotationValueWithoutDefault(listenerAnnotation, "value");
         var tagsBlock = CodeBlock.builder().add("{");

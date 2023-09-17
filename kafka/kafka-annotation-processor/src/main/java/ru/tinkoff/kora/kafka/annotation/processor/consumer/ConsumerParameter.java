@@ -26,6 +26,8 @@ public sealed interface ConsumerParameter {
 
     record RecordsTelemetry(VariableElement element, TypeMirror key, TypeMirror value) implements ConsumerParameter {}
 
+    record Headers(VariableElement element) implements ConsumerParameter {}
+
     record Unknown(VariableElement element) implements ConsumerParameter {}
 
     static List<ConsumerParameter> parseParameters(ExecutableElement executableElement) {
@@ -50,6 +52,10 @@ public sealed interface ConsumerParameter {
             if (KafkaUtils.isRecordsTelemetry(type)) {
                 var dt = (DeclaredType) type;
                 result.add(new ConsumerParameter.RecordsTelemetry(parameter, dt.getTypeArguments().get(0), dt.getTypeArguments().get(1)));
+                continue;
+            }
+            if (KafkaUtils.isHeaders(type)) {
+                result.add(new Headers(parameter));
                 continue;
             }
             if (KafkaUtils.isKeyDeserializationException(type)) {

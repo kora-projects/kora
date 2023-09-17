@@ -9,6 +9,7 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
+import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.recordHandler
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.recordKeyDeserializationException
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.recordValueDeserializationException
@@ -91,17 +92,19 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger, resolver: Resolver
             addCode("controller.%N(", function.simpleName.asString())
             for ((i, it) in parameters.withIndex()) {
                 if (i > 0) addCode(", ")
-                addCode(when (it) {
-                    is ConsumerParameter.Consumer -> "consumer"
-                    is ConsumerParameter.Record -> "record"
-                    is ConsumerParameter.KeyDeserializationException -> "keyException"
-                    is ConsumerParameter.ValueDeserializationException -> "valueException"
-                    is ConsumerParameter.Exception -> "keyException ?: valueException"
-                    else -> throw ProcessingErrorException(
-                        "Record listener can't have parameter of type ${it.parameter.type}, only consumer, record, RecordKeyDeserializationException, RecordValueDeserializationException and Exception are allowed",
-                        it.parameter
-                    )
-                })
+                addCode(
+                    when (it) {
+                        is ConsumerParameter.Consumer -> "consumer"
+                        is ConsumerParameter.Record -> "record"
+                        is ConsumerParameter.KeyDeserializationException -> "keyException"
+                        is ConsumerParameter.ValueDeserializationException -> "valueException"
+                        is ConsumerParameter.Exception -> "keyException ?: valueException"
+                        else -> throw ProcessingErrorException(
+                            "Record listener can't have parameter of type ${it.parameter.type}, only consumer, record, RecordKeyDeserializationException, RecordValueDeserializationException and Exception are allowed",
+                            it.parameter
+                        )
+                    }
+                )
             }
             addCode(")\n")
             if (function.modifiers.contains(Modifier.SUSPEND)) {
@@ -109,7 +112,7 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger, resolver: Resolver
             }
         }
         val keyTag = recordParameter.key.parseTags()
-        val valueTag = recordParameter.key.parseTags()
+        val valueTag = recordParameter.value.parseTags()
 
         return HandlerFunction(b.build(), keyType, keyTag, valueType, valueTag)
     }
@@ -139,30 +142,39 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger, resolver: Resolver
             addCode("controller.%N(", function.simpleName.asString())
             for ((i, it) in parameters.withIndex()) {
                 if (i > 0) addCode(", ")
-                addCode(when (it) {
-                    is ConsumerParameter.Consumer -> "consumer"
-                    is ConsumerParameter.RecordsTelemetry -> "tctx"
-                    is ConsumerParameter.Records -> "records"
-                    else -> throw ProcessingErrorException(
-                        "Records listener can't have parameter of type ${it.parameter.type}, only consumer, records and records telemetry are allowed",
-                        it.parameter
-                    )
-                })
+                addCode(
+                    when (it) {
+                        is ConsumerParameter.Consumer -> "consumer"
+                        is ConsumerParameter.RecordsTelemetry -> "tctx"
+                        is ConsumerParameter.Records -> "records"
+                        else -> throw ProcessingErrorException(
+                            "Records listener can't have parameter of type ${it.parameter.type}, only consumer, records and records telemetry are allowed",
+                            it.parameter
+                        )
+                    }
+                )
             }
             addCode(")\n")
             if (function.modifiers.contains(Modifier.SUSPEND)) {
                 b.endControlFlow()
             }
         }
-        return HandlerFunction(b.build(), keyTypeName, setOf(), valueTypeName, setOf())
+
+        val keyTag = recordsParameter.key.parseTags()
+        val valueTag = recordsParameter.value.parseTags()
+
+        return HandlerFunction(b.build(), keyTypeName, keyTag, valueTypeName, valueTag)
     }
 
     private fun generateKeyValue(b: FunSpec.Builder, functionDeclaration: KSFunctionDeclaration, parameters: List<ConsumerParameter>): HandlerFunction {
         var keyParameter: ConsumerParameter.Unknown? = null
         var valueParameter: ConsumerParameter.Unknown? = null
+        var headerParameter: ConsumerParameter.Unknown? = null
         for (parameter in parameters) {
             if (parameter is ConsumerParameter.Unknown) {
-                if (valueParameter == null) {
+                if (parameter.parameter.type.resolve().toClassName().canonicalName == KafkaClassNames.headers.canonicalName) {
+                    headerParameter = parameter
+                } else if (valueParameter == null) {
                     valueParameter = parameter
                 } else if (keyParameter == null) {
                     keyParameter = valueParameter
@@ -200,9 +212,15 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger, resolver: Resolver
         val handlerType = recordHandler.parameterizedBy(keyType, valueType)
         b.returns(handlerType)
         b.addCode(CodeBlock.builder().controlFlow("return %T { consumer, tctx, record ->", handlerType) {
-            if (catchesKeyException) addStatement("var keyException: %T? = null", recordKeyDeserializationException)
-            if (catchesValueException) addStatement("var valueException: %T? = null", recordValueDeserializationException)
-            if (keyParameter != null) addStatement("var key: %T? = null", keyType)
+            if (catchesKeyException) {
+                addStatement("var keyException: %T? = null", recordKeyDeserializationException)
+            }
+            if (catchesValueException) {
+                addStatement("var valueException: %T? = null", recordValueDeserializationException)
+            }
+            if (keyParameter != null) {
+                addStatement("var key: %T? = null", keyType)
+            }
             addStatement("var value: %T? = null", valueType)
             if (catchesKeyException || catchesValueException) {
                 beginControlFlow("try")
@@ -213,6 +231,9 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger, resolver: Resolver
                 addStatement("record.key()")
             }
             addStatement("value = record.value()")
+            if (headerParameter != null) {
+                addStatement("val headers = record.headers()")
+            }
             if (catchesKeyException) {
                 nextControlFlow("catch (e: %T)", recordKeyDeserializationException)
                 addStatement("keyException = e")
@@ -237,15 +258,20 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger, resolver: Resolver
                     is ConsumerParameter.Exception -> add("keyException ?: valueException")
                     is ConsumerParameter.KeyDeserializationException -> add("keyException")
                     is ConsumerParameter.ValueDeserializationException -> add("valueException")
-                    is ConsumerParameter.Unknown -> if (keyParameter == null || keySeen) {
-                        add("value")
-                    } else {
-                        keySeen = true
-                        add("key")
+                    is ConsumerParameter.Unknown -> {
+                        if (parameter == headerParameter) {
+                            add("headers")
+                        } else if (keyParameter == null || keySeen) {
+                            add("value")
+                        } else {
+                            keySeen = true
+                            add("key")
+                        }
                     }
 
                     else -> {
-                        val msg = "Record listener can't have parameter of type ${parameter.parameter.type}, only consumer, record, record key, record value, exception and record telemetry are allowed"
+                        val msg =
+                            "Record listener can't have parameter of type ${parameter.parameter.type}, only consumer, record, record key, record value, exception and record telemetry are allowed"
                         throw ProcessingErrorException(msg, parameter.parameter)
                     }
                 }
@@ -256,10 +282,10 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger, resolver: Resolver
                 endControlFlow()
             }
         }.build())
+
         val keyTag = keyParameter?.parameter?.parseTags() ?: setOf()
         val valueTag = valueParameter.parameter.parseTags()
 
         return HandlerFunction(b.build(), keyType, keyTag, valueType, valueTag)
     }
-
 }
