@@ -3,6 +3,7 @@ package ru.tinkoff.kora.database.annotation.processor.r2dbc.extension;
 import com.squareup.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.GenericTypeResolver;
+import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.database.annotation.processor.DbEntityReadHelper;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
@@ -112,7 +113,7 @@ public class R2dbcTypesExtension implements KoraExtension {
             return null;
         }
 
-        var mapperName = CommonUtils.getOuterClassesAsPrefix(entity.typeElement()) + entity.typeElement().getSimpleName() + "R2dbcRowMapper";
+        var mapperName = NameUtils.generatedType(entity.typeElement(), R2dbcTypes.ROW_MAPPER);
         var packageElement = this.elements.getPackageOf(entity.typeElement());
 
         return () -> {

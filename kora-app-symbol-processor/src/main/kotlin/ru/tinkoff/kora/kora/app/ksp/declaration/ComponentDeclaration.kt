@@ -143,7 +143,7 @@ sealed interface ComponentDeclaration {
             return AnnotatedComponent(type, classDeclaration, tags, constructor, parameterTypes, typeParameters)
         }
 
-        fun fromDependency(ctx: ProcessingContext, classDeclaration: KSClassDeclaration): DiscoveredAsDependencyComponent {
+        fun fromDependency(@Suppress("UNUSED_PARAMETER") ctx: ProcessingContext, classDeclaration: KSClassDeclaration): DiscoveredAsDependencyComponent {
             val constructor = classDeclaration.primaryConstructor
             if (constructor == null) {
                 throw ProcessingErrorException("No primary constructor to parse component for: $classDeclaration", classDeclaration)

@@ -70,7 +70,7 @@ public class VertxParametersTest extends AbstractVertxRepositoryTest {
     public void testEntityFieldMapping() {
         var repository = compileVertx(List.of(), """
             public final class StringToJsonbParameterMapper implements VertxParameterColumnMapper<String> {
-                
+
                 @Override
                 public Object apply(String value) {
                     return java.util.Map.of("test", value);
@@ -96,7 +96,7 @@ public class VertxParametersTest extends AbstractVertxRepositoryTest {
     public void testNativeParameterWithMapping() {
         var repository = compileVertx(List.of(), """
             public final class StringToJsonbParameterMapper implements VertxParameterColumnMapper<String> {
-                
+
                 @Override
                 public Object apply(String value) {
                     return java.util.Map.of("test", value);
@@ -218,7 +218,6 @@ public class VertxParametersTest extends AbstractVertxRepositoryTest {
         var mapper = Mockito.mock(VertxParameterColumnMapper.class);
         var repository = compileVertx(List.of(mapper), """
             public record SomeEntity(long id, @Tag(SomeEntity.class) String value) {}
-                
             """, """
             @Repository
             public interface TestRepository extends VertxRepository {

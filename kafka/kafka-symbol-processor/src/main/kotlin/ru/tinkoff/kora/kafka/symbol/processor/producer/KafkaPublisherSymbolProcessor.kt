@@ -44,7 +44,7 @@ class KafkaPublisherSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseS
                         .filter { it.findOverridee()?.parentDeclaration?.qualifiedName?.asString() != "kotlin.Any" }
                         .toList()
                     val topicConfig = publisherGenerator.generateConfig(producer, publishMethods)
-                    publisherGenerator.generatePublisherImpl(producer, publishMethods, annotation, topicConfig)
+                    publisherGenerator.generatePublisherImpl(producer, publishMethods, topicConfig)
                     publisherGenerator.generatePublisherModule(producer, publishMethods, annotation, topicConfig)
                     continue
                 }

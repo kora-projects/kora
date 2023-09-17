@@ -1,10 +1,7 @@
 package ru.tinkoff.kora.database.annotation.processor.cassandra;
 
 import com.squareup.javapoet.*;
-import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
-import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
-import ru.tinkoff.kora.annotation.processor.common.Visitors;
+import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
 import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
@@ -60,8 +57,8 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
         for (var method : queryMethods) {
             var methodType = (ExecutableType) this.types.asMemberOf(repositoryType, method);
             var parameters = QueryParameterParser.parse(this.types, CassandraTypes.CONNECTION, CassandraTypes.PARAMETER_COLUMN_MAPPER, method, methodType);
-            var queryAnnotation = CommonUtils.findDirectAnnotation(method, DbUtils.QUERY_ANNOTATION);
-            var queryString = CommonUtils.parseAnnotationValueWithoutDefault(queryAnnotation, "value").toString();
+            var queryAnnotation = AnnotationUtils.findAnnotation(method, DbUtils.QUERY_ANNOTATION);
+            var queryString = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(queryAnnotation, "value");
             var query = QueryWithParameters.parse(filer, queryString, parameters);
             var resultMapperName = this.parseResultMapper(method, parameters, methodType)
                 .map(rm -> DbUtils.addMapper(resultMappers, rm))
@@ -87,9 +84,9 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
         b.addStatement(CodeBlock.of("var _query = new $T(\n  $S,\n  $S,\n  $S\n)", DbUtils.QUERY_CONTEXT, query.rawQuery(), sql, DbUtils.operationName(method)));
         var batchParam = parameters.stream().filter(QueryParameter.BatchParameter.class::isInstance).findFirst().orElse(null);
         String profile = null;
-        var profileAnnotation = CommonUtils.findAnnotation(elements, method, CassandraTypes.CASSANDRA_PROFILE);
+        var profileAnnotation = AnnotationUtils.findAnnotation(method, CassandraTypes.CASSANDRA_PROFILE);
         if (profileAnnotation != null) {
-            profile = CommonUtils.parseAnnotationValue(elements, profileAnnotation, "value");
+            profile = AnnotationUtils.parseAnnotationValueWithoutDefault(profileAnnotation, "value");
         }
         var returnType = methodType.getReturnType();
         var isFlux = CommonUtils.isFlux(returnType);

@@ -2,7 +2,6 @@ package ru.tinkoff.kora.json.annotation.processor.writer;
 
 import com.squareup.javapoet.TypeName;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
-import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.common.naming.NameConverter;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
@@ -76,9 +75,9 @@ public class WriterTypeMetaParser {
         var writer = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(jsonField, "writer");
 
         var typeMeta = this.parseWriterFieldType(fieldTypeMirror);
-        var includeType = Optional.ofNullable(CommonUtils.findAnnotation(this.elements, field, JsonTypes.jsonInclude))
-            .or(() -> Optional.ofNullable(CommonUtils.findAnnotation(this.elements, jsonClass, JsonTypes.jsonInclude)))
-            .map(a -> CommonUtils.parseAnnotationValue(this.elements, a, "value").toString())
+        var includeType = Optional.ofNullable(AnnotationUtils.findAnnotation(field, JsonTypes.jsonInclude))
+            .or(() -> Optional.ofNullable(AnnotationUtils.findAnnotation(jsonClass, JsonTypes.jsonInclude)))
+            .map(a -> AnnotationUtils.<VariableElement>parseAnnotationValueWithoutDefault(a, "value").getSimpleName().toString())
             .flatMap(JsonClassWriterMeta.IncludeType::tryParse)
             .orElse(JsonClassWriterMeta.IncludeType.NON_NULL);
 
@@ -111,7 +110,7 @@ public class WriterTypeMetaParser {
                 return param.getSimpleName().toString();
             }
         }
-        var jsonFieldValue = (String) CommonUtils.parseAnnotationValue(this.elements, jsonField, "value");
+        var jsonFieldValue = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(jsonField, "value");
         if (jsonFieldValue != null && !jsonFieldValue.isBlank()) {
             return jsonFieldValue;
         }

@@ -1,8 +1,10 @@
 package ru.tinkoff.kora.database.annotation.processor.cassandra.extension;
 
 import com.squareup.javapoet.*;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.GenericTypeResolver;
+import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.database.annotation.processor.DbEntityReadHelper;
 import ru.tinkoff.kora.database.annotation.processor.cassandra.CassandraNativeTypes;
@@ -93,14 +95,14 @@ public class CassandraTypesExtension implements KoraExtension {
     private KoraExtensionDependencyGenerator generateRowColumnMapper(RoundEnvironment roundEnvironment, DeclaredType dt) {
         var entityType = dt.getTypeArguments().get(0);
         var element = (TypeElement) this.types.asElement(entityType);
-        if (CommonUtils.findDirectAnnotation(element, CassandraTypes.UDT_ANNOTATION) != null) {
-            return KoraExtensionDependencyGenerator.generatedFrom(elements, element, "_CassandraRowColumnMapper");
+        if (AnnotationUtils.findAnnotation(element, CassandraTypes.UDT_ANNOTATION) != null) {
+            return KoraExtensionDependencyGenerator.generatedFrom(elements, element, CassandraTypes.ROW_MAPPER);
         }
         if (element.getQualifiedName().contentEquals("java.util.List")) {
             entityType = ((DeclaredType) entityType).getTypeArguments().get(0);
             element = (TypeElement) this.types.asElement(entityType);
-            if (CommonUtils.findDirectAnnotation(element, CassandraTypes.UDT_ANNOTATION) != null) {
-                return KoraExtensionDependencyGenerator.generatedFrom(elements, element, "_CassandraRowColumnMapper");
+            if (AnnotationUtils.findAnnotation(element, CassandraTypes.UDT_ANNOTATION) != null) {
+                return KoraExtensionDependencyGenerator.generatedFrom(elements, element, CassandraTypes.ROW_MAPPER);
             }
         }
         return null;
@@ -109,14 +111,14 @@ public class CassandraTypesExtension implements KoraExtension {
     private KoraExtensionDependencyGenerator generateParameterColumnMapper(RoundEnvironment roundEnvironment, DeclaredType dt) {
         var entityType = dt.getTypeArguments().get(0);
         var element = (TypeElement) this.types.asElement(entityType);
-        if (CommonUtils.findDirectAnnotation(element, CassandraTypes.UDT_ANNOTATION) != null) {
-            return KoraExtensionDependencyGenerator.generatedFrom(elements, element, "_CassandraParameterColumnMapper");
+        if (AnnotationUtils.findAnnotation(element, CassandraTypes.UDT_ANNOTATION) != null) {
+            return KoraExtensionDependencyGenerator.generatedFrom(elements, element, CassandraTypes.PARAMETER_COLUMN_MAPPER);
         }
         if (element.getQualifiedName().contentEquals("java.util.List")) {
             entityType = ((DeclaredType) entityType).getTypeArguments().get(0);
             element = (TypeElement) this.types.asElement(entityType);
-            if (CommonUtils.findDirectAnnotation(element, CassandraTypes.UDT_ANNOTATION) != null) {
-                return KoraExtensionDependencyGenerator.generatedFrom(elements, element, "_CassandraParameterColumnMapper");
+            if (AnnotationUtils.findAnnotation(element, CassandraTypes.UDT_ANNOTATION) != null) {
+                return KoraExtensionDependencyGenerator.generatedFrom(elements, element, CassandraTypes.PARAMETER_COLUMN_MAPPER);
             }
         }
         return null;
@@ -129,7 +131,7 @@ public class CassandraTypesExtension implements KoraExtension {
         if (entity == null) {
             return null;
         }
-        var mapperName = CommonUtils.getOuterClassesAsPrefix(entity.typeElement()) + entity.typeElement().getSimpleName() + "_CassandraRowMapper";
+        var mapperName = NameUtils.generatedType(entity.typeElement(), CassandraTypes.ROW_MAPPER);
         var packageElement = this.elements.getPackageOf(entity.typeElement());
 
         return () -> {
@@ -213,7 +215,7 @@ public class CassandraTypesExtension implements KoraExtension {
             };
         }
         var rowTypeElement = this.types.asElement(rowTypeMirror);
-        var mapperName = CommonUtils.getOuterClassesAsPrefix(rowTypeElement) + ((ClassName) rowType).simpleName() + "_ListCassandraResultSetMapper";
+        var mapperName = NameUtils.generatedType(rowTypeElement, "ListCassandraResultSetMapper");
 
         return () -> {
             var maybeGenerated = this.elements.getTypeElement(packageElement.getQualifiedName() + "." + mapperName);

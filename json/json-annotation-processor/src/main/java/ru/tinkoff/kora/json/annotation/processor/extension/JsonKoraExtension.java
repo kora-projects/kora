@@ -61,7 +61,7 @@ public class JsonKoraExtension implements KoraExtension {
             }
             var jsonElement = (TypeElement) this.types.asElement(possibleJsonClass);
             if (AnnotationUtils.findAnnotation(jsonElement, JsonTypes.json) != null || AnnotationUtils.findAnnotation(jsonElement, JsonTypes.jsonWriterAnnotation) != null) {
-                return KoraExtensionDependencyGenerator.generatedFrom(elements, jsonElement, "JsonWriter");
+                return KoraExtensionDependencyGenerator.generatedFrom(elements, jsonElement, JsonTypes.jsonWriter);
             }
             if (jsonElement.getModifiers().contains(Modifier.SEALED) || jsonElement.getKind() == ElementKind.ENUM) {
                 return () -> this.generateWriter(possibleJsonClass);
@@ -85,7 +85,7 @@ public class JsonKoraExtension implements KoraExtension {
                 || CommonUtils.findConstructors(typeElement, s -> s.contains(Modifier.PUBLIC))
                     .stream()
                     .anyMatch(e -> AnnotationUtils.findAnnotation(e, JsonTypes.jsonReaderAnnotation) != null)) {
-                return KoraExtensionDependencyGenerator.generatedFrom(elements, typeElement, "JsonReader");
+                return KoraExtensionDependencyGenerator.generatedFrom(elements, typeElement, JsonTypes.jsonReader);
             }
 
             if (typeElement.getModifiers().contains(Modifier.SEALED) || typeElement.getKind() == ElementKind.ENUM) {

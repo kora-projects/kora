@@ -38,6 +38,7 @@ public class MapConfigFactory {
         return fromProperties(origin, properties);
     }
 
+    @SuppressWarnings("unchecked")
     public static Config fromProperties(ConfigOrigin origin, Properties properties) {
         var map = new LinkedHashMap<String, Object>();
 
@@ -57,7 +58,6 @@ public class MapConfigFactory {
             for (int i = 0; i < parts.size(); i++) {
                 var element = parts.get(i);
                 if (element instanceof PathElement.Index index) {
-                    @SuppressWarnings("unchecked")
                     var list = (List<Object>) currentObject;
                     for (int j = 0; j <= index.index() + 1; j++) {
                         if (list.size() < j) {

@@ -25,6 +25,7 @@ public final class PostgresTestContainer implements TestExecutionListener, Param
     public PostgresTestContainer() {
     }
 
+    @SuppressWarnings("try")
     private static synchronized void init() {
         if (params != null) {
             return;

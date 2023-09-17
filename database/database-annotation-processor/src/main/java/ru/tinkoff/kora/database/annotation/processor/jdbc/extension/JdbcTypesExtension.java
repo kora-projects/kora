@@ -3,6 +3,7 @@ package ru.tinkoff.kora.database.annotation.processor.jdbc.extension;
 import com.squareup.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.GenericTypeResolver;
+import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.database.annotation.processor.DbEntityReadHelper;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
@@ -127,7 +128,7 @@ public class JdbcTypesExtension implements KoraExtension {
 
     private KoraExtension.KoraExtensionDependencyGenerator entityRowMapper(DbEntity entity) {
         return () -> {
-            var mapperName = CommonUtils.getOuterClassesAsPrefix(entity.typeElement()) + entity.typeElement().getSimpleName() + "_JdbcRowMapper";
+            var mapperName = NameUtils.generatedType(entity.typeElement(), JdbcTypes.ROW_MAPPER);
             var packageElement = this.elements.getPackageOf(entity.typeElement());
             var maybeGenerated = this.elements.getTypeElement(packageElement.getQualifiedName() + "." + mapperName);
             if (maybeGenerated != null) {
@@ -163,7 +164,7 @@ public class JdbcTypesExtension implements KoraExtension {
 
     private KoraExtension.KoraExtensionDependencyGenerator entityResultListSetMapper(DbEntity entity) {
         return () -> {
-            var mapperName = CommonUtils.getOuterClassesAsPrefix(entity.typeElement()) + entity.typeElement().getSimpleName() + "_ListJdbcResultSetMapper";
+            var mapperName = NameUtils.generatedType(entity.typeElement(), "ListJdbcResultSetMapper");
             var packageElement = this.elements.getPackageOf(entity.typeElement());
             var maybeGenerated = this.elements.getTypeElement(packageElement.getQualifiedName() + "." + mapperName);
             if (maybeGenerated != null) {

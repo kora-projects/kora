@@ -37,13 +37,13 @@ public class ConfigClassGenerator {
         var typeName = HttpClientUtils.configName(element);
         var type = """
             package %s;
-                        
+
             import %s;
             import %s;
             import %s;
             import %s;
             import %s;
-                        
+
             @Generated(\"%s\")
             public record %s(String url, @Nullable Duration requestTimeout,
             """.formatted(packageName.getQualifiedName(),

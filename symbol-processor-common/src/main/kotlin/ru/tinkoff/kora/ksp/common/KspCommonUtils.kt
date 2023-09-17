@@ -25,7 +25,8 @@ object KspCommonUtils {
         val containeredAnnotations = this.annotations
             .filter { it.shortName.asString() == containerName.simpleName && it.annotationType.resolve().declaration.qualifiedName?.asString() == containerName.canonicalName }
             .flatMap { it.arguments.asSequence().filter { it.name?.asString() == "value" } }
-            .flatMap { it.value as ArrayList<KSAnnotation> }
+            .flatMap { it.value as ArrayList<*> }
+            .map { it as KSAnnotation }
 
         return sequenceOf(annotations, containeredAnnotations).flatMap { it }.toList()
     }
@@ -229,14 +230,18 @@ fun <T> KSAnnotated.visitFunctionArgument(visitor: (KSValueParameter) -> T) = th
 
 fun parseAnnotationClassValue(target: KSAnnotated, annotationName: String): List<KSType> {
     val annotation = target.annotations.firstOrNull { it.annotationType.resolve().declaration.qualifiedName!!.asString() == annotationName }
-
-    return annotation?.arguments?.filter {
-        it.name!!.asString() == "value"
-    }?.map {
-        if (it.value is KSType) {
-            listOf(it.value as KSType)
-        } else it.value as ArrayList<KSType>
-    }?.flatten() ?: listOf()
+    val arguments = annotation?.arguments?: listOf()
+    return arguments.asSequence()
+        .filter { it.name!!.asString() == "value" }
+        .map {
+            if (it.value is KSType) {
+                sequenceOf(it.value as KSType)
+            } else {
+                (it.value as ArrayList<*>).asSequence().map { it as KSType }
+            }
+        }
+        .flatten()
+        .toList()
 }
 
 

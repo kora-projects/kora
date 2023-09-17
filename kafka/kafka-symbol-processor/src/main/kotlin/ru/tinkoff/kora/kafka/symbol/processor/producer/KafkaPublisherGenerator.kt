@@ -179,11 +179,11 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
         return funBuilder.addCode(builder.build()).build()
     }
 
-    fun generatePublisherImpl(classDeclaration: KSClassDeclaration, publishMethods: List<KSFunctionDeclaration>, publishAnnotation: KSAnnotation, topicConfig: ClassName?) {
+    fun generatePublisherImpl(classDeclaration: KSClassDeclaration, publishMethods: List<KSFunctionDeclaration>, topicConfig: ClassName?) {
         val packageName = classDeclaration.packageName.asString()
         val implementationName = classDeclaration.generatedClassName("Impl")
 
-        val b = classDeclaration.extendsKeepAop(resolver, implementationName)
+        val b = classDeclaration.extendsKeepAop(implementationName)
             .addOriginatingKSFile(classDeclaration.containingFile!!)
             .addSuperinterface(KafkaClassNames.generatedPublisher)
             .addProperty(PropertySpec.builder("telemetryFactory", producerTelemetryFactory, KModifier.PRIVATE, KModifier.FINAL).initializer("telemetryFactory").build())

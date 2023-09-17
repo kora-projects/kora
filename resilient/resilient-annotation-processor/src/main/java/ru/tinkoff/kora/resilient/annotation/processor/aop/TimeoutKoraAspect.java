@@ -97,7 +97,7 @@ public class TimeoutKoraAspect implements KoraAspect {
                         $L.recordTimeout($S, $L.timeout().toNanos());
                     }
                 });
-                """, superMethod.toString(), fieldTimeout, TimeoutException.class, timeoutException, timeoutName,
+            """, superMethod.toString(), fieldTimeout, TimeoutException.class, timeoutException, timeoutName,
             fieldTimeout, timeoutException, fieldMetrics, fieldMetrics, timeoutName, fieldTimeout).build();
     }
 
@@ -114,7 +114,7 @@ public class TimeoutKoraAspect implements KoraAspect {
                         $L.recordTimeout($S, $L.timeout().toNanos());
                     }
                 });
-                """, superMethod.toString(), fieldTimeout, TimeoutException.class, timeoutException, timeoutName,
+            """, superMethod.toString(), fieldTimeout, TimeoutException.class, timeoutException, timeoutName,
             fieldTimeout, timeoutException, fieldMetrics, fieldMetrics, timeoutName, fieldTimeout).build();
     }
 

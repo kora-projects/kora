@@ -1,9 +1,7 @@
 package ru.tinkoff.kora.database.annotation.processor;
 
 import com.squareup.javapoet.*;
-import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
-import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
+import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
 
 import javax.annotation.Nullable;
@@ -13,7 +11,10 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -40,7 +41,7 @@ public class DbUtils {
                 .filter(e -> !e.getModifiers().contains(Modifier.PRIVATE))
                 .filter(e -> e.getModifiers().contains(Modifier.ABSTRACT)))
             .map(ExecutableElement.class::cast)
-            .filter(e -> CommonUtils.findAnnotation(elements, e, QUERY_ANNOTATION) != null)
+            .filter(e -> AnnotationUtils.findAnnotation(elements, e, QUERY_ANNOTATION) != null)
             .toList();
     }
 
@@ -59,13 +60,13 @@ public class DbUtils {
     }
 
     public static CodeBlock getTag(TypeElement repositoryElement) {
-        var repositoryAnnotation = CommonUtils.findDirectAnnotation(repositoryElement, DbUtils.REPOSITORY_ANNOTATION);
-        var executorTagAnnotation = CommonUtils.<AnnotationMirror>parseAnnotationValueWithoutDefault(repositoryAnnotation, "executorTag");
+        var repositoryAnnotation = AnnotationUtils.findAnnotation(repositoryElement, DbUtils.REPOSITORY_ANNOTATION);
+        var executorTagAnnotation = AnnotationUtils.<AnnotationMirror>parseAnnotationValueWithoutDefault(repositoryAnnotation, "executorTag");
         if (executorTagAnnotation == null) {
             return null;
         }
-        var tagValue = CommonUtils.<List<TypeMirror>>parseAnnotationValueWithoutDefault(executorTagAnnotation, "value");
-        return CommonUtils.writeTagAnnotationValue(Objects.requireNonNull(tagValue).toArray(TypeMirror[]::new));
+        var tagValue = AnnotationUtils.<List<TypeMirror>>parseAnnotationValueWithoutDefault(executorTagAnnotation, "value");
+        return TagUtils.writeTagAnnotationValue(tagValue);
     }
 
     static Set<TypeElement> collectInterfaces(Types types, TypeElement typeElement) {

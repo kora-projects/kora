@@ -16,11 +16,11 @@ import ru.tinkoff.kora.ksp.common.generatedClassName
 
 class UserDefinedTypeResultExtractorGenerator(private val environment: SymbolProcessorEnvironment) {
     fun generate(resolver: Resolver, classDeclaration: KSClassDeclaration) {
-        this.generateRowColumnMapper(resolver, classDeclaration)
+        this.generateRowColumnMapper(classDeclaration)
         this.generateListRowColumnMapper(resolver, classDeclaration)
     }
 
-    private fun generateRowColumnMapper(resolver: Resolver, classDeclaration: KSClassDeclaration) {
+    private fun generateRowColumnMapper(classDeclaration: KSClassDeclaration) {
         val type = classDeclaration.asType(listOf())
         val typeName = type.toTypeName().copy(false)
         val typeSpec = TypeSpec.classBuilder(classDeclaration.generatedClassName("CassandraRowColumnMapper"))

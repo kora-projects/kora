@@ -5,7 +5,7 @@ import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.TypeSpec;
 import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
-import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -22,51 +22,39 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class KoraSchedulingAnnotationProcessor extends AbstractKoraProcessor {
-    private Map<SchedulerType, List<TypeMirror>> triggerTypes;
+    private static final Map<SchedulerType, List<ClassName>> triggerTypes = Map.of(
+        SchedulerType.JDK, List.of(
+            JdkSchedulingGenerator.scheduleOnce,
+            JdkSchedulingGenerator.scheduleAtFixedRate,
+            JdkSchedulingGenerator.scheduleWithFixedDelay
+        ),
+        SchedulerType.QUARTZ, List.of(
+            QuartzSchedulingGenerator.scheduleWithCron,
+            QuartzSchedulingGenerator.scheduleWithTrigger
+        )
+    );
+    private static final List<ClassName> triggers = List.of(
+        JdkSchedulingGenerator.scheduleOnce,
+        JdkSchedulingGenerator.scheduleAtFixedRate,
+        JdkSchedulingGenerator.scheduleWithFixedDelay,
+        QuartzSchedulingGenerator.scheduleWithCron,
+        QuartzSchedulingGenerator.scheduleWithTrigger
+    );
     private JdkSchedulingGenerator jdkGenerator;
-    private TypeElement[] triggers;
     private QuartzSchedulingGenerator quartzGenerator;
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
-        return Arrays.stream(triggers)
-            .map(TypeElement::getQualifiedName)
-            .map(Objects::toString)
+        return triggers.stream()
+            .map(ClassName::canonicalName)
             .collect(Collectors.toSet());
     }
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
-        this.triggerTypes = new HashMap<>();
-        var quartzTriggers = new ArrayList<TypeMirror>();
-        var jdkTriggers = new ArrayList<TypeMirror>();
-        var triggers = new ArrayList<TypeElement>();
-        var jdkConsumer = (Consumer<TypeElement>) te -> {
-            jdkTriggers.add(te.asType());
-            triggers.add(te);
-        };
-        var quartzConsumer = (Consumer<TypeElement>) te -> {
-            quartzTriggers.add(te.asType());
-            triggers.add(te);
-        };
-
-        ifElementExists(elements, "ru.tinkoff.kora.scheduling.jdk.annotation.ScheduleAtFixedRate", jdkConsumer);
-        ifElementExists(elements, "ru.tinkoff.kora.scheduling.jdk.annotation.ScheduleOnce", jdkConsumer);
-        ifElementExists(elements, "ru.tinkoff.kora.scheduling.jdk.annotation.ScheduleWithFixedDelay", jdkConsumer);
-        ifElementExists(elements, "ru.tinkoff.kora.scheduling.quartz.ScheduleWithTrigger", quartzConsumer);
-        ifElementExists(elements, "ru.tinkoff.kora.scheduling.quartz.ScheduleWithCron", quartzConsumer);
-        if (!jdkTriggers.isEmpty()) {
-            this.jdkGenerator = new JdkSchedulingGenerator(processingEnv);
-            this.triggerTypes.put(SchedulerType.JDK, jdkTriggers);
-        }
-        if (!quartzTriggers.isEmpty()) {
-            this.quartzGenerator = new QuartzSchedulingGenerator(processingEnv);
-            this.triggerTypes.put(SchedulerType.QUARTZ, quartzTriggers);
-        }
-
-
-        this.triggers = triggers.toArray(TypeElement[]::new);
+        this.jdkGenerator = new JdkSchedulingGenerator(processingEnv);
+        this.quartzGenerator = new QuartzSchedulingGenerator(processingEnv);
     }
 
     private static void ifElementExists(Elements elements, String name, Consumer<TypeElement> consumer) {
@@ -79,10 +67,17 @@ public class KoraSchedulingAnnotationProcessor extends AbstractKoraProcessor {
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        if (this.triggers.length == 0) {
-            return false;
-        }
-        var scheduledMethods = roundEnv.getElementsAnnotatedWithAny(this.triggers);
+        var triggers = annotations.stream()
+            .filter(te -> {
+                for (var trigger : KoraSchedulingAnnotationProcessor.triggers) {
+                    if (te.getQualifiedName().contentEquals(trigger.canonicalName())) {
+                        return true;
+                    }
+                }
+                return false;
+            })
+            .toArray(TypeElement[]::new);
+        var scheduledMethods = roundEnv.getElementsAnnotatedWithAny(triggers);
         var scheduledTypes = scheduledMethods.stream().collect(Collectors.groupingBy(e -> {
             var type = (TypeElement) e.getEnclosingElement();
             return type.getQualifiedName().toString();
@@ -122,10 +117,10 @@ public class KoraSchedulingAnnotationProcessor extends AbstractKoraProcessor {
     }
 
     private SchedulingTrigger parseSchedulerType(Element method) {
-        for (var entry : this.triggerTypes.entrySet()) {
+        for (var entry : KoraSchedulingAnnotationProcessor.triggerTypes.entrySet()) {
             var schedulerType = entry.getKey();
             for (var annotationType : entry.getValue()) {
-                var annotation = CommonUtils.findAnnotation(this.elements, this.types, method, annotationType);
+                var annotation = AnnotationUtils.findAnnotation(this.elements, method, annotationType);
                 if (annotation != null) {
                     return new SchedulingTrigger(schedulerType, annotation);
                 }

@@ -40,7 +40,7 @@ public class ConfigParserGenerator {
         if (f.isRight()) {
             return Either.right(f.right());
         }
-        var typeName = CommonUtils.generatedName(element, ConfigClassNames.configValueExtractor);
+        var typeName = NameUtils.generatedType(element, ConfigClassNames.configValueExtractor);
         var typeBuilder = TypeSpec.classBuilder(typeName)
             .addOriginatingElement(element)
             .addSuperinterface(ParameterizedTypeName.get(ConfigClassNames.configValueExtractor, TypeName.get(targetType)))
@@ -175,14 +175,14 @@ public class ConfigParserGenerator {
         if (f.isRight()) {
             return Either.right(f.right());
         }
-        var typeName = CommonUtils.generatedName(element, ConfigClassNames.configValueExtractor);
+        var typeName = NameUtils.generatedType(element, ConfigClassNames.configValueExtractor);
         var typeBuilder = TypeSpec.classBuilder(typeName)
             .addOriginatingElement(element)
             .addSuperinterface(ParameterizedTypeName.get(ConfigClassNames.configValueExtractor, TypeName.get(targetType)))
             .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", "$S", ConfigParserGenerator.class.getCanonicalName()).build())
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
         var fields = Objects.requireNonNull(f.left());
-        var implClassName = (ClassName) ClassName.get(element);
+        var implClassName = ClassName.get(element);
         var constructor = buildConstructor(typeBuilder, fields);
         typeBuilder.addMethod(constructor);
         typeBuilder.addMethod(buildExtractMethod(element, TypeName.get(targetType), implClassName, fields));
@@ -208,7 +208,7 @@ public class ConfigParserGenerator {
         if (f.isRight()) {
             return Either.right(f.right());
         }
-        var typeName = CommonUtils.generatedName(element, ConfigClassNames.configValueExtractor);
+        var typeName = NameUtils.generatedType(element, ConfigClassNames.configValueExtractor);
         var typeBuilder = TypeSpec.classBuilder(typeName)
             .addOriginatingElement(element)
             .addSuperinterface(ParameterizedTypeName.get(ConfigClassNames.configValueExtractor, TypeName.get(targetType)))

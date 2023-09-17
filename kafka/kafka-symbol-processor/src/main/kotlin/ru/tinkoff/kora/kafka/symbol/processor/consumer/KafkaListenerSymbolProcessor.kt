@@ -32,7 +32,7 @@ class KafkaListenerSymbolProcessor(private val environment: SymbolProcessorEnvir
     }
 
     private fun processController(controller: KSClassDeclaration) {
-        val methodGenerator = KafkaHandlerGenerator(environment.logger, resolver)
+        val methodGenerator = KafkaHandlerGenerator(environment.logger)
         val kafkaConfigGenerator = KafkaConsumerConfigGenerator()
         val kafkaContainerGenerator = KafkaContainerGenerator()
         val generator = KafkaConsumerModuleGenerator(methodGenerator, kafkaConfigGenerator, kafkaContainerGenerator)

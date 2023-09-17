@@ -8,20 +8,40 @@ import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 import java.util.function.Predicate;
 
 public class AnnotationUtils {
     @Nullable
     public static AnnotationMirror findAnnotation(Element element, Predicate<String> namePredicate) {
-        return element.getAnnotationMirrors().stream().filter(am -> namePredicate.test(((TypeElement) am.getAnnotationType().asElement()).getQualifiedName().toString())).findFirst().orElse(null);
+        for (var am : element.getAnnotationMirrors()) {
+            var name = ((TypeElement) am.getAnnotationType().asElement()).getQualifiedName().toString();
+            if (namePredicate.test(name)) {
+                return am;
+            }
+        }
+        return null;
     }
 
     @Nullable
     public static AnnotationMirror findAnnotation(Element element, ClassName name) {
-        return findAnnotations(element, name, null).stream().findFirst().orElse(null);
+        var list = findAnnotations(element, name, null);
+        if (list.isEmpty()) {
+            return null;
+        } else {
+            return Objects.requireNonNull(list.get(0));
+        }
+    }
+    @Nullable
+    public static AnnotationMirror findAnnotation(Elements elements, Element element, ClassName name) {
+        var list = findAnnotations(elements, element, name, null);
+        if (list.isEmpty()) {
+            return null;
+        } else {
+            return Objects.requireNonNull(list.get(0));
+        }
     }
 
     public static boolean isAnnotationPresent(Element element, ClassName name) {
@@ -29,24 +49,38 @@ public class AnnotationUtils {
     }
 
     public static List<AnnotationMirror> findAnnotations(Element element, ClassName name, @Nullable ClassName containerName) {
+        var result = new ArrayList<AnnotationMirror>();
         for (var annotationMirror : element.getAnnotationMirrors()) {
             var annotationType = (TypeElement) annotationMirror.getAnnotationType().asElement();
             if (annotationType.getQualifiedName().contentEquals(name.canonicalName())) {
-                return List.of(annotationMirror);
+                result.add(annotationMirror);
             }
             if (containerName != null && annotationType.getQualifiedName().contentEquals(containerName.canonicalName())) {
-                return annotationMirror.getElementValues().entrySet().stream()
-                    .filter(e -> e.getKey().getSimpleName().contentEquals("value"))
-                    .map(Map.Entry::getValue)
-                    .map(AnnotationValue::getValue)
-                    .map(value -> (List<? extends AnnotationValue>) value)
-                    .flatMap(Collection::stream)
-                    .map(AnnotationValue::getValue)
-                    .map(AnnotationMirror.class::cast)
-                    .toList();
+                var value = AnnotationUtils.<List<AnnotationValue>>parseAnnotationValueWithoutDefault(annotationMirror, "value");
+                for (var annotationValue : value) {
+                    var am = (AnnotationMirror) annotationValue.getValue();
+                    result.add(am);
+                }
             }
         }
-        return List.of();
+        return result;
+    }
+    public static List<AnnotationMirror> findAnnotations(Elements elements, Element element, ClassName name, @Nullable ClassName containerName) {
+        var result = new ArrayList<AnnotationMirror>();
+        for (var annotationMirror : elements.getAllAnnotationMirrors(element)) {
+            var annotationType = (TypeElement) annotationMirror.getAnnotationType().asElement();
+            if (annotationType.getQualifiedName().contentEquals(name.canonicalName())) {
+                result.add(annotationMirror);
+            }
+            if (containerName != null && annotationType.getQualifiedName().contentEquals(containerName.canonicalName())) {
+                var value = AnnotationUtils.<List<AnnotationValue>>parseAnnotationValueWithoutDefault(annotationMirror, "value");
+                for (var annotationValue : value) {
+                    var am = (AnnotationMirror) annotationValue.getValue();
+                    result.add(am);
+                }
+            }
+        }
+        return result;
     }
 
     @Nullable

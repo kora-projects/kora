@@ -13,7 +13,7 @@ public class JsonIncludeTest extends AbstractJsonAnnotationProcessorTest {
     public void testIncludeAlways() {
         compile("""
             import ru.tinkoff.kora.json.common.annotation.JsonInclude;
-                            
+
             @JsonInclude(JsonInclude.IncludeType.ALWAYS)
             @Json
             public record TestRecord(@Nullable Integer value) { }
@@ -31,7 +31,7 @@ public class JsonIncludeTest extends AbstractJsonAnnotationProcessorTest {
     public void testIncludeNonNull() {
         compile("""
             import ru.tinkoff.kora.json.common.annotation.JsonInclude;
-                            
+
             @JsonInclude(JsonInclude.IncludeType.NON_NULL)
             @Json
             public record TestRecord(@Nullable Integer value) { }
@@ -49,7 +49,7 @@ public class JsonIncludeTest extends AbstractJsonAnnotationProcessorTest {
     public void testIncludeNonEmpty() {
         compile("""
             import ru.tinkoff.kora.json.common.annotation.JsonInclude;
-                            
+
             @JsonInclude(JsonInclude.IncludeType.NON_EMPTY)
             @Json
             public record TestRecord(@Nullable java.util.List<Integer> value) { }
@@ -68,7 +68,7 @@ public class JsonIncludeTest extends AbstractJsonAnnotationProcessorTest {
     public void testFieldIncludeAlways() {
         compile("""
             import ru.tinkoff.kora.json.common.annotation.JsonInclude;
-                            
+
             @Json
             public record TestRecord(@Nullable String name, @JsonInclude(JsonInclude.IncludeType.ALWAYS) @Nullable Integer value) { }
             """
@@ -85,7 +85,7 @@ public class JsonIncludeTest extends AbstractJsonAnnotationProcessorTest {
     public void testFieldIncludeNonEmpty() {
         compile("""
             import ru.tinkoff.kora.json.common.annotation.JsonInclude;
-                            
+
             @Json
             public record TestRecord(@JsonInclude(JsonInclude.IncludeType.NON_EMPTY) @Nullable java.util.List<Integer> value) { }
             """

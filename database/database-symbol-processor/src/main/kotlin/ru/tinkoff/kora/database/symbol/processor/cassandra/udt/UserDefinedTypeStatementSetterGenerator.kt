@@ -16,11 +16,11 @@ import ru.tinkoff.kora.ksp.common.generatedClassName
 class UserDefinedTypeStatementSetterGenerator(private val environment: SymbolProcessorEnvironment) {
 
     fun generate(resolver: Resolver, classDeclaration: KSClassDeclaration) {
-        this.generateSetter(resolver, classDeclaration)
-        this.generateListSetter(resolver, classDeclaration)
+        this.generateSetter(classDeclaration)
+        this.generateListSetter(classDeclaration)
     }
 
-    private fun generateSetter(resolver: Resolver, classDeclaration: KSClassDeclaration) {
+    private fun generateSetter(classDeclaration: KSClassDeclaration) {
         val type = classDeclaration.asType(listOf())
         val typeName = type.toTypeName().copy(false)
         val entity = DbEntity.parseEntity(type)!!
@@ -50,7 +50,7 @@ class UserDefinedTypeStatementSetterGenerator(private val environment: SymbolPro
         FileSpec.get(classDeclaration.packageName.asString(), typeSpec.build()).writeTo(environment.codeGenerator, false, listOfNotNull(classDeclaration.containingFile))
     }
 
-    private fun generateListSetter(resolver: Resolver, classDeclaration: KSClassDeclaration) {
+    private fun generateListSetter(classDeclaration: KSClassDeclaration) {
         val type = classDeclaration.asType(listOf())
         val typeName = type.toTypeName()
         val listTypeName = LIST.parameterizedBy(typeName.copy(false)).copy(false)

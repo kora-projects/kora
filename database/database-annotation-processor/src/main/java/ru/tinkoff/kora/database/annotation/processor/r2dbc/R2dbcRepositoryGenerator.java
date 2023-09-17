@@ -63,8 +63,8 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
         for (var method : queryMethods) {
             var methodType = (ExecutableType) this.types.asMemberOf(repositoryType, method);
             var parameters = QueryParameterParser.parse(this.types, R2dbcTypes.CONNECTION, R2dbcTypes.PARAMETER_COLUMN_MAPPER, method, methodType);
-            var queryAnnotation = CommonUtils.findDirectAnnotation(method, DbUtils.QUERY_ANNOTATION);
-            var queryString = CommonUtils.parseAnnotationValueWithoutDefault(queryAnnotation, "value").toString();
+            var queryAnnotation = AnnotationUtils.findAnnotation(method, DbUtils.QUERY_ANNOTATION);
+            var queryString = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(queryAnnotation, "value");
             var query = QueryWithParameters.parse(filer, queryString, parameters);
             var resultMapper = this.parseResultMapper(method, parameters, methodType)
                 .map(rm -> DbUtils.addMapper(resultMappers, rm))

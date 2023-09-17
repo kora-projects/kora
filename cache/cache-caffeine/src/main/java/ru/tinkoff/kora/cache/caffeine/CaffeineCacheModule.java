@@ -22,7 +22,7 @@ public interface CaffeineCacheModule {
             @Nonnull
             @Override
             public <K, V> Cache<K, V> build(@Nonnull String name, @Nonnull CaffeineCacheConfig config) {
-                final Caffeine<K, V> builder = (Caffeine<K, V>) Caffeine.newBuilder();
+                var builder = Caffeine.newBuilder();
                 if (config.expireAfterWrite() != null)
                     builder.expireAfterWrite(config.expireAfterWrite());
                 if (config.expireAfterAccess() != null)

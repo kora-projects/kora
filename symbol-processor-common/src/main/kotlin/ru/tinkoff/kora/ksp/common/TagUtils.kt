@@ -43,8 +43,8 @@ object TagUtils {
                     .toSet()
             }
             for (annotatedWith in type.declaration.annotations) {
-                val type = annotatedWith.annotationType.resolve()
-                if (type.declaration.qualifiedName?.asString() == CommonClassNames.tag.canonicalName) {
+                val annotatedWithType = annotatedWith.annotationType.resolve()
+                if (annotatedWithType.declaration.qualifiedName?.asString() == CommonClassNames.tag.canonicalName) {
                     return AnnotationUtils.parseAnnotationValueWithoutDefaults<List<KSType>>(annotatedWith, "value")!!
                         .asSequence()
                         .map { it.declaration.qualifiedName!!.asString() }

@@ -1,10 +1,7 @@
 package ru.tinkoff.kora.scheduling.annotation.processor;
 
 import com.squareup.javapoet.*;
-import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
-import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
-import ru.tinkoff.kora.annotation.processor.common.RecordClassBuilder;
+import ru.tinkoff.kora.annotation.processor.common.*;
 
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.Messager;
@@ -22,42 +19,34 @@ import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
 public class JdkSchedulingGenerator {
+    public static ClassName scheduleAtFixedRate = ClassName.get("ru.tinkoff.kora.scheduling.jdk.annotation", "ScheduleAtFixedRate");
+    public static ClassName scheduleOnce = ClassName.get("ru.tinkoff.kora.scheduling.jdk.annotation", "ScheduleOnce");
+    public static ClassName scheduleWithFixedDelay = ClassName.get("ru.tinkoff.kora.scheduling.jdk.annotation", "ScheduleWithFixedDelay");
+
     private static final ClassName fixedDelayJobClassName = ClassName.get("ru.tinkoff.kora.scheduling.jdk", "FixedDelayJob");
     private static final ClassName fixedRateJobClassName = ClassName.get("ru.tinkoff.kora.scheduling.jdk", "FixedRateJob");
     private static final ClassName runOnceJobClassName = ClassName.get("ru.tinkoff.kora.scheduling.jdk", "RunOnceJob");
     private static final ClassName schedulingTelemetryFactoryClassName = ClassName.get("ru.tinkoff.kora.scheduling.common.telemetry", "SchedulingTelemetryFactory");
     private static final ClassName jdkSchedulingExecutor = ClassName.get("ru.tinkoff.kora.scheduling.jdk", "JdkSchedulingExecutor");
     private final Elements elements;
-    private final Types types;
-    private final Messager messager;
     private final Filer filer;
-    private final TypeMirror scheduleAtFixedRateAnnotationType;
-    private final TypeMirror scheduleOnceAnnotation;
-    private final TypeMirror scheduleWithFixedDelayAnnotation;
 
     public JdkSchedulingGenerator(ProcessingEnvironment processingEnv) {
         this.elements = processingEnv.getElementUtils();
-        this.types = processingEnv.getTypeUtils();
-        this.messager = processingEnv.getMessager();
         this.filer = processingEnv.getFiler();
-        this.scheduleAtFixedRateAnnotationType = this.elements.getTypeElement("ru.tinkoff.kora.scheduling.jdk.annotation.ScheduleAtFixedRate")
-            .asType();
-        this.scheduleOnceAnnotation = this.elements.getTypeElement("ru.tinkoff.kora.scheduling.jdk.annotation.ScheduleOnce")
-            .asType();
-        this.scheduleWithFixedDelayAnnotation = this.elements.getTypeElement("ru.tinkoff.kora.scheduling.jdk.annotation.ScheduleWithFixedDelay")
-            .asType();
     }
 
     public void generate(TypeElement type, Element method, TypeSpec.Builder module, SchedulingTrigger trigger) throws IOException {
-        if (this.types.isSameType(trigger.triggerAnnotation().getAnnotationType(), this.scheduleAtFixedRateAnnotationType)) {
+        var triggerTypeName = ClassName.get((TypeElement) trigger.triggerAnnotation().getAnnotationType().asElement());
+        if (triggerTypeName.equals(scheduleAtFixedRate)) {
             this.generateScheduleAtFixedRate(type, method, module, trigger);
             return;
         }
-        if (this.types.isSameType(trigger.triggerAnnotation().getAnnotationType(), this.scheduleWithFixedDelayAnnotation)) {
+        if (triggerTypeName.equals(scheduleWithFixedDelay)) {
             this.generateScheduleWithFixedDelay(type, method, module, trigger);
             return;
         }
-        if (this.types.isSameType(trigger.triggerAnnotation().getAnnotationType(), this.scheduleOnceAnnotation)) {
+        if (triggerTypeName.equals(scheduleOnce)) {
             this.generateScheduleOnce(type, method, module, trigger);
             return;
         }
@@ -66,11 +55,11 @@ public class JdkSchedulingGenerator {
 
     private void generateScheduleOnce(TypeElement type, Element method, TypeSpec.Builder module, SchedulingTrigger trigger) throws IOException {
         var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
-        var configName = CommonUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "config");
-        var configClassName = CommonUtils.getOuterClassesAsPrefix(type) + type.getSimpleName().toString() + "_" + method.getSimpleName() + "_Config";
-        var jobMethodName = CommonUtils.getOuterClassesAsPrefix(type) + type.getSimpleName().toString() + "_" + method.getSimpleName() + "_Job";
-        var delay = CommonUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "delay");
-        var unit = CommonUtils.<VariableElement>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "unit");
+        var configName = AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "config");
+        var configClassName = NameUtils.generatedType(type, method.getSimpleName() + "_Config");
+        var jobMethodName = NameUtils.generatedType(type, method.getSimpleName() + "_Job");
+        var delay = AnnotationUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "delay");
+        var unit = AnnotationUtils.<VariableElement>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "unit");
         var componentMethod = MethodSpec.methodBuilder(jobMethodName)
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(schedulingTelemetryFactoryClassName, "telemetryFactory")
@@ -92,7 +81,7 @@ public class JdkSchedulingGenerator {
                 .addComponent(
                     "delay",
                     TypeName.get(Duration.class),
-                    delay == 0 ? null : CodeBlock.of("$T.of($L, $T.$L)", Duration.class, delay, ChronoUnit.class, unit)
+                    delay == null || delay == 0 ? null : CodeBlock.of("$T.of($L, $T.$L)", Duration.class, delay, ChronoUnit.class, unit)
                 )
                 .writeTo(this.filer, packageName);
 
@@ -110,12 +99,12 @@ public class JdkSchedulingGenerator {
 
     private void generateScheduleWithFixedDelay(TypeElement type, Element method, TypeSpec.Builder module, SchedulingTrigger trigger) throws IOException {
         var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
-        var configName = CommonUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "config");
-        var configClassName = CommonUtils.getOuterClassesAsPrefix(type) + type.getSimpleName().toString() + "_" + method.getSimpleName() + "_Config";
-        var jobMethodName = CommonUtils.getOuterClassesAsPrefix(type) + type.getSimpleName().toString() + "_" + method.getSimpleName() + "_Job";
-        var initialDelay = CommonUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "initialDelay");
-        var delay = CommonUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "delay");
-        var unit = CommonUtils.<VariableElement>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "unit");
+        var configName = AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "config");
+        var configClassName = NameUtils.generatedType(type, method.getSimpleName() + "_Config");
+        var jobMethodName = NameUtils.generatedType(type, method.getSimpleName() + "_Job");
+        var initialDelay = AnnotationUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "initialDelay");
+        var delay = AnnotationUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "delay");
+        var unit = AnnotationUtils.<VariableElement>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "unit");
         var componentMethod = MethodSpec.methodBuilder(jobMethodName)
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(schedulingTelemetryFactoryClassName, "telemetryFactory")
@@ -162,12 +151,12 @@ public class JdkSchedulingGenerator {
 
     private void generateScheduleAtFixedRate(TypeElement type, Element method, TypeSpec.Builder module, SchedulingTrigger trigger) throws IOException {
         var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
-        var configName = CommonUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "config");
-        var configClassName = CommonUtils.getOuterClassesAsPrefix(type) + type.getSimpleName().toString() + "_" + method.getSimpleName() + "_Config";
-        var jobMethodName = CommonUtils.getOuterClassesAsPrefix(type) + type.getSimpleName().toString() + "_" + method.getSimpleName() + "_Job";
-        var initialDelay = CommonUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "initialDelay");
-        var period = CommonUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "period");
-        var unit = CommonUtils.<VariableElement>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "unit");
+        var configName = AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "config");
+        var configClassName = NameUtils.generatedType(type, method.getSimpleName() + "_Config");
+        var jobMethodName = NameUtils.generatedType(type, method.getSimpleName() + "_Job");
+        var initialDelay = AnnotationUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "initialDelay");
+        var period = AnnotationUtils.<Long>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "period");
+        var unit = AnnotationUtils.<VariableElement>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "unit");
         var componentMethod = MethodSpec.methodBuilder(jobMethodName)
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(schedulingTelemetryFactoryClassName, "telemetryFactory")
@@ -195,7 +184,7 @@ public class JdkSchedulingGenerator {
                 .addComponent(
                     "period",
                     TypeName.get(Duration.class),
-                    period == 0 ? null : CodeBlock.of("$T.of($L, $T.$L)", Duration.class, period, ChronoUnit.class, unit)
+                    period == null || period == 0 ? null : CodeBlock.of("$T.of($L, $T.$L)", Duration.class, period, ChronoUnit.class, unit)
                 )
                 .writeTo(this.filer, packageName);
 

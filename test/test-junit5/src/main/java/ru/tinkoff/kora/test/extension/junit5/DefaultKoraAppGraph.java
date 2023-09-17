@@ -13,7 +13,7 @@ import java.util.Objects;
 @SuppressWarnings("unchecked")
 final class DefaultKoraAppGraph implements KoraAppGraph {
 
-    private static final Class<?>[] TAG_ANY = new Class[]{Tag.Any.class};
+    private static final Class<?>[] TAG_ANY = new Class<?>[]{Tag.Any.class};
 
     private final ApplicationGraphDraw graphDraw;
     private final Graph graph;

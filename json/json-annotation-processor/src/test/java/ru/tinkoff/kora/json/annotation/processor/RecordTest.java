@@ -29,7 +29,7 @@ public class RecordTest extends AbstractJsonAnnotationProcessorTest {
             @ru.tinkoff.kora.common.KoraApp
             public interface TestApp {
               record TestRecord(int value){}
-              
+
               @Root
               default String root(ru.tinkoff.kora.json.common.JsonReader<TestRecord> r) {return "";}
             }
@@ -45,7 +45,7 @@ public class RecordTest extends AbstractJsonAnnotationProcessorTest {
             @ru.tinkoff.kora.common.KoraApp
             public interface TestApp {
               record TestRecord(int value){}
-              
+
               @Root
               default String root(ru.tinkoff.kora.json.common.JsonWriter<TestRecord> r) {return "";}
             }
@@ -62,7 +62,7 @@ public class RecordTest extends AbstractJsonAnnotationProcessorTest {
             public interface TestApp {
               @Json
               record TestRecord(int value){}
-              
+
               @Root
               default String root(ru.tinkoff.kora.json.common.JsonReader<TestRecord> r) {return "";}
             }
@@ -79,7 +79,7 @@ public class RecordTest extends AbstractJsonAnnotationProcessorTest {
             public interface TestApp {
               @Json
               record TestRecord(int value){}
-              
+
               @Root
               default String root(ru.tinkoff.kora.json.common.JsonWriter<TestRecord> r) {return "";}
             }

@@ -94,7 +94,7 @@ public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
                 default ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultColumnMapper<String> taggedColumnMapper() {
                     return java.sql.ResultSet::getString;
                 }
-                        
+
               @Root
               default String root(ru.tinkoff.kora.database.jdbc.mapper.result.JdbcRowMapper<TestRecord> r) {return "";}
             }

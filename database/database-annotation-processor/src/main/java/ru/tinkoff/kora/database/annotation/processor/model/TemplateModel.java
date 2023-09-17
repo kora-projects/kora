@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.database.annotation.processor.model;
 
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.common.naming.NameConverter;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
@@ -23,11 +24,11 @@ import static ru.tinkoff.kora.annotation.processor.common.CommonUtils.getNameCon
 public record TemplateModel(
     TypeElement type, String tableName, LinkedHashMap<String, ColumnModel> columns) {
 
-    public static record ColumnModel(
+    public record ColumnModel(
         VariableElement field, TypeMirror type, String columnName, boolean isId
     ) {}
 
-    public static record TemplateParam(@Nullable String paramName, String template, String rawTemplate) {}
+    public record TemplateParam(@Nullable String paramName, String template, String rawTemplate) {}
 
     /**
      * {table_name} <br/>
@@ -131,9 +132,9 @@ public record TemplateModel(
     }
 
     private static String parseTableName(TypeElement type) {
-        var table = CommonUtils.findDirectAnnotation(type, DbUtils.TABLE_ANNOTATION);
+        var table = AnnotationUtils.findAnnotation(type, DbUtils.TABLE_ANNOTATION);
         if (table != null) {
-            return CommonUtils.parseAnnotationValueWithoutDefault(table, "value").toString();
+            return AnnotationUtils.parseAnnotationValueWithoutDefault(table, "value");
         }
         return type.getSimpleName().toString();
     }
@@ -156,7 +157,7 @@ public record TemplateModel(
         for (var field : fields) {
             var columnType = field.asType();
             var columnName = EntityUtils.parseColumnName(field, columnsNameConverter);
-            var isId = CommonUtils.findDirectAnnotation(field, DbUtils.ID_ANNOTATION) != null;
+            var isId = AnnotationUtils.findAnnotation(field, DbUtils.ID_ANNOTATION) != null;
             result.put(field.getSimpleName().toString(), new ColumnModel(field, columnType, columnName, isId));
         }
         return result;
@@ -170,7 +171,7 @@ public record TemplateModel(
             var columnType = field.asType();
             var columnName = EntityUtils.parseColumnName(constructorParameter, columnsNameConverter);
             // column _must_ be simple type
-            var isId = CommonUtils.findDirectAnnotation(constructorParameter, DbUtils.ID_ANNOTATION) != null;
+            var isId = AnnotationUtils.findAnnotation(constructorParameter, DbUtils.ID_ANNOTATION) != null;
             result.put(field.getSimpleName().toString(), new ColumnModel(field, columnType, columnName, isId));
         }
         return result;

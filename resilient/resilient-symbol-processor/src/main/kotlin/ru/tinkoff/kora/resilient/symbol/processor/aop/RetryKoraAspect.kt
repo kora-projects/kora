@@ -58,17 +58,17 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
         )
 
         val body = if (method.isFlow()) {
-            buildBodyFlow(method, superCall, retryableName, fieldRetrier)
+            buildBodyFlow(method, superCall, fieldRetrier)
         } else if (method.isSuspend()) {
-            buildBodySync(method, superCall, retryableName, fieldRetrier)
+            buildBodySync(method, superCall, fieldRetrier)
         } else {
-            buildBodySync(method, superCall, retryableName, fieldRetrier)
+            buildBodySync(method, superCall, fieldRetrier)
         }
 
         return KoraAspect.ApplyResult.MethodBody(body)
     }
 
-    private fun buildBodySync(method: KSFunctionDeclaration, superCall: String, retryName: String, fieldRetrier: String): CodeBlock {
+    private fun buildBodySync(method: KSFunctionDeclaration, superCall: String, fieldRetrier: String): CodeBlock {
         return CodeBlock.builder()
             .add("%L.asState()", fieldRetrier).indent().add("\n")
             .controlFlow(".use { _state ->", fieldRetrier) {
@@ -109,7 +109,7 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
             .build()
     }
 
-    private fun buildBodyFlow(method: KSFunctionDeclaration, superCall: String, retryName: String, fieldRetrier: String): CodeBlock {
+    private fun buildBodyFlow(method: KSFunctionDeclaration, superCall: String, fieldRetrier: String): CodeBlock {
         return CodeBlock.builder().controlFlow("return %M", MEMBER_FLOW) {
             controlFlow("return@flow %L.asState().use { _state ->", fieldRetrier) {
                 add("%M (", MEMBER_FLOW_EMIT).indent()

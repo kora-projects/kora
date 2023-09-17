@@ -115,7 +115,7 @@ public final class KoraGraphModification {
         if (tags.isEmpty()) {
             return replaceComponent(typeToReplace, replacementSupplier);
         } else {
-            modifications.add(new GraphReplacement(replacementSupplier, new GraphCandidate(typeToReplace, tags)));
+            modifications.add(new GraphReplacement<>(replacementSupplier, new GraphCandidate(typeToReplace, tags)));
             return this;
         }
     }

@@ -39,7 +39,7 @@ class RepositoryKoraExtension(private val kspLogger: KSPLogger) : KoraExtension 
                 // annotation processor will handle it
                 return@lambda ExtensionResult.RequiresCompilingResult
             }
-            if (!hasAopAnnotations(resolver, repositoryElement)) {
+            if (!hasAopAnnotations(repositoryElement)) {
                 return@lambda repositoryElement.getConstructors().map { ExtensionResult.fromConstructor(it, repositoryElement) }.first()
             }
 

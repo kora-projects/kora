@@ -2,7 +2,6 @@ package ru.tinkoff.kora.json.annotation.processor.reader;
 
 import com.squareup.javapoet.TypeName;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
-import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.common.naming.NameConverter;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
@@ -103,14 +102,14 @@ public class ReaderTypeMetaParser {
     private FieldMeta parseField(TypeElement jsonClass, VariableElement parameter, NameConverter nameConverter) {
         var jsonField = this.findJsonField(jsonClass, parameter);
         var jsonName = this.parseJsonName(parameter, jsonField, nameConverter);
-        var reader = CommonUtils.<TypeMirror>parseAnnotationValueWithoutDefault(jsonField, "reader");
+        var reader = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(jsonField, "reader");
         var typeMeta = this.parseReaderFieldType(parameter.asType());
         return new FieldMeta(parameter, jsonName, TypeName.get(parameter.asType()), typeMeta, reader);
     }
 
     @Nullable
     private AnnotationMirror findJsonField(TypeElement jsonClass, VariableElement param) {
-        var paramJsonField = CommonUtils.findAnnotation(this.elements, param, JsonTypes.jsonFieldAnnotation);
+        var paramJsonField = AnnotationUtils.findAnnotation(param, JsonTypes.jsonFieldAnnotation);
         if (paramJsonField != null) {
             return paramJsonField;
         }
@@ -122,7 +121,7 @@ public class ReaderTypeMetaParser {
             if (!e.getSimpleName().toString().equals(param.getSimpleName().toString())) {
                 continue;
             }
-            return CommonUtils.findAnnotation(this.elements, e, JsonTypes.jsonFieldAnnotation);
+            return AnnotationUtils.findAnnotation(e, JsonTypes.jsonFieldAnnotation);
         }
         return null;
     }
@@ -136,7 +135,7 @@ public class ReaderTypeMetaParser {
             }
         }
 
-        var jsonFieldValue = (String) CommonUtils.parseAnnotationValue(this.elements, jsonField, "value");
+        var jsonFieldValue = (String) AnnotationUtils.parseAnnotationValue(this.elements, jsonField, "value");
         if (jsonFieldValue != null && !jsonFieldValue.isBlank()) {
             return jsonFieldValue;
         }

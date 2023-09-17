@@ -36,7 +36,7 @@ class RepositoryBuilder(
     fun build(repositoryDeclaration: KSClassDeclaration): TypeSpec? {
         log.info("Generating Repository for {}", repositoryDeclaration.simpleName.asString())
         val name = repositoryDeclaration.getOuterClassesAsPrefix() + repositoryDeclaration.simpleName.asString() + "_Impl"
-        val builder = repositoryDeclaration.extendsKeepAop(resolver, name)
+        val builder = repositoryDeclaration.extendsKeepAop(name)
             .generated(RepositoryBuilder::class)
             .addOriginatingKSFile(repositoryDeclaration.containingFile!!)
         val constructorBuilder = FunSpec.constructorBuilder()

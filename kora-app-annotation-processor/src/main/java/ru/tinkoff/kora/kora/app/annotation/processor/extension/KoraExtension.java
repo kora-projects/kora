@@ -1,6 +1,8 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.extension;
 
+import com.squareup.javapoet.ClassName;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 
 import javax.annotation.Nullable;
 import javax.annotation.processing.RoundEnvironment;
@@ -18,8 +20,12 @@ public interface KoraExtension {
     interface KoraExtensionDependencyGenerator {
         ExtensionResult generateDependency() throws IOException;
 
+        static KoraExtensionDependencyGenerator generatedFrom(Elements elements, Element element, ClassName postfix) {
+            return generatedFrom(elements, element, postfix.simpleName());
+        }
+
         static KoraExtensionDependencyGenerator generatedFrom(Elements elements, Element element, String postfix) {
-            var mapperName = CommonUtils.getOuterClassesAsPrefix(element) + element.getSimpleName() + postfix;
+            var mapperName = NameUtils.generatedType(element,postfix);
             var packageElement = elements.getPackageOf(element);
 
             return () -> {

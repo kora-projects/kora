@@ -115,8 +115,8 @@ public class RequestHandlerGenerator {
 
         }
         var interceptors = Stream.concat(
-                CommonUtils.findRepeatableAnnotationsOnElement(controller, interceptWithClassName, interceptWithContainerClassName).stream().map(HttpServerUtils::parseInterceptor),
-                CommonUtils.findRepeatableAnnotationsOnElement(requestMappingData.executableElement(), interceptWithClassName, interceptWithContainerClassName).stream().map(HttpServerUtils::parseInterceptor)
+                AnnotationUtils.findAnnotations(controller, interceptWithClassName, interceptWithContainerClassName).stream().map(HttpServerUtils::parseInterceptor),
+                AnnotationUtils.findAnnotations(requestMappingData.executableElement(), interceptWithClassName, interceptWithContainerClassName).stream().map(HttpServerUtils::parseInterceptor)
             )
             .distinct()
             .toList();

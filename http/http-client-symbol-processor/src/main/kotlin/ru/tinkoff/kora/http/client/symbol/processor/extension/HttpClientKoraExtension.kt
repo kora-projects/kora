@@ -31,7 +31,7 @@ class HttpClientKoraExtension : KoraExtension {
             if (maybeGenerated == null) {
                 return@lambda ExtensionResult.RequiresCompilingResult
             }
-            if (!hasAopAnnotations(resolver, maybeGenerated)) {
+            if (!hasAopAnnotations(maybeGenerated)) {
                 return@lambda maybeGenerated.getConstructors().map { ExtensionResult.fromConstructor(it, maybeGenerated) }.first()
             }
             val aopProxy = maybeGenerated.getOuterClassesAsPrefix() + maybeGenerated.simpleName.getShortName() + "__AopProxy"

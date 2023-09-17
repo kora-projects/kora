@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.kafka.symbol.processor.consumer
 
 import com.google.devtools.ksp.processing.KSPLogger
-import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.Modifier
@@ -21,7 +20,7 @@ import ru.tinkoff.kora.ksp.common.TagUtils.parseTags
 import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
-class KafkaHandlerGenerator(private val kspLogger: KSPLogger, resolver: Resolver) {
+class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
     val dispatchers = ClassName("kotlinx.coroutines", "Dispatchers")
     val context = ClassName("ru.tinkoff.kora.common", "Context")
 

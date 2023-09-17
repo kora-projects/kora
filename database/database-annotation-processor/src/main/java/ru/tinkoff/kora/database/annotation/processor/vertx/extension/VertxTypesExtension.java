@@ -3,6 +3,7 @@ package ru.tinkoff.kora.database.annotation.processor.vertx.extension;
 import com.squareup.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.GenericTypeResolver;
+import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.database.annotation.processor.DbEntityReadHelper;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
@@ -86,7 +87,7 @@ public class VertxTypesExtension implements KoraExtension {
         if (entity == null) {
             return null;
         }
-        var mapperName = CommonUtils.getOuterClassesAsPrefix(entity.typeElement()) + entity.typeElement().getSimpleName() + "VertxRowMapper";
+        var mapperName = NameUtils.generatedType(entity.typeElement(), VertxTypes.ROW_MAPPER);
         var packageElement = this.elements.getPackageOf(entity.typeElement());
 
         return () -> {
@@ -170,7 +171,7 @@ public class VertxTypesExtension implements KoraExtension {
         var packageElement = this.elements.getPackageOf(this.types.asElement(rowTypeMirror));
         var rowType = TypeName.get(rowTypeMirror);
         var rowTypeElement = this.types.asElement(rowTypeMirror);
-        var mapperName = CommonUtils.getOuterClassesAsPrefix(rowTypeElement) + ((ClassName) rowType).simpleName() + "VertxRowSetMapper";
+        var mapperName = NameUtils.generatedType(rowTypeElement, VertxTypes.ROW_SET_MAPPER);
 
         return () -> {
             var maybeGenerated = this.elements.getTypeElement(packageElement.getQualifiedName() + "." + mapperName);
@@ -213,7 +214,7 @@ public class VertxTypesExtension implements KoraExtension {
         var packageElement = this.elements.getPackageOf(this.types.asElement(rowTypeMirror));
         var rowType = TypeName.get(rowTypeMirror);
         var rowTypeElement = this.types.asElement(rowTypeMirror);
-        var mapperName = CommonUtils.getOuterClassesAsPrefix(rowTypeElement) + ((ClassName) rowType).simpleName() + "ListVertxRowSetMapper";
+        var mapperName = NameUtils.generatedType(rowTypeElement, "List" + VertxTypes.ROW_SET_MAPPER.simpleName());
         var returnType = ParameterizedTypeName.get(ClassName.get(List.class), rowType);
 
         return () -> {

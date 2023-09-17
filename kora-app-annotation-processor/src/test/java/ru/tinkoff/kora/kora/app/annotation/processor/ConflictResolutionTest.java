@@ -63,7 +63,7 @@ public class ConflictResolutionTest extends AbstractKoraAppTest {
             public interface ExampleApplication {
                 @Root
                 default String root(TestInterface<String> t) {return "";}
-                
+
                 @DefaultComponent
                 default <T> TestImpl1<T> testImpl1() { return new TestImpl1<>(); }
                 default <T> TestImpl2<T> testImpl2() { return new TestImpl2<>(); }

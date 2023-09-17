@@ -37,7 +37,7 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
             @Json
             public enum TestEnum {
               VALUE1, VALUE2;
-              
+
               @Json
               public int intValue() {
                 return ordinal();
@@ -63,7 +63,7 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
               enum TestEnum {
                 VALUE1, VALUE2
               }
-              
+
               default ru.tinkoff.kora.json.common.JsonReader<String> stringReader() { return com.fasterxml.jackson.core.JsonParser::getValueAsString; }
               default ru.tinkoff.kora.json.common.JsonWriter<String> stringWriter() { return com.fasterxml.jackson.core.JsonGenerator::writeString; }
 

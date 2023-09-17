@@ -2,8 +2,10 @@ package ru.tinkoff.kora.soap.client.annotation.processor;
 
 import com.squareup.javapoet.*;
 import org.w3c.dom.Node;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 
 import javax.annotation.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -34,8 +36,9 @@ public class SoapClientImplGenerator {
                 if (!valuesEntry.getKey().getSimpleName().contentEquals("value")) {
                     continue;
                 }
-                var annotationValues = (List<AnnotationValue>) valuesEntry.getValue().getValue();
-                for (var annotationValue : annotationValues) {
+                var annotationValues = (List<?>) valuesEntry.getValue().getValue();
+                for (var i : annotationValues) {
+                    var annotationValue = (AnnotationValue) i;
                     var value = (TypeMirror) annotationValue.getValue();
                     jaxbClasses.add(TypeName.get(value));
                 }
@@ -53,7 +56,7 @@ public class SoapClientImplGenerator {
             serviceName = service.getSimpleName().toString();
         }
         var targetNamespace = findAnnotationValue(webService, "targetNamespace").toString();
-        var builder = TypeSpec.classBuilder(CommonUtils.getOuterClassesAsPrefix(service) + service.getSimpleName() + "_SoapClientImpl")
+        var builder = TypeSpec.classBuilder(NameUtils.generatedType(service, "SoapClientImpl"))
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", CodeBlock.of("$S", WebServiceClientAnnotationProcessor.class.getCanonicalName())).build())
             .addField(ParameterizedTypeName.get(ClassName.get(Function.class), soapClasses.soapEnvelopeTypeName(), soapClasses.soapEnvelopeTypeName()), "envelopeProcessor", Modifier.PRIVATE, Modifier.FINAL)
@@ -289,7 +292,7 @@ public class SoapClientImplGenerator {
             } else {
                 for (var parameter : method.getParameters()) {
                     var webParam = findAnnotation(parameter, soapClasses.webParamType());
-                    var mode = (String) findAnnotationValue(webParam, "mode").toString();
+                    var mode = this.<String>findAnnotationValue(webParam, "mode");
                     if ("IN".equals(mode)) {
                         continue;
                     }
@@ -346,13 +349,13 @@ public class SoapClientImplGenerator {
     }
 
     @Nullable
-    private AnnotationMirror findAnnotation(Element element, TypeMirror annotationType) {
-        return CommonUtils.findAnnotation(this.processingEnv.getElementUtils(), this.processingEnv.getTypeUtils(), element, annotationType);
+    private AnnotationMirror findAnnotation(Element element, ClassName annotationType) {
+        return AnnotationUtils.findAnnotation(element, annotationType);
     }
 
     @Nullable
-    private Object findAnnotationValue(AnnotationMirror annotationMirror, String name) {
-        return CommonUtils.parseAnnotationValue(this.processingEnv.getElementUtils(), annotationMirror, name);
+    private <T> T findAnnotationValue(AnnotationMirror annotationMirror, String name) {
+        return AnnotationUtils.parseAnnotationValue(this.processingEnv.getElementUtils(), annotationMirror, name);
     }
 
 }

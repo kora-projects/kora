@@ -13,7 +13,7 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames.aopAnnotation
 
 object CommonAopUtils {
-    fun KSClassDeclaration.extendsKeepAop(resolver: Resolver, newName: String): TypeSpec.Builder {
+    fun KSClassDeclaration.extendsKeepAop(newName: String): TypeSpec.Builder {
         val type = this
         val b: TypeSpec.Builder = TypeSpec.classBuilder(newName)
             .addOriginatingKSFile(type.containingFile!!)
@@ -23,7 +23,7 @@ object CommonAopUtils {
             b.superclass(type.toClassName())
         }
         for (annotationMirror in type.annotations) {
-            if (isAopAnnotation(resolver, annotationMirror)) {
+            if (isAopAnnotation(annotationMirror)) {
                 b.addModifiers(KModifier.OPEN)
                 b.addAnnotation(annotationMirror.annotationType.resolve().toClassName())
                 b.addModifiers(KModifier.OPEN)
@@ -50,7 +50,7 @@ object CommonAopUtils {
         }
         funBuilder.addModifiers(KModifier.OVERRIDE)
         for (annotation in funDeclaration.annotations) {
-            if (isAopAnnotation(resolver, annotation)) {
+            if (isAopAnnotation(annotation)) {
                 funBuilder.addAnnotation(AnnotationSpec.builder(annotation.annotationType.resolve().toClassName()).build())
             }
         }
@@ -67,7 +67,7 @@ object CommonAopUtils {
                 pb.addModifiers(KModifier.VARARG)
             }
             for (annotation in parameter.annotations) {
-                if (isAopAnnotation(resolver, annotation)) {
+                if (isAopAnnotation(annotation)) {
                     pb.addAnnotation(AnnotationSpec.builder(annotation.annotationType.resolve().toClassName()).build())
                 }
             }
@@ -77,19 +77,19 @@ object CommonAopUtils {
         return funBuilder
     }
 
-    fun hasAopAnnotations(resolver: Resolver, ksAnnotated: KSAnnotated): Boolean {
-        if (hasAopAnnotation(resolver, ksAnnotated)) {
+    fun hasAopAnnotations(ksAnnotated: KSAnnotated): Boolean {
+        if (hasAopAnnotation(ksAnnotated)) {
             return true
         }
         val methods = findMethods(ksAnnotated) { f ->
             f.isPublic() || f.isProtected()
         }
         for (method in methods) {
-            if (hasAopAnnotation(resolver, method)) {
+            if (hasAopAnnotation(method)) {
                 return true
             }
             for (parameter in method.parameters) {
-                if (hasAopAnnotation(resolver, parameter)) {
+                if (hasAopAnnotation(parameter)) {
                     return true
                 }
             }
@@ -97,11 +97,11 @@ object CommonAopUtils {
         return false
     }
 
-    fun hasAopAnnotation(resolver: Resolver, e: KSAnnotated): Boolean {
-        return e.annotations.any { isAopAnnotation(resolver, it) }
+    fun hasAopAnnotation(e: KSAnnotated): Boolean {
+        return e.annotations.any { isAopAnnotation(it) }
     }
 
-    fun isAopAnnotation(resolver: Resolver, annotation: KSAnnotation): Boolean {
+    fun isAopAnnotation(annotation: KSAnnotation): Boolean {
         return annotation.annotationType.resolve().declaration.isAnnotationPresent(aopAnnotation)
     }
 

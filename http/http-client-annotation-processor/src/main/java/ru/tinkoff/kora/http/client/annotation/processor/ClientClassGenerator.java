@@ -343,14 +343,15 @@ public class ClientClassGenerator {
         }
         record Interceptor(TypeName type, @Nullable AnnotationSpec tag) {}
         var interceptorParser = (Function<AnnotationMirror, Interceptor>) a -> {
-            var interceptorType = ((TypeMirror) CommonUtils.parseAnnotationValueWithoutDefault(a, "value"));
+            var interceptorType = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(a, "value");
             var interceptorTypeName = ClassName.get(Objects.requireNonNull(interceptorType));
             @Nullable
-            var interceptorTag = (AnnotationMirror) CommonUtils.parseAnnotationValueWithoutDefault(a, "tag");
+            var interceptorTag = AnnotationUtils.<AnnotationMirror>parseAnnotationValueWithoutDefault(a, "tag");
             var interceptorTagAnnotationSpec = interceptorTag == null ? null : AnnotationSpec.get(interceptorTag);
             return new Interceptor(interceptorTypeName, interceptorTagAnnotationSpec);
         };
-        var classInterceptors = CommonUtils.findRepeatableAnnotationsOnElement(element, interceptWithClassName, interceptWithContainerClassName)
+
+        var classInterceptors = AnnotationUtils.findAnnotations(element, interceptWithClassName, interceptWithContainerClassName)
             .stream()
             .map(interceptorParser)
             .toList();
@@ -385,7 +386,7 @@ public class ClientClassGenerator {
 
         for (var methodData : methods) {
             var method = methodData.element();
-            var methodInterceptors = CommonUtils.findRepeatableAnnotationsOnElement(methodData.element, interceptWithClassName, interceptWithContainerClassName)
+            var methodInterceptors = AnnotationUtils.findAnnotations(methodData.element, interceptWithClassName, interceptWithContainerClassName)
                 .stream()
                 .map(interceptorParser)
                 .filter(Predicate.not(classInterceptors::contains))

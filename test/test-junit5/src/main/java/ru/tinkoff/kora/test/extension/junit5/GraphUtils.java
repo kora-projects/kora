@@ -13,7 +13,7 @@ import java.util.Set;
 
 final class GraphUtils {
 
-    private static final Class<?>[] TAG_ANY = new Class[]{Tag.Any.class};
+    private static final Class<?>[] TAG_ANY = new Class<?>[]{Tag.Any.class};
 
     private GraphUtils() {}
 

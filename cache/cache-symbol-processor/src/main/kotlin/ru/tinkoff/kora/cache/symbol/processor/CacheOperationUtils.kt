@@ -110,8 +110,9 @@ class CacheOperationUtils {
                 val annotation = annotations[i]
 
                 val annotationParameters: List<String> = annotation.arguments.filter { a -> a.name!!.getShortName() == "parameters" }
-                    .map { it.value as List<String> }
+                    .map { it.value as List<*> }
                     .firstOrNull { it.isNotEmpty() }
+                    ?.map { it as String }
                     ?: method.parameters.asSequence().map { p -> p.name!!.getShortName() }.toList()
 
                 for (parameter in parameters) {

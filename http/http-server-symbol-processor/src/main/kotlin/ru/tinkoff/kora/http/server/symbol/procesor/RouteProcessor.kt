@@ -280,6 +280,7 @@ class RouteProcessor {
         val interceptorTagAnnotationSpec = if (interceptorTag == null) {
             null
         } else {
+            @Suppress("UNCHECKED_CAST")
             val tags = interceptorTag.arguments[0].value!! as List<KSType>
             if (tags.isNotEmpty()) {
                 tags.makeTagAnnotationSpec()

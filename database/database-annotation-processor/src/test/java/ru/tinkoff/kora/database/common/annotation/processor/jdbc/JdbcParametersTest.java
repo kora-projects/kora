@@ -103,7 +103,7 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
         var repository = compileJdbc(List.of(), """
             @Repository
             public interface TestRepository extends JdbcRepository {
-                       
+
                 @Query("INSERT INTO test(test) VALUES ('test')")
                 void testConnection(Connection connection);
             }
@@ -122,13 +122,13 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
             import ru.tinkoff.kora.database.jdbc.JdbcDatabaseConfig;
             @Repository
             public abstract class TestRepository implements JdbcRepository {
-                        
+
                 private final JdbcDatabaseConfig config;
-                
+
                 public TestRepository(JdbcDatabaseConfig config) {
                     this.config = config;
                 }
-                       
+
                 @Query("INSERT INTO test(test) VALUES ('test')")
                 abstract void testConnection(Connection connection);
             }
@@ -187,7 +187,6 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
     public void testEntityFieldMapping() throws SQLException {
         var repository = compileJdbc(List.of(), """
             public final class StringToJsonbParameterMapper implements JdbcParameterColumnMapper<String> {
-                
                 @Override
                 public void set(PreparedStatement stmt, int index, String value) throws SQLException {
                     stmt.setObject(index, java.util.Map.of("test", value));
@@ -195,7 +194,6 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
             }
             """, """
             public record SomeEntity(long id, @Mapping(StringToJsonbParameterMapper.class) String value) {}
-                
             """, """
             @Repository
             public interface TestRepository extends JdbcRepository {
@@ -215,7 +213,6 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
         var mapper = Mockito.mock(JdbcParameterColumnMapper.class);
         var repository = compileJdbc(List.of(mapper), """
             public record SomeEntity(long id, @ru.tinkoff.kora.json.common.annotation.Json String value) {}
-                
             """, """
             @Repository
             public interface TestRepository extends JdbcRepository {
@@ -240,7 +237,6 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
     public void testNativeParameterWithMapping() throws SQLException {
         var repository = compileJdbc(List.of(), """
             public final class StringToJsonbParameterMapper implements JdbcParameterColumnMapper<String> {
-                
                 @Override
                 public void set(PreparedStatement stmt, int index, String value) throws SQLException {
                     stmt.setObject(index, java.util.Map.of("test", value));
@@ -304,7 +300,6 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
     public void testNativeParameterNonFinalMapper() throws SQLException {
         var repository = compileJdbc(List.of(newGeneratedObject("TestMapper")), """
             public class TestMapper implements JdbcParameterColumnMapper<String> {
-                
                 @Override
                 public void set(PreparedStatement stmt, int index, String value) throws SQLException {
                     stmt.setObject(index, java.util.Map.of("test", value));
@@ -328,7 +323,6 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
     public void testMultipleParametersWithSameMapper() throws SQLException {
         var repository = compileJdbc(List.of(newGeneratedObject("TestMapper")), """
             public class TestMapper implements JdbcParameterColumnMapper<String> {
-                
                 @Override
                 public void set(PreparedStatement stmt, int index, String value) throws SQLException {
                     stmt.setObject(index, java.util.Map.of("test", value));
@@ -349,7 +343,6 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
     public void testMultipleParameterFieldsWithSameMapper() throws SQLException {
         var repository = compileJdbc(List.of(newGeneratedObject("TestMapper")), """
             public class TestMapper implements JdbcParameterColumnMapper<TestRecord> {
-                
                 @Override
                 public void set(PreparedStatement stmt, int index, TestRecord value) throws SQLException {
                     stmt.setObject(index, java.util.Map.of("test", value.toString()));

@@ -30,7 +30,7 @@ public interface HttpHeaders extends Iterable<Map.Entry<String, List<String>>> {
     }
 
     default HttpHeaders with(String key, String value) {
-        @SuppressWarnings({"unchecked"})
+        @SuppressWarnings({"unchecked", "rawtypes"})
         Map.Entry<String, List<String>>[] entries = new Map.Entry[this.size() + 1];
         var i = 0;
         for (var stringListEntry : this) {
@@ -46,7 +46,7 @@ public interface HttpHeaders extends Iterable<Map.Entry<String, List<String>>> {
             return this;
         }
 
-        @SuppressWarnings({"unchecked"})
+        @SuppressWarnings({"unchecked", "rawtypes"})
         Map.Entry<String, List<String>>[] entries = new Map.Entry[this.size() - 1];
         var i = 0;
         var keyLower = key.toLowerCase();

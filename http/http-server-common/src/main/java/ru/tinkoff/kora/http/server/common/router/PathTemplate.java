@@ -21,6 +21,7 @@ public record PathTemplate(String templateString, boolean template, String base,
         parameterNames = Collections.unmodifiableSet(parameterNames);
     }
 
+    @SuppressWarnings("fallthrough")
     public static PathTemplate create(final String inputPath) {
         // a path is required
         if (inputPath == null) {

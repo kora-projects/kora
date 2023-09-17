@@ -3,6 +3,7 @@ package ru.tinkoff.kora.database.annotation.processor.cassandra;
 import com.squareup.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -33,7 +34,8 @@ public class UserDefinedTypeResultExtractorGenerator {
         var element = types.asElement(type);
         var typeName = TypeName.get(type);
         var packageName = elements.getPackageOf(element);
-        var typeSpec = TypeSpec.classBuilder(CommonUtils.getOuterClassesAsPrefix(element) + element.getSimpleName() + "_CassandraRowColumnMapper")
+
+        var typeSpec = TypeSpec.classBuilder(NameUtils.generatedType(element, CassandraTypes.RESULT_COLUMN_MAPPER))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(CassandraTypes.RESULT_COLUMN_MAPPER, typeName));
         var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
@@ -65,7 +67,7 @@ public class UserDefinedTypeResultExtractorGenerator {
         var element = types.asElement(type);
         var typeName = TypeName.get(type);
         var packageName = elements.getPackageOf(element);
-        var typeSpec = TypeSpec.classBuilder(CommonUtils.getOuterClassesAsPrefix(element) + element.getSimpleName() + "_List_CassandraRowColumnMapper")
+        var typeSpec = TypeSpec.classBuilder(NameUtils.generatedType(element, "List_CassandraRowColumnMapper"))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(CassandraTypes.RESULT_COLUMN_MAPPER, ParameterizedTypeName.get(CommonClassNames.list, typeName)));
         var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);

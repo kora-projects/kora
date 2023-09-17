@@ -61,20 +61,20 @@ class ConfigExtractorGeneratorExtensionTest extends AbstractAnnotationProcessorT
             @ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor
             public class TestConfig {
               private String value;
-              
+
               public String getValue() {
                 return this.value;
               }
-              
+
               public void setValue(String value) {
                 this.value = value;
               }
-              
+
               @Override
               public boolean equals(Object obj) {
                 return obj instanceof TestConfig that && java.util.Objects.equals(this.value, that.value);
               }
-              
+
               public int hashCode() { return java.util.Objects.hashCode(value); }
             }
             """);
@@ -131,11 +131,11 @@ class ConfigExtractorGeneratorExtensionTest extends AbstractAnnotationProcessorT
             """, """
             public class TestConfig {
               private String value;
-              
+
               public String getValue() {
                 return this.value;
               }
-              
+
               public void setValue(String value) {
                 this.value = value;
               }
@@ -144,7 +144,7 @@ class ConfigExtractorGeneratorExtensionTest extends AbstractAnnotationProcessorT
               public boolean equals(Object obj) {
                 return obj instanceof TestConfig that && java.util.Objects.equals(this.value, that.value);
               }
-              
+
               public int hashCode() { return java.util.Objects.hashCode(value); }
             }
             """);

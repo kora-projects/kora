@@ -45,11 +45,12 @@ public class CassandraTestContainer implements TestExecutionListener, ParameterR
         return Objects.requireNonNull(params);
     }
 
+    @SuppressWarnings("try")
     private static void awaitForReady(CassandraParams params) {
         var start = System.currentTimeMillis();
         Exception ex = null;
         while (System.currentTimeMillis() - start <= 120000) {
-            try (var c = params.getSession()) {
+            try (var ignored = params.getSession()) {
                 return;
             } catch (Exception e) {
                 ex = e;

@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.database.symbol.processor.jdbc
 
-import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.database.symbol.processor.QueryWithParameters
@@ -11,7 +10,7 @@ import ru.tinkoff.kora.ksp.common.parseMappingData
 
 object StatementSetterGenerator {
 
-    fun generate(b: FunSpec.Builder, function: KSFunctionDeclaration, queryWithParameters: QueryWithParameters, parameters: List<QueryParameter>, batchParam: QueryParameter?, parameterMappers: FieldFactory) {
+    fun generate(b: FunSpec.Builder, queryWithParameters: QueryWithParameters, parameters: List<QueryParameter>, batchParam: QueryParameter?, parameterMappers: FieldFactory) {
         if (batchParam != null) {
             b.beginControlFlow("for (_batch_%L in %N)", batchParam.name, batchParam.name)
         }
