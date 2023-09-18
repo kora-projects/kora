@@ -5,7 +5,7 @@ import ru.tinkoff.kora.validation.common.annotation.Pattern;
 import ru.tinkoff.kora.validation.common.annotation.Range;
 import ru.tinkoff.kora.validation.common.annotation.Valid;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.time.OffsetDateTime;
 
 @Valid

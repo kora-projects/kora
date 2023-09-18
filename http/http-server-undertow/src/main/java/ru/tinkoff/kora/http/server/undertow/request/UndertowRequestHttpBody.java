@@ -9,7 +9,7 @@ import ru.tinkoff.kora.common.util.flow.ErrorSubscription;
 import ru.tinkoff.kora.common.util.flow.SingleSubscription;
 import ru.tinkoff.kora.http.common.body.HttpInBody;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;

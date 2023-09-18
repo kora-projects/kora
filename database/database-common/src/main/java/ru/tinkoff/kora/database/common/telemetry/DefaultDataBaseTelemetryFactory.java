@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.database.common.telemetry;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public class DefaultDataBaseTelemetryFactory implements DataBaseTelemetryFactory {
     @Nullable

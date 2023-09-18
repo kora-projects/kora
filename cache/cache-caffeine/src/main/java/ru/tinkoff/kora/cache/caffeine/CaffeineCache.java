@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.cache.caffeine;
 
+import jakarta.annotation.Nonnull;
 import ru.tinkoff.kora.cache.Cache;
 
-import javax.annotation.Nonnull;
 import java.util.Map;
 
 public interface CaffeineCache<K, V> extends Cache<K, V> {

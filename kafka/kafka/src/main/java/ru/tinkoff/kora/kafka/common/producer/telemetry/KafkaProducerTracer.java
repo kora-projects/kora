@@ -3,7 +3,7 @@ package ru.tinkoff.kora.kafka.common.producer.telemetry;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public interface KafkaProducerTracer {
     interface KafkaProducerRecordSpan {

@@ -4,7 +4,7 @@ import io.opentelemetry.api.trace.Tracer;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTracer;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTracerFactory;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public final class OpentelemetryDataBaseTracerFactory implements DataBaseTracerFactory {
     private final Tracer tracer;

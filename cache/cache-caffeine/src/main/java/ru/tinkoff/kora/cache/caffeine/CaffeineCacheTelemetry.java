@@ -1,13 +1,12 @@
 package ru.tinkoff.kora.cache.caffeine;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.cache.telemetry.CacheMetrics;
 import ru.tinkoff.kora.cache.telemetry.CacheTelemetryOperation;
 import ru.tinkoff.kora.cache.telemetry.CacheTracer;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 
 public final class CaffeineCacheTelemetry {
 

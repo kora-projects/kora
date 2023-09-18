@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.http.common.form;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
+
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.Flow;

@@ -1,13 +1,13 @@
 package ru.tinkoff.kora.common.util;
 
 
+import jakarta.annotation.Nonnull;
 import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
 import reactor.core.publisher.Hooks;
 import reactor.core.publisher.Operators;
 import ru.tinkoff.kora.common.Context;
 
-import javax.annotation.Nonnull;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;

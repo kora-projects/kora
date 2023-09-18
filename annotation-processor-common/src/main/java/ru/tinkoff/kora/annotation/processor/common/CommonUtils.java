@@ -1,17 +1,16 @@
 package ru.tinkoff.kora.annotation.processor.common;
 
 import com.squareup.javapoet.*;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.AopAnnotation;
 import ru.tinkoff.kora.common.Mapping;
 import ru.tinkoff.kora.common.NamingStrategy;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.naming.NameConverter;
 
-import javax.annotation.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
-import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.io.IOException;
 import java.util.*;

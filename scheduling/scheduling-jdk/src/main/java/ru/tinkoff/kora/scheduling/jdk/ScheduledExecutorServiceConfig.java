@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.scheduling.jdk;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public record ScheduledExecutorServiceConfig(int threads) {
     public ScheduledExecutorServiceConfig(@Nullable Integer threads) {

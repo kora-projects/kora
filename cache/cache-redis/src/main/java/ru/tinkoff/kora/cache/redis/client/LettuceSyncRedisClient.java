@@ -8,7 +8,7 @@ import io.lettuce.core.api.sync.RedisKeyCommands;
 import io.lettuce.core.api.sync.RedisServerCommands;
 import io.lettuce.core.api.sync.RedisStringCommands;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.time.Duration;
 import java.util.Map;
 import java.util.stream.Collectors;

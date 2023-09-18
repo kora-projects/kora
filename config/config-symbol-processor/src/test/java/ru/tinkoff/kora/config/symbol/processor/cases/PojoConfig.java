@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.config.symbol.processor.cases;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.util.Objects;
 
 public class PojoConfig {

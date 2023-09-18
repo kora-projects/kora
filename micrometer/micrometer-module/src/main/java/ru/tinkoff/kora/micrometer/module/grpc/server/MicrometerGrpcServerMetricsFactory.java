@@ -9,7 +9,7 @@ import ru.tinkoff.kora.grpc.telemetry.GrpcServerMetrics;
 import ru.tinkoff.kora.grpc.telemetry.GrpcServerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.MetricsConfig.GrpcServerMetricsConfig;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class MicrometerGrpcServerMetricsFactory implements GrpcServerMetricsFactory {

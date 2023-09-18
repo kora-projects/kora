@@ -5,7 +5,7 @@ import org.junit.jupiter.api.extension.*;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.UUID;

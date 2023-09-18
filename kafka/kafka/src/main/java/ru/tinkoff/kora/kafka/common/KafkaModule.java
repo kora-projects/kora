@@ -7,7 +7,7 @@ import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerMetrics;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTracer;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.*;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public interface KafkaModule extends KafkaDeserializersModule, KafkaSerializersModule {
     @DefaultComponent

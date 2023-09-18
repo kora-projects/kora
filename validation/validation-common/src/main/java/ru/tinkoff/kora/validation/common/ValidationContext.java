@@ -1,12 +1,10 @@
 package ru.tinkoff.kora.validation.common;
 
-import javax.annotation.Nonnull;
-import javax.annotation.concurrent.Immutable;
+import jakarta.annotation.Nonnull;
 
 /**
  * Context of current validation progress and validation options
  */
-@Immutable
 public interface ValidationContext {
 
     /**
@@ -47,7 +45,6 @@ public interface ValidationContext {
     /**
      * Indicates deep object path for violation and validation context
      */
-    @Immutable
     interface Path {
 
         /**

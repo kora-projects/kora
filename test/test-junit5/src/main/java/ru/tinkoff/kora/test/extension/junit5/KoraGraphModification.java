@@ -2,7 +2,7 @@ package ru.tinkoff.kora.test.extension.junit5;
 
 import org.jetbrains.annotations.Nullable;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;

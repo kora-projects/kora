@@ -11,6 +11,7 @@ import java.util.*
 import java.util.concurrent.*
 
 object CommonClassNames {
+    val nullable = ClassName("jakarta.annotation", "Nullable")
     val publisher = ClassName("org.reactivestreams", "Publisher")
     val mono = ClassName("reactor.core.publisher", "Mono")
     val flux = ClassName("reactor.core.publisher", "Flux")

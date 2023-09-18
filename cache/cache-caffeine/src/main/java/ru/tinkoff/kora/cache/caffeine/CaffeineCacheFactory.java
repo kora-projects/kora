@@ -1,8 +1,7 @@
 package ru.tinkoff.kora.cache.caffeine;
 
 import com.github.benmanes.caffeine.cache.Cache;
-
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 public interface CaffeineCacheFactory {
 

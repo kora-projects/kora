@@ -3,7 +3,7 @@ package ru.tinkoff.kora.database.jdbc;
 import com.zaxxer.hikari.HikariConfig;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.time.Duration;
 import java.util.Properties;
 

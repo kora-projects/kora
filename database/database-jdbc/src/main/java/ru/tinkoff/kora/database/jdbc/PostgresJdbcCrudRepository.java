@@ -3,7 +3,7 @@ package ru.tinkoff.kora.database.jdbc;
 
 import ru.tinkoff.kora.database.common.annotation.Query;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 /*
 {table_name}

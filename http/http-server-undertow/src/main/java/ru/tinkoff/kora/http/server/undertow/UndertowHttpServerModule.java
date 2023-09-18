@@ -9,7 +9,7 @@ import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor;
 import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTracer;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public interface UndertowHttpServerModule extends UndertowModule {
     default UndertowPublicApiHandler undertowPublicApiHandler(PublicApiHandler publicApiHandler, @Nullable HttpServerTracer tracer) {

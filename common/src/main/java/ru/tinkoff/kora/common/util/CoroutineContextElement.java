@@ -1,10 +1,10 @@
 package ru.tinkoff.kora.common.util;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import kotlin.coroutines.CoroutineContext;
 import kotlin.jvm.functions.Function2;
 import ru.tinkoff.kora.common.Context;
-
-import javax.annotation.Nonnull;
 
 public record CoroutineContextElement(Context value) implements CoroutineContext.Element {
     public static final Key<CoroutineContextElement> KEY = new Key<>() {
@@ -21,7 +21,7 @@ public record CoroutineContextElement(Context value) implements CoroutineContext
         return DefaultImpls.fold(this, r, function2);
     }
 
-    @org.jetbrains.annotations.Nullable
+    @Nullable
     @Override
     public <E extends Element> E get(@Nonnull Key<E> key) {
         return DefaultImpls.get(this, key);

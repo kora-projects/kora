@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.cache.testcache;
 
+import jakarta.annotation.Nonnull;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.cache.Cache;
 
-import javax.annotation.Nonnull;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;

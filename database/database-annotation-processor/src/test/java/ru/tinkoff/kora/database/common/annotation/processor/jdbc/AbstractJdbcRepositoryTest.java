@@ -19,7 +19,7 @@ public abstract class AbstractJdbcRepositoryTest extends AbstractRepositoryTest 
             import ru.tinkoff.kora.common.Mapping;
 
             import java.sql.*;
-            import javax.annotation.Nullable;
+            import jakarta.annotation.Nullable;
             """;
     }
 

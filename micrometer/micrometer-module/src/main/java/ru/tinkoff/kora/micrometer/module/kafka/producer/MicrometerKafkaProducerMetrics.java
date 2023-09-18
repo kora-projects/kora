@@ -5,7 +5,7 @@ import io.micrometer.core.instrument.binder.kafka.KafkaClientMetrics;
 import org.apache.kafka.clients.producer.Producer;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerMetrics;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public class MicrometerKafkaProducerMetrics implements KafkaProducerMetrics, AutoCloseable {
     private final KafkaClientMetrics metrics;

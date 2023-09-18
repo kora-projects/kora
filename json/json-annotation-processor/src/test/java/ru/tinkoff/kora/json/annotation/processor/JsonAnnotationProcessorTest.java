@@ -9,7 +9,7 @@ import ru.tinkoff.kora.json.annotation.processor.dto.*;
 import ru.tinkoff.kora.json.annotation.processor.dto.DtoWithInnerDto.InnerDto;
 import ru.tinkoff.kora.json.common.*;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;

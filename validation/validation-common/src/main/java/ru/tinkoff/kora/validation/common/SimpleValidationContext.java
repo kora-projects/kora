@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.validation.common;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 record SimpleValidationContext(Path path, boolean isFailFast) implements ValidationContext {
 

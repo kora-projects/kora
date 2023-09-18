@@ -5,6 +5,7 @@ import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.TagUtils
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
@@ -84,21 +85,21 @@ object ComponentDependencyHelper {
                 return DependencyClaim(firstTypeParam, tags, DependencyClaim.DependencyClaimType.ALL)
             }
             if (typeName.rawType == CommonClassNames.valueOf) {
-                if (parameterType.isMarkedNullable) {
+                if (parameterType.isMarkedNullable || element.isAnnotationPresent(CommonClassNames.nullable)) {
                     return DependencyClaim(firstTypeParam, tags, DependencyClaim.DependencyClaimType.NULLABLE_VALUE_OF)
                 } else {
                     return DependencyClaim(firstTypeParam, tags, DependencyClaim.DependencyClaimType.VALUE_OF)
                 }
             }
             if (typeName.rawType == CommonClassNames.promiseOf) {
-                if (parameterType.isMarkedNullable) {
+                if (parameterType.isMarkedNullable || element.isAnnotationPresent(CommonClassNames.nullable)) {
                     return DependencyClaim(firstTypeParam, tags, DependencyClaim.DependencyClaimType.NULLABLE_PROMISE_OF)
                 } else {
                     return DependencyClaim(firstTypeParam, tags, DependencyClaim.DependencyClaimType.PROMISE_OF)
                 }
             }
         }
-        if (parameterType.isMarkedNullable) {
+        if (parameterType.isMarkedNullable || element.isAnnotationPresent(CommonClassNames.nullable)) {
             return DependencyClaim(parameterType, tags, DependencyClaim.DependencyClaimType.NULLABLE_ONE)
         } else {
             return DependencyClaim(parameterType, tags, DependencyClaim.DependencyClaimType.ONE_REQUIRED)

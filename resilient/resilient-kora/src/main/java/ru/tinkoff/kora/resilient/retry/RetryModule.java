@@ -4,7 +4,7 @@ import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public interface RetryModule {
 

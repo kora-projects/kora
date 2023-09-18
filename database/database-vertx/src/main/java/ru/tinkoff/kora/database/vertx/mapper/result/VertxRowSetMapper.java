@@ -5,7 +5,7 @@ import io.vertx.sqlclient.RowSet;
 import ru.tinkoff.kora.common.Mapping;
 import ru.tinkoff.kora.database.common.UpdateCount;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;

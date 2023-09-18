@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.database.annotation.processor.cassandra;
 
 import com.squareup.javapoet.*;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
@@ -9,7 +10,6 @@ import ru.tinkoff.kora.database.annotation.processor.RepositoryGenerator;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameterParser;
 
-import javax.annotation.Nullable;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;

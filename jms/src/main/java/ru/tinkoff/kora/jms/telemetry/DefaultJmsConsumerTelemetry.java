@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.jms.telemetry;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
+
 import javax.jms.JMSException;
 import javax.jms.Message;
 

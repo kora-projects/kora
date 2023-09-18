@@ -2,7 +2,7 @@ package ru.tinkoff.kora.logging.aspect;
 
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;

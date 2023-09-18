@@ -10,7 +10,7 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.jms.telemetry.JmsConsumerTracer;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.Queue;

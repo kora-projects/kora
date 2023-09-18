@@ -9,7 +9,7 @@ import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTracer;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public final class OpentelemetryDataBaseTracer implements DataBaseTracer {
     private final Tracer tracer;

@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.common.util;
 
+import jakarta.annotation.Nonnull;
 import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
 import reactor.core.Exceptions;
@@ -7,7 +8,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Signal;
 import reactor.util.context.Context;
 
-import javax.annotation.Nonnull;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ArrayBlockingQueue;

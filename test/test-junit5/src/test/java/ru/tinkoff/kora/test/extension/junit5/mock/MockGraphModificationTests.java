@@ -9,7 +9,7 @@ import ru.tinkoff.kora.test.extension.junit5.KoraGraphModification;
 import ru.tinkoff.kora.test.extension.junit5.TestComponent;
 import ru.tinkoff.kora.test.extension.junit5.testdata.*;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

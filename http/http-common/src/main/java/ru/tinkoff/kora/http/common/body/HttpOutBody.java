@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.http.common.body;
 
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;

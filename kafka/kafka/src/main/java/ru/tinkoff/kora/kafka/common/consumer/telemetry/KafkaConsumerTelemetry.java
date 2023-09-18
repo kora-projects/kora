@@ -4,7 +4,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public interface KafkaConsumerTelemetry<K, V> {
     interface KafkaConsumerRecordsTelemetryContext<K, V> {

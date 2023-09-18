@@ -72,7 +72,7 @@ abstract class AbstractSymbolProcessorTest {
         return """
             import ru.tinkoff.kora.common.annotation.*;
             import ru.tinkoff.kora.common.*;
-            import javax.annotation.Nullable;
+            import jakarta.annotation.Nullable;
             
             """.trimIndent()
     }

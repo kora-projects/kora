@@ -5,7 +5,7 @@ import ru.tinkoff.kora.database.common.telemetry.DataBaseMetricWriter;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseMetricWriterFactory;
 import ru.tinkoff.kora.micrometer.module.MetricsConfig.DbMetricsConfig;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public final class MicrometerDataBaseMetricWriterFactory implements DataBaseMetricWriterFactory {
     private final MeterRegistry meterRegistry;

@@ -6,7 +6,7 @@ import ru.tinkoff.kora.scheduling.common.telemetry.SchedulingLoggerFactory;
 import ru.tinkoff.kora.scheduling.common.telemetry.SchedulingMetricsFactory;
 import ru.tinkoff.kora.scheduling.common.telemetry.SchedulingTracerFactory;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public interface SchedulingModule {
     @DefaultComponent

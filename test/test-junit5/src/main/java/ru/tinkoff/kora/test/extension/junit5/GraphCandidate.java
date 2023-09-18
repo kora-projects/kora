@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
+
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.Collections;

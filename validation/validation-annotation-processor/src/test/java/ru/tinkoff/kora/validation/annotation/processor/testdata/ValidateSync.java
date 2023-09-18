@@ -3,7 +3,7 @@ package ru.tinkoff.kora.validation.annotation.processor.testdata;
 import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.validation.common.annotation.*;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.util.List;
 
 @Component

@@ -7,8 +7,8 @@ import io.micrometer.core.instrument.Timer;
 import ru.tinkoff.kora.cache.telemetry.CacheMetrics;
 import ru.tinkoff.kora.cache.telemetry.CacheTelemetryOperation;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 

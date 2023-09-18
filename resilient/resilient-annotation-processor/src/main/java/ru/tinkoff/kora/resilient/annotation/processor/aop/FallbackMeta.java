@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.resilient.annotation.processor.aop;
 
+import jakarta.annotation.Nonnull;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingError;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 
-import javax.annotation.Nonnull;
 import javax.lang.model.element.ExecutableElement;
 import javax.tools.Diagnostic;
 import java.util.Arrays;

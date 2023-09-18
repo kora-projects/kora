@@ -3,7 +3,7 @@ package ru.tinkoff.kora.http.server.undertow;
 import io.undertow.server.HttpServerExchange;
 import ru.tinkoff.kora.common.Context;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public class UndertowContext {
     private static final Context.Key<HttpServerExchange> KEY = new Context.Key<>() {

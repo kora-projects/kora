@@ -4,7 +4,7 @@ import ru.tinkoff.kora.validation.common.annotation.NotBlank;
 import ru.tinkoff.kora.validation.common.annotation.Size;
 import ru.tinkoff.kora.validation.common.annotation.Valid;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.util.List;
 
 @Valid

@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.kafka.common.producer.telemetry;
 
+import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Producer;
@@ -11,7 +12,6 @@ import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerMetrics.Kafk
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerTracer.KafkaProducerRecordSpan;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerTracer.KafkaProducerTxSpan;
 
-import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.Properties;
 

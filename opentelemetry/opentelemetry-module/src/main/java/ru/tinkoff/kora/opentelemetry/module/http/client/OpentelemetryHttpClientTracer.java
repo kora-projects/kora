@@ -12,7 +12,7 @@ import ru.tinkoff.kora.http.client.common.request.HttpClientRequestBuilder;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTracer;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 import static io.opentelemetry.context.Context.root;
 

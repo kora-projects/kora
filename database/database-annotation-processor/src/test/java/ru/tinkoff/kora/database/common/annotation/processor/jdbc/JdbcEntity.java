@@ -6,7 +6,7 @@ import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultColumnMapper;
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultSetMapper;
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcRowMapper;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;

@@ -4,7 +4,7 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public interface HttpClientTelemetry {
 

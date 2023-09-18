@@ -4,7 +4,7 @@ import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.soap.client.common.telemetry.DefaultSoapClientTelemetryFactory;
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientMetricsFactory;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public interface SoapClientModule {
     @DefaultComponent

@@ -7,7 +7,7 @@ import ru.tinkoff.kora.database.r2dbc.mapper.parameter.R2dbcParameterColumnMappe
 import ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcResultColumnMapper;
 import ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcRowMapper;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;

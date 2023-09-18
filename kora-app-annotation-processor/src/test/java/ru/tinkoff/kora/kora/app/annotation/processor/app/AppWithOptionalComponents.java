@@ -1,10 +1,10 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.app;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.KoraApp;
 import ru.tinkoff.kora.common.annotation.Root;
 
-import javax.annotation.Nullable;
 import java.util.Optional;
 
 @KoraApp

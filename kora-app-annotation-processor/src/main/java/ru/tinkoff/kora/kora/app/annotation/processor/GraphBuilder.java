@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
 import com.squareup.javapoet.*;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
-import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ComponentDependency;
@@ -15,7 +15,6 @@ import ru.tinkoff.kora.kora.app.annotation.processor.exception.NewRoundException
 import ru.tinkoff.kora.kora.app.annotation.processor.exception.UnresolvedDependencyException;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
 
-import javax.annotation.Nullable;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;

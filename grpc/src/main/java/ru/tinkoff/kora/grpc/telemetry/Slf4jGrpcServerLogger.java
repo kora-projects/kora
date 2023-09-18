@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.grpc.GrpcServer;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public final class Slf4jGrpcServerLogger implements GrpcServerLogger {
 

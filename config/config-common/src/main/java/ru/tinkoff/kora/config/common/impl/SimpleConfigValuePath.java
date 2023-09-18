@@ -3,7 +3,7 @@ package ru.tinkoff.kora.config.common.impl;
 import ru.tinkoff.kora.config.common.ConfigValuePath;
 import ru.tinkoff.kora.config.common.PathElement;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public record SimpleConfigValuePath(@Nullable PathElement last, @Nullable ConfigValuePath prev) implements ConfigValuePath {
     public SimpleConfigValuePath {

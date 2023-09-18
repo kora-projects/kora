@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 /**
  * Is useful when some part of configuration should be modified before test execution

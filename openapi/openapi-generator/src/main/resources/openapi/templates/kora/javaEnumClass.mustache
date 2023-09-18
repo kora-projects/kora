@@ -55,7 +55,7 @@
       }
 
       @Override
-      @javax.annotation.Nullable
+      @jakarta.annotation.Nullable
       public {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}} read(com.fasterxml.jackson.core.JsonParser parser) throws java.io.IOException {
         return this.delegate.read(parser);
       }

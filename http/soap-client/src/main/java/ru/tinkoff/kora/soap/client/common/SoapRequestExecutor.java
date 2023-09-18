@@ -13,7 +13,7 @@ import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetry.SoapTele
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetry.SoapTelemetryContext.SoapClientFailure.ProcessException;
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetryFactory;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;

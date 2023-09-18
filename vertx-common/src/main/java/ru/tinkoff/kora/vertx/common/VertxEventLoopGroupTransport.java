@@ -20,7 +20,7 @@ import io.vertx.core.net.NetServerOptions;
 import io.vertx.core.net.impl.SocketAddressImpl;
 import io.vertx.core.net.impl.transport.Transport;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.net.SocketAddress;
 import java.util.Iterator;
 import java.util.concurrent.ThreadFactory;

@@ -2,7 +2,7 @@ package ru.tinkoff.kora.cache.redis.client;
 
 import reactor.core.publisher.Mono;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.Map;
 
 public interface ReactiveRedisClient {

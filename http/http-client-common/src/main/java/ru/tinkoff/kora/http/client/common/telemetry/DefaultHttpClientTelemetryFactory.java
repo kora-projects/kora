@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.http.client.common.telemetry;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public final class DefaultHttpClientTelemetryFactory implements HttpClientTelemetryFactory {
     @Nullable

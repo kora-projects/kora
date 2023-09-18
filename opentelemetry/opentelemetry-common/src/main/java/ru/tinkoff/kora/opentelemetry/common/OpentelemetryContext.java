@@ -5,7 +5,7 @@ import io.opentelemetry.context.ImplicitContextKeyed;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.logging.common.MDC;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public class OpentelemetryContext {
     private static final Context.Key<OpentelemetryContext> KEY = new Context.Key<>() {

@@ -1,10 +1,10 @@
 package ru.tinkoff.kora.cache;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;

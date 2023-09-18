@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.config.common;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.config.common.annotation.ApplicationConfig;
@@ -9,7 +10,6 @@ import ru.tinkoff.kora.config.common.factory.MapConfigFactory;
 import ru.tinkoff.kora.config.common.factory.MergeConfigFactory;
 import ru.tinkoff.kora.config.common.origin.ConfigOrigin;
 
-import javax.annotation.Nullable;
 import java.util.Optional;
 
 public interface CommonConfigModule extends DefaultConfigExtractorsModule {

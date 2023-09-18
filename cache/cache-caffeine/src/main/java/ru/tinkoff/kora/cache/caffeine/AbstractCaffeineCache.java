@@ -1,10 +1,13 @@
 package ru.tinkoff.kora.cache.caffeine;
 
+import jakarta.annotation.Nonnull;
 import reactor.core.publisher.Mono;
 
-import javax.annotation.Nonnull;
 import java.time.Duration;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V> {

@@ -6,8 +6,8 @@ import ru.tinkoff.kora.cache.telemetry.CacheMetrics;
 import ru.tinkoff.kora.cache.telemetry.CacheTelemetryOperation;
 import ru.tinkoff.kora.cache.telemetry.CacheTracer;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 
 public final class RedisCacheTelemetry {
 

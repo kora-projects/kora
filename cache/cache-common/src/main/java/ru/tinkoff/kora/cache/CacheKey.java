@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.cache;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
+
 import java.util.Arrays;
 import java.util.List;
 

@@ -8,7 +8,7 @@ import ru.tinkoff.kora.config.common.impl.SimpleConfigValueOrigin;
 import ru.tinkoff.kora.config.common.origin.ConfigOrigin;
 import ru.tinkoff.kora.config.common.origin.ContainerConfigOrigin;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.util.LinkedHashMap;
 
 public class MergeConfigFactory {

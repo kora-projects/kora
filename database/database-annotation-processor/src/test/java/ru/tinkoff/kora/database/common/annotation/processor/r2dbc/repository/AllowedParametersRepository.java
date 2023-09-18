@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.database.common.annotation.processor.r2dbc.repository;
 
+import jakarta.annotation.Nullable;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.database.common.annotation.Batch;
 import ru.tinkoff.kora.database.common.annotation.Query;
@@ -9,7 +10,6 @@ import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRec
 import ru.tinkoff.kora.database.common.annotation.processor.jdbc.JdbcEntity;
 import ru.tinkoff.kora.database.r2dbc.R2dbcRepository;
 
-import javax.annotation.Nullable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;

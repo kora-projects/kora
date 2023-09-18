@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.common.util;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public sealed interface Either<A, B> {
 

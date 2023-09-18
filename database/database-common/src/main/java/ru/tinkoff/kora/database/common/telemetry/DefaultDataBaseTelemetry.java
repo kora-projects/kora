@@ -1,9 +1,8 @@
 package ru.tinkoff.kora.database.common.telemetry;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.database.common.QueryContext;
-
-import javax.annotation.Nullable;
 
 public class DefaultDataBaseTelemetry implements DataBaseTelemetry {
     private static final DataBaseTelemetryContext NOOP_CTX = exception -> {

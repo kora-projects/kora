@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.interceptor;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.kora.app.annotation.processor.ProcessingContext;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponent;
 
-import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;

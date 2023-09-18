@@ -6,7 +6,7 @@ import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.RefreshableGraph;
 import ru.tinkoff.kora.test.extension.junit5.KoraJUnit5Extension.TestClassMetadata;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.io.IOException;
 import java.time.Duration;
 

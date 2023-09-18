@@ -1,15 +1,14 @@
 package ru.tinkoff.kora.database.annotation.processor;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingError;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.common.naming.NameConverter;
 import ru.tinkoff.kora.common.naming.SnakeCaseNameConverter;
 
-import javax.annotation.Nullable;
 import javax.lang.model.element.*;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class EntityUtils {
 

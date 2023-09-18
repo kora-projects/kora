@@ -5,7 +5,7 @@ import org.apache.kafka.clients.producer.Producer;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerMetrics;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerMetricsFactory;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.util.Properties;
 
 public class MicrometerKafkaProducerMetricsFactory implements KafkaProducerMetricsFactory {

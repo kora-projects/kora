@@ -9,7 +9,7 @@ import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.PrivateHttpServer;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;

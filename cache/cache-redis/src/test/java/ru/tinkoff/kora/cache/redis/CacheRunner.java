@@ -1,11 +1,11 @@
 package ru.tinkoff.kora.cache.redis;
 
+import jakarta.annotation.Nullable;
 import org.junit.jupiter.api.Assertions;
 import ru.tinkoff.kora.cache.redis.client.LettuceClientConfig;
 import ru.tinkoff.kora.cache.redis.testdata.DummyCache;
 import ru.tinkoff.kora.test.redis.RedisParams;
 
-import javax.annotation.Nullable;
 import java.time.Duration;
 
 abstract class CacheRunner extends Assertions implements RedisCacheModule {

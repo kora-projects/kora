@@ -7,7 +7,7 @@ import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.server.common.HttpServer;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public final class Slf4jHttpServerLogger implements HttpServerLogger {
 

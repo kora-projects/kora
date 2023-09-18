@@ -10,7 +10,7 @@ import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplication;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent2;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent23;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

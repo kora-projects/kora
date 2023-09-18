@@ -2,7 +2,7 @@ package ru.tinkoff.kora.scheduling.common.telemetry;
 
 import ru.tinkoff.kora.common.Context;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public interface SchedulingTracer {
     interface SchedulingSpan {

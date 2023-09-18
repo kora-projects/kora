@@ -4,7 +4,7 @@ import io.r2dbc.spi.Row;
 import ru.tinkoff.kora.common.Mapping;
 import ru.tinkoff.kora.database.common.RowMapper;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public interface R2dbcRowMapper<T> extends Mapping.MappingFunction, RowMapper<T> {
     @Nullable

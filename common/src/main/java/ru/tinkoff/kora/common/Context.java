@@ -1,11 +1,11 @@
 package ru.tinkoff.kora.common;
 
+import jakarta.annotation.Nullable;
 import kotlin.coroutines.CoroutineContext;
 import kotlinx.coroutines.ThreadContextElementKt;
 import ru.tinkoff.kora.common.util.CoroutineContextElement;
 import ru.tinkoff.kora.common.util.ReactorContextHook;
 
-import javax.annotation.Nullable;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Context {

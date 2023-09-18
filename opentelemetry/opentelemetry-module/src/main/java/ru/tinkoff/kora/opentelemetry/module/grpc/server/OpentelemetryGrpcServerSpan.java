@@ -7,7 +7,7 @@ import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
 import ru.tinkoff.kora.grpc.telemetry.GrpcServerTracer;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.util.concurrent.atomic.AtomicLong;
 
 public final class OpentelemetryGrpcServerSpan implements GrpcServerTracer.GrpcServerSpan {

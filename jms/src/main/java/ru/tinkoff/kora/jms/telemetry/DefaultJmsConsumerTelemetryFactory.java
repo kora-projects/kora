@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.jms.telemetry;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public final class DefaultJmsConsumerTelemetryFactory implements JmsConsumerTelemetryFactory {
     @Nullable

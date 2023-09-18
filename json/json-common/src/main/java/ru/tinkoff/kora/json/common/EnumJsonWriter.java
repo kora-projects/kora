@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.json.common;
 
 import com.fasterxml.jackson.core.JsonGenerator;
+import jakarta.annotation.Nullable;
 
-import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.function.Function;

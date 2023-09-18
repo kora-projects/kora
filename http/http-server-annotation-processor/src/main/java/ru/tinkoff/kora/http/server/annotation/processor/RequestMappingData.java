@@ -2,7 +2,7 @@ package ru.tinkoff.kora.http.server.annotation.processor;
 
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ExecutableType;

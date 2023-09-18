@@ -7,7 +7,7 @@ import ru.tinkoff.kora.json.common.annotation.Json;
 import ru.tinkoff.kora.json.common.annotation.JsonField;
 import ru.tinkoff.kora.json.common.annotation.JsonReader;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;

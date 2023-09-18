@@ -12,7 +12,7 @@ import ru.tinkoff.kora.database.annotation.processor.RepositoryGenerator;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameterParser;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;

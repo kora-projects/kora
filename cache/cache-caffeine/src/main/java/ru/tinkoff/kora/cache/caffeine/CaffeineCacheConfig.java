@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.cache.caffeine;
 
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
-import javax.annotation.Nullable;
 import java.time.Duration;
 
 @ConfigValueExtractor

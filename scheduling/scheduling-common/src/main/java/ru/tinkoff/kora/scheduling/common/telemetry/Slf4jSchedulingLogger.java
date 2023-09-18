@@ -3,7 +3,7 @@ package ru.tinkoff.kora.scheduling.common.telemetry;
 import org.slf4j.Logger;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public final class Slf4jSchedulingLogger implements SchedulingLogger {
     private final Logger logger;

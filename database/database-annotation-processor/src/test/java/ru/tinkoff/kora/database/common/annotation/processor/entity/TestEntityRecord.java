@@ -8,7 +8,7 @@ import ru.tinkoff.kora.database.common.annotation.processor.jdbc.JdbcEntity;
 import ru.tinkoff.kora.database.common.annotation.processor.r2dbc.R2dbcEntity;
 import ru.tinkoff.kora.database.common.annotation.processor.vertx.VertxEntity;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 
