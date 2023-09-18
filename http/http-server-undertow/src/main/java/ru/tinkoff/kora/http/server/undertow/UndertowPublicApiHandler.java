@@ -7,7 +7,7 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTracer;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public final class UndertowPublicApiHandler implements HttpHandler {
     private final PublicApiHandler publicApiHandler;

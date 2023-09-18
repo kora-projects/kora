@@ -12,7 +12,7 @@ import ru.tinkoff.kora.database.annotation.processor.jdbc.JdbcRepositoryGenerato
 import ru.tinkoff.kora.database.annotation.processor.r2dbc.R2dbcRepositoryGenerator;
 import ru.tinkoff.kora.database.annotation.processor.vertx.VertxRepositoryGenerator;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
 

@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.http.server.common.router;
 
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.util.*;
 
 public class PathTemplateMatcher<T> {

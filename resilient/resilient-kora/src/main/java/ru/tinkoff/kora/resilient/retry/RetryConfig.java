@@ -2,8 +2,8 @@ package ru.tinkoff.kora.resilient.retry;
 
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;

@@ -1,11 +1,11 @@
 package ru.tinkoff.kora.json.annotation.processor.dto;
 
 import com.fasterxml.jackson.core.JsonGenerator;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.json.common.annotation.JsonField;
 import ru.tinkoff.kora.json.common.annotation.JsonSkip;
 import ru.tinkoff.kora.json.common.annotation.JsonWriter;
 
-import javax.annotation.Nullable;
 import java.io.IOException;
 
 @JsonWriter

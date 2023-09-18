@@ -63,7 +63,7 @@ public interface {{classname}}ServerRequestMappers {
         );
       }){{#isBlocking}}.get(){{/isBlocking}};{{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
       class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState {
-      {{#formParams}}  @javax.annotation.Nullable
+      {{#formParams}}  @jakarta.annotation.Nullable
       {{#isFile}}  ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile {{paramName}} = null;
       {{/isFile}}{{^isFile}}  {{{dataType}}} {{paramName}} = null;
       {{/isFile}}{{/formParams}}

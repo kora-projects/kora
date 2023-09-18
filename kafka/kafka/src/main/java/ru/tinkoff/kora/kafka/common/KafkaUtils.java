@@ -2,7 +2,7 @@ package ru.tinkoff.kora.kafka.common;
 
 import ru.tinkoff.kora.kafka.common.consumer.KafkaListenerConfig;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.common;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public interface Principal {
     Context.Key<Principal> KEY = new Context.KeyImmutable<>() {};

@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.annotation.processor.common.TagUtils;
@@ -8,7 +9,6 @@ import ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponent;
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclaration;
 
-import javax.annotation.Nullable;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 import java.util.ArrayList;

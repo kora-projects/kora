@@ -4,6 +4,7 @@ import io.grpc.BindableService;
 import io.grpc.ServerInterceptor;
 import io.grpc.netty.NettyServerBuilder;
 import io.netty.channel.EventLoopGroup;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.application.graph.WrappedRefreshListener;
@@ -19,7 +20,6 @@ import ru.tinkoff.kora.grpc.interceptors.TelemetryInterceptor;
 import ru.tinkoff.kora.grpc.telemetry.*;
 import ru.tinkoff.kora.netty.common.NettyCommonModule;
 
-import javax.annotation.Nullable;
 import java.util.List;
 
 public interface GrpcModule extends NettyCommonModule {

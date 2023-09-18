@@ -2,7 +2,7 @@ package ru.tinkoff.kora.validation.common;
 
 import ru.tinkoff.kora.validation.common.ValidationContext.Path;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 /**
  * Indicates validation failure

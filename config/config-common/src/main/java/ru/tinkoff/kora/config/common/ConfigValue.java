@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.config.common;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractionException;
 
-import javax.annotation.Nullable;
 import java.math.BigDecimal;
 import java.util.Iterator;
 import java.util.List;

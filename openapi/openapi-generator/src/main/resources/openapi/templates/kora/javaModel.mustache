@@ -30,7 +30,7 @@ public sealed interface {{classname}} permits {{#vendorExtensions.x-unique-mappe
    */
   {{{datatypeWithEnum}}} {{name}}();
 
-  {{{classname}}} with{{#lambda.titlecase}}{{name}}{{/lambda.titlecase}}({{^required}}@javax.annotation.Nullable{{/required}} {{{datatypeWithEnum}}} {{name}});
+  {{{classname}}} with{{#lambda.titlecase}}{{name}}{{/lambda.titlecase}}({{^required}}@jakarta.annotation.Nullable{{/required}} {{{datatypeWithEnum}}} {{name}});
 {{/isDiscriminator}}{{/allVars}}
 }
 {{/discriminator}}
@@ -46,7 +46,7 @@ public sealed interface {{classname}} permits {{#vendorExtensions.x-unique-mappe
 public record {{classname}} (
 {{#allVars}}
   @JsonField("{{baseName}}"){{^required}}
-  @javax.annotation.Nullable{{/required}}
+  @jakarta.annotation.Nullable{{/required}}
   {{#vendorExtensions.x-has-min-max}}@ru.tinkoff.kora.validation.common.annotation.Range(from = {{minimum}}, to = {{maximum}}, boundary = ru.tinkoff.kora.validation.common.annotation.Range.Boundary.{{#exclusiveMinimum}}EXCLUSIVE{{/exclusiveMinimum}}{{^exclusiveMinimum}}INCLUSIVE{{/exclusiveMinimum}}_{{#exclusiveMaximum}}EXCLUSIVE{{/exclusiveMaximum}}{{^exclusiveMaximum}}INCLUSIVE{{/exclusiveMaximum}})
   {{/vendorExtensions.x-has-min-max}}{{#vendorExtensions.x-has-min-max-items}}@ru.tinkoff.kora.validation.common.annotation.Size(min = {{minItems}}, max = {{maxItems}})
   {{/vendorExtensions.x-has-min-max-items}}{{#vendorExtensions.x-has-min-max-length}}@ru.tinkoff.kora.validation.common.annotation.Size(min = {{minLength}}, max = {{maxLength}})
@@ -93,7 +93,7 @@ public static String schema = """
 {{#allVars}}
 
 {{#vendorExtensions.x-discriminator-value}}{{#isOverridden}}  @Override
-{{/isOverridden}}{{/vendorExtensions.x-discriminator-value}}  public {{{classname}}} with{{#lambda.titlecase}}{{name}}{{/lambda.titlecase}}({{^required}}@javax.annotation.Nullable{{/required}} {{{datatypeWithEnum}}} {{name}}) {
+{{/isOverridden}}{{/vendorExtensions.x-discriminator-value}}  public {{{classname}}} with{{#lambda.titlecase}}{{name}}{{/lambda.titlecase}}({{^required}}@jakarta.annotation.Nullable{{/required}} {{{datatypeWithEnum}}} {{name}}) {
     if (this.{{name}} == {{name}}) return this;
     return new {{{classname}}}({{#allVars}}
       {{name}}{{^-last}},{{/-last}}{{/allVars}}

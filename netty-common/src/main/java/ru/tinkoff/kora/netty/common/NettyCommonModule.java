@@ -18,7 +18,7 @@ import io.netty.util.NettyRuntime;
 import ru.tinkoff.kora.application.graph.LifecycleWrapper;
 import ru.tinkoff.kora.common.Tag;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 

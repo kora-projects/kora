@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.database.cassandra;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
-import javax.annotation.Nullable;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;

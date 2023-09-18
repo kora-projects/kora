@@ -3,8 +3,7 @@ package ru.tinkoff.kora.grpc.telemetry;
 import io.grpc.Metadata;
 import io.grpc.ServerCall;
 import io.grpc.Status;
-
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public final class DefaultGrpcServerTelemetry implements GrpcServerTelemetry {
     private static final GrpcServerTelemetryContext NOOP_CTX = new GrpcServerTelemetryContext() {

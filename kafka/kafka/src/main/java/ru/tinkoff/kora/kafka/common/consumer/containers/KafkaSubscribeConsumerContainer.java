@@ -16,7 +16,7 @@ import ru.tinkoff.kora.kafka.common.KafkaUtils.NamedThreadFactory;
 import ru.tinkoff.kora.kafka.common.consumer.KafkaListenerConfig;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.BaseKafkaRecordsHandler;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutorService;

@@ -5,7 +5,7 @@ import ru.tinkoff.kora.validation.common.Validator;
 import ru.tinkoff.kora.validation.common.Violation;
 import ru.tinkoff.kora.validation.common.annotation.Range;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Predicate;

@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.resilient.circuitbreaker;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.time.Duration;
 import java.util.Map;
 

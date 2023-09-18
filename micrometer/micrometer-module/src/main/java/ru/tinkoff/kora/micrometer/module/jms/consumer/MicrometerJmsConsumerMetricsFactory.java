@@ -6,7 +6,7 @@ import ru.tinkoff.kora.jms.telemetry.JmsConsumerMetrics;
 import ru.tinkoff.kora.jms.telemetry.JmsConsumerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.MetricsConfig.JmsConsumerMetricsConfig;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public class MicrometerJmsConsumerMetricsFactory implements JmsConsumerMetricsFactory {
     private final MeterRegistry meterRegistry;

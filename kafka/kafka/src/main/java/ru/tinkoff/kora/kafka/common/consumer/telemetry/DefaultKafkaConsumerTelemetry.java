@@ -1,10 +1,9 @@
 package ru.tinkoff.kora.kafka.common.consumer.telemetry;
 
+import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
-
-import javax.annotation.Nullable;
 
 public class DefaultKafkaConsumerTelemetry<K, V> implements KafkaConsumerTelemetry<K, V> {
     @Nullable

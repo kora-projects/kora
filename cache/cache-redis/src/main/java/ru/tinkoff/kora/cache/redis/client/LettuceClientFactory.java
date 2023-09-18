@@ -6,7 +6,7 @@ import io.lettuce.core.cluster.RedisClusterClient;
 import io.lettuce.core.cluster.RedisClusterURIUtil;
 import io.lettuce.core.protocol.ProtocolVersion;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;

@@ -7,7 +7,7 @@ import io.lettuce.core.api.reactive.RedisServerReactiveCommands;
 import io.lettuce.core.api.reactive.RedisStringReactiveCommands;
 import reactor.core.publisher.Mono;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;

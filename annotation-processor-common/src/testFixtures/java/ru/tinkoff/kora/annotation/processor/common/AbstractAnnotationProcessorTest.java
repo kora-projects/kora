@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.annotation.processor.common;
 
 
+import jakarta.annotation.Nullable;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
@@ -12,7 +13,6 @@ import ru.tinkoff.kora.annotation.processor.common.compile.ByteArrayJavaFileObje
 import ru.tinkoff.kora.annotation.processor.common.compile.KoraCompileTestJavaFileManager;
 import ru.tinkoff.kora.application.graph.*;
 
-import javax.annotation.Nullable;
 import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
@@ -68,7 +68,7 @@ public abstract class AbstractAnnotationProcessorTest {
         return """
             import ru.tinkoff.kora.common.annotation.*;
             import ru.tinkoff.kora.common.*;
-            import javax.annotation.Nullable;
+            import jakarta.annotation.Nullable;
             import java.util.Optional;
             """;
     }

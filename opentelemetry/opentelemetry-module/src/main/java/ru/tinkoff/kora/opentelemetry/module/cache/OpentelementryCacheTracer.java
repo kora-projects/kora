@@ -9,8 +9,8 @@ import ru.tinkoff.kora.cache.telemetry.CacheTracer;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 
 public final class OpentelementryCacheTracer implements CacheTracer {
 

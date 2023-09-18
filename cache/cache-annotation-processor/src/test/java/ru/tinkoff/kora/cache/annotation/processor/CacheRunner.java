@@ -1,13 +1,13 @@
 package ru.tinkoff.kora.cache.annotation.processor;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheConfig;
 import ru.tinkoff.kora.cache.redis.RedisCacheConfig;
 import ru.tinkoff.kora.cache.redis.client.ReactiveRedisClient;
 import ru.tinkoff.kora.cache.redis.client.SyncRedisClient;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.HashMap;

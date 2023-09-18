@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.cache.caffeine;
 
+import jakarta.annotation.Nullable;
 import org.junit.jupiter.api.Assertions;
 import ru.tinkoff.kora.cache.caffeine.testdata.DummyCache;
 
-import javax.annotation.Nullable;
 import java.time.Duration;
 
 abstract class CacheRunner extends Assertions implements CaffeineCacheModule {

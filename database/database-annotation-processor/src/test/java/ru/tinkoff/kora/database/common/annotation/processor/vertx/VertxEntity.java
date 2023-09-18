@@ -7,7 +7,7 @@ import ru.tinkoff.kora.database.vertx.mapper.parameter.VertxParameterColumnMappe
 import ru.tinkoff.kora.database.vertx.mapper.result.VertxResultColumnMapper;
 import ru.tinkoff.kora.database.vertx.mapper.result.VertxRowMapper;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;

@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import org.slf4j.Marker;
 import ru.tinkoff.kora.json.common.JsonWriter;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.util.Map;
 
 public interface StructuredArgument extends StructuredArgumentWriter {

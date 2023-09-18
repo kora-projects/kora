@@ -9,7 +9,7 @@ import ru.tinkoff.kora.kora.app.annotation.processor.extension.KoraExtension;
 import ru.tinkoff.kora.validation.annotation.processor.ValidMeta;
 import ru.tinkoff.kora.validation.annotation.processor.ValidatorGenerator;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.ElementKind;

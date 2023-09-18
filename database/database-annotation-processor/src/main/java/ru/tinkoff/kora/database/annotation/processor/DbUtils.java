@@ -1,10 +1,10 @@
 package ru.tinkoff.kora.database.annotation.processor;
 
 import com.squareup.javapoet.*;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
 
-import javax.annotation.Nullable;
 import javax.lang.model.element.*;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;

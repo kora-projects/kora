@@ -5,7 +5,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.BaseUnits;
 import ru.tinkoff.kora.resilient.timeout.TimeoutMetrics;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class MicrometerTimeoutMetrics implements TimeoutMetrics {

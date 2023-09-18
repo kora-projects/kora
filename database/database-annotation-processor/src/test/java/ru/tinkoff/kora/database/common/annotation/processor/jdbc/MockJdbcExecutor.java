@@ -8,7 +8,7 @@ import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory;
 import ru.tinkoff.kora.database.jdbc.JdbcHelper;
 import ru.tinkoff.kora.database.jdbc.RuntimeSqlException;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.sql.*;
 
 import static org.mockito.ArgumentMatchers.anyString;

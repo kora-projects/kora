@@ -1,11 +1,11 @@
 package ru.tinkoff.kora.kafka.common.consumer.containers;
 
+import jakarta.annotation.Nonnull;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Deserializer;
 
-import javax.annotation.Nonnull;
 import java.util.*;
 
 final class ConsumerRecordsWrapper<K, V> extends ConsumerRecords<K, V> {

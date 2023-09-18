@@ -7,7 +7,7 @@ import io.micrometer.core.instrument.binder.BaseUnits;
 import ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreaker;
 import ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreakerMetrics;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;

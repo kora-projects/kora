@@ -75,7 +75,7 @@ public class RecordClassBuilder {
             if (component.defaultValue != null) {
                 var hasNullable = component.annotations.stream().anyMatch(a -> a.type.toString().endsWith(".Nullable"));
                 if (!hasNullable) {
-                    sb.append("  @javax.annotation.Nullable\n");
+                    sb.append("  @jakarta.annotation.Nullable\n");
                 }
 
             }

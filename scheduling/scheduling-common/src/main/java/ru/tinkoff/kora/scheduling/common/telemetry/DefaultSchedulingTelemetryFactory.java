@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.scheduling.common.telemetry;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public final class DefaultSchedulingTelemetryFactory implements SchedulingTelemetryFactory {
     @Nullable

@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.annotation.processor.common;
 
 import com.squareup.javapoet.ClassName;
+import jakarta.annotation.Nullable;
 
-import javax.annotation.Nullable;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;

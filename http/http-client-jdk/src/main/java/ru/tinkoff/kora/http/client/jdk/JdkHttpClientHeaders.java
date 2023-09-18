@@ -2,8 +2,8 @@ package ru.tinkoff.kora.http.client.jdk;
 
 import ru.tinkoff.kora.http.common.HttpHeaders;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;

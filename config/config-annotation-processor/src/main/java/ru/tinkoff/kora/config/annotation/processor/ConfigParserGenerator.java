@@ -1,12 +1,12 @@
 package ru.tinkoff.kora.config.annotation.processor;
 
 import com.squareup.javapoet.*;
+import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.common.util.Either;
 
-import javax.annotation.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.ElementKind;

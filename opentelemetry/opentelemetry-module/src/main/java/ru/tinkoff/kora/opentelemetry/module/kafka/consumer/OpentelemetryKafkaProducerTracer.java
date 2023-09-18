@@ -13,7 +13,7 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerTracer;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.nio.charset.StandardCharsets;
 
 public class OpentelemetryKafkaProducerTracer implements KafkaProducerTracer {

@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
 import com.squareup.javapoet.*;
+import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.annotation.processor.common.*;
@@ -13,7 +14,6 @@ import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ModuleDeclarati
 import ru.tinkoff.kora.kora.app.annotation.processor.exception.NewRoundException;
 import ru.tinkoff.kora.kora.app.annotation.processor.interceptor.ComponentInterceptors;
 
-import javax.annotation.Nullable;
 import javax.annotation.processing.FilerException;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;

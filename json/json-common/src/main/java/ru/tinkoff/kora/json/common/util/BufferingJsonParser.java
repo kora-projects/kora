@@ -6,9 +6,9 @@ import com.fasterxml.jackson.core.ObjectCodec;
 import com.fasterxml.jackson.core.base.ParserBase;
 import com.fasterxml.jackson.core.io.ContentReference;
 import com.fasterxml.jackson.core.io.IOContext;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.json.common.JsonCommonModule;
 
-import javax.annotation.Nullable;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;

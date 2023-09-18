@@ -7,7 +7,7 @@ import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.annotation.processor.common.TagUtils;
 import ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;

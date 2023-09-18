@@ -1,12 +1,12 @@
 package ru.tinkoff.kora.aop.annotation.processor.aoptarget;
 
 import com.squareup.javapoet.CodeBlock;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 import ru.tinkoff.kora.aop.annotation.processor.KoraAspectFactory;
 import ru.tinkoff.kora.common.AopAnnotation;
 import ru.tinkoff.kora.common.Tag;
 
-import javax.annotation.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.TypeKind;

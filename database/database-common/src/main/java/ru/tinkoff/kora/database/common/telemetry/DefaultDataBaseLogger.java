@@ -1,12 +1,11 @@
 package ru.tinkoff.kora.database.common.telemetry;
 
+import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
 import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
-
-import javax.annotation.Nullable;
 
 public class DefaultDataBaseLogger implements DataBaseLogger {
 

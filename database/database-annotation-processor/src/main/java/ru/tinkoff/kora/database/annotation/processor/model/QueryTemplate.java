@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.database.annotation.processor.model;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;

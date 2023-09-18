@@ -9,7 +9,7 @@ import ru.tinkoff.kora.micrometer.module.http.server.tag.ActiveRequestsKey;
 import ru.tinkoff.kora.micrometer.module.http.server.tag.DurationKey;
 import ru.tinkoff.kora.micrometer.module.http.server.tag.MicrometerHttpServerTagsProvider;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 

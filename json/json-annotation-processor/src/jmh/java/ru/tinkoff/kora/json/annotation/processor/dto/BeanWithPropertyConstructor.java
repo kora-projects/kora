@@ -3,10 +3,10 @@ package ru.tinkoff.kora.json.annotation.processor.dto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.annotation.Nullable;
 import org.apache.commons.lang3.RandomStringUtils;
 import ru.tinkoff.kora.json.common.annotation.Json;
 
-import javax.annotation.Nullable;
 import java.util.Objects;
 import java.util.Random;
 

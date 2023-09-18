@@ -3,7 +3,7 @@ package ru.tinkoff.kora.kafka.common.consumer.telemetry;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public interface KafkaConsumerLogger<K, V> {
     void logRecords(ConsumerRecords<K, V> records);

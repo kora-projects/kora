@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.test.extension.junit5.add;
 
+import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
@@ -11,7 +12,6 @@ import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplication;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent2;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent23;
 
-import javax.annotation.Nonnull;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

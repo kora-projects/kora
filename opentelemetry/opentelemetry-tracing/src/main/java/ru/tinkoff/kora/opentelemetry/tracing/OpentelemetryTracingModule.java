@@ -14,7 +14,7 @@ import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.opentelemetry.module.OpentelemetryModule;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.util.function.Supplier;
 
 public interface OpentelemetryTracingModule extends OpentelemetryModule {

@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.extension;
 
+import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.type.TypeMirror;

@@ -17,7 +17,7 @@ public interface {{classname}}Delegate {
 {{#operation}}
     {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {{operationId}}(
 {{#allParams}}      {{^isFormParam}}
-      {{^required}}@javax.annotation.Nullable
+      {{^required}}@jakarta.annotation.Nullable
       {{/required}}{{{dataType}}} {{paramName}}{{#hasFormParams}},{{/hasFormParams}}{{^hasFormParams}}{{^-last}},{{/-last}}{{/hasFormParams}}
 {{/isFormParam}}{{/allParams}}    {{#hasFormParams}}
       {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam form

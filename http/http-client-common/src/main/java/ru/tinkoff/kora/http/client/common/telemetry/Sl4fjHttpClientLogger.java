@@ -5,7 +5,7 @@ import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.util.concurrent.CancellationException;
 
 public class Sl4fjHttpClientLogger implements HttpClientLogger {

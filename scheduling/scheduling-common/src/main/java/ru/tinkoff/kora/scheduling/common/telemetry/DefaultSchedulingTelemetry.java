@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.scheduling.common.telemetry;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Context;
 
-import javax.annotation.Nullable;
 import java.util.Objects;
 
 public final class DefaultSchedulingTelemetry implements SchedulingTelemetry {

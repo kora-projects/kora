@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.resilient.circuitbreaker;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 final class KoraCircuitBreakerPredicate implements CircuitBreakerPredicate {
 

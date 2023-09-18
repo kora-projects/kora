@@ -1,7 +1,8 @@
 package ru.tinkoff.kora.resilient.fallback;
 
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
+
 import java.util.function.Supplier;
 
 public interface Fallback {

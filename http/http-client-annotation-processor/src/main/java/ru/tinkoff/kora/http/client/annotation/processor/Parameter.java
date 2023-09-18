@@ -3,7 +3,7 @@ package ru.tinkoff.kora.http.client.annotation.processor;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.kafka.common.producer.telemetry;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public interface KafkaProducerMetrics {
     KafkaProducerTxMetrics tx();

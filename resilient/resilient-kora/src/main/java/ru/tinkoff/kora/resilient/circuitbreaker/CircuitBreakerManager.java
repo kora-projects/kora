@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.resilient.circuitbreaker;
 
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 /**
  * Manages state of all {@link CircuitBreaker} in system

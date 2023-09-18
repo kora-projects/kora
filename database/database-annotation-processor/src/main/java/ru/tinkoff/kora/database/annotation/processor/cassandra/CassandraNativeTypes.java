@@ -3,8 +3,8 @@ package ru.tinkoff.kora.database.annotation.processor.cassandra;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.TypeName;
+import jakarta.annotation.Nullable;
 
-import javax.annotation.Nullable;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.time.*;

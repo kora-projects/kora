@@ -4,7 +4,7 @@ import io.grpc.Metadata;
 import io.grpc.ServerCall;
 import io.grpc.Status;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public interface GrpcServerTracer {
     interface GrpcServerSpan {

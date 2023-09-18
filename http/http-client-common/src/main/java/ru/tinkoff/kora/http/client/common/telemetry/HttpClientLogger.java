@@ -3,7 +3,7 @@ package ru.tinkoff.kora.http.client.common.telemetry;
 import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.HttpResultCode;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public interface HttpClientLogger {
     boolean logRequest();

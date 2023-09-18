@@ -3,7 +3,7 @@ package ru.tinkoff.kora.http.client.common.telemetry;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public interface HttpClientTracer {
     interface HttpClientSpan {

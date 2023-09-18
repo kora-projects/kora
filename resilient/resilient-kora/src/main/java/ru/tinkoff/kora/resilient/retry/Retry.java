@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.resilient.retry;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.function.Supplier;
 
 /**

@@ -6,7 +6,7 @@ import ru.tinkoff.kora.jms.telemetry.JmsConsumerLoggerFactory;
 import ru.tinkoff.kora.jms.telemetry.JmsConsumerMetricsFactory;
 import ru.tinkoff.kora.jms.telemetry.JmsConsumerTracer;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public interface JmsConsumerModule {
     @DefaultComponent

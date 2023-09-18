@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.cache.telemetry;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 public interface CacheTelemetryOperation {
     @Nonnull

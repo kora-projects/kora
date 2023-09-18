@@ -6,7 +6,7 @@ import ru.tinkoff.kora.common.naming.NameConverter;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
 import ru.tinkoff.kora.database.annotation.processor.EntityUtils;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;

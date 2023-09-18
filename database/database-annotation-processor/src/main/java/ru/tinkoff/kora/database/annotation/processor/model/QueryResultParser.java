@@ -4,7 +4,7 @@
 //import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 //import ru.tinkoff.kora.database.annotation.processor.RepositoryGenerator;
 //
-//import javax.annotation.Nullable;
+//import jakarta.annotation.Nullable;
 //import javax.lang.model.element.ExecutableElement;
 //import javax.lang.model.type.DeclaredType;
 //import javax.lang.model.type.ExecutableType;

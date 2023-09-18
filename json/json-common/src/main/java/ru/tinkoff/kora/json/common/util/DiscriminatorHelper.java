@@ -3,8 +3,8 @@ package ru.tinkoff.kora.json.common.util;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.io.SerializedString;
+import jakarta.annotation.Nullable;
 
-import javax.annotation.Nullable;
 import java.io.IOException;
 
 public class DiscriminatorHelper {

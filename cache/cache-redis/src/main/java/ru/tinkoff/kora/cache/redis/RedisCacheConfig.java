@@ -3,7 +3,7 @@ package ru.tinkoff.kora.cache.redis;
 
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.time.Duration;
 
 @ConfigValueExtractor

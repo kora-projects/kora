@@ -5,7 +5,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import ru.tinkoff.kora.micrometer.module.MetricsConfig.SchedulingMetricsConfig;
 import ru.tinkoff.kora.scheduling.common.telemetry.SchedulingMetrics;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public class MicrometerSchedulingMetrics implements SchedulingMetrics {
     private final DistributionSummary successDuration;

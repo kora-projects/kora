@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.database.common.annotation.processor.cassandra.repository;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import jakarta.annotation.Nullable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.database.cassandra.CassandraRepository;
@@ -11,7 +12,6 @@ import ru.tinkoff.kora.database.common.annotation.processor.cassandra.CassandraE
 import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityJavaBean;
 import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRecord;
 
-import javax.annotation.Nullable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;

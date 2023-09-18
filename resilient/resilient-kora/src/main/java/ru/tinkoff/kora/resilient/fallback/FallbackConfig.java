@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.resilient.fallback;
 
+import jakarta.annotation.Nonnull;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
-import javax.annotation.Nonnull;
 import java.util.Map;
 
 @ConfigValueExtractor

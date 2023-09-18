@@ -22,7 +22,7 @@ import ru.tinkoff.kora.http.server.common.router.PublicApiResponse;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTracer;
 import ru.tinkoff.kora.http.server.undertow.request.UndertowPublicApiRequest;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;

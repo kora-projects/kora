@@ -1,11 +1,11 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Graph;
 import ru.tinkoff.kora.common.Tag;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Objects;

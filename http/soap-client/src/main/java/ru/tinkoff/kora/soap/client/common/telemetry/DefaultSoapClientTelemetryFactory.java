@@ -1,8 +1,7 @@
 package ru.tinkoff.kora.soap.client.common.telemetry;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.soap.client.common.SoapResult;
-
-import javax.annotation.Nullable;
 
 public class DefaultSoapClientTelemetryFactory implements SoapClientTelemetryFactory {
     private static final SoapClientTelemetry.SoapTelemetryContext NOOP_CTX = new SoapClientTelemetry.SoapTelemetryContext() {

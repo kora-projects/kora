@@ -5,10 +5,9 @@ import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.kotlin.CoroutineContextServerInterceptor;
+import jakarta.annotation.Nonnull;
 import kotlin.coroutines.CoroutineContext;
 import ru.tinkoff.kora.common.Context;
-
-import javax.annotation.Nonnull;
 
 public class CoroutineContextInjectInterceptor {
 

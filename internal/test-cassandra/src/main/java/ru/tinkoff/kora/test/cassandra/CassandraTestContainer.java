@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.test.cassandra;
 
+import jakarta.annotation.Nullable;
 import org.junit.jupiter.api.extension.*;
 import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestPlan;
@@ -7,7 +8,6 @@ import org.testcontainers.containers.CassandraContainer;
 import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy;
 import org.testcontainers.utility.DockerImageName;
 
-import javax.annotation.Nullable;
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.Objects;

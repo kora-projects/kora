@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.resilient.timeout;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 final class NoopTimeoutMetrics implements TimeoutMetrics {
 

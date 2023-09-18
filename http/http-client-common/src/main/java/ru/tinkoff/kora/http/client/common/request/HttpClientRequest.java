@@ -4,7 +4,7 @@ import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.HttpMethod;
 import ru.tinkoff.kora.http.common.body.HttpOutBody;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;

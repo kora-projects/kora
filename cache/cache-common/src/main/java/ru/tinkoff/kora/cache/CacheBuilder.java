@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.cache;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 public interface CacheBuilder<K, V> {
 

@@ -4,7 +4,7 @@ import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.server.common.router.PublicApiRequest;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public interface HttpServerTelemetry {
 

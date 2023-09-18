@@ -9,7 +9,7 @@ import ru.tinkoff.kora.http.client.common.request.HttpClientRequestMapperModule;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapperModule;
 import ru.tinkoff.kora.http.client.common.telemetry.*;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public interface HttpClientModule extends HttpClientRequestMapperModule, HttpClientResponseMapperModule, ParameterConvertersModule {
     default HttpClientConfig httpClientConfig(Config config, ConfigValueExtractor<HttpClientConfig> configValueExtractor) {

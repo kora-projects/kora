@@ -1,10 +1,9 @@
 package ru.tinkoff.kora.resilient.circuitbreaker;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
-
-import javax.annotation.Nullable;
 
 public interface CircuitBreakerModule {
     default CircuitBreakerConfig koraCircuitBreakerConfig(Config config, ConfigValueExtractor<CircuitBreakerConfig> extractor) {

@@ -3,7 +3,7 @@ package ru.tinkoff.kora.database.jdbc.mapper.result;
 import ru.tinkoff.kora.common.Mapping;
 import ru.tinkoff.kora.database.common.RowMapper;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 

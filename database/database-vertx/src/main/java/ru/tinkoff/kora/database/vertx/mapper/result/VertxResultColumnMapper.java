@@ -3,7 +3,7 @@ package ru.tinkoff.kora.database.vertx.mapper.result;
 import io.vertx.sqlclient.Row;
 import ru.tinkoff.kora.common.Mapping;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public interface VertxResultColumnMapper<T> extends Mapping.MappingFunction {
     @Nullable

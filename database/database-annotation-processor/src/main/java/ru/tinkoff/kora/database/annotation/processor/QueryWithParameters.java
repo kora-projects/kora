@@ -2,7 +2,7 @@ package ru.tinkoff.kora.database.annotation.processor;
 
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import javax.annotation.processing.Filer;
 import javax.tools.StandardLocation;
 import java.io.IOException;

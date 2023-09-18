@@ -3,7 +3,7 @@ package ru.tinkoff.kora.validation.common.constraint.factory;
 import ru.tinkoff.kora.validation.common.Validator;
 import ru.tinkoff.kora.validation.common.ValidatorFactory;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 public interface PatternValidatorFactory<T> extends ValidatorFactory<T> {
 
