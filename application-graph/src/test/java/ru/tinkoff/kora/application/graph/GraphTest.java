@@ -362,7 +362,7 @@ class GraphTest {
     }
 
     @Test
-    void replaceNodeTest() {
+    void replaceNodeTest() throws Exception {
         var graph = ReferenceGraph.graph();
         var draw = graph.draw.copy();
         var mock = Mockito.mock(TestObject.class);
@@ -379,6 +379,7 @@ class GraphTest {
         Mockito.verify(mock).init();
         var o5 = newGraph.get(object5Node);
         assertThat(o5.dependencies.get(0)).isSameAs(mock);
+        newGraph.release();
     }
 
     @Test

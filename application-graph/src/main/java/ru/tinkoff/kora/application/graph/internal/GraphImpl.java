@@ -327,7 +327,10 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
         @Override
         public <T> ValueOf<T> valueOf(Node<? extends T> node) {
             var casted = (NodeImpl<? extends T>) node;
-            var value = new TmpValueOf<T>(casted, this, this.rootGraph);
+            // dirty hack to make copied graph work with valueOf
+            @SuppressWarnings("unchecked")
+            var fixed = (NodeImpl<? extends T>) this.rootGraph.draw.getNodes().get(casted.index);
+            var value = new TmpValueOf<T>(fixed, this, this.rootGraph);
             this.newValueOf.add(value);
             return value;
         }
@@ -335,7 +338,10 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
         @Override
         public <T> PromiseOf<T> promiseOf(Node<T> node) {
             var casted = (NodeImpl<T>) node;
-            var promise = new PromiseOfImpl<T>(null, casted);
+            // dirty hack to make copied graph work with valueOf
+            @SuppressWarnings("unchecked")
+            var fixed = (NodeImpl<T>) this.rootGraph.draw.getNodes().get(casted.index);
+            var promise = new PromiseOfImpl<T>(null, fixed);
             this.newPromises.add(promise);
             return promise;
         }
