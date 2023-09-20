@@ -149,6 +149,9 @@ object GraphResolutionHelper {
                     }
                     val map = match.map
                     val realReturnType = ComponentTemplateHelper.replace(ctx.resolver, template.type, map)!!
+                    if (!dependencyClaim.type.isAssignableFrom(realReturnType)) {
+                        continue
+                    }
 
                     val realParams = mutableListOf<KSType>()
                     for (methodParameterType in template.methodParameterTypes) {
@@ -177,6 +180,9 @@ object GraphResolutionHelper {
                     }
                     val map = match.map
                     val realReturnType = ComponentTemplateHelper.replace(ctx.resolver, template.type, map)!!
+                    if (!dependencyClaim.type.isAssignableFrom(realReturnType)) {
+                        continue
+                    }
 
                     val realParams = mutableListOf<KSType>()
                     for (methodParameterType in template.methodParameterTypes) {
@@ -205,7 +211,9 @@ object GraphResolutionHelper {
                     }
                     val map = match.map
                     val realReturnType = ComponentTemplateHelper.replace(ctx.resolver, template.type, map)!!
-
+                    if (!dependencyClaim.type.isAssignableFrom(realReturnType)) {
+                        continue
+                    }
 
                     result.add(template.copy(type = realReturnType))
                 }
@@ -218,6 +226,9 @@ object GraphResolutionHelper {
                     }
                     val map = match.map
                     val realReturnType = ComponentTemplateHelper.replace(ctx.resolver, template.type, map)!!
+                    if (!dependencyClaim.type.isAssignableFrom(realReturnType)) {
+                        continue
+                    }
 
                     val realParams = mutableListOf<KSType>()
                     for (methodParameterType in template.methodParameterTypes) {

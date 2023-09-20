@@ -161,7 +161,7 @@ public class ClientClassGenerator {
 
     private CodeBlock mapBlockingResponse(MethodData methodData, TypeMirror resultType) {
         var b = CodeBlock.builder();
-        if (methodData.responseMapper != null) {
+        if (methodData.responseMapper != null && methodData.codeMappers().isEmpty()) {
             var responseMapperName = methodData.element.getSimpleName() + "ResponseMapper";
             b.addStatement("return this.$N.apply(_response)", responseMapperName);
         } else if (methodData.codeMappers().isEmpty()) {

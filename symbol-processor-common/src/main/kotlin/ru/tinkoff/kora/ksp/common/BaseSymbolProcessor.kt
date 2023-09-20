@@ -19,7 +19,7 @@ import java.time.LocalDateTime
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
-private const val debug = false
+private val debug = System.getProperty("kora.ksp.debug", "false").toBoolean()
 
 private val logWriter: Writer by lazy {
     val fos = Files.newOutputStream(

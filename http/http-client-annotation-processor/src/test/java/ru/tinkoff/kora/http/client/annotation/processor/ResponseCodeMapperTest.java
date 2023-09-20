@@ -54,6 +54,103 @@ public class ResponseCodeMapperTest extends AbstractHttpClientTest {
     }
 
     @Test
+    public void testCodeMappersByType() {
+        compileClient(List.of(newGeneratedObject("Mappers$Rs1Mapper"), newGeneratedObject("Mappers$Rs2Mapper")), """
+                @HttpClient
+                public interface TestClient {
+                  sealed interface TestResponse {
+                     record Rs1() implements TestResponse {}
+                     record Rs2() implements TestResponse {}
+                  }
+                  
+                  @ResponseCodeMapper(code = 201, type = TestResponse.Rs1.class)
+                  @ResponseCodeMapper(code = 404, type = TestResponse.Rs2.class)
+                  @HttpRoute(method = "GET", path = "/test")
+                  TestResponse test();
+                }
+                """,
+            """
+                public class Mappers {
+                  public static class Rs1Mapper implements HttpClientResponseMapper<TestClient.TestResponse.Rs1> {
+                    @Override
+                    public TestClient.TestResponse.Rs1 apply(HttpClientResponse response) {
+                      return new TestClient.TestResponse.Rs1();
+                    }
+                  }
+                  public static class Rs2Mapper implements HttpClientResponseMapper<TestClient.TestResponse.Rs2> {
+                    @Override
+                    public TestClient.TestResponse.Rs2 apply(HttpClientResponse response) {
+                      return new TestClient.TestResponse.Rs2();
+                    }
+                  }
+                }
+                """);
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(201));
+        assertThat(client.<Object>invoke("test"))
+            .hasToString("Rs1[]");
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(404));
+        assertThat(client.<Object>invoke("test"))
+            .hasToString("Rs2[]");
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(200));
+        assertThatThrownBy(() -> client.invoke("test")).isInstanceOf(HttpClientResponseException.class);
+    }
+
+    @Test
+    public void testCodeMappersByTypeWithTag() {
+        compileClient(List.of(newGeneratedObject("Mappers$Rs1Mapper"), newGeneratedObject("Mappers$Rs2Mapper")), """
+                @HttpClient
+                public interface TestClient {
+                  sealed interface TestResponse {
+                     record Rs1() implements TestResponse {}
+                     record Rs2() implements TestResponse {}
+                  }
+                  
+                  @Tag(TestResponse.class)
+                  @ResponseCodeMapper(code = 201, type = TestResponse.Rs1.class)
+                  @ResponseCodeMapper(code = 404, type = TestResponse.Rs2.class)
+                  @HttpRoute(method = "GET", path = "/test")
+                  TestResponse test();
+                }
+                """,
+            """
+                public class Mappers {
+                  public static class Rs1Mapper implements HttpClientResponseMapper<TestClient.TestResponse.Rs1> {
+                    @Override
+                    public TestClient.TestResponse.Rs1 apply(HttpClientResponse response) {
+                      return new TestClient.TestResponse.Rs1();
+                    }
+                  }
+                  public static class Rs2Mapper implements HttpClientResponseMapper<TestClient.TestResponse.Rs2> {
+                    @Override
+                    public TestClient.TestResponse.Rs2 apply(HttpClientResponse response) {
+                      return new TestClient.TestResponse.Rs2();
+                    }
+                  }
+                }
+                """);
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(201));
+        assertThat(client.<Object>invoke("test"))
+            .hasToString("Rs1[]");
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(404));
+        assertThat(client.<Object>invoke("test"))
+            .hasToString("Rs2[]");
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(200));
+        assertThatThrownBy(() -> client.invoke("test")).isInstanceOf(HttpClientResponseException.class);
+    }
+
+    @Test
     public void testExceptionType() {
         compileClient(List.of(newGeneratedObject("TestMapper"), newGeneratedObject("ExceptionMapper")), """
             import java.util.concurrent.CompletionStage;

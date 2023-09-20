@@ -254,12 +254,16 @@ class RouteProcessor {
         val paramName = parameter.name!!.asString()
         val paramType = parameter.type.toTypeName()
         val mapperName = "_${paramName}Mapper"
-        if (isBlocking) {
-            addParameter(mapperName, httpServerRequestMapper.parameterizedBy(paramType.copy(false)))
-        } else {
-            addParameter(mapperName, httpServerRequestMapper.parameterizedBy(CompletionStage::class.asClassName().parameterizedBy(paramType.copy(false))))
+        val mapping = parameter.parseMappingData().getMapping(httpServerRequestMapper)
+        val mappingMapper = mapping?.mapper
+        val mapperType = when {
+            mappingMapper == null && isBlocking -> httpServerRequestMapper.parameterizedBy(paramType.copy(false))
+            mappingMapper == null && !isBlocking -> httpServerRequestMapper.parameterizedBy(CompletionStage::class.asClassName().parameterizedBy(paramType.copy(false)))
+            else -> mappingMapper!!.toTypeName()
         }
-
+        val b = ParameterSpec.builder(mapperName, mapperType)
+        mapping?.toTagAnnotation()?.let(b::addAnnotation)
+        addParameter(b.build())
     }
 
     private fun FunSpec.Builder.addStringParameterMapper(knownMappers: Map<TypeName, MemberName>, parameter: KSValueParameter) {

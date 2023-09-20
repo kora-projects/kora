@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.http.client.annotation.processor.extension;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
@@ -9,7 +10,6 @@ import ru.tinkoff.kora.http.client.annotation.processor.HttpClientUtils;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.KoraExtension;
 
-import jakarta.annotation.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.ElementKind;
@@ -42,7 +42,7 @@ public class HttpClientKoraExtension implements KoraExtension {
         if (element == null || element.getKind() != ElementKind.INTERFACE) {
             return null;
         }
-        var annotation = AnnotationUtils.findAnnotation(element, HttpClientClassNames.httpClient);
+        var annotation = AnnotationUtils.findAnnotation(element, HttpClientClassNames.httpClientAnnotation);
         if (annotation == null) {
             return null;
         }
