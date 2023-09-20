@@ -52,7 +52,7 @@ public final class ConfigKoraExtension implements KoraExtension {
         var element = ((TypeElement) types.asElement(paramType));
         var packageElement = this.elements.getPackageOf(element);
         var mapperName = CommonUtils.generatedName(element, ConfigClassNames.configValueExtractor);
-        if (AnnotationUtils.isAnnotationPresent(element, ConfigClassNames.configValueExtractorAnnotation)) {
+        if (AnnotationUtils.isAnnotationPresent(element, ConfigClassNames.configValueExtractorAnnotation) || AnnotationUtils.isAnnotationPresent(element, ConfigClassNames.configSourceAnnotation)) {
             return () -> {
                 var maybeGenerated = this.elements.getTypeElement(packageElement.getQualifiedName() + "." + mapperName);
                 if (maybeGenerated == null) {
