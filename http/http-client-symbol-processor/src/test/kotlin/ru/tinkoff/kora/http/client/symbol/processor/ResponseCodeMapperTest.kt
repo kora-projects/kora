@@ -4,7 +4,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
-import java.lang.RuntimeException
 
 class ResponseCodeMapperTest : AbstractHttpClientTest() {
     @Test
@@ -36,6 +35,79 @@ class ResponseCodeMapperTest : AbstractHttpClientTest() {
         Mockito.reset(httpClient)
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(404) }
         assertThat(client.invoke<String?>("test")).isNull()
+    }
+
+    @Test
+    fun testCodeMappersByType() {
+        val client = compile(listOf<Any>(newGenerated("Rs1Mapper"), newGenerated("Rs2Mapper")), """
+            @HttpClient
+            interface TestClient {
+              sealed interface TestResponse {
+                data class Rs1(val code: Int) : TestResponse
+                data class Rs2(val code: Int) : TestResponse
+              }
+            
+              @ResponseCodeMapper(code = 200, type = TestClient.TestResponse.Rs1::class)
+              @ResponseCodeMapper(code = 404, type = TestClient.TestResponse.Rs2::class)
+              @HttpRoute(method = "POST", path = "/test")
+              fun test(): TestResponse
+            }
+            """.trimIndent(), """
+            class Rs1Mapper : HttpClientResponseMapper<TestClient.TestResponse.Rs1> {
+              override fun apply(rs: HttpClientResponse): TestClient.TestResponse.Rs1 {
+                  return TestClient.TestResponse.Rs1(rs.code());
+              }
+            }
+            """.trimIndent(), """
+            class Rs2Mapper : HttpClientResponseMapper<TestClient.TestResponse.Rs2> {
+              override fun apply(rs: HttpClientResponse): TestClient.TestResponse.Rs2 {
+                  return TestClient.TestResponse.Rs2(rs.code());
+              }
+            }
+            """.trimIndent())
+        onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(200) }
+        assertThat(client.invoke<Any?>("test")).hasToString("Rs1(code=200)")
+
+        Mockito.reset(httpClient)
+        onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(404) }
+        assertThat(client.invoke<Any?>("test")).hasToString("Rs2(code=404)")
+    }
+
+    @Test
+    fun testCodeMappersByTypeWithTag() {
+        val client = compile(listOf<Any>(newGenerated("Rs1Mapper"), newGenerated("Rs2Mapper")), """
+            @HttpClient
+            interface TestClient {
+              sealed interface TestResponse {
+                data class Rs1(val code: Int) : TestResponse
+                data class Rs2(val code: Int) : TestResponse
+              }
+            
+              @Tag(TestClient::class)
+              @ResponseCodeMapper(code = 200, type = TestClient.TestResponse.Rs1::class)
+              @ResponseCodeMapper(code = 404, type = TestClient.TestResponse.Rs2::class)
+              @HttpRoute(method = "POST", path = "/test")
+              fun test(): TestResponse
+            }
+            """.trimIndent(), """
+            class Rs1Mapper : HttpClientResponseMapper<TestClient.TestResponse.Rs1> {
+              override fun apply(rs: HttpClientResponse): TestClient.TestResponse.Rs1 {
+                  return TestClient.TestResponse.Rs1(rs.code());
+              }
+            }
+            """.trimIndent(), """
+            class Rs2Mapper : HttpClientResponseMapper<TestClient.TestResponse.Rs2> {
+              override fun apply(rs: HttpClientResponse): TestClient.TestResponse.Rs2 {
+                  return TestClient.TestResponse.Rs2(rs.code());
+              }
+            }
+            """.trimIndent())
+        onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(200) }
+        assertThat(client.invoke<Any?>("test")).hasToString("Rs1(code=200)")
+
+        Mockito.reset(httpClient)
+        onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(404) }
+        assertThat(client.invoke<Any?>("test")).hasToString("Rs2(code=404)")
     }
 
     @Test

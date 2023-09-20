@@ -183,6 +183,18 @@ public abstract class AbstractAnnotationProcessorTest {
         }
     }
 
+    public ApplicationGraphDraw loadGraphDraw(String appName) {
+        try {
+            var type = compileResult.loadClass(appName + "Graph");
+            var constructor = type.getConstructors()[0];
+            @SuppressWarnings("unchecked")
+            var supplier = (Supplier<ApplicationGraphDraw>) constructor.newInstance();
+            return supplier.get();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public static class GraphContainer implements Graph {
         private final ApplicationGraphDraw draw;
         private final Graph graph;

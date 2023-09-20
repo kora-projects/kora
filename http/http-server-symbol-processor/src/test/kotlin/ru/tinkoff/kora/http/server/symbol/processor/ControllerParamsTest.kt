@@ -2,6 +2,11 @@ package ru.tinkoff.kora.http.server.symbol.processor
 
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
+import ru.tinkoff.kora.application.graph.TypeRef
+import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor
+import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper
+import java.util.concurrent.CompletionStage
+import kotlin.reflect.KClass
 
 class ControllerParamsTest : AbstractHttpControllerTest() {
     @Test
@@ -175,10 +180,113 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
         compileResult.loadClass("ControllerModule").verifyNoDependencies()
     }
 
+    @Test
+    fun testMappedRequestSuspend() {
+        val m = compile("""
+            @HttpController
+            class Controller {
+                @HttpRoute(method = GET, path = "/request")
+                suspend fun request(request: String) {
+                }
+            }
+            
+            """.trimIndent())
+        compileResult.assertSuccess()
+        val componentMethod = compileResult.loadClass("ControllerModule").methods[0]
+        Assertions.assertThat(componentMethod.parameters).hasSize(2)
+        Assertions.assertThat(componentMethod.genericParameterTypes[1]).isEqualTo(
+            HttpServerRequestMapper::class.ref(
+                CompletionStage::class.ref(
+                    String::class
+                )
+            )
+        )
+    }
+
+    @Test
+    fun testMappedRequest() {
+        val m = compile("""
+            @HttpController
+            class Controller {
+                @HttpRoute(method = GET, path = "/request")
+                fun request(request: String) {
+                }
+            }
+            
+            """.trimIndent())
+        compileResult.assertSuccess()
+        val componentMethod = compileResult.loadClass("ControllerModule").methods[0]
+        Assertions.assertThat(componentMethod.parameters).hasSize(3)
+        Assertions.assertThat(componentMethod.genericParameterTypes[1]).isEqualTo(
+            HttpServerRequestMapper::class.ref(
+                String::class
+            )
+        )
+        Assertions.assertThat(componentMethod.genericParameterTypes[2]).isEqualTo(BlockingRequestExecutor::class.java)
+    }
+
+    @Test
+    fun testMappedRequestWithMappingSuspend() {
+        val m = compile("""
+            @HttpController
+            class Controller {
+                @HttpRoute(method = GET, path = "/request")
+                suspend fun request(@ru.tinkoff.kora.common.Mapping(Mapper::class) request: String) {
+                }
+            }
+            """.trimIndent(), """
+            class Mapper : ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper<CompletionStage<String>> {
+               override fun apply(request: HttpServerRequest) : CompletionStage<String> {
+                  return CompletableFuture.completedFuture(request.toString())
+               }
+            }
+            """.trimIndent())
+        compileResult.assertSuccess()
+        val componentMethod = compileResult.loadClass("ControllerModule").methods[0]
+        Assertions.assertThat(componentMethod.parameters).hasSize(2)
+        Assertions.assertThat(componentMethod.genericParameterTypes[1]).isEqualTo(loadClass("Mapper"))
+    }
+
+    @Test
+    fun testMappedRequestWithMapping() {
+        val m = compile("""
+            @HttpController
+            class Controller {
+                @HttpRoute(method = GET, path = "/request")
+                fun request(@ru.tinkoff.kora.common.Mapping(Mapper::class) request: String) {
+                }
+            }
+            """.trimIndent(), """
+            class Mapper : ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper<String> {
+               override fun apply(request: HttpServerRequest) : String {
+                  return request.toString()
+               }
+            }
+            """.trimIndent())
+        compileResult.assertSuccess()
+        val componentMethod = compileResult.loadClass("ControllerModule").methods[0]
+        Assertions.assertThat(componentMethod.parameters).hasSize(3)
+        Assertions.assertThat(componentMethod.genericParameterTypes[1]).isEqualTo(loadClass("Mapper"))
+    }
+
     private fun <T> Class<T>.verifyNoDependencies() {
         this.methods.forEach {
             Assertions.assertThat(it.parameters).hasSize(1)
         }
     }
+
+    private fun KClass<*>.ref(vararg args: KClass<*>): TypeRef<*> {
+        val types = args.map { it.java }.toTypedArray()
+        return TypeRef.of(this.java, *types)
+    }
+
+    private fun KClass<*>.ref(vararg args: TypeRef<*>): TypeRef<*> {
+        return TypeRef.of(this.java, *args)
+    }
+
+    private fun <T : Any> KClass<T>.ref(): TypeRef<T> {
+        return TypeRef.of(this.java)
+    }
+
 }
 

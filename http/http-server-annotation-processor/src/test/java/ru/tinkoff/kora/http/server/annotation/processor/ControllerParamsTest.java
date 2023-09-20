@@ -2,6 +2,10 @@ package ru.tinkoff.kora.http.server.annotation.processor;
 
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import ru.tinkoff.kora.application.graph.TypeRef;
+import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
+
+import java.util.concurrent.CompletionStage;
 
 public class ControllerParamsTest extends AbstractHttpControllerTest {
     @Test
@@ -248,6 +252,96 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
 
         compileResult.assertSuccess();
         verifyNoDependencies(compileResult.loadClass("ControllerModule"));
+    }
+
+    @Test
+    public void testMappedRequestAsync() {
+        var m = compile("""
+            @HttpController
+            public class Controller {
+                @HttpRoute(method = GET, path = "/request")
+                public CompletionStage<Void> request(String request) {
+                  return CompletableFuture.completedFuture(null);
+                }
+            }
+            """);
+        compileResult.assertSuccess();
+        var componentMethod = compileResult.loadClass("ControllerModule").getMethods()[0];
+        Assertions.assertThat(componentMethod.getParameters()).hasSize(2);
+        Assertions.assertThat(componentMethod.getGenericParameterTypes()[1]).isEqualTo(
+            TypeRef.of(HttpServerRequestMapper.class, TypeRef.of(
+                CompletionStage.class, String.class
+            ))
+        );
+    }
+
+    @Test
+    public void testMappedRequest() {
+        var m = compile("""
+            @HttpController
+            public class Controller {
+                @HttpRoute(method = GET, path = "/request")
+                public void request(String request) {
+                }
+            }
+            """);
+        compileResult.assertSuccess();
+        var componentMethod = compileResult.loadClass("ControllerModule").getMethods()[0];
+        Assertions.assertThat(componentMethod.getParameters()).hasSize(3);
+        Assertions.assertThat(componentMethod.getGenericParameterTypes()[1]).isEqualTo(
+            TypeRef.of(HttpServerRequestMapper.class, String.class)
+        );
+    }
+
+    @Test
+    public void testMappedRequestWithMappingAsync() {
+        var m = compile("""
+                @HttpController
+                public class Controller {
+                    @HttpRoute(method = GET, path = "/request")
+                    public CompletionStage<Void> request(@Mapping(Mapper.class) String request) {
+                      return CompletableFuture.completedFuture(null);
+                    }
+                }
+                """,
+            """
+                public class Mapper implements HttpServerRequestMapper<CompletionStage<String>> {
+
+                    @Override
+                    public CompletionStage<String> apply(HttpServerRequest request) {
+                        return CompletableFuture.completedFuture(request.toString());
+                    }
+                }
+                """);
+        compileResult.assertSuccess();
+        var componentMethod = compileResult.loadClass("ControllerModule").getMethods()[0];
+        Assertions.assertThat(componentMethod.getParameters()).hasSize(2);
+        Assertions.assertThat(componentMethod.getGenericParameterTypes()[1]).isEqualTo(compileResult.loadClass("Mapper"));
+    }
+
+    @Test
+    public void testMappedRequestWithMapping() {
+        var m = compile("""
+                @HttpController
+                public class Controller {
+                    @HttpRoute(method = GET, path = "/request")
+                    public void request(@Mapping(Mapper.class) String request) {
+                    }
+                }
+                """,
+            """
+                public class Mapper implements HttpServerRequestMapper<String> {
+
+                    @Override
+                    public String apply(HttpServerRequest request) {
+                      return request.toString();
+                    }
+                }
+                """);
+        compileResult.assertSuccess();
+        var componentMethod = compileResult.loadClass("ControllerModule").getMethods()[0];
+        Assertions.assertThat(componentMethod.getParameters()).hasSize(3);
+        Assertions.assertThat(componentMethod.getGenericParameterTypes()[1]).isEqualTo(compileResult.loadClass("Mapper"));
     }
 
     private void verifyNoDependencies(Class<?> controllerModule) {
