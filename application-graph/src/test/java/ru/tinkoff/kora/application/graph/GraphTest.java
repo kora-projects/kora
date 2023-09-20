@@ -381,6 +381,7 @@ class GraphTest {
         Mockito.verify(mock).init();
         var o5 = newGraph.get(object5Node);
         assertThat(o5.dependencies.get(0)).isSameAs(mock);
+        newGraph.release().block();
     }
 
     @Test
