@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.http.server.common.router;
 
 
+import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.common.Context;
@@ -9,7 +10,6 @@ import ru.tinkoff.kora.http.server.common.*;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetry;
 
-import jakarta.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -50,6 +50,19 @@ public class PublicApiHandler {
             if (oldValue != null) {
                 throw new IllegalStateException("Cannot add path template %s, matcher already contains an equivalent pattern %s".formatted(route, oldValue.getKey().templateString()));
             }
+            if (config.ignoreTrailingSlash()) {
+                if (!route.endsWith("*")) {
+                    if (route.charAt(route.length() - 1) == '/') {
+                        route = route.substring(0, route.length() - 1);
+                    } else {
+                        route = route + '/';
+                    }
+                    oldValue = methodMatchers.add(route, h);
+                    if (oldValue != null) {
+                        throw new IllegalStateException("Cannot add path template %s, matcher already contains an equivalent pattern %s".formatted(route, oldValue.getKey().templateString()));
+                    }
+                }
+            }
             var otherMethods = new ArrayList<>(List.of(h.method()));
             var oldAllMethodValue = this.allMethodMatchers.add(route, otherMethods);
             if (oldAllMethodValue != null) {
@@ -69,9 +82,9 @@ public class PublicApiHandler {
         final @Nullable String routeTemplate;
 
         var methodMatchers = this.pathTemplateMatcher.get(publicApiRequest.method());
-        var pathTemplateMatch = methodMatchers == null ? null : methodMatchers.match(publicApiRequest.path(), this.config.ignoreTrailingSlash());
+        var pathTemplateMatch = methodMatchers == null ? null : methodMatchers.match(publicApiRequest.path());
         if (pathTemplateMatch == null) {
-            var allMethodMatch = this.allMethodMatchers.match(publicApiRequest.path(), this.config.ignoreTrailingSlash());
+            var allMethodMatch = this.allMethodMatchers.match(publicApiRequest.path());
             if (allMethodMatch != null) {
                 var allowed = String.join(", ", allMethodMatch.value());
                 handlerFunction = (ctx, request) -> CompletableFuture.completedFuture(HttpServerResponse.of(405, HttpHeaders.of("allow", allowed)));
