@@ -145,10 +145,6 @@ public record PathTemplate(String templateString, boolean template, String base,
         return new PathTemplate(path, state > 1 && !base.contains("*"), base, parts, templates, trailingSlash);
     }
 
-    public boolean matches(final String path, final Map<String, String> pathParameters) {
-        return matches(path, pathParameters, false);
-    }
-
     /**
      * Check if the given url matches the template. If so then it will return true and
      * place the value of any path parameters into the given map.
@@ -160,59 +156,38 @@ public record PathTemplate(String templateString, boolean template, String base,
      * @param pathParameters The path parameters map to fill out
      * @return true if the URI is a match
      */
-    public boolean matches(final String path, final Map<String, String> pathParameters, boolean ignoreTrailingSlash) {
+    public boolean matches(final String path, final Map<String, String> pathParameters) {
         if (!template && base.contains("*")) {
             final int indexOf = base.indexOf("*");
             final String startBase = base.substring(0, indexOf);
             if (!path.startsWith(startBase)) {
                 return false;
             }
-            pathParameters.put("*", path.substring(indexOf));
+            pathParameters.put("*", path.substring(indexOf, path.length()));
             return true;
         }
 
-        if (ignoreTrailingSlash && !template) {
-            if (base.length() == path.length()) {
-                return base.equals(path);
-            } else if (base.length() - 1 == path.length()
-                       && base.startsWith(path)
-                       && base.endsWith("/")) {
-                return true;
-            } else if (base.length() == path.length() - 1
-                       && path.startsWith(base)
-                       && path.endsWith("/")) {
-                return true;
-            } else {
+        if (!path.startsWith(base)) {
+            return false;
+        }
+        int baseLength = base.length();
+        if (!template) {
+            return path.length() == baseLength;
+        }
+        if (trailingSlash) {
+            //the template has a trailing slash
+            //we verify this first as it is cheap
+            //and it simplifies the matching algorithm below
+            if (path.charAt(path.length() - 1) != '/') {
                 return false;
-            }
-        } else {
-            if (!path.startsWith(base)) {
-                return false;
-            }
-
-            if (!template) {
-                return path.length() == base.length();
-            }
-
-            if(!ignoreTrailingSlash) {
-                if (trailingSlash) {
-                    //the template has a trailing slash
-                    //we verify this first as it is cheap
-                    //and it simplifies the matching algorithm below
-                    if (path.charAt(path.length() - 1) != '/') {
-                        return false;
-                    }
-                } else if (path.charAt(path.length() - 1) == '/') {
-                    return false;
-                }
             }
         }
 
         int currentPartPosition = 0;
         PathTemplate.Part current = parts.get(currentPartPosition);
-        int stringStart = base.length();
+        int stringStart = baseLength;
         int i;
-        for (i = base.length(); i < path.length(); ++i) {
+        for (i = baseLength; i < path.length(); ++i) {
             final char currentChar = path.charAt(i);
             if (currentChar == '?' || current.part.equals("*")) {
                 break;
@@ -226,8 +201,8 @@ public record PathTemplate(String templateString, boolean template, String base,
                 }
                 ++currentPartPosition;
                 if (currentPartPosition == parts.size()) {
-                    //this is a match if this is the last character
-                    return i == (path.length() - 1);
+                    //this is a match if this is the last character and template has a trailing slash
+                    return trailingSlash && i == (path.length() - 1);
                 }
                 current = parts.get(currentPartPosition);
                 stringStart = i + 1;
@@ -240,10 +215,10 @@ public record PathTemplate(String templateString, boolean template, String base,
 
         String result = path.substring(stringStart, i);
         if (current.part.equals("*")) {
-            pathParameters.put(current.part, path.substring(stringStart));
+            pathParameters.put(current.part, path.substring(stringStart, path.length()));
             return true;
         }
-        if (current.template) {
+        if (current.template && !result.isEmpty()) {
             pathParameters.put(current.part, result);
         } else if (!result.equals(current.part)) {
             pathParameters.clear();
@@ -290,7 +265,15 @@ public record PathTemplate(String templateString, boolean template, String base,
         for (; ; ) {
             if (parts.size() == i) {
                 if (o.parts.size() == i) {
-                    return Boolean.compare(trailingSlash, o.trailingSlash);
+                    if (trailingSlash == o.trailingSlash) {
+                        // just compare bases
+                        return base.compareTo(o.base);
+                    }
+                    if (trailingSlash) {
+                        // our template is longer thanks to trailing slash
+                        return -1;
+                    }
+                    return 1;
                 }
                 return 1;
             } else if (o.parts.size() == i) {

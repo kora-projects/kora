@@ -72,7 +72,7 @@ class PublicApiHandlerTest {
             handler("POST", "/foo/bar/{otherVariable}/")
         );
         var config = config(true);
-        var handler = new PublicApiHandler(handlers, List.of(), null, config);
+        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, List.of(), null, config));
     }
 
     @Test
@@ -92,7 +92,7 @@ class PublicApiHandlerTest {
             handler("POST", "/foo/bar/{otherVariable}/baz")
         );
         var config = config(true);
-        var handler = new PublicApiHandler(handlers, List.of(), null, config);
+        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, List.of(), null, config));
     }
 
     @Test
@@ -134,7 +134,7 @@ class PublicApiHandlerTest {
             handler("POST", "/foo/bar/")
         );
         var config = config(true);
-        var handler = new PublicApiHandler(handlers, List.of(), null, config);
+        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, List.of(), null, config));
     }
 
     private HttpServerConfig config(boolean ignoreTrailingSlash) {
