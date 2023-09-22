@@ -24,11 +24,6 @@ public class PathTemplateMatcher<T> {
 
     @Nullable
     public PathTemplateMatch<T> match(final String path) {
-        return match(path, false);
-    }
-
-    @Nullable
-    public PathTemplateMatch<T> match(final String path, boolean ignoreTrailingSlash) {
         String normalizedPath = "".equals(path) ? "/" : path;
         final Map<String, String> params = new LinkedHashMap<>();
         int length = normalizedPath.length();
@@ -37,7 +32,7 @@ public class PathTemplateMatcher<T> {
             if (pathLength == length) {
                 var entry = pathTemplateMap.get(normalizedPath);
                 if (entry != null) {
-                    var res = handleStemMatch(entry, normalizedPath, params, ignoreTrailingSlash);
+                    var res = handleStemMatch(entry, normalizedPath, params);
                     if (res != null) {
                         return res;
                     }
@@ -46,16 +41,7 @@ public class PathTemplateMatcher<T> {
                 var part = normalizedPath.substring(0, pathLength);
                 var entry = pathTemplateMap.get(part);
                 if (entry != null) {
-                    var res = handleStemMatch(entry, normalizedPath, params, ignoreTrailingSlash);
-                    if (res != null) {
-                        return res;
-                    }
-                }
-            } else if(ignoreTrailingSlash) {
-                var part = normalizedPath + "/";
-                var entry = pathTemplateMap.get(part);
-                if (entry != null) {
-                    var res = handleStemMatch(entry, normalizedPath, params, ignoreTrailingSlash);
+                    var res = handleStemMatch(entry, normalizedPath, params);
                     if (res != null) {
                         return res;
                     }
@@ -68,10 +54,9 @@ public class PathTemplateMatcher<T> {
     @Nullable
     private PathTemplateMatch<T> handleStemMatch(final Set<PathTemplateHolder> entry,
                                                  final String path,
-                                                 final Map<String, String> params,
-                                                 boolean ignoreTrailingSlash) {
+                                                 final Map<String, String> params) {
         for (var val : entry) {
-            if (val.template.matches(path, params, ignoreTrailingSlash)) {
+            if (val.template.matches(path, params)) {
                 return new PathTemplateMatch<>(val.template.templateString(), params, val.value);
             } else {
                 params.clear();

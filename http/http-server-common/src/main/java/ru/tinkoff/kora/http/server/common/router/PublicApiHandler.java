@@ -11,7 +11,6 @@ import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.server.common.*;
-import ru.tinkoff.kora.http.server.common.telemetry.HttpServerLogger;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetry;
 
 import javax.annotation.Nullable;
@@ -44,7 +43,6 @@ public class PublicApiHandler implements RefreshListener {
     private final All<ValueOf<HttpServerInterceptor>> interceptors;
     private final AtomicReference<RequestHandler> requestHandler = new AtomicReference<>();
     private final ValueOf<HttpServerTelemetry> telemetry;
-    private final boolean ignoreTrailingSlash;
 
     public PublicApiHandler(All<ValueOf<HttpServerRequestHandler>> handlers,
                             All<ValueOf<HttpServerInterceptor>> interceptors,
@@ -53,7 +51,6 @@ public class PublicApiHandler implements RefreshListener {
         this.handlers = handlers;
         this.interceptors = interceptors;
         this.telemetry = httpServerTelemetry;
-        this.ignoreTrailingSlash = httpServerConfig.get().ignoreTrailingSlash();
         this.pathTemplateMatcher = new HashMap<>();
         this.allMethodMatchers = new PathTemplateMatcher<>();
         for (var h : handlers) {
@@ -65,7 +62,19 @@ public class PublicApiHandler implements RefreshListener {
             if (oldValue != null) {
                 throw new IllegalStateException("Cannot add path template %s, matcher already contains an equivalent pattern %s".formatted(route, oldValue.getKey().templateString()));
             }
-
+            if (httpServerConfig.get().ignoreTrailingSlash()) {
+                if (!route.endsWith("*")) {
+                    if (route.charAt(route.length() - 1) == '/') {
+                        route = route.substring(0, route.length() - 1);
+                    } else {
+                        route = route + '/';
+                    }
+                    oldValue = methodMatchers.add(route, h);
+                    if (oldValue != null) {
+                        throw new IllegalStateException("Cannot add path template %s, matcher already contains an equivalent pattern %s".formatted(route, oldValue.getKey().templateString()));
+                    }
+                }
+            }
             var otherMethods = new ArrayList<>(List.of(handler.method()));
             var oldAllMethodValue = this.allMethodMatchers.add(route, otherMethods);
             if (oldAllMethodValue != null) {
@@ -101,7 +110,7 @@ public class PublicApiHandler implements RefreshListener {
         final @Nullable String routeTemplate;
 
         var methodMatchers = pathTemplateMatcher.get(routerRequest.method());
-        var pathTemplateMatch = methodMatchers == null ? null : methodMatchers.match(routerRequest.path(), ignoreTrailingSlash);
+        var pathTemplateMatch = methodMatchers == null ? null : methodMatchers.match(routerRequest.path());
         if (pathTemplateMatch == null) {
             var allMethodMatch = allMethodMatchers.match(routerRequest.path);
             if (allMethodMatch != null) {
