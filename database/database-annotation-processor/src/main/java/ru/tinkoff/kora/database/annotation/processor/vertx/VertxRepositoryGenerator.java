@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.database.annotation.processor.vertx;
 
 import com.squareup.javapoet.*;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
@@ -12,7 +13,6 @@ import ru.tinkoff.kora.database.annotation.processor.RepositoryGenerator;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameterParser;
 
-import jakarta.annotation.Nullable;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
@@ -122,7 +122,7 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
             b.addCode("return ");
         }
         if (batchParam != null) {
-            if (isCompletionStage) {
+            if (isCompletionStage || !isMono) {
                 if (connectionParam == null) {
                     b.addCode("$T.batchCompletionStage(this._connectionFactory, _query, _batchParams)\n", VertxTypes.REPOSITORY_HELPER);
                 } else {
@@ -167,7 +167,7 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
         } else if (isCompletionStage) {
             b.addCode(";\n");
         } else {
-            b.addCode("  .toCompletableFuture().join();\n");
+            b.addCode("  .join();\n");
         }
         return b.build();
     }

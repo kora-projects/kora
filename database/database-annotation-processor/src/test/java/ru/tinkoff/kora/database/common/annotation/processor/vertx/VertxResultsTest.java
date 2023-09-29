@@ -91,6 +91,26 @@ public class VertxResultsTest extends AbstractVertxRepositoryTest {
     }
 
     @Test
+    public void testReturnBlockingObject() {
+        var mapper = Mockito.mock(VertxRowSetMapper.class);
+        var repository = compileVertx(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("SELECT count(*) FROM test")
+                Integer test();
+            }
+            """);
+
+        when(mapper.apply(any())).thenReturn(42);
+        var result = repository.invoke("test");
+
+        assertThat(result).isEqualTo(42);
+        verify(executor.connection).preparedQuery("SELECT count(*) FROM test");
+        verify(executor.query).execute(any(), any());
+        verify(mapper).apply(executor.rowSet);
+    }
+
+    @Test
     public void testReturnMonoVoid() {
         var repository = compileVertx(List.of(), """
             @Repository
@@ -125,12 +145,48 @@ public class VertxResultsTest extends AbstractVertxRepositoryTest {
     }
 
     @Test
-    public void testReturnBatchUpdateCount() {
+    public void testReturnBatchMonoUpdateCount() {
         var repository = compileVertx(List.of(), """
             @Repository
             public interface TestRepository extends VertxRepository {
                 @Query("INSERT INTO test(value) VALUES (:value)")
                 Mono<UpdateCount> test(@Batch java.util.List<String> value);
+            }
+            """);
+        when(executor.rowSet.rowCount()).thenReturn(42);
+
+        var result = repository.<UpdateCount>invoke("test", List.of("test1", "test2"));
+
+        assertThat(result.value()).isEqualTo(42);
+        verify(executor.connection).preparedQuery("INSERT INTO test(value) VALUES ($1)");
+        verify(executor.query).executeBatch(any(), any());
+    }
+
+    @Test
+    public void testReturnBatchBlockingUpdateCount() {
+        var repository = compileVertx(List.of(), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                UpdateCount test(@Batch java.util.List<String> value);
+            }
+            """);
+        when(executor.rowSet.rowCount()).thenReturn(42);
+
+        var result = repository.<UpdateCount>invoke("test", List.of("test1", "test2"));
+
+        assertThat(result.value()).isEqualTo(42);
+        verify(executor.connection).preparedQuery("INSERT INTO test(value) VALUES ($1)");
+        verify(executor.query).executeBatch(any(), any());
+    }
+
+    @Test
+    public void testReturnBatchCompletionStageUpdateCount() {
+        var repository = compileVertx(List.of(), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                CompletionStage<UpdateCount> test(@Batch java.util.List<String> value);
             }
             """);
         when(executor.rowSet.rowCount()).thenReturn(42);
