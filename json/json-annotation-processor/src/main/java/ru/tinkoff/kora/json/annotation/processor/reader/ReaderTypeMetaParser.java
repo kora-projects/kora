@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.json.annotation.processor.reader;
 
 import com.squareup.javapoet.TypeName;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.common.naming.NameConverter;
@@ -9,13 +10,12 @@ import ru.tinkoff.kora.json.annotation.processor.KnownType;
 import ru.tinkoff.kora.json.annotation.processor.reader.JsonClassReaderMeta.FieldMeta;
 import ru.tinkoff.kora.json.annotation.processor.reader.ReaderFieldType.KnownTypeReaderMeta;
 
-import jakarta.annotation.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.*;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
-import javax.tools.Diagnostic;
 import java.util.ArrayList;
+import java.util.Objects;
 
 import static ru.tinkoff.kora.annotation.processor.common.CommonUtils.getNameConverter;
 
@@ -32,18 +32,12 @@ public class ReaderTypeMetaParser {
 
     public JsonClassReaderMeta parse(TypeElement jsonClass, TypeMirror typeMirror) throws ProcessingErrorException {
         if (jsonClass.getKind() != ElementKind.CLASS && jsonClass.getKind() != ElementKind.RECORD) {
-            throw new ProcessingErrorException("JsonReader can't be called for non class elements: " + jsonClass, jsonClass);
+            throw new IllegalArgumentException("Should not be called for non class elements");
         }
         if (jsonClass.getModifiers().contains(Modifier.ABSTRACT)) {
-            throw new ProcessingErrorException("JsonReader can't be called for abstract classes: " + jsonClass, jsonClass);
+            throw new IllegalArgumentException("Should not be called for abstract elements");
         }
-        var jsonConstructor = this.findJsonConstructor(jsonClass);
-        if (jsonConstructor == null) {
-            throw new ProcessingErrorException("Class: %s\nIn order to generate JsonReader class must have one public constructor or constructor annotated with any of @Json/@JsonReader"
-                .formatted(jsonClass),
-                jsonClass
-            );
-        }
+        var jsonConstructor = Objects.requireNonNull(this.findJsonConstructor(jsonClass));
 
         var fields = new ArrayList<FieldMeta>(jsonConstructor.getParameters().size());
         var nameConverter = getNameConverter(jsonClass);
@@ -65,7 +59,6 @@ public class ReaderTypeMetaParser {
         }
     }
 
-    @Nullable
     private ExecutableElement findJsonConstructor(TypeElement typeElement) {
         var constructors = typeElement.getEnclosedElements()
             .stream()
@@ -73,30 +66,53 @@ public class ReaderTypeMetaParser {
             .filter(e -> e.getModifiers().contains(Modifier.PUBLIC))
             .map(ExecutableElement.class::cast)
             .toList();
+
         if (constructors.isEmpty()) {
-            this.env.getMessager().printMessage(Diagnostic.Kind.WARNING, "No public constructor found: " + typeElement, typeElement);
-            return null;
+            throw new ProcessingErrorException("Class: %s\nIn order to generate JsonReader class must have one public constructor or constructor annotated with any of @Json/@JsonReader"
+                .formatted(typeElement),
+                typeElement
+            );
         }
         if (constructors.size() == 1) {
             return constructors.get(0);
         }
 
+        var jsonReaderConstructors = constructors.stream()
+            .filter(e -> AnnotationUtils.findAnnotation(e, JsonTypes.jsonReaderAnnotation) != null)
+            .toList();
+        if (jsonReaderConstructors.size() == 1) {
+            return jsonReaderConstructors.get(0);
+        }
+        if (!jsonReaderConstructors.isEmpty()) {
+            throw new ProcessingErrorException("Class: %s\nIn order to generate JsonReader class must have one public constructor or constructor annotated with any of @Json/@JsonReader"
+                .formatted(typeElement),
+                typeElement
+            );
+        }
+
         var jsonConstructors = constructors.stream()
-            .filter(e -> AnnotationUtils.findAnnotation(e, JsonTypes.jsonReaderAnnotation) != null || AnnotationUtils.findAnnotation(e, JsonTypes.json) != null)
+            .filter(e -> AnnotationUtils.findAnnotation(e, JsonTypes.json) != null)
             .toList();
         if (jsonConstructors.size() == 1) {
             return jsonConstructors.get(0);
         }
+        if (!jsonConstructors.isEmpty()) {
+            throw new ProcessingErrorException("Class: %s\nIn order to generate JsonReader class must have one public constructor or constructor annotated with any of @Json/@JsonReader"
+                .formatted(typeElement),
+                typeElement
+            );
+        }
+
         var nonEmpty = constructors.stream()
             .filter(c -> !c.getParameters().isEmpty())
             .toList();
         if (nonEmpty.size() == 1) {
             return nonEmpty.get(0);
         }
-
-        this.env.getMessager().printMessage(Diagnostic.Kind.ERROR, "More than one public constructor found and none of them is annotated with @JsonReader or @Json: " + typeElement, typeElement);
-        return null;
-
+        throw new ProcessingErrorException("Class: %s\nIn order to generate JsonReader class must have one public constructor or constructor annotated with any of @Json/@JsonReader"
+            .formatted(typeElement),
+            typeElement
+        );
     }
 
     private FieldMeta parseField(TypeElement jsonClass, VariableElement parameter, NameConverter nameConverter) {

@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.json.common.annotation;
 
-import ru.tinkoff.kora.common.Tag;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -12,7 +10,6 @@ import java.lang.annotation.Target;
  */
 @Target({ElementType.TYPE, ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
-@Tag(JsonInclude.class)
 public @interface JsonInclude {
 
     enum IncludeType {

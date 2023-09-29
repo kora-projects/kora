@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
  * @see JsonDiscriminatorField
  */
 @Target({ElementType.TYPE})
-@Retention(RetentionPolicy.CLASS)
+@Retention(RetentionPolicy.RUNTIME)
 public @interface JsonDiscriminatorValue {
 
     /**

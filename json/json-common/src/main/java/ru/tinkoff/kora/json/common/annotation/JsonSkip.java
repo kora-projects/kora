@@ -9,6 +9,6 @@ import java.lang.annotation.Target;
  * Indicates that annotated field will be ignored and not serialized into JSON
  */
 @Target({ElementType.FIELD})
-@Retention(RetentionPolicy.CLASS)
+@Retention(RetentionPolicy.RUNTIME)
 public @interface JsonSkip {
 }

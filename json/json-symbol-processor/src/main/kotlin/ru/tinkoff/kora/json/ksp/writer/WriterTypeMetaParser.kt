@@ -30,8 +30,9 @@ class WriterTypeMetaParser(val resolver: Resolver) {
 
     private fun parseFields(jsonClassDeclaration: KSClassDeclaration): List<KSDeclaration> {
         return if (jsonClassDeclaration.isJavaRecord()) {
+            val objectMethods = setOf("hashCode", "equals", "toString", "<init>")
             jsonClassDeclaration.getAllFunctions()
-                .filter { f -> f.simpleName.asString() !in listOf("hashCode", "equals", "toString", "<init>") }
+                .filter { f -> f.simpleName.asString() !in objectMethods }
                 .filter { p -> !p.isAnnotationPresent(JsonTypes.jsonSkipAnnotation) }
                 .toList()
         } else {

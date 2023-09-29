@@ -40,7 +40,7 @@ import java.lang.annotation.Target;
  * </pre>
  */
 @Target({ElementType.TYPE})
-@Retention(RetentionPolicy.CLASS)
+@Retention(RetentionPolicy.RUNTIME)
 public @interface JsonDiscriminatorField {
 
     /**
