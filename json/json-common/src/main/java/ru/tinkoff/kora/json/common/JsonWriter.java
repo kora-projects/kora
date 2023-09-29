@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.util.ByteArrayBuilder;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 
 /**
  * Class that defines public API for writing JSON content.
@@ -19,15 +20,23 @@ public interface JsonWriter<T> {
      */
     void write(JsonGenerator generator, @Nullable T object) throws IOException;
 
-    default byte[] toByteArray(@Nullable T object) throws IOException {
+    default byte[] toByteArray(@Nullable T value) throws IOException {
         var bb = new ByteArrayBuilder(JsonCommonModule.JSON_FACTORY._getBufferRecycler());
         try (var gen = JsonCommonModule.JSON_FACTORY.createGenerator(bb, JsonEncoding.UTF8)) {
             gen.enable(JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN);
-            this.write(gen, object);
+            this.write(gen, value);
             gen.flush();
             return bb.toByteArray();
         } finally {
             bb.release();
+        }
+    }
+
+    default byte[] toByteArrayUnchecked(@Nullable T value) throws UncheckedIOException {
+        try {
+            return toByteArray(value);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
     }
 }

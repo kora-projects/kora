@@ -25,8 +25,8 @@ import java.lang.annotation.Target;
  * }
  * }</pre>
  */
-@Retention(RetentionPolicy.CLASS)
-@Target({ElementType.PARAMETER, ElementType.FIELD})
+@Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.RECORD_COMPONENT})
+@Retention(RetentionPolicy.RUNTIME)
 public @interface JsonField {
 
     /**
