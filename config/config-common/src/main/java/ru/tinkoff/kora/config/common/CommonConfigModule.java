@@ -23,7 +23,7 @@ public interface CommonConfigModule extends DefaultConfigExtractorsModule {
         return MapConfigFactory.fromProperties("System properties", System.getProperties());
     }
 
-    default Config config(@Environment Config environment, @Environment Config systemProperties, @Nullable @ApplicationConfig Config applicationConfig) {
+    default Config config(@Environment Config environment, @SystemProperties Config systemProperties, @Nullable @ApplicationConfig Config applicationConfig) {
         var config = MergeConfigFactory.merge(environment, systemProperties);
         if (applicationConfig != null) {
             config = MergeConfigFactory.merge(config, applicationConfig);
