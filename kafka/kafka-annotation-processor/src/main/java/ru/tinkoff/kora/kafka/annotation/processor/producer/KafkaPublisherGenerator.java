@@ -72,10 +72,12 @@ final class KafkaPublisherGenerator {
     }
 
     private MethodSpec buildPublisherFactoryImpl(TypeElement publisher) {
+        var packageName = this.elements.getPackageOf(publisher).getQualifiedName().toString();
+        var implementationName = ClassName.get(packageName, NameUtils.generatedType(publisher, "Impl"));
         var builder = MethodSpec.methodBuilder(CommonUtils.decapitalize(publisher.getSimpleName().toString()) + "_PublisherImpl")
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .returns(ClassName.get(publisher))
-            .addParameter(ParameterizedTypeName.get(ClassName.get(Function.class), ClassName.get(Properties.class), ClassName.get(publisher)), "factory");
+            .addParameter(ParameterizedTypeName.get(ClassName.get(Function.class), ClassName.get(Properties.class), implementationName), "factory");
 
         builder.addStatement("return factory.apply(new $T())", Properties.class);
         return builder.build();
