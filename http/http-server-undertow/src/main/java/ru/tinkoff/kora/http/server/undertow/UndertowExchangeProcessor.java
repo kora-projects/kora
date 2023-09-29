@@ -7,6 +7,7 @@ import io.undertow.server.HttpServerExchange;
 import io.undertow.util.HeaderMap;
 import io.undertow.util.Headers;
 import io.undertow.util.HttpString;
+import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xnio.IoUtils;
@@ -22,7 +23,6 @@ import ru.tinkoff.kora.http.server.common.router.PublicApiResponse;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTracer;
 import ru.tinkoff.kora.http.server.undertow.request.UndertowPublicApiRequest;
 
-import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -93,6 +93,8 @@ public class UndertowExchangeProcessor implements Runnable {
             response.response().whenComplete((httpServerResponse, throwable) -> {
                 if (httpServerResponse != null) {
                     sendResponse(exchange, response, httpServerResponse, null);
+                } else if (throwable instanceof CompletionException ce && ce.getCause() != null) {
+                    sendException(response, ce.getCause());
                 } else if (throwable != null) {
                     sendException(response, throwable);
                 } else {
@@ -262,6 +264,8 @@ public class UndertowExchangeProcessor implements Runnable {
                 response.closeSendResponseSuccess(exchange.getStatusCode(), rs.headers(), error);
                 nextListener.proceed();
             });
+            exchange.setResponseContentLength(0);
+            exchange.endExchange();
             return;
         }
         exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");

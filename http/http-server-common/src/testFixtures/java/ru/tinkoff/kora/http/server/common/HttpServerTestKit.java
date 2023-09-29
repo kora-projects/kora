@@ -192,6 +192,78 @@ public abstract class HttpServerTestKit {
     @Nested
     public class PublicApiTest {
         @Test
+        void testException() throws IOException {
+            var handler = handler(GET, "/", (ctx, request) -> {
+                throw new RuntimeException();
+            });
+
+            startServer(handler);
+
+            var request = request("/")
+                .get()
+                .build();
+
+            try (var response = client.newCall(request).execute()) {
+                assertThat(response.code()).isEqualTo(500);
+            }
+            verifyResponse("GET", "/", 500, HttpResultCode.SERVER_ERROR, "localhost", "http", () -> ArgumentMatchers.isA(RuntimeException.class), anyLong());
+        }
+
+        @Test
+        void testExceptionIsResponse() throws IOException {
+            var handler = handler(GET, "/", (ctx, request) -> {
+                throw HttpServerResponseException.of(400, "Bad Request");
+            });
+
+            startServer(handler);
+
+            var request = request("/")
+                .get()
+                .build();
+
+            try (var response = client.newCall(request).execute()) {
+                assertThat(response.code()).isEqualTo(400);
+            }
+            verifyResponse("GET", "/", 400, HttpResultCode.CLIENT_ERROR, "localhost", "http", () -> ArgumentMatchers.isA(HttpServerResponseException.class), anyLong());
+        }
+
+        @Test
+        void testExceptionIsResponseNoBody() throws IOException {
+            var handler = handler(GET, "/", (ctx, request) -> {
+                throw new HttpServerResponseExceptionNoBody(400);
+            });
+
+            startServer(handler);
+
+            var request = request("/")
+                .get()
+                .build();
+
+            try (var response = client.newCall(request).execute()) {
+                assertThat(response.code()).isEqualTo(400);
+            }
+            verifyResponse("GET", "/", 400, HttpResultCode.CLIENT_ERROR, "localhost", "http", () -> ArgumentMatchers.isA(HttpServerResponseExceptionNoBody.class), anyLong());
+        }
+
+        @Test
+        void testExceptionIsFutureOfResponse() throws IOException {
+            var handler = handler(GET, "/", (ctx, request) -> CompletableFuture.supplyAsync(() -> {
+                throw HttpServerResponseException.of(400, "Bad Request");
+            }, CompletableFuture.delayedExecutor(100, TimeUnit.MILLISECONDS)));
+
+            startServer(handler);
+
+            var request = request("/")
+                .get()
+                .build();
+
+            try (var response = client.newCall(request).execute()) {
+                assertThat(response.code()).isEqualTo(400);
+            }
+            verifyResponse("GET", "/", 400, HttpResultCode.CLIENT_ERROR, "localhost", "http", () -> ArgumentMatchers.isA(HttpServerResponseException.class), anyLong());
+        }
+
+        @Test
         void testCompletedFullResponseBody() throws IOException {
             var httpResponse = HttpServerResponse.of(200, HttpBody.plaintext("hello world"));
             var handler = handler(GET, "/", (ctx, request) -> {
@@ -927,6 +999,30 @@ public abstract class HttpServerTestKit {
         @Override
         public Optional<T> get() {
             return Optional.ofNullable(value);
+        }
+    }
+
+    private static class HttpServerResponseExceptionNoBody extends RuntimeException implements HttpServerResponse {
+        private final int code;
+
+        private HttpServerResponseExceptionNoBody(int code) {
+            this.code = code;
+        }
+
+        @Override
+        public int code() {
+            return this.code;
+        }
+
+        @Override
+        public HttpHeaders headers() {
+            return HttpHeaders.of();
+        }
+
+        @Nullable
+        @Override
+        public HttpOutBody body() {
+            return null;
         }
     }
 }
