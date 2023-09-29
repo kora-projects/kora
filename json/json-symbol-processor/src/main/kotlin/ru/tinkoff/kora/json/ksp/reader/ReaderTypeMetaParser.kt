@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.json.ksp.reader
 
+import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.processing.KSPLogger
@@ -25,51 +26,81 @@ class ReaderTypeMetaParser(
 
     fun parse(declaration: KSClassDeclaration): JsonClassReaderMeta {
         val jsonConstructor = this.findJsonConstructor(declaration)
-            ?: throw ProcessingErrorException(
-                "Class: %s\nTo generate json reader class must have one public constructor or constructor annotated with any of @Json/@JsonReader".format(declaration.toClassName()),
-                declaration
-            )
         val fields = mutableListOf<JsonClassReaderMeta.FieldMeta>()
 
         val nameConverter = declaration.getNameConverter()
+        val isSimpleDataClass = declaration.modifiers.contains(Modifier.DATA) && declaration.getConstructors().count() == 1
         for (parameter in jsonConstructor.parameters) {
-            val fieldMeta = parseField(declaration, parameter, nameConverter)
+            val jsonField = if (isSimpleDataClass) {
+                declaration.getAllProperties()
+                    .filter { it.simpleName.asString() == parameter.name!!.asString() }
+                    .map { it.findAnnotation(JsonTypes.jsonFieldAnnotation) }
+                    .first() ?: findJsonField(parameter, declaration)
+            } else {
+                findJsonField(parameter, declaration)
+            }
+            val fieldMeta = parseField(declaration, parameter, jsonField, nameConverter)
             fields.add(fieldMeta)
         }
 
         return JsonClassReaderMeta(declaration, fields)
     }
 
-    private fun findJsonConstructor(classDeclaration: KSClassDeclaration): KSFunctionDeclaration? {
+    private fun findJsonConstructor(classDeclaration: KSClassDeclaration): KSFunctionDeclaration {
         val constructors = classDeclaration.getAllFunctions()
             .filter { it.isConstructor() }
             .filter { it.isPublic() }
             .toList()
 
         if (constructors.isEmpty()) {
-            logger.warn("No public constructor found: $classDeclaration", classDeclaration)
-            return null
-        }
-        if (constructors.size == 1) {
+            throw ProcessingErrorException(
+                "Class has no public constructors: %s\nTo generate json reader class must have one public constructor or constructor annotated with any of @Json/@JsonReader".format(classDeclaration.toClassName()),
+                classDeclaration
+            )
+        } else if (constructors.size == 1) {
             return constructors[0]
         }
+
+        val jsonReaderConstructors = constructors
+            .filter { it.findAnnotation(JsonTypes.jsonReaderAnnotation) != null }
+            .toList()
+        if (jsonReaderConstructors.size == 1) {
+            return jsonReaderConstructors[0]
+        }
+        if (jsonReaderConstructors.isNotEmpty()) {
+            throw ProcessingErrorException(
+                "Class: %s\nMultiple constructor annotated with @JsonReader".format(classDeclaration.toClassName()),
+                classDeclaration
+            )
+        }
+
         val jsonConstructors = constructors
-            .filter { it.findAnnotation(JsonTypes.jsonReaderAnnotation) != null || it.findAnnotation(JsonTypes.json) != null }
+            .filter { it.findAnnotation(JsonTypes.json) != null }
             .toList()
         if (jsonConstructors.size == 1) {
             return jsonConstructors[0]
         }
+        if (jsonConstructors.isNotEmpty()) {
+            throw ProcessingErrorException(
+                "Class: %s\nMultiple constructor annotated with @Json".format(classDeclaration.toClassName()),
+                classDeclaration
+            )
+        }
+
         val nonEmpty = constructors
             .filter { it.parameters.isNotEmpty() }
             .toList()
         if (nonEmpty.size == 1) {
             return nonEmpty[0]
         }
-        return null
+
+        throw ProcessingErrorException(
+            "Class: %s\nTo generate json reader class must have one public constructor or constructor annotated with any of @Json/@JsonReader".format(classDeclaration.toClassName()),
+            classDeclaration
+        )
     }
 
-    private fun parseField(jsonClass: KSClassDeclaration, parameter: KSValueParameter, nameConverter: NameConverter?): JsonClassReaderMeta.FieldMeta {
-        val jsonField = findJsonField(parameter, jsonClass)
+    private fun parseField(jsonClass: KSClassDeclaration, parameter: KSValueParameter, jsonField: KSAnnotation?, nameConverter: NameConverter?): JsonClassReaderMeta.FieldMeta {
         val jsonName = parseJsonName(parameter, jsonField, nameConverter)
         val fieldType = parameter.type.resolve()
         val typeName = parameter.type.toTypeName(jsonClass.typeParameters.toTypeParameterResolver())
