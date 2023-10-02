@@ -1,178 +1,100 @@
 package ru.tinkoff.kora.soap.client.symbol.processor
 
-import com.google.devtools.ksp.getClassDeclarationByName
-import com.google.devtools.ksp.processing.Resolver
-import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.TypeName
 
 interface SoapClasses {
-    fun httpClientTypeName(): TypeName? {
-        return ClassName("ru.tinkoff.kora.http.client.common", "HttpClient")
+    fun httpClientTypeName() = ClassName("ru.tinkoff.kora.http.client.common", "HttpClient")
+    fun soapEnvelopeObjectFactory() = ClassName("ru.tinkoff.kora.soap.client.common.envelope", "ObjectFactory")
+    fun soapEnvelopeTypeName() = ClassName("ru.tinkoff.kora.soap.client.common.envelope", "SoapEnvelope")
+
+    fun jaxbContextTypeName(): TypeName
+    fun jaxbExceptionTypeName(): TypeName
+    fun xmlSeeAlsoType(): ClassName
+    fun webMethodType(): ClassName
+    fun responseWrapperType(): ClassName
+    fun requestWrapperType(): ClassName
+    fun webResultType(): ClassName
+    fun webParamType(): ClassName
+    fun xmlToolsType(): ClassName
+    fun holderType(): ClassName
+    fun webFaultType(): ClassName
+    fun webServiceType(): ClassName
+    fun soapBindingType(): ClassName
+    fun xmlRootElementClassName(): ClassName
+    fun xmlAccessorTypeClassName(): ClassName
+    fun xmlAccessTypeClassName(): ClassName
+    fun xmlElementClassName(): ClassName
+
+    object JakartaClasses : SoapClasses {
+        override fun jaxbContextTypeName() = ClassName("jakarta.xml.bind", "JAXBContext")
+
+        override fun jaxbExceptionTypeName() = ClassName("jakarta.xml.bind", "JAXBException")
+
+        override fun xmlSeeAlsoType() = ClassName("jakarta.xml.bind.annotation", "XmlSeeAlso")
+
+        override fun webMethodType() = ClassName("jakarta.jws", "WebMethod")
+
+        override fun responseWrapperType() = ClassName("jakarta.xml.ws", "ResponseWrapper")
+
+        override fun requestWrapperType() = ClassName("jakarta.xml.ws", "RequestWrapper")
+
+        override fun webResultType() = ClassName("jakarta.jws", "WebResult")
+
+        override fun webParamType() = ClassName("jakarta.jws", "WebParam")
+
+        override fun xmlToolsType() = ClassName("ru.tinkoff.kora.soap.client.common.jakarta", "JakartaXmlTools")
+
+        override fun holderType() = ClassName("jakarta.xml.ws", "Holder")
+
+        override fun webFaultType() = ClassName("jakarta.xml.ws", "WebFault")
+
+        override fun webServiceType() = ClassName("jakarta.jws", "WebService")
+
+        override fun soapBindingType() = ClassName("jakarta.jws.soap", "SOAPBinding")
+
+        override fun xmlRootElementClassName() = ClassName("jakarta.xml.bind.annotation", "XmlRootElement")
+
+        override fun xmlAccessorTypeClassName() = ClassName("jakarta.xml.bind.annotation", "XmlAccessorType")
+
+        override fun xmlAccessTypeClassName() = ClassName("jakarta.xml.bind.annotation", "XmlAccessType")
+
+        override fun xmlElementClassName() = ClassName("jakarta.xml.bind.annotation", "XmlElement")
     }
 
-    fun soapEnvelopeObjectFactory(): TypeName? {
-        return ClassName("ru.tinkoff.kora.soap.client.common.envelope", "ObjectFactory")
-    }
+    object JavaxClasses : SoapClasses {
+        override fun jaxbContextTypeName() = ClassName("javax.xml.bind", "JAXBContext")
 
-    fun soapEnvelopeTypeName(): TypeName? {
-        return ClassName("ru.tinkoff.kora.soap.client.common.envelope", "SoapEnvelope")
-    }
+        override fun jaxbExceptionTypeName() = ClassName("javax.xml.bind", "JAXBException")
 
-    fun jaxbContextTypeName(): TypeName?
-    fun jaxbExceptionTypeName(): TypeName?
-    fun xmlSeeAlsoType(): KSType?
-    fun webMethodType(): KSType?
-    fun responseWrapperType(): KSType?
-    fun requestWrapperType(): KSType?
-    fun webResultType(): KSType?
-    fun webParamType(): KSType?
-    fun xmlToolsType(): TypeName?
-    fun holderTypeErasure(): KSType?
-    fun webFaultType(): KSType?
-    fun webServiceType(): KSType?
-    fun soapBindingType(): KSType?
-    fun xmlRootElementClassName(): ClassName?
-    fun xmlAccessorTypeClassName(): ClassName?
-    fun xmlAccessTypeClassName(): ClassName?
-    fun xmlElementClassName(): ClassName?
-    class JakartaClasses(private val resolver: Resolver) : SoapClasses {
-        override fun jaxbContextTypeName(): TypeName {
-            return ClassName("jakarta.xml.bind", "JAXBContext")
-        }
+        override fun xmlSeeAlsoType() = ClassName("javax.xml.bind.annotation", "XmlSeeAlso")
 
-        override fun jaxbExceptionTypeName(): TypeName {
-            return ClassName("jakarta.xml.bind", "JAXBException")
-        }
+        override fun webMethodType() = ClassName("javax.jws", "WebMethod")
 
-        override fun xmlSeeAlsoType(): KSType {
-            return resolver.getClassDeclarationByName("jakarta.xml.bind.annotation.XmlSeeAlso")!!.asStarProjectedType()
-        }
+        override fun responseWrapperType() = ClassName("javax.xml.ws", "ResponseWrapper")
 
-        override fun webMethodType(): KSType {
-            return resolver.getClassDeclarationByName("jakarta.jws.WebMethod")!!.asStarProjectedType()
-        }
+        override fun requestWrapperType() = ClassName("javax.xml.ws", "RequestWrapper")
 
-        override fun responseWrapperType(): KSType {
-            return resolver.getClassDeclarationByName("jakarta.xml.ws.ResponseWrapper")!!.asStarProjectedType()
-        }
+        override fun webResultType() = ClassName("javax.jws", "WebResult")
 
-        override fun requestWrapperType(): KSType {
-            return resolver.getClassDeclarationByName("jakarta.xml.ws.RequestWrapper")!!.asStarProjectedType()
-        }
+        override fun webParamType() = ClassName("javax.jws", "WebParam")
 
-        override fun webResultType(): KSType {
-            return resolver.getClassDeclarationByName("jakarta.jws.WebResult")!!.asStarProjectedType()
-        }
+        override fun xmlToolsType() = ClassName("ru.tinkoff.kora.soap.client.common.javax", "JavaxXmlTools")
 
-        override fun webParamType(): KSType {
-            return resolver.getClassDeclarationByName("jakarta.jws.WebParam")!!.asStarProjectedType()
-        }
+        override fun holderType() = ClassName("javax.xml.ws", "Holder")
 
-        override fun xmlToolsType(): TypeName {
-            return ClassName("ru.tinkoff.kora.soap.client.common.jakarta", "JakartaXmlTools")
-        }
+        override fun webFaultType() = ClassName("javax.xml.ws", "WebFault")
 
-        override fun holderTypeErasure(): KSType {
-            return resolver.getClassDeclarationByName("jakarta.xml.ws.Holder")!!.asStarProjectedType().starProjection()
-        }
+        override fun webServiceType() = ClassName("javax.jws", "WebService")
 
-        override fun webFaultType(): KSType {
-            return resolver.getClassDeclarationByName("jakarta.xml.ws.WebFault")!!.asStarProjectedType()
-        }
+        override fun soapBindingType() = ClassName("javax.jws.soap", "SOAPBinding")
 
-        override fun webServiceType(): KSType {
-            return resolver.getClassDeclarationByName("jakarta.jws.WebService")!!.asStarProjectedType()
-        }
+        override fun xmlRootElementClassName() = ClassName("javax.xml.bind.annotation", "XmlRootElement")
 
-        override fun soapBindingType(): KSType {
-            return resolver.getClassDeclarationByName("jakarta.jws.soap.SOAPBinding")!!.asStarProjectedType()
-        }
+        override fun xmlAccessorTypeClassName() = ClassName("javax.xml.bind.annotation", "XmlAccessorType")
 
-        override fun xmlRootElementClassName(): ClassName {
-            return ClassName("jakarta.xml.bind.annotation", "XmlRootElement")
-        }
+        override fun xmlAccessTypeClassName() = ClassName("javax.xml.bind.annotation", "XmlAccessType")
 
-        override fun xmlAccessorTypeClassName(): ClassName {
-            return ClassName("jakarta.xml.bind.annotation", "XmlAccessorType")
-        }
-
-        override fun xmlAccessTypeClassName(): ClassName {
-            return ClassName("jakarta.xml.bind.annotation", "XmlAccessType")
-        }
-
-        override fun xmlElementClassName(): ClassName {
-            return ClassName("jakarta.xml.bind.annotation", "XmlElement")
-        }
-    }
-
-    class JavaxClasses(private val resolver: Resolver) : SoapClasses {
-        override fun jaxbContextTypeName(): TypeName {
-            return ClassName("javax.xml.bind", "JAXBContext")
-        }
-
-        override fun jaxbExceptionTypeName(): TypeName {
-            return ClassName("javax.xml.bind", "JAXBException")
-        }
-
-        override fun xmlSeeAlsoType(): KSType {
-            return resolver.getClassDeclarationByName("javax.xml.bind.annotation.XmlSeeAlso")!!.asStarProjectedType()
-        }
-
-        override fun webMethodType(): KSType {
-            return resolver.getClassDeclarationByName("javax.jws.WebMethod")!!.asStarProjectedType()
-        }
-
-        override fun responseWrapperType(): KSType {
-            return resolver.getClassDeclarationByName("javax.xml.ws.ResponseWrapper")!!.asStarProjectedType()
-        }
-
-        override fun requestWrapperType(): KSType {
-            return resolver.getClassDeclarationByName("javax.xml.ws.RequestWrapper")!!.asStarProjectedType()
-        }
-
-        override fun webResultType(): KSType {
-            return resolver.getClassDeclarationByName("javax.jws.WebResult")!!.asStarProjectedType()
-        }
-
-        override fun webParamType(): KSType {
-            return resolver.getClassDeclarationByName("javax.jws.WebParam")!!.asStarProjectedType()
-        }
-
-        override fun xmlToolsType(): TypeName {
-            return ClassName("ru.tinkoff.kora.soap.client.common.javax", "JavaxXmlTools")
-        }
-
-        override fun holderTypeErasure(): KSType {
-            return resolver.getClassDeclarationByName("javax.xml.ws.Holder")!!.asStarProjectedType().starProjection()
-        }
-
-        override fun webFaultType(): KSType {
-            return resolver.getClassDeclarationByName("javax.xml.ws.WebFault")!!.asStarProjectedType()
-        }
-
-        override fun webServiceType(): KSType {
-            return resolver.getClassDeclarationByName("javax.jws.WebService")!!.asStarProjectedType()
-        }
-
-        override fun soapBindingType(): KSType {
-            return resolver.getClassDeclarationByName("javax.jws.soap.SOAPBinding")!!.asStarProjectedType()
-        }
-
-        override fun xmlRootElementClassName(): ClassName {
-            return ClassName("javax.xml.bind.annotation", "XmlRootElement")
-        }
-
-        override fun xmlAccessorTypeClassName(): ClassName {
-            return ClassName("javax.xml.bind.annotation", "XmlAccessorType")
-        }
-
-        override fun xmlAccessTypeClassName(): ClassName {
-            return ClassName("javax.xml.bind.annotation", "XmlAccessType")
-        }
-
-        override fun xmlElementClassName(): ClassName {
-            return ClassName("javax.xml.bind.annotation", "XmlElement")
-        }
+        override fun xmlElementClassName() = ClassName("javax.xml.bind.annotation", "XmlElement")
     }
 }

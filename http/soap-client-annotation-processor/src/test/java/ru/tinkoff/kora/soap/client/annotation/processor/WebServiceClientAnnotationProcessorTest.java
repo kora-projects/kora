@@ -280,7 +280,7 @@ class WebServiceClientAnnotationProcessorTest {
         var constructor = type.getConstructor(HttpClient.class, SoapClientTelemetryFactory.class, SoapServiceConfig.class);
         var httpClient = this.httpClient.with(new TelemetryInterceptor(new DefaultHttpClientTelemetry(null, null, new Sl4fjHttpClientLogger(log, log))));
         var telemetry = new DefaultSoapClientTelemetryFactory(null);
-        return constructor.newInstance(httpClient, telemetry, new SoapServiceConfig(url, Duration.ofSeconds(60)));
+        return constructor.newInstance(httpClient, telemetry, (SoapServiceConfig) () -> url);
     }
 
     private List<String> files(String path) {

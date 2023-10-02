@@ -122,7 +122,7 @@ public interface SoapClasses {
 
         @Override
         public ClassName requestWrapperType() {
-            return ClassName.get("jakarta.xml.ws","RequestWrapper");
+            return ClassName.get("jakarta.xml.ws", "RequestWrapper");
         }
 
         @Override

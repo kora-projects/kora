@@ -59,9 +59,14 @@ public class WebServiceClientAnnotationProcessor extends AbstractKoraProcessor {
 
     private void processService(Element service, SoapClasses soapClasses) throws IOException {
         var typeSpec = this.generator.generate(service, soapClasses);
-
-        var javaFile = JavaFile.builder(this.elements.getPackageOf(service).getQualifiedName().toString(), typeSpec)
+        var typeJavaFile = JavaFile.builder(this.elements.getPackageOf(service).getQualifiedName().toString(), typeSpec)
             .build();
-        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
+
+        var moduleSpec = this.generator.generateModule(service, soapClasses);
+        var moduleJavaFile = JavaFile.builder(this.elements.getPackageOf(service).getQualifiedName().toString(), moduleSpec)
+            .build();
+
+        CommonUtils.safeWriteTo(this.processingEnv, typeJavaFile);
+        CommonUtils.safeWriteTo(this.processingEnv, moduleJavaFile);
     }
 }

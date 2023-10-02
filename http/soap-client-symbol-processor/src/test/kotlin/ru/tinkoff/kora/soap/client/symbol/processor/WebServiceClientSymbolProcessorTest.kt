@@ -31,7 +31,7 @@ class WebServiceClientSymbolProcessorTest {
 
     private fun compileKotlin(targetDir: String) {
         val k2JvmArgs = K2JVMCompilerArguments()
-        val kotlinOutPath = Path.of("build/in-test-generated-ksp/ksp/sources/kotlin").toAbsolutePath().toString()
+        val kotlinOutPath = Path.of("build/in-test-generated-ksp/ksp/sources/kotlin").toAbsolutePath()
         k2JvmArgs.noReflect = true
         k2JvmArgs.noStdlib = true
         k2JvmArgs.noJdk = false
