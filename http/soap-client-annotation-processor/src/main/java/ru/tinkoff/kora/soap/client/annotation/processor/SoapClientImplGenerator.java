@@ -1,13 +1,10 @@
 package ru.tinkoff.kora.soap.client.annotation.processor;
 
 import com.squareup.javapoet.*;
-import org.w3c.dom.Node;
-import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
-import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
-import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.annotation.processor.common.NameUtils;
-
 import jakarta.annotation.Nullable;
+import org.w3c.dom.Node;
+import ru.tinkoff.kora.annotation.processor.common.*;
+
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
@@ -15,16 +12,78 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 public class SoapClientImplGenerator {
-    private static final ClassName synchronousSink = ClassName.get("reactor.core.publisher", "SynchronousSink");
+
+    private static final ClassName SYNCHRONOUS_SINK = ClassName.get("reactor.core.publisher", "SynchronousSink");
+    private static final ClassName SOAP_CONFIG = ClassName.get("ru.tinkoff.kora.soap.client.common", "SoapServiceConfig");
+    private static final ClassName HTTP_CLIENT = ClassName.get("ru.tinkoff.kora.http.client.common", "HttpClient");
+    private static final ClassName SOAP_TELEMETRY = ClassName.get("ru.tinkoff.kora.soap.client.common.telemetry", "SoapClientTelemetryFactory");
+
     private final ProcessingEnvironment processingEnv;
 
     public SoapClientImplGenerator(ProcessingEnvironment processingEnv) {
         this.processingEnv = processingEnv;
+    }
+
+    public TypeSpec generateModule(Element element, SoapClasses soapClasses) {
+        var webService = findAnnotation(element, soapClasses.webServiceType());
+        var serviceName = findAnnotationValue(webService, "name").toString();
+        if (serviceName.isEmpty()) {
+            serviceName = findAnnotationValue(webService, "serviceName").toString();
+        }
+        if (serviceName.isEmpty()) {
+            serviceName = findAnnotationValue(webService, "portName").toString();
+        }
+        if (serviceName.isEmpty()) {
+            serviceName = element.getSimpleName().toString();
+        }
+
+        var configPath = "soapClient." + serviceName;
+
+        var moduleName = NameUtils.generatedType(element, "SoapClientModule");
+        var extractorClass = ParameterizedTypeName.get(CommonClassNames.configValueExtractor, SOAP_CONFIG);
+        var elementType = ClassName.get(element.asType());
+
+        var methodPrefix = serviceName.substring(0, 1).toLowerCase() + serviceName.substring(1);
+        var type = TypeSpec.interfaceBuilder(moduleName)
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", "$S", WebServiceClientAnnotationProcessor.class.getCanonicalName()).build())
+            .addAnnotation(AnnotationSpec.builder(CommonClassNames.module).build())
+            .addOriginatingElement(element)
+            .addMethod(MethodSpec.methodBuilder(methodPrefix + "_SoapConfig")
+                .addAnnotation(TagUtils.makeAnnotationSpec(Set.of(elementType.toString())))
+                .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT).returns(SOAP_CONFIG)
+                .addAnnotation(CommonClassNames.defaultComponent)
+                .addParameter(ParameterSpec.builder(CommonClassNames.config, "config").build())
+                .addParameter(ParameterSpec.builder(extractorClass, "extractor").build())
+                .addStatement("var value = config.get($S)", configPath)
+                .addStatement("var parsed = extractor.extract(value)")
+                .beginControlFlow("if (parsed == null)")
+                .addStatement("throw $T.missingValueAfterParse(value)", CommonClassNames.configValueExtractionException)
+                .endControlFlow()
+                .addStatement("return parsed")
+                .build())
+            .addMethod(MethodSpec.methodBuilder(methodPrefix + "_SoapClientImpl")
+                .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                .returns(elementType)
+                .addAnnotation(CommonClassNames.defaultComponent)
+                .addParameter(ParameterSpec.builder(HTTP_CLIENT, "httpClient").build())
+                .addParameter(ParameterSpec.builder(SOAP_TELEMETRY, "telemetry").build())
+                .addParameter(ParameterSpec.builder(SOAP_CONFIG, "config").addAnnotation(TagUtils.makeAnnotationSpec(Set.of(elementType.toString()))).build())
+                .beginControlFlow("try")
+                .addStatement("return new $L(httpClient, telemetry, config)", NameUtils.generatedType(element, "SoapClientImpl"))
+                .nextControlFlow("catch (Exception e)")
+                .addStatement("throw new $T(e)", IllegalStateException.class)
+                .endControlFlow()
+                .build()
+            );
+
+        return type.build();
     }
 
     public TypeSpec generate(Element service, SoapClasses soapClasses) {
@@ -109,7 +168,8 @@ public class SoapClientImplGenerator {
                 operationName = method.getSimpleName().toString();
             }
             var executorFieldName = operationName + "RequestExecutor";
-            constructorBuilder.addCode("this.$L = new $T(httpClient, telemetry, new $T(jaxb), $S, config.url(), config.timeout(), $S, $S);",
+            constructorBuilder.addCode(
+                "this.$L = new $T(httpClient, telemetry, new $T(jaxb), $S, config.url(), config.timeout(), $S, $S);\n",
                 executorFieldName, soapClasses.soapRequestExecutor(), soapClasses.xmlToolsType(), serviceName, operationName, soapAction
             );
             builder.addField(soapClasses.soapRequestExecutor(), executorFieldName, Modifier.PRIVATE, Modifier.FINAL);
@@ -134,7 +194,7 @@ public class SoapClientImplGenerator {
             this.addMapRequest(reactiveM, method, soapClasses);
             reactiveM.addCode("var __future = new $T<$T>();\n", CompletableFuture.class, monoParam);
             reactiveM.addCode("this.$L.callAsync(__requestEnvelope)\n", executorFieldName);
-            reactiveM.addCode("  .whenComplete((__response, __throwable) -> {$>$>\n", soapClasses.soapResult(), ParameterizedTypeName.get(synchronousSink, TypeName.get(monoParam)));
+            reactiveM.addCode("  .whenComplete((__response, __throwable) -> {$>$>\n", soapClasses.soapResult(), ParameterizedTypeName.get(SYNCHRONOUS_SINK, TypeName.get(monoParam)));
             reactiveM.addCode("if (__throwable != null) {\n");
             reactiveM.addCode("  __future.completeExceptionally(__throwable);\n");
             reactiveM.addCode("  return;\n");
@@ -161,15 +221,10 @@ public class SoapClientImplGenerator {
             }
             var requestClassName = operationName + "Request";
             jaxbClassesCode.add(", $L.class", requestClassName);
-            var b = TypeSpec.classBuilder(requestClassName)
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            var b = TypeSpec.classBuilder(requestClassName).addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                 .addAnnotation(AnnotationSpec.builder(soapClasses.xmlAccessorTypeClassName())
-                    .addMember("value", "$T.NONE", soapClasses.xmlAccessTypeClassName())
-                    .build())
-                .addAnnotation(AnnotationSpec.builder(soapClasses.xmlRootElementClassName())
-                    .addMember("namespace", "$S", targetNamespace)
-                    .addMember("name", "$S", operationName)
-                    .build());
+                    .addMember("value", "$T.NONE", soapClasses.xmlAccessTypeClassName()).build())
+                .addAnnotation(AnnotationSpec.builder(soapClasses.xmlRootElementClassName()).addMember("namespace", "$S", targetNamespace).addMember("name", "$S", operationName).build());
             for (var parameter : method.getParameters()) {
                 var webParam = findAnnotation(parameter, soapClasses.webParamType());
                 if ("OUT".equals(findAnnotationValue(webParam, "mode").toString())) {
@@ -182,8 +237,7 @@ public class SoapClientImplGenerator {
 
                 b.addField(FieldSpec.builder(TypeName.get(type), parameter.getSimpleName().toString(), Modifier.PUBLIC)
                     .addAnnotation(AnnotationSpec.builder(soapClasses.xmlElementClassName())
-                        .addMember("name", "$S", findAnnotationValue(webParam, "partName").toString())
-                        .build())
+                        .addMember("name", "$S", findAnnotationValue(webParam, "partName").toString()).build())
                     .build());
             }
             builder.addType(b.build());
@@ -243,8 +297,7 @@ public class SoapClientImplGenerator {
                 if (webFault == null) {
                     continue;
                 }
-                var detailType = processingEnv.getTypeUtils().asElement(thrownType).getEnclosedElements()
-                    .stream()
+                var detailType = processingEnv.getTypeUtils().asElement(thrownType).getEnclosedElements().stream()
                     .filter(getFaultInfo -> getFaultInfo.getKind() == ElementKind.METHOD)
                     .filter(getFaultInfo -> getFaultInfo.getSimpleName().contentEquals("getFaultInfo"))
                     .map(ExecutableElement.class::cast)

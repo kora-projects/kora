@@ -6,7 +6,6 @@ import com.google.devtools.ksp.symbol.*
 import com.google.devtools.ksp.visitor.KSEmptyVisitor
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
@@ -171,7 +170,7 @@ data class MappersData(val mapperClasses: List<KSType>, val tags: Set<String>) {
 
 }
 
-fun KSClassDeclaration.doesImplement(type: ClassName) = this.superTypes
+fun KSClassDeclaration.doesImplement(type: ClassName) = this.toClassName() == type || this.superTypes
     .any { (it.resolve().declaration as KSClassDeclaration).toClassName() == type }
 
 

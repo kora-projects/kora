@@ -7,6 +7,7 @@ import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientMetricsFactory;
 import jakarta.annotation.Nullable;
 
 public interface SoapClientModule {
+
     @DefaultComponent
     default DefaultSoapClientTelemetryFactory defaultSoapClientTelemetryFactory(@Nullable SoapClientMetricsFactory metricsFactory) {
         return new DefaultSoapClientTelemetryFactory(metricsFactory);
