@@ -1,10 +1,9 @@
 package ru.tinkoff.kora.http.client.common.telemetry;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
-
-import jakarta.annotation.Nullable;
 
 public interface HttpClientTelemetry {
 
@@ -16,5 +15,6 @@ public interface HttpClientTelemetry {
 
     boolean isEnabled();
 
+    @Nullable
     HttpClientTelemetryContext get(Context ctx, HttpClientRequest request);
 }

@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.http.client.common.telemetry;
 
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
+import ru.tinkoff.kora.http.client.common.telemetry.DefaultHttpClientTelemetry.DefaultHttpClientTelemetryContextImpl;
 import ru.tinkoff.kora.http.common.body.HttpInBody;
 
 import java.io.IOException;
@@ -13,10 +13,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class DefaultHttpClientTelemetryResponseBodyWrapper extends AtomicBoolean implements HttpInBody {
     private final HttpClientResponse response;
-    private final DefaultHttpClientTelemetry.DefaultHttpClientTelemetryContextImpl telemetryContext;
+    private final DefaultHttpClientTelemetryContextImpl telemetryContext;
     private volatile InputStream is;
 
-    public DefaultHttpClientTelemetryResponseBodyWrapper(HttpClientResponse response, DefaultHttpClientTelemetry.DefaultHttpClientTelemetryContextImpl telemetryContext) {
+    public DefaultHttpClientTelemetryResponseBodyWrapper(HttpClientResponse response, DefaultHttpClientTelemetryContextImpl telemetryContext) {
         this.response = response;
         this.telemetryContext = telemetryContext;
     }
@@ -35,7 +35,7 @@ public final class DefaultHttpClientTelemetryResponseBodyWrapper extends AtomicB
     @Override
     public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
         if (this.compareAndSet(false, true)) {
-            var s = new ByteBufferSubscriber(response, subscriber);
+            var s = new ByteBufferSubscriber(response, subscriber, this.telemetryContext);
             response.body().subscribe(s);
             subscriber.onSubscribe(s);
         } else {
@@ -66,25 +66,22 @@ public final class DefaultHttpClientTelemetryResponseBodyWrapper extends AtomicB
                 this.response.close();
             }
         } else {
-            try {
-                if (compareAndSet(false, true)) {
-                    this.subscribe(FlowUtils.drain());
-                }
-            } finally {
-                this.response.close();
+            if (compareAndSet(false, true)) {
+                this.response.body().subscribe(new DrainSubscriber(this.response, this.telemetryContext));
             }
         }
     }
 
-    private class ByteBufferSubscriber implements Flow.Subscriber<ByteBuffer>, Flow.Subscription {
+    private static class ByteBufferSubscriber implements Flow.Subscriber<ByteBuffer>, Flow.Subscription {
         private final Flow.Subscriber<? super ByteBuffer> subscriber;
         private final HttpClientResponse response;
+        private final DefaultHttpClientTelemetryContextImpl telemetryContext;
         private Flow.Subscription subscription;
 
-        public ByteBufferSubscriber(HttpClientResponse response, Flow.Subscriber<? super ByteBuffer> subscriber) {
+        public ByteBufferSubscriber(HttpClientResponse response, Flow.Subscriber<? super ByteBuffer> subscriber, DefaultHttpClientTelemetryContextImpl telemetryContext) {
             this.response = response;
             this.subscriber = subscriber;
-
+            this.telemetryContext = telemetryContext;
         }
 
         @Override
@@ -109,7 +106,7 @@ public final class DefaultHttpClientTelemetryResponseBodyWrapper extends AtomicB
         @Override
         public void onComplete() {
             try {
-                telemetryContext.onClose(response.code(), response.headers(), null);
+                telemetryContext.onClose(response.code(), response.headers(), null, null);
             } finally {
                 subscriber.onComplete();
             }
@@ -126,12 +123,41 @@ public final class DefaultHttpClientTelemetryResponseBodyWrapper extends AtomicB
         }
     }
 
+    private static class DrainSubscriber implements Flow.Subscriber<ByteBuffer> {
+        private final HttpClientResponse response;
+        private final DefaultHttpClientTelemetryContextImpl telemetryContext;
+
+        public DrainSubscriber(HttpClientResponse response, DefaultHttpClientTelemetryContextImpl telemetryContext) {
+            this.response = response;
+            this.telemetryContext = telemetryContext;
+        }
+
+        @Override
+        public void onSubscribe(Flow.Subscription subscription) {
+            subscription.request(Long.MAX_VALUE);
+        }
+
+        @Override
+        public void onNext(ByteBuffer item) {
+        }
+
+        @Override
+        public void onError(Throwable throwable) {
+            telemetryContext.onClose(throwable);
+        }
+
+        @Override
+        public void onComplete() {
+            telemetryContext.onClose(response.code(), response.headers(), null, null);
+        }
+    }
+
     private static class WrappedInputStream extends InputStream {
         private final InputStream is;
-        private final DefaultHttpClientTelemetry.DefaultHttpClientTelemetryContextImpl telemetryContext;
+        private final DefaultHttpClientTelemetryContextImpl telemetryContext;
         private final HttpClientResponse response;
 
-        public WrappedInputStream(DefaultHttpClientTelemetry.DefaultHttpClientTelemetryContextImpl telemetryContext, HttpClientResponse response, InputStream inputStream) {
+        public WrappedInputStream(DefaultHttpClientTelemetryContextImpl telemetryContext, HttpClientResponse response, InputStream inputStream) {
             this.is = inputStream;
             this.telemetryContext = telemetryContext;
             this.response = response;
@@ -142,7 +168,7 @@ public final class DefaultHttpClientTelemetryResponseBodyWrapper extends AtomicB
             try {
                 var b = is.read();
                 if (b < 0) {
-                    telemetryContext.onClose(response.code(), response.headers(), null);
+                    telemetryContext.onClose(response.code(), response.headers(), null, null);
                 }
                 return b;
             } catch (IOException e) {
@@ -160,7 +186,7 @@ public final class DefaultHttpClientTelemetryResponseBodyWrapper extends AtomicB
             try {
                 var read = is.read(b, off, len);
                 if (read < 0) {
-                    telemetryContext.onClose(response.code(), response.headers(), null);
+                    telemetryContext.onClose(response.code(), response.headers(), null, null);
                 }
                 return read;
             } catch (IOException e) {

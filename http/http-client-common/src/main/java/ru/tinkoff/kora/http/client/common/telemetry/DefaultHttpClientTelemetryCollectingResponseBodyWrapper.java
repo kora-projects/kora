@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.http.client.common.telemetry;
 
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.common.body.HttpInBody;
 
@@ -69,12 +68,8 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
                 this.response.close();
             }
         } else {
-            try {
-                if (compareAndSet(false, true)) {
-                    this.subscribe(FlowUtils.drain());
-                }
-            } finally {
-                this.response.close();
+            if (compareAndSet(false, true)) {
+                this.response.body().subscribe(new DrainSubscriber(this.response, this.telemetryContext));
             }
         }
     }
@@ -88,7 +83,6 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
         public ByteBufferSubscriber(HttpClientResponse response, Flow.Subscriber<? super ByteBuffer> subscriber) {
             this.response = response;
             this.subscriber = subscriber;
-
         }
 
         @Override
@@ -100,6 +94,7 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
         public void onNext(ByteBuffer item) {
             var copy = ByteBuffer.allocate(item.remaining());
             copy.put(item.slice());
+            copy.rewind();
             body.add(copy);
             subscriber.onNext(item);
         }
@@ -116,7 +111,7 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
         @Override
         public void onComplete() {
             try {
-                telemetryContext.onClose(response.code(), response.headers(), body);
+                telemetryContext.onClose(response.code(), response.headers(), response.body().contentType(), body);
             } finally {
                 subscriber.onComplete();
             }
@@ -130,6 +125,40 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
         @Override
         public void cancel() {
             subscription.cancel();
+        }
+    }
+
+    private static class DrainSubscriber implements Flow.Subscriber<ByteBuffer> {
+        private final HttpClientResponse response;
+        private final DefaultHttpClientTelemetry.DefaultHttpClientTelemetryContextImpl telemetryContext;
+        private final List<ByteBuffer> body = Collections.synchronizedList(new ArrayList<>());
+
+        public DrainSubscriber(HttpClientResponse response, DefaultHttpClientTelemetry.DefaultHttpClientTelemetryContextImpl telemetryContext) {
+            this.response = response;
+            this.telemetryContext = telemetryContext;
+        }
+
+        @Override
+        public void onSubscribe(Flow.Subscription subscription) {
+            subscription.request(Long.MAX_VALUE);
+        }
+
+        @Override
+        public void onNext(ByteBuffer item) {
+            var copy = ByteBuffer.allocate(item.remaining());
+            copy.put(item.slice());
+            copy.rewind();
+            body.add(copy);
+        }
+
+        @Override
+        public void onError(Throwable throwable) {
+            telemetryContext.onClose(throwable);
+        }
+
+        @Override
+        public void onComplete() {
+            telemetryContext.onClose(response.code(), response.headers(), response.body().contentType(), body);
         }
     }
 
@@ -160,7 +189,7 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
             try {
                 var read = is.read(b, off, len);
                 if (read < 0) {
-                    telemetryContext.onClose(response.code(), response.headers(), body);
+                    telemetryContext.onClose(response.code(), response.headers(), response.body().contentType(), body);
                 }
                 if (read > 0) {
                     var buf = ByteBuffer.allocate(read);

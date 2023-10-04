@@ -36,7 +36,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
     public boolean isEnabled() {
         return metrics != null
             || tracing != null
-            || logger != null && (logger.logRequest() || logger.logResponse());
+            || logger != null && (logger.logRequest() || logger.logRequestBody() || logger.logResponse() || logger.logResponseBody());
     }
 
     record TelemetryContextData(long startTime, String method, String operation, String host, String scheme,
@@ -50,13 +50,9 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
     @Override
     @Nullable
     public HttpClientTelemetryContext get(Context ctx, HttpClientRequest request) {
-        var logger = this.logger;
-        var tracing = this.tracing;
-        var metrics = this.metrics;
-        if (metrics == null && tracing == null && (logger == null || (!logger.logRequest() && !logger.logResponse()))) {
+        if (!this.isEnabled()) {
             return null;
         }
-
         var data = new TelemetryContextData(request, URI.create(request.resolvedUri()));
 
         var method = request.method();
@@ -76,7 +72,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
             } else if (!logger.logRequestBody()) {
                 logger.logRequest(authority, request.method(), operation, resolvedUri, headers, null);
             } else {
-                var requestBodyCharset = this.detectCharset(request.headers());
+                var requestBodyCharset = this.detectCharset(request.body().contentType());
                 if (requestBodyCharset == null) {
                     this.logger.logRequest(authority, request.method(), operation, resolvedUri, headers, null);
                 } else {
@@ -145,20 +141,16 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
     }
 
     @Nullable
-    private Charset detectCharset(@Nullable HttpHeaders headers) {
-        if (headers == null) {
-            return null;
-        }
-        var contentType = headers.getFirst("content-type");
+    private Charset detectCharset(String contentType) {
         if (contentType == null) {
-            return StandardCharsets.UTF_8;
+            return null;
         }
         var split = contentType.split("; charset=", 2);
         if (split.length == 2) {
             return Charset.forName(split[1]);
         }
         var mimeType = split[0];
-        if (mimeType.contains("text") || mimeType.contains("json")) {
+        if (mimeType.contains("text") || mimeType.contains("json") || mimeType.contains("xml")) {
             return StandardCharsets.UTF_8;
         }
         if (mimeType.contains("application/x-www-form-urlencoded")) {
@@ -198,10 +190,10 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
 
             var full = response.body().getFullContentIfAvailable();
             if (full != null) {
-                this.onClose(response.code(), response.headers(), List.of(full));
+                this.onClose(response.code(), response.headers(), response.body().contentType(), List.of(full));
                 return response;
             }
-            var responseBodyCharset = logger == null || !logger.logResponseBody() ? null : detectCharset(response.headers());
+            var responseBodyCharset = logger == null || !logger.logResponseBody() ? null : detectCharset(response.body().contentType());
             if (responseBodyCharset != null) {
                 var body = new DefaultHttpClientTelemetryCollectingResponseBodyWrapper(response, this);
                 return new DefaultHttpClientTelemetryResponseWrapper(response, body);
@@ -227,8 +219,8 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
             }
         }
 
-        public void onClose(int code, @Nullable HttpHeaders headers, @Nullable List<ByteBuffer> body) {
-            var responseBodyCharset = logger == null || !logger.logResponseBody() ? null : detectCharset(headers);
+        public void onClose(int code, @Nullable HttpHeaders headers, @Nullable String contentType, @Nullable List<ByteBuffer> body) {
+            var responseBodyCharset = logger == null || !logger.logResponseBody() ? null : detectCharset(contentType);
             if (createSpanResult != null) {
                 createSpanResult.span().close(null);
             }
