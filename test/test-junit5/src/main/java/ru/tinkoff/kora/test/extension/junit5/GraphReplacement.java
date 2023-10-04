@@ -18,7 +18,7 @@ record GraphReplacement<T>(Function<KoraAppGraph, ? extends T> function, GraphCa
         for (var nodeToReplace : nodesToReplace) {
             @SuppressWarnings("unchecked")
             var casted = (Node<T>) nodeToReplace;
-            graphDraw.replaceNode(casted, g -> function.apply(new DefaultKoraAppGraph(graphDraw, g)));
+            graphDraw.replaceNodeKeepDependencies(casted, g -> function.apply(new DefaultKoraAppGraph(graphDraw, g)));
         }
     }
 }

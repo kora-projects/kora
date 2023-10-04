@@ -9,12 +9,13 @@ import java.util.List;
 
 @ConfigValueExtractor
 public interface HttpClientConfig {
+
     default Duration connectTimeout() {
-        return Duration.ofSeconds(2);
+        return Duration.ofSeconds(5);
     }
 
     default Duration readTimeout() {
-        return Duration.ofSeconds(50000);
+        return Duration.ofMinutes(2);
     }
 
     @Nullable

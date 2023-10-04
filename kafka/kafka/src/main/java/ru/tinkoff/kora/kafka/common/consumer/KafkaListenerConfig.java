@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.kafka.common.consumer;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.util.Either;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
-import jakarta.annotation.Nullable;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;

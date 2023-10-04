@@ -18,7 +18,7 @@ public interface R2dbcDatabaseConfig {
     String poolName();
 
     default Duration connectionTimeout() {
-        return Duration.ofSeconds(30);
+        return Duration.ofSeconds(10);
     }
 
     default Duration connectionCreateTimeout() {
