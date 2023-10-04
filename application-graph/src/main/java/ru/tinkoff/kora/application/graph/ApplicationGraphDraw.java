@@ -108,6 +108,13 @@ public class ApplicationGraphDraw {
         }
     }
 
+    public <T> void replaceNodeKeepDependencies(Node<T> node, Graph.Factory<? extends T> factory) {
+        var casted = (NodeImpl<T>) node;
+        this.graphNodes.set(casted.index, new NodeImpl<T>(
+            this, casted.index, factory, node.type(), casted.getDependencyNodes(), List.of(), node.tags()
+        ));
+    }
+
     public ApplicationGraphDraw copy() {
         var draw = new ApplicationGraphDraw(this.root);
         for (var node : this.graphNodes) {

@@ -23,7 +23,7 @@ public interface VertxDatabaseConfig {
     String poolName();
 
     default Duration connectionTimeout() {
-        return Duration.ofSeconds(30);
+        return Duration.ofSeconds(10);
     }
 
     default Duration idleTimeout() {
