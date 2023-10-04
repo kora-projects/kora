@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.resilient.retry;
 
 import jakarta.annotation.Nonnull;
+
 import java.util.function.Supplier;
 
 /**
@@ -37,12 +38,6 @@ public interface Retry {
      */
     @Nonnull
     RetryState asState();
-
-    /**
-     * @return new {@link reactor.util.retry.Retry} implementation for Project Reactor retry handling
-     */
-    @Nonnull
-    reactor.util.retry.Retry asReactor();
 
     /**
      * @param runnable to execute for successful completion

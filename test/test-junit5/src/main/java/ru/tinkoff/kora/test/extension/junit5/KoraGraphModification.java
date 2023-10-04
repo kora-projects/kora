@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
-import org.jetbrains.annotations.Nullable;
-
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;

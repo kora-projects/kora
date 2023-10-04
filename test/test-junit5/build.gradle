@@ -5,7 +5,6 @@ dependencies {
 
     implementation project(":common")
     implementation project(":config:config-hocon")
-    implementation libs.jetbrains.annotations
 
     testAnnotationProcessor project(":annotation-processors")
     testImplementation project(":annotation-processors")
