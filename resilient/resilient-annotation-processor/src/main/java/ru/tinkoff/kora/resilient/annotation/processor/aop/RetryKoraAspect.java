@@ -19,6 +19,8 @@ import static com.squareup.javapoet.CodeBlock.joining;
 
 public class RetryKoraAspect implements KoraAspect {
 
+    private static final ClassName REACTOR_RETRY_BUILDER = ClassName.get("ru.tinkoff.kora.resilient.retry", "KoraRetryReactorBuilder");
+    private static final ClassName REACTOR_RETRY = ClassName.get("reactor.util.retry", "Retry");
     private static final ClassName RETRY_STATUS = ClassName.get("ru.tinkoff.kora.resilient.retry", "Retry", "RetryState", "RetryStatus");
     private static final ClassName RETRY_EXCEPTION = ClassName.get("ru.tinkoff.kora.resilient.retry", "RetryExhaustedException");
     private static final String ANNOTATION_TYPE = "ru.tinkoff.kora.resilient.retry.annotation.Retry";
@@ -46,18 +48,27 @@ public class RetryKoraAspect implements KoraAspect {
                 .map(e -> String.valueOf(e.getValue().getValue())).findFirst())
             .orElseThrow();
 
-        var managerType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.retry.RetryManager"));
-        var fieldManager = aspectContext.fieldFactory().constructorParam(managerType, List.of());
-        var retrierType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.retry.Retry"));
-        var fieldRetrier = aspectContext.fieldFactory().constructorInitialized(retrierType,
-            CodeBlock.of("$L.get($S);", fieldManager, retryableName));
-
         final CodeBlock body;
         if (MethodUtils.isMono(method)) {
+            var reactorBuilderType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement(REACTOR_RETRY_BUILDER.canonicalName()));
+            var reactorBuilderField = aspectContext.fieldFactory().constructorParam(reactorBuilderType, List.of());
+            var retrierType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement(REACTOR_RETRY.canonicalName()));
+            var fieldRetrier = aspectContext.fieldFactory().constructorInitialized(retrierType,
+                CodeBlock.of("$L.get($S);", reactorBuilderField, retryableName));
             body = buildBodyMono(method, superCall, fieldRetrier);
         } else if (MethodUtils.isFlux(method)) {
+            var reactorBuilderType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement(REACTOR_RETRY_BUILDER.canonicalName()));
+            var reactorBuilderField = aspectContext.fieldFactory().constructorParam(reactorBuilderType, List.of());
+            var retrierType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement(REACTOR_RETRY.canonicalName()));
+            var fieldRetrier = aspectContext.fieldFactory().constructorInitialized(retrierType,
+                CodeBlock.of("$L.get($S);", reactorBuilderField, retryableName));
             body = buildBodyFlux(method, superCall, fieldRetrier);
         } else {
+            var managerType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.retry.RetryManager"));
+            var fieldManager = aspectContext.fieldFactory().constructorParam(managerType, List.of());
+            var retrierType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.retry.Retry"));
+            var fieldRetrier = aspectContext.fieldFactory().constructorInitialized(retrierType,
+                CodeBlock.of("$L.get($S);", fieldManager, retryableName));
             body = buildBodySync(method, superCall, fieldRetrier);
         }
 
@@ -81,11 +92,10 @@ public class RetryKoraAspect implements KoraAspect {
         builder.nextControlFlow("catch (Exception _e)");
         builder.addStatement("var _status = _state.onException(_e)");
         builder.beginControlFlow("if ($T.REJECTED == _status)", RETRY_STATUS)
-            .addStatement("""
+            .add("""
                 for (var _exception : _suppressed) {
                     _e.addSuppressed(_exception);
-                }
-                """)
+                }""")
             .addStatement("throw _e")
             .nextControlFlow("else if($T.ACCEPTED == _status)", RETRY_STATUS)
             .add("""
@@ -112,21 +122,17 @@ public class RetryKoraAspect implements KoraAspect {
 
     private CodeBlock buildBodyMono(ExecutableElement method, String superCall, String fieldRetry) {
         return CodeBlock.builder().add("""
-            return $L.retryWhen($L.asReactor());
+            return $L.retryWhen($L);
             """, buildMethodCall(method, superCall), fieldRetry).build();
     }
 
     private CodeBlock buildBodyFlux(ExecutableElement method, String superCall, String fieldRetry) {
         return CodeBlock.builder().add("""
-            return $L.retryWhen($L.asReactor());
+            return $L.retryWhen($L);
             """, buildMethodCall(method, superCall), fieldRetry).build();
     }
 
     private CodeBlock buildMethodCall(ExecutableElement method, String call) {
         return method.getParameters().stream().map(p -> CodeBlock.of("$L", p)).collect(joining(", ", call + "(", ")"));
-    }
-
-    private CodeBlock buildMethodCallable(ExecutableElement method, String call) {
-        return method.getParameters().stream().map(p -> CodeBlock.of("$L", p)).collect(joining(", ", "() -> " + call + "(", ")"));
     }
 }

@@ -17,8 +17,8 @@ import java.lang.annotation.*;
 public @interface Retry {
 
     /**
-     * @see RetryConfig
      * @return the name of Retry config path
+     * @see RetryConfig
      */
     String value();
 }

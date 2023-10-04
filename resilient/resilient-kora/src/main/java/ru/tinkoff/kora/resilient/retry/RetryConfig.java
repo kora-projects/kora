@@ -4,6 +4,7 @@ import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+
 import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
@@ -39,7 +40,7 @@ public interface RetryConfig {
 
     private static NamedConfig merge(NamedConfig namedConfig, NamedConfig defaultConfig) {
         if (defaultConfig == null) {
-            if(namedConfig.delayStep() == null) {
+            if (namedConfig.delayStep() == null) {
                 return new $RetryConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
                     namedConfig.delay(),
                     Duration.ZERO,

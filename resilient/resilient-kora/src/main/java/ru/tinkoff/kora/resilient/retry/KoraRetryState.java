@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import jakarta.annotation.Nonnull;
+
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -44,8 +45,8 @@ record KoraRetryState(
 
         var attemptsUsed = attempts.incrementAndGet();
         if (attemptsUsed <= attemptsMax) {
-            if (logger.isTraceEnabled()) {
-                logger.trace("RetryState '{}' initiating '{}' retry attempt in '{}' due to exception: {}",
+            if (logger.isDebugEnabled()) {
+                logger.debug("RetryState '{}' initiating '{}' retry attempt in '{}' due to exception: {}",
                     name, attemptsUsed, Duration.ofNanos(getDelayNanos()), throwable.getClass().getCanonicalName());
             }
 

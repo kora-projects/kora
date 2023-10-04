@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.resilient.retry;
 
 import jakarta.annotation.Nonnull;
+
 import java.util.function.Predicate;
 
 /**

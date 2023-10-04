@@ -2,6 +2,7 @@ package ru.tinkoff.kora.resilient.retry;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -9,12 +10,12 @@ import java.util.function.Supplier;
 
 final class KoraRetry implements Retry {
 
-    private final String name;
-    private final long delayNanos;
-    private final long delayStepNanos;
-    private final int attempts;
-    private final RetryPredicate failurePredicate;
-    private final RetryMetrics metrics;
+    final String name;
+    final long delayNanos;
+    final long delayStepNanos;
+    final int attempts;
+    final RetryPredicate failurePredicate;
+    final RetryMetrics metrics;
 
     KoraRetry(String name,
               long delayNanos,
@@ -38,12 +39,6 @@ final class KoraRetry implements Retry {
     @Override
     public RetryState asState() {
         return new KoraRetryState(name, System.nanoTime(), delayNanos, delayStepNanos, attempts, failurePredicate, metrics, new AtomicInteger(0));
-    }
-
-    @Nonnull
-    @Override
-    public reactor.util.retry.Retry asReactor() {
-        return new KoraReactorRetry(name, delayNanos, delayStepNanos, attempts, failurePredicate, metrics);
     }
 
     @Override
