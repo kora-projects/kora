@@ -6,10 +6,11 @@ import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper;
 
 import java.lang.annotation.*;
 
+@Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
-@Retention(RetentionPolicy.SOURCE)
 @Repeatable(ResponseCodeMapper.ResponseCodeMappers.class)
 public @interface ResponseCodeMapper {
+
     int DEFAULT = -1;
 
     int code();
@@ -27,8 +28,8 @@ public @interface ResponseCodeMapper {
         }
     }
 
+    @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.METHOD)
-    @Retention(RetentionPolicy.SOURCE)
     @interface ResponseCodeMappers {
         ResponseCodeMapper[] value();
     }
