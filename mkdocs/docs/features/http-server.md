@@ -47,7 +47,7 @@ public interface HttpServerRequestHandler {
 Для более удобного написания обработчиков, есть возможность декларативно описывать контроллеры через аннотации.
 
 ```java
-import ru.tinkoff.kora.http.common.HttpHeaders;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.common.HttpMethod;
 import ru.tinkoff.kora.http.common.annotation.HttpRoute;
 import ru.tinkoff.kora.http.common.body.HttpBody;

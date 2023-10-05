@@ -45,12 +45,12 @@ public class HttpClientHeaderParametersTest extends AbstractHttpClientTest {
 
         onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(200));
         client.invoke("request", List.of("test1"));
-        verify(httpClient).execute(argThat(r -> r.headers().get("some-header-param").equals(List.of("test1"))));
+        verify(httpClient).execute(argThat(r -> r.headers().getAll("some-header-param").equals(List.of("test1"))));
 
         reset(httpClient);
         onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(200));
         client.invoke("request", List.of("test1", "test2"));
-        verify(httpClient).execute(argThat(r -> r.headers().get("some-header-param").equals(List.of("test1", "test2"))));
+        verify(httpClient).execute(argThat(r -> r.headers().getAll("some-header-param").equals(List.of("test1", "test2"))));
     }
 
     @Test
@@ -65,12 +65,12 @@ public class HttpClientHeaderParametersTest extends AbstractHttpClientTest {
 
         onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(200));
         client.invoke("request", Set.of("test1"));
-        verify(httpClient).execute(argThat(r -> r.headers().get("some-header-param").equals(List.of("test1"))));
+        verify(httpClient).execute(argThat(r -> r.headers().getAll("some-header-param").equals(List.of("test1"))));
 
         reset(httpClient);
         onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(200));
         client.invoke("request", Set.of("test1", "test2"));
-        verify(httpClient).execute(argThat(r -> new HashSet<>(r.headers().get("some-header-param")).equals(Set.of("test1", "test2"))));
+        verify(httpClient).execute(argThat(r -> new HashSet<>(r.headers().getAll("some-header-param")).equals(Set.of("test1", "test2"))));
     }
 
     @Test
@@ -85,11 +85,11 @@ public class HttpClientHeaderParametersTest extends AbstractHttpClientTest {
 
         onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(200));
         client.invoke("request", Set.of("test1"));
-        verify(httpClient).execute(argThat(r -> r.headers().get("some-header-param").equals(List.of("test1"))));
+        verify(httpClient).execute(argThat(r -> r.headers().getAll("some-header-param").equals(List.of("test1"))));
 
         reset(httpClient);
         onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(200));
         client.invoke("request", Set.of("test1", "test2"));
-        verify(httpClient).execute(argThat(r -> new HashSet<>(r.headers().get("some-header-param")).equals(Set.of("test1", "test2"))));
+        verify(httpClient).execute(argThat(r -> new HashSet<>(r.headers().getAll("some-header-param")).equals(Set.of("test1", "test2"))));
     }
 }

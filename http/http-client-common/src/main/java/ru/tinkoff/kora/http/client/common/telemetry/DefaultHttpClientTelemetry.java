@@ -5,9 +5,9 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
-import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.common.body.HttpOutBody;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 import java.net.URI;
 import java.nio.ByteBuffer;
@@ -61,9 +61,6 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         var resolvedUri = request.resolvedUri();
 
         var createSpanResult = tracing == null ? null : tracing.createSpan(ctx, request);
-        if (createSpanResult != null) {
-            request = createSpanResult.request();
-        }
         var headers = request.headers();
 
         if (logger != null && logger.logRequest()) {
@@ -163,15 +160,15 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         private final Context ctx;
         private final HttpClientRequest request;
         private final TelemetryContextData data;
-        private final HttpClientTracer.CreateSpanResult createSpanResult;
+        private final HttpClientTracer.HttpClientSpan span;
         private final HttpClientMetrics metrics;
         private final HttpClientLogger logger;
 
-        public DefaultHttpClientTelemetryContextImpl(Context ctx, HttpClientRequest request, TelemetryContextData data, HttpClientTracer.CreateSpanResult createSpanResult, HttpClientMetrics metrics, HttpClientLogger logger) {
+        public DefaultHttpClientTelemetryContextImpl(Context ctx, HttpClientRequest request, TelemetryContextData data, HttpClientTracer.HttpClientSpan span, HttpClientMetrics metrics, HttpClientLogger logger) {
             this.ctx = ctx;
             this.request = request;
             this.data = data;
-            this.createSpanResult = createSpanResult;
+            this.span = span;
             this.metrics = metrics;
             this.logger = logger;
         }
@@ -204,7 +201,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         }
 
         public void onClose(Throwable throwable) {
-            if (createSpanResult != null) createSpanResult.span().close(throwable);
+            if (span != null) span.close(throwable);
             var processingTime = System.nanoTime() - data.startTime();
             if (metrics != null) {
                 metrics.record(-1, processingTime, request.method(), data.host(), data.scheme(), data.target());
@@ -221,8 +218,8 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
 
         public void onClose(int code, @Nullable HttpHeaders headers, @Nullable String contentType, @Nullable List<ByteBuffer> body) {
             var responseBodyCharset = logger == null || !logger.logResponseBody() ? null : detectCharset(contentType);
-            if (createSpanResult != null) {
-                createSpanResult.span().close(null);
+            if (span != null) {
+                span.close(null);
             }
             var processingTime = System.nanoTime() - data.startTime();
             if (metrics != null) {

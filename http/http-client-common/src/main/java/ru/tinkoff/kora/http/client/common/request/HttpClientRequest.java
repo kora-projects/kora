@@ -1,10 +1,10 @@
 package ru.tinkoff.kora.http.client.common.request;
 
-import ru.tinkoff.kora.http.common.HttpHeaders;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.http.common.HttpMethod;
+import ru.tinkoff.kora.http.common.MutableHttpHeaders;
 import ru.tinkoff.kora.http.common.body.HttpOutBody;
 
-import jakarta.annotation.Nullable;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
@@ -18,7 +18,7 @@ public interface HttpClientRequest {
 
     List<TemplateParam> templateParams();
 
-    HttpHeaders headers();
+    MutableHttpHeaders headers();
 
     HttpOutBody body();
 
@@ -94,7 +94,7 @@ public interface HttpClientRequest {
         String uriTemplate,
         List<QueryParam> queryParams,
         List<TemplateParam> templateParams,
-        HttpHeaders headers,
+        MutableHttpHeaders headers,
         HttpOutBody body,
         Duration requestTimeout,
         String resolvedUri,

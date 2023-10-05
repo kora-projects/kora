@@ -1,13 +1,12 @@
 package ru.tinkoff.kora.http.server.common.telemetry;
 
+import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.HttpResultCode;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServer;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
-
-import jakarta.annotation.Nullable;
 
 public final class Slf4jHttpServerLogger implements HttpServerLogger {
 

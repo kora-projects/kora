@@ -2,14 +2,15 @@ package ru.tinkoff.kora.http.client.async;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.http.common.HttpHeaders;
+import ru.tinkoff.kora.http.common.header.AbstractHttpHeaders;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class AsyncHttpClientHeaders implements HttpHeaders {
+public class AsyncHttpClientHeaders extends AbstractHttpHeaders implements HttpHeaders {
     private final io.netty.handler.codec.http.HttpHeaders headers;
 
     public AsyncHttpClientHeaders(io.netty.handler.codec.http.HttpHeaders headers) {
@@ -23,7 +24,7 @@ public class AsyncHttpClientHeaders implements HttpHeaders {
     }
 
     @Override
-    public List<String> get(String name) {
+    public List<String> getAll(String name) {
         return this.headers.getAll(name);
     }
 
@@ -58,7 +59,7 @@ public class AsyncHttpClientHeaders implements HttpHeaders {
             public Map.Entry<String, List<String>> next() {
                 var key = i.next();
                 var values = headers.getAll(key);
-                return Map.entry(key, values);
+                return Map.entry(key.toLowerCase(), values);
             }
         };
     }

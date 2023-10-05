@@ -2,7 +2,7 @@ package ru.tinkoff.kora.http.client.common;
 
 import org.assertj.core.api.AbstractByteArrayAssert;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
-import ru.tinkoff.kora.http.common.HttpHeaders;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -21,19 +21,19 @@ public record ResponseWithBody(int code, HttpHeaders headers, byte[] body) {
 
 
     public ResponseWithBody assertHeader(String header, String expected) {
-        var values = this.headers.get(header);
+        var values = this.headers.getAll(header);
         assertThat(values).contains(expected);
         return this;
     }
 
     public ResponseWithBody assertHeader(String header) {
-        var values = this.headers.get(header);
+        var values = this.headers.getAll(header);
         assertThat(values).isNotEmpty();
         return this;
     }
 
     public ResponseWithBody assertNoHeader(String header) {
-        var values = this.headers.get(header);
+        var values = this.headers.getAll(header);
         assertThat(values).isNull();
         return this;
     }

@@ -1,10 +1,11 @@
 package ru.tinkoff.kora.http.server.common;
 
-import ru.tinkoff.kora.http.common.HttpHeaders;
+import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.http.common.MutableHttpHeaders;
 import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.body.HttpOutBody;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
-import jakarta.annotation.Nullable;
 import java.nio.ByteBuffer;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -13,9 +14,9 @@ public class HttpServerResponseException extends RuntimeException implements Htt
     private final int code;
     private final String contentType;
     private final ByteBuffer body;
-    private final HttpHeaders headers;
+    private final MutableHttpHeaders headers;
 
-    public HttpServerResponseException(@Nullable Throwable cause, String message, int code, String contentType, ByteBuffer body, HttpHeaders headers) {
+    public HttpServerResponseException(@Nullable Throwable cause, String message, int code, String contentType, ByteBuffer body, MutableHttpHeaders headers) {
         super(message, cause);
         this.code = code;
         this.contentType = contentType;
@@ -37,7 +38,7 @@ public class HttpServerResponseException extends RuntimeException implements Htt
     }
 
     @Override
-    public HttpHeaders headers() {
+    public MutableHttpHeaders headers() {
         return this.headers;
     }
 

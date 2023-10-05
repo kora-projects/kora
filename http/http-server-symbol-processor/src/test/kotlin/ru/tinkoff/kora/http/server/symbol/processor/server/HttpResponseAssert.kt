@@ -3,7 +3,7 @@ package ru.tinkoff.kora.http.server.symbol.processor.server
 import org.assertj.core.api.AbstractByteArrayAssert
 import org.assertj.core.api.Assertions
 import ru.tinkoff.kora.common.util.FlowUtils
-import ru.tinkoff.kora.http.common.HttpHeaders
+import ru.tinkoff.kora.http.common.header.HttpHeaders
 import ru.tinkoff.kora.http.server.common.HttpServerResponse
 import java.nio.charset.StandardCharsets
 import java.util.*

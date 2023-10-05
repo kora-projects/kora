@@ -1,9 +1,10 @@
 package ru.tinkoff.kora.http.client.common.request;
 
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.http.common.HttpHeaders;
+import ru.tinkoff.kora.http.common.MutableHttpHeaders;
 import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.body.HttpOutBody;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -201,7 +202,7 @@ public class HttpClientRequestBuilder {
         var operation = operation(this.method, this.uriTemplate, uri);
 
         return new HttpClientRequest.Default(
-            this.method, this.uriTemplate, this.queryParams, this.templateParams, toHeaders(this.headers), this.body, this.requestTimeout, resolvedUri, authority, operation
+            this.method, this.uriTemplate, this.queryParams, this.templateParams, HttpHeaders.of(this.headers), this.body, this.requestTimeout, resolvedUri, authority, operation
         );
     }
 
@@ -258,7 +259,7 @@ public class HttpClientRequestBuilder {
     }
 
     @SuppressWarnings("unchecked")
-    private static HttpHeaders toHeaders(Map<String, List<String>> map) {
+    private static MutableHttpHeaders toHeaders(Map<String, List<String>> map) {
         return HttpHeaders.of(map.entrySet().toArray(Map.Entry[]::new));
     }
 

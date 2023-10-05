@@ -3,8 +3,8 @@ package ru.tinkoff.kora.http.client.async.response;
 import org.asynchttpclient.HttpResponseStatus;
 import ru.tinkoff.kora.http.client.async.AsyncHttpClientHeaders;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
-import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.body.HttpInBody;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

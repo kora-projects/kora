@@ -1,10 +1,10 @@
 package ru.tinkoff.kora.http.server.common.handler;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponseException;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -88,7 +88,7 @@ public final class RequestHandlerUtils {
      */
     @Nonnull
     public static String parseStringHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = request.headers().get(name);
+        var result = request.headers().getAll(name);
         if (result == null) {
             throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
         }
@@ -97,7 +97,7 @@ public final class RequestHandlerUtils {
 
     @Nullable
     public static String parseOptionalStringHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = request.headers().get(name);
+        var result = request.headers().getAll(name);
         if (result == null || result.isEmpty()) {
             return null;
         }
@@ -115,7 +115,7 @@ public final class RequestHandlerUtils {
 
     @Nullable
     public static List<String> parseOptionalStringListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = request.headers().get(name);
+        var result = request.headers().getAll(name);
         if (result == null) {
             return null;
         }
@@ -128,7 +128,7 @@ public final class RequestHandlerUtils {
     }
 
     public static int parseIntegerHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = request.headers().get(name);
+        var result = request.headers().getAll(name);
         if (result == null || result.isEmpty()) {
             throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
         }
@@ -147,7 +147,7 @@ public final class RequestHandlerUtils {
 
     @Nullable
     public static Integer parseOptionalIntegerHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = request.headers().get(name);
+        var result = request.headers().getAll(name);
         if (result == null || result.isEmpty()) {
             return null;
         }
@@ -174,7 +174,7 @@ public final class RequestHandlerUtils {
 
     @Nullable
     public static List<Integer> parseOptionalIntegerListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var headers = request.headers().get(name);
+        var headers = request.headers().getAll(name);
         if (headers == null || headers.isEmpty()) {
             return null;
         }
