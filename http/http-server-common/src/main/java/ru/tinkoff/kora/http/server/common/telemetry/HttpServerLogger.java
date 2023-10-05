@@ -1,10 +1,9 @@
 package ru.tinkoff.kora.http.server.common.telemetry;
 
 
-import ru.tinkoff.kora.http.common.HttpHeaders;
-import ru.tinkoff.kora.http.common.HttpResultCode;
-
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.http.common.HttpResultCode;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 public interface HttpServerLogger {
 

@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.http.server.common.router;
 
-import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.body.HttpInBody;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 
 import java.util.Collection;

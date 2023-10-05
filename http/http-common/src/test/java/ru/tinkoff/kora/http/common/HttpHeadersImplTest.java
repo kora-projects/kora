@@ -1,20 +1,16 @@
 package ru.tinkoff.kora.http.common;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
-import org.mockito.hamcrest.MockitoHamcrest;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class HttpHeadersImplTest {
 
     @Test
-    void lowerCaseTest(){
+    void lowerCaseTest() {
         var headers = HttpHeaders.of("Some-Key", "Some-Value");
 
         assertThat(headers.iterator().next().getKey()).isEqualTo("some-key");
@@ -36,15 +32,28 @@ class HttpHeadersImplTest {
     }
 
     @Test
-    void withTest() {
+    void setTest() {
         var headers = HttpHeaders.of(
             "test-header-1", "test-value-1",
             "test-header-2", "test-value-2",
             "test-header-3", "test-value-3"
         );
 
-        assertThat(headers.with("test-header-4", "test-value-4").getFirst("test-header-4"))
+        assertThat(headers.set("test-header-4", "test-value-4").getFirst("test-header-4"))
             .isEqualTo("test-value-4");
+    }
+
+    @Test
+    void addTest() {
+        var headers = HttpHeaders.of(
+            "test-header-1", "test-value-1",
+            "test-header-2", "test-value-2",
+            "test-header-3", "test-value-3"
+        );
+
+        assertThat(headers.add("test-header-3", "test-value-test").getAll("test-header-3"))
+            .hasSize(2)
+            .containsExactly("test-value-3", "test-value-test");
     }
 
     @Test
@@ -55,7 +64,7 @@ class HttpHeadersImplTest {
             "test-header-3", "test-value-3"
         );
 
-        assertThat(headers.without("test-header-2").has("test-header-2")).isFalse();
+        assertThat(headers.remove("test-header-2").has("test-header-2")).isFalse();
     }
 
 }

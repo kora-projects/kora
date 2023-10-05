@@ -153,7 +153,7 @@ public class AppRunner {
 package ru.tinkoff.kora.hello.world;
 
 import ru.tinkoff.kora.common.Component;
-import ru.tinkoff.kora.http.common.HttpHeaders;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.common.HttpMethod;
 import ru.tinkoff.kora.http.common.annotation.HttpRoute;
 import ru.tinkoff.kora.http.common.body.HttpBody;

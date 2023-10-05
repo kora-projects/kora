@@ -5,8 +5,8 @@ import ru.tinkoff.kora.application.graph.PromiseOf;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.liveness.LivenessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
-import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.body.HttpBody;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.telemetry.PrivateApiMetrics;
 
 import java.nio.ByteBuffer;

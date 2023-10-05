@@ -7,9 +7,9 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.common.Context;
-import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.body.HttpInBody;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.$HttpServerConfig_ConfigValueExtractor.HttpServerConfig_Impl;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
@@ -67,7 +67,7 @@ class PublicApiHandlerProcessTests {
         var handler = new PublicApiHandler(handlers, All.of(), telemetry, config);
 
         // when
-        var request = new PublicApiRequestImpl(method, path, "foo", "http", HttpHeaders.EMPTY, Map.of(), HttpBody.empty());
+        var request = new PublicApiRequestImpl(method, path, "foo", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
 
         // then
         var rs = handler.process(Context.clear(), request);
@@ -114,7 +114,7 @@ class PublicApiHandlerProcessTests {
         var handler = new PublicApiHandler(handlers, All.of(), telemetry, config);
 
         // when
-        var request = new PublicApiRequestImpl(method, path, "foo", "http", HttpHeaders.EMPTY, Map.of(), HttpBody.empty());
+        var request = new PublicApiRequestImpl(method, path, "foo", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
 
         // then
         var rs = handler.process(Context.clear(), request);
@@ -133,7 +133,7 @@ class PublicApiHandlerProcessTests {
         var config = config(false);
         var handler = new PublicApiHandler(handlers, All.of(), telemetry, config);
 
-        var request = new PublicApiRequestImpl("POST", "/baz", "test", "http", HttpHeaders.EMPTY, Map.of(), HttpBody.empty());
+        var request = new PublicApiRequestImpl("POST", "/baz", "test", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
         var rs = handler.process(Context.clear(), request);
         var httpRs = rs.response().join();
 

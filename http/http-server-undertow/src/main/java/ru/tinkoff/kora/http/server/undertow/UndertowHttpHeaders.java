@@ -1,15 +1,14 @@
 package ru.tinkoff.kora.http.server.undertow;
 
 import io.undertow.util.HeaderMap;
-import ru.tinkoff.kora.http.common.HttpHeaders;
-
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import ru.tinkoff.kora.http.common.header.AbstractHttpHeaders;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
-public class UndertowHttpHeaders implements HttpHeaders {
+import java.util.*;
+
+public class UndertowHttpHeaders extends AbstractHttpHeaders implements HttpHeaders {
     private final HeaderMap headerMap;
 
     public UndertowHttpHeaders(HeaderMap headerMap) {
@@ -23,7 +22,7 @@ public class UndertowHttpHeaders implements HttpHeaders {
     }
 
     @Override
-    public List<String> get(String name) {
+    public List<String> getAll(String name) {
         var headers = this.headerMap.get(name);
         if (headers == null) {
             return null;
@@ -41,6 +40,20 @@ public class UndertowHttpHeaders implements HttpHeaders {
         return this.headerMap.size();
     }
 
+    @Override
+    public boolean isEmpty() {
+        return this.headerMap.size() == 0;
+    }
+
+    @Override
+    public Set<String> names() {
+        var names = new HashSet<String>();
+        for (var headerName : this.headerMap.getHeaderNames()) {
+            names.add(headerName.toString().toLowerCase());
+        }
+        return names;
+    }
+
     @Nonnull
     @Override
     public Iterator<Map.Entry<String, List<String>>> iterator() {
@@ -54,7 +67,7 @@ public class UndertowHttpHeaders implements HttpHeaders {
             @Override
             public Map.Entry<String, List<String>> next() {
                 var next = i.next();
-                return Map.entry(next.getHeaderName().toString(), next);
+                return Map.entry(next.getHeaderName().toString().toLowerCase(), next);
             }
         };
     }

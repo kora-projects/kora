@@ -64,7 +64,7 @@ class HttpClientHeaderParametersTest : AbstractHttpClientTest() {
         Mockito.reset(httpClient)
         onRequest("POST", "http://test-url:8080/test") { rs -> rs }
         client.invoke<Unit>("request", listOf("test1", "test2"))
-        verify(httpClient).execute(argThat { it -> it.headers().get("some-header-param") == listOf("test1", "test2") })
+        verify(httpClient).execute(argThat { it -> it.headers().getAll("some-header-param") == listOf("test1", "test2") })
     }
 
     @Test
@@ -84,7 +84,7 @@ class HttpClientHeaderParametersTest : AbstractHttpClientTest() {
         Mockito.reset(httpClient)
         onRequest("POST", "http://test-url:8080/test") { rs -> rs }
         client.invoke<Unit>("request", listOf(10, 20))
-        verify(httpClient).execute(argThat { it -> it.headers().get("some-header-param") == listOf("10", "20") })
+        verify(httpClient).execute(argThat { it -> it.headers().getAll("some-header-param") == listOf("10", "20") })
     }
 
     @Test
@@ -104,7 +104,7 @@ class HttpClientHeaderParametersTest : AbstractHttpClientTest() {
         Mockito.reset(httpClient)
         onRequest("POST", "http://test-url:8080/test") { rs -> rs }
         client.invoke<Unit>("request", linkedSetOf("test10", "test20"))
-        verify(httpClient).execute(argThat { it -> it.headers().get("some-header-param") == listOf("test10", "test20") })
+        verify(httpClient).execute(argThat { it -> it.headers().getAll("some-header-param") == listOf("test10", "test20") })
     }
 
 }

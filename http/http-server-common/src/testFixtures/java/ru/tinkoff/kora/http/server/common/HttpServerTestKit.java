@@ -32,10 +32,11 @@ import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
 import ru.tinkoff.kora.common.util.ByteBufferPublisherInputStream;
 import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.common.util.ReactorUtils;
-import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.HttpResultCode;
+import ru.tinkoff.kora.http.common.MutableHttpHeaders;
 import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.body.HttpOutBody;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.$HttpServerConfig_ConfigValueExtractor.HttpServerConfig_Impl;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
@@ -866,7 +867,7 @@ public abstract class HttpServerTestKit {
             }
 
             @Override
-            public HttpHeaders headers() {
+            public MutableHttpHeaders headers() {
                 return HttpHeaders.of();
             }
 
@@ -1015,7 +1016,7 @@ public abstract class HttpServerTestKit {
         }
 
         @Override
-        public HttpHeaders headers() {
+        public MutableHttpHeaders headers() {
             return HttpHeaders.of();
         }
 

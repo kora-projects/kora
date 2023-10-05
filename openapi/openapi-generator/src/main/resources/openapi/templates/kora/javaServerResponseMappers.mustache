@@ -4,7 +4,7 @@ import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponseEntity;
-import ru.tinkoff.kora.http.common.HttpHeaders;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.common.Context;
 
 
@@ -45,9 +45,8 @@ public interface {{classname}}ServerResponseMappers {
     public HttpServerResponse apply(Context ctx, HttpServerRequest request, {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse response) throws java.io.IOException { {{#responses}}{{^vendorExtensions.singleResponse}}
       if (response instanceof {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse rs) { {{/vendorExtensions.singleResponse}}{{#vendorExtensions.singleResponse}}
       var rs = response;{{/vendorExtensions.singleResponse}}
-        var headers = HttpHeaders.of({{#headers}}
-          java.util.Map.entry("{{baseName}}", java.util.List.of(rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}())){{^-last}},{{/-last}}
-        {{/headers}});
+        var headers = HttpHeaders.of();{{#headers}}
+        headers.set("{{baseName}}", rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}());{{/headers}}
         {{^dataType}}
         return HttpServerResponse.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers);
         {{/dataType}}

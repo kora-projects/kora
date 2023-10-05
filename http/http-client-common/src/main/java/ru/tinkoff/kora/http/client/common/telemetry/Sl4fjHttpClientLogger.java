@@ -1,11 +1,11 @@
 package ru.tinkoff.kora.http.client.common.telemetry;
 
+import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
-import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.HttpResultCode;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
-import jakarta.annotation.Nullable;
 import java.util.concurrent.CancellationException;
 
 public class Sl4fjHttpClientLogger implements HttpClientLogger {

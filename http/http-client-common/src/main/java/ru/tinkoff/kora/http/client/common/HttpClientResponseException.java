@@ -2,7 +2,7 @@ package ru.tinkoff.kora.http.client.common;
 
 import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
-import ru.tinkoff.kora.http.common.HttpHeaders;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;

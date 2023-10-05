@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.http.client.common.telemetry;
 
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
-import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.body.HttpInBody;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 import java.io.IOException;
 

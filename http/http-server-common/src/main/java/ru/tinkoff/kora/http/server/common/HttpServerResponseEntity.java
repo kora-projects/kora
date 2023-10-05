@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.http.server.common;
 
-import ru.tinkoff.kora.http.common.HttpHeaders;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 public record HttpServerResponseEntity<T>(int code, T body, HttpHeaders headers) {
     public HttpServerResponseEntity(int code, T body) {

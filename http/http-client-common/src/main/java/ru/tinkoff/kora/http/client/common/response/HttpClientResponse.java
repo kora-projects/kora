@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.http.client.common.response;
 
-import ru.tinkoff.kora.http.common.HttpHeaders;
 import ru.tinkoff.kora.http.common.body.HttpInBody;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 import java.io.Closeable;
 import java.io.IOException;
