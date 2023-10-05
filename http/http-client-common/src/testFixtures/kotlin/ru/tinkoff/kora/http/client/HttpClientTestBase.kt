@@ -10,7 +10,7 @@ import ru.tinkoff.kora.http.client.common.request.HttpClientRequest
 fun call(client: HttpClient, request: HttpClientRequest): ResponseWithBody = runBlocking(Context.Kotlin.asCoroutineContext(Context.current())) {
     val clientRs = client.execute(request).await()
     clientRs.use { clientRs ->
-        val body = clientRs.body().collectArray().await()
+        val body = clientRs.body().asArrayStage().await()
         ResponseWithBody(clientRs, body)
     }
 }

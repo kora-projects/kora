@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.http.server.annotation.processor.server;
 
 import ru.tinkoff.kora.http.common.body.HttpBody;
-import ru.tinkoff.kora.http.common.body.HttpInBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 
@@ -92,7 +92,7 @@ public class SimpleHttpServerRequest implements HttpServerRequest {
     }
 
     @Override
-    public HttpInBody body() {
+    public HttpBodyInput body() {
         return HttpBody.of(headers().getFirst("content-type"), ByteBuffer.wrap(body));
     }
 }

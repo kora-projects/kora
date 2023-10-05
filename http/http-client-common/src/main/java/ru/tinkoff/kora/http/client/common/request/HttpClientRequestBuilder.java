@@ -3,7 +3,7 @@ package ru.tinkoff.kora.http.client.common.request;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.http.common.MutableHttpHeaders;
 import ru.tinkoff.kora.http.common.body.HttpBody;
-import ru.tinkoff.kora.http.common.body.HttpOutBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 import java.net.URI;
@@ -21,7 +21,7 @@ public class HttpClientRequestBuilder {
     private List<HttpClientRequest.TemplateParam> templateParams = new ArrayList<>();
     private List<HttpClientRequest.QueryParam> queryParams = new ArrayList<>();
     private HashMap<String, List<String>> headers = new HashMap<>();
-    private HttpOutBody body = HttpBody.empty();
+    private HttpBodyOutput body = HttpBody.empty();
     @Nullable
     private Duration requestTimeout;
 
@@ -147,20 +147,20 @@ public class HttpClientRequestBuilder {
         return this;
     }
 
-    public HttpClientRequestBuilder body(HttpOutBody body) {
+    public HttpClientRequestBuilder body(HttpBodyOutput body) {
         this.body = Objects.requireNonNull(body);
 
         return this;
     }
 
     public HttpClientRequestBuilder body(Flow.Publisher<ByteBuffer> body) {
-        this.body = HttpOutBody.of(null, body);
+        this.body = HttpBodyOutput.of(null, body);
 
         return this;
     }
 
     public HttpClientRequestBuilder body(String contentType, Flow.Publisher<ByteBuffer> body) {
-        this.body = HttpOutBody.of(contentType, body);
+        this.body = HttpBodyOutput.of(contentType, body);
 
         return this;
     }

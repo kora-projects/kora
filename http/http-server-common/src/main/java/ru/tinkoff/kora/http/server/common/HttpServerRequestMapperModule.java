@@ -26,13 +26,13 @@ public interface HttpServerRequestMapperModule {
     default HttpServerRequestMapper<ByteBuffer> byteBufBodyRequestMapper() {
         return (r) -> r.body().getFullContentIfAvailable() != null
             ? r.body().getFullContentIfAvailable()
-            : r.body().collectBuf().toCompletableFuture().join();
+            : r.body().asBufferStage().toCompletableFuture().join();
     }
 
     default HttpServerRequestMapper<CompletionStage<ByteBuffer>> byteBufAsyncBodyRequestMapper() {
         return (r) -> r.body().getFullContentIfAvailable() != null
             ? CompletableFuture.completedFuture(r.body().getFullContentIfAvailable())
-            : r.body().collectBuf();
+            : r.body().asBufferStage();
     }
 
     default HttpServerRequestMapper<CompletionStage<byte[]>> byteArrayAsyncRequestMapper() {
@@ -74,7 +74,7 @@ public interface HttpServerRequestMapperModule {
     }
 
     default HttpServerRequestMapper<InputStream> inputStreamRequestMapper() {
-        return r -> r.body().getInputStream();
+        return r -> r.body().asInputStream();
     }
 
     default HttpServerRequestMapper<FormUrlEncoded> formUrlEncoderHttpServerRequestMapper() {

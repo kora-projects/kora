@@ -2,6 +2,7 @@ package ru.tinkoff.kora.http.common.body;
 
 
 import jakarta.annotation.Nullable;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -9,21 +10,21 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Flow;
 
-public interface HttpOutBody extends HttpBody, Flow.Publisher<ByteBuffer> {
-    static HttpOutBody of(String contentType, Flow.Publisher<? extends ByteBuffer> content) {
-        return new StreamingHttpOutBody(contentType, -1, content);
+public interface HttpBodyOutput extends HttpBody, Flow.Publisher<ByteBuffer> {
+    static HttpBodyOutput of(String contentType, Flow.Publisher<? extends ByteBuffer> content) {
+        return new StreamingHttpBodyOutput(contentType, -1, content);
     }
 
-    static HttpOutBody of(String contentType, int length, Flow.Publisher<? extends ByteBuffer> content) {
-        return new StreamingHttpOutBody(contentType, length, content);
+    static HttpBodyOutput of(String contentType, int length, Flow.Publisher<? extends ByteBuffer> content) {
+        return new StreamingHttpBodyOutput(contentType, length, content);
     }
 
-    static HttpOutBody octetStream(Flow.Publisher<? extends ByteBuffer> content) {
-        return new StreamingHttpOutBody("application/octet-stream", -1, content);
+    static HttpBodyOutput octetStream(Flow.Publisher<? extends ByteBuffer> content) {
+        return new StreamingHttpBodyOutput("application/octet-stream", -1, content);
     }
 
-    static HttpOutBody octetStream(int length, Flow.Publisher<? extends ByteBuffer> content) {
-        return new StreamingHttpOutBody("application/octet-stream", length, content);
+    static HttpBodyOutput octetStream(int length, Flow.Publisher<? extends ByteBuffer> content) {
+        return new StreamingHttpBodyOutput("application/octet-stream", length, content);
     }
 
     int contentLength();

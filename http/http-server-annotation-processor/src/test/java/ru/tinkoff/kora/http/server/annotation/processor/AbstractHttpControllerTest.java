@@ -5,7 +5,7 @@ import org.intellij.lang.annotations.Language;
 import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.common.body.HttpBody;
-import ru.tinkoff.kora.http.common.body.HttpOutBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.http.server.annotation.processor.server.HttpResponseAssert;
 import ru.tinkoff.kora.http.server.annotation.processor.server.SimpleHttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
@@ -111,7 +111,7 @@ public abstract class AbstractHttpControllerTest extends AbstractAnnotationProce
     }
 
 
-    protected static byte[] read(HttpOutBody body) {
+    protected static byte[] read(HttpBodyOutput body) {
         var baos = new ByteArrayOutputStream(Math.max(body.contentLength(), 32));
         try {
             body.write(baos);
@@ -125,10 +125,10 @@ public abstract class AbstractHttpControllerTest extends AbstractAnnotationProce
         return (ctx, request, result) -> HttpServerResponse.of(200, HttpBody.plaintext(result));
     }
     protected HttpServerRequestMapper<CompletionStage<String>> asyncStringRequestMapper() {
-        return request -> request.body().collectArray().thenApply(b -> new String(b, StandardCharsets.UTF_8));
+        return request -> request.body().asArrayStage().thenApply(b -> new String(b, StandardCharsets.UTF_8));
     }
     protected HttpServerRequestMapper<String> stringRequestMapper() {
-        return request -> new String(request.body().getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        return request -> new String(request.body().asInputStream().readAllBytes(), StandardCharsets.UTF_8);
     }
 
     protected HttpResponseAssert assertThat(HttpServerRequestHandler handler, String method, String relativeUrl) {

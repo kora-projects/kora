@@ -14,7 +14,7 @@ class RequestMapperExtensionTest : AbstractSymbolProcessorTest() {
 
         @ru.tinkoff.kora.common.KoraApp
         interface TestApp {
-            fun asyncMapper() = ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper<java.util.concurrent.CompletionStage<String>> { rs -> rs.body().collectArray().thenApply { it.decodeToString() }}
+            fun asyncMapper() = ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper<java.util.concurrent.CompletionStage<String>> { rs -> rs.body().asArrayStage().thenApply { it.decodeToString() }}
         
             @ru.tinkoff.kora.common.annotation.Root
             fun root(m: ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper<String>) = ""

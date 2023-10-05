@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.http.server.common.router;
 
-import ru.tinkoff.kora.http.common.body.HttpInBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 
@@ -63,7 +63,7 @@ class LazyRequest implements HttpServerRequest {
     }
 
     @Override
-    public HttpInBody body() {
+    public HttpBodyInput body() {
         return this.publicApiRequest.body();
     }
 }

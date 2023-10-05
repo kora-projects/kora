@@ -1,24 +1,22 @@
-package ru.tinkoff.kora.json.module.http;
+package ru.tinkoff.kora.json.jackson.module.http;
 
-import com.fasterxml.jackson.core.JsonEncoding;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.util.flow.LazySingleSubscription;
-import ru.tinkoff.kora.http.common.body.HttpOutBody;
-import ru.tinkoff.kora.json.common.JsonWriter;
-import ru.tinkoff.kora.json.module.JsonModule;
+import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Flow;
 
-public final class JsonHttpOutBody<T> implements HttpOutBody {
-    private final JsonWriter<T> writer;
+public final class JacksonHttpBodyOutput<T> implements HttpBodyOutput {
+    private final ObjectWriter objectMapper;
     private final Context context;
     private final T value;
 
-    public JsonHttpOutBody(JsonWriter<T> writer, Context context, T value) {
-        this.writer = writer;
+    public JacksonHttpBodyOutput(ObjectWriter objectMapper, Context context, T value) {
+        this.objectMapper = objectMapper;
         this.value = value;
         this.context = context;
     }
@@ -36,16 +34,14 @@ public final class JsonHttpOutBody<T> implements HttpOutBody {
     @Override
     public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
         subscriber.onSubscribe(new LazySingleSubscription<>(subscriber, context, () -> {
-            var resultBytes = this.writer.toByteArray(value);
+            var resultBytes = this.objectMapper.writeValueAsBytes(value);
             return ByteBuffer.wrap(resultBytes);
         }));
     }
 
     @Override
     public void write(OutputStream os) throws IOException {
-        try (var gen = JsonModule.JSON_FACTORY.createGenerator(os, JsonEncoding.UTF8)) {
-            this.writer.write(gen, this.value);
-        }
+        this.objectMapper.writeValue(os, this.value);
     }
 
     @Override

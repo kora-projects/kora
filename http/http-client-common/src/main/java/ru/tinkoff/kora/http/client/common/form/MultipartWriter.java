@@ -6,7 +6,7 @@ import reactor.core.publisher.Flux;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequestBuilder;
-import ru.tinkoff.kora.http.common.body.HttpOutBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.http.common.form.FormMultipart;
 
 import java.nio.ByteBuffer;
@@ -79,6 +79,6 @@ public class MultipartWriter {
             return Flux.just(boundaryBuff.slice(), RN_BUF.slice(), contentDispositionBuff, contentTypeBuff, RN_BUF.slice()).concatWith(FlowAdapters.toPublisher(content)).concatWithValues(RN_BUF.slice());
         }).concatWith(Flux.just(boundaryBuff.slice(), StandardCharsets.US_ASCII.encode("--")));
 
-        return b.body(HttpOutBody.of("multipart/form-data;boundary=\"" + boundary + "\"", FlowAdapters.toFlowPublisher(body)));
+        return b.body(HttpBodyOutput.of("multipart/form-data;boundary=\"" + boundary + "\"", FlowAdapters.toFlowPublisher(body)));
     }
 }

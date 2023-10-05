@@ -36,7 +36,7 @@ public interface {{classname}}ServerRequestMappers {
     {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam{{/isBlocking}}{{^isBlocking}}
     CompletionStage<{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam>{{/isBlocking}} apply(HttpServerRequest request) throws Exception {
 {{#vendorExtensions.urlEncodedForm}}
-      return request.body().collectArray().toCompletableFuture().thenApply(bytes -> {
+      return request.body().asArrayStage().toCompletableFuture().thenApply(bytes -> {
           var bodyString = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
           var formData = ru.tinkoff.kora.http.server.common.form.FormUrlEncodedServerRequestMapper.read(bodyString);{{#formParams}}
           var {{paramName}}Part = formData.get("{{baseName}}");{{#isArray}}

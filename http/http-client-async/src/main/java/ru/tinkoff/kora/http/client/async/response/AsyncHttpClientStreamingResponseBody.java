@@ -4,14 +4,14 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaders;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.util.FlowUtils;
-import ru.tinkoff.kora.http.common.body.HttpInBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public final class AsyncHttpClientStreamingResponseBody extends AtomicBoolean implements HttpInBody {
+public final class AsyncHttpClientStreamingResponseBody extends AtomicBoolean implements HttpBodyInput {
     private static final String UNKNOWN_CONTENT_TYPE = "<UNKNOWN-CONTENT-TYPE\r\n>";
     private final HttpHeaders headers;
     private String contentType;

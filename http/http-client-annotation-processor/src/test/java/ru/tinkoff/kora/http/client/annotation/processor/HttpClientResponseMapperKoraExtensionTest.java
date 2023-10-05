@@ -18,7 +18,7 @@ public class HttpClientResponseMapperKoraExtensionTest extends AbstractAnnotatio
             @KoraApp
             public interface TestApp {
               default HttpClientResponseMapper<CompletionStage<String>> stringMapper() {
-                return rs -> rs.body().collectArray().thenApply(b -> new String(b));
+                return rs -> rs.body().asArrayStage().thenApply(b -> new String(b));
               }
                         
               @Root

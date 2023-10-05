@@ -3,7 +3,7 @@ package ru.tinkoff.kora.http.client.jdk;
 import ru.tinkoff.kora.http.client.common.*;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
-import ru.tinkoff.kora.http.common.body.HttpOutBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 
 import java.io.IOException;
 import java.net.ProtocolException;
@@ -79,7 +79,7 @@ public class JdkHttpClient implements HttpClient {
             .thenApply(JdkHttpClientResponse::new);
     }
 
-    private HttpRequest.BodyPublisher toBodyPublisher(HttpOutBody body) {
+    private HttpRequest.BodyPublisher toBodyPublisher(HttpBodyOutput body) {
         if (body.contentLength() == 0) {
             return HttpRequest.BodyPublishers.noBody();
         }
@@ -101,7 +101,7 @@ public class JdkHttpClient implements HttpClient {
         }
     }
 
-    private Flow.Publisher<? extends ByteBuffer> wrapRequestBOdyException(HttpOutBody body) {
+    private Flow.Publisher<? extends ByteBuffer> wrapRequestBOdyException(HttpBodyOutput body) {
         return subscriber -> body.subscribe(new Flow.Subscriber<>() {
             @Override
             public void onSubscribe(Flow.Subscription subscription) {

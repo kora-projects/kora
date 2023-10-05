@@ -83,11 +83,11 @@ abstract class AbstractHttpControllerTest : AbstractSymbolProcessorTest() {
     }
 
     protected fun asyncStringRequestMapper(): HttpServerRequestMapper<CompletionStage<String>> {
-        return HttpServerRequestMapper { request: HttpServerRequest -> request.body().collectArray().thenApply { b: ByteArray? -> String(b!!, StandardCharsets.UTF_8) } }
+        return HttpServerRequestMapper { request: HttpServerRequest -> request.body().asArrayStage().thenApply { b: ByteArray? -> String(b!!, StandardCharsets.UTF_8) } }
     }
 
     protected fun stringRequestMapper(): HttpServerRequestMapper<String> {
-        return HttpServerRequestMapper { request: HttpServerRequest -> String(request.body().inputStream.readAllBytes(), StandardCharsets.UTF_8) }
+        return HttpServerRequestMapper { request: HttpServerRequest -> String(request.body().asInputStream().readAllBytes(), StandardCharsets.UTF_8) }
     }
 
     protected fun assertThat(handler: HttpServerRequestHandler, method: String, relativeUrl: String): HttpResponseAssert {

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.http.client.common.response;
 
-import ru.tinkoff.kora.http.common.body.HttpInBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 import java.io.Closeable;
@@ -12,12 +12,12 @@ public interface HttpClientResponse extends Closeable {
 
     HttpHeaders headers();
 
-    HttpInBody body();
+    HttpBodyInput body();
 
     @Override
     void close() throws IOException;
 
-    record Default(int code, HttpHeaders headers, HttpInBody body, Runnable closer) implements HttpClientResponse {
+    record Default(int code, HttpHeaders headers, HttpBodyInput body, Runnable closer) implements HttpClientResponse {
 
         @Override
         public void close() throws IOException {

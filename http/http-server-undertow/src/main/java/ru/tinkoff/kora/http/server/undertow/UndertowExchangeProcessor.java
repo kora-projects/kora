@@ -14,7 +14,7 @@ import org.xnio.IoUtils;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.util.flow.LazySingleSubscription;
 import ru.tinkoff.kora.common.util.flow.SingleSubscription;
-import ru.tinkoff.kora.http.common.body.HttpOutBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServer;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
@@ -314,7 +314,7 @@ public class UndertowExchangeProcessor implements Runnable {
         return false;
     }
 
-    private void sendStreamingBody(PublicApiResponse response, HttpOutBody body, @Nullable Throwable error) {
+    private void sendStreamingBody(PublicApiResponse response, HttpBodyOutput body, @Nullable Throwable error) {
         body.subscribe(new HttpResponseBodySubscriber(exchange, response, error));
     }
 

@@ -26,7 +26,7 @@ public class JacksonHttpClientResponseMapper<T> implements HttpClientResponseMap
 
     @Override
     public T apply(HttpClientResponse response) {
-        try (var body = response.body().getInputStream()) {
+        try (var body = response.body().asInputStream()) {
             return this.objectReader.readValue(body);
         } catch (Exception e) {
             throw new HttpClientDecoderException(e);

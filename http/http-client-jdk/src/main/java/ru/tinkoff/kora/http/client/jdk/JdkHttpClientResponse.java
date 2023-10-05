@@ -3,7 +3,7 @@ package ru.tinkoff.kora.http.client.jdk;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
-import ru.tinkoff.kora.http.common.body.HttpInBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 import java.io.IOException;
@@ -40,7 +40,7 @@ public class JdkHttpClientResponse implements HttpClientResponse {
     }
 
     @Override
-    public HttpInBody body() {
+    public HttpBodyInput body() {
         return this.body;
     }
 
@@ -50,7 +50,7 @@ public class JdkHttpClientResponse implements HttpClientResponse {
     }
 
 
-    private static final class BodyPublisher extends AtomicBoolean implements HttpInBody {
+    private static final class BodyPublisher extends AtomicBoolean implements HttpBodyInput {
         private static final String EMPTY = "";
         private final Flow.Publisher<List<ByteBuffer>> publisher;
         private final java.net.http.HttpHeaders headers;
@@ -92,7 +92,7 @@ public class JdkHttpClientResponse implements HttpClientResponse {
         }
 
         @Override
-        public InputStream getInputStream() {
+        public InputStream asInputStream() {
             var is = this.is;
             if (is == null) {
                 if (this.compareAndSet(false, true)) {

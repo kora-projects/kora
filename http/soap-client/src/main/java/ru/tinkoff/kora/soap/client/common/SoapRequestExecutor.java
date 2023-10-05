@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.soap.client.common;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.client.common.HttpClient;
 import ru.tinkoff.kora.http.client.common.HttpClientException;
@@ -13,7 +14,6 @@ import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetry.SoapTele
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetry.SoapTelemetryContext.SoapClientFailure.ProcessException;
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetryFactory;
 
-import jakarta.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -54,7 +54,7 @@ public class SoapRequestExecutor {
                 throw parseInvalidHttpCodeResponse(httpClientResponse);
             }
             try (var body = httpClientResponse.body();
-                 var is = body.getInputStream()) {
+                 var is = body.asInputStream()) {
                 if (httpClientResponse.code() == 200) {
                     var contentType = httpClientResponse.headers().getFirst("content-type");
                     if (contentType != null && contentType.toLowerCase().startsWith("multipart")) {
@@ -150,7 +150,7 @@ public class SoapRequestExecutor {
 
     private SoapException parseInvalidHttpCodeResponse(HttpClientResponse httpClientResponse) {
         try (var body = httpClientResponse.body();
-             var is = body.getInputStream()) {
+             var is = body.asInputStream()) {
             var responseBody = is.readAllBytes();
             return new InvalidHttpResponseSoapException(httpClientResponse.code(), responseBody);
         } catch (IOException e) {

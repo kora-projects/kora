@@ -12,7 +12,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 
-public final class EmptyHttpBody implements HttpInBody, HttpOutBody {
+public final class EmptyHttpBody implements HttpBodyInput, HttpBodyOutput {
     public static EmptyHttpBody INSTANCE = new EmptyHttpBody();
     private static final byte[] emptyArray = new byte[0];
     private static final ByteBuffer emptyBuffer = ByteBuffer.wrap(emptyArray);
@@ -39,12 +39,12 @@ public final class EmptyHttpBody implements HttpInBody, HttpOutBody {
     }
 
     @Override
-    public CompletionStage<ByteBuffer> collectBuf() {
+    public CompletionStage<ByteBuffer> asBufferStage() {
         return CompletableFuture.completedFuture(emptyBuffer);
     }
 
     @Override
-    public CompletionStage<byte[]> collectArray() {
+    public CompletionStage<byte[]> asArrayStage() {
         return CompletableFuture.completedFuture(emptyArray);
     }
 
@@ -53,7 +53,7 @@ public final class EmptyHttpBody implements HttpInBody, HttpOutBody {
     }
 
     @Override
-    public InputStream getInputStream() {
+    public InputStream asInputStream() {
         return InputStream.nullInputStream();
     }
 

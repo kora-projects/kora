@@ -6,19 +6,19 @@ import java.util.concurrent.Flow;
 
 public interface HttpClientResponseMapperModule {
     default HttpClientResponseMapper<byte[]> byteArrayHttpClientResponseMapper() {
-        return response -> response.body().collectArray().toCompletableFuture().join();
+        return response -> response.body().asArrayStage().toCompletableFuture().join();
     }
 
     default HttpClientResponseMapper<ByteBuffer> byteBufferHttpClientResponseMapper() {
-        return response -> response.body().collectBuf().toCompletableFuture().join();
+        return response -> response.body().asBufferStage().toCompletableFuture().join();
     }
 
     default HttpClientResponseMapper<CompletionStage<byte[]>> byteArrayCompletionStageHttpClientResponseMapper() {
-        return response -> response.body().collectArray();
+        return response -> response.body().asArrayStage();
     }
 
     default HttpClientResponseMapper<CompletionStage<ByteBuffer>> byteBufferCompletionStageHttpClientResponseMapper() {
-        return response -> response.body().collectBuf();
+        return response -> response.body().asBufferStage();
     }
 
     default HttpClientResponseMapper<HttpClientResponse> noopClientResponseMapper() {

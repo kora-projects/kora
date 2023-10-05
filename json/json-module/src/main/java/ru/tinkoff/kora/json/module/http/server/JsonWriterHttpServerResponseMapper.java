@@ -5,7 +5,7 @@ import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper;
 import ru.tinkoff.kora.json.common.JsonWriter;
-import ru.tinkoff.kora.json.module.http.JsonHttpOutBody;
+import ru.tinkoff.kora.json.module.http.JsonHttpBodyOutput;
 
 public class JsonWriterHttpServerResponseMapper<T> implements HttpServerResponseMapper<T> {
     private final JsonWriter<T> writer;
@@ -16,6 +16,6 @@ public class JsonWriterHttpServerResponseMapper<T> implements HttpServerResponse
 
     @Override
     public HttpServerResponse apply(Context ctx, HttpServerRequest request, T value) {
-        return HttpServerResponse.of(200, new JsonHttpOutBody<>(this.writer, ctx, value));
+        return HttpServerResponse.of(200, new JsonHttpBodyOutput<>(this.writer, ctx, value));
     }
 }

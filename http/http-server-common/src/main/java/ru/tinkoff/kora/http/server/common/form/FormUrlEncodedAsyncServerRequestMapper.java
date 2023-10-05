@@ -22,7 +22,7 @@ public final class FormUrlEncodedAsyncServerRequestMapper implements HttpServerR
             }
             throw rs;
         }
-        return request.body().collectArray().thenApply(bytes -> {
+        return request.body().asArrayStage().thenApply(bytes -> {
             var str = new String(bytes, StandardCharsets.UTF_8);
             var parts = FormUrlEncodedServerRequestMapper.read(str);
             return new FormUrlEncoded(parts);

@@ -3,7 +3,7 @@ package ru.tinkoff.kora.http.server.common;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.http.common.MutableHttpHeaders;
 import ru.tinkoff.kora.http.common.body.HttpBody;
-import ru.tinkoff.kora.http.common.body.HttpOutBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 import java.nio.ByteBuffer;
@@ -43,7 +43,7 @@ public class HttpServerResponseException extends RuntimeException implements Htt
     }
 
     @Override
-    public HttpOutBody body() {
+    public HttpBodyOutput body() {
         return HttpBody.of(contentType, this.body.slice());
     }
 

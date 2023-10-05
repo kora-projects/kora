@@ -8,13 +8,13 @@ import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class StreamingHttpOutBody extends AtomicBoolean implements HttpOutBody {
+public class StreamingHttpBodyOutput extends AtomicBoolean implements HttpBodyOutput {
     @Nullable
     private final String contentType;
     private final int contentLength;
     private final Publisher<? extends ByteBuffer> content;
 
-    public StreamingHttpOutBody(@Nullable String contentType, int contentLength, Publisher<? extends ByteBuffer> content) {
+    public StreamingHttpBodyOutput(@Nullable String contentType, int contentLength, Publisher<? extends ByteBuffer> content) {
         this.contentType = contentType;
         this.contentLength = contentLength;
         this.content = content;

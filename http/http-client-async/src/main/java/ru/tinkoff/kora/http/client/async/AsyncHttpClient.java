@@ -9,7 +9,7 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.client.common.*;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
-import ru.tinkoff.kora.http.common.body.HttpOutBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 
 import java.io.IOException;
 import java.util.concurrent.*;
@@ -73,7 +73,7 @@ public class AsyncHttpClient implements HttpClient, Lifecycle {
         });
     }
 
-    private void setBody(RequestBuilder requestBuilder, @Nullable HttpOutBody body, Context context) throws Exception {
+    private void setBody(RequestBuilder requestBuilder, @Nullable HttpBodyOutput body, Context context) throws Exception {
         if (body == null) {
             return;
         }

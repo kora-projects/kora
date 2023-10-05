@@ -7,7 +7,7 @@ import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import reactor.adapter.JdkFlowAdapter;
 import reactor.core.publisher.Flux;
-import ru.tinkoff.kora.http.common.body.HttpInBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 
@@ -309,8 +309,8 @@ class MultipartReaderTest {
         }
 
         @Override
-        public HttpInBody body() {
-            return new HttpInBody() {
+        public HttpBodyInput body() {
+            return new HttpBodyInput() {
                 @Override
                 public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
                     JdkFlowAdapter.publisherToFlowPublisher(body).subscribe(subscriber);

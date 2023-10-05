@@ -4,7 +4,7 @@ import org.asynchttpclient.HttpResponseStatus;
 import ru.tinkoff.kora.http.client.async.AsyncHttpClientHeaders;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.common.body.HttpBody;
-import ru.tinkoff.kora.http.common.body.HttpInBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 public class EmptyAsyncHttpClientResponse implements HttpClientResponse {
@@ -27,7 +27,7 @@ public class EmptyAsyncHttpClientResponse implements HttpClientResponse {
     }
 
     @Override
-    public HttpInBody body() {
+    public HttpBodyInput body() {
         return HttpBody.empty();
     }
 

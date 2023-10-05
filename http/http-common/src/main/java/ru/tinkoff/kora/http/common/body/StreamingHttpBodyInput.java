@@ -7,13 +7,13 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class StreamingHttpInBody extends AtomicBoolean implements HttpInBody {
+public class StreamingHttpBodyInput extends AtomicBoolean implements HttpBodyInput {
     @Nullable
     private final String contentType;
     private final int contentLength;
     private final Flow.Publisher<ByteBuffer> content;
 
-    public StreamingHttpInBody(@Nullable String contentType, int contentLength, Flow.Publisher<ByteBuffer> content) {
+    public StreamingHttpBodyInput(@Nullable String contentType, int contentLength, Flow.Publisher<ByteBuffer> content) {
         this.contentType = contentType;
         this.contentLength = contentLength;
         this.content = content;

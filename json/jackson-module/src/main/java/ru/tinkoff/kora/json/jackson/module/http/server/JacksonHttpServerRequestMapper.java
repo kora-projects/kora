@@ -29,14 +29,14 @@ public final class JacksonHttpServerRequestMapper<T> implements HttpServerReques
                     return this.objectMapper.readValue(new ByteBufferInputStream(fullContent));
                 }
             }
-            try (var is = body.getInputStream()) {
+            try (var is = body.asInputStream()) {
                 if (is != null) {
                     return this.objectMapper.readValue(is);
                 }
             }
             final byte[] bytes;
             try {
-                bytes = body.collectArray().toCompletableFuture().get();
+                bytes = body.asArrayStage().toCompletableFuture().get();
             } catch (InterruptedException e) {
                 throw HttpServerResponseException.of(e, 400, e.getMessage());
             } catch (ExecutionException e) {

@@ -9,7 +9,7 @@ import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.common.body.HttpBody;
-import ru.tinkoff.kora.http.common.body.StreamingHttpInBody;
+import ru.tinkoff.kora.http.common.body.StreamingHttpBodyInput;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -62,7 +62,7 @@ class DefaultHttpClientTelemetryTest {
         Mockito.when(rq.operation()).thenReturn("POST /");
 
         try (var rs = Mockito.mock(HttpClientResponse.class)) {
-            Mockito.when(rs.body()).thenReturn(new StreamingHttpInBody("text/plain", 4, FlowUtils.one(Context.clear(), ByteBuffer.wrap("test".getBytes(StandardCharsets.UTF_8)))));
+            Mockito.when(rs.body()).thenReturn(new StreamingHttpBodyInput("text/plain", 4, FlowUtils.one(Context.clear(), ByteBuffer.wrap("test".getBytes(StandardCharsets.UTF_8)))));
             var ctx = telemetry.get(Context.clear(), rq);
 
             Assertions.assertThat(telemetry.isEnabled()).isTrue();
@@ -113,7 +113,7 @@ class DefaultHttpClientTelemetryTest {
         Mockito.when(rq.operation()).thenReturn("POST /");
 
         try (var rs = Mockito.mock(HttpClientResponse.class)) {
-            Mockito.when(rs.body()).thenReturn(new StreamingHttpInBody("text/plain", 4, FlowUtils.one(Context.clear(), ByteBuffer.wrap("test".getBytes(StandardCharsets.UTF_8)))));
+            Mockito.when(rs.body()).thenReturn(new StreamingHttpBodyInput("text/plain", 4, FlowUtils.one(Context.clear(), ByteBuffer.wrap("test".getBytes(StandardCharsets.UTF_8)))));
             Mockito.when(rs.code()).thenReturn(200);
             var ctx = telemetry.get(Context.clear(), rq);
 

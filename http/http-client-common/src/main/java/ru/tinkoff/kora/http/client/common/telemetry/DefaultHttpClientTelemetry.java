@@ -6,7 +6,7 @@ import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.common.HttpResultCode;
-import ru.tinkoff.kora.http.common.body.HttpOutBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 import java.net.URI;
@@ -78,7 +78,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
                         this.logger.logRequest(authority, method, operation, resolvedUri, headers, bodyString);
                     });
                     request = request.toBuilder()
-                        .body(HttpOutBody.of(request.body().contentType(), requestBodyFlux))
+                        .body(HttpBodyOutput.of(request.body().contentType(), requestBodyFlux))
                         .build();
                 }
             }
@@ -102,7 +102,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         return sb.toString();
     }
 
-    private Flow.Publisher<ByteBuffer> wrapRequestBody(Context ctx, HttpOutBody body, Consumer<List<ByteBuffer>> onComplete) {
+    private Flow.Publisher<ByteBuffer> wrapRequestBody(Context ctx, HttpBodyOutput body, Consumer<List<ByteBuffer>> onComplete) {
         var full = body.getFullContentIfAvailable();
         if (full != null) {
             try {
