@@ -3,13 +3,13 @@ package ru.tinkoff.kora.http.server.undertow.request;
 import io.undertow.server.Connectors;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.Headers;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.common.util.flow.ErrorSubscription;
 import ru.tinkoff.kora.common.util.flow.SingleSubscription;
-import ru.tinkoff.kora.http.common.body.HttpInBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 
-import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -18,7 +18,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow.Subscriber;
 
-public final class UndertowRequestHttpBody implements HttpInBody {
+public final class UndertowRequestHttpBody implements HttpBodyInput {
     private final Context context;
     private final HttpServerExchange exchange;
     private byte[] firstData;
@@ -108,7 +108,7 @@ public final class UndertowRequestHttpBody implements HttpInBody {
     }
 
     @Override
-    public InputStream getInputStream() {
+    public InputStream asInputStream() {
         if (this.exchange.isInIoThread()) {
             return null;
         }
@@ -127,7 +127,7 @@ public final class UndertowRequestHttpBody implements HttpInBody {
     }
 
     @Override
-    public CompletionStage<ByteBuffer> collectBuf() {
+    public CompletionStage<ByteBuffer> asBufferStage() {
         var exchange = this.exchange;
         var future = new CompletableFuture<ByteBuffer>();
         exchange.getRequestReceiver().receiveFullBytes(
@@ -138,7 +138,7 @@ public final class UndertowRequestHttpBody implements HttpInBody {
     }
 
     @Override
-    public CompletionStage<byte[]> collectArray() {
+    public CompletionStage<byte[]> asArrayStage() {
         var exchange = this.exchange;
         var future = new CompletableFuture<byte[]>();
         exchange.getRequestReceiver().receiveFullBytes(

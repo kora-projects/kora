@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.http.server.symbol.processor.server
 
 import ru.tinkoff.kora.http.common.body.HttpBody
-import ru.tinkoff.kora.http.common.body.HttpInBody
+import ru.tinkoff.kora.http.common.body.HttpBodyInput
 import ru.tinkoff.kora.http.common.header.HttpHeaders
 import ru.tinkoff.kora.http.server.common.HttpServerRequest
 import java.util.*
@@ -61,7 +61,7 @@ internal class SimpleHttpServerRequest(
         return routeParams
     }
 
-    override fun body(): HttpInBody {
+    override fun body(): HttpBodyInput {
         return HttpBody.octetStream(body)
     }
 }

@@ -97,7 +97,7 @@ public abstract class HttpClientTestBase {
 
     private ResponseWithBody callReactive(HttpClient client, HttpClientRequest request) {
         try (var response = client.execute(request).toCompletableFuture().get()) {
-            var body = response.body().collectArray().toCompletableFuture().get();
+            var body = response.body().asArrayStage().toCompletableFuture().get();
             return new ResponseWithBody(response, body);
         } catch (ExecutionException e) {
             if (e.getCause() instanceof RuntimeException re) {
@@ -114,7 +114,7 @@ public abstract class HttpClientTestBase {
     private ResponseWithBody callBlocking(HttpClient client, HttpClientRequest request) {
         try (var response = client.execute(request).toCompletableFuture().get();
              var body = response.body();
-             var is = body.getInputStream()) {
+             var is = body.asInputStream()) {
             return new ResponseWithBody(response, is.readAllBytes());
         } catch (ExecutionException e) {
             if (e.getCause() instanceof RuntimeException re) {

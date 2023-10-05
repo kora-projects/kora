@@ -18,7 +18,7 @@ interface {{classname}}ServerRequestMappers {
   ){{/vendorExtensions.requiresFormParamMappers}}: HttpServerRequestMapper<{{#isSuspend}}CompletionStage<{{/isSuspend}}{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam{{#isSuspend}}>{{/isSuspend}}> {
     override fun apply(request: HttpServerRequest): {{#isSuspend}}CompletionStage<{{/isSuspend}}{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam{{#isSuspend}}>{{/isSuspend}} {
 {{#vendorExtensions.urlEncodedForm}}
-      return request.body().collectArray().thenApply { bytes ->
+      return request.body().asArrayStage().thenApply { bytes ->
         val bodyString = bytes.decodeToString()
         val formData = ru.tinkoff.kora.http.server.common.form.FormUrlEncodedServerRequestMapper.read(bodyString)
 {{#formParams}}

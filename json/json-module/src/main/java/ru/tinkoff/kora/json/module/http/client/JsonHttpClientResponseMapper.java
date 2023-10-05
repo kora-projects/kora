@@ -17,7 +17,7 @@ public class JsonHttpClientResponseMapper<T> implements HttpClientResponseMapper
     @Override
     public T apply(HttpClientResponse response) {
         try {
-            return jsonReader.read(response.body().getInputStream());
+            return jsonReader.read(response.body().asInputStream());
         } catch (IOException e) {
             throw new HttpClientDecoderException(e);
         }

@@ -13,7 +13,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 
-public final class DefaultFullHttpBody implements HttpInBody, HttpOutBody {
+public final class DefaultFullHttpBody implements HttpBodyInput, HttpBodyOutput {
     private final Context context;
     private final ByteBuffer data;
     private final String contentType;
@@ -41,12 +41,12 @@ public final class DefaultFullHttpBody implements HttpInBody, HttpOutBody {
     }
 
     @Override
-    public CompletionStage<ByteBuffer> collectBuf() {
+    public CompletionStage<ByteBuffer> asBufferStage() {
         return CompletableFuture.completedFuture(data.slice());
     }
 
     @Override
-    public CompletionStage<byte[]> collectArray() {
+    public CompletionStage<byte[]> asArrayStage() {
         if (data.hasArray() && data.arrayOffset() == 0 && data.remaining() == data.array().length) {
             return CompletableFuture.completedFuture(data.array());
         }
@@ -77,7 +77,7 @@ public final class DefaultFullHttpBody implements HttpInBody, HttpOutBody {
     }
 
     @Override
-    public InputStream getInputStream() {
+    public InputStream asInputStream() {
         return new ByteBufferInputStream(this.data.slice());
     }
 

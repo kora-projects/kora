@@ -5,7 +5,7 @@ import io.undertow.server.HttpServerExchange;
 import io.undertow.util.Headers;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.common.body.HttpBody;
-import ru.tinkoff.kora.http.common.body.HttpInBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.router.PublicApiRequest;
 import ru.tinkoff.kora.http.server.undertow.UndertowHttpHeaders;
@@ -22,7 +22,7 @@ public class UndertowPublicApiRequest implements PublicApiRequest {
     private final Context context;
     private final String method;
     private final String path;
-    private volatile HttpInBody body;
+    private volatile HttpBodyInput body;
     private final UndertowHttpHeaders headers;
 
     public UndertowPublicApiRequest(HttpServerExchange exchange, Context context) {
@@ -64,7 +64,7 @@ public class UndertowPublicApiRequest implements PublicApiRequest {
     }
 
     @Override
-    public HttpInBody body() {
+    public HttpBodyInput body() {
         var b = this.body;
         if (b != null) {
             return b;
@@ -90,7 +90,7 @@ public class UndertowPublicApiRequest implements PublicApiRequest {
         return Map.copyOf(queryParams);
     }
 
-    private HttpInBody getContent(HttpServerExchange exchange) throws IOException {
+    private HttpBodyInput getContent(HttpServerExchange exchange) throws IOException {
         if (exchange.isRequestComplete()) {
             // request body is empty
             return HttpBody.empty();

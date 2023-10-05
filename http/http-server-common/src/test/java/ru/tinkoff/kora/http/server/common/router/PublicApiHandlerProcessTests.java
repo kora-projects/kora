@@ -8,7 +8,7 @@ import org.mockito.Mockito;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.common.body.HttpBody;
-import ru.tinkoff.kora.http.common.body.HttpInBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.$HttpServerConfig_ConfigValueExtractor.HttpServerConfig_Impl;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
@@ -157,7 +157,7 @@ class PublicApiHandlerProcessTests {
         String scheme,
         HttpHeaders headers,
         Map<String, ? extends Collection<String>> queryParams,
-        HttpInBody body
+        HttpBodyInput body
     ) implements PublicApiRequest {
     }
 }

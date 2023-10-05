@@ -2,7 +2,7 @@ package ru.tinkoff.kora.http.client.common.telemetry;
 
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
-import ru.tinkoff.kora.http.common.body.HttpInBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper extends AtomicBoolean implements HttpInBody {
+public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper extends AtomicBoolean implements HttpBodyInput {
     private final HttpClientResponse response;
     private final DefaultHttpClientTelemetry.DefaultHttpClientTelemetryContextImpl telemetryContext;
     private volatile InputStream is;
@@ -46,13 +46,13 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
     }
 
     @Override
-    public InputStream getInputStream() {
+    public InputStream asInputStream() {
         var is = this.is;
         if (is != null) {
             return is;
         }
         if (this.compareAndSet(false, true)) {
-            is = new WrappedInputStream(telemetryContext, response, response.body().getInputStream());
+            is = new WrappedInputStream(telemetryContext, response, response.body().asInputStream());
             return this.is = is;
         } else {
             throw new IllegalStateException("Body was already subscribed");

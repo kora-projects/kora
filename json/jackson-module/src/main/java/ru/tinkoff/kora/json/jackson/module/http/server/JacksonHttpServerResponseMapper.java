@@ -7,7 +7,7 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper;
-import ru.tinkoff.kora.json.jackson.module.http.JacksonHttpOutBody;
+import ru.tinkoff.kora.json.jackson.module.http.JacksonHttpBodyOutput;
 
 public final class JacksonHttpServerResponseMapper<T> implements HttpServerResponseMapper<T> {
     private final ObjectWriter objectMapper;
@@ -18,7 +18,7 @@ public final class JacksonHttpServerResponseMapper<T> implements HttpServerRespo
 
     @Override
     public HttpServerResponse apply(Context ctx, HttpServerRequest request, T result) {
-        var body = new JacksonHttpOutBody<>(objectMapper, ctx, result);
+        var body = new JacksonHttpBodyOutput<>(objectMapper, ctx, result);
         return HttpServerResponse.of(200, body);
     }
 }

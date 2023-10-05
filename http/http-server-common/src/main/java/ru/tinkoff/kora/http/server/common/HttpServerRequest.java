@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.http.server.common;
 
-import ru.tinkoff.kora.http.common.body.HttpInBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 import java.util.Collection;
@@ -19,5 +19,5 @@ public interface HttpServerRequest {
 
     Map<String, String> pathParams();
 
-    HttpInBody body();
+    HttpBodyInput body();
 }

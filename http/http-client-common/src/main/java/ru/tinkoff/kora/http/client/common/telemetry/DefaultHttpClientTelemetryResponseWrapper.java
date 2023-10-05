@@ -1,16 +1,16 @@
 package ru.tinkoff.kora.http.client.common.telemetry;
 
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
-import ru.tinkoff.kora.http.common.body.HttpInBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 import java.io.IOException;
 
 public class DefaultHttpClientTelemetryResponseWrapper implements HttpClientResponse {
     private final HttpClientResponse delegate;
-    private final HttpInBody wrappedBody;
+    private final HttpBodyInput wrappedBody;
 
-    public DefaultHttpClientTelemetryResponseWrapper(HttpClientResponse delegate, HttpInBody wrappedBody) {
+    public DefaultHttpClientTelemetryResponseWrapper(HttpClientResponse delegate, HttpBodyInput wrappedBody) {
         this.delegate = delegate;
         this.wrappedBody = wrappedBody;
     }
@@ -26,7 +26,7 @@ public class DefaultHttpClientTelemetryResponseWrapper implements HttpClientResp
     }
 
     @Override
-    public HttpInBody body() {
+    public HttpBodyInput body() {
         return wrappedBody;
     }
 

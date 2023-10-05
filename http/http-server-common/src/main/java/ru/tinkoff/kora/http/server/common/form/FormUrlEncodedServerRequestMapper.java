@@ -25,7 +25,7 @@ public final class FormUrlEncodedServerRequestMapper implements HttpServerReques
             }
             throw rs;
         }
-        var bytes = request.body().collectArray().toCompletableFuture().join();
+        var bytes = request.body().asArrayStage().toCompletableFuture().join();
         var str = new String(bytes, StandardCharsets.UTF_8);
         var parts = FormUrlEncodedServerRequestMapper.read(str);
         return new FormUrlEncoded(parts);

@@ -2,14 +2,14 @@ package ru.tinkoff.kora.http.client.async;
 
 import io.netty.buffer.ByteBuf;
 import org.asynchttpclient.request.body.Body;
-import ru.tinkoff.kora.http.common.body.HttpOutBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 
 import java.io.IOException;
 
 public class AsyncHttpClientRequestBody implements Body {
     private final long contentLength;
 
-    public AsyncHttpClientRequestBody(HttpOutBody body) {
+    public AsyncHttpClientRequestBody(HttpBodyOutput body) {
         this.contentLength = body.contentLength();
 
     }

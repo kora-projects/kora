@@ -26,7 +26,7 @@ public final class JsonReaderHttpServerRequestMapper<T> implements HttpServerReq
                     return this.reader.read(new ByteBufferInputStream(fullContent));
                 }
             }
-            return this.reader.read(body.getInputStream());
+            return this.reader.read(body.asInputStream());
         } catch (IOException e) {
             throw HttpServerResponseException.of(e, 400, e.getMessage());
         }

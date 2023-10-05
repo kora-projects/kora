@@ -16,7 +16,7 @@ class ResponseMapperExtensionTest : AbstractSymbolProcessorTest() {
 
         @ru.tinkoff.kora.common.KoraApp
         interface TestApp {
-            fun asyncMapper() = HttpClientResponseMapper<CompletionStage<String>> { rs -> rs.body().collectArray().thenApply { it.decodeToString() }}
+            fun asyncMapper() = HttpClientResponseMapper<CompletionStage<String>> { rs -> rs.body().asArrayStage().thenApply { it.decodeToString() }}
         
             @ru.tinkoff.kora.common.annotation.Root
             fun root(m: HttpClientResponseMapper<String>) = ""

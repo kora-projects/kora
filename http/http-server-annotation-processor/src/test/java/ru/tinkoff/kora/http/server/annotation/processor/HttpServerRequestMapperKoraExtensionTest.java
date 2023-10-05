@@ -18,7 +18,7 @@ public class HttpServerRequestMapperKoraExtensionTest extends AbstractAnnotation
             @KoraApp
             public interface TestApp {
               default HttpServerRequestMapper<CompletionStage<String>> stringMapper() {
-                return rs -> rs.body().collectArray().thenApply(b -> new String(b));
+                return rs -> rs.body().asArrayStage().thenApply(b -> new String(b));
               }
                         
               @Root

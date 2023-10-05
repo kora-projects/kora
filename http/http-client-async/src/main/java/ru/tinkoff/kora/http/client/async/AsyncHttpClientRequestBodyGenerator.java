@@ -5,7 +5,7 @@ import org.asynchttpclient.request.body.Body;
 import org.asynchttpclient.request.body.generator.FeedListener;
 import org.asynchttpclient.request.body.generator.FeedableBodyGenerator;
 import ru.tinkoff.kora.http.client.common.HttpClientEncoderException;
-import ru.tinkoff.kora.http.common.body.HttpOutBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -16,10 +16,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 public class AsyncHttpClientRequestBodyGenerator implements FeedableBodyGenerator {
-    private final HttpOutBody body;
+    private final HttpBodyOutput body;
     private FeedListener listener;
 
-    public AsyncHttpClientRequestBodyGenerator(HttpOutBody body) {
+    public AsyncHttpClientRequestBodyGenerator(HttpBodyOutput body) {
         this.body = body;
     }
 
@@ -43,7 +43,7 @@ public class AsyncHttpClientRequestBodyGenerator implements FeedableBodyGenerato
     }
 
     private static class PublisherBody extends AtomicBoolean implements Body, Flow.Subscriber<ByteBuffer> {
-        private final HttpOutBody body;
+        private final HttpBodyOutput body;
         private final Deque<Signal> queue = new ConcurrentLinkedDeque<>();
         private final AsyncHttpClientRequestBodyGenerator generator;
         private volatile Flow.Subscription subscription;

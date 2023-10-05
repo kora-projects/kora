@@ -35,7 +35,7 @@ import ru.tinkoff.kora.common.util.ReactorUtils;
 import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.common.MutableHttpHeaders;
 import ru.tinkoff.kora.http.common.body.HttpBody;
-import ru.tinkoff.kora.http.common.body.HttpOutBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.$HttpServerConfig_ConfigValueExtractor.HttpServerConfig_Impl;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
@@ -312,7 +312,7 @@ public abstract class HttpServerTestKit {
         @Test
         void testReactiveResponseBody() throws IOException {
             var handler = handler(GET, "/", (ctx, request) -> {
-                var body = new HttpOutBody() {
+                var body = new HttpBodyOutput() {
 
                     @Override
                     public void close() throws IOException {
@@ -365,7 +365,7 @@ public abstract class HttpServerTestKit {
         @Test
         void testStreamingResponseBody() throws IOException {
             var handler = handler(GET, "/", (ctx, request) -> {
-                var body = new HttpOutBody() {
+                var body = new HttpBodyOutput() {
 
                     @Override
                     public void close() throws IOException {
@@ -450,7 +450,7 @@ public abstract class HttpServerTestKit {
     void serverWithBigResponse() throws IOException {
         var data = new byte[10 * 1024 * 1024];
         ThreadLocalRandom.current().nextBytes(data);
-        var httpResponse = new SimpleHttpServerResponse(200, HttpHeaders.of(), HttpOutBody.of("text/plain", 10 * 1024 * 1024,
+        var httpResponse = new SimpleHttpServerResponse(200, HttpHeaders.of(), HttpBodyOutput.of("text/plain", 10 * 1024 * 1024,
             JdkFlowAdapter.publisherToFlowPublisher(Mono.just(ByteBuffer.wrap(data)).delayElement(Duration.ofMillis(100))))
         );
         var handler = handler(GET, "/", request -> Mono.delay(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 500))).thenReturn(httpResponse));
@@ -479,7 +479,7 @@ public abstract class HttpServerTestKit {
             System.arraycopy(bytes, 0, data, i * 1024, 1024);
         }
 
-        var httpResponse = new SimpleHttpServerResponse(200, HttpHeaders.of(), HttpOutBody.of("text/plain", 102400, JdkFlowAdapter.publisherToFlowPublisher(Flux.fromIterable(dataList).map(ByteBuffer::wrap))));
+        var httpResponse = new SimpleHttpServerResponse(200, HttpHeaders.of(), HttpBodyOutput.of("text/plain", 102400, JdkFlowAdapter.publisherToFlowPublisher(Flux.fromIterable(dataList).map(ByteBuffer::wrap))));
         var handler = handler(GET, "/", request -> Mono.delay(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 500))).thenReturn(httpResponse));
 
         this.startServer(handler);
@@ -872,8 +872,8 @@ public abstract class HttpServerTestKit {
             }
 
             @Override
-            public HttpOutBody body() {
-                return HttpOutBody.of(contentType, contentLength, body);
+            public HttpBodyOutput body() {
+                return HttpBodyOutput.of(contentType, contentLength, body);
             }
         };
     }
@@ -1022,7 +1022,7 @@ public abstract class HttpServerTestKit {
 
         @Nullable
         @Override
-        public HttpOutBody body() {
+        public HttpBodyOutput body() {
             return null;
         }
     }
