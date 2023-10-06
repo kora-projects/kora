@@ -1,13 +1,21 @@
 package ru.tinkoff.kora.http.server.annotation.processor;
 
+import jakarta.annotation.Nullable;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.application.graph.TypeRef;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
+import ru.tinkoff.kora.http.server.common.HttpServerRequest;
+import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
+import ru.tinkoff.kora.http.server.common.handler.StringParameterReader;
 
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ForkJoinPool;
 
 public class ControllerParamsTest extends AbstractHttpControllerTest {
+    private final BlockingRequestExecutor executor = new BlockingRequestExecutor.Default(ForkJoinPool.commonPool());
+
     @Test
     public void testHeader() {
         compile("""
@@ -343,6 +351,176 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
         Assertions.assertThat(componentMethod.getParameters()).hasSize(3);
         Assertions.assertThat(componentMethod.getGenericParameterTypes()[1]).isEqualTo(compileResult.loadClass("Mapper"));
     }
+
+    @Test
+    public void testParseHeaderException() {
+        var module = compile("""
+            @HttpController
+            public class Controller {
+                @HttpRoute(method = GET, path = "/test")
+                public void test(@Header(value = "some-header") Object string) {
+                }
+            }
+            """);
+        compileResult.assertSuccess();
+        var parser = new StringParameterReader<Object>() {
+            @Override
+            public Object read(String string) {
+                System.out.println(string);
+                throw new RuntimeException("test-error");
+            }
+        };
+
+        var handler = module.getHandler("get_test", executor, parser);
+
+        assertThat(handler, request("GET", "/test", "", HttpHeaders.of("some-header", "test")))
+            .hasStatus(400)
+            .hasBody("test-error");
+    }
+
+    @Test
+    public void testParseQueryException() {
+        var module = compile("""
+            @HttpController
+            public class Controller {
+                @HttpRoute(method = GET, path = "/test")
+                public void test(@Query(value = "q") Object string) {
+                }
+            }
+            """);
+        compileResult.assertSuccess();
+        var parser = new StringParameterReader<Object>() {
+            @Override
+            public Object read(String string) {
+                System.out.println(string);
+                throw new RuntimeException("test-error");
+            }
+        };
+
+        var handler = module.getHandler("get_test", executor, parser);
+
+        assertThat(handler, request("GET", "/test?q=test", ""))
+            .hasStatus(400)
+            .hasBody("test-error");
+    }
+
+    @Test
+    public void testParsePathException() {
+        var module = compile("""
+            @HttpController
+            public class Controller {
+                @HttpRoute(method = GET, path = "/{string}/test")
+                public void test(@Path Object string) {
+                }
+            }
+            """);
+        compileResult.assertSuccess();
+        var parser = new StringParameterReader<Object>() {
+            @Override
+            public Object read(String string) {
+                System.out.println(string);
+                throw new RuntimeException("test-error");
+            }
+        };
+
+        var handler = module.getHandler("get_string_test", executor, parser);
+
+        var rq = request("GET", "/test/test", "");
+        rq.pathParams().put("string", "test");
+        assertThat(handler, rq)
+            .hasStatus(400)
+            .hasBody("test-error");
+    }
+
+    @Test
+    public void testParseBodyMonoException() {
+        var module = compile("""
+            @HttpController
+            public class Controller {
+                @HttpRoute(method = "POST", path = "/test")
+                public Mono<Void> test(Object string) {
+                  return null;
+                }
+            }
+            """);
+        compileResult.assertSuccess();
+
+        var parser = new HttpServerRequestMapper<Object>() {
+            @Nullable
+            @Override
+            public Object apply(HttpServerRequest request) throws Exception {
+                throw new RuntimeException("test-error");
+            }
+        };
+
+        var handler = module.getHandler("post_test", parser);
+
+        var rq = request("GET", "/test/test", "");
+        rq.pathParams().put("string", "test");
+        assertThat(handler, rq)
+            .hasStatus(400)
+            .hasBody("test-error");
+    }
+
+    @Test
+    public void testParseBodyFutureException() {
+        var module = compile("""
+            @HttpController
+            public class Controller {
+                @HttpRoute(method = "POST", path = "/test")
+                public CompletionStage<Void> test(Object string) {
+                  return null;
+                }
+            }
+            """);
+        compileResult.assertSuccess();
+
+        var parser = new HttpServerRequestMapper<Object>() {
+            @Nullable
+            @Override
+            public Object apply(HttpServerRequest request) throws Exception {
+                throw new RuntimeException("test-error");
+            }
+        };
+
+        var handler = module.getHandler("post_test", parser);
+
+        var rq = request("GET", "/test/test", "");
+        rq.pathParams().put("string", "test");
+        assertThat(handler, rq)
+            .hasStatus(400)
+            .hasBody("test-error");
+    }
+
+    @Test
+    public void testParseBodyException() {
+        var module = compile("""
+            @HttpController
+            public class Controller {
+                @HttpRoute(method = "POST", path = "/test")
+                public void test(Object string) {
+                }
+            }
+            """);
+        compileResult.assertSuccess();
+
+        var parser = new HttpServerRequestMapper<Object>() {
+            @Nullable
+            @Override
+            public Object apply(HttpServerRequest request) throws Exception {
+                throw new RuntimeException("test-error");
+            }
+        };
+
+        var handler = module.getHandler("post_test", parser, executor);
+
+        var rq = request("GET", "/test/test", "");
+        rq.pathParams().put("string", "test");
+        assertThat(handler, rq)
+            .hasStatus(400)
+            .hasBody("test-error");
+    }
+
 
     private void verifyNoDependencies(Class<?> controllerModule) {
         for (var moduleMethod : controllerModule.getMethods()) {

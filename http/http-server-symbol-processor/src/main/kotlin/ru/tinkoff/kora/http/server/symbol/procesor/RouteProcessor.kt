@@ -28,6 +28,7 @@ import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.findRepeatableAnnotation
 import ru.tinkoff.kora.ksp.common.makeTagAnnotationSpec
 import ru.tinkoff.kora.ksp.common.parseMappingData
+import java.util.concurrent.CompletionException
 import java.util.concurrent.CompletionStage
 
 
@@ -99,9 +100,11 @@ class RouteProcessor {
                         val paramType = param.type.toTypeName()
                         val mapperName = "_${paramName}Mapper"
                         val castedMapperName = httpServerRequestMapper.parameterizedBy(paramType.copy(true))
-                        funBuilder.addStatement("val %N = (%N as %T).apply(%N)", paramName, mapperName, castedMapperName, requestName)
+                        addCode("val %N = ", paramName).check400 {
+                            addStatement("(%N as %T).apply(%N)", mapperName, castedMapperName, requestName)
+                        }
                         if (!paramType.isNullable) {
-                            funBuilder.controlFlow("if (%N == null)", paramName) {
+                            controlFlow("if (%N == null)", paramName) {
                                 addStatement("throw %T.of(400, %S)", httpServerResponseException, "Parameter $paramName is not nullable, but got null from mapper")
                             }
                         }
@@ -122,7 +125,9 @@ class RouteProcessor {
                         val paramType = param.type.toTypeName()
                         val mapperName = "_${paramName}Mapper"
                         val castedMapperName = httpServerRequestMapper.parameterizedBy(CompletionStage::class.asClassName().parameterizedBy(paramType.copy(true)))
-                        funBuilder.addStatement("val %N = (%N as %T).apply(%N).%M()", paramName, mapperName, castedMapperName, requestName, await)
+                        addCode("val %N = ", paramName).check400 {
+                            addStatement("(%N as %T).apply(%N).%M()", mapperName, castedMapperName, requestName, await)
+                        }
                         if (!paramType.isNullable) {
                             funBuilder.controlFlow("if (%N == null)", paramName) {
                                 addStatement("throw %T.of(400, %S)", httpServerResponseException, "Parameter $paramName is not nullable, but got null from mapper")
@@ -191,7 +196,9 @@ class RouteProcessor {
         } else {
             val stringExtractor = ExtractorFunctions.path[STRING]!!
             val readerParameterName = "_${parameterName}StringParameterReader"
-            addStatement("val %N = %N.read(%M(_request, %S))", parameterName, readerParameterName, stringExtractor, name)
+            addCode("val %N = ", parameterName).check400 {
+                addStatement("%N.read(%M(_request, %S))", readerParameterName, stringExtractor, name)
+            }
         }
     }
 
@@ -212,11 +219,15 @@ class RouteProcessor {
             if (parameterTypeName.isNullable) {
                 val stringExtractor = ExtractorFunctions.header[STRING.copy(true)]!!
                 val readerParameterName = "_${parameterName}StringParameterReader"
-                addStatement("val %N = %M(_request, %S)?.let(%N::read)", stringExtractor, name, parameterName, readerParameterName)
+                addCode("val %N = ", parameterName).check400 {
+                    addStatement("%M(_request, %S)?.let(%N::read)", stringExtractor, name, readerParameterName)
+                }
             } else {
                 val stringExtractor = ExtractorFunctions.header[STRING]!!
                 val readerParameterName = "_${parameterName}StringParameterReader"
-                addStatement("val %N = %N.read(%M(_request, %S))", parameterName, readerParameterName, stringExtractor, name)
+                addCode("val %N = ", parameterName).check400 {
+                    addStatement("%N.read(%M(_request, %S))", readerParameterName, stringExtractor, name)
+                }
             }
         }
     }
@@ -238,12 +249,35 @@ class RouteProcessor {
             if (parameterTypeName.isNullable) {
                 val stringExtractor = ExtractorFunctions.query[STRING.copy(true)]!!
                 val readerParameterName = "_${parameterName}StringParameterReader"
-                addStatement("val %N = %M(_request, %S)?.let(%N::read)", stringExtractor, name, parameterName, readerParameterName)
+                addCode("val %N = ", parameterName).check400 {
+                    addStatement("%M(_request, %S)?.let(%N::read)", stringExtractor, name, readerParameterName)
+                }
             } else {
                 val stringExtractor = ExtractorFunctions.query[STRING]!!
                 val readerParameterName = "_${parameterName}StringParameterReader"
-                addStatement("val %N = %N.read(%M(_request, %S))", parameterName, readerParameterName, stringExtractor, name)
+                addCode("val %N = ", parameterName).check400 {
+                    addStatement("%N.read(%M(_request, %S))", readerParameterName, stringExtractor, name)
+                }
             }
+        }
+    }
+
+    private fun FunSpec.Builder.check400(callback: (CodeBlock.Builder) -> Unit) {
+        controlFlow("try") {
+            val b = CodeBlock.builder()
+            callback(b)
+            addCode(b.build())
+            nextControlFlow("catch (_e: %T)", CompletionException::class.asClassName())
+            controlFlow("_e.cause?.let") {
+                addStatement("if (it is %T) throw it", httpServerResponse)
+                addStatement("throw %T.of(400, it)", httpServerResponseException)
+            }
+            addStatement("throw %T.of(400, _e)", httpServerResponseException)
+            nextControlFlow("catch (_e: Exception)")
+            controlFlow("if (_e is %T)", httpServerResponse) {
+                addStatement("throw _e")
+            }
+            addStatement("throw %T.of(400, _e)", httpServerResponseException)
         }
     }
 

@@ -59,10 +59,7 @@ class HttpResponseAssert(httpResponse: HttpServerResponse) {
         val bodyString = String(body, StandardCharsets.UTF_8)
         Assertions.assertThat(bodyString)
             .withFailMessage {
-                "Expected response body: \n%s\n\n\tgot: \n%s".formatted(
-                    expected.indent(4),
-                    bodyString.indent(4)
-                )
+                "Expected response body: \n${expected.prependIndent("    ")}\n\n\tgot: \n${bodyString.prependIndent("    ")}"
             }
             .isEqualTo(expected)
         return this

@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.http.server.annotation.processor.server;
 
+import ru.tinkoff.kora.http.common.MutableHttpHeaders;
 import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
@@ -7,22 +8,19 @@ import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class SimpleHttpServerRequest implements HttpServerRequest {
+public class TestHttpServerRequest implements HttpServerRequest {
     private final String method;
     private final String route;
     private final String path;
     private final byte[] body;
-    private final Map.Entry<String, String>[] headers;
+    private final MutableHttpHeaders headers;
     private final Map<String, String> routeParams;
 
-    public SimpleHttpServerRequest(String method, String route, String path, byte[] body, Map.Entry<String, String>[] headers, Map<String, String> routeParams) {
+    public TestHttpServerRequest(String method, String route, String path, byte[] body, MutableHttpHeaders headers, Map<String, String> routeParams) {
         this.method = method;
         this.route = route;
         this.path = path;
@@ -31,10 +29,8 @@ public class SimpleHttpServerRequest implements HttpServerRequest {
         this.routeParams = routeParams;
     }
 
-    public static SimpleHttpServerRequest of(String method, String path, String body) {
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        Map.Entry<String, String>[] headers = new Map.Entry[0];
-        return new SimpleHttpServerRequest(method, path, path, body.getBytes(StandardCharsets.UTF_8), headers, Map.of());
+    public static TestHttpServerRequest of(String method, String path, String body, HttpHeaders headers) {
+        return new TestHttpServerRequest(method, path, path, body.getBytes(StandardCharsets.UTF_8), headers.toMutable(), new HashMap<>());
     }
 
     @Override
@@ -53,13 +49,8 @@ public class SimpleHttpServerRequest implements HttpServerRequest {
     }
 
     @Override
-    public HttpHeaders headers() {
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        Map.Entry<String, List<String>>[] entries = new Map.Entry[headers.length];
-        for (int i = 0; i < headers.length; i++) {
-            entries[i] = Map.entry(headers[i].getKey(), List.of(headers[i].getValue()));
-        }
-        return HttpHeaders.of(entries);
+    public MutableHttpHeaders headers() {
+        return this.headers;
     }
 
     @Override

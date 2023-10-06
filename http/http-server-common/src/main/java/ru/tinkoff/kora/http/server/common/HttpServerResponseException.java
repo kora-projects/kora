@@ -28,8 +28,8 @@ public class HttpServerResponseException extends RuntimeException implements Htt
         return of(null, code, text);
     }
 
-    public static HttpServerResponseException of(int code, Throwable error) {
-        return of(error, code, error.getMessage());
+    public static HttpServerResponseException of(int code, Throwable throwable) {
+        return of(throwable, code, throwable.getMessage());
     }
 
     public static HttpServerResponseException of(@Nullable Throwable cause, int code, String text) {
@@ -55,7 +55,7 @@ public class HttpServerResponseException extends RuntimeException implements Htt
     public String toString() {
         return "HttpResponseException{" +
             "message=" + getMessage() +
-            "code=" + code +
+            ", code=" + code +
             ", contentType='" + contentType + '\'' +
             ", headers=" + headers +
             '}';
