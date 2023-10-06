@@ -28,6 +28,10 @@ public class HttpServerResponseException extends RuntimeException implements Htt
         return of(null, code, text);
     }
 
+    public static HttpServerResponseException of(int code, Throwable error) {
+        return of(error, code, error.getMessage());
+    }
+
     public static HttpServerResponseException of(@Nullable Throwable cause, int code, String text) {
         return new HttpServerResponseException(cause, text, code, "text/plain; charset=utf-8", UTF_8.encode(text), HttpHeaders.of());
     }

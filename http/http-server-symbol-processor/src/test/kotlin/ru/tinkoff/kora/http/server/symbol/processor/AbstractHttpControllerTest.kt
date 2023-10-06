@@ -27,7 +27,7 @@ abstract class AbstractHttpControllerTest : AbstractSymbolProcessorTest() {
         import ru.tinkoff.kora.http.common.annotation.*;
         import ru.tinkoff.kora.http.common.body.*;
         import ru.tinkoff.kora.http.common.header.*;
-        import ru.tinkoff.kora.http.server.common.HttpServerResponseEntity;
+        import ru.tinkoff.kora.http.common.HttpResponseEntity;
         import ru.tinkoff.kora.http.server.common.HttpServerResponse;
         import ru.tinkoff.kora.http.server.common.HttpServerRequest;
         import ru.tinkoff.kora.http.server.common.HttpServerInterceptor;

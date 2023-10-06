@@ -107,8 +107,8 @@ class BlockingHttpControllerTest : AbstractHttpControllerTest() {
             @HttpController
             class Controller {
                 @HttpRoute(method = "GET", path = "/test")
-                fun test(): HttpServerResponseEntity<String> {
-                    return HttpServerResponseEntity(403, "test", HttpHeaders.of("test-header", "test-value"))
+                fun test(): HttpResponseEntity<String> {
+                    return HttpResponseEntity.of(403, HttpHeaders.of("test-header", "test-value"), "test")
                 }
             }
             

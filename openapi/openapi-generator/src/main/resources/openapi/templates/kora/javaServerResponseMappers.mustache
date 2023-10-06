@@ -3,7 +3,7 @@ package {{package}};
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
-import ru.tinkoff.kora.http.server.common.HttpServerResponseEntity;
+import ru.tinkoff.kora.http.common.HttpResponseEntity;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.common.Context;
 
@@ -20,7 +20,7 @@ public interface {{classname}}ServerResponseMappers {
   final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper implements HttpServerResponseMapper<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>{
     {{#responses}}
     {{#dataType}}
-    private final HttpServerResponseMapper<HttpServerResponseEntity<{{{dataType}}}>> response{{code}}Delegate;
+    private final HttpServerResponseMapper<HttpResponseEntity<{{{dataType}}}>> response{{code}}Delegate;
     {{/dataType}}
     {{/responses}}
 
@@ -51,7 +51,7 @@ public interface {{classname}}ServerResponseMappers {
         return HttpServerResponse.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers);
         {{/dataType}}
         {{#dataType}}
-        var entity = new HttpServerResponseEntity<>({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, rs.content(), headers);
+        var entity = HttpResponseEntity.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, rs.content());
         return this.response{{code}}Delegate.apply(ctx, request, entity);
         {{/dataType}}
         {{^vendorExtensions.singleResponse}}

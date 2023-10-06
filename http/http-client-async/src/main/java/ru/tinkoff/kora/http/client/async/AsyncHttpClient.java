@@ -41,7 +41,7 @@ public class AsyncHttpClient implements HttpClient, Lifecycle {
                 if (e instanceof HttpClientException clientException) {
                     return CompletableFuture.failedFuture(clientException);
                 }
-                return CompletableFuture.failedFuture(new UnknownHttpClientException(e));
+                return CompletableFuture.failedFuture(new HttpClientUnknownException(e));
             });
     }
 

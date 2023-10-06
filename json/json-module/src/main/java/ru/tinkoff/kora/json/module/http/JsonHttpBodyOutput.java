@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.json.module.http;
 
 import com.fasterxml.jackson.core.JsonEncoding;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.util.flow.LazySingleSubscription;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
@@ -15,9 +16,10 @@ import java.util.concurrent.Flow;
 public final class JsonHttpBodyOutput<T> implements HttpBodyOutput {
     private final JsonWriter<T> writer;
     private final Context context;
+    @Nullable
     private final T value;
 
-    public JsonHttpBodyOutput(JsonWriter<T> writer, Context context, T value) {
+    public JsonHttpBodyOutput(JsonWriter<T> writer, Context context, @Nullable T value) {
         this.writer = writer;
         this.value = value;
         this.context = context;

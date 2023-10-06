@@ -1,12 +1,12 @@
 package ru.tinkoff.kora.json.module.http.client;
 
 import ru.tinkoff.kora.common.util.FlowUtils;
-import ru.tinkoff.kora.http.client.common.HttpClientDecoderException;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper;
 import ru.tinkoff.kora.json.common.JsonReader;
 
 import java.io.IOException;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
 public class JsonAsyncHttpClientResponseMapper<T> implements HttpClientResponseMapper<CompletionStage<T>> {
@@ -23,7 +23,7 @@ public class JsonAsyncHttpClientResponseMapper<T> implements HttpClientResponseM
                 try {
                     return this.reader.read(bytes);
                 } catch (IOException e) {
-                    throw new HttpClientDecoderException(e);
+                    throw new CompletionException(e);
                 }
             });
     }

@@ -19,7 +19,7 @@ public final class JacksonHttpServerRequestMapper<T> implements HttpServerReques
     }
 
     @Override
-    public T apply(HttpServerRequest request) {
+    public T apply(HttpServerRequest request) throws IOException {
         try (var body = request.body()) {
             var fullContent = body.getFullContentIfAvailable();
             if (fullContent != null) {
@@ -34,17 +34,14 @@ public final class JacksonHttpServerRequestMapper<T> implements HttpServerReques
                     return this.objectMapper.readValue(is);
                 }
             }
-            final byte[] bytes;
             try {
-                bytes = body.asArrayStage().toCompletableFuture().get();
+                var bytes = body.asArrayStage().toCompletableFuture().get();
+                return this.objectMapper.readValue(bytes);
             } catch (InterruptedException e) {
-                throw HttpServerResponseException.of(e, 400, e.getMessage());
+                throw HttpServerResponseException.of(500, e);
             } catch (ExecutionException e) {
-                throw HttpServerResponseException.of(e.getCause(), 400, e.getCause().getMessage());
+                throw HttpServerResponseException.of(500, e.getCause());
             }
-            return this.objectMapper.readValue(bytes);
-        } catch (IOException e) {
-            throw HttpServerResponseException.of(e, 400, e.getMessage());
         }
     }
 }

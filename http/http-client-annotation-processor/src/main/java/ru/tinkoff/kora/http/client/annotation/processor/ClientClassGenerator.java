@@ -217,11 +217,11 @@ public class ClientClassGenerator {
         b.nextControlFlow("catch (java.util.concurrent.ExecutionException e)")
             .addStatement("if (e.getCause() instanceof RuntimeException re) throw re")
             .addStatement("if (e.getCause() instanceof Error er) throw er")
-            .addStatement("throw new $T(e.getCause())", unknownHttpClientException);
+            .addStatement("throw new $T(e.getCause())", httpClientUnknownException);
         b.nextControlFlow("catch (RuntimeException e)")
             .addStatement("throw e");
         b.nextControlFlow("catch (Exception e)")
-            .addStatement("throw new $T(e)", unknownHttpClientException);
+            .addStatement("throw new $T(e)", httpClientUnknownException);
         b.endControlFlow();// try response
         return b.build();
     }

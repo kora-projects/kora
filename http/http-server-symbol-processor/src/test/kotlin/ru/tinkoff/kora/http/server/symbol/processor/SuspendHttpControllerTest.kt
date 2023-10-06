@@ -103,8 +103,8 @@ class SuspendHttpControllerTest : AbstractHttpControllerTest() {
             @HttpController
             class Controller {
                 @HttpRoute(method = "GET", path = "/test")
-                suspend fun test(): HttpServerResponseEntity<String> {
-                    return HttpServerResponseEntity(403, "test", HttpHeaders.of("test-header", "test-value"))
+                suspend fun test(): HttpResponseEntity<String> {
+                    return HttpResponseEntity.of(403, HttpHeaders.of("test-header", "test-value"), "test")
                 }
             }
             

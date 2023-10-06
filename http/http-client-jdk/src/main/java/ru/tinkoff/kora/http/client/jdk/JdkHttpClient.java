@@ -74,7 +74,7 @@ public class JdkHttpClient implements HttpClient {
                 if (error instanceof HttpClientException httpClientException) {
                     return CompletableFuture.failedFuture(httpClientException);
                 }
-                return CompletableFuture.failedFuture(new UnknownHttpClientException(error));
+                return CompletableFuture.failedFuture(new HttpClientUnknownException(error));
             })
             .thenApply(JdkHttpClientResponse::new);
     }

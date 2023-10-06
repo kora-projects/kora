@@ -17,7 +17,7 @@ object HttpClientClassNames {
     val httpClientTelemetryFactory = ClassName("ru.tinkoff.kora.http.client.common.telemetry", "HttpClientTelemetryFactory")
     val stringParameterConverter = ClassName("ru.tinkoff.kora.http.client.common.writer", "StringParameterConverter")
     val httpRoute = ClassName("ru.tinkoff.kora.http.common.annotation", "HttpRoute")
-    val unknownHttpClientException = ClassName("ru.tinkoff.kora.http.client.common", "UnknownHttpClientException")
+    val httpClientUnknownException = ClassName("ru.tinkoff.kora.http.client.common", "HttpClientUnknownException")
     val httpClientOperationConfig = ClassName("ru.tinkoff.kora.http.client.common.declarative", "HttpClientOperationConfig")
     val declarativeHttpClientConfig = ClassName("ru.tinkoff.kora.http.client.common.declarative", "DeclarativeHttpClientConfig")
     val interceptWithClassName = ClassName("ru.tinkoff.kora.http.common.annotation", "InterceptWith")
