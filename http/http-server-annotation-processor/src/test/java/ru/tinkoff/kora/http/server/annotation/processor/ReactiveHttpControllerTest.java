@@ -108,8 +108,8 @@ public class ReactiveHttpControllerTest extends AbstractHttpControllerTest {
             @HttpController
             public class Controller {
                 @HttpRoute(method = "GET", path = "/test")
-                Mono<HttpServerResponseEntity<String>> test() {
-                    return Mono.just(new HttpServerResponseEntity<>(403, "test", HttpHeaders.of("test-header", "test-value")));
+                Mono<HttpResponseEntity<String>> test() {
+                    return Mono.just(HttpResponseEntity.of(403, HttpHeaders.of("test-header", "test-value"), "test"));
                 }
             }
             """);

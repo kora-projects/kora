@@ -3,12 +3,12 @@ package ru.tinkoff.kora.json.module.http.server;
 import ru.tinkoff.kora.common.util.ByteBufferInputStream;
 import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
-import ru.tinkoff.kora.http.server.common.HttpServerResponseException;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
 import ru.tinkoff.kora.json.common.JsonReader;
 
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
 public final class JsonReaderAsyncHttpServerRequestMapper<T> implements HttpServerRequestMapper<CompletionStage<T>> {
@@ -19,7 +19,7 @@ public final class JsonReaderAsyncHttpServerRequestMapper<T> implements HttpServ
     }
 
     @Override
-    public CompletionStage<T> apply(HttpServerRequest request) {
+    public CompletionStage<T> apply(HttpServerRequest request) throws IOException {
         var body = request.body();
         var fullContent = body.getFullContentIfAvailable();
         if (fullContent != null) {
@@ -29,16 +29,14 @@ public final class JsonReaderAsyncHttpServerRequestMapper<T> implements HttpServ
                 } else {
                     return CompletableFuture.completedFuture(this.reader.read(new ByteBufferInputStream(fullContent)));
                 }
-            } catch (IOException e) {
-                return CompletableFuture.failedFuture(HttpServerResponseException.of(e, 400, e.getMessage()));
             }
         }
         return FlowUtils.toByteArrayFuture(request.body())
             .thenApply(bytes -> {
                 try {
                     return this.reader.read(bytes);
-                } catch (Exception e) {
-                    throw HttpServerResponseException.of(e, 400, e.getMessage());
+                } catch (IOException e) {
+                    throw new CompletionException(e);
                 }
             });
     }

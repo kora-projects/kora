@@ -108,8 +108,8 @@ public class AsyncHttpControllerTest extends AbstractHttpControllerTest {
             @HttpController
             public class Controller {
                 @HttpRoute(method = "GET", path = "/test")
-                CompletionStage<HttpServerResponseEntity<String>> test() {
-                    return CompletableFuture.completedFuture(new HttpServerResponseEntity<>(403, "test", HttpHeaders.of("test-header", "test-value")));
+                CompletionStage<HttpResponseEntity<String>> test() {
+                    return CompletableFuture.completedFuture(HttpResponseEntity.of(403, HttpHeaders.of("test-header", "test-value"), "test"));
                 }
             }
             """);
@@ -227,8 +227,8 @@ public class AsyncHttpControllerTest extends AbstractHttpControllerTest {
             @HttpController
             public class Controller {
                 @HttpRoute(method = "GET", path = "/test")
-                CompletableFuture<HttpServerResponseEntity<String>> test() {
-                    return CompletableFuture.completedFuture(new HttpServerResponseEntity<>(403, "test", HttpHeaders.of("test-header", "test-value")));
+                CompletableFuture<HttpResponseEntity<String>> test() {
+                    return CompletableFuture.completedFuture(HttpResponseEntity.of(403, HttpHeaders.of("test-header", "test-value"), "test"));
                 }
             }
             """);

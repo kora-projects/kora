@@ -18,22 +18,22 @@ import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpCli
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientResponseException
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientResponseMapper
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientTelemetryFactory
+import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientUnknownException
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpRoute
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.interceptWithClassName
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.interceptWithContainerClassName
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.responseCodeMapper
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.responseCodeMappers
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.stringParameterConverter
-import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.unknownHttpClientException
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.extendsKeepAop
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.hasAopAnnotations
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.overridingKeepAop
-import ru.tinkoff.kora.ksp.common.CommonClassNames.isCollection
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.await
+import ru.tinkoff.kora.ksp.common.CommonClassNames.isCollection
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
@@ -45,7 +45,6 @@ import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.parseAnnotationValue
 import ru.tinkoff.kora.ksp.common.parseMappingData
 import java.time.Duration
-import java.util.*
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.ExecutionException
 
@@ -341,13 +340,13 @@ class ClientClassGenerator(private val resolver: Resolver) {
             b.add("\n} catch (_e: %T) {\n", ExecutionException::class.asClassName())
             b.add("  _e.cause?.let {\n")
             b.add("    if (it is %T) throw it\n", RuntimeException::class.asClassName())
-            b.add("    throw %T(it)\n", unknownHttpClientException)
+            b.add("    throw %T(it)\n", httpClientUnknownException)
             b.add("  }\n")
-            b.add("  throw %T(_e)\n", unknownHttpClientException)
+            b.add("  throw %T(_e)\n", httpClientUnknownException)
             b.add("} catch (_e: %T) {\n", RuntimeException::class.asClassName())
             b.add("  throw _e\n")
             b.add("} catch (_e: Exception) {\n")
-            b.add("  throw %T(_e)\n", unknownHttpClientException)
+            b.add("  throw %T(_e)\n", httpClientUnknownException)
             b.add("}\n")
         }
         return m.addCode(b.build()).build()

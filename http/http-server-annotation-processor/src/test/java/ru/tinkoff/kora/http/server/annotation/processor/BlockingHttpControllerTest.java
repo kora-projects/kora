@@ -112,8 +112,8 @@ public class BlockingHttpControllerTest extends AbstractHttpControllerTest {
             @HttpController
             public class Controller {
                 @HttpRoute(method = "GET", path = "/test")
-                HttpServerResponseEntity<String> test() {
-                    return new HttpServerResponseEntity<>(403, "test", HttpHeaders.of("test-header", "test-value"));
+                HttpResponseEntity<String> test() {
+                    return HttpResponseEntity.of(403, HttpHeaders.of("test-header", "test-value"), "test");
                 }
             }
             """);

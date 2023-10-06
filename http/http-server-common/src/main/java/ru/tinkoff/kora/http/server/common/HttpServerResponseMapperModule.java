@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.http.server.common;
 
+import ru.tinkoff.kora.http.common.HttpResponseEntity;
 import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseEntityMapper;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper;
@@ -24,7 +25,7 @@ public interface HttpServerResponseMapperModule {
         return (ctx, request, r) -> HttpServerResponse.of(200, HttpBody.plaintext(r));
     }
 
-    default <T> HttpServerResponseMapper<HttpServerResponseEntity<T>> httpServerResponseEntityMapper(HttpServerResponseMapper<T> delegate) {
+    default <T> HttpServerResponseMapper<HttpResponseEntity<T>> httpServerResponseEntityMapper(HttpServerResponseMapper<T> delegate) {
         return new HttpServerResponseEntityMapper<>(delegate);
     }
 }

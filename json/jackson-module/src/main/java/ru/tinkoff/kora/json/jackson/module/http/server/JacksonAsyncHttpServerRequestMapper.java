@@ -32,7 +32,7 @@ public final class JacksonAsyncHttpServerRequestMapper<T> implements HttpServerR
                     return CompletableFuture.completedFuture(this.objectMapper.readValue(new ByteBufferInputStream(fullContent)));
                 }
             } catch (IOException e) {
-                return CompletableFuture.failedFuture(HttpServerResponseException.of(e, 400, e.getMessage()));
+                return CompletableFuture.failedFuture(HttpServerResponseException.of(400, e));
             }
         }
         return FlowUtils.toByteArrayFuture(request.body())
@@ -40,7 +40,7 @@ public final class JacksonAsyncHttpServerRequestMapper<T> implements HttpServerR
                 try {
                     return this.objectMapper.readValue(bytes);
                 } catch (Exception e) {
-                    throw HttpServerResponseException.of(e, 400, e.getMessage());
+                    throw HttpServerResponseException.of(400, e);
                 }
             });
     }

@@ -4,7 +4,7 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Mapping;
 import ru.tinkoff.kora.http.client.common.HttpClientDecoderException;
 import ru.tinkoff.kora.http.client.common.HttpClientException;
-import ru.tinkoff.kora.http.client.common.UnknownHttpClientException;
+import ru.tinkoff.kora.http.client.common.HttpClientUnknownException;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -22,12 +22,12 @@ public interface HttpClientResponseMapper<T> extends Mapping.MappingFunction {
             } catch (HttpClientException e) {
                 throw e;
             } catch (InterruptedException e) {
-                throw new UnknownHttpClientException(e);
+                throw new HttpClientUnknownException(e);
             } catch (ExecutionException e) {
                 if (e.getCause() instanceof HttpClientException ce) {
                     throw ce;
                 }
-                throw new UnknownHttpClientException(Objects.requireNonNullElse(e.getCause(), e));
+                throw new HttpClientUnknownException(Objects.requireNonNullElse(e.getCause(), e));
             }
             return null;
         };

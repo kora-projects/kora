@@ -12,12 +12,11 @@ public class HttpClientClassNames {
     public static final ClassName responseCodeMappers = responseCodeMapper.nestedClass("ResponseCodeMappers");
     public static final ClassName httpClientRequestBuilder = ClassName.get("ru.tinkoff.kora.http.client.common.request", "HttpClientRequestBuilder");
     public static final ClassName httpClientRequestMapper = ClassName.get("ru.tinkoff.kora.http.client.common.request", "HttpClientRequestMapper");
-    public static final ClassName httpClientResponse = ClassName.get("ru.tinkoff.kora.http.client.common.response", "HttpClientResponse");
     public static final ClassName httpClientResponseMapper = ClassName.get("ru.tinkoff.kora.http.client.common.response", "HttpClientResponseMapper");
     public static final ClassName httpClientTelemetryFactory = ClassName.get("ru.tinkoff.kora.http.client.common.telemetry", "HttpClientTelemetryFactory");
     public static final ClassName stringParameterConverter = ClassName.get("ru.tinkoff.kora.http.client.common.writer", "StringParameterConverter");
     public static final ClassName httpRoute = ClassName.get("ru.tinkoff.kora.http.common.annotation", "HttpRoute");
-    public static final ClassName unknownHttpClientException  = ClassName.get("ru.tinkoff.kora.http.client.common", "UnknownHttpClientException");
+    public static final ClassName httpClientUnknownException = ClassName.get("ru.tinkoff.kora.http.client.common", "HttpClientUnknownException");
     public static final ClassName httpClientOperationConfig  = ClassName.get("ru.tinkoff.kora.http.client.common.declarative", "HttpClientOperationConfig");
     public static final ClassName declarativeHttpClientConfig  = ClassName.get("ru.tinkoff.kora.http.client.common.declarative", "DeclarativeHttpClientConfig");
     public static final ClassName interceptWithClassName = ClassName.get("ru.tinkoff.kora.http.common.annotation", "InterceptWith");
