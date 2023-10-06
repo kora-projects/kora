@@ -17,10 +17,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
@@ -101,19 +98,34 @@ public class RequestHandlerGenerator {
         var handler = CodeBlock.builder();
         var returnType = requestMappingData.executableType().getReturnType();
 
+        var hasNonBodyParams = false;
+        for (var parameter : parameters) {
+            if (Set.of(PATH, QUERY, HEADER).contains(parameter.parameterType)) {
+                handler.addStatement("final $T $N", parameter.type, parameter.variableElement.getSimpleName());
+                hasNonBodyParams = true;
+            }
+        }
+        if (hasNonBodyParams) handler.beginControlFlow("try");
+
         for (var parameter : parameters) {
             var codeBlock = switch (parameter.parameterType) {
                 case PATH -> this.definePathParameter(parameter, methodBuilder);
                 case QUERY -> this.defineQueryParameter(parameter, methodBuilder);
                 case HEADER -> this.defineHeaderParameter(parameter, methodBuilder);
                 case MAPPED_HTTP_REQUEST -> CodeBlock.of("");
-                case REQUEST -> CodeBlock.of("var $N = _request;\n", parameter.name());
-                case CONTEXT -> CodeBlock.of("var $N = _ctx;\n", parameter.name());
+                case REQUEST -> CodeBlock.of("var $L = _request;\n", parameter.name());
+                case CONTEXT -> CodeBlock.of("var $L = _ctx;\n", parameter.name());
             };
             handler.add(codeBlock);
             handler.add("\n");
-
         }
+        if (hasNonBodyParams) {
+            handler.nextControlFlow("catch (Exception _e)");
+            handler.addStatement("if (_e instanceof $T) throw _e", httpServerResponse);
+            handler.addStatement("throw $T.of(400, _e)", httpServerResponseException);
+            handler.endControlFlow();
+        }
+
         var interceptors = Stream.concat(
                 AnnotationUtils.findAnnotations(controller, interceptWithClassName, interceptWithContainerClassName).stream().map(HttpServerUtils::parseInterceptor),
                 AnnotationUtils.findAnnotations(requestMappingData.executableElement(), interceptWithClassName, interceptWithContainerClassName).stream().map(HttpServerUtils::parseInterceptor)
@@ -179,7 +191,13 @@ public class RequestHandlerGenerator {
         var mappedParameters = parameters.stream().filter(p -> p.parameterType == MAPPED_HTTP_REQUEST).toList();
         var b = CodeBlock.builder();
         for (var mappedParameter : mappedParameters) {
-            b.addStatement("var $N = $LHttpRequestMapper.apply($L).toCompletableFuture()", "_future_" + mappedParameter.name, mappedParameter.name, requestName);
+            b.addStatement("final $T $N;", ParameterizedTypeName.get(ClassName.get(CompletableFuture.class), TypeName.get(mappedParameter.type)), "_future_" + mappedParameter.name);
+            b.beginControlFlow("try");
+            b.addStatement("$N = $LHttpRequestMapper.apply($L).toCompletableFuture()", "_future_" + mappedParameter.name, mappedParameter.name, requestName);
+            b.nextControlFlow("catch (Exception _e)");
+            b.addStatement("if (_e instanceof $T) return $T.failedFuture(_e)", httpServerResponse, CompletableFuture.class);
+            b.addStatement("return $T.failedFuture($T.of(400, _e))", CompletableFuture.class, httpServerResponseException);
+            b.endControlFlow();
         }
         if (!mappedParameters.isEmpty()) {
             b.add("return $T.allOf(", CompletableFuture.class);
@@ -189,7 +207,13 @@ public class RequestHandlerGenerator {
             }
             b.add(").thenCompose(_unused_ -> {$>\n");
             for (var mappedParameter : mappedParameters) {
-                b.addStatement("var $N = $N.getNow(null)", mappedParameter.name, "_future_" + mappedParameter.name);
+                b.addStatement("final $T $N;", mappedParameter.type, mappedParameter.name);
+                b.beginControlFlow("try");
+                b.addStatement("$N = $N.getNow(null)", mappedParameter.name, "_future_" + mappedParameter.name);
+                b.nextControlFlow("catch ($T _e)", CompletionException.class);
+                b.addStatement("if (_e.getCause() instanceof $T) return $T.failedFuture(_e)", httpServerResponse, CompletableFuture.class);
+                b.addStatement("return $T.failedFuture($T.of(400, _e.getCause()))", CompletableFuture.class, httpServerResponseException);
+                b.endControlFlow();
             }
         }
         b.beginControlFlow("try");
@@ -226,7 +250,13 @@ public class RequestHandlerGenerator {
         var mappedParameters = parameters.stream().filter(p -> p.parameterType == MAPPED_HTTP_REQUEST).toList();
         var b = CodeBlock.builder();
         for (var mappedParameter : mappedParameters) {
-            b.addStatement("var $N = $LHttpRequestMapper.apply($L).toCompletableFuture()", "_future_" + mappedParameter.name, mappedParameter.name, requestName);
+            b.addStatement("final $T $N;", ParameterizedTypeName.get(ClassName.get(CompletableFuture.class), TypeName.get(mappedParameter.type)), "_future_" + mappedParameter.name);
+            b.beginControlFlow("try");
+            b.addStatement("$N = $LHttpRequestMapper.apply($L).toCompletableFuture()", "_future_" + mappedParameter.name, mappedParameter.name, requestName);
+            b.nextControlFlow("catch (Exception _e)");
+            b.addStatement("if (_e instanceof $T) return $T.failedFuture(_e)", httpServerResponse, CompletableFuture.class);
+            b.addStatement("return $T.failedFuture($T.of(400, _e))", CompletableFuture.class, httpServerResponseException);
+            b.endControlFlow();
         }
         if (!mappedParameters.isEmpty()) {
             b.add("return $T.allOf(", CompletableFuture.class);
@@ -236,7 +266,13 @@ public class RequestHandlerGenerator {
             }
             b.add(").thenCompose(_unused_ -> {$>\n");
             for (var mappedParameter : mappedParameters) {
-                b.addStatement("var $N = $N.getNow(null)", mappedParameter.name, "_future_" + mappedParameter.name);
+                b.addStatement("final $T $N;", mappedParameter.type, mappedParameter.name);
+                b.beginControlFlow("try");
+                b.addStatement("$N = $N.getNow(null)", mappedParameter.name, "_future_" + mappedParameter.name);
+                b.nextControlFlow("catch ($T _e)", CompletionException.class);
+                b.addStatement("if (_e.getCause() instanceof $T) return $T.failedFuture(_e)", httpServerResponse, CompletableFuture.class);
+                b.addStatement("return $T.failedFuture($T.of(400, _e.getCause()))", CompletableFuture.class, httpServerResponseException);
+                b.endControlFlow();
             }
         }
         b.beginControlFlow("try");
@@ -273,7 +309,13 @@ public class RequestHandlerGenerator {
         var b = CodeBlock.builder();
         b.add("return _executor.execute(_ctx, () -> {$>\n");
         for (var mappedParameter : mappedParameters) {
-            b.addStatement("var $N = $LHttpRequestMapper.apply($L)", mappedParameter.name, mappedParameter.name, requestName);
+            b.addStatement("final $T $N;", TypeName.get(mappedParameter.type), mappedParameter.name);
+            b.beginControlFlow("try");
+            b.addStatement("$N = $LHttpRequestMapper.apply($L)", mappedParameter.name, mappedParameter.name, requestName);
+            b.nextControlFlow("catch (Exception _e)");
+            b.addStatement("if (_e instanceof $T) throw _e", httpServerResponse);
+            b.addStatement("throw $T.of(400, _e)", httpServerResponseException);
+            b.endControlFlow();
         }
         if (CommonUtils.isVoid(requestMappingData.executableType().getReturnType())) {
             b.addStatement("_controller.$N($L)", requestMappingData.executableElement().getSimpleName(), executeParameters);
@@ -292,16 +334,11 @@ public class RequestHandlerGenerator {
         var code = CodeBlock.builder();
         var typeString = parameter.type.toString();
         switch (typeString) {
-            case "java.lang.Integer", "int" ->
-                code.add("var $L = $T.parseIntegerPathParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
-            case "java.lang.Long", "long" ->
-                code.add("var $L = $T.parseLongPathParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
-            case "java.lang.Double", "double" ->
-                code.add("var $L = $T.parseDoublePathParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
-            case "java.lang.String" ->
-                code.add("var $L = $T.parseStringPathParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
-            case "java.util.UUID" ->
-                code.add("var $L = $T.parseUUIDPathParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+            case "java.lang.Integer", "int" -> code.add("$L = $T.parseIntegerPathParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+            case "java.lang.Long", "long" -> code.add("$L = $T.parseLongPathParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+            case "java.lang.Double", "double" -> code.add("$L = $T.parseDoublePathParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+            case "java.lang.String" -> code.add("$L = $T.parseStringPathParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+            case "java.util.UUID" -> code.add("$L = $T.parseUUIDPathParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
             default -> {
                 var parameterReaderType = ParameterizedTypeName.get(
                     HttpServerClassNames.stringParameterReader,
@@ -309,7 +346,7 @@ public class RequestHandlerGenerator {
                 );
                 var parameterReaderName = "_" + parameter.variableElement.getSimpleName().toString() + "Reader";
                 methodBuilder.addParameter(parameterReaderType, parameterReaderName);
-                code.add("var $L = $L.read($T.parseStringPathParameter(_request, $S));", parameter.variableElement, parameterReaderName, requestHandlerUtils, parameter.name);
+                code.add("$L = $L.read($T.parseStringPathParameter(_request, $S));", parameter.variableElement, parameterReaderName, requestHandlerUtils, parameter.name);
                 return code.build();
             }
         }
@@ -322,35 +359,35 @@ public class RequestHandlerGenerator {
         switch (typeString) {
             case "java.lang.String" -> {
                 if (isNullable(parameter)) {
-                    code.add("var $L = $T.parseOptionalStringHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseOptionalStringHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 } else {
-                    code.add("var $L = $T.parseStringHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseStringHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
             case "java.util.Optional<java.lang.String>" ->
-                code.add("var $L = $T.ofNullable($T.parseOptionalStringHeaderParameter(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
+                code.add("$L = $T.ofNullable($T.parseOptionalStringHeaderParameter(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
             case "java.util.List<java.lang.String>" -> {
                 if (isNullable(parameter)) {
-                    code.add("var $L = $T.parseOptionalStringListHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseOptionalStringListHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 } else {
-                    code.add("var $L = $T.parseStringListHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseStringListHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
 
             case "java.util.Optional<java.lang.Integer>" ->
-                code.add("var $L = $T.ofNullable($T.parseOptionalIntegerHeaderParameter(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
+                code.add("$L = $T.ofNullable($T.parseOptionalIntegerHeaderParameter(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
             case "java.lang.Integer" -> {
                 if (isNullable(parameter)) {
-                    code.add("var $L = $T.parseOptionalIntegerHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseOptionalIntegerHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 } else {
-                    code.add("var $L = $T.parseIntegerHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseIntegerHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
             case "java.util.List<java.lang.Integer>" -> {
                 if (isNullable(parameter)) {
-                    code.add("var $L = $T.parseOptionalIntegerListHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseOptionalIntegerListHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 } else {
-                    code.add("var $L = $T.parseIntegerListHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseIntegerListHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
 
@@ -365,7 +402,7 @@ public class RequestHandlerGenerator {
                     var parameterReaderName = "_" + parameter.variableElement.getSimpleName().toString() + "Reader";
 
                     methodBuilder.addParameter(parameterReaderType, parameterReaderName);
-                    code.add("var $L = $T.ofNullable($T.parseOptionalStringHeaderParameter(_request, $S)).map($L::read);", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name, parameterReaderName);
+                    code.add("$L = $T.ofNullable($T.parseOptionalStringHeaderParameter(_request, $S)).map($L::read);", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name, parameterReaderName);
                     return code.build();
                 }
 
@@ -380,11 +417,11 @@ public class RequestHandlerGenerator {
                     if (isNullable(parameter)) {
                         code.add("""
                                 var _optional_$L = $T.parseOptionalStringListHeaderParameter(_request, $S);
-                                var $L = (_optional_$L == null) ? null : _optional_$L.stream().map($L::read).toList();
+                                $N = (_optional_$L == null) ? null : _optional_$L.stream().map($L::read).toList();
                                 """, parameter.variableElement, requestHandlerUtils, parameter.name,
                             parameter.variableElement, parameter.variableElement, parameter.variableElement, "_" + parameter.name + "Reader");
                     } else {
-                        code.add("var $L = $T.parseStringListHeaderParameter(_request, $S).stream().map($L::read).toList();", parameter.variableElement, requestHandlerUtils, parameter.name, "_" + parameter.name + "Reader");
+                        code.add("$L = $T.parseStringListHeaderParameter(_request, $S).stream().map($L::read).toList();", parameter.variableElement, requestHandlerUtils, parameter.name, "_" + parameter.name + "Reader");
                     }
 
                     return code.build();
@@ -399,10 +436,10 @@ public class RequestHandlerGenerator {
 
                 if (isNullable(parameter)) {
                     var transitParameterName = "_" + parameter.variableElement.getSimpleName() + "RawValue";
-                    code.add("var $L = $T.parseOptionalStringHeaderParameter(_request, $S);\n", transitParameterName, requestHandlerUtils, parameter.name);
-                    code.add("var $L = $L == null ? null : $L.read($L);", parameter.variableElement, transitParameterName, parameterReaderName, transitParameterName);
+                    code.add("var $N = $T.parseOptionalStringHeaderParameter(_request, $S);\n", transitParameterName, requestHandlerUtils, parameter.name);
+                    code.add("$L = $L == null ? null : $L.read($L);", parameter.variableElement, transitParameterName, parameterReaderName, transitParameterName);
                 } else {
-                    code.add("var $L = $L.read($T.parseStringHeaderParameter(_request, $S));", parameter.variableElement, parameterReaderName, requestHandlerUtils, parameter.name);
+                    code.add("$L = $L.read($T.parseStringHeaderParameter(_request, $S));", parameter.variableElement, parameterReaderName, requestHandlerUtils, parameter.name);
                 }
                 return code.build();
             }
@@ -416,111 +453,107 @@ public class RequestHandlerGenerator {
         switch (typeString) {
             case "java.util.UUID" -> {
                 if (isNullable(parameter)) {
-                    code.add("var $L = $T.parseOptionalUuidQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseOptionalUuidQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 } else {
-                    code.add("var $L = $T.parseUuidQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseUuidQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
             case "java.util.Optional<java.util.UUID>" ->
-                code.add("var $L = $T.ofNullable($T.parseOptionalUuidQueryParameter(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
+                code.add("$L = $T.ofNullable($T.parseOptionalUuidQueryParameter(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
             case "java.util.List<java.util.UUID>" -> {
                 if (isNullable(parameter)) {
-                    code.add("var $L = $T.parseOptionalUuidListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseOptionalUuidListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 } else {
-                    code.add("var $L = $T.parseUuidListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseUuidListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
 
-            case "int" ->
-                code.add("var $L = $T.parseIntegerQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+            case "int" -> code.add("$L = $T.parseIntegerQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
             case "java.util.Optional<java.lang.Integer>" ->
-                code.add("var $L = $T.ofNullable($T.parseOptionalIntegerQueryParameter(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
+                code.add("$L = $T.ofNullable($T.parseOptionalIntegerQueryParameter(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
             case "java.lang.Integer" -> {
                 if (isNullable(parameter)) {
-                    code.add("var $L = $T.parseOptionalIntegerQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseOptionalIntegerQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 } else {
-                    code.add("var $L = $T.parseIntegerQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseIntegerQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
             case "java.util.List<java.lang.Integer>" -> {
                 if (isNullable(parameter)) {
-                    code.add("var $L = $T.parseOptionalIntegerListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseOptionalIntegerListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 } else {
-                    code.add("var $L = $T.parseIntegerListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseIntegerListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
 
-            case "long" ->
-                code.add("var $L = $T.parseLongQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+            case "long" -> code.add("$L = $T.parseLongQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
             case "java.util.Optional<java.lang.Long>" ->
-                code.add("var $L = $T.ofNullable($T.parseOptionalLongQueryParameter(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
+                code.add("$L = $T.ofNullable($T.parseOptionalLongQueryParameter(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
             case "java.lang.Long" -> {
                 if (isNullable(parameter)) {
-                    code.add("var $L = $T.parseOptionalLongQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseOptionalLongQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 } else {
-                    code.add("var $L = $T.parseLongQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseLongQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
             case "java.util.List<java.lang.Long>" -> {
                 if (isNullable(parameter)) {
-                    code.add("var $L = $T.parseOptionalLongListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseOptionalLongListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 } else {
-                    code.add("var $L = $T.parseLongListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseLongListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
 
-            case "double" ->
-                code.add("var $L = $T.parseDoubleQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+            case "double" -> code.add("$L = $T.parseDoubleQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
             case "java.util.Optional<java.lang.Double>" ->
-                code.add("var $L = $T.ofNullable($T.parseOptionalDoubleQueryParameter(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
+                code.add("$L = $T.ofNullable($T.parseOptionalDoubleQueryParameter(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
             case "java.lang.Double" -> {
                 if (isNullable(parameter)) {
-                    code.add("var $L = $T.parseOptionalDoubleQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseOptionalDoubleQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 } else {
-                    code.add("var $L = $T.parseDoubleQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseDoubleQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
             case "java.util.List<java.lang.Double>" -> {
                 if (isNullable(parameter)) {
-                    code.add("var $L = $T.parseOptionalDoubleListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseOptionalDoubleListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 } else {
-                    code.add("var $L = $T.parseDoubleListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseDoubleListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
 
             case "java.util.Optional<java.lang.String>" ->
-                code.add("var $L = $T.ofNullable($T.parseOptionalStringQueryParameter(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
+                code.add("$L = $T.ofNullable($T.parseOptionalStringQueryParameter(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
             case "java.lang.String" -> {
                 if (isNullable(parameter)) {
-                    code.add("var $L = $T.parseOptionalStringQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseOptionalStringQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 } else {
-                    code.add("var $L = $T.parseStringQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseStringQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
             case "java.util.List<java.lang.String>" -> {
                 if (isNullable(parameter)) {
-                    code.add("var $L = $T.parseOptionalStringListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseOptionalStringListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 } else {
-                    code.add("var $L = $T.parseStringListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseStringListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
 
-            case "boolean" ->
-                code.add("var $L = $T.parseBooleanQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+            case "boolean" -> code.add("$L = $T.parseBooleanQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
             case "java.util.Optional<java.lang.Boolean>" ->
-                code.add("var $L = $T.ofNullable($T.parseOptionalBooleanQueryParameter(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
+                code.add("$L = $T.ofNullable($T.parseOptionalBooleanQueryParameter(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
             case "java.lang.Boolean" -> {
                 if (isNullable(parameter)) {
-                    code.add("var $L = $T.parseOptionalBooleanQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseOptionalBooleanQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 } else {
-                    code.add("var $L = $T.parseBooleanQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseBooleanQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
             case "java.util.List<java.lang.Boolean>" -> {
                 if (isNullable(parameter)) {
-                    code.add("var $L = $T.parseOptionalBooleanListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseOptionalBooleanListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 } else {
-                    code.add("var $L = $T.parseBooleanListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.parseBooleanListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
 
@@ -535,7 +568,7 @@ public class RequestHandlerGenerator {
                     );
 
                     methodBuilder.addParameter(parameterReaderType, readerParameterName);
-                    code.add("var $L = $T.ofNullable($T.parseOptionalStringQueryParameter(_request, $S)).map($L::read);", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name, readerParameterName);
+                    code.add("$L = $T.ofNullable($T.parseOptionalStringQueryParameter(_request, $S)).map($L::read);", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name, readerParameterName);
                     return code.build();
                 }
                 if (CommonUtils.isList(parameter.type)) {
@@ -546,11 +579,11 @@ public class RequestHandlerGenerator {
                     );
                     if (isNullable(parameter)) {
                         methodBuilder.addParameter(parameterReaderType, readerParameterName);
-                        code.add("var $L = $T.ofNullable($T.parseOptionalStringListQueryParameter(_request, $S)).map(_var_$L -> _var_$L.stream().map($L::read).toList()).orElse(null);",
+                        code.add("$L = $T.ofNullable($T.parseOptionalStringListQueryParameter(_request, $S)).map(_var_$L -> _var_$L.stream().map($L::read).toList()).orElse(null);",
                             parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name, parameter.variableElement, parameter.variableElement, readerParameterName);
                     } else {
                         methodBuilder.addParameter(parameterReaderType, readerParameterName);
-                        code.add("var $L = $T.parseStringListQueryParameter(_request, $S).stream().map($L::read).toList();", parameter.variableElement, requestHandlerUtils, parameter.name, readerParameterName);
+                        code.add("$L = $T.parseStringListQueryParameter(_request, $S).stream().map($L::read).toList();", parameter.variableElement, requestHandlerUtils, parameter.name, readerParameterName);
                     }
 
                     return code.build();
@@ -564,9 +597,9 @@ public class RequestHandlerGenerator {
                 methodBuilder.addParameter(parameterReaderType, readerParameterName);
 
                 if (isNullable(parameter)) {
-                    code.add("var $L = $T.ofNullable($T.parseOptionalStringQueryParameter(_request, $S)).map($L::read).orElse(null);", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name, readerParameterName);
+                    code.add("$L = $T.ofNullable($T.parseOptionalStringQueryParameter(_request, $S)).map($L::read).orElse(null);", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name, readerParameterName);
                 } else {
-                    code.add("var $L = $L.read($T.parseStringQueryParameter(_request, $S));", parameter.variableElement, readerParameterName, requestHandlerUtils, parameter.name);
+                    code.add("$L = $L.read($T.parseStringQueryParameter(_request, $S));", parameter.variableElement, readerParameterName, requestHandlerUtils, parameter.name);
                 }
                 return code.build();
             }

@@ -3,6 +3,7 @@ package ru.tinkoff.kora.http.server.symbol.processor
 import org.intellij.lang.annotations.Language
 import ru.tinkoff.kora.common.Context
 import ru.tinkoff.kora.http.common.body.HttpBody
+import ru.tinkoff.kora.http.common.header.HttpHeaders
 import ru.tinkoff.kora.http.server.common.HttpServerRequest
 import ru.tinkoff.kora.http.server.common.HttpServerResponse
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler
@@ -17,6 +18,7 @@ import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.CompletionException
 import java.util.concurrent.CompletionStage
 
 abstract class AbstractHttpControllerTest : AbstractSymbolProcessorTest() {
@@ -95,8 +97,20 @@ abstract class AbstractHttpControllerTest : AbstractSymbolProcessorTest() {
     }
 
     protected fun assertThat(handler: HttpServerRequestHandler, method: String, relativeUrl: String, body: String): HttpResponseAssert {
+        return assertThat(handler, request(method, relativeUrl, body))
+    }
+
+    protected fun assertThat(handler: HttpServerRequestHandler, rq: HttpServerRequest): HttpResponseAssert {
         try {
-            return HttpResponseAssert(handler.handle(Context.clear(), request(method, relativeUrl, body)).toCompletableFuture().join())
+            return HttpResponseAssert(handler.handle(Context.clear(), rq).toCompletableFuture().join())
+        } catch (e: CompletionException) {
+            e.cause?.let {
+                if (it is HttpServerResponse) {
+                    return HttpResponseAssert(it)
+                }
+                throw it
+            }
+            throw e
         } catch (e: Throwable) {
             if (e is HttpServerResponse) {
                 return HttpResponseAssert(e)
@@ -106,7 +120,11 @@ abstract class AbstractHttpControllerTest : AbstractSymbolProcessorTest() {
     }
 
     protected fun request(method: String, url: String, body: String): HttpServerRequest {
-        return SimpleHttpServerRequest(method, url, body.toByteArray(), emptyArray(), mapOf())
+        return SimpleHttpServerRequest(method, url, body.toByteArray(), HttpHeaders.of(), mutableMapOf())
+    }
+
+    protected fun request(method: String, url: String, body: String, headers: HttpHeaders): HttpServerRequest {
+        return SimpleHttpServerRequest(method, url, body.toByteArray(), headers, mutableMapOf())
     }
 
 }

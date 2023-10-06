@@ -6,8 +6,9 @@ import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTe
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.annotation.processor.server.HttpResponseAssert;
-import ru.tinkoff.kora.http.server.annotation.processor.server.SimpleHttpServerRequest;
+import ru.tinkoff.kora.http.server.annotation.processor.server.TestHttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
@@ -24,6 +25,7 @@ import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
 public abstract class AbstractHttpControllerTest extends AbstractAnnotationProcessorTest {
@@ -123,9 +125,11 @@ public abstract class AbstractHttpControllerTest extends AbstractAnnotationProce
     protected HttpServerResponseMapper<String> strResponseMapper() {
         return (ctx, request, result) -> HttpServerResponse.of(200, HttpBody.plaintext(result));
     }
+
     protected HttpServerRequestMapper<CompletionStage<String>> asyncStringRequestMapper() {
         return request -> request.body().asArrayStage().thenApply(b -> new String(b, StandardCharsets.UTF_8));
     }
+
     protected HttpServerRequestMapper<String> stringRequestMapper() {
         return request -> new String(request.body().asInputStream().readAllBytes(), StandardCharsets.UTF_8);
     }
@@ -135,8 +139,21 @@ public abstract class AbstractHttpControllerTest extends AbstractAnnotationProce
     }
 
     protected HttpResponseAssert assertThat(HttpServerRequestHandler handler, String method, String relativeUrl, String body) {
+        return assertThat(handler, request(method, relativeUrl, body));
+    }
+
+    protected HttpResponseAssert assertThat(HttpServerRequestHandler handler, HttpServerRequest request) {
         try {
-            return new HttpResponseAssert(handler.handle(Context.clear(), request(method, relativeUrl, body)).toCompletableFuture().join());
+            return new HttpResponseAssert(handler.handle(Context.clear(), request).toCompletableFuture().join());
+        } catch (CompletionException ce) {
+            var e = ce.getCause();
+            if (e instanceof HttpServerResponse rs) {
+                return new HttpResponseAssert(rs);
+            }
+            if (e instanceof RuntimeException re) {
+                throw re;
+            }
+            throw new RuntimeException(e);
         } catch (Throwable e) {
             if (e instanceof HttpServerResponse rs) {
                 return new HttpResponseAssert(rs);
@@ -148,8 +165,12 @@ public abstract class AbstractHttpControllerTest extends AbstractAnnotationProce
         }
     }
 
-    protected HttpServerRequest request(String method, String url, String body) {
-        return SimpleHttpServerRequest.of(method, url, body);
+    protected TestHttpServerRequest request(String method, String url, String body) {
+        return TestHttpServerRequest.of(method, url, body, HttpHeaders.of());
+    }
+
+    protected TestHttpServerRequest request(String method, String url, String body, HttpHeaders headers) {
+        return TestHttpServerRequest.of(method, url, body, headers);
     }
 
 }
