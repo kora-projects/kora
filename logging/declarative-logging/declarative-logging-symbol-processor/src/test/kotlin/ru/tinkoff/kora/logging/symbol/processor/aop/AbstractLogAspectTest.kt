@@ -13,7 +13,6 @@ import org.slf4j.ILoggerFactory
 import org.slf4j.Logger
 import org.slf4j.Marker
 import org.slf4j.event.Level
-import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument
 import ru.tinkoff.kora.logging.common.arg.StructuredArgumentWriter
@@ -44,7 +43,7 @@ abstract class AbstractLogAspectTest : AbstractSymbolProcessorTest() {
     }
 
     protected open fun compile(@Language("kotlin") vararg sources: String): TestObject {
-        val compileResult = compile(listOf(AopSymbolProcessorProvider()), *sources)
+        val compileResult = compile0(*sources)
 
         if (compileResult.isFailed()) {
             throw compileResult.compilationException()

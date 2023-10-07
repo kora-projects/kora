@@ -16,6 +16,7 @@ import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.validation.symbol.processor.*
+import ru.tinkoff.kora.validation.symbol.processor.ValidUtils.getConstraints
 import java.util.concurrent.Future
 
 class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
@@ -65,7 +66,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
         else
             method.returnType!!
 
-        val constraints = ValidUtils.getConstraints(returnTypeReference, method.annotations)
+        val constraints = method.getConstraints()
         val validates = if (method.annotations.any { a -> a.annotationType.resolve().declaration.qualifiedName!!.asString() == VALID_TYPE.canonicalName })
             listOf(Validated(returnTypeReference.resolve().makeNullable().asType()))
         else
@@ -183,7 +184,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
 
         for (parameter in method.parameters.filter { it.isValidatable() }) {
             val isNullable = parameter.type.resolve().isMarkedNullable
-            val constraints = ValidUtils.getConstraints(parameter.type, parameter.annotations)
+            val constraints = parameter.getConstraints()
 
             val parameterName = parameter.name!!.asString()
             val argumentContext = "_argumentsContext_" + parameterName

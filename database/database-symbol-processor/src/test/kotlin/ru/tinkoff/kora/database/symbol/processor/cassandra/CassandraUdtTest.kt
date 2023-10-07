@@ -9,7 +9,6 @@ import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowColumnMapper
 import ru.tinkoff.kora.database.symbol.processor.AbstractRepositoryTest
 import ru.tinkoff.kora.database.symbol.processor.cassandra.repository.Udt
 import ru.tinkoff.kora.database.symbol.processor.cassandra.udt.CassandraUdtSymbolProcessorProvider
-import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
 import ru.tinkoff.kora.ksp.common.symbolProcess
 import kotlin.reflect.KClass
 
@@ -66,22 +65,24 @@ class CassandraUdtTest : AbstractRepositoryTest() {
 
     @Test
     fun testUdtExtension() {
-        compile(listOf(CassandraUdtSymbolProcessorProvider(), KoraAppProcessorProvider()), """
-            @ru.tinkoff.kora.database.cassandra.UDT
-            data class UdtEntity(val value1: String, val value2: String)
-        """.trimIndent(), """
-            @KoraApp
-            interface Application {
-                @Root
-                fun entityParameterMapper(m1: CassandraParameterColumnMapper<UdtEntity>) = ""
-                @Root
-                fun entityListParameterMapper(m1: CassandraParameterColumnMapper<List<UdtEntity>>) = ""
-                @Root
-                fun entityResultMapper(m: CassandraRowColumnMapper<UdtEntity>) = ""
-                @Root
-                fun entityListResultMapper(m: CassandraRowColumnMapper<List<UdtEntity>>) = ""
-            }
-        """.trimIndent())
+        compile0(
+            """
+                @ru.tinkoff.kora.database.cassandra.UDT
+                data class UdtEntity(val value1: String, val value2: String)
+            """.trimIndent(), """
+                        @KoraApp
+                        interface Application {
+                            @Root
+                            fun entityParameterMapper(m1: CassandraParameterColumnMapper<UdtEntity>) = ""
+                            @Root
+                            fun entityListParameterMapper(m1: CassandraParameterColumnMapper<List<UdtEntity>>) = ""
+                            @Root
+                            fun entityResultMapper(m: CassandraRowColumnMapper<UdtEntity>) = ""
+                            @Root
+                            fun entityListResultMapper(m: CassandraRowColumnMapper<List<UdtEntity>>) = ""
+                        }
+                    """.trimIndent()
+        )
 
         compileResult.assertSuccess()
     }

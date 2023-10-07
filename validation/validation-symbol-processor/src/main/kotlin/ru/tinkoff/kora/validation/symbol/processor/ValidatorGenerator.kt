@@ -8,12 +8,14 @@ import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import com.squareup.kotlinpoet.ksp.writeTo
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.collectFinalSealedSubtypes
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.generatedClassName
 import ru.tinkoff.kora.ksp.common.visitClass
+import ru.tinkoff.kora.validation.symbol.processor.ValidUtils.getConstraints
 
 class ValidatorGenerator(val codeGenerator: CodeGenerator) {
     fun getValidatorSpec(meta: ValidatorMeta): ValidSymbolProcessor.ValidatorSpec {
@@ -185,7 +187,7 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
 
         val fields = ArrayList<Field>()
         for (fieldProperty in elementFields) {
-            val constraints = getConstraints(fieldProperty)
+            val constraints = fieldProperty.getConstraints()
             val validateds = getValid(fieldProperty)
             val isNullable = fieldProperty.type.resolve().isMarkedNullable
             if (constraints.isNotEmpty() || validateds.isNotEmpty()) {
@@ -213,15 +215,19 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
         )
     }
 
-    private fun getConstraints(field: KSPropertyDeclaration): List<Constraint> {
-        return ValidUtils.getConstraints(field.type, field.annotations)
-    }
-
     private fun getValid(field: KSPropertyDeclaration): List<Validated> {
-        return if (field.annotations.any { a -> a.annotationType.asType().canonicalName() == VALID_TYPE.canonicalName })
-            listOf(Validated(field.type.asType()))
-        else
-            emptyList()
+        if (field.isAnnotationPresent(VALID_TYPE)) {
+            return listOf(Validated(field.type.asType()))
+        }
+        val parentClass = field.parentDeclaration as KSClassDeclaration
+        parentClass.primaryConstructor?.parameters
+            ?.filter { it.name?.asString() == field.simpleName.asString() }
+            ?.firstOrNull { it.isAnnotationPresent(VALID_TYPE) }
+            ?.let {
+                return listOf(Validated(field.type.asType()))
+            }
+
+        return emptyList()
     }
 
     fun generate(symbol: KSAnnotated) {

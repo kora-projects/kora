@@ -2,7 +2,6 @@ package ru.tinkoff.kora.validation.symbol.processor
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 
 class ValidatorSealedTypeTest : AbstractSymbolProcessorTest() {
@@ -14,8 +13,7 @@ class ValidatorSealedTypeTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testSealedInterface() {
-        compile(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+        compile0(
             """
                 @Valid
                 sealed interface TestInterface {
@@ -32,8 +30,7 @@ class ValidatorSealedTypeTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testExtension() {
-        compile(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+        compile0(
             """
                 @Valid
                 sealed interface TestInterface {
@@ -64,8 +61,7 @@ class ValidatorSealedTypeTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testExtensionNoAnnotationProcessor() {
-        compile(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+        compile0(
             """
                 sealed interface TestInterface {
                   data class TestRecord(@Size(min = 1, max = 5) val list: List<String>): TestInterface

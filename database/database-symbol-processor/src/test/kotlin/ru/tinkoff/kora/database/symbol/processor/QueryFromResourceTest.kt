@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.database.symbol.processor
 
 import com.google.devtools.ksp.KspExperimental
-import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
 import ru.tinkoff.kora.database.symbol.processor.jdbc.MockJdbcExecutor
@@ -17,7 +16,7 @@ class QueryFromResourceTest {
         val cl = symbolProcessFiles(
             listOf(
                 "src/test/kotlin/ru/tinkoff/kora/database/symbol/processor/repository/QueryFromResourceRepository.kt",
-            ), listOf<SymbolProcessorProvider>(RepositorySymbolProcessorProvider())
+            )
         )
         val repository = cl.loadClass("ru.tinkoff.kora.database.symbol.processor.repository.\$QueryFromResourceRepository_Impl")
             .constructors[0]

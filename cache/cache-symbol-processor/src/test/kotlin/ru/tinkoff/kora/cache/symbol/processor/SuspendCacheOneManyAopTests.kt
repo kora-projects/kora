@@ -6,17 +6,10 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
-import ru.tinkoff.kora.cache.CacheKey
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule
 import ru.tinkoff.kora.cache.redis.RedisCacheModule
 import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCache1
 import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCache12
-import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCache2
-import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCache22
-import ru.tinkoff.kora.cache.symbol.processor.testdata.CacheableSyncMany
-import ru.tinkoff.kora.cache.symbol.processor.testdata.CacheableSyncOneMany
-import ru.tinkoff.kora.cache.symbol.processor.testdata.suspended.CacheableSuspendMany
 import ru.tinkoff.kora.cache.symbol.processor.testdata.suspended.CacheableSuspendOneMany
 import ru.tinkoff.kora.ksp.common.symbolProcess
 import java.math.BigDecimal
@@ -41,9 +34,7 @@ class SuspendCacheOneManyAopTests : CaffeineCacheModule, RedisCacheModule {
 
         return try {
             val classLoader = symbolProcess(
-                listOf(DummyCache1::class, DummyCache12::class, CacheableSuspendOneMany::class),
-                AopSymbolProcessorProvider(),
-                CacheSymbolProcessorProvider()
+                listOf(DummyCache1::class, DummyCache12::class, CacheableSuspendOneMany::class)
             )
 
 

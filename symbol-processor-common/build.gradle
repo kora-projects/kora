@@ -1,5 +1,4 @@
 plugins {
-    id "com.google.devtools.ksp"
     id "java-test-fixtures"
 }
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
@@ -12,10 +11,12 @@ dependencies {
     api libs.kotlinpoet
     api libs.kotlinpoet.ksp
 
+    testFixturesImplementation 'io.github.classgraph:classgraph:4.8.162'
 
-    testFixturesImplementation libs.kotlin.compile.testing
+//    testFixturesImplementation libs.kotlin.compile.testing
+    testFixturesImplementation libs.kotlin.compiler
+    testFixturesImplementation libs.kotlin.compiler
     testFixturesImplementation libs.junit.jupiter
-    testFixturesImplementation libs.kotlin.annotation.processing
     testFixturesImplementation libs.ksp
     testFixturesImplementation libs.ksp.api
     testFixturesImplementation libs.kotlin.reflect

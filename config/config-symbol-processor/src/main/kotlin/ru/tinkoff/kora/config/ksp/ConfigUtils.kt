@@ -22,7 +22,7 @@ object ConfigUtils {
         fun parseRecordFields(type: KSType, typeDecl: KSClassDeclaration) {
             require(typeDecl.isRecord()) { "should be record" }
             for (recordComponent in typeDecl.recordComponents()) {
-                val recordComponentType = recordComponent.asMemberOf(type)
+                val recordComponentType = recordComponent.asMemberOf(type).returnType!!
                 val name = recordComponent.simpleName.asString()
                 if (seen.add(name)) {
                     val isNullable = recordComponentType.isMarkedNullable

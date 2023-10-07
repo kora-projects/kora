@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.database.symbol.processor.model
 
-import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.joinToCode

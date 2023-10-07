@@ -1,7 +1,6 @@
 import org.gradle.work.Incremental
 
 plugins {
-    id "com.google.devtools.ksp"
     id "java-test-fixtures"
 }
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"

@@ -1,6 +1,5 @@
 plugins {
     id "me.champeau.jmh" version "0.6.5"
-    id "com.google.devtools.ksp"
     id "java-test-fixtures"
 }
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"

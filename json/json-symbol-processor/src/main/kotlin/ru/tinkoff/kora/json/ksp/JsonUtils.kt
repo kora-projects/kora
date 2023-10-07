@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.json.ksp
 
 import com.google.devtools.ksp.getAllSuperTypes
+import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.STAR
 import com.squareup.kotlinpoet.TypeName
@@ -22,13 +23,69 @@ fun jsonClassPackage(classDeclaration: KSClassDeclaration): String {
 fun KSClassDeclaration.jsonReaderName() = this.generatedClassName("JsonReader")
 fun KSClassDeclaration.jsonWriterName() = this.generatedClassName("JsonWriter")
 
-fun findJsonField(param: KSValueParameter, jsonClass: KSClassDeclaration): KSAnnotation? {
+fun KSValueParameter.findJsonField(): KSAnnotation? {
+    val parameterAnnotation = findJsonField(this)
+    if (parameterAnnotation != null) {
+        return parameterAnnotation
+    }
+    val constructor = this.parent as KSFunctionDeclaration
+    val jsonClass = constructor.parentDeclaration as KSClassDeclaration
+
+    val primaryConstructorParameterAnnotation = jsonClass.primaryConstructor?.parameters?.find { it.name?.asString() == this.name?.asString() }?.let {
+        findJsonField(it)
+    }
+    if (primaryConstructorParameterAnnotation != null) {
+        return primaryConstructorParameterAnnotation
+    }
+
+    val fieldAnnotation = jsonClass.getAllProperties().find { it.simpleName.asString() == this.name?.asString() }?.let {
+        findJsonField(it)
+    }
+
     if (jsonClass.isJavaRecord()) {
         return jsonClass.getAllFunctions()
-            .firstOrNull { it.simpleName.asString() == param.name!!.asString() && it.parameters.isEmpty() }
-            ?.findAnnotation(JsonTypes.jsonFieldAnnotation)
+            .filter { it.simpleName.asString() == this.name?.asString() }
+            .filter { it.parameters.isEmpty() }
+            .filter { it.modifiers.contains(Modifier.PUBLIC) }
+            .map { findJsonField(it) }
+            .filterNotNull()
+            .firstOrNull()
     }
-    return findJsonField(param)
+
+    return fieldAnnotation
+}
+
+fun KSFunctionDeclaration.findJsonField(): KSAnnotation? {
+    val functionAnnotation = findJsonField(this)
+    if (functionAnnotation != null) {
+        return functionAnnotation
+    }
+    val name = this.simpleName.asString()
+    val jsonClass = this.parentDeclaration as KSClassDeclaration
+    return jsonClass.getAllFunctions()
+        .filter { it.isConstructor() }
+        .flatMap { it.parameters }
+        .filter { it.name?.asString() == name }
+        .map { findJsonField(it) }
+        .filterNotNull()
+        .firstOrNull()
+}
+
+fun KSPropertyDeclaration.findJsonField(): KSAnnotation? {
+    val fieldAnnotation = findJsonField(this)
+    if (fieldAnnotation != null) {
+        return fieldAnnotation
+    }
+    val constructor = this.parent as KSFunctionDeclaration
+    val jsonClass = constructor.parentDeclaration as KSClassDeclaration
+
+    val primaryConstructorParameterAnnotation = jsonClass.primaryConstructor?.parameters?.find { it.name?.asString() == this.simpleName.asString() }?.let {
+        findJsonField(it)
+    }
+    if (primaryConstructorParameterAnnotation != null) {
+        return primaryConstructorParameterAnnotation
+    }
+    return null
 }
 
 fun findJsonField(param: KSAnnotated): KSAnnotation? {

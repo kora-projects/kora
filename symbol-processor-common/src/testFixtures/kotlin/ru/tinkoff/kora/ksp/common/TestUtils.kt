@@ -1,15 +1,29 @@
 package ru.tinkoff.kora.ksp.common
 
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
-import com.tschuchort.compiletesting.KotlinCompilation
-import com.tschuchort.compiletesting.SourceFile
+import org.jetbrains.kotlin.cli.common.ExitCode
+import org.jetbrains.kotlin.cli.common.arguments.K2JVMCompilerArguments
+import org.jetbrains.kotlin.cli.common.messages.MessageRenderer
+import org.jetbrains.kotlin.cli.common.messages.PrintingMessageCollector
+import org.jetbrains.kotlin.cli.jvm.K2JVMCompiler
+import org.jetbrains.kotlin.config.Services
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.PrintStream
+import java.net.URL
+import java.net.URLClassLoader
+//import com.tschuchort.compiletesting.KotlinCompilation
+//import com.tschuchort.compiletesting.SourceFile
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
+import java.util.stream.Collectors
+import kotlin.io.path.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
+@Deprecated(replaceWith = ReplaceWith("ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest"), message = "")
 object TestUtils {
     fun testKoraExtension(targetClasses: Array<KType>, vararg requiredDependencies: KType): ClassLoader? {
         var template: String = """
@@ -39,86 +53,114 @@ object TestUtils {
         Files.createDirectories(path.parent)
         Files.writeString(path, content, StandardCharsets.UTF_8, StandardOpenOption.CREATE)
         val koraAppProcessor = Class.forName("ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider").getConstructor().newInstance() as SymbolProcessorProvider
-        return symbolProcessFiles(listOf(path.toString()), listOf(koraAppProcessor))
+        return symbolProcessFiles(listOf(path.toString()))
     }
 }
 
 fun symbolProcess(targetClass: KClass<*>, vararg annotationProcessorProviders: SymbolProcessorProvider): ClassLoader {
-    return symbolProcess(listOf(targetClass), *annotationProcessorProviders)
+    return symbolProcess(listOf(targetClass))
 }
 
 fun symbolProcessJava(targetClass: Class<*>, vararg annotationProcessorProviders: SymbolProcessorProvider): ClassLoader {
-    return symbolProcessJava(listOf(targetClass), *annotationProcessorProviders)
+    return symbolProcessJava(listOf(targetClass))
 }
 
-fun symbolProcessJava(targetClasses: List<Class<*>>, vararg annotationProcessorProviders: SymbolProcessorProvider): ClassLoader {
+fun symbolProcessJava(targetClasses: List<Class<*>>): ClassLoader {
     val srcFilesPath = targetClasses.map { targetClass ->
-        "src/test/java/" + targetClass.canonicalName.replace(".", "/") + ".java"
+        Path.of("src/test/java/" + targetClass.canonicalName.replace(".", "/") + ".java").toAbsolutePath().toString()
     }
-    return symbolProcessFiles(srcFilesPath, annotationProcessorProviders.toList(), true)
+    return symbolProcessFiles(srcFilesPath)
 }
 
-fun symbolProcess(targetClasses: List<KClass<*>>, vararg annotationProcessorProviders: SymbolProcessorProvider): ClassLoader {
-    return symbolProcess(targetClasses, annotationProcessorProviders.toList())
-}
-
-fun symbolProcess(targetClasses: List<KClass<*>>, annotationProcessorProviders: List<SymbolProcessorProvider>): ClassLoader {
+fun symbolProcess(targetClasses: List<KClass<*>>): ClassLoader {
     val srcFilesPath = targetClasses.map { targetClass ->
         "src/test/kotlin/" + targetClass.qualifiedName!!.replace(".", "/") + ".kt"
     }
-    return symbolProcessFiles(srcFilesPath, annotationProcessorProviders.toList())
+    return symbolProcessFiles(srcFilesPath)
 }
 
-fun symbolProcessFiles(files: List<String>, annotationProcessorProviders: List<SymbolProcessorProvider>, javaFile: Boolean = false): ClassLoader {
-    val srcFiles = files.map { src ->
-        val file = Path.of(src).toAbsolutePath().toFile()
-        if (javaFile) {
-            SourceFile.java(file.name, file.readText())
-        } else {
-            SourceFile.kotlin(file.name, file.readText())
+@OptIn(ExperimentalPathApi::class)
+fun symbolProcessFiles(srcFiles: List<String>): ClassLoader {
+    val k2JvmArgs = K2JVMCompilerArguments();
+    val kotlinOutPath = Path.of("build/in-test-generated-ksp").toAbsolutePath();
+    val inTestGeneratedDestination = kotlinOutPath.resolveSibling("in-test-generated-destination")
+    val kotlinOutputDir = kotlinOutPath.resolveSibling("in-test-generated-kotlinOutputDir")
+    inTestGeneratedDestination.deleteRecursively()
+    kotlinOutputDir.deleteRecursively()
+    kotlinOutputDir.createDirectories()
+
+    k2JvmArgs.noReflect = true;
+    k2JvmArgs.noStdlib = true;
+    k2JvmArgs.noJdk = false;
+    k2JvmArgs.includeRuntime = false;
+    k2JvmArgs.script = false;
+    k2JvmArgs.disableStandardScript = true;
+    k2JvmArgs.help = false;
+    k2JvmArgs.compileJava = true;
+    k2JvmArgs.allowNoSourceFiles = true
+    k2JvmArgs.expression = null;
+    k2JvmArgs.destination = inTestGeneratedDestination.toString();
+    k2JvmArgs.jvmTarget = "17";
+    k2JvmArgs.jvmDefault = "all";
+    k2JvmArgs.freeArgs = srcFiles;
+    k2JvmArgs.assertionsMode
+    k2JvmArgs.classpath = AbstractSymbolProcessorTest.classpath.joinToString(File.pathSeparator);
+
+    val pluginClassPath = AbstractSymbolProcessorTest.classpath.asSequence()
+        .filter { it.contains("symbol-processing") }
+        .toList()
+        .toTypedArray()
+    val processors = AbstractSymbolProcessorTest.classpath.stream()
+        .filter { it.contains("symbol-processor") || it.contains("scheduling-ksp") }
+        .collect(Collectors.joining(File.pathSeparator))
+    k2JvmArgs.pluginClasspaths = pluginClassPath;
+    val ksp = "plugin:com.google.devtools.ksp.symbol-processing:";
+    k2JvmArgs.pluginOptions = arrayOf(
+        ksp + "kotlinOutputDir=" + kotlinOutputDir,
+        ksp + "kspOutputDir=" + kotlinOutPath.resolveSibling("in-test-generated-kspOutputDir"),
+        ksp + "classOutputDir=" + kotlinOutPath.resolveSibling("in-test-generated-classOutputDir"),
+        ksp + "incremental=false",
+        ksp + "javaOutputDir=" + kotlinOutPath.resolveSibling("in-test-generated-javaOutputDir"),
+        ksp + "projectBaseDir=" + Path.of(".").toAbsolutePath(),
+        ksp + "resourceOutputDir=" + kotlinOutPath.resolveSibling("in-test-generated-resourceOutputDir"),
+        ksp + "cachesDir=" + kotlinOutPath.resolveSibling("in-test-generated-cachesDir"),
+        ksp + "apclasspath=" + processors
+    );
+
+    val sw = ByteArrayOutputStream();
+    val collector = PrintingMessageCollector(
+        PrintStream(sw, true, StandardCharsets.UTF_8), MessageRenderer.SYSTEM_INDEPENDENT_RELATIVE_PATHS, false
+    )
+    val co = K2JVMCompiler();
+    var code = co.exec(collector, Services.EMPTY, k2JvmArgs);
+    kotlinOutPath.resolve("sources").createDirectories()
+    kotlinOutputDir.copyToRecursively(
+        kotlinOutPath.resolve("sources"),
+        followLinks = false,
+        overwrite = true
+    )
+    var cl = Thread.currentThread().contextClassLoader
+    if (code != ExitCode.OK) {
+        throw CompilationErrorException(sw.toString().split("\n"))
+    }
+    if (collector.hasErrors()) {
+        throw CompilationErrorException(sw.toString().split("\n"))
+    }
+    k2JvmArgs.pluginClasspaths = null;
+    k2JvmArgs.freeArgs = srcFiles + Files.walk(kotlinOutputDir)
+        .filter { it.isRegularFile() }
+        .map {
+            kotlinOutPath.resolve("sources").resolve(it.relativeTo(kotlinOutputDir)).toAbsolutePath().toString()
         }
+        .toList()
+    code = co.exec(collector, Services.EMPTY, k2JvmArgs);
+    if (code != ExitCode.OK) {
+        throw CompilationErrorException(sw.toString().split("\n"))
     }
-    return symbolProcessFiles(srcFiles, annotationProcessorProviders)
+    if (collector.hasErrors()) {
+        throw CompilationErrorException(sw.toString().split("\n"))
+    }
+    return URLClassLoader("test-cl", arrayOf(URL("file://$inTestGeneratedDestination/")), Thread.currentThread().contextClassLoader)
 }
 
-fun symbolProcessFiles(srcFiles: List<SourceFile>, annotationProcessorProviders: List<SymbolProcessorProvider>): ClassLoader {
-    val compilation = KotlinCompilation().apply {
-        jvmDefault = "all"
-        jvmTarget = "17"
-        verbose = false
-        workingDir = Path.of("build/in-test-generated-ksp").toAbsolutePath().toFile()
-        sources = srcFiles
-        symbolProcessorProviders = annotationProcessorProviders
-        inheritClassPath = true
-        verbose = false
-    }
-    val result = compilation.compile()
-    val messages = result.messages.split("\n")
-    val errorMessages = mutableListOf<String>()
-    val indexOfFirst = messages.indexOfFirst { it.startsWith("e: [ksp]") }
-    if (indexOfFirst >= 0) {
-        for (i in indexOfFirst until messages.size) {
-            val message = messages[i]
-            if (i == indexOfFirst + 1 && !message.startsWith("[")) break
-            if (i != indexOfFirst && message.endsWith("]")) {
-                errorMessages.add(message.replace("]", ""))
-                break
-            } else {
-                errorMessages.add(
-                    if (i != indexOfFirst) {
-                        message.replace("[", "")
-                    } else message
-                )
-            }
-        }
-    }
-    if (result.exitCode != KotlinCompilation.ExitCode.OK) {
-        throw CompilationErrorException(result.messages.split("\n"))
-    }
-    if (errorMessages.isNotEmpty()) {
-        throw CompilationErrorException(errorMessages.map { it.replace(Regex("^.*:[0-9]*: "), "") })
-    }
-    return result.classLoader
-}
-
-data class CompilationErrorException(val messages: List<String>) : Exception()
+data class CompilationErrorException(val messages: List<String>) : Exception(messages.joinToString("\n"))

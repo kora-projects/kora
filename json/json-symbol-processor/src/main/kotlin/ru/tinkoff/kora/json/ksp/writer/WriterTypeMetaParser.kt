@@ -10,6 +10,7 @@ import ru.tinkoff.kora.json.ksp.findJsonField
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
+import ru.tinkoff.kora.ksp.common.JavaUtils.recordComponents
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.getNameConverter
 import ru.tinkoff.kora.ksp.common.isJavaRecord
@@ -22,7 +23,13 @@ class WriterTypeMetaParser(val resolver: Resolver) {
         val fieldElements = parseFields(jsonClassDeclaration)
         val fieldMetas = mutableListOf<JsonClassWriterMeta.FieldMeta>()
         for (fieldElement in fieldElements) {
-            val fieldMeta = parseField(jsonClassDeclaration, fieldElement)
+            val jsonField = when (fieldElement) {
+                is KSFunctionDeclaration -> fieldElement.findJsonField()
+                is KSPropertyDeclaration -> fieldElement.findJsonField()
+                is KSValueParameter -> fieldElement.findJsonField()
+                else -> throw IllegalStateException()
+            }
+            val fieldMeta = parseField(jsonClassDeclaration, fieldElement, jsonField)
             fieldMetas.add(fieldMeta)
         }
         return JsonClassWriterMeta(jsonClassDeclaration, fieldMetas)
@@ -30,9 +37,7 @@ class WriterTypeMetaParser(val resolver: Resolver) {
 
     private fun parseFields(jsonClassDeclaration: KSClassDeclaration): List<KSDeclaration> {
         return if (jsonClassDeclaration.isJavaRecord()) {
-            val objectMethods = setOf("hashCode", "equals", "toString", "<init>")
-            jsonClassDeclaration.getAllFunctions()
-                .filter { f -> f.simpleName.asString() !in objectMethods }
+            jsonClassDeclaration.recordComponents()
                 .filter { p -> !p.isAnnotationPresent(JsonTypes.jsonSkipAnnotation) }
                 .toList()
         } else {
@@ -42,14 +47,13 @@ class WriterTypeMetaParser(val resolver: Resolver) {
         }
     }
 
-    private fun parseField(jsonClassDeclaration: KSClassDeclaration, field: KSDeclaration): JsonClassWriterMeta.FieldMeta {
-        val jsonField = findJsonField(field)
+    private fun parseField(jsonClassDeclaration: KSClassDeclaration, field: KSDeclaration, jsonField: KSAnnotation?): JsonClassWriterMeta.FieldMeta {
         val type = if (field is KSFunctionDeclaration) {
-            field.returnType!!
+            field.returnType
         } else {
             (field as KSPropertyDeclaration).type
         }
-        val resolvedType = type.resolve()
+        val resolvedType = type!!.resolve()
         val fieldNameConverter = jsonClassDeclaration.getNameConverter()
         if (resolvedType.isError) {
             throw ProcessingErrorException("Field %s.%s is ERROR".format(jsonClassDeclaration, field.simpleName.asString()), field)

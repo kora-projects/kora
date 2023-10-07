@@ -25,8 +25,8 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testPublisherWithRecord() {
-        compile(
-            listOf(KafkaPublisherSymbolProcessorProvider()), """
+        compile0(
+            """
             @KafkaPublisher("test")
             interface TestProducer {
               fun send(record: ProducerRecord<String, String>)
@@ -41,8 +41,8 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testPublisherWithRecordAndCallback() {
-        compile(
-            listOf(KafkaPublisherSymbolProcessorProvider()), """
+        compile0(
+            """
             @KafkaPublisher("test")
             interface TestProducer {
               fun send(record: ProducerRecord<String, String>, callback: Callback)
@@ -57,8 +57,8 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testPublisherWithRecordWithKeyTag() {
-        compile(
-            listOf(KafkaPublisherSymbolProcessorProvider()), """
+        compile0(
+            """
             @KafkaPublisher("test")
             interface TestProducer {
               fun send(record: ProducerRecord<@Tag(String::class) String, String>, callback: Callback)
@@ -77,8 +77,8 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testPublisherWithRecordWithValueTag() {
-        compile(
-            listOf(KafkaPublisherSymbolProcessorProvider()), """
+        compile0(
+            """
             @KafkaPublisher("test")
             interface TestProducer {
               fun send(record: ProducerRecord<String, @Tag(String::class) String>)
@@ -97,8 +97,8 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testPublisherWithValue() {
-        compile(
-            listOf(KafkaPublisherSymbolProcessorProvider()), """
+        compile0(
+            """
             @ru.tinkoff.kora.kafka.common.annotation.KafkaPublisher("test")
             interface TestProducer {
               @Topic("test.sendTopic")
@@ -114,8 +114,8 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testPublisherWithValueAndCallback() {
-        compile(
-            listOf(KafkaPublisherSymbolProcessorProvider()), """
+        compile0(
+            """
             @KafkaPublisher("test")
             interface TestProducer {
               @Topic("test")
@@ -131,8 +131,8 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testPublisherWithValueAndHeaders() {
-        compile(
-            listOf(KafkaPublisherSymbolProcessorProvider()), """
+        compile0(
+            """
             @KafkaPublisher("test")
             interface TestProducer {
               @Topic("test.sendTopic")
@@ -148,8 +148,8 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testPublisherWithValueWithTag() {
-        compile(
-            listOf(KafkaPublisherSymbolProcessorProvider()), """
+        compile0(
+            """
             @KafkaPublisher("test")
             interface TestProducer {
               @Topic("test.sendTopic")
@@ -167,8 +167,8 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testPublisherWithKeyAndValue() {
-        compile(
-            listOf(KafkaPublisherSymbolProcessorProvider()), """
+        compile0(
+            """
             @KafkaPublisher("test")
             interface TestProducer {
               @Topic("test.sendTopic")
@@ -184,8 +184,8 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testPublisherWithKeyAndValueAndHeaders() {
-        compile(
-            listOf(KafkaPublisherSymbolProcessorProvider()), """
+        compile0(
+            """
             @KafkaPublisher("test")
             interface TestProducer {
               @Topic("test.sendTopic")
@@ -201,8 +201,8 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testPublisherWithKeyAndValueWithTag() {
-        compile(
-            listOf(KafkaPublisherSymbolProcessorProvider()), """
+        compile0(
+            """
             @KafkaPublisher("test")
             interface TestProducer {
               @Topic("test.sendTopic")
@@ -221,8 +221,8 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testPublisherWithValueRelativeConfigPath() {
-        compile(
-            listOf(KafkaPublisherSymbolProcessorProvider()), """
+        compile0(
+            """
             @KafkaPublisher("test")
             interface TestProducer {
               @Topic(".sendTopic")
@@ -238,17 +238,17 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testTxPublisher() {
-        compile(
-            listOf(KafkaPublisherSymbolProcessorProvider()), """
+        compile0(
+            """
             @KafkaPublisher("test")
             interface TestProducer {
               @Topic("test.sendTopic")
               fun send(key: Long, value: String)
             }
             """.trimIndent(), """
-            @KafkaPublisher("test")
-            interface TxProducer : TransactionalPublisher<TestProducer>                
-            """.trimIndent()
+                        @KafkaPublisher("test")
+                        interface TxProducer : TransactionalPublisher<TestProducer>                
+                        """.trimIndent()
         )
         compileResult.assertSuccess()
         val clazz = compileResult.loadClass("\$TxProducer_Impl")
@@ -257,14 +257,15 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testReturnVoid() {
-        compile(
-            listOf(KafkaPublisherSymbolProcessorProvider()), """
+        compile0(
+            """
             @KafkaPublisher("test")
             interface TestProducer {
               @Topic("test.sendTopic")
               fun send(value: String)
             }
-            """.trimIndent())
+            """.trimIndent()
+        )
         compileResult.assertSuccess()
         val clazz = compileResult.loadClass("\$TestProducer_Impl")
         assertThat(clazz).isNotNull()
@@ -273,8 +274,8 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testReturnVoidSuspend() {
-        compile(
-            listOf(KafkaPublisherSymbolProcessorProvider()), """
+        compile0(
+            """
             @KafkaPublisher("test")
             interface TestProducer {
               @Topic("test.sendTopic")
@@ -290,8 +291,8 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testReturnRecordMetadata() {
-        compile(
-            listOf(KafkaPublisherSymbolProcessorProvider()), """
+        compile0(
+            """
             @KafkaPublisher("test")
             interface TestProducer {
               @Topic("test.sendTopic")
@@ -307,8 +308,8 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testReturnRecordMetadataSuspend() {
-        compile(
-            listOf(KafkaPublisherSymbolProcessorProvider()), """
+        compile0(
+            """
             @KafkaPublisher("test")
             interface TestProducer {
               @Topic("test.sendTopic")

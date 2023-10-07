@@ -1,6 +1,3 @@
-plugins {
-    id "com.google.devtools.ksp"
-}
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {

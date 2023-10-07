@@ -17,7 +17,7 @@ class KoraBigGraphTest : AbstractSymbolProcessorTest() {
             sb.append("  fun component").append(i).append("() = \"\";\n")
         }
         sb.append("}\n")
-        val compileResult = compile(listOf(KoraAppProcessorProvider()), sb.toString())
+        val compileResult = compile0(sb.toString())
         if (compileResult.isFailed()) {
             throw compileResult.compilationException()
         }
