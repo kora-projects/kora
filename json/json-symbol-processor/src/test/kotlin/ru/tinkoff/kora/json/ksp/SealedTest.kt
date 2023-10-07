@@ -4,7 +4,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.json.common.JsonReader
 import ru.tinkoff.kora.json.common.JsonWriter
-import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
 import ru.tinkoff.kora.ksp.common.GraphUtil.toGraph
 import java.nio.charset.StandardCharsets
 
@@ -267,7 +266,6 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
     @Test
     fun testSealedInterfaceJsonReaderExtension() {
         compile(
-            listOf(KoraAppProcessorProvider()),
             """
             @JsonDiscriminatorField("@type")
             sealed interface TestInterface {
@@ -293,7 +291,6 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
     @Test
     fun testSealedInterfaceJsonWriterExtension() {
         compile(
-            listOf(KoraAppProcessorProvider()),
             """
             @JsonDiscriminatorField("@type")
             sealed interface TestInterface {
@@ -321,7 +318,6 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
     @Test
     fun testSealedInterfaceJsonReaderExtensionWithProcessor() {
         compile(
-            listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()),
             """
             @Json
             @JsonDiscriminatorField("@type")
@@ -350,7 +346,6 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
     @Test
     fun testSealedInterfaceJsonWriterExtensionWithProcessor() {
         compile(
-            listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()),
             """
             @Json
             @JsonDiscriminatorField("@type")

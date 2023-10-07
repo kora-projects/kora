@@ -25,7 +25,6 @@ dependencies {
     testImplementation(project(":aop:aop-annotation-processor"))
     testImplementation(testFixtures(project(":annotation-processor-common")))
 
-    testImplementation libs.kotlin.annotation.processing
     testImplementation libs.kotlin.compiler
     testImplementation libs.reactor.core
 }

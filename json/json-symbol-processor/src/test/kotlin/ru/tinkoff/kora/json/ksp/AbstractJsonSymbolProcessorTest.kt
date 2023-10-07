@@ -19,7 +19,7 @@ abstract class AbstractJsonSymbolProcessorTest : AbstractSymbolProcessorTest() {
     }
 
     protected open fun compile(@Language("kotlin") vararg sources: String) {
-        val compileResult = compile(listOf(JsonSymbolProcessorProvider()), *sources)
+        val compileResult = compile0(*sources)
         if (compileResult.isFailed()) {
             throw compileResult.compilationException()
         }

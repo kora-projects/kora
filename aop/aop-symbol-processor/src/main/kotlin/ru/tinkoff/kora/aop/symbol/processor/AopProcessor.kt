@@ -14,7 +14,6 @@ import ru.tinkoff.kora.ksp.common.*
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
-import java.lang.IllegalStateException
 import kotlin.reflect.KClass
 
 class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: Resolver) {
@@ -159,7 +158,9 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
             aspectsToApply.addAll(methodParameterLevelAspects)
 
             var superCall = "super." + function.simpleName.asString()
-            val overridenMethod = FunSpec.builder(function.simpleName.asString()).addModifiers(KModifier.OVERRIDE)
+            val overridenMethod = FunSpec.builder(function.simpleName.asString())
+                .addModifiers(KModifier.OVERRIDE)
+            function.returnType?.resolve()?.let { overridenMethod.returns(it.toTypeName()) }
 
             if (function.modifiers.contains(Modifier.SUSPEND)) {
                 overridenMethod.addModifiers(KModifier.SUSPEND)

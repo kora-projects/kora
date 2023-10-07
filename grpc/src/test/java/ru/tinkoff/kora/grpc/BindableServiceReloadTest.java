@@ -35,6 +35,7 @@ public class BindableServiceReloadTest {
                 .assertThat(stub.sendEvent(SendEventRequest.newBuilder().setEvent("foo").build()).getRes())
                 .isEqualTo("res1");
 
+            @SuppressWarnings("unchecked")
             var ref = (AtomicReference<String>) graph.getNodes().stream()
                 .map(refreshableGraph::get)
                 .filter((n) -> n instanceof AtomicReference)

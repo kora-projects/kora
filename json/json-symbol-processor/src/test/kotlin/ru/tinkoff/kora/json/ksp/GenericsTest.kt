@@ -3,14 +3,12 @@ package ru.tinkoff.kora.json.ksp
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.json.common.JsonReader
 import ru.tinkoff.kora.json.common.JsonWriter
-import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
 import ru.tinkoff.kora.ksp.common.GraphUtil.toGraph
 
 class GenericsTest : AbstractJsonSymbolProcessorTest() {
     @Test
     fun testGenericJsonReaderExtension() {
         compile(
-            listOf(KoraAppProcessorProvider()),
             """
             data class TestClass <T> (val value:T)             
             """.trimIndent(),
@@ -32,7 +30,6 @@ class GenericsTest : AbstractJsonSymbolProcessorTest() {
     @Test
     fun testGenericJsonWriterExtension() {
         compile(
-            listOf(KoraAppProcessorProvider()),
             """
             data class TestClass <T> (val value:T)             
             """.trimIndent(),
@@ -54,7 +51,6 @@ class GenericsTest : AbstractJsonSymbolProcessorTest() {
     @Test
     fun testGenericJsonWriterExtensionWithIncludeClassAlways() {
         compile(
-            listOf(KoraAppProcessorProvider()),
             """
             import ru.tinkoff.kora.json.common.annotation.JsonInclude
             
@@ -78,7 +74,6 @@ class GenericsTest : AbstractJsonSymbolProcessorTest() {
     @Test
     fun testGenericJsonReaderExtensionWithAnnotation() {
         compile(
-            listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()),
             """
             @ru.tinkoff.kora.json.common.annotation.Json
             data class TestClass <T> (val value: T)             
@@ -101,7 +96,6 @@ class GenericsTest : AbstractJsonSymbolProcessorTest() {
     @Test
     fun testGenericJsonWriterExtensionWithAnnotation() {
         compile(
-            listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()),
             """
             @ru.tinkoff.kora.json.common.annotation.Json
             data class TestClass <T> (val value:T)             

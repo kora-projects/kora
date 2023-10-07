@@ -7,6 +7,17 @@ import java.nio.charset.StandardCharsets
 
 class JsonFieldTest : AbstractJsonSymbolProcessorTest() {
     @Test
+    fun testReaderWithNoSpecifiedAnnotation() {
+        compile("""
+            @Json
+            data class TestClass(@JsonField("test_field") val testField: String)
+        """.trimIndent())
+
+        val o = reader("TestClass").read("""{"test_field":"test"}""")
+        Assertions.assertThat(o).isEqualTo(new("TestClass", "test"))
+    }
+
+    @Test
     fun testReaderWithFieldAnnotation() {
         compile("""
             @Json
@@ -38,6 +49,17 @@ class JsonFieldTest : AbstractJsonSymbolProcessorTest() {
 
         val o = reader("TestClass").read("""{"test_field":"test"}""")
         Assertions.assertThat(o).isEqualTo(new("TestClass", "test"))
+    }
+
+    @Test
+    fun testWriterWithNoSpecifiedAnnotation() {
+        compile("""
+            @Json
+            data class TestClass(@JsonField("test_field") val testField: String)
+        """.trimIndent())
+
+        val o = writer("TestClass").toByteArray(new("TestClass", "test"))
+        Assertions.assertThat(o).asString(StandardCharsets.UTF_8).isEqualTo("""{"test_field":"test"}""")
     }
 
     @Test

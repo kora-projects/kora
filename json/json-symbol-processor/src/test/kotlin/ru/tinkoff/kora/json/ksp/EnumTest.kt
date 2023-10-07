@@ -6,7 +6,6 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.json.common.JsonReader
 import ru.tinkoff.kora.json.common.JsonWriter
-import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
 
 class EnumTest : AbstractJsonSymbolProcessorTest() {
     private var stringReader = JsonReader<String> { obj: JsonParser -> obj.valueAsString }
@@ -49,7 +48,7 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
 
     @Test
     fun testReaderFromExtension() {
-        compile(listOf(KoraAppProcessorProvider()), """
+        compile("""
             @ru.tinkoff.kora.common.KoraApp
             interface TestApp {
               enum class TestEnum {
@@ -70,7 +69,7 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
 
     @Test
     fun testWriterFromExtension() {
-        compile(listOf(KoraAppProcessorProvider()), """
+        compile("""
             @ru.tinkoff.kora.common.KoraApp
             interface TestApp {
               enum class TestEnum {
@@ -91,7 +90,7 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
 
     @Test
     fun testAnnotationProcessedReaderFromExtension() {
-        compile(listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
+        compile("""
             @ru.tinkoff.kora.common.KoraApp
             public interface TestApp {
               @Json
@@ -113,7 +112,7 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
 
     @Test
     fun testAnnotationProcessedWriterFromExtension() {
-        compile(listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
+        compile("""
             @ru.tinkoff.kora.common.KoraApp
             interface TestApp {
               @Json

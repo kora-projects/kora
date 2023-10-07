@@ -52,7 +52,7 @@ open class ValidRunner : Assertions(), ValidatorModule {
                     ValidBar::class,
                     ValidTaz::class
                 )
-                classLoader = symbolProcess(classes, ValidSymbolProcessorProvider())
+                classLoader = symbolProcess(classes)
             }
             classLoader!!
         } catch (e: Exception) {

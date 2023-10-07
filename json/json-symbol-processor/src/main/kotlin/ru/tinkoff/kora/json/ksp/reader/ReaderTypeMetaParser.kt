@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.json.ksp.reader
 
-import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.processing.KSPLogger
@@ -29,16 +28,8 @@ class ReaderTypeMetaParser(
         val fields = mutableListOf<JsonClassReaderMeta.FieldMeta>()
 
         val nameConverter = declaration.getNameConverter()
-        val isSimpleDataClass = declaration.modifiers.contains(Modifier.DATA) && declaration.getConstructors().count() == 1
         for (parameter in jsonConstructor.parameters) {
-            val jsonField = if (isSimpleDataClass) {
-                declaration.getAllProperties()
-                    .filter { it.simpleName.asString() == parameter.name!!.asString() }
-                    .map { it.findAnnotation(JsonTypes.jsonFieldAnnotation) }
-                    .first() ?: findJsonField(parameter, declaration)
-            } else {
-                findJsonField(parameter, declaration)
-            }
+            val jsonField = parameter.findJsonField()
             val fieldMeta = parseField(declaration, parameter, jsonField, nameConverter)
             fields.add(fieldMeta)
         }

@@ -25,11 +25,14 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static ru.tinkoff.kora.annotation.processor.common.TestUtils.classpath;
 
@@ -114,19 +117,26 @@ class KoraCodegenTest {
             .map(String::toString)
             .toList();
         if (mode.contains("kotlin")) {
-            compileKotlin(name, files.stream().filter(f -> f.endsWith(".kt")).toList());
+            compileKotlin(files.stream().filter(f -> f.endsWith(".kt")).toList());
         } else {
             TestUtils.annotationProcessFiles(files.stream().filter(f -> f.endsWith(".java")).toList(), processors);
         }
     }
 
 
-    public static void compileKotlin(String name, List<String> targetFiles) {
-        if (targetFiles.isEmpty()) {
-            return;
-        }
+    public static void compileKotlin(List<String> targetFiles) throws Exception {
         var k2JvmArgs = new K2JVMCompilerArguments();
-        var kotlinOutPath = Path.of("build/in-test-generated").toAbsolutePath().toString();
+        var kotlinOutPath = Path.of("build/in-test-generated-ksp").toAbsolutePath();
+        var inTestGeneratedDestination = kotlinOutPath.resolveSibling("in-test-generated-destination");
+        var kotlinOutputDir = kotlinOutPath.resolveSibling("in-test-generated-kotlinOutputDir");
+        if (Files.exists(inTestGeneratedDestination)) for (var file : Files.walk(inTestGeneratedDestination).filter(Files::isRegularFile).toList()) {
+            Files.deleteIfExists(file);
+        }
+        if (Files.exists(kotlinOutputDir)) for (var file : Files.walk(kotlinOutputDir).filter(Files::isRegularFile).toList()) {
+            Files.deleteIfExists(file);
+        }
+        Files.createDirectories(kotlinOutputDir);
+
 
         k2JvmArgs.setNoReflect(true);
         k2JvmArgs.setNoStdlib(true);
@@ -136,28 +146,32 @@ class KoraCodegenTest {
         k2JvmArgs.setDisableStandardScript(true);
         k2JvmArgs.setHelp(false);
         k2JvmArgs.setCompileJava(false);
+        k2JvmArgs.setAllowNoSourceFiles(true);
         k2JvmArgs.setExpression(null);
-        k2JvmArgs.setDestination(kotlinOutPath + "/kotlin-classes");
+        k2JvmArgs.setDestination(inTestGeneratedDestination.toString());
         k2JvmArgs.setJvmTarget("17");
         k2JvmArgs.setJvmDefault("all");
         k2JvmArgs.setFreeArgs(targetFiles);
-        k2JvmArgs.setClasspath(String.join(File.pathSeparator, classpath));
+        k2JvmArgs.setClasspath(classpath.stream().map(String::toString).collect(Collectors.joining(File.pathSeparator)));
+
         var pluginClassPath = classpath.stream()
-            .filter(s -> s.contains("symbol-processing"))
-            .toArray(String[]::new);
+            .filter(it -> it.contains("symbol-processing"))
+            .toList()
+            .toArray(new String[0]);
         var processors = classpath.stream()
-            .filter(s -> s.contains("symbol-processor"))
+            .filter(it -> it.contains("symbol-processor") || it.contains("scheduling-ksp"))
             .collect(Collectors.joining(File.pathSeparator));
         k2JvmArgs.setPluginClasspaths(pluginClassPath);
         var ksp = "plugin:com.google.devtools.ksp.symbol-processing:";
         k2JvmArgs.setPluginOptions(new String[]{
-            ksp + "kotlinOutputDir="+ kotlinOutPath,
-            ksp + "kspOutputDir=" + kotlinOutPath,
-            ksp + "classOutputDir=" + kotlinOutPath,
-            ksp + "javaOutputDir=" + kotlinOutPath,
+            ksp + "kotlinOutputDir=" + kotlinOutputDir,
+            ksp + "kspOutputDir=" + kotlinOutPath.resolveSibling("in-test-generated-kspOutputDir"),
+            ksp + "classOutputDir=" + kotlinOutPath.resolveSibling("in-test-generated-classOutputDir"),
+            ksp + "incremental=false",
+            ksp + "javaOutputDir=" + kotlinOutPath.resolveSibling("in-test-generated-javaOutputDir"),
             ksp + "projectBaseDir=" + Path.of(".").toAbsolutePath(),
-            ksp + "resourceOutputDir=" + kotlinOutPath,
-            ksp + "cachesDir=" + kotlinOutPath,
+            ksp + "resourceOutputDir=" + kotlinOutPath.resolveSibling("in-test-generated-resourceOutputDir"),
+            ksp + "cachesDir=" + kotlinOutPath.resolveSibling("in-test-generated-cachesDir"),
             ksp + "apclasspath=" + processors,
         });
 
@@ -167,9 +181,35 @@ class KoraCodegenTest {
         );
         var co = new K2JVMCompiler();
         var code = co.exec(collector, Services.EMPTY, k2JvmArgs);
-        if (code != ExitCode.OK) {
-            throw new RuntimeException(sw.toString(StandardCharsets.UTF_8));
+        Files.createDirectories(kotlinOutPath.resolve("sources"));
+        Files.copy(kotlinOutputDir, kotlinOutPath.resolve("sources"), StandardCopyOption.REPLACE_EXISTING);
+        var iter = Files.walk(kotlinOutputDir).filter(Files::isRegularFile).iterator();
+        while (iter.hasNext()) {
+            var it = iter.next();
+            var to = kotlinOutPath.resolve("sources").resolve(it.relativize(kotlinOutputDir));
+            Files.createDirectories(to.getParent());
+            Files.copy(it, to);
         }
-        System.out.println(sw.toString(StandardCharsets.UTF_8));
+
+        if (code != ExitCode.OK) {
+            throw new RuntimeException(sw.toString());
+        }
+        if (collector.hasErrors()) {
+            throw new RuntimeException(sw.toString());
+        }
+        k2JvmArgs.setPluginClasspaths(null);
+        k2JvmArgs.setFreeArgs(Stream.concat(targetFiles.stream(), Files.walk(kotlinOutputDir)
+                .filter(Files::isRegularFile)
+                .map(it -> kotlinOutPath.resolve("sources").resolve(it.relativize(kotlinOutputDir)).toAbsolutePath().toString()))
+            .collect(Collectors.toList())
+        );
+
+        code = co.exec(collector, Services.EMPTY, k2JvmArgs);
+        if (code != ExitCode.OK) {
+            throw new RuntimeException(sw.toString());
+        }
+        if (collector.hasErrors()) {
+            throw new RuntimeException(sw.toString());
+        }
     }
 }

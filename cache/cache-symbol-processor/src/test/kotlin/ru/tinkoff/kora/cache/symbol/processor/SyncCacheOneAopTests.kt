@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule
 import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCache1
 import ru.tinkoff.kora.cache.symbol.processor.testdata.CacheableSyncOne
@@ -30,8 +29,6 @@ class SyncCacheOneAopTests : CaffeineCacheModule {
         return try {
             val classLoader = symbolProcess(
                 listOf(DummyCache1::class, CacheableSyncOne::class),
-                CacheSymbolProcessorProvider(),
-                AopSymbolProcessorProvider(),
             )
 
             val cacheClass = classLoader.loadClass(CACHE_CLASS) ?: throw IllegalArgumentException("Expected class not found: $CACHE_CLASS")

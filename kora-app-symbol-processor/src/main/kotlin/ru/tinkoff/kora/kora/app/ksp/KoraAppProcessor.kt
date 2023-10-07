@@ -105,7 +105,6 @@ class KoraAppProcessor(
             ctx!!.resolver = resolver
         }
 
-        this.processGenerated(resolver)
         val newModules = this.processModules(resolver)
         val newComponents = this.processComponents(resolver)
         this.processAppParts(resolver)
@@ -261,20 +260,6 @@ class KoraAppProcessor(
             .filterIsInstance<KSClassDeclaration>()
             .filter { it.classKind == ClassKind.INTERFACE }
             .forEach { appParts.add(it) }
-    }
-
-    private fun processGenerated(resolver: Resolver) {
-        if(log.isInfoEnabled) {
-            val generated = resolver.getSymbolsWithAnnotation(CommonClassNames.generated.canonicalName)
-                .joinToString("\n") { obj -> obj.location.toString() }
-                .trimIndent()
-
-            if(generated.isNotBlank()) {
-                log.info("Generated previous Round: {}", generated)
-            } else {
-                log.info("Nothing was generated previous Round.")
-            }
-        }
     }
 
     private fun processModules(resolver: Resolver): Boolean {

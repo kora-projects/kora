@@ -102,12 +102,14 @@ class CacheSymbolProcessorTests : AbstractSymbolProcessorTest() {
 
     @Test
     fun testInnerTypeCache() {
-        compile(listOf(CacheSymbolProcessorProvider()), """
-        interface OuterType {
-          @ru.tinkoff.kora.cache.annotation.Cache("test")
-          interface MyCache : ru.tinkoff.kora.cache.caffeine.CaffeineCache<String, String>
-        }
-        """.trimIndent())
+        compile0(
+            """
+            interface OuterType {
+              @ru.tinkoff.kora.cache.annotation.Cache("test")
+              interface MyCache : ru.tinkoff.kora.cache.caffeine.CaffeineCache<String, String>
+            }
+            """.trimIndent()
+        )
         compileResult.assertSuccess()
     }
 }

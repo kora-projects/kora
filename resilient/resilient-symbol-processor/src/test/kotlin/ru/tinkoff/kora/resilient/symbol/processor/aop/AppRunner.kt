@@ -9,18 +9,11 @@ import ru.tinkoff.kora.application.graph.RefreshableGraph
 import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
 import ru.tinkoff.kora.ksp.common.symbolProcess
 import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.AppWithConfig
-import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Supplier
 import kotlin.reflect.KClass
 
 @KspExperimental
 open class AppRunner : Assertions() {
-
-    private data class ClassLoaderArguments(val processors: List<KClass<out SymbolProcessorProvider>>, val classes: List<KClass<*>>)
-
-    companion object {
-        private val classLoaderMap: MutableMap<ClassLoaderArguments, ClassLoader> = ConcurrentHashMap<ClassLoaderArguments, ClassLoader>()
-    }
 
     data class InitializedGraph(val graphDraw: ApplicationGraphDraw, val refreshableGraph: RefreshableGraph)
 
@@ -73,16 +66,8 @@ open class AppRunner : Assertions() {
         )
     }
 
-    private fun getClassLoader(processors: List<SymbolProcessorProvider>, classes: List<KClass<*>>): ClassLoader {
-        val arguments = ClassLoaderArguments(processors.map { it::class }.toList(), classes)
-        val classLoaderSaved = classLoaderMap[arguments]
-        if (classLoaderSaved != null) {
-            return classLoaderSaved
-        }
-
-        val classLoader = symbolProcess(classes, processors)
-        classLoaderMap[arguments] = classLoader
-        return classLoader
+    private fun getClassLoader(classes: List<KClass<*>>): ClassLoader {
+        return symbolProcess(classes)
     }
 
     fun getGraphForClasses(targetClasses: List<KClass<*>>): InitializedGraph {
@@ -93,7 +78,7 @@ open class AppRunner : Assertions() {
         return try {
             val classes = targetClasses.toMutableList()
             classes.add(app)
-            val classLoader = getClassLoader(getProcessors(), classes)
+            val classLoader = getClassLoader(classes)
             val clazz = classLoader.loadClass(app.qualifiedName + "Graph")
             val graphDraw = (clazz.constructors.first().newInstance() as Supplier<ApplicationGraphDraw>).get()
             val graph = graphDraw.init()

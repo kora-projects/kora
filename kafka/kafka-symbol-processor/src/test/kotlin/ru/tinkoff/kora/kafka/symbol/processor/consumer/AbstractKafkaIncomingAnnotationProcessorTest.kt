@@ -2,7 +2,6 @@ package ru.tinkoff.kora.kafka.symbol.processor.consumer
 
 import org.intellij.lang.annotations.Language
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
-import java.util.*
 
 abstract class AbstractKafkaListenerAnnotationProcessorTest : AbstractSymbolProcessorTest() {
     override fun commonImports(): String {
@@ -20,7 +19,7 @@ abstract class AbstractKafkaListenerAnnotationProcessorTest : AbstractSymbolProc
 
 
     protected fun compile(@Language("kotlin") vararg sources: String) {
-        super.compile(listOf(KafkaListenerSymbolProcessorProvider()), *sources)
+        super.compile0(*sources)
         compileResult.assertSuccess()
 //        val kafkaListenerClass = Objects.requireNonNull(compileResult.loadClass("KafkaListener"))
 //        val kafkaListenerModule = Objects.requireNonNull(compileResult.loadClass("KafkaListenerModule"))

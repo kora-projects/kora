@@ -1,8 +1,6 @@
 package ru.tinkoff.kora.ksp.common
 
-import com.google.devtools.ksp.symbol.KSAnnotated
-import com.google.devtools.ksp.symbol.KSAnnotation
-import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.ParameterSpec
@@ -26,7 +24,23 @@ object TagUtils {
     }
 
     fun parseTagValue(target: KSAnnotated): Set<String> {
-        return parseTagValue(target.annotations)
+        val tag = parseTagValue(target.annotations)
+        if (tag.isNotEmpty()) {
+            return tag
+        }
+        if (target is KSPropertyDeclaration) {
+            target.parentDeclaration?.let {
+                if (it is KSClassDeclaration && it.modifiers.contains(Modifier.DATA)) {
+                    it.primaryConstructor?.let {
+                        val constructorParameter = it.parameters.find { it.name?.asString() == target.simpleName.asString() }
+                        if (constructorParameter != null) {
+                            return parseTagValue(constructorParameter)
+                        }
+                    }
+                }
+            }
+        }
+        return setOf()
     }
 
     fun parseTagValue(target: KSType): Set<String> {
