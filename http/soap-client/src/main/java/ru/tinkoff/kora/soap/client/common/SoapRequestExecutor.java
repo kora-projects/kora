@@ -6,6 +6,7 @@ import ru.tinkoff.kora.http.client.common.HttpClient;
 import ru.tinkoff.kora.http.client.common.HttpClientException;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
+import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.soap.client.common.envelope.SoapEnvelope;
 import ru.tinkoff.kora.soap.client.common.envelope.SoapFault;
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetry;
@@ -42,9 +43,8 @@ public class SoapRequestExecutor {
         var telemetry = this.telemetry.get(requestEnvelope);
         var requestXml = this.xmlTools.marshal(requestEnvelope);
         var httpClientRequest = HttpClientRequest.post(this.url)
-            .body(requestXml)
-            .requestTimeout((int) timeout.toMillis())
-            .header("content-type", "text/xml");
+            .body(HttpBody.of("text/xml", requestXml))
+            .requestTimeout((int) timeout.toMillis());
         if (this.soapAction != null) {
             httpClientRequest.header("SOAPAction", this.soapAction);
         }
@@ -97,8 +97,7 @@ public class SoapRequestExecutor {
         var telemetry = this.telemetry.get(requestEnvelope);
         var requestXml = this.xmlTools.marshal(requestEnvelope);
         var httpClientRequest = HttpClientRequest.post(this.url)
-            .body(requestXml)
-            .header("content-type", "text/xml");
+            .body(HttpBody.of("text/xml", requestXml));
         if (this.soapAction != null) {
             httpClientRequest.header("SOAPAction", this.soapAction);
         }

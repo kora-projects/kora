@@ -94,6 +94,7 @@ class HttpClientQueryParametersTest : AbstractHttpClientTest() {
         onRequest("POST", "http://test-url:8080/test?qParam=10&qParam=20") { rs -> rs }
         client.invoke<Unit>("request", listOf(10, 20))
     }
+
     @Test
     fun testSetQueryParam() {
         val client = compile(listOf<Any>(), """

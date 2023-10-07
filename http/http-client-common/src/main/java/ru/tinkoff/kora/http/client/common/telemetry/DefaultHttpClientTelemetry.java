@@ -39,12 +39,31 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
             || logger != null && (logger.logRequest() || logger.logRequestBody() || logger.logResponse() || logger.logResponseBody());
     }
 
-    record TelemetryContextData(long startTime, String method, String operation, String host, String scheme,
-                                String authority,
-                                String target) {
-        public TelemetryContextData(HttpClientRequest request, URI uri) {
-            this(System.nanoTime(), request.method(), request.operation(), uri.getHost(), uri.getScheme(), request.authority(), request.operation().substring(request.method().length() + 1));
+    record TelemetryContextData(long startTime, String method, String operation, String host, String scheme, String authority, String target) {
+        public TelemetryContextData(HttpClientRequest request) {
+            this(
+                System.nanoTime(),
+                request.method(),
+                DefaultHttpClientTelemetry.operation(request.method(), request.uriTemplate(), request.uri()),
+                request.uri().getHost(),
+                request.uri().getScheme(),
+                request.uri().getAuthority(),
+                request.uri().getPath()
+            );
         }
+    }
+
+    private static String operation(String method, String uriTemplate, URI uri) {
+        if (uri.getAuthority() != null) {
+            if (uri.getScheme() != null) {
+                uriTemplate = uriTemplate.replace(uri.getScheme() + "://" + uri.getAuthority(), "");
+            }
+        }
+        var questionMark = uriTemplate.indexOf('?');
+        if (questionMark >= 0) {
+            uriTemplate = uriTemplate.substring(0, questionMark);
+        }
+        return method + " " + uriTemplate;
     }
 
     @Override
@@ -53,12 +72,12 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         if (!this.isEnabled()) {
             return null;
         }
-        var data = new TelemetryContextData(request, URI.create(request.resolvedUri()));
+        var data = new TelemetryContextData(request);
 
         var method = request.method();
-        var operation = request.operation();
-        var authority = request.authority();
-        var resolvedUri = request.resolvedUri();
+        var operation = data.operation();
+        var authority = data.authority();
+        var resolvedUri = request.uri().toString();
 
         var createSpanResult = tracing == null ? null : tracing.createSpan(ctx, request);
         var headers = request.headers();

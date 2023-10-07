@@ -10,21 +10,25 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
+import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpBody
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClient
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientAnnotation
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientEncoderException
-import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientRequestBuilder
+import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientException
+import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientRequest
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientRequestMapper
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientResponseException
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientResponseMapper
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientTelemetryFactory
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientUnknownException
+import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpHeaders
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpRoute
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.interceptWithClassName
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.interceptWithContainerClassName
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.responseCodeMapper
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.responseCodeMappers
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.stringParameterConverter
+import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.uriQueryBuilder
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
@@ -44,6 +48,9 @@ import ru.tinkoff.kora.ksp.common.MappingData
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.parseAnnotationValue
 import ru.tinkoff.kora.ksp.common.parseMappingData
+import java.net.URI
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.ExecutionException
@@ -59,11 +66,16 @@ class ClientClassGenerator(private val resolver: Resolver) {
             builder.addModifiers(KModifier.OPEN)
         }
         builder.primaryConstructor(this.buildConstructor(builder, declaration, methods))
+        builder.addProperty("rootUrl", String::class.asClassName(), KModifier.PRIVATE, KModifier.FINAL);
 
         for (method in methods) {
-            builder.addProperty(method.declaration.simpleName.asString() + "Client", httpClient, KModifier.PRIVATE)
-            builder.addProperty(method.declaration.simpleName.asString() + "RequestTimeout", Duration::class.asClassName().copy(true), KModifier.PRIVATE)
-            builder.addProperty(method.declaration.simpleName.asString() + "Url", String::class, KModifier.PRIVATE)
+            builder.addProperty(method.declaration.simpleName.asString() + "Client", httpClient, KModifier.PRIVATE, KModifier.FINAL)
+            builder.addProperty(method.declaration.simpleName.asString() + "RequestTimeout", Duration::class.asClassName().copy(true), KModifier.PRIVATE, KModifier.FINAL)
+            builder.addProperty(method.declaration.simpleName.asString() + "UriTemplate", String::class, KModifier.PRIVATE, KModifier.FINAL);
+            val hasUriParameters = method.parameters.any { it is Parameter.QueryParameter || it is Parameter.PathParameter }
+            if (!hasUriParameters) {
+                builder.addProperty(method.declaration.simpleName.asString() + "Uri", URI::class.asClassName(), KModifier.PRIVATE, KModifier.FINAL);
+            }
             val funSpec: FunSpec = this.buildFunction(method)
             builder.addFunction(funSpec)
         }
@@ -135,137 +147,160 @@ class ClientClassGenerator(private val resolver: Resolver) {
         val method = methodData.declaration
         val m = method.overridingKeepAop(resolver)
         val b = CodeBlock.builder()
-        val methodClientName = method.simpleName.asString() + "Client"
-        val methodRequestTimeout = method.simpleName.asString() + "RequestTimeout"
 
         val httpRoute = method.findAnnotation(HttpClientClassNames.httpRoute)!!
-        b.addStatement("val _client = %N", methodClientName)
-        val isRBMutable = methodData.parameters.any { it is Parameter.BodyParameter }
-        b.addStatement(
-            "%L _requestBuilder = %T(%S, %N)",
-            if (isRBMutable) "var" else "val",
-            httpClientRequestBuilder,
-            httpRoute.findValueNoDefault<String>("method")!!,
-            method.simpleName.asString() + "Url"
-        )
-        b.addStatement("    .requestTimeout(%N)", methodRequestTimeout)
-        methodData.parameters.forEach { parameter ->
-            if (parameter is Parameter.PathParameter) {
-                val parameterType = parameter.parameter.type.resolve()
-                if (!requiresConverter(parameterType)) {
-                    b.add("_requestBuilder.templateParam(%S, %N.toString())\n", parameter.pathParameterName, parameter.parameter.name!!.asString())
-                } else {
-                    b.addStatement(
-                        "_requestBuilder.templateParam(%S, %N.convert(%N))",
-                        parameter.pathParameterName,
-                        getConverterName(methodData, parameter.parameter),
-                        parameter.parameter.name!!.asString()
-                    )
-                }
-            }
-            if (parameter is Parameter.HeaderParameter) {
-                var parameterType = parameter.parameter.type.resolve()
-                var literalName = parameter.parameter.name!!.asString()
-                val iterable = parameterType.isCollection()
-                val nullable = parameterType.isMarkedNullable
-                if (nullable) {
-                    b.beginControlFlow("if (%N != null) ", literalName)
-                }
+        val httpMethod = httpRoute.findValueNoDefault<String>("method")!!
+        b.addStatement("val _client = this.%L", method.simpleName.asString() + "Client");
+        b.addStatement("val _headers = %T.of()", httpHeaders);
+        b.addStatement("val _uriTemplate = this.%L", method.simpleName.asString() + "UriTemplate");
+        b.addStatement("val _requestTimeout = this.%L", method.simpleName.asString() + "RequestTimeout");
 
-                if (iterable) {
-                    val argType = parameterType.arguments[0].type?.resolve()
-                    val iteratorName = literalName + "_iterator"
-                    val paramName = "_" + literalName + "_element"
-                    b.addStatement("val %N = %N.iterator()", iteratorName, literalName)
-                        .beginControlFlow("while (%N.hasNext())", parameter.parameter.name!!.asString() + "_iterator")
-                        .addStatement("val %N = %N.next()", paramName, iteratorName)
-                    literalName = paramName
+        val hasPathParameters = methodData.parameters.any { it is Parameter.PathParameter }
+        val hasQueryParameters = methodData.parameters.any { it is Parameter.QueryParameter }
+        val bodyParameter = methodData.parameters.filterIsInstance<Parameter.BodyParameter>().firstOrNull()
 
-                    if (argType != null) {
-                        parameterType = argType
-                        if (argType.isMarkedNullable) {
-                            b.add("if (%L != null) ", literalName)
+        if (hasPathParameters || hasQueryParameters) {
+            val httpPath = httpRoute.findValueNoDefault<String>("path")!!
+            val uriWithPlaceholdersString: String
+            if (hasPathParameters) {
+                b.add("val _uriNoQuery = this.rootUrl\n");
+                val parts = this.parseRouteParts(httpPath, methodData.parameters);
+                val uriWithPlaceholdersStringB = StringBuilder();
+                for (routePart in parts) {
+                    if (routePart.string != null) {
+                        uriWithPlaceholdersStringB.append(routePart.string)
+                        b.add("  .plus(%S)\n", routePart.string)
+                    } else {
+                        uriWithPlaceholdersStringB.append("placeholder");
+                        if (requiresConverter(routePart.parameter!!.parameter.type.resolve())) {
+                            val converterName = getConverterName(methodData, routePart.parameter.parameter);
+                            b.add("  .plus(%T.encode(%L.convert(%N), %T.UTF_8))\n", URLEncoder::class.asClassName(), converterName, routePart.parameter.parameter.name?.asString(), StandardCharsets::class.asClassName());
+                        } else {
+                            b.add("  .plus(%T.encode(%N.toString(), %T.UTF_8))\n", URLEncoder::class.asClassName(), routePart.parameter.parameter.name?.asString(), StandardCharsets::class.asClassName());
                         }
                     }
                 }
-
-                if (!requiresConverter(parameterType)) {
-                    b.addStatement("_requestBuilder.header(%S, %N.toString())", parameter.headerName, literalName)
-                } else {
-                    b.addStatement("_requestBuilder.header(%S, %N.convert(%N))", parameter.headerName, getConverterName(methodData, parameter.parameter), literalName)
-                }
-                if (iterable) {
-                    b.endControlFlow().add("\n")
-                }
-                if (nullable) {
-                    b.endControlFlow()
-                }
+                uriWithPlaceholdersString = uriWithPlaceholdersStringB.toString();
+                b.add(";\n");
+            } else {
+                b.addStatement("val _uriNoQuery = this.rootUrl + %S", httpPath);
+                uriWithPlaceholdersString = httpPath;
             }
-            if (parameter is Parameter.QueryParameter) {
-                var parameterType = parameter.parameter.type.resolve()
-                var literalName = parameter.parameter.name!!.asString()
-                val iterable = parameterType.isCollection()
-                val nullable = parameterType.isMarkedNullable
+            if (!hasQueryParameters) {
+                b.addStatement("val _uri = %T.create(_uriNoQuery)", URI::class.asClassName())
+            } else {
+                val uriWithPlaceholders = URI.create(uriWithPlaceholdersString);
+                val hasQMark = uriWithPlaceholders.getQuery() != null;
+                val hasFirstParam = hasQMark && !uriWithPlaceholders.getQuery().isBlank();
+                b.addStatement("val _query = %T(%L, %L)", uriQueryBuilder, !hasQMark, hasFirstParam);
 
-                if (nullable) {
-                    b.beginControlFlow("if (%N != null)", literalName)
-                }
+                methodData.parameters.filterIsInstance<Parameter.QueryParameter>().forEach {
+                    var parameterType = it.parameter.type.resolve()
+                    var literalName = it.parameter.name!!.asString()
+                    val iterable = parameterType.isCollection()
+                    val nullable = parameterType.isMarkedNullable
 
-                if (iterable) {
-                    val argType = parameterType.arguments[0].type?.resolve()
-                    val iteratorName = literalName + "_iterator"
-                    val paramName = "_" + literalName + "_element"
-                    b.addStatement("val %N = %N.iterator()", iteratorName, literalName)
-                        .beginControlFlow("if (!%N.hasNext())", iteratorName)
-                        .addStatement("_requestBuilder.queryParam(%S)", parameter.queryParameterName)
-                        .nextControlFlow("else")
-                        .add("do {").add(CodeBlock.builder().indent().add("\n").build())
-                        .addStatement("val %N = %N.next()", paramName, iteratorName)
-                    literalName = paramName
+                    if (nullable) {
+                        b.beginControlFlow("if (%N != null)", literalName)
+                    }
 
-                    if (argType != null) {
-                        parameterType = argType
-                        if (argType.isMarkedNullable) {
-                            b.add("if (%L != null) ", literalName)
+                    if (iterable) {
+                        val argType = parameterType.arguments[0].type?.resolve()
+                        val iteratorName = literalName + "_iterator"
+                        val paramName = "_" + literalName + "_element"
+                        b.addStatement("val %N = %N.iterator()", iteratorName, literalName)
+                            .beginControlFlow("if (!%N.hasNext())", iteratorName)
+                            .addStatement("_query.add(%S)", URLEncoder.encode(it.queryParameterName, StandardCharsets.UTF_8))
+                            .nextControlFlow("else")
+                            .add("do {").add(CodeBlock.builder().indent().add("\n").build())
+                            .addStatement("val %N = %N.next()", paramName, iteratorName)
+                        literalName = paramName
+
+                        if (argType != null) {
+                            parameterType = argType
+                            if (argType.isMarkedNullable) {
+                                b.add("if (%L != null) ", literalName)
+                            }
                         }
                     }
-                }
 
-                if (!requiresConverter(parameterType)) {
-                    b.add("_requestBuilder.queryParam(%S, %N.toString())\n", parameter.queryParameterName, literalName)
-                } else {
-                    b.add(
-                        "  _requestBuilder.queryParam(%S, %L.convert(%L))\n",
-                        parameter.queryParameterName,
-                        getConverterName(methodData, parameter.parameter),
-                        literalName
-                    )
-                }
+                    if (!requiresConverter(parameterType)) {
+                        b.add("_query.add(%S, %N.toString())\n", URLEncoder.encode(it.queryParameterName, StandardCharsets.UTF_8), literalName)
+                    } else {
+                        b.add("_query.add(%S, %L.convert(%L))\n",
+                            URLEncoder.encode(it.queryParameterName, StandardCharsets.UTF_8),
+                            getConverterName(methodData, it.parameter),
+                            literalName
+                        )
+                    }
 
-                if (iterable) {
-                    b.add(CodeBlock.builder().unindent().build()).add("\n")
-                        .add("} while (%N.hasNext())", parameter.parameter.name!!.asString() + "_iterator")
-                    b.endControlFlow()
+                    if (iterable) {
+                        b.add(CodeBlock.builder().unindent().build()).add("\n")
+                            .add("} while (%N.hasNext())", it.parameter.name!!.asString() + "_iterator")
+                        b.endControlFlow()
+                    }
+                    if (nullable) {
+                        b.endControlFlow()
+                    }
                 }
-                if (nullable) {
-                    b.endControlFlow()
+                b.addStatement("val _uri = %T.create(_uriNoQuery + _query.build())", URI::class.asClassName());
+            }
+        } else {
+            b.addStatement("val _uri = this.%L", method.simpleName.asString() + "Uri");
+        }
+        b.add("\n")
+        methodData.parameters.filterIsInstance<Parameter.HeaderParameter>().forEach {
+            var parameterType = it.parameter.type.resolve()
+            var literalName = it.parameter.name!!.asString()
+            val iterable = parameterType.isCollection()
+            val nullable = parameterType.isMarkedNullable
+            if (nullable) {
+                b.beginControlFlow("if (%N != null)", it.parameter.name?.asString().toString())
+            }
+            if (iterable) {
+                val argType = parameterType.arguments[0].type?.resolve()
+                val iteratorName = literalName + "_iterator"
+                val paramName = "_" + literalName + "_element"
+                b.addStatement("val %N = %N.iterator()", iteratorName, literalName)
+                    .beginControlFlow("while (%N.hasNext())", it.parameter.name!!.asString() + "_iterator")
+                    .addStatement("val %N = %N.next()", paramName, iteratorName)
+                literalName = paramName
+
+                if (argType != null) {
+                    parameterType = argType
+                    if (argType.isMarkedNullable) {
+                        b.add("if (%L != null) ", literalName)
+                    }
                 }
             }
+            if (!requiresConverter(parameterType)) {
+                b.addStatement("_headers.add(%S, %N.toString())", it.headerName, literalName)
+            } else {
+                b.addStatement("_headers.add(%S, %N.convert(%N))", it.headerName, getConverterName(methodData, it.parameter), literalName)
+            }
+            if (iterable) {
+                b.endControlFlow().add("\n")
+            }
+
+            if (nullable) {
+                b.endControlFlow()
+            }
         }
-        methodData.parameters.forEach { parameter ->
-            if (parameter is Parameter.BodyParameter) {
-                val requestMapperName: String = method.simpleName.asString() + "RequestMapper"
-                b.controlFlow("try") {
-                    b.add("_requestBuilder = %L.apply(%T.current(), _requestBuilder, %N)\n", requestMapperName, CommonClassNames.context, parameter.parameter.name!!.asString())
-                    nextControlFlow("catch (_e: %T)", RuntimeException::class.asClassName())
-                    b.add("throw _e\n")
-                    nextControlFlow("catch (_e: Exception)")
-                    b.add("throw %T(_e)\n", httpClientEncoderException)
-                }
+        if (bodyParameter == null) {
+            b.addStatement("val _body = %T.empty()", httpBody)
+        } else {
+            val requestMapperName = method.simpleName.asString() + "RequestMapper";
+            b.add("val _body = ").controlFlow("try") {
+                addStatement("this.%N.apply(%T.current(), %N)", requestMapperName, CommonClassNames.context, bodyParameter.parameter.name?.asString())
+                nextControlFlow("catch (_e: %T)", httpClientException)
+                addStatement("throw _e")
+                nextControlFlow("catch (_e: Exception)")
+                addStatement("throw %T(_e)", httpClientEncoderException)
             }
         }
 
-        b.addStatement("val _request = _requestBuilder.build()")
+        b.addStatement("val _request = %T.of(%S, _uri, _uriTemplate, _headers, _body, _requestTimeout)", httpClientRequest, httpMethod);
+
         if (method.isSuspend()) {
             b.add("_client.execute(_request).%M().%M { _response ->", await, MemberName("kotlin.io", "use")).indent().add("\n")
         } else {
@@ -353,6 +388,49 @@ class ClientClassGenerator(private val resolver: Resolver) {
     }
 
 
+    private fun parseRouteParts(httpPath: String, parameters: List<Parameter>): List<RoutePart> {
+        var parts = listOf(RoutePart(null, httpPath))
+        for (parameter in parameters) {
+            val newList = arrayListOf<RoutePart>()
+            if (parameter is Parameter.PathParameter) {
+                for (part in parts) {
+                    if (part.parameter != null) {
+                        newList.add(part)
+                    } else {
+                        var from = 0
+                        val token = "{" + parameter.pathParameterName + "}"
+                        while (true) {
+                            val idx = part.string!!.indexOf(token, from)
+                            from = if (idx < 0) {
+                                val str = part.string.substring(from)
+                                if (str.isNotEmpty()) {
+                                    newList.add(RoutePart(null, str))
+                                }
+                                break
+                            } else {
+                                val str = part.string.substring(from, idx)
+                                if (str.isNotEmpty()) {
+                                    newList.add(RoutePart(null, str))
+                                }
+                                newList.add(RoutePart(parameter, null))
+                                idx + token.length
+                            }
+                        }
+                    }
+                }
+                parts = newList
+            }
+        }
+        return parts
+    }
+
+    private class RoutePart(val parameter: Parameter.PathParameter?, val string: String?) {
+        init {
+            check(!(parameter != null && string != null))
+        }
+    }
+
+
     private fun buildConstructor(tb: TypeSpec.Builder, declaration: KSClassDeclaration, methods: List<MethodData>): FunSpec {
         val parameterConverters = parseParametersConverters(methods)
         val packageName = declaration.packageName.asString()
@@ -380,6 +458,8 @@ class ClientClassGenerator(private val resolver: Resolver) {
             tb.addProperty(PropertySpec.builder(converterName, converterType, KModifier.PRIVATE).initializer(converterName).build())
             builder.addParameter(converterName, converterType)
         }
+        builder.addStatement("this.rootUrl = config.url()")
+
         for (classInterceptor in classInterceptors) {
             if (addedInterceptorsMap.containsKey(classInterceptor)) {
                 continue
@@ -442,7 +522,11 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 name,
                 method.findAnnotation(httpRoute)!!.findValueNoDefault<String>("path")!!
             )
-            builder.addCode("this.%LUrl = %L.url\n", name, name)
+            builder.addStatement("this.%LUriTemplate = %L.url()", name, name)
+            val hasUriParameters = methodData.parameters.any { it is Parameter.QueryParameter || it is Parameter.PathParameter }
+            if (!hasUriParameters) {
+                builder.addCode("this.%LUri = %T.create(%L.url());\n", name, URI::class.asClassName(), name)
+            }
             builder.addCode("this.%LRequestTimeout = %L.requestTimeout\n", name, name)
             builder.addCode("this.%LClient = %L.client\n", name, name)
             if (methodInterceptors.isNotEmpty() || classInterceptors.isNotEmpty()) {
@@ -528,6 +612,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                     }
                     typeArg.declaration is KSTypeParameter || declaration.returnType!!.resolve().isAssignableFrom(typeArg)
                 }
+
                 else -> throw IllegalStateException()
             }
             val code = mapper.findValueNoDefault<Int>("code")!!
@@ -560,7 +645,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
             } else if (mapper != null) {
                 if (mapper.declaration is KSClassDeclaration && mapper.declaration.typeParameters.isNotEmpty()) {
                     val typeArg = returnType.toTypeName().copy(false)
-                    return mapper.toClassName().parameterizedBy(mapper.declaration.typeParameters.map { typeArg})
+                    return mapper.toClassName().parameterizedBy(mapper.declaration.typeParameters.map { typeArg })
                 }
                 return mapper.toTypeName()
             }

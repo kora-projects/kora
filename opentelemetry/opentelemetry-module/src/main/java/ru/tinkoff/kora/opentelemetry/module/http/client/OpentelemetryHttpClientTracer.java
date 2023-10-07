@@ -11,6 +11,8 @@ import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTracer;
 import ru.tinkoff.kora.http.common.MutableHttpHeaders;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 
+import java.net.URI;
+
 public final class OpentelemetryHttpClientTracer implements HttpClientTracer {
     private final Tracer tracer;
 
@@ -21,7 +23,7 @@ public final class OpentelemetryHttpClientTracer implements HttpClientTracer {
     @Override
     public HttpClientSpan createSpan(Context ctx, HttpClientRequest request) {
         var otctx = OpentelemetryContext.get(ctx);
-        var builder = this.tracer.spanBuilder(request.operation())
+        var builder = this.tracer.spanBuilder(operation(request.method(), request.uriTemplate(), request.uri()))
             .setSpanKind(SpanKind.CLIENT)
             .setParent(otctx.getContext());
         builder.setAttribute(SemanticAttributes.HTTP_METHOD, request.method());
@@ -39,4 +41,18 @@ public final class OpentelemetryHttpClientTracer implements HttpClientTracer {
             span.end();
         };
     }
+
+    private static String operation(String method, String uriTemplate, URI uri) {
+        if (uri.getAuthority() != null) {
+            if (uri.getScheme() != null) {
+                uriTemplate = uriTemplate.replace(uri.getScheme() + "://" + uri.getAuthority(), "");
+            }
+        }
+        var questionMark = uriTemplate.indexOf('?');
+        if (questionMark >= 0) {
+            uriTemplate = uriTemplate.substring(0, questionMark);
+        }
+        return method + " " + uriTemplate;
+    }
+
 }

@@ -50,7 +50,15 @@ public class AsyncHttpClient implements HttpClient, Lifecycle {
         for (var header : request.headers()) {
             clientHeaders.add(header.getKey(), header.getValue());
         }
-        var uri = Uri.create(request.resolvedUri());
+        var uri = new Uri(
+            request.uri().getScheme(),
+            request.uri().getRawUserInfo(),
+            request.uri().getHost(),
+            request.uri().getPort(),
+            request.uri().getRawPath(),
+            request.uri().getRawQuery(),
+            request.uri().getRawFragment()
+        );
         var requestBuilder = new RequestBuilder(request.method())
             .setUri(uri)
             .setHeaders(clientHeaders);

@@ -6,7 +6,6 @@ import ru.tinkoff.kora.http.client.annotation.processor.AbstractHttpClientTest;
 import java.util.List;
 
 import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.verify;
 
 public class HttpClientPathParametersTest extends AbstractHttpClientTest {
     @Test

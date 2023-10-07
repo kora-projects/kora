@@ -30,15 +30,15 @@ class MultipartWriterTest {
             \r
             value3\r
             --boundary--""";
-        var b = MultipartWriter.write(HttpClientRequest.post("/test"), "boundary", List.of(
+        var b = MultipartWriter.write("boundary", List.of(
             FormMultipart.data("field1", "value1"),
             FormMultipart.file("field2", "example1.txt", "text/plain", "value2".getBytes(StandardCharsets.UTF_8)),
             FormMultipart.file("field3", "example2.txt", "text/plain", "value3".getBytes(StandardCharsets.UTF_8))
-        )).build();
-        var s = FlowUtils.toByteArrayFuture(b.body())
+        ));
+        var s = FlowUtils.toByteArrayFuture(b)
             .thenApply(_b -> new String(_b, StandardCharsets.UTF_8))
             .join();
         assertThat(s).isEqualTo(e);
-        assertThat(b.body().contentType()).isEqualTo("multipart/form-data;boundary=\"boundary\"");
+        assertThat(b.contentType()).isEqualTo("multipart/form-data;boundary=\"boundary\"");
     }
 }

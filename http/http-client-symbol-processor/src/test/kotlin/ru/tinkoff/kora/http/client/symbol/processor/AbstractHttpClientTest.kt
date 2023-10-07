@@ -27,7 +27,7 @@ abstract class AbstractHttpClientTest : AbstractSymbolProcessorTest() {
     lateinit var client: TestObject
 
     protected fun onRequest(method: String, path: String, responseConsumer: (TestHttpClientResponse) -> TestHttpClientResponse) {
-        whenever(httpClient.execute(Mockito.argThat { arg: HttpClientRequest -> arg.method().equals(method, ignoreCase = true) && arg.resolvedUri() == path }))
+        whenever(httpClient.execute(Mockito.argThat { arg: HttpClientRequest -> arg.method().equals(method, ignoreCase = true) && arg.uri().toString() == path }))
             .thenAnswer { invocation ->
                 val f = CompletableFuture<Void?>()
                 invocation.getArgument(0, HttpClientRequest::class.java).body().subscribe(object : Flow.Subscriber<ByteBuffer?> {

@@ -10,7 +10,7 @@ object HttpClientClassNames {
     val httpClientResponseException = ClassName("ru.tinkoff.kora.http.client.common", "HttpClientResponseException")
     val responseCodeMapper = ClassName("ru.tinkoff.kora.http.client.common.annotation", "ResponseCodeMapper")
     val responseCodeMappers = responseCodeMapper.nestedClass("ResponseCodeMappers")
-    val httpClientRequestBuilder = ClassName("ru.tinkoff.kora.http.client.common.request", "HttpClientRequestBuilder")
+    val httpClientRequest = ClassName("ru.tinkoff.kora.http.client.common.request", "HttpClientRequest")
     val httpClientRequestMapper = ClassName("ru.tinkoff.kora.http.client.common.request", "HttpClientRequestMapper")
     val httpClientResponse = ClassName("ru.tinkoff.kora.http.client.common.response", "HttpClientResponse")
     val httpClientResponseMapper = ClassName("ru.tinkoff.kora.http.client.common.response", "HttpClientResponseMapper")
@@ -22,6 +22,10 @@ object HttpClientClassNames {
     val declarativeHttpClientConfig = ClassName("ru.tinkoff.kora.http.client.common.declarative", "DeclarativeHttpClientConfig")
     val interceptWithClassName = ClassName("ru.tinkoff.kora.http.common.annotation", "InterceptWith")
     val interceptWithContainerClassName = ClassName("ru.tinkoff.kora.http.common.annotation", "InterceptWith", "InterceptWithContainer")
+
+    val httpBody = ClassName("ru.tinkoff.kora.http.common.body", "HttpBody")
+    val httpHeaders = ClassName("ru.tinkoff.kora.http.common.header", "HttpHeaders")
+    val uriQueryBuilder = ClassName("ru.tinkoff.kora.http.client.common.request", "UriQueryBuilder");
 
     val header = ClassName("ru.tinkoff.kora.http.common.annotation", "Header")
     val query = ClassName("ru.tinkoff.kora.http.common.annotation", "Query")

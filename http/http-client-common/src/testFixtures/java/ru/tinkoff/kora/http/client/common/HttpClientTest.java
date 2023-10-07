@@ -18,6 +18,7 @@ import ru.tinkoff.kora.http.client.common.interceptor.TelemetryInterceptor;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.telemetry.DefaultHttpClientTelemetry;
 import ru.tinkoff.kora.http.common.body.HttpBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.opentelemetry.module.http.client.OpentelemetryHttpClientTracer;
 
 import java.nio.charset.StandardCharsets;
@@ -102,8 +103,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
         );
 
         var request = HttpClientRequest.post("/")
-            .header("content-type", "text/plain; charset=UTF-8")
-            .body("test-request".getBytes(StandardCharsets.UTF_8))
+            .body(HttpBody.plaintext("test-request"))
             .build();
 
         call(type, request)
@@ -121,8 +121,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
         server.when(expectedRequest).error(error().withDropConnection(true).withResponseBytes("test respons\r\n".getBytes(StandardCharsets.UTF_8)));
 
         var request = HttpClientRequest.post("/")
-            .header("content-type", "text/plain; charset=UTF-8")
-            .body("test-request".getBytes(StandardCharsets.UTF_8))
+            .body(HttpBody.plaintext("test-request"))
             .build();
 
         assertThatThrownBy(() -> call(type, request))
@@ -141,8 +140,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
         );
 
         var request = HttpClientRequest.post("/")
-            .header("content-type", "text/plain; charset=UTF-8")
-            .body("test-request".getBytes(StandardCharsets.UTF_8))
+            .body(HttpBody.plaintext("test-request"))
             .requestTimeout(1000)
             .build();
 
@@ -172,8 +170,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
         );
 
         var request = HttpClientRequest.post("/")
-            .header("content-type", "text/plain; charset=UTF-8")
-            .body("test-request".getBytes(StandardCharsets.UTF_8))
+            .body(HttpBody.plaintext("test-request"))
             .requestTimeout(200)
             .build();
 
@@ -205,8 +202,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
         );
 
         var request = HttpClientRequest.post("/")
-            .header("content-type", "text/plain; charset=UTF-8")
-            .body("test-request".getBytes(StandardCharsets.UTF_8))
+            .body(HttpBody.plaintext("test-request"))
             .build();
 
         call(type, request);
@@ -227,8 +223,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
         ctx.getLogger("ru.tinkoff.kora.http.client").setLevel(Level.OFF);
 
         var request = HttpClientRequest.post("http://google.com:1488/")
-            .header("content-type", "text/plain; charset=UTF-8")
-            .body("test-request".getBytes(StandardCharsets.UTF_8))
+            .body(HttpBody.plaintext("test-request"))
             .build();
 
         var base = this.createClient(new $HttpClientConfig_ConfigValueExtractor.HttpClientConfig_Impl(Duration.ofMillis(100), Duration.ofMillis(100), null, false));
@@ -285,9 +280,9 @@ public abstract class HttpClientTest extends HttpClientTestBase {
     protected void testRequestBodyPublisherError(CallType type) {
         ctx.getLogger("ru.tinkoff.kora.http.client").setLevel(Level.OFF);
         var request = HttpClientRequest.post("/")
-            .body(FlowUtils.fromCallable(Context.current(), () -> {
+            .body(HttpBodyOutput.octetStream(FlowUtils.fromCallable(Context.current(), () -> {
                 throw new RuntimeException();
-            }))
+            })))
             .build();
 
         assertThatThrownBy(() -> call(type, request)
