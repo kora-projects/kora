@@ -2,6 +2,7 @@ package ru.tinkoff.kora.http.server.undertow;
 
 import io.undertow.Undertow;
 import io.undertow.server.handlers.GracefulShutdownHandler;
+import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xnio.XnioWorker;
@@ -12,11 +13,8 @@ import ru.tinkoff.kora.http.server.common.HttpServer;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
-import jakarta.annotation.Nullable;
 import java.net.InetSocketAddress;
 import java.time.Duration;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class UndertowHttpServer implements HttpServer, ReadinessProbe {
@@ -91,13 +89,11 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
     }
 
     @Override
-    public CompletionStage<ReadinessProbeFailure> probe() {
+    public ReadinessProbeFailure probe() {
         return switch (this.state.get()) {
-            case INIT ->
-                CompletableFuture.completedFuture(new ReadinessProbeFailure("Public HTTP Server (Undertow) init"));
-            case RUN -> CompletableFuture.completedFuture(null);
-            case SHUTDOWN ->
-                CompletableFuture.completedFuture(new ReadinessProbeFailure("Public HTTP Server (Undertow) shutdown"));
+            case INIT -> new ReadinessProbeFailure("Public HTTP Server (Undertow) init");
+            case RUN -> null;
+            case SHUTDOWN -> new ReadinessProbeFailure("Public HTTP Server (Undertow) shutdown");
         };
     }
 

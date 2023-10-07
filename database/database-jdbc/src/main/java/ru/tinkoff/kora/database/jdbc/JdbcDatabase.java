@@ -1,19 +1,21 @@
 package ru.tinkoff.kora.database.jdbc;
 
 import com.zaxxer.hikari.HikariDataSource;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.common.readiness.ReadinessProbe;
+import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory;
 
-import jakarta.annotation.Nullable;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Objects;
 
-public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnectionFactory {
+public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnectionFactory, ReadinessProbe {
     private final Context.Key<Connection> connectionKey = new Context.Key<>() {
         @Override
         protected Connection copy(Connection object) {
@@ -50,8 +52,10 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
 
     @Override
     public void init() throws SQLException {
-        try (var connection = this.dataSource.getConnection()) {
-            connection.isValid(1000);
+        if (this.databaseConfig.initializationFailTimeout() != null) {
+            try (var connection = this.dataSource.getConnection()) {
+                connection.isValid((int) this.databaseConfig.initializationFailTimeout().toMillis());
+            }
         }
     }
 
@@ -106,5 +110,15 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
         } finally {
             ctx.remove(this.connectionKey);
         }
+    }
+
+    @Override
+    public ReadinessProbeFailure probe() throws Exception {
+        if (this.databaseConfig.readinessProbe()) {
+            try (var c = this.dataSource.getConnection()) {
+                c.isValid((int) this.databaseConfig.validationTimeout().toMillis());
+            }
+        }
+        return null;
     }
 }

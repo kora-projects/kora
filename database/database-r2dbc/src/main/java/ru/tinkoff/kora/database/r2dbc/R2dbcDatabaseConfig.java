@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.database.r2dbc;
 
 import io.r2dbc.pool.ConnectionPoolConfiguration;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
-import jakarta.annotation.Nullable;
 import java.time.Duration;
 import java.util.Map;
 
@@ -46,6 +46,10 @@ public interface R2dbcDatabaseConfig {
 
     default int minIdle() {
         return 0;
+    }
+
+    default boolean readinessProbe() {
+        return false;
     }
 
     default Map<String, String> options() {

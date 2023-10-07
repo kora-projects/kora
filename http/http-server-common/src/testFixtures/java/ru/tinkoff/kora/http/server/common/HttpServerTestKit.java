@@ -98,8 +98,8 @@ public abstract class HttpServerTestKit {
     @Nested
     public class PrivateApiTest {
         @Test
-        void testLivenessSuccess() throws IOException {
-            when(livenessProbe.probe()).thenReturn(CompletableFuture.completedFuture(null));
+        void testLivenessSuccess() throws Exception {
+            when(livenessProbe.probe()).thenReturn(null);
             startPrivateHttpServer();
 
             var request = privateApiRequest(config.get().privateApiHttpLivenessPath())
@@ -114,8 +114,8 @@ public abstract class HttpServerTestKit {
 
 
         @Test
-        void testLivenessFailure() throws IOException {
-            when(livenessProbe.probe()).thenReturn(CompletableFuture.completedFuture(new LivenessProbeFailure("Failure")));
+        void testLivenessFailure() throws Exception {
+            when(livenessProbe.probe()).thenReturn(new LivenessProbeFailure("Failure"));
             startPrivateHttpServer();
 
             var request = privateApiRequest(config.get().privateApiHttpLivenessPath())
@@ -144,8 +144,8 @@ public abstract class HttpServerTestKit {
         }
 
         @Test
-        void testReadinessSuccess() throws IOException {
-            when(readinessProbe.probe()).thenReturn(CompletableFuture.completedFuture(null));
+        void testReadinessSuccess() throws Exception {
+            when(readinessProbe.probe()).thenReturn(null);
             startPrivateHttpServer();
 
             var request = privateApiRequest(config.get().privateApiHttpReadinessPath())
@@ -159,8 +159,8 @@ public abstract class HttpServerTestKit {
         }
 
         @Test
-        void testReadinessFailure() throws IOException {
-            when(readinessProbe.probe()).thenReturn(CompletableFuture.completedFuture(new ReadinessProbeFailure("Failed")));
+        void testReadinessFailure() throws Exception {
+            when(readinessProbe.probe()).thenReturn(new ReadinessProbeFailure("Failed"));
             startPrivateHttpServer();
 
             var request = privateApiRequest(config.get().privateApiHttpReadinessPath())

@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.database.jdbc;
 
 import com.zaxxer.hikari.HikariConfig;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
-import jakarta.annotation.Nullable;
 import java.time.Duration;
 import java.util.Properties;
 
@@ -46,6 +46,13 @@ public interface JdbcDatabaseConfig {
 
     default int minIdle() {
         return 0;
+    }
+
+    @Nullable
+    Duration initializationFailTimeout();
+
+    default boolean readinessProbe() {
+        return false;
     }
 
     default Properties dsProperties() {

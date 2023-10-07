@@ -35,6 +35,7 @@ class R2dbcDatabaseTest {
             3,
             2,
             0,
+            false,
             Collections.emptyMap()
         );
         var db = new R2dbcDatabase(config, List.of(), new DefaultDataBaseTelemetryFactory(null, null, null));

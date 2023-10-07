@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.database.cassandra;
 
 import com.datastax.oss.driver.api.core.cql.AsyncResultSet;
-import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoSink;
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowMapper;

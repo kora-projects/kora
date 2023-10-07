@@ -6,18 +6,22 @@ import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Transaction;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.common.readiness.ReadinessProbe;
+import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory;
 import ru.tinkoff.kora.vertx.common.VertxUtil;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
-public class VertxDatabase implements Lifecycle, Wrapped<Pool>, VertxConnectionFactory {
+public class VertxDatabase implements Lifecycle, Wrapped<Pool>, VertxConnectionFactory, ReadinessProbe {
     private final Context.Key<SqlConnection> connectionKey = new Context.Key<>() {
         @Override
         protected SqlConnection copy(SqlConnection object) {
@@ -32,8 +36,10 @@ public class VertxDatabase implements Lifecycle, Wrapped<Pool>, VertxConnectionF
     };
     private final Pool pool;
     private final DataBaseTelemetry telemetry;
+    private final VertxDatabaseConfig config;
 
     public VertxDatabase(VertxDatabaseConfig vertxDatabaseConfig, EventLoopGroup eventLoopGroup, DataBaseTelemetryFactory telemetryFactory) {
+        this.config = vertxDatabaseConfig;
         this.pool = PgPool.pool(
             VertxUtil.customEventLoopVertx(eventLoopGroup),
             VertxDatabaseConfig.toPgConnectOptions(vertxDatabaseConfig),
@@ -152,8 +158,10 @@ public class VertxDatabase implements Lifecycle, Wrapped<Pool>, VertxConnectionF
     }
 
     @Override
-    public void init() {
-        this.pool.query("SELECT 1").execute().toCompletionStage().toCompletableFuture().join();
+    public void init() throws Exception {
+        if (this.config.initializationFailTimeout() != null) {
+            this.pool.query("SELECT 1").execute().toCompletionStage().toCompletableFuture().get(this.config.initializationFailTimeout().toMillis(), TimeUnit.MILLISECONDS);
+        }
     }
 
     @Override
@@ -164,5 +172,14 @@ public class VertxDatabase implements Lifecycle, Wrapped<Pool>, VertxConnectionF
     @Override
     public Pool value() {
         return this.pool;
+    }
+
+    @Nullable
+    @Override
+    public ReadinessProbeFailure probe() throws Exception {
+        if (this.config.readinessProbe()) {
+            this.pool.query("SELECT 1").execute().toCompletionStage().toCompletableFuture().get();
+        }
+        return null;
     }
 }

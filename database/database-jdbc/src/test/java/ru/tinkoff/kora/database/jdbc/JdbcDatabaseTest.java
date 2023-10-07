@@ -42,6 +42,8 @@ class JdbcDatabaseTest {
             Duration.ofMillis(1000L),
             1,
             0,
+            Duration.ofMillis(1000L),
+            false,
             new Properties()
         );
         var db = new JdbcDatabase(config, new DefaultDataBaseTelemetryFactory(null, null, null));
