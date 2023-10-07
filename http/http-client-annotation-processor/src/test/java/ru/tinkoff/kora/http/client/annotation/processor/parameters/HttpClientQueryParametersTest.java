@@ -2,7 +2,6 @@ package ru.tinkoff.kora.http.client.annotation.processor.parameters;
 
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.http.client.annotation.processor.AbstractHttpClientTest;
-import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -25,12 +24,12 @@ public class HttpClientQueryParametersTest extends AbstractHttpClientTest {
 
         onRequest("POST", "http://test-url:8080/test?qParam=test1", rs -> rs.withCode(200));
         client.invoke("request", "test1");
-        verify(httpClient).execute(argThat(r -> r.queryParams().contains(new HttpClientRequest.QueryParam("qParam", "test1"))));
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=test1")));
 
         reset(httpClient);
         onRequest("POST", "http://test-url:8080/test?qParam=test2", rs -> rs.withCode(200));
         client.invoke("request", "test2");
-        verify(httpClient).execute(argThat(r -> r.queryParams().contains(new HttpClientRequest.QueryParam("qParam", "test2"))));
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=test2")));
     }
 
     @Test
@@ -45,12 +44,12 @@ public class HttpClientQueryParametersTest extends AbstractHttpClientTest {
 
         onRequest("POST", "http://test-url:8080/test?qParam=10", rs -> rs.withCode(200));
         client.invoke("request", 10);
-        verify(httpClient).execute(argThat(r -> r.queryParams().contains(new HttpClientRequest.QueryParam("qParam", "10"))));
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=10")));
 
         reset(httpClient);
         onRequest("POST", "http://test-url:8080/test?qParam=20", rs -> rs.withCode(200));
         client.invoke("request", 20);
-        verify(httpClient).execute(argThat(r -> r.queryParams().contains(new HttpClientRequest.QueryParam("qParam", "20"))));
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=20")));
     }
 
     @Test
@@ -65,12 +64,12 @@ public class HttpClientQueryParametersTest extends AbstractHttpClientTest {
 
         onRequest("POST", "http://test-url:8080/test?qParam=10", rs -> rs.withCode(200));
         client.invoke("request", 10);
-        verify(httpClient).execute(argThat(r -> r.queryParams().contains(new HttpClientRequest.QueryParam("qParam", "10"))));
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=10")));
 
         reset(httpClient);
         onRequest("POST", "http://test-url:8080/test?qParam=20", rs -> rs.withCode(200));
         client.invoke("request", 20);
-        verify(httpClient).execute(argThat(r -> r.queryParams().contains(new HttpClientRequest.QueryParam("qParam", "20"))));
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=20")));
     }
 
     @Test
@@ -85,12 +84,12 @@ public class HttpClientQueryParametersTest extends AbstractHttpClientTest {
 
         onRequest("POST", "http://test-url:8080/test?qParam=10", rs -> rs.withCode(200));
         client.invoke("request", 10);
-        verify(httpClient).execute(argThat(r -> r.queryParams().contains(new HttpClientRequest.QueryParam("qParam", "10"))));
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=10")));
 
         reset(httpClient);
         onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(200));
         client.invoke("request", new Object[]{null});
-        verify(httpClient).execute(argThat(r -> r.queryParams().isEmpty()));
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test")));
     }
 
     @Test
@@ -105,12 +104,12 @@ public class HttpClientQueryParametersTest extends AbstractHttpClientTest {
 
         onRequest("POST", "http://test-url:8080/test?qParam=test1", rs -> rs.withCode(200));
         client.invoke("request", List.of("test1"));
-        verify(httpClient).execute(argThat(r -> r.queryParams().contains(new HttpClientRequest.QueryParam("qParam", "test1"))));
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=test1")));
 
         reset(httpClient);
         onRequest("POST", "http://test-url:8080/test?qParam=test1&qParam=test2", rs -> rs.withCode(200));
         client.invoke("request", List.of("test1", "test2"));
-        verify(httpClient).execute(argThat(r -> r.queryParams().contains(new HttpClientRequest.QueryParam("qParam", "test2")) && r.queryParams().contains(new HttpClientRequest.QueryParam("qParam", "test1"))));
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=test1&qParam=test2")));
     }
 
     @Test
@@ -125,12 +124,12 @@ public class HttpClientQueryParametersTest extends AbstractHttpClientTest {
 
         onRequest("POST", "http://test-url:8080/test?qParam=10", rs -> rs.withCode(200));
         client.invoke("request", List.of(10));
-        verify(httpClient).execute(argThat(r -> r.queryParams().contains(new HttpClientRequest.QueryParam("qParam", "10"))));
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=10")));
 
         reset(httpClient);
         onRequest("POST", "http://test-url:8080/test?qParam=10&qParam=20", rs -> rs.withCode(200));
         client.invoke("request", List.of(10, 20));
-        verify(httpClient).execute(argThat(r -> r.queryParams().contains(new HttpClientRequest.QueryParam("qParam", "10")) && r.queryParams().contains(new HttpClientRequest.QueryParam("qParam", "20"))));
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=10&qParam=20")));
     }
 
     @Test
@@ -145,12 +144,12 @@ public class HttpClientQueryParametersTest extends AbstractHttpClientTest {
 
         onRequest("POST", "http://test-url:8080/test?qParam=test1", rs -> rs.withCode(200));
         client.invoke("request", Set.of("test1"));
-        verify(httpClient).execute(argThat(r -> r.queryParams().contains(new HttpClientRequest.QueryParam("qParam", "test1"))));
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=test1")));
 
         reset(httpClient);
         onRequest("POST", "http://test-url:8080/test?qParam=test1&qParam=test2", rs -> rs.withCode(200));
         client.invoke("request", new LinkedHashSet<>(List.of("test1", "test2")));
-        verify(httpClient).execute(argThat(r -> r.queryParams().contains(new HttpClientRequest.QueryParam("qParam", "test2")) && r.queryParams().contains(new HttpClientRequest.QueryParam("qParam", "test1"))));
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=test1&qParam=test2")));
     }
 
     @Test
@@ -165,12 +164,12 @@ public class HttpClientQueryParametersTest extends AbstractHttpClientTest {
 
         onRequest("POST", "http://test-url:8080/test?qParam=test1", rs -> rs.withCode(200));
         client.invoke("request", new LinkedHashSet<>(List.of("test1")));
-        verify(httpClient).execute(argThat(r -> r.queryParams().contains(new HttpClientRequest.QueryParam("qParam", "test1"))));
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=test1")));
 
         reset(httpClient);
         onRequest("POST", "http://test-url:8080/test?qParam=test1&qParam=test2", rs -> rs.withCode(200));
         client.invoke("request", new LinkedHashSet<>(List.of("test1", "test2")));
-        verify(httpClient).execute(argThat(r -> r.queryParams().contains(new HttpClientRequest.QueryParam("qParam", "test2")) && r.queryParams().contains(new HttpClientRequest.QueryParam("qParam", "test1"))));
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=test1&qParam=test2")));
     }
 
 }

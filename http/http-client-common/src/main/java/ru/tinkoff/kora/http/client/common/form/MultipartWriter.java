@@ -5,7 +5,6 @@ import reactor.core.Fuseable;
 import reactor.core.publisher.Flux;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.util.FlowUtils;
-import ru.tinkoff.kora.http.client.common.request.HttpClientRequestBuilder;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.http.common.form.FormMultipart;
 
@@ -18,11 +17,11 @@ import java.util.concurrent.Flow;
 public class MultipartWriter {
     private static final ByteBuffer RN_BUF = StandardCharsets.US_ASCII.encode("\r\n");
 
-    public static HttpClientRequestBuilder write(HttpClientRequestBuilder b, List<? extends FormMultipart.FormPart> parts) {
-        return write(b, "blob:" + UUID.randomUUID(), parts);
+    public static HttpBodyOutput write(List<? extends FormMultipart.FormPart> parts) {
+        return write("blob:" + UUID.randomUUID(), parts);
     }
 
-    public static HttpClientRequestBuilder write(HttpClientRequestBuilder b, String boundary, List<? extends FormMultipart.FormPart> parts) {
+    public static HttpBodyOutput write(String boundary, List<? extends FormMultipart.FormPart> parts) {
         var boundaryBuff = StandardCharsets.US_ASCII.encode("--" + boundary);
         var context = Context.current();
 
@@ -79,6 +78,6 @@ public class MultipartWriter {
             return Flux.just(boundaryBuff.slice(), RN_BUF.slice(), contentDispositionBuff, contentTypeBuff, RN_BUF.slice()).concatWith(FlowAdapters.toPublisher(content)).concatWithValues(RN_BUF.slice());
         }).concatWith(Flux.just(boundaryBuff.slice(), StandardCharsets.US_ASCII.encode("--")));
 
-        return b.body(HttpBodyOutput.of("multipart/form-data;boundary=\"" + boundary + "\"", FlowAdapters.toFlowPublisher(body)));
+        return HttpBodyOutput.of("multipart/form-data;boundary=\"" + boundary + "\"", FlowAdapters.toFlowPublisher(body));
     }
 }

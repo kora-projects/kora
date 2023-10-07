@@ -5,101 +5,68 @@ import ru.tinkoff.kora.http.common.HttpMethod;
 import ru.tinkoff.kora.http.common.MutableHttpHeaders;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 
+import java.net.URI;
 import java.time.Duration;
-import java.util.List;
-import java.util.Objects;
 
 public interface HttpClientRequest {
     String method();
 
+    URI uri();
+
     String uriTemplate();
-
-    List<QueryParam> queryParams();
-
-    List<TemplateParam> templateParams();
 
     MutableHttpHeaders headers();
 
     HttpBodyOutput body();
 
-    String resolvedUri();
-
-    String authority();
-
-    String operation();
-
     @Nullable
     Duration requestTimeout();
 
-    record TemplateParam(String name, String value) {
-        public TemplateParam {
-            Objects.requireNonNull(name);
-            Objects.requireNonNull(value);
-        }
-    }
-
-    record QueryParam(String name, @Nullable String value) {
-        public QueryParam {
-            Objects.requireNonNull(name);
-        }
-    }
-
     default HttpClientRequestBuilder toBuilder() {
-        return new HttpClientRequestBuilder(this);
+        return new HttpClientRequestBuilderImpl(this);
+    }
+
+    static HttpClientRequest of(String method, URI uri, String uriTemplate, MutableHttpHeaders headers, HttpBodyOutput body, Duration requestTimeout) {
+        return new DefaultHttpClientRequest(method, uri, uriTemplate, headers, body, requestTimeout);
     }
 
     static HttpClientRequestBuilder get(String path) {
-        return new HttpClientRequestBuilder(HttpMethod.GET, path);
+        return new HttpClientRequestBuilderImpl(HttpMethod.GET, path);
     }
 
-    static HttpClientRequestBuilder head(String path) {
-        return new HttpClientRequestBuilder(HttpMethod.HEAD, path);
+    static HttpClientRequestBuilder head(String uriTemplate) {
+        return new HttpClientRequestBuilderImpl(HttpMethod.HEAD, uriTemplate);
     }
 
-    static HttpClientRequestBuilder post(String path) {
-        return new HttpClientRequestBuilder(HttpMethod.POST, path);
+    static HttpClientRequestBuilder post(String uriTemplate) {
+        return new HttpClientRequestBuilderImpl(HttpMethod.POST, uriTemplate);
     }
 
-    static HttpClientRequestBuilder put(String path) {
-        return new HttpClientRequestBuilder(HttpMethod.PUT, path);
+    static HttpClientRequestBuilder put(String uriTemplate) {
+        return new HttpClientRequestBuilderImpl(HttpMethod.PUT, uriTemplate);
     }
 
-    static HttpClientRequestBuilder delete(String path) {
-        return new HttpClientRequestBuilder(HttpMethod.DELETE, path);
+    static HttpClientRequestBuilder delete(String uriTemplate) {
+        return new HttpClientRequestBuilderImpl(HttpMethod.DELETE, uriTemplate);
     }
 
-    static HttpClientRequestBuilder connect(String path) {
-        return new HttpClientRequestBuilder(HttpMethod.CONNECT, path);
+    static HttpClientRequestBuilder connect(String uriTemplate) {
+        return new HttpClientRequestBuilderImpl(HttpMethod.CONNECT, uriTemplate);
     }
 
-    static HttpClientRequestBuilder options(String path) {
-        return new HttpClientRequestBuilder(HttpMethod.OPTIONS, path);
+    static HttpClientRequestBuilder options(String uriTemplate) {
+        return new HttpClientRequestBuilderImpl(HttpMethod.OPTIONS, uriTemplate);
     }
 
-    static HttpClientRequestBuilder trace(String path) {
-        return new HttpClientRequestBuilder(HttpMethod.TRACE, path);
+    static HttpClientRequestBuilder trace(String uriTemplate) {
+        return new HttpClientRequestBuilderImpl(HttpMethod.TRACE, uriTemplate);
     }
 
-    static HttpClientRequestBuilder patch(String path) {
-        return new HttpClientRequestBuilder(HttpMethod.PATCH, path);
+    static HttpClientRequestBuilder patch(String uriTemplate) {
+        return new HttpClientRequestBuilderImpl(HttpMethod.PATCH, uriTemplate);
     }
 
-    static HttpClientRequestBuilder of(String method, String path) {
-        return new HttpClientRequestBuilder(method, path);
-    }
-
-
-    record Default(
-        String method,
-        String uriTemplate,
-        List<QueryParam> queryParams,
-        List<TemplateParam> templateParams,
-        MutableHttpHeaders headers,
-        HttpBodyOutput body,
-        Duration requestTimeout,
-        String resolvedUri,
-        String authority,
-        String operation
-    ) implements HttpClientRequest {
+    static HttpClientRequestBuilder of(String method, String uriTemplate) {
+        return new HttpClientRequestBuilderImpl(method, uriTemplate);
     }
 }

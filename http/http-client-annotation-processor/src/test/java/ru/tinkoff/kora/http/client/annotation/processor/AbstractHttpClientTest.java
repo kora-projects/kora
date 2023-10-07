@@ -31,7 +31,7 @@ public abstract class AbstractHttpClientTest extends AbstractAnnotationProcessor
     }
 
     protected void onRequest(String method, String path, Function<TestHttpClientResponse, TestHttpClientResponse> responseConsumer) {
-        when(httpClient.execute(Mockito.argThat(argument -> argument.method().equalsIgnoreCase(method) && argument.resolvedUri().equalsIgnoreCase(path))))
+        when(httpClient.execute(Mockito.argThat(argument -> argument.method().equalsIgnoreCase(method) && argument.uri().toString().equalsIgnoreCase(path))))
             .thenAnswer(invocation -> {
                 var f = new CompletableFuture<Void>();
                 invocation.getArgument(0, HttpClientRequest.class).body().subscribe(new Flow.Subscriber<ByteBuffer>() {

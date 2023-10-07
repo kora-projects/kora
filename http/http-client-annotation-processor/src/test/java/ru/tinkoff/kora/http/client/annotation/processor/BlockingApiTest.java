@@ -5,7 +5,6 @@ import org.mockito.Mockito;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.client.common.HttpClientEncoderException;
 import ru.tinkoff.kora.http.client.common.HttpClientResponseException;
-import ru.tinkoff.kora.http.client.common.request.HttpClientRequestBuilder;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequestMapper;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper;
 import ru.tinkoff.kora.http.common.body.HttpBody;
@@ -245,20 +244,17 @@ public class BlockingApiTest extends AbstractHttpClientTest {
 
         var ctx = Context.current();
 
-        when(mapper.apply(any(), any(), any()))
-            .thenAnswer(invocation -> invocation.getArgument(1, HttpClientRequestBuilder.class)
-                .body(HttpBody.plaintext("test-value"))
-            );
+        when(mapper.apply(any(), any())).thenAnswer(invocation -> HttpBody.plaintext("test-value"));
         onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(200));
         client.invoke("request", "test-value");
-        verify(mapper).apply(same(ctx), any(), eq("test-value"));
+        verify(mapper).apply(same(ctx), eq("test-value"));
 
         reset(httpClient, mapper);
-        when(mapper.apply(any(), any(), any()))
+        when(mapper.apply(any(), any()))
             .thenThrow(RuntimeException.class);
         onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(200));
         assertThatThrownBy(() -> client.invoke("request", "test-value")).isInstanceOf(HttpClientEncoderException.class);
-        verify(mapper).apply(same(ctx), any(), eq("test-value"));
+        verify(mapper).apply(same(ctx), eq("test-value"));
     }
 
 }

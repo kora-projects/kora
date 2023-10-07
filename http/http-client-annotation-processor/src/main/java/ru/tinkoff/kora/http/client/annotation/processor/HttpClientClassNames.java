@@ -11,10 +11,15 @@ public class HttpClientClassNames {
     public static final ClassName responseCodeMapper = ClassName.get("ru.tinkoff.kora.http.client.common.annotation", "ResponseCodeMapper");
     public static final ClassName responseCodeMappers = responseCodeMapper.nestedClass("ResponseCodeMappers");
     public static final ClassName httpClientRequestBuilder = ClassName.get("ru.tinkoff.kora.http.client.common.request", "HttpClientRequestBuilder");
+    public static final ClassName uriQueryBuilder = ClassName.get("ru.tinkoff.kora.http.client.common.request", "UriQueryBuilder");
+    public static final ClassName httpClientRequest = ClassName.get("ru.tinkoff.kora.http.client.common.request", "HttpClientRequest");
+    public static final ClassName httpBody = ClassName.get("ru.tinkoff.kora.http.common.body", "HttpBody");
+    public static final ClassName httpBodyOutput = ClassName.get("ru.tinkoff.kora.http.common.body", "HttpBodyOutput");
     public static final ClassName httpClientRequestMapper = ClassName.get("ru.tinkoff.kora.http.client.common.request", "HttpClientRequestMapper");
     public static final ClassName httpClientResponseMapper = ClassName.get("ru.tinkoff.kora.http.client.common.response", "HttpClientResponseMapper");
     public static final ClassName httpClientTelemetryFactory = ClassName.get("ru.tinkoff.kora.http.client.common.telemetry", "HttpClientTelemetryFactory");
     public static final ClassName stringParameterConverter = ClassName.get("ru.tinkoff.kora.http.client.common.writer", "StringParameterConverter");
+    public static final ClassName httpHeaders = ClassName.get("ru.tinkoff.kora.http.common.header", "HttpHeaders");
     public static final ClassName httpRoute = ClassName.get("ru.tinkoff.kora.http.common.annotation", "HttpRoute");
     public static final ClassName httpClientUnknownException = ClassName.get("ru.tinkoff.kora.http.client.common", "HttpClientUnknownException");
     public static final ClassName httpClientOperationConfig  = ClassName.get("ru.tinkoff.kora.http.client.common.declarative", "HttpClientOperationConfig");

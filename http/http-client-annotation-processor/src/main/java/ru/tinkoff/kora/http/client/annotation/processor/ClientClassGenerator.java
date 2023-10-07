@@ -12,6 +12,9 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -39,11 +42,16 @@ public class ClientClassGenerator {
             .addOriginatingElement(element)
             .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", "$S", ClientClassGenerator.class.getCanonicalName()).build());
         builder.addMethod(this.buildConstructor(builder, element, methods));
+        builder.addField(String.class, "rootUrl", Modifier.PRIVATE, Modifier.FINAL);
 
         for (var method : methods) {
             builder.addField(HttpClientClassNames.httpClient, method.element().getSimpleName() + "Client", Modifier.PRIVATE, Modifier.FINAL);
             builder.addField(Duration.class, method.element().getSimpleName() + "RequestTimeout", Modifier.PRIVATE, Modifier.FINAL);
-            builder.addField(String.class, method.element().getSimpleName() + "Url", Modifier.PRIVATE, Modifier.FINAL);
+            builder.addField(String.class, method.element().getSimpleName() + "UriTemplate", Modifier.PRIVATE, Modifier.FINAL);
+            var hasUriParameters = method.parameters.stream().anyMatch(p -> p instanceof Parameter.QueryParameter || p instanceof Parameter.PathParameter);
+            if (!hasUriParameters) {
+                builder.addField(URI.class, method.element().getSimpleName() + "Uri", Modifier.PRIVATE, Modifier.FINAL);
+            }
             var methodSpec = this.buildMethod(method);
             builder.addMethod(methodSpec);
         }
@@ -55,22 +63,92 @@ public class ClientClassGenerator {
         var b = CommonUtils.overridingKeepAop(method)
             .addException(httpClientException);
         var methodClientName = method.getSimpleName() + "Client";
-        var methodRequestTimeout = method.getSimpleName() + "RequestTimeout";
         var httpRoute = AnnotationUtils.findAnnotation(method, HttpClientClassNames.httpRoute);
-        var httpMethod = AnnotationUtils.parseAnnotationValueWithoutDefault(httpRoute, "method");
-        b.addCode("""
-            var _client = this.$L;
-            var _requestBuilder = new $T($S, this.$LUrl)
-              .requestTimeout(this.$L);
-            """, methodClientName, httpClientRequestBuilder, httpMethod, method.getSimpleName(), methodRequestTimeout);
-        for (var parameter : methodData.parameters()) {
-            if (parameter instanceof Parameter.PathParameter path) {
-                if (requiresConverter(path.parameter().asType())) {
-                    b.addCode("_requestBuilder.templateParam($S, $L.convert($L));\n", path.pathParameterName(), getConverterName(methodData, path.parameter()), path.parameter());
-                } else {
-                    b.addCode("_requestBuilder.templateParam($S, $T.toString($L));\n", path.pathParameterName(), Objects.class, path.parameter());
+        var httpMethod = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(httpRoute, "method");
+        b.addStatement("var _client = this.$L", methodClientName);
+        b.addStatement("var _headers = $T.of()", httpHeaders);
+        b.addStatement("var _uriTemplate = this.$L", method.getSimpleName() + "UriTemplate");
+        b.addStatement("var _requestTimeout = this.$L", method.getSimpleName() + "RequestTimeout");
+
+        var hasPathParameters = methodData.parameters.stream().anyMatch(p -> p instanceof Parameter.PathParameter);
+        var hasQueryParameters = methodData.parameters.stream().anyMatch(p -> p instanceof Parameter.QueryParameter);
+        var bodyParameter = methodData.parameters.stream().filter(p -> p instanceof Parameter.BodyParameter).findFirst().map(Parameter.BodyParameter.class::cast).orElse(null);
+        if (hasPathParameters || hasQueryParameters) {
+            var httpPath = Objects.requireNonNull(AnnotationUtils.<String>parseAnnotationValueWithoutDefault(httpRoute, "path"));
+            final String uriWithPlaceholdersString;
+            if (hasPathParameters) {
+                b.addCode("var _uriNoQuery = this.rootUrl\n");
+                var parts = this.parseRouteParts(httpPath, methodData.parameters);
+                var uriWithPlaceholdersStringB = new StringBuilder();
+                for (var routePart : parts) {
+                    if (routePart.string() != null) {
+                        uriWithPlaceholdersStringB.append(routePart.string);
+                        b.addCode("  + $S\n", routePart.string());
+                    } else {
+                        uriWithPlaceholdersStringB.append("placeholder");
+                        if (requiresConverter(routePart.parameter.parameter().asType())) {
+                            var converterName = getConverterName(methodData, routePart.parameter.parameter());
+                            b.addCode("  + $T.encode($L.convert($N), $T.UTF_8)\n", URLEncoder.class, converterName, routePart.parameter.parameter().getSimpleName(), StandardCharsets.class);
+                        } else {
+                            b.addCode("  + $T.encode($T.toString($N), $T.UTF_8)\n", URLEncoder.class, Objects.class, routePart.parameter.parameter().getSimpleName(), StandardCharsets.class);
+                        }
+                    }
                 }
+                uriWithPlaceholdersString = uriWithPlaceholdersStringB.toString();
+                b.addCode(";\n");
+            } else {
+                b.addStatement("var _uriNoQuery = this.rootUrl + $S", httpPath);
+                uriWithPlaceholdersString = httpPath;
             }
+            if (!hasQueryParameters) {
+                b.addStatement("var _uri = $T.create(_uriNoQuery)", URI.class);
+            } else {
+                var uriWithPlaceholders = URI.create(uriWithPlaceholdersString);
+                var hasQMark = uriWithPlaceholders.getQuery() != null;
+                var hasFirstParam = hasQMark && !uriWithPlaceholders.getQuery().isBlank();
+                b.addStatement("var _query = new $T($L, $L)", uriQueryBuilder, !hasQMark, hasFirstParam);
+                for (var parameter : methodData.parameters) {
+                    if (parameter instanceof Parameter.QueryParameter p) {
+                        boolean nullable = CommonUtils.isNullable(p.parameter());
+                        if (nullable) {
+                            b.beginControlFlow("if ($L != null)", p.parameter());
+                        }
+                        var targetLiteral = p.parameter().getSimpleName().toString();
+                        var type = p.parameter().asType();
+                        var isList = CommonUtils.isCollection(type);
+                        if (isList) {
+                            type = ((DeclaredType) type).getTypeArguments().get(0);
+                            var paramName = "_" + targetLiteral + "_element";
+                            b.beginControlFlow("if ($N.isEmpty())", targetLiteral);
+                            b.addStatement("_query.add($S)", URLEncoder.encode(p.queryParameterName(), StandardCharsets.UTF_8));
+                            b.nextControlFlow("else");
+                            b.beginControlFlow("for (var $L : $L)", paramName, targetLiteral);
+                            targetLiteral = paramName;
+                        }
+                        b.addCode("_query.add($S, ", URLEncoder.encode(p.queryParameterName(), StandardCharsets.UTF_8));
+                        if (requiresConverter(type)) {
+                            b.addCode("$L.convert($L)", getConverterName(methodData, p.parameter()), targetLiteral);
+                        } else {
+                            b.addCode("$T.toString($L)", Objects.class, targetLiteral);
+                        }
+                        b.addCode(");\n", StandardCharsets.class);
+
+                        if (isList) {
+                            b.endControlFlow()
+                                .endControlFlow();
+                        }
+                        if (nullable) {
+                            b.endControlFlow();
+                        }
+                    }
+                }
+                b.addStatement("var _uri = $T.create(_uriNoQuery + _query.build())", URI.class);
+            }
+        } else {
+            b.addStatement("var _uri = this.$L", method.getSimpleName() + "Uri");
+        }
+        b.addCode("\n");
+        for (var parameter : methodData.parameters()) {
             if (parameter instanceof Parameter.HeaderParameter header) {
                 boolean nullable = CommonUtils.isNullable(header.parameter());
                 if (nullable) {
@@ -88,67 +166,34 @@ public class ClientClassGenerator {
                 }
 
                 if (requiresConverter(type)) {
-                    b.addCode("_requestBuilder.header($S, $L.convert($L));\n", header.headerName(), getConverterName(methodData, header.parameter()), targetLiteral);
+                    b.addCode("_headers.add($S, $L.convert($L));\n", header.headerName(), getConverterName(methodData, header.parameter()), targetLiteral);
                 } else {
-                    b.addCode("_requestBuilder.header($S, $T.toString($L));\n", header.headerName(), Objects.class, targetLiteral);
+                    b.addCode("_headers.add($S, $T.toString($L));\n", header.headerName(), Objects.class, targetLiteral);
                 }
 
                 if (isList) {
                     b.endControlFlow();
                 }
 
-                if (nullable) {
-                    b.endControlFlow();
-                }
-
-            }
-            if (parameter instanceof Parameter.QueryParameter query) {
-                boolean nullable = CommonUtils.isNullable(query.parameter());
-                if (nullable) {
-                    b.beginControlFlow("if ($L != null)", query.parameter());
-                }
-                var targetLiteral = query.parameter().getSimpleName().toString();
-                var type = query.parameter().asType();
-                var isList = CommonUtils.isCollection(type);
-                if (isList) {
-                    type = ((DeclaredType) type).getTypeArguments().get(0);
-                    var paramName = "_" + targetLiteral + "_element";
-                    b.beginControlFlow("if ($N.isEmpty())", targetLiteral)
-                        .addStatement("_requestBuilder.queryParam($S)", query.queryParameterName())
-                        .nextControlFlow("else")
-                        .beginControlFlow("for (var $L : $L)", paramName, targetLiteral);
-                    targetLiteral = paramName;
-                }
-
-                if (requiresConverter(type)) {
-                    b.addCode("_requestBuilder.queryParam($S, $L.convert($L));\n", query.queryParameterName(), getConverterName(methodData, query.parameter()), targetLiteral);
-                } else {
-                    b.addCode("_requestBuilder.queryParam($S, $T.toString($L));\n", query.queryParameterName(), Objects.class, targetLiteral);
-                }
-
-                if (isList) {
-                    b.endControlFlow()
-                        .endControlFlow();
-                }
                 if (nullable) {
                     b.endControlFlow();
                 }
             }
         }
-        b.addCode(";\n");
-        for (var parameter : methodData.parameters()) {
-            if (parameter instanceof Parameter.BodyParameter body) {
-                var requestMapperName = method.getSimpleName() + "RequestMapper";
-                b.addCode("try {$>\n");
-                b.addCode("_requestBuilder = this.$N.apply($T.current(), _requestBuilder, $L);$<\n", requestMapperName, CommonClassNames.context, body.parameter());
-                b.addCode("} catch (Exception _e) {$>\n");
-                b.addCode("throw new $T(_e);$<\n", httpClientEncoderException);
-                b.addCode("}\n");
-            }
+        if (bodyParameter == null) {
+            b.addStatement("var _body = $T.empty()", httpBody);
+        } else {
+            var requestMapperName = method.getSimpleName() + "RequestMapper";
+            b.addStatement("final $T _body", httpBodyOutput);
+            b.addCode("try {$>\n");
+            b.addCode("_body = this.$N.apply($T.current(), $L);$<\n", requestMapperName, CommonClassNames.context, bodyParameter.parameter());
+            b.addCode("} catch (Exception _e) {$>\n");
+            b.addCode("throw new $T(_e);$<\n", httpClientEncoderException);
+            b.addCode("}\n");
         }
 
-        b.addStatement("var _request = _requestBuilder.build()");
 
+        b.addStatement("var _request = $T.of($S, _uri, _uriTemplate, _headers, _body, _requestTimeout)", httpClientRequest, httpMethod);
         if (CommonUtils.isMono(method.getReturnType())) {
             b.addCode(buildCallMono(methodData));
         } else if (CommonUtils.isFuture(method.getReturnType())) {
@@ -158,6 +203,49 @@ public class ClientClassGenerator {
         }
         return b.build();
     }
+
+    private List<RoutePart> parseRouteParts(String httpPath, List<Parameter> parameters) {
+        var parts = List.of(new RoutePart(null, httpPath));
+        for (var parameter : parameters) {
+            var newList = new ArrayList<RoutePart>();
+            if (parameter instanceof Parameter.PathParameter p) {
+                for (var part : parts) {
+                    if (part.parameter != null) {
+                        newList.add(part);
+                    } else {
+                        var from = 0;
+                        var token = "{" + p.pathParameterName() + "}";
+                        while (true) {
+                            var idx = part.string.indexOf(token, from);
+                            if (idx < 0) {
+                                var str = part.string.substring(from);
+                                if (!str.isEmpty()) {
+                                    newList.add(new RoutePart(null, str));
+                                }
+                                break;
+                            } else {
+                                var str = part.string.substring(from, idx);
+                                if (!str.isEmpty()) {
+                                    newList.add(new RoutePart(null, str));
+                                }
+                                newList.add(new RoutePart(p, null));
+                                from = idx + token.length();
+                            }
+                        }
+                    }
+                }
+                parts = newList;
+            }
+        }
+        return parts;
+    }
+
+    private record RoutePart(@Nullable Parameter.PathParameter parameter, @Nullable String string) {
+        RoutePart {
+            if (parameter != null && string != null) throw new IllegalStateException();
+        }
+    }
+
 
     private CodeBlock mapBlockingResponse(MethodData methodData, TypeMirror resultType) {
         var b = CodeBlock.builder();
@@ -362,11 +450,15 @@ public class ClientClassGenerator {
             .addParameter(clientParameter.build())
             .addParameter(ClassName.get(packageName, configClassName), "config")
             .addParameter(telemetryParameter.build());
-        parameterConverters.forEach((readerName, parameterizedTypeName) -> {
+        for (var entry : parameterConverters.entrySet()) {
+            var readerName = entry.getKey();
+            var parameterizedTypeName = entry.getValue();
             tb.addField(parameterizedTypeName, readerName);
             builder.addParameter(parameterizedTypeName, readerName);
             builder.addStatement("this.$1L = $1L", readerName);
-        });
+        }
+        builder.addStatement("this.rootUrl = $T.requireNonNull(config.url())", Objects.class);
+
         for (var classInterceptor : classInterceptors) {
             if (addedInterceptorsMap.containsKey(classInterceptor)) {
                 continue;
@@ -492,7 +584,11 @@ public class ClientClassGenerator {
             var httpRoute = AnnotationUtils.findAnnotation(method, HttpClientClassNames.httpRoute);
             var httpPath = AnnotationUtils.parseAnnotationValueWithoutDefault(httpRoute, "path");
             builder.addCode("var $L = config.apply(httpClient, $T.class, $S, config.$LConfig(), telemetryFactory, $S);\n", name, element, name, name, httpPath);
-            builder.addCode("this.$LUrl = $L.url();\n", name, name);
+            builder.addCode("this.$LUriTemplate = $L.url();\n", name, name);
+            var hasUriParameters = methodData.parameters().stream().anyMatch(p -> p instanceof Parameter.QueryParameter || p instanceof Parameter.PathParameter);
+            if (!hasUriParameters) {
+                builder.addCode("this.$LUri = $T.create($L.url());\n", name, URI.class, name);
+            }
             builder.addCode("this.$LClient = $L.client()", name, name);
             if (!methodInterceptors.isEmpty() || !classInterceptors.isEmpty()) {
                 builder.addCode("\n");

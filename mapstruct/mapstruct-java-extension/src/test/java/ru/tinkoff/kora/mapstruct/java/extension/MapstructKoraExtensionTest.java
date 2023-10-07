@@ -31,7 +31,7 @@ public class MapstructKoraExtensionTest extends AbstractAnnotationProcessorTest 
               default String root(TestMapper testMapper) {
                 return "";
               }
-            }        
+            }
             """;
         this.compile(List.of(new KoraAppProcessor(), new MappingProcessor()), realSources);
         compileResult.assertSuccess();
@@ -65,14 +65,12 @@ public class MapstructKoraExtensionTest extends AbstractAnnotationProcessorTest 
                 import java.util.Date;
                 import java.text.SimpleDateFormat;
                 import java.text.ParseException;
-                            
+
                 public final class DateMapper {
-                            
                     public String asString(Date date) {
                         return date != null ? new SimpleDateFormat( "yyyy-MM-dd" )
                             .format( date ) : null;
                     }
-                            
                     public Date asDate(String date) {
                         try {
                             return date != null ? new SimpleDateFormat( "yyyy-MM-dd" )
@@ -95,7 +93,6 @@ public class MapstructKoraExtensionTest extends AbstractAnnotationProcessorTest 
                 """, """
                 @Mapper(uses = DateMapper.class, injectionStrategy = org.mapstruct.InjectionStrategy.CONSTRUCTOR, componentModel = "jakarta")
                 public interface TestMapper {
-                            
                     @Mapping(source = "numberOfSeats", target = "seatCount")
                     CarDto carToCarDto(Car car);
                 }

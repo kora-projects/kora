@@ -7,7 +7,6 @@ import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 
 import java.io.IOException;
 import java.net.ProtocolException;
-import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
@@ -26,7 +25,7 @@ public class JdkHttpClient implements HttpClient {
     @Override
     public CompletionStage<HttpClientResponse> execute(HttpClientRequest request) {
         var httpClientRequest = HttpRequest.newBuilder()
-            .uri(URI.create(request.resolvedUri()));
+            .uri(request.uri());
         if (request.requestTimeout() != null) {
             httpClientRequest.timeout(request.requestTimeout());
         }

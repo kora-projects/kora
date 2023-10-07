@@ -12,6 +12,7 @@ import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.body.StreamingHttpBodyInput;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
@@ -34,9 +35,9 @@ class DefaultHttpClientTelemetryTest {
         var metrics = Mockito.mock(HttpClientMetrics.class);
         var telemetry = new DefaultHttpClientTelemetry(null, metrics, null);
         var rq = Mockito.mock(HttpClientRequest.class);
-        Mockito.when(rq.resolvedUri()).thenReturn("http://localhost:8080/");
+        Mockito.when(rq.uri()).thenReturn(URI.create("http://localhost:8080/"));
+        Mockito.when(rq.uriTemplate()).thenReturn("/");
         Mockito.when(rq.method()).thenReturn("POST");
-        Mockito.when(rq.operation()).thenReturn("POST /");
 
         try (var rs = Mockito.mock(HttpClientResponse.class)) {
             Mockito.when(rs.body()).thenReturn(HttpBody.plaintext("test"));
@@ -57,9 +58,9 @@ class DefaultHttpClientTelemetryTest {
         var metrics = Mockito.mock(HttpClientMetrics.class);
         var telemetry = new DefaultHttpClientTelemetry(null, metrics, null);
         var rq = Mockito.mock(HttpClientRequest.class);
-        Mockito.when(rq.resolvedUri()).thenReturn("http://localhost:8080/");
+        Mockito.when(rq.uri()).thenReturn(URI.create("http://localhost:8080/"));
+        Mockito.when(rq.uriTemplate()).thenReturn("/");
         Mockito.when(rq.method()).thenReturn("POST");
-        Mockito.when(rq.operation()).thenReturn("POST /");
 
         try (var rs = Mockito.mock(HttpClientResponse.class)) {
             Mockito.when(rs.body()).thenReturn(new StreamingHttpBodyInput("text/plain", 4, FlowUtils.one(Context.clear(), ByteBuffer.wrap("test".getBytes(StandardCharsets.UTF_8)))));
@@ -81,10 +82,9 @@ class DefaultHttpClientTelemetryTest {
         Mockito.when(logger.logResponseBody()).thenReturn(true);
         var telemetry = new DefaultHttpClientTelemetry(null, null, logger);
         var rq = Mockito.mock(HttpClientRequest.class);
-        Mockito.when(rq.resolvedUri()).thenReturn("http://localhost:8080/");
+        Mockito.when(rq.uri()).thenReturn(URI.create("http://localhost:8080/"));
+        Mockito.when(rq.uriTemplate()).thenReturn("/");
         Mockito.when(rq.method()).thenReturn("POST");
-        Mockito.when(rq.authority()).thenReturn("localhost:8080");
-        Mockito.when(rq.operation()).thenReturn("POST /");
 
         try (var rs = Mockito.mock(HttpClientResponse.class)) {
             Mockito.when(rs.body()).thenReturn(HttpBody.plaintext("test"));
@@ -107,10 +107,9 @@ class DefaultHttpClientTelemetryTest {
         Mockito.when(logger.logResponseBody()).thenReturn(true);
         var telemetry = new DefaultHttpClientTelemetry(null, null, logger);
         var rq = Mockito.mock(HttpClientRequest.class);
-        Mockito.when(rq.resolvedUri()).thenReturn("http://localhost:8080/");
+        Mockito.when(rq.uri()).thenReturn(URI.create("http://localhost:8080/"));
+        Mockito.when(rq.uriTemplate()).thenReturn("/");
         Mockito.when(rq.method()).thenReturn("POST");
-        Mockito.when(rq.authority()).thenReturn("localhost:8080");
-        Mockito.when(rq.operation()).thenReturn("POST /");
 
         try (var rs = Mockito.mock(HttpClientResponse.class)) {
             Mockito.when(rs.body()).thenReturn(new StreamingHttpBodyInput("text/plain", 4, FlowUtils.one(Context.clear(), ByteBuffer.wrap("test".getBytes(StandardCharsets.UTF_8)))));

@@ -3,7 +3,7 @@ package {{package}}
 import ru.tinkoff.kora.http.client.common.form.UrlEncodedWriter
 import ru.tinkoff.kora.http.client.common.form.MultipartWriter
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequestMapper
-import ru.tinkoff.kora.http.client.common.request.HttpClientRequestBuilder
+import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.common.Context
 
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
@@ -15,7 +15,7 @@ interface {{classname}}ClientRequestMappers {
   class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper{{#vendorExtensions.requiresFormParamMappers}}({{#vendorExtensions.formParamMappers}}
     private val {{paramName}}Converter: ru.tinkoff.kora.http.client.common.writer.StringParameterConverter<{{paramType}}>,
 {{/vendorExtensions.formParamMappers}}  ){{/vendorExtensions.requiresFormParamMappers}}: HttpClientRequestMapper<{{classname}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> {
-    override fun apply(ctx: Context, request: HttpClientRequestBuilder, value: {{classname}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam): HttpClientRequestBuilder {
+    override fun apply(ctx: Context, value: {{classname}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam): HttpBodyOutput {
       {{#vendorExtensions.urlEncodedForm}}
       val b = UrlEncodedWriter(){{#formParams}}
       value.{{paramName}}?.let { {{#vendorExtensions.requiresMapper}}
@@ -25,7 +25,7 @@ interface {{classname}}ClientRequestMappers {
 {{/vendorExtensions.requiresMapper}}
       }
 {{/formParams}}
-      return b.write(request)
+      return b.write()
 {{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
       val l = mutableListOf<ru.tinkoff.kora.http.common.form.FormMultipart.FormPart>(){{#formParams}}
               if (value.{{paramName}} != null) {
@@ -39,7 +39,7 @@ interface {{classname}}ClientRequestMappers {
                   ){{/isFile}}
               }
       {{/formParams}}
-      return MultipartWriter.write(request, l)
+      return MultipartWriter.write(l)
 {{/vendorExtensions.multipartForm}}
     }
   }
