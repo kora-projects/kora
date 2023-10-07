@@ -3,12 +3,15 @@ package ru.tinkoff.kora.database.r2dbc;
 import io.r2dbc.pool.ConnectionPool;
 import io.r2dbc.pool.ConnectionPoolConfiguration;
 import io.r2dbc.spi.*;
+import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.common.readiness.ReadinessProbe;
+import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory;
 
@@ -16,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-public class R2dbcDatabase implements R2dbcConnectionFactory, Lifecycle {
+public class R2dbcDatabase implements R2dbcConnectionFactory, Lifecycle, ReadinessProbe {
 
     private static final Logger logger = LoggerFactory.getLogger(R2dbcDatabase.class);
 
@@ -36,8 +39,10 @@ public class R2dbcDatabase implements R2dbcConnectionFactory, Lifecycle {
     };
     private final ConnectionPool connectionFactory;
     private final DataBaseTelemetry telemetry;
+    private final R2dbcDatabaseConfig config;
 
     public R2dbcDatabase(R2dbcDatabaseConfig config, List<Function<ConnectionFactoryOptions.Builder, ConnectionFactoryOptions.Builder>> customizers, DataBaseTelemetryFactory telemetryFactory) {
+        this.config = config;
         this.connectionFactory = r2dbcConnectionFactory(config, customizers);
         this.telemetry = telemetryFactory.get(config.poolName(),
             "r2dbc",
@@ -193,7 +198,10 @@ public class R2dbcDatabase implements R2dbcConnectionFactory, Lifecycle {
 
     @Override
     public void init() {
-        this.connectionFactory.warmup().block();
+        try {
+            this.connectionFactory.warmup().block();
+        } catch (Exception ignore) {
+        }
     }
 
     @Override
@@ -201,4 +209,15 @@ public class R2dbcDatabase implements R2dbcConnectionFactory, Lifecycle {
         this.connectionFactory.dispose();
     }
 
+    @Nullable
+    @Override
+    public ReadinessProbeFailure probe() {
+        if (this.config.readinessProbe()) {
+            var isValid = Mono.usingWhen(this.connectionFactory.create(), c -> Mono.from(c.validate(ValidationDepth.REMOTE)), Connection::close).block();
+            if (Boolean.FALSE.equals(isValid)) {
+                return new ReadinessProbeFailure("Connection is not valid");
+            }
+        }
+        return null;
+    }
 }

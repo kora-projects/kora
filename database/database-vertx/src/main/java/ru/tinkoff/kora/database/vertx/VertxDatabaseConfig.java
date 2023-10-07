@@ -2,9 +2,9 @@ package ru.tinkoff.kora.database.vertx;
 
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.sqlclient.PoolOptions;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
-import jakarta.annotation.Nullable;
 import java.time.Duration;
 import java.util.Objects;
 
@@ -40,6 +40,13 @@ public interface VertxDatabaseConfig {
     default boolean cachePreparedStatements() {
         return true;
     }
+
+    default boolean readinessProbe() {
+        return false;
+    }
+
+    @Nullable
+    Duration initializationFailTimeout();
 
     static PgConnectOptions toPgConnectOptions(VertxDatabaseConfig config) {
         return new PgConnectOptions()

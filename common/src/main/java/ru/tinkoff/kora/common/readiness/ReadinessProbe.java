@@ -1,12 +1,13 @@
 package ru.tinkoff.kora.common.readiness;
 
-import java.util.concurrent.CompletionStage;
+import jakarta.annotation.Nullable;
 
 public interface ReadinessProbe {
     /**
      * Perform readiness probe
      *
-     * @return Empty future or null if probe succeeds or probe failure
+     * @return null if probe succeeds or probe failure
      */
-    CompletionStage<ReadinessProbeFailure> probe();
+    @Nullable
+    ReadinessProbeFailure probe() throws Exception;
 }

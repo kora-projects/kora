@@ -11,8 +11,6 @@ import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class GrpcServer implements Lifecycle, ReadinessProbe {
@@ -52,11 +50,11 @@ public class GrpcServer implements Lifecycle, ReadinessProbe {
     }
 
     @Override
-    public CompletionStage<ReadinessProbeFailure> probe() {
+    public ReadinessProbeFailure probe() {
         return switch (this.state.get()) {
-            case INIT -> CompletableFuture.completedFuture(new ReadinessProbeFailure("GRPC Server init"));
-            case RUN -> CompletableFuture.completedFuture(null);
-            case SHUTDOWN -> CompletableFuture.completedFuture(new ReadinessProbeFailure("GRPC Server shutdown"));
+            case INIT -> new ReadinessProbeFailure("GRPC Server init");
+            case RUN -> null;
+            case SHUTDOWN -> new ReadinessProbeFailure("GRPC Server shutdown");
         };
     }
 

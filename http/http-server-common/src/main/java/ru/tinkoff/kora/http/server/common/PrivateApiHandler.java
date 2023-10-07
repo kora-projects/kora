@@ -4,21 +4,22 @@ import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.PromiseOf;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.liveness.LivenessProbe;
+import ru.tinkoff.kora.common.liveness.LivenessProbeFailure;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
+import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
 import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.telemetry.PrivateApiMetrics;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 public class PrivateApiHandler {
+    private static final Executor EXECUTOR = Objects.requireNonNullElse(ru.tinkoff.kora.application.graph.internal.loom.VirtualThreadExecutorHolder.executor, ForkJoinPool.commonPool());
     private static final String PLAIN_TEXT_CONTENT_TYPE = "text/plain; charset=utf-8";
     private static final String PROBE_FAILURE_MDC_KEY = "probeFailureMessage";
     private static final HttpServerResponse NOT_FOUND = new SimpleHttpServerResponse(404, HttpHeaders.of(), HttpBody.of(
@@ -83,16 +84,20 @@ public class PrivateApiHandler {
     }
 
     private CompletionStage<HttpServerResponse> readiness() {
-        return handleProbes(readinessProbes, probe -> probe.probe().thenApply(f -> f == null ? null : f.message()), () -> "GET " + config.get().privateApiHttpReadinessPath());
+        return handleProbes(readinessProbes, ReadinessProbe::probe, ReadinessProbeFailure::message);
     }
 
     private CompletionStage<HttpServerResponse> liveness() {
-        return handleProbes(livenessProbes, probe -> probe.probe().thenApply(f -> f == null ? null : f.message()), () -> "GET " + config.get().privateApiHttpLivenessPath());
+        return handleProbes(livenessProbes, LivenessProbe::probe, LivenessProbeFailure::message);
     }
 
-    private <Probe> CompletionStage<HttpServerResponse> handleProbes(All<PromiseOf<Probe>> probes, Function<Probe, CompletionStage<String>> performProbe, Supplier<String> operationName) {
+    public interface TFunction<T, R> {
+        R apply(T t) throws Exception;
+    }
+
+    private <Probe, Failure> CompletionStage<HttpServerResponse> handleProbes(All<PromiseOf<Probe>> probes, TFunction<Probe, Failure> performProbe, Function<Failure, String> getMessage) {
         if (probes.isEmpty()) {
-            return CompletableFuture.completedFuture(new SimpleHttpServerResponse(200, HttpHeaders.of(), HttpBody.plaintext("OK")));
+            return CompletableFuture.completedFuture(HttpServerResponse.of(200, HttpBody.plaintext("OK")));
         }
         var futures = new CompletableFuture<?>[probes.size()];
         for (int i = 0; i < futures.length; i++) {
@@ -102,22 +107,24 @@ public class PrivateApiHandler {
             }
             var probe = optional.get();
             try {
-                var probeResult = performProbe.apply(probe);
-                if (probeResult == null) {
-                    futures[i] = CompletableFuture.completedFuture(null);
-                } else {
-                    var future = new CompletableFuture<String>();
-                    probeResult.whenComplete((result, error) -> {
-                        if (error != null) {
-                            future.complete("Probe failed: " + error.getMessage());
-                        } else if (result != null) {
-                            future.complete(result);
-                        } else {
-                            future.complete(null);
-                        }
-                    });
-                    futures[i] = future;
-                }
+                var probeResult = CompletableFuture.supplyAsync(() -> {
+                    try {
+                        return performProbe.apply(probe);
+                    } catch (Exception e) {
+                        throw new CompletionException(e);
+                    }
+                }, EXECUTOR);
+                var future = new CompletableFuture<String>();
+                probeResult.whenComplete((result, error) -> {
+                    if (error != null) {
+                        future.complete("Probe failed: " + error.getMessage());
+                    } else if (result != null) {
+                        future.complete(getMessage.apply(result));
+                    } else {
+                        future.complete(null);
+                    }
+                });
+                futures[i] = future;
             } catch (Exception e) {
                 futures[i] = CompletableFuture.failedFuture(e);
             }
@@ -132,12 +139,13 @@ public class PrivateApiHandler {
             }
             return new SimpleHttpServerResponse(200, HttpHeaders.of(), HttpBody.plaintext("OK"));
         });
-        var timeoutFuture = CompletableFuture.runAsync(() -> {}, CompletableFuture.delayedExecutor(30, TimeUnit.SECONDS, Runnable::run));
+        var timeoutFuture = CompletableFuture.runAsync(() -> {}, CompletableFuture.delayedExecutor(30, TimeUnit.SECONDS, EXECUTOR));
 
         return CompletableFuture.anyOf(resultFuture, timeoutFuture).thenApply(v -> {
             if (resultFuture.isDone()) {
                 return resultFuture.getNow(null);
             }
+            resultFuture.cancel(true);
             return new SimpleHttpServerResponse(503, HttpHeaders.of(), HttpBody.plaintext("Probe failed: timeout"));
         });
     }

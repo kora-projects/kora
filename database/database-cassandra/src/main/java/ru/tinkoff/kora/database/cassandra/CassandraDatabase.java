@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.database.cassandra;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import reactor.core.Exceptions;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory;
@@ -12,7 +11,7 @@ import java.util.Optional;
 public final class CassandraDatabase implements CassandraConnectionFactory, Lifecycle {
     private final CassandraConfig config;
     private final DataBaseTelemetry telemetry;
-    private CqlSession cqlSession;
+    private volatile CqlSession cqlSession;
 
     public CassandraDatabase(CassandraConfig config, DataBaseTelemetryFactory telemetryFactory) {
         this.config = config;
@@ -34,14 +33,9 @@ public final class CassandraDatabase implements CassandraConnectionFactory, Life
         return this.telemetry;
     }
 
-
     @Override
     public void init() {
-        try {
-            cqlSession = new CassandraSessionBuilder().build(config);
-        } catch (Exception e) {
-            throw Exceptions.propagate(e);
-        }
+        cqlSession = new CassandraSessionBuilder().build(config);
     }
 
     @Override

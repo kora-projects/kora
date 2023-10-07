@@ -47,6 +47,8 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             Duration.ofMillis(1000L),
             1,
             0,
+            Duration.ofMillis(1000L),
+            false,
             Properties()
         )
         val repository = compileForArgs(

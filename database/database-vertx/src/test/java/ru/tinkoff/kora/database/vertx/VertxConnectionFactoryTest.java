@@ -47,10 +47,16 @@ class VertxConnectionFactoryTest {
             Duration.ofMillis(1000),
             Duration.ofMillis(1000),
             1,
-            true
+            true,
+            false,
+            Duration.ofMillis(1000)
         );
         var db = new VertxDatabase(config, eventLoopGroup, new DefaultDataBaseTelemetryFactory(null, null, null));
-        db.init();
+        try {
+            db.init();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         try {
             consumer.accept(db);
         } finally {

@@ -32,6 +32,8 @@ public class FlywayJdbcDatabaseInterceptorTest {
             Duration.ofMillis(1000L),
             2, // flyway uses two connections for migration and schema management
             0,
+            Duration.ofMillis(1000L),
+            false,
             new Properties()
         );
         var dataBase = new JdbcDatabase(config, new DefaultDataBaseTelemetryFactory(null, null, null));
