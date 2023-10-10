@@ -18,24 +18,21 @@ public class UriQueryBuilder {
     }
 
     public void add(String queryParameterName) {
-        var sb = this.sb;
-        if (counter == 0) {
-            if (startFromQMark) {
-                sb.append('?');
-            } else if (startFromAmp) {
-                sb.append('&');
-            }
-        } else {
-            sb.append('&');
-        }
-        sb.append(queryParameterName);
-        counter++;
+        this.unsafeAdd(URLEncoder.encode(queryParameterName, StandardCharsets.UTF_8));
     }
 
     public void add(String queryParameterName, @Nullable String value) {
         if (value == null) {
             return;
         }
+
+        this.unsafeAdd(
+            URLEncoder.encode(queryParameterName, StandardCharsets.UTF_8),
+            URLEncoder.encode(value, StandardCharsets.UTF_8)
+        );
+    }
+
+    public void unsafeAdd(String queryParameterName) {
         var sb = this.sb;
         if (counter == 0) {
             if (startFromQMark) {
@@ -47,12 +44,10 @@ public class UriQueryBuilder {
             sb.append('&');
         }
         sb.append(queryParameterName);
-        sb.append('=');
-        sb.append(URLEncoder.encode(value, StandardCharsets.UTF_8));
         counter++;
     }
 
-    public <T> void add(String queryParameterName, StringParameterConverter<T> converter, @Nullable T value) {
+    public void unsafeAdd(String queryParameterName, @Nullable String value) {
         if (value == null) {
             return;
         }
@@ -68,8 +63,7 @@ public class UriQueryBuilder {
         }
         sb.append(queryParameterName);
         sb.append('=');
-        var string = converter.convert(value);
-        sb.append(URLEncoder.encode(string, StandardCharsets.UTF_8));
+        sb.append(value);
         counter++;
     }
 
