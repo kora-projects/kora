@@ -210,7 +210,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                         val paramName = "_" + literalName + "_element"
                         b.addStatement("val %N = %N.iterator()", iteratorName, literalName)
                             .beginControlFlow("if (!%N.hasNext())", iteratorName)
-                            .addStatement("_query.add(%S)", URLEncoder.encode(it.queryParameterName, StandardCharsets.UTF_8))
+                            .addStatement("_query.unsafeAdd(%S)", URLEncoder.encode(it.queryParameterName, StandardCharsets.UTF_8))
                             .nextControlFlow("else")
                             .add("do {").add(CodeBlock.builder().indent().add("\n").build())
                             .addStatement("val %N = %N.next()", paramName, iteratorName)
@@ -225,12 +225,21 @@ class ClientClassGenerator(private val resolver: Resolver) {
                     }
 
                     if (!requiresConverter(parameterType)) {
-                        b.add("_query.add(%S, %N.toString())\n", URLEncoder.encode(it.queryParameterName, StandardCharsets.UTF_8), literalName)
-                    } else {
-                        b.add("_query.add(%S, %L.convert(%L))\n",
+                        b.add(
+                            "_query.unsafeAdd(%S, %T.encode(%N.toString(), %T.UTF_8))\n",
                             URLEncoder.encode(it.queryParameterName, StandardCharsets.UTF_8),
+                            URLEncoder::class.asClassName(),
+                            literalName,
+                            StandardCharsets::class.asClassName()
+                        )
+                    } else {
+                        b.add(
+                            "_query.unsafeAdd(%S, %T.encode(%L.convert(%L), %T.UTF_8))\n",
+                            URLEncoder.encode(it.queryParameterName, StandardCharsets.UTF_8),
+                            URLEncoder::class.asClassName(),
                             getConverterName(methodData, it.parameter),
-                            literalName
+                            literalName,
+                            StandardCharsets::class.asClassName()
                         )
                     }
 

@@ -120,18 +120,18 @@ public class ClientClassGenerator {
                             type = ((DeclaredType) type).getTypeArguments().get(0);
                             var paramName = "_" + targetLiteral + "_element";
                             b.beginControlFlow("if ($N.isEmpty())", targetLiteral);
-                            b.addStatement("_query.add($S)", URLEncoder.encode(p.queryParameterName(), StandardCharsets.UTF_8));
+                            b.addStatement("_query.unsafeAdd($S)", URLEncoder.encode(p.queryParameterName(), StandardCharsets.UTF_8));
                             b.nextControlFlow("else");
                             b.beginControlFlow("for (var $L : $L)", paramName, targetLiteral);
                             targetLiteral = paramName;
                         }
-                        b.addCode("_query.add($S, ", URLEncoder.encode(p.queryParameterName(), StandardCharsets.UTF_8));
+                        b.addCode("_query.unsafeAdd($S, $T.encode(", URLEncoder.encode(p.queryParameterName(), StandardCharsets.UTF_8), URLEncoder.class);
                         if (requiresConverter(type)) {
                             b.addCode("$L.convert($L)", getConverterName(methodData, p.parameter()), targetLiteral);
                         } else {
                             b.addCode("$T.toString($L)", Objects.class, targetLiteral);
                         }
-                        b.addCode(");\n", StandardCharsets.class);
+                        b.addCode(", $T.UTF_8));\n", StandardCharsets.class);
 
                         if (isList) {
                             b.endControlFlow()
