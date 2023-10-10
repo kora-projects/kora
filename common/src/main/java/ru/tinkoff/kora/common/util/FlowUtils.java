@@ -29,17 +29,11 @@ public class FlowUtils {
     }
 
     public static <T> Publisher<T> one(Context context, T value) {
-        return subscriber -> {
-            var s = new SingleSubscription<>(subscriber, context, value);
-            subscriber.onSubscribe(s);
-        };
+        return new OnePublisher<>(context, value);
     }
 
     public static <T> Publisher<T> fromCallable(Context context, Callable<T> value) {
-        return subscriber -> {
-            var s = new LazySingleSubscription<>(subscriber, context, value);
-            subscriber.onSubscribe(s);
-        };
+        return new FromCallablePublisher<>(context, value);
     }
 
     public static <T> Publisher<T> error(Context context, Throwable error) {

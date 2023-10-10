@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.http.client.common.annotation;
 
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper;
 
@@ -23,7 +22,7 @@ public @interface ResponseCodeMapper {
     class DefaultHttpClientResponseMapper implements HttpClientResponseMapper<Object> {
 
         @Override
-        public Mono<Object> apply(HttpClientResponse response) {
+        public Object apply(HttpClientResponse response) {
             return null;
         }
     }
