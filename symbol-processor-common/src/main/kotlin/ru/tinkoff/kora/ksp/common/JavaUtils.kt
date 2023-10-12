@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.ksp.common
 
+import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.symbol.*
 
 object JavaUtils {
@@ -13,19 +14,17 @@ object JavaUtils {
         return superTypes.any { it.resolve().declaration.qualifiedName?.asString() == "java.lang.Record" }
     }
 
-    fun KSClassDeclaration.recordComponents(): Sequence<KSPropertyDeclaration> {
+    fun KSClassDeclaration.recordComponents(): Sequence<KSFunctionDeclaration> {
         require(isRecord())
-        val fields = arrayListOf<KSPropertyDeclaration>()
-        val accessors = hashMapOf<String, KSFunctionDeclaration>()
-        for (declaration in declarations) {
-            if (declaration is KSPropertyDeclaration) {
-                fields.add(declaration)
-            } else if (declaration is KSFunctionDeclaration && declaration.parameters.isEmpty()) {
-                accessors[declaration.simpleName.asString()] = declaration
-            }
-        }
-        return declarations
-            .filterIsInstance<KSPropertyDeclaration>()
-            .filter { !it.modifiers.contains(Modifier.JAVA_STATIC) }
+        val constructorParameters = this.getAllFunctions().filter { it.isConstructor() }
+            .flatMap { it.parameters }
+            .map { it.name?.asString().toString() }
+            .toSet()
+
+        // KSP can't see any of java record fields or even constructors for some reason
+        return this.getAllFunctions()
+            .filter { it.parameters.isEmpty() }
+            .filter { it.modifiers.contains(Modifier.PUBLIC) }
+            .filter { constructorParameters.contains(it.simpleName.asString()) }
     }
 }
