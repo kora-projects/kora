@@ -48,23 +48,42 @@ public class KoraCodegen extends DefaultCodegen {
 
     private final Logger LOGGER = LoggerFactory.getLogger(KoraCodegen.class);
 
-    private enum Mode {
-        JAVA_CLIENT,
-        JAVA_SERVER,
-        ASYNC_JAVA_CLIENT,
-        ASYNC_JAVA_SERVER,
-        REACTIVE_CLIENT,
-        REACTIVE_SERVER,
-        KOTLIN_CLIENT,
-        KOTLIN_SERVER,
-        KOTLIN_SUSPEND_CLIENT,
-        KOTLIN_SUSPEND_SERVER,
-        ;
+    public enum Mode {
+        JAVA_CLIENT("java-client"),
+        JAVA_SERVER("java-server"),
+        JAVA_ASYNC_CLIENT("java-async-client"),
+        JAVA_ASYNC_SERVER("java-async-server"),
+        JAVA_REACTIVE_CLIENT("java-reactive-client"),
+        JAVA_REACTIVE_SERVER("java-reactive-server"),
+        KOTLIN_CLIENT("kotlin-client"),
+        KOTLIN_SERVER("kotlin-server"),
+        KOTLIN_SUSPEND_CLIENT("kotlin-suspend-client"),
+        KOTLIN_SUSPEND_SERVER("kotlin-suspend-server");
+
+        private final String mode;
+
+        Mode(String mode) {
+            this.mode = mode;
+        }
+
+        public String getMode() {
+            return mode;
+        }
+
+        public static Mode ofMode(String option) {
+            for (Mode value : Mode.values()) {
+                if(value.getMode().equals(option)) {
+                    return value;
+                }
+            }
+
+            throw new UnsupportedOperationException("Unknown Mode is provided: " + option);
+        }
 
         public boolean isServer() {
             return switch (this) {
-                case JAVA_CLIENT, ASYNC_JAVA_CLIENT, REACTIVE_CLIENT, KOTLIN_CLIENT, KOTLIN_SUSPEND_CLIENT -> false;
-                case JAVA_SERVER, ASYNC_JAVA_SERVER, REACTIVE_SERVER, KOTLIN_SERVER, KOTLIN_SUSPEND_SERVER -> true;
+                case JAVA_CLIENT, JAVA_ASYNC_CLIENT, JAVA_REACTIVE_CLIENT, KOTLIN_CLIENT, KOTLIN_SUSPEND_CLIENT -> false;
+                case JAVA_SERVER, JAVA_ASYNC_SERVER, JAVA_REACTIVE_SERVER, KOTLIN_SERVER, KOTLIN_SUSPEND_SERVER -> true;
             };
         }
 
@@ -201,7 +220,7 @@ public class KoraCodegen extends DefaultCodegen {
             LOGGER.info("NOTE: To enable file post-processing, 'enablePostProcessFile' must be set to `true` (--enable-post-process-file for CLI).");
         }
         if (additionalProperties.containsKey(CODEGEN_MODE)) {
-            this.codegenMode = Mode.valueOf(additionalProperties.get(CODEGEN_MODE).toString().toUpperCase());
+            this.codegenMode = Mode.ofMode(additionalProperties.get(CODEGEN_MODE).toString());
         } else {
             this.codegenMode = Mode.JAVA_CLIENT;
         }
@@ -241,10 +260,10 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("javaClientResponseMappers.mustache", "ClientResponseMappers.java");
                 apiTemplateFiles.put("javaClientRequestMappers.mustache", "ClientRequestMappers.java");
             }
-            case REACTIVE_CLIENT, ASYNC_JAVA_CLIENT -> {
+            case JAVA_REACTIVE_CLIENT, JAVA_ASYNC_CLIENT -> {
                 this.additionalProperties.put("isClient", true);
-                this.additionalProperties.put("isAsync", this.codegenMode == Mode.ASYNC_JAVA_CLIENT);
-                this.additionalProperties.put("isReactive", this.codegenMode == Mode.REACTIVE_CLIENT);
+                this.additionalProperties.put("isAsync", this.codegenMode == Mode.JAVA_ASYNC_CLIENT);
+                this.additionalProperties.put("isReactive", this.codegenMode == Mode.JAVA_REACTIVE_CLIENT);
                 modelTemplateFiles.put("javaModel.mustache", ".java");
                 apiTemplateFiles.put("javaClientApi.mustache", ".java");
                 apiTemplateFiles.put("javaApiResponses.mustache", "Responses.java");
@@ -261,10 +280,10 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("javaServerResponseMappers.mustache", "ServerResponseMappers.java");
                 modelTemplateFiles.put("javaModel.mustache", ".java");
             }
-            case REACTIVE_SERVER, ASYNC_JAVA_SERVER -> {
+            case JAVA_REACTIVE_SERVER, JAVA_ASYNC_SERVER -> {
                 this.additionalProperties.put("isClient", false);
-                this.additionalProperties.put("isAsync", this.codegenMode == Mode.ASYNC_JAVA_SERVER);
-                this.additionalProperties.put("isReactive", this.codegenMode == Mode.REACTIVE_SERVER);
+                this.additionalProperties.put("isAsync", this.codegenMode == Mode.JAVA_ASYNC_SERVER);
+                this.additionalProperties.put("isReactive", this.codegenMode == Mode.JAVA_REACTIVE_SERVER);
                 apiTemplateFiles.put("reactiveServerApi.mustache", "Controller.java");
                 apiTemplateFiles.put("reactiveServerApiDelegate.mustache", "Delegate.java");
                 apiTemplateFiles.put("javaApiResponses.mustache", "Responses.java");
@@ -1491,7 +1510,7 @@ public class KoraCodegen extends DefaultCodegen {
                 }
             }
         }
-        if (this.codegenMode == Mode.JAVA_CLIENT || this.codegenMode == Mode.REACTIVE_CLIENT || this.codegenMode == Mode.KOTLIN_CLIENT) {
+        if (this.codegenMode == Mode.JAVA_CLIENT || this.codegenMode == Mode.JAVA_REACTIVE_CLIENT || this.codegenMode == Mode.KOTLIN_CLIENT) {
             var annotationParams = httpClientAnnotationParams.entrySet()
                 .stream()
                 .map(e -> e.getKey() + " = " + e.getValue())
@@ -1564,11 +1583,11 @@ public class KoraCodegen extends DefaultCodegen {
         var securitySchemas = openAPI.getComponents().getSecuritySchemes();
         if (!Objects.requireNonNullElse(securitySchemas, Map.of()).isEmpty()) {
             switch (this.codegenMode) {
-                case JAVA_CLIENT, ASYNC_JAVA_CLIENT, REACTIVE_CLIENT -> {
+                case JAVA_CLIENT, JAVA_ASYNC_CLIENT, JAVA_REACTIVE_CLIENT -> {
                     var securitySchemaClass = apiFileFolder() + File.separator + "ApiSecurity.java";
                     this.supportingFiles.add(new SupportingFile("javaClientSecuritySchema.mustache", securitySchemaClass));
                 }
-                case JAVA_SERVER, ASYNC_JAVA_SERVER, REACTIVE_SERVER -> {
+                case JAVA_SERVER, JAVA_ASYNC_SERVER, JAVA_REACTIVE_SERVER -> {
                     var securitySchemaClass = apiFileFolder() + File.separator + "ApiSecurity.java";
                     this.supportingFiles.add(new SupportingFile("javaServerSecuritySchema.mustache", securitySchemaClass));
                 }
