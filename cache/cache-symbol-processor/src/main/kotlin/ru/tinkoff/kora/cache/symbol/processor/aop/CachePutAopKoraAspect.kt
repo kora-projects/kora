@@ -35,13 +35,11 @@ class CachePutAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheAs
             throw ProcessingErrorException("@CachePut can't be applied for types assignable from ${CommonClassNames.flux}", method)
         }
 
-        val operation = getCacheOperation(method)
-        val fieldManagers = getCacheFields(operation, resolver, aspectContext)
-
+        val operation = getCacheOperation(method, resolver, aspectContext)
         val body = if (method.isSuspend()) {
-            buildBodySync(method, operation, superCall, fieldManagers)
+            buildBodySync(method, operation, superCall)
         } else {
-            buildBodySync(method, operation, superCall, fieldManagers)
+            buildBodySync(method, operation, superCall)
         }
 
         return KoraAspect.ApplyResult.MethodBody(body)
@@ -51,28 +49,23 @@ class CachePutAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheAs
         method: KSFunctionDeclaration,
         operation: CacheOperation,
         superCall: String,
-        cacheFields: List<String>
     ): CodeBlock {
-        val recordParameters = getKeyRecordParameters(operation, method)
         val superMethod = getSuperMethod(method, superCall)
         val builder = CodeBlock.builder()
-        val isSingleNullableParam = operation.parameters.size == 1 && operation.parameters[0].type.resolve().isMarkedNullable
 
         // cache super method
-        builder.add("val _value = ").add(superMethod).add("\n")
-
-        if (operation.parameters.size == 1) {
-            builder.add("val _key = %L\n", operation.parameters[0])
-        } else {
-            builder.add("val _key = %T.of(%L)\n", getCacheKey(operation), recordParameters)
-        }
+        builder.add("val _value = %L\n", superMethod)
 
         // cache put
-        for (cache in cacheFields) {
-            if (isSingleNullableParam) {
-                builder.add("_key?.let { %L.put(it, _value) }\n", cache)
+        for (i in operation.executions.indices) {
+            val cache = operation.executions[i]
+            val keyField = "_key${i + 1}"
+            builder.add("val %L = %L\n", keyField, cache.cacheKey!!.code)
+
+            if (cache.cacheKey.type.type!!.resolve().isMarkedNullable) {
+                builder.add("%L?.let { %L.put(it, _value) }\n", keyField, cache.field)
             } else {
-                builder.add("%L.put(_key, _value)\n", cache)
+                builder.add("%L.put(%L, _value)\n", cache.field, keyField)
             }
         }
 

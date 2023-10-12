@@ -10,7 +10,7 @@ import ru.tinkoff.kora.test.redis.RedisTestContainer;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @RedisTestContainer
-class MonoCacheTests extends CacheRunner {
+class AsyncCacheTests extends CacheRunner {
 
     private DummyCache cache = null;
 
@@ -28,7 +28,7 @@ class MonoCacheTests extends CacheRunner {
         var key = "1";
 
         // when
-        assertNull(cache.getAsync(key).block());
+        assertNull(cache.getAsync(key).toCompletableFuture().join());
     }
 
     @Test
@@ -38,10 +38,10 @@ class MonoCacheTests extends CacheRunner {
         var value = "1";
 
         // when
-        cache.putAsync(key, value).block();
+        cache.putAsync(key, value).toCompletableFuture().join();
 
         // then
-        final String fromCache = cache.getAsync(key).block();
+        final String fromCache = cache.getAsync(key).toCompletableFuture().join();
         assertEquals(value, fromCache);
     }
 
@@ -52,10 +52,10 @@ class MonoCacheTests extends CacheRunner {
         var value = "1";
 
         // when
-        cache.putAsync(key, value).block();
+        cache.putAsync(key, value).toCompletableFuture().join();
 
         // then
-        final String fromCache = cache.getAsync("2").block();
+        final String fromCache = cache.getAsync("2").toCompletableFuture().join();
         assertNull(fromCache);
     }
 
@@ -64,13 +64,13 @@ class MonoCacheTests extends CacheRunner {
         // given
         var key = "1";
         var value = "1";
-        cache.putAsync(key, value).block();
+        cache.putAsync(key, value).toCompletableFuture().join();
 
         // when
-        cache.invalidateAsync(key).block();
+        cache.invalidateAsync(key).toCompletableFuture().join();
 
         // then
-        final String fromCache = cache.getAsync(key).block();
+        final String fromCache = cache.getAsync(key).toCompletableFuture().join();
         assertNull(fromCache);
     }
 
@@ -79,13 +79,13 @@ class MonoCacheTests extends CacheRunner {
         // given
         var key = "1";
         var value = "1";
-        cache.putAsync(key, value).block();
+        cache.putAsync(key, value).toCompletableFuture().join();
 
         // when
-        cache.invalidateAllAsync().block();
+        cache.invalidateAllAsync().toCompletableFuture().join();
 
         // then
-        final String fromCache = cache.getAsync(key).block();
+        final String fromCache = cache.getAsync(key).toCompletableFuture().join();
         assertNull(fromCache);
     }
 }

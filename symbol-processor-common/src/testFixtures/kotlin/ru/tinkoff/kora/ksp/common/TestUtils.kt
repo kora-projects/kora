@@ -57,6 +57,10 @@ object TestUtils {
     }
 }
 
+fun symbolProcess(targetClasses: List<KClass<*>>, vararg annotationProcessorProviders: SymbolProcessorProvider): ClassLoader {
+    return symbolProcess(targetClasses)
+}
+
 fun symbolProcess(targetClass: KClass<*>, vararg annotationProcessorProviders: SymbolProcessorProvider): ClassLoader {
     return symbolProcess(listOf(targetClass))
 }

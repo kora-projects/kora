@@ -1,19 +1,16 @@
 package ru.tinkoff.kora.cache.annotation.processor;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
-import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache1;
+import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache11;
 import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache12;
 import ru.tinkoff.kora.cache.annotation.processor.testdata.sync.CacheableSyncOneMany;
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule;
-import ru.tinkoff.kora.cache.redis.RedisCacheConfig;
+import ru.tinkoff.kora.cache.redis.RedisCacheMapperModule;
 import ru.tinkoff.kora.cache.redis.RedisCacheModule;
-import ru.tinkoff.kora.cache.redis.RedisCacheTelemetry;
-import ru.tinkoff.kora.cache.redis.client.SyncRedisClient;
 
 import java.lang.reflect.Constructor;
 import java.math.BigDecimal;
@@ -27,11 +24,11 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SyncCacheOneManyAopTests implements CaffeineCacheModule, RedisCacheModule {
 
-    private static final String CACHED_IMPL_1 = "ru.tinkoff.kora.cache.annotation.processor.testcache.$DummyCache1Impl";
+    private static final String CACHED_IMPL_1 = "ru.tinkoff.kora.cache.annotation.processor.testcache.$DummyCache11Impl";
     private static final String CACHED_IMPL_2 = "ru.tinkoff.kora.cache.annotation.processor.testcache.$DummyCache12Impl";
     private static final String CACHED_SERVICE = "ru.tinkoff.kora.cache.annotation.processor.testdata.sync.$CacheableSyncOneMany__AopProxy";
 
-    private DummyCache1 cache1 = null;
+    private DummyCache11 cache1 = null;
     private DummyCache12 cache2 = null;
     private CacheableSyncOneMany service = null;
 
@@ -41,7 +38,7 @@ class SyncCacheOneManyAopTests implements CaffeineCacheModule, RedisCacheModule 
         }
 
         try {
-            var classLoader = TestUtils.annotationProcess(List.of(DummyCache1.class, DummyCache12.class, CacheableSyncOneMany.class),
+            var classLoader = TestUtils.annotationProcess(List.of(DummyCache11.class, DummyCache12.class, CacheableSyncOneMany.class),
                 new AopAnnotationProcessor(), new CacheAnnotationProcessor());
 
             var cacheClass1 = classLoader.loadClass(CACHED_IMPL_1);
@@ -51,7 +48,7 @@ class SyncCacheOneManyAopTests implements CaffeineCacheModule, RedisCacheModule 
 
             final Constructor<?> cacheConstructor1 = cacheClass1.getDeclaredConstructors()[0];
             cacheConstructor1.setAccessible(true);
-            cache1 = (DummyCache1) cacheConstructor1.newInstance(CacheRunner.getCaffeineConfig(),
+            cache1 = (DummyCache11) cacheConstructor1.newInstance(CacheRunner.getCaffeineConfig(),
                 caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
 
             var cacheClass2 = classLoader.loadClass(CACHED_IMPL_2);
@@ -63,7 +60,7 @@ class SyncCacheOneManyAopTests implements CaffeineCacheModule, RedisCacheModule 
             cacheConstructor2.setAccessible(true);
             final Map<ByteBuffer, ByteBuffer> cache = new HashMap<>();
             cache2 = (DummyCache12) cacheConstructor2.newInstance(CacheRunner.getRedisConfig(),
-                CacheRunner.syncRedisClient(cache), CacheRunner.reactiveRedisClient(cache), redisCacheTelemetry(null, null),
+                CacheRunner.lettuceClient(cache), redisCacheTelemetry(null, null),
                 stringRedisKeyMapper(), stringRedisValueMapper());
 
             var serviceClass = classLoader.loadClass(CACHED_SERVICE);

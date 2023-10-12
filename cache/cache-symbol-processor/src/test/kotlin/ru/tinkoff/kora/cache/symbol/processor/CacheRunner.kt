@@ -1,19 +1,21 @@
 package ru.tinkoff.kora.cache.symbol.processor
 
-import reactor.core.publisher.Mono
+import kotlinx.coroutines.future.await
+import kotlinx.coroutines.runBlocking
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheConfig
 import ru.tinkoff.kora.cache.redis.RedisCacheConfig
-import ru.tinkoff.kora.cache.redis.client.ReactiveRedisClient
-import ru.tinkoff.kora.cache.redis.client.SyncRedisClient
+import ru.tinkoff.kora.cache.redis.RedisCacheClient
 import java.nio.ByteBuffer
 import java.time.Duration
 import java.util.*
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CompletionStage
 
 class CacheRunner {
 
     companion object {
 
-        fun getCaffeineConfig() : CaffeineCacheConfig {
+        fun getCaffeineConfig(): CaffeineCacheConfig {
             return object : CaffeineCacheConfig {
                 override fun expireAfterWrite(): Duration? {
                     return null;
@@ -29,109 +31,77 @@ class CacheRunner {
             }
         }
 
-        fun getRedisConfig(): RedisCacheConfig? {
+        fun getRedisConfig(): RedisCacheConfig {
             return object : RedisCacheConfig {
-                override fun expireAfterWrite(): Duration? {
-                    return null
-                }
 
-                override fun expireAfterAccess(): Duration? {
-                    return null
-                }
+                override fun keyPrefix(): String = "pref"
+
+                override fun expireAfterWrite(): Duration? = null
+
+                override fun expireAfterAccess(): Duration? = null
             }
         }
 
-        fun syncRedisClient(cache: MutableMap<ByteBuffer?, ByteBuffer?>): SyncRedisClient {
-            return object : SyncRedisClient {
-                override fun get(key: ByteArray): ByteArray? {
+        fun lettuceClient(cache: MutableMap<ByteBuffer?, ByteBuffer?>): RedisCacheClient {
+            return object : RedisCacheClient {
+                override fun get(key: ByteArray): CompletionStage<ByteArray?> {
                     val r = cache[ByteBuffer.wrap(key)]
-                    return r?.array()
+                    return CompletableFuture.completedFuture(r?.array())
                 }
 
-                override fun get(keys: Array<ByteArray>): Map<ByteArray, ByteArray> {
+                override fun mget(keys: Array<ByteArray>): CompletionStage<Map<ByteArray, ByteArray>> {
                     val result: MutableMap<ByteArray, ByteArray> = HashMap()
                     for (key in keys) {
                         Optional.ofNullable(cache[ByteBuffer.wrap(key)]).ifPresent { r: ByteBuffer ->
                             result[key] = r.array()
                         }
                     }
-                    return result
+                    return CompletableFuture.completedFuture(result)
                 }
 
-                override fun getExpire(key: ByteArray, expireAfterMillis: Long): ByteArray? {
+                override fun getex(key: ByteArray, expireAfterMillis: Long): CompletionStage<ByteArray?> {
                     return get(key)
                 }
 
-                override fun getExpire(keys: Array<ByteArray>, expireAfterMillis: Long): Map<ByteArray, ByteArray> {
-                    return get(keys)
+                override fun getex(keys: Array<ByteArray>, expireAfterMillis: Long): CompletionStage<Map<ByteArray, ByteArray>> {
+                    return mget(keys)
                 }
 
-                override fun set(key: ByteArray, value: ByteArray) {
+                override fun set(key: ByteArray, value: ByteArray) : CompletionStage<Boolean> {
                     cache[ByteBuffer.wrap(key)] = ByteBuffer.wrap(value)
+                    return CompletableFuture.completedFuture(true)
                 }
 
-                override fun setExpire(key: ByteArray, value: ByteArray, expireAfterMillis: Long) {
-                    set(key, value)
+                override fun mset(keyAndValue: MutableMap<ByteArray, ByteArray>) : CompletionStage<Boolean> {
+                    keyAndValue.forEach { (k, v) -> set(k, v) }
+                    return CompletableFuture.completedFuture(true)
                 }
 
-                override fun del(key: ByteArray): Long {
-                    return if (cache.remove(ByteBuffer.wrap(key)) == null) 0 else 1
-                }
-
-                override fun del(keys: Array<ByteArray>): Long {
-                    var counter = 0
-                    for (key in keys) {
-                        counter += del(key).toInt()
-                    }
-                    return counter.toLong()
-                }
-
-                override fun flushAll() {
-                    cache.clear()
-                }
-            }
-        }
-
-        fun reactiveRedisClient(cache: MutableMap<ByteBuffer?, ByteBuffer?>): ReactiveRedisClient? {
-            val syncRedisClient = syncRedisClient(cache)
-            return object : ReactiveRedisClient {
-                override fun get(key: ByteArray): Mono<ByteArray> {
-                    return Mono.justOrEmpty(syncRedisClient[key])
-                }
-
-                override fun get(keys: Array<ByteArray>): Mono<Map<ByteArray, ByteArray>> {
-                    return Mono.justOrEmpty(syncRedisClient[keys])
-                }
-
-                override fun getExpire(key: ByteArray, expireAfterMillis: Long): Mono<ByteArray> {
-                    return get(key)
-                }
-
-                override fun getExpire(keys: Array<ByteArray>, expireAfterMillis: Long): Mono<Map<ByteArray, ByteArray>> {
-                    return get(keys)
-                }
-
-                override fun set(key: ByteArray, value: ByteArray): Mono<Boolean> {
-                    syncRedisClient[key] = value
-                    return Mono.just(true)
-                }
-
-                override fun setExpire(key: ByteArray, value: ByteArray, expireAfterMillis: Long): Mono<Boolean> {
+                override fun psetex(key: ByteArray, value: ByteArray, expireAfterMillis: Long): CompletionStage<Boolean> {
                     return set(key, value)
                 }
 
-                override fun del(key: ByteArray): Mono<Long> {
-                    return Mono.justOrEmpty(syncRedisClient.del(key))
+                override fun del(key: ByteArray): CompletionStage<Long> {
+                    val res = if (cache.remove(ByteBuffer.wrap(key)) == null) 0L else 1L
+                    return CompletableFuture.completedFuture(res)
                 }
 
-                override fun del(keys: Array<ByteArray>): Mono<Long> {
-                    return Mono.justOrEmpty(syncRedisClient.del(keys))
+                override fun del(keys: Array<ByteArray>): CompletionStage<Long> {
+                    var counter = 0
+                    for (key in keys) {
+                        counter += runBlocking { del(key).await().toInt() }
+                    }
+                    return CompletableFuture.completedFuture(counter.toLong())
                 }
 
-                override fun flushAll(): Mono<Boolean> {
-                    syncRedisClient.flushAll()
-                    return Mono.just(true)
+                override fun flushAll() : CompletionStage<Boolean> {
+                    cache.clear()
+                    return CompletableFuture.completedFuture(true)
                 }
+
+                override fun init() { }
+
+                override fun release() { }
             }
         }
     }

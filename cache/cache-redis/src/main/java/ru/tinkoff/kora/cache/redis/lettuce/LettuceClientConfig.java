@@ -1,10 +1,10 @@
-package ru.tinkoff.kora.cache.redis.client;
+package ru.tinkoff.kora.cache.redis.lettuce;
 
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.SocketOptions;
 import io.lettuce.core.protocol.ProtocolVersion;
-
 import jakarta.annotation.Nullable;
+
 import java.time.Duration;
 import java.util.Arrays;
 
@@ -45,7 +45,7 @@ public record LettuceClientConfig(String uri,
             return ProtocolVersion.RESP2;
         } else {
             throw new IllegalArgumentException("Unknown protocol value '" + protocol
-                                               + "', expected value one of: " + Arrays.toString(ProtocolVersion.values()));
+                + "', expected value one of: " + Arrays.toString(ProtocolVersion.values()));
         }
     }
 }

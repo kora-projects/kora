@@ -1,13 +1,13 @@
 package ru.tinkoff.kora.cache.caffeine;
 
 import jakarta.annotation.Nonnull;
-import reactor.core.publisher.Mono;
 
-import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V> {
@@ -53,7 +53,7 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
     @Nonnull
     @Override
     public Map<K, V> getAll() {
-        var telemetryContext = telemetry.create("CAFFEINE_ALL", name);
+        var telemetryContext = telemetry.create("GET_ALL", name);
         var values = Collections.unmodifiableMap(caffeine.asMap());
         telemetryContext.recordSuccess();
         return values;
@@ -65,7 +65,7 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
             return null;
         }
 
-        var telemetryContext = telemetry.create("PUT_IF_ABSENT", name);
+        var telemetryContext = telemetry.create("COMPUTE_IF_ABSENT", name);
         var value = caffeine.get(key, mappingFunction);
         telemetryContext.recordSuccess();
         return value;
@@ -79,7 +79,7 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
             return Collections.emptyMap();
         }
 
-        var telemetryContext = telemetry.create("PUT_IF_ABSENT_MANY", name);
+        var telemetryContext = telemetry.create("COMPUTE_IF_ABSENT_MANY", name);
         var value = caffeine.getAll(keys, ks -> mappingFunction.apply((Set<K>) ks));
         telemetryContext.recordSuccess();
         return value;
@@ -95,6 +95,19 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         caffeine.put(key, value);
         telemetryContext.recordSuccess();
         return value;
+    }
+
+    @Nonnull
+    @Override
+    public Map<K, V> put(@Nonnull Map<K, V> keyAndValues) {
+        if (keyAndValues == null || keyAndValues.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        var telemetryContext = telemetry.create("PUT_MANY", name);
+        caffeine.putAll(keyAndValues);
+        telemetryContext.recordSuccess();
+        return keyAndValues;
     }
 
     @Override
@@ -120,84 +133,5 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         var telemetryContext = telemetry.create("INVALIDATE_ALL", name);
         caffeine.invalidateAll();
         telemetryContext.recordSuccess();
-    }
-
-    @Nonnull
-    @Override
-    public Mono<V> getAsync(@Nonnull K key) {
-        return (key == null)
-            ? Mono.empty()
-            : Mono.fromCallable(() -> get(key));
-    }
-
-    @Nonnull
-    @Override
-    public Mono<Map<K, V>> getAsync(@Nonnull Collection<K> keys) {
-        return (keys == null || keys.isEmpty())
-            ? Mono.just(Collections.emptyMap())
-            : Mono.fromCallable(() -> get(keys));
-    }
-
-    @Nonnull
-    @Override
-    public Mono<V> putAsync(@Nonnull K key, @Nonnull V value) {
-        if (key == null) {
-            return Mono.justOrEmpty(value);
-        }
-
-        return Mono.fromCallable(() -> put(key, value));
-    }
-
-    @Override
-    public Mono<V> computeIfAbsentAsync(@Nonnull K key, @Nonnull Function<K, Mono<V>> mappingFunction) {
-        if (key == null) {
-            return Mono.empty();
-        }
-
-        return Mono.fromCallable(() -> computeIfAbsent(key, (k) -> mappingFunction.apply(k).block(Duration.ofMinutes(5))));
-    }
-
-    @Nonnull
-    @Override
-    public Mono<Map<K, V>> computeIfAbsentAsync(@Nonnull Collection<K> keys, @Nonnull Function<Set<K>, Mono<Map<K, V>>> mappingFunction) {
-        if (keys == null || keys.isEmpty()) {
-            return Mono.empty();
-        }
-
-        return Mono.fromCallable(() -> computeIfAbsent(keys, (k) -> mappingFunction.apply(k).block(Duration.ofMinutes(5))));
-    }
-
-    @Nonnull
-    @Override
-    public Mono<Boolean> invalidateAsync(@Nonnull K key) {
-        if (key == null) {
-            return Mono.just(false);
-        }
-
-        return Mono.fromCallable(() -> {
-            invalidate(key);
-            return true;
-        });
-    }
-
-    @Override
-    public Mono<Boolean> invalidateAsync(@Nonnull Collection<K> keys) {
-        if (keys == null || keys.isEmpty()) {
-            return Mono.just(false);
-        }
-
-        return Mono.fromCallable(() -> {
-            invalidate(keys);
-            return true;
-        });
-    }
-
-    @Nonnull
-    @Override
-    public Mono<Boolean> invalidateAllAsync() {
-        return Mono.fromCallable(() -> {
-            invalidateAll();
-            return true;
-        });
     }
 }

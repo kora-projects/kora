@@ -2,20 +2,25 @@ package ru.tinkoff.kora.cache;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import reactor.core.publisher.Mono;
 
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
- * Represents base Cache contract.
+ * Represents Synchronous Cache contract.
  */
 public interface Cache<K, V> {
 
     @Nonnull
-    default LoadableCache<K, V> asLoadable(@Nonnull CacheLoader<K, V> cacheLoader) {
+    default LoadableCache<K, V> asLoadableSimple(@Nonnull Function<K, V> cacheLoader) {
+        return new LoadableCacheImpl<>(this, (keys) -> keys.stream().collect(Collectors.toMap(k -> k, cacheLoader)));
+    }
+
+    @Nonnull
+    default LoadableCache<K, V> asLoadable(@Nonnull Function<Collection<K>, Map<K, V>> cacheLoader) {
         return new LoadableCacheImpl<>(this, cacheLoader);
     }
 
@@ -32,18 +37,6 @@ public interface Cache<K, V> {
     Map<K, V> get(@Nonnull Collection<K> keys);
 
     /**
-     * Resolve the given value for the given key.
-     *
-     * @param key The cache key
-     * @return value associated with the key or {@link Mono#empty()} if no value is specified
-     */
-    @Nonnull
-    Mono<V> getAsync(@Nonnull K key);
-
-    @Nonnull
-    Mono<Map<K, V>> getAsync(@Nonnull Collection<K> keys);
-
-    /**
      * Cache the specified value using the specified key.
      *
      * @param key   the key with which the specified value is to be associated
@@ -51,6 +44,14 @@ public interface Cache<K, V> {
      */
     @Nonnull
     V put(@Nonnull K key, @Nonnull V value);
+
+    /**
+     * Cache the specified value using the specified key.
+     *
+     * @param keyAndValues the keys and values with which the specified value is to be associated
+     */
+    @Nonnull
+    Map<K, V> put(@Nonnull Map<K, V> keyAndValues);
 
     /**
      * @param key             to look for value or compute and put if absent
@@ -81,45 +82,17 @@ public interface Cache<K, V> {
      */
     void invalidateAll();
 
-    /**
-     * Cache the specified value using the specified key.
-     *
-     * @param key   the key with which the specified value is to be associated
-     * @param value the value to be associated with the specified key
-     * @return Void
-     */
     @Nonnull
-    Mono<V> putAsync(@Nonnull K key, @Nonnull V value);
+    static <K, V> Builder<K, V> builder(@Nonnull Cache<K, V> cache) {
+        return new FacadeCacheBuilder<>(cache);
+    }
 
+    interface Builder<K, V> {
 
-    /**
-     * @param key             to look for value or compute and put if absent
-     * @param mappingFunction to use for value computing
-     * @return existing or computed value
-     */
-    Mono<V> computeIfAbsentAsync(@Nonnull K key, @Nonnull Function<K, Mono<V>> mappingFunction);
+        @Nonnull
+        Builder<K, V> addCache(@Nonnull Cache<K, V> cache);
 
-    /**
-     * @param keys            to look for value or compute and put if absent
-     * @param mappingFunction to use for value computing
-     * @return existing or computed value
-     */
-    @Nonnull
-    Mono<Map<K, V>> computeIfAbsentAsync(@Nonnull Collection<K> keys, @Nonnull Function<Set<K>, Mono<Map<K, V>>> mappingFunction);
-
-    /**
-     * Invalidate the value for the given key.
-     *
-     * @param key The key to invalid
-     */
-    @Nonnull
-    Mono<Boolean> invalidateAsync(@Nonnull K key);
-
-    Mono<Boolean> invalidateAsync(@Nonnull Collection<K> keys);
-
-    /**
-     * Invalidate all cached values within this cache.
-     */
-    @Nonnull
-    Mono<Boolean> invalidateAllAsync();
+        @Nonnull
+        Cache<K, V> build();
+    }
 }

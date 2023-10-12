@@ -35,13 +35,11 @@ class CacheInvalidateAopKoraAspect(private val resolver: Resolver) : AbstractAop
             throw ProcessingErrorException("@CacheInvalidate can't be applied for types assignable from ${CommonClassNames.flux}", method)
         }
 
-        val operation = getCacheOperation(method)
-        val cacheFields = getCacheFields(operation, resolver, aspectContext)
-
+        val operation = getCacheOperation(method, resolver, aspectContext)
         val body = if (operation.type == CacheOperation.Type.EVICT_ALL) {
-            buildBodySyncAll(method, superCall, cacheFields)
+            buildBodySyncAll(method, operation, superCall)
         } else {
-            buildBodySync(method, operation, superCall, cacheFields)
+            buildBodySync(method, operation, superCall)
         }
 
         return KoraAspect.ApplyResult.MethodBody(body)
@@ -51,12 +49,9 @@ class CacheInvalidateAopKoraAspect(private val resolver: Resolver) : AbstractAop
         method: KSFunctionDeclaration,
         operation: CacheOperation,
         superCall: String,
-        cacheFields: List<String>
     ): CodeBlock {
-        val recordParameters = getKeyRecordParameters(operation, method)
         val superMethod = getSuperMethod(method, superCall)
         val builder = CodeBlock.builder()
-        val isSingleNullableParam = operation.parameters.size == 1 && operation.parameters[0].type.resolve().isMarkedNullable
 
         // cache super method
         if (method.isVoid()) {
@@ -66,11 +61,15 @@ class CacheInvalidateAopKoraAspect(private val resolver: Resolver) : AbstractAop
         }
 
         // cache invalidate
-        for (cache in cacheFields) {
-            if (isSingleNullableParam) {
-                builder.add("_key?.let { %L.invalidate(it) }\n", cache)
+        for (i in operation.executions.indices) {
+            val cache = operation.executions[i]
+            val keyField = "_key${i + 1}"
+            builder.add("val %L = %L\n", keyField, cache.cacheKey!!.code)
+
+            if (cache.cacheKey.type.type!!.resolve().isMarkedNullable) {
+                builder.add("%L?.let { %L.invalidate(it) }\n", keyField, cache.field)
             } else {
-                builder.add("%L.invalidate(_key)\n", cache)
+                builder.add("%L.invalidate(%L)\n", cache.field, keyField)
             }
         }
 
@@ -80,47 +79,37 @@ class CacheInvalidateAopKoraAspect(private val resolver: Resolver) : AbstractAop
             builder.add("return value")
         }
 
-        return if (operation.parameters.size == 1) {
-            CodeBlock.builder()
-                .add("val _key = %L\n", operation.parameters[0])
-                .add(builder.build())
-                .build()
-        } else {
-            CodeBlock.builder()
-                .add("val _key = %T.of(%L)\n", getCacheKey(operation), recordParameters)
-                .add(builder.build())
-                .build()
-        }
+        return CodeBlock.builder()
+            .add(builder.build())
+            .build()
     }
 
     private fun buildBodySyncAll(
         method: KSFunctionDeclaration,
+        operation: CacheOperation,
         superCall: String,
-        cacheFields: List<String>
     ): CodeBlock {
         val superMethod = getSuperMethod(method, superCall)
-        val builder = StringBuilder()
+        val builder = CodeBlock.builder()
 
         // cache super method
         if (method.isVoid()) {
-            builder.append(superMethod).append("\n")
+            builder.add(superMethod).add("\n")
         } else {
-            builder.append("var _value = ").append(superMethod).append("\n")
+            builder.add("var _value = %L\n", superMethod)
         }
 
         // cache invalidate
-        for (cache in cacheFields) {
-            builder.append(cache).append(".invalidateAll()\n")
+        for (cache in operation.executions) {
+            builder.add(cache.field).add(".invalidateAll()\n")
         }
 
         if (method.isVoid()) {
-            builder.append("return")
+            builder.add("return")
         } else {
-            builder.append("return _value")
+            builder.add("return _value")
         }
 
-        return CodeBlock.builder()
-            .add(builder.toString())
-            .build()
+        return builder.build()
     }
 }

@@ -1,12 +1,12 @@
-package ru.tinkoff.kora.cache.redis.client;
+package ru.tinkoff.kora.cache.redis.lettuce;
 
 import io.lettuce.core.*;
 import io.lettuce.core.cluster.ClusterClientOptions;
 import io.lettuce.core.cluster.RedisClusterClient;
 import io.lettuce.core.cluster.RedisClusterURIUtil;
 import io.lettuce.core.protocol.ProtocolVersion;
-
 import jakarta.annotation.Nonnull;
+
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;

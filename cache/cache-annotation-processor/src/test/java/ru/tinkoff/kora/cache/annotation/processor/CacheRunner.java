@@ -2,21 +2,21 @@ package ru.tinkoff.kora.cache.annotation.processor;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheConfig;
 import ru.tinkoff.kora.cache.redis.RedisCacheConfig;
-import ru.tinkoff.kora.cache.redis.client.ReactiveRedisClient;
-import ru.tinkoff.kora.cache.redis.client.SyncRedisClient;
+import ru.tinkoff.kora.cache.redis.RedisCacheClient;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 final class CacheRunner {
 
-    private CacheRunner() { }
+    private CacheRunner() {}
 
     public static CaffeineCacheConfig getCaffeineConfig() {
         return new CaffeineCacheConfig() {
@@ -42,6 +42,12 @@ final class CacheRunner {
 
     public static RedisCacheConfig getRedisConfig() {
         return new RedisCacheConfig() {
+
+            @Override
+            public String keyPrefix() {
+                return "pref";
+            }
+
             @Nullable
             @Override
             public Duration expireAfterWrite() {
@@ -56,125 +62,82 @@ final class CacheRunner {
         };
     }
 
-    public static SyncRedisClient syncRedisClient(final Map<ByteBuffer, ByteBuffer> cache) {
-        return new SyncRedisClient() {
+    public static RedisCacheClient lettuceClient(final Map<ByteBuffer, ByteBuffer> cache) {
+        return new RedisCacheClient() {
             @Override
-            public byte[] get(byte[] key) {
+            public CompletionStage<byte[]> get(byte[] key) {
                 var r = cache.get(ByteBuffer.wrap(key));
                 return (r == null)
-                    ? null
-                    : r.array();
+                    ? CompletableFuture.completedFuture(null)
+                    : CompletableFuture.completedFuture(r.array());
             }
 
             @Nonnull
             @Override
-            public Map<byte[], byte[]> get(byte[][] keys) {
+            public CompletionStage<Map<byte[], byte[]>> mget(byte[][] keys) {
                 final Map<byte[], byte[]> result = new HashMap<>();
                 for (byte[] key : keys) {
                     Optional.ofNullable(cache.get(ByteBuffer.wrap(key))).ifPresent(r -> result.put(key, r.array()));
                 }
-                return result;
+                return CompletableFuture.completedFuture(result);
             }
 
             @Override
-            public byte[] getExpire(byte[] key, long expireAfterMillis) {
+            public CompletionStage<byte[]> getex(byte[] key, long expireAfterMillis) {
                 return get(key);
             }
 
             @Nonnull
             @Override
-            public Map<byte[], byte[]> getExpire(byte[][] keys, long expireAfterMillis) {
-                return get(keys);
+            public CompletionStage<Map<byte[], byte[]>> getex(byte[][] keys, long expireAfterMillis) {
+                return mget(keys);
             }
 
             @Override
-            public void set(byte[] key, byte[] value) {
+            public CompletionStage<Boolean> set(byte[] key, byte[] value) {
                 cache.put(ByteBuffer.wrap(key), ByteBuffer.wrap(value));
+                return CompletableFuture.completedFuture(true);
             }
 
             @Override
-            public void setExpire(byte[] key, byte[] value, long expireAfterMillis) {
-                set(key, value);
+            public CompletionStage<Boolean> mset(Map<byte[], byte[]> keyAndValue) {
+                keyAndValue.forEach((k, v) -> cache.put(ByteBuffer.wrap(k), ByteBuffer.wrap(v)));
+                return CompletableFuture.completedFuture(true);
             }
 
             @Override
-            public long del(byte[] key) {
-                return cache.remove(ByteBuffer.wrap(key)) == null ? 0 : 1 ;
-            }
-
-            @Override
-            public long del(byte[][] keys) {
-                int counter = 0;
-                for (byte[] key : keys) {
-                    counter += del(key);
-                }
-                return counter;
-            }
-
-            @Override
-            public void flushAll() {
-                cache.clear();
-            }
-        };
-    }
-
-    public static ReactiveRedisClient reactiveRedisClient(final Map<ByteBuffer, ByteBuffer> cache) {
-        var syncRedisClient = syncRedisClient(cache);
-        return new ReactiveRedisClient() {
-            @Nonnull
-            @Override
-            public Mono<byte[]> get(byte[] key) {
-                return Mono.justOrEmpty(syncRedisClient.get(key));
-            }
-
-            @Nonnull
-            @Override
-            public Mono<Map<byte[], byte[]>> get(byte[][] keys) {
-                return Mono.justOrEmpty(syncRedisClient.get(keys));
-            }
-
-            @Nonnull
-            @Override
-            public Mono<byte[]> getExpire(byte[] key, long expireAfterMillis) {
-                return get(key);
-            }
-
-            @Nonnull
-            @Override
-            public Mono<Map<byte[], byte[]>> getExpire(byte[][] keys, long expireAfterMillis) {
-                return get(keys);
-            }
-
-            @Nonnull
-            @Override
-            public Mono<Boolean> set(byte[] key, byte[] value) {
-                syncRedisClient.set(key, value);
-                return Mono.just(true);
-            }
-
-            @Nonnull
-            @Override
-            public Mono<Boolean> setExpire(byte[] key, byte[] value, long expireAfterMillis) {
+            public CompletionStage<Boolean> psetex(byte[] key, byte[] value, long expireAfterMillis) {
                 return set(key, value);
             }
 
-            @Nonnull
             @Override
-            public Mono<Long> del(byte[] key) {
-                return Mono.justOrEmpty(syncRedisClient.del(key));
+            public CompletionStage<Long> del(byte[] key) {
+                return CompletableFuture.completedFuture(cache.remove(ByteBuffer.wrap(key)) == null ? 0L : 1L);
             }
 
-            @Nonnull
             @Override
-            public Mono<Long> del(byte[][] keys) {
-                return Mono.justOrEmpty(syncRedisClient.del(keys));
+            public CompletionStage<Long> del(byte[][] keys) {
+                int counter = 0;
+                for (byte[] key : keys) {
+                    counter += del(key).toCompletableFuture().join();
+                }
+                return CompletableFuture.completedFuture((long) counter);
             }
 
-            @Nonnull
             @Override
-            public Mono<Boolean> flushAll() {
-                syncRedisClient.flushAll();
-                return Mono.just(true);
+            public CompletionStage<Boolean> flushAll() {
+                cache.clear();
+                return CompletableFuture.completedFuture(true);
+            }
+
+            @Override
+            public void init() throws Exception {
+
+            }
+
+            @Override
+            public void release() throws Exception {
+
             }
         };
     }

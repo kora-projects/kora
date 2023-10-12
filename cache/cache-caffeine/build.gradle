@@ -1,10 +1,13 @@
 dependencies {
-    api project(":cache:cache-common")
     annotationProcessor project(':config:config-annotation-processor')
+    compileOnly libs.reactor.core
+
+    api project(":cache:cache-common")
 
     implementation project(":config:config-common")
     implementation libs.caffeine
 
+    testImplementation libs.reactor.core
     testImplementation testFixtures(project(":annotation-processor-common"))
     testImplementation project(":annotation-processor-common")
     testImplementation project(":aop:aop-annotation-processor")

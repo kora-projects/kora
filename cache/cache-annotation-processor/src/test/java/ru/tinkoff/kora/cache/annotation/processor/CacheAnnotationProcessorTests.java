@@ -5,6 +5,7 @@ import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTe
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils.CompilationErrorException;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
+import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCacheTagged;
 import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.flux.CacheableFluxWrongGet;
 import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.flux.CacheableWrongFluxPut;
 import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.mono.CacheableMonoWrongGetVoid;
@@ -15,9 +16,11 @@ import ru.tinkoff.kora.cache.annotation.processor.testdata.sync.*;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class CacheAnnotationProcessorTests extends AbstractAnnotationProcessorTest {
+
     @Test
     void cacheKeyMultipleAnnotationsOneMethod() {
         assertThrows(CompilationErrorException.class, () -> TestUtils.annotationProcess(CacheableSyncWrongAnnotationMany.class, new AopAnnotationProcessor()));
@@ -29,13 +32,23 @@ class CacheAnnotationProcessorTests extends AbstractAnnotationProcessorTest {
     }
 
     @Test
-    void cacheKeyArgumentWrongOrder() {
-        assertThrows(CompilationErrorException.class, () -> TestUtils.annotationProcess(CacheableSyncWrongArgumentOrder.class, new AopAnnotationProcessor()));
+    void cacheKeyMapper() {
+        assertDoesNotThrow(() -> TestUtils.annotationProcess(CacheableSyncMapper.class, new AopAnnotationProcessor()));
     }
 
     @Test
-    void cacheKeyArgumentWrongType() {
-        assertThrows(CompilationErrorException.class, () -> TestUtils.annotationProcess(CacheableSyncWrongArgumentType.class, new AopAnnotationProcessor()));
+    void cacheTaggedRedisKeyMapper() {
+        assertDoesNotThrow(() -> TestUtils.annotationProcess(DummyCacheTagged.class, new CacheAnnotationProcessor()));
+    }
+
+    @Test
+    void cacheKeyArgumentWrongOrderMapperRequired() {
+        assertDoesNotThrow(() -> TestUtils.annotationProcess(CacheableSyncWrongArgumentOrder.class, new AopAnnotationProcessor()));
+    }
+
+    @Test
+    void cacheKeyArgumentWrongTypeMapperRequired() {
+        assertDoesNotThrow(() -> TestUtils.annotationProcess(CacheableSyncWrongArgumentType.class, new AopAnnotationProcessor()));
     }
 
     @Test

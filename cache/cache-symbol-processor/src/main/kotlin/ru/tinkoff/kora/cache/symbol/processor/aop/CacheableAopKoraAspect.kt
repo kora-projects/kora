@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.cache.symbol.processor.aop
 
 import com.google.devtools.ksp.KspExperimental
-import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.ClassName
@@ -20,7 +19,6 @@ import java.util.concurrent.Future
 @KspExperimental
 class CacheableAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheAspect() {
 
-    private val CAFFEINE_CACHE = ClassName("ru.tinkoff.kora.cache.caffeine", "CaffeineCache")
     private val ANNOTATION_CACHEABLE = ClassName("ru.tinkoff.kora.cache.annotation", "Cacheable")
     private val ANNOTATION_CACHEABLES = ClassName("ru.tinkoff.kora.cache.annotation", "Cacheables")
 
@@ -37,13 +35,11 @@ class CacheableAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheA
             throw ProcessingErrorException("@Cacheable can't be applied for types assignable from ${CommonClassNames.flux}", method)
         }
 
-        val operation = getCacheOperation(method)
-        val cacheFields = getCacheFields(operation, resolver, aspectContext)
-
+        val operation = getCacheOperation(method, resolver, aspectContext)
         val body = if (method.isSuspend()) {
-            buildBodySync(method, operation, superCall, cacheFields, resolver)
+            buildBodySync(method, operation, superCall, resolver)
         } else {
-            buildBodySync(method, operation, superCall, cacheFields, resolver)
+            buildBodySync(method, operation, superCall, resolver)
         }
 
         return KoraAspect.ApplyResult.MethodBody(body)
@@ -53,62 +49,57 @@ class CacheableAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheA
         method: KSFunctionDeclaration,
         operation: CacheOperation,
         superCall: String,
-        cacheFields: List<String>,
         resolver: Resolver
     ): CodeBlock {
-        val recordParameters = getKeyRecordParameters(operation, method)
         val superMethod = getSuperMethod(method, superCall)
         val builder = CodeBlock.builder()
-        val isSingleNullableParam = operation.parameters.size == 1 && operation.parameters[0].type.resolve().isMarkedNullable
 
-        val keyBlock = if (operation.parameters.size == 1) {
-            CodeBlock.of("val _key = %L\n", operation.parameters[0])
-        } else {
-            CodeBlock.of("val _key = %T.of(%L)\n", getCacheKey(operation), recordParameters)
-        }
-
-        if (!method.isSuspend() && operation.cacheImplementations.size == 1) {
-            val impl = resolver.getClassDeclarationByName(operation.cacheImplementations[0])
-            if (impl != null) {
-                val codeBlock = if (isSingleNullableParam) {
-                    CodeBlock.of(
-                        """
-                                return if (_key != null) {
-                                    %L.computeIfAbsent(_key) { %L }
-                                } else {
-                                    %L
-                                }
-                            """.trimIndent(), cacheFields[0], superMethod, superMethod
-                    )
-                } else {
-                    CodeBlock.of("return %L.computeIfAbsent(_key) { %L }", cacheFields[0], superMethod)
-                }
-
-                return CodeBlock.builder()
-                    .add(keyBlock)
-                    .add(codeBlock)
-                    .build()
+        if (!method.isSuspend() && operation.executions.size == 1) {
+            val keyBlock = CodeBlock.of("val _key = %L\n", operation.executions[0].cacheKey!!.code)
+            val isSingleNullableParam = operation.executions[0].type.isMarkedNullable
+            val codeBlock = if (isSingleNullableParam) {
+                CodeBlock.of(
+                    """
+                        return if (_key != null) {
+                            %L.computeIfAbsent(_key) { %L }
+                        } else {
+                            %L
+                        }
+                    """.trimIndent(), operation.executions[0].field, superMethod, superMethod
+                )
+            } else {
+                CodeBlock.of("return %L.computeIfAbsent(_key) { %L }", operation.executions[0].field, superMethod)
             }
+
+            return CodeBlock.builder()
+                .add(keyBlock)
+                .add(codeBlock)
+                .build()
         }
 
         // cache get
-        for (i in cacheFields.indices) {
-            val cache = cacheFields[i]
-            val prefix = if (i == 0) "var _value = " else "_value = "
+        for (i in operation.executions.indices) {
+            val cache = operation.executions[i]
 
-            if (isSingleNullableParam) {
+            val keyField = "_key${i + 1}"
+            val keyBlock = CodeBlock.of("val %L = %L\n", keyField, cache.cacheKey!!.code)
+            builder.add(keyBlock)
+
+            val prefix = if (i == 0) "var _value = " else "_value = "
+            if (cache.cacheKey.type.type!!.resolve().isMarkedNullable) {
                 builder.add(prefix)
-                    .add("_key?.let { %L.get(it) }\n", cache)
-                    .add("if(_value != null) {\n");
+                    .add("%L?.let { %L.get(it) }\n", keyField, cache.field)
+                    .add("if(_value != null) {\n")
             } else {
                 builder.add(prefix)
-                    .add("%L.get(_key)\n", cache)
-                    .add("if(_value != null) {\n");
+                    .add("%L.get(%L)\n", cache.field, keyField)
+                    .add("if(_value != null) {\n")
             }
 
             for (j in 0 until i) {
-                val prevCache = cacheFields[j]
-                builder.add("\t%L.put(_key, _value)\n", prevCache)
+                val prevCache = operation.executions[j]
+                val keyField = "_key${j + 1}"
+                builder.add("\t%L.put(%L, _value)\n", prevCache.field, keyField)
             }
 
             builder
@@ -120,17 +111,19 @@ class CacheableAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheA
         builder.add("_value = %L\n", superMethod)
 
         // cache put
-        for (cache in cacheFields) {
-            if (isSingleNullableParam) {
-                builder.add("_key?.let { %L.put(it, _value) }\n", cache)
+        for (i in operation.executions.indices) {
+            val cache = operation.executions[i]
+            val keyField = "_key${i + 1}"
+
+            if (cache.cacheKey!!.type.type!!.resolve().isMarkedNullable) {
+                builder.add("%L?.let { %L.put(it, _value) }\n", keyField, cache.field)
             } else {
-                builder.add("%L.put(_key, _value)\n", cache)
+                builder.add("%L.put(%L, _value)\n", cache.field, keyField)
             }
         }
         builder.add("return _value")
 
         return CodeBlock.builder()
-            .add(keyBlock)
             .add(builder.build())
             .build()
     }

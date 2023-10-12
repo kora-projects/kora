@@ -6,9 +6,9 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import ru.tinkoff.kora.cache.CacheKey
+import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule
-import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCache2
+import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCache21
 import ru.tinkoff.kora.cache.symbol.processor.testdata.suspended.CacheableSuspend
 import ru.tinkoff.kora.ksp.common.symbolProcess
 import java.math.BigDecimal
@@ -17,10 +17,10 @@ import java.math.BigDecimal
 @KspExperimental
 class SuspendCacheAopTests : CaffeineCacheModule {
 
-    private val CACHE_CLASS = "ru.tinkoff.kora.cache.symbol.processor.testcache.\$DummyCache2Impl"
+    private val CACHE_CLASS = "ru.tinkoff.kora.cache.symbol.processor.testcache.\$DummyCache21Impl"
     private val SERVICE_CLASS = "ru.tinkoff.kora.cache.symbol.processor.testdata.suspended.\$CacheableSuspend__AopProxy"
 
-    private var cache: DummyCache2? = null
+    private var cache: DummyCache21? = null
     private var cachedService: CacheableSuspend? = null
 
     private fun getService(): CacheableSuspend {
@@ -30,7 +30,9 @@ class SuspendCacheAopTests : CaffeineCacheModule {
 
         return try {
             val classLoader = symbolProcess(
-                listOf(DummyCache2::class, CacheableSuspend::class),
+                listOf(DummyCache21::class, CacheableSuspend::class),
+                CacheSymbolProcessorProvider(),
+                AopSymbolProcessorProvider(),
             )
 
             val cacheClass = classLoader.loadClass(CACHE_CLASS) ?: throw IllegalArgumentException("Expected class not found: $CACHE_CLASS")
@@ -38,7 +40,7 @@ class SuspendCacheAopTests : CaffeineCacheModule {
                 CacheRunner.getCaffeineConfig(),
                 caffeineCacheFactory(null),
                 caffeineCacheTelemetry(null, null)
-            ) as DummyCache2
+            ) as DummyCache21
 
             val serviceClass = classLoader.loadClass(SERVICE_CLASS) ?: throw IllegalArgumentException("Expected class not found: $SERVICE_CLASS")
             val inst = serviceClass.constructors[0].newInstance(cache) as CacheableSuspend
@@ -145,8 +147,8 @@ class SuspendCacheAopTests : CaffeineCacheModule {
         runBlocking { service.evictValue("1", BigDecimal.ZERO) }
 
         // then
-        assertNull(cache!!.get(CacheKey.of("1", BigDecimal.ZERO)))
-        assertEquals(cached2, cache!!.get(CacheKey.of("2", BigDecimal.ZERO)))
+        assertNull(cache!!.get(DummyCache21.Key("1", BigDecimal.ZERO)))
+        assertEquals(cached2, cache!!.get(DummyCache21.Key("2", BigDecimal.ZERO)))
 
         val fromCache = runBlocking { service.getValue("1", BigDecimal.ZERO) }
         assertNotEquals(cached, fromCache)
@@ -171,8 +173,8 @@ class SuspendCacheAopTests : CaffeineCacheModule {
         runBlocking { service.evictAll() }
 
         // then
-        assertNull(cache!!.get(CacheKey.of("1", BigDecimal.ZERO)))
-        assertNull(cache!!.get(CacheKey.of("2", BigDecimal.ZERO)))
+        assertNull(cache!!.get(DummyCache21.Key("1", BigDecimal.ZERO)))
+        assertNull(cache!!.get(DummyCache21.Key("2", BigDecimal.ZERO)))
 
         val fromCache = runBlocking { service.getValue("1", BigDecimal.ZERO) }
         assertNotEquals(cached, fromCache)
