@@ -9,6 +9,7 @@ import ru.tinkoff.kora.common.util.ReactorContextHook;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Context {
+
     private static final ThreadLocal<Context> INSTANCE = ThreadLocal.withInitial(Context::new);
     private final ConcurrentHashMap<Context.Key<?>, Object> values;
 

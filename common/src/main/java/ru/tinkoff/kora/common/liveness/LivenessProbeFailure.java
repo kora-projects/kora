@@ -1,5 +1,9 @@
 package ru.tinkoff.kora.common.liveness;
 
-public record LivenessProbeFailure(
-    String message
-) {}
+/**
+ * @param message <br>
+ *                <b>Русский</b>: сообщение об ошибке
+ *                <hr>
+ *                <b>English</b>: message about failure
+ */
+public record LivenessProbeFailure(String message) {}

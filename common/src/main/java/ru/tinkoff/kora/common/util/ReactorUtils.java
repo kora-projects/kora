@@ -13,7 +13,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 public class ReactorUtils {
+
     private static final AtomicReference<Scheduler> CACHED_ELASTIC = new AtomicReference<>();
+
+    private ReactorUtils() { }
 
     private static Scheduler ioScheduler() {
         var s = CACHED_ELASTIC.get();

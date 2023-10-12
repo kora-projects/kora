@@ -15,6 +15,9 @@ import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
 
 public class FlowUtils {
+
+    private FlowUtils() { }
+
     public static <T> CompletionStage<T> toFuture(Publisher<T> publisher) {
         var future = new FutureSubscriber<T>();
         publisher.subscribe(future);
