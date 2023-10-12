@@ -10,7 +10,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+/**
+ * <b>Русский</b>: Базовое предоставления значения в конфигурации в Kora.
+ * <hr>
+ * <b>English</b>: Basic value representation in the configuration in Kora.
+ */
 sealed public interface ConfigValue<T> {
+
     @Nullable
     T value();
 
