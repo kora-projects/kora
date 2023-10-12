@@ -265,7 +265,7 @@ final class KafkaPublisherGenerator {
                 b.addStatement("var _headers = $N", publishData.headersVar().getSimpleName());
             }
             if (publishData.keyVar() == null) {
-                b.addStatement("var _key = new byte[0]");
+                b.addStatement("byte[] _key = null");
             } else {
                 b.addStatement("var _key = $N.serialize(_topic, _headers, $N)", keyParserName, publishData.keyVar().getSimpleName());
             }
