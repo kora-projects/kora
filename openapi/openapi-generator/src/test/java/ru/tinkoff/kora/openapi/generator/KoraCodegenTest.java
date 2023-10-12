@@ -48,16 +48,16 @@ class KoraCodegenTest {
     static SwaggerParams[] generateParams() {
         var result = new ArrayList<SwaggerParams>();
         var modes = new String[]{
-            "java_client",
-            "async_java_client",
-            "reactive_client",
-            "java_server",
-            "reactive_server",
-            "async_java_server",
-            "kotlin_client",
-            "kotlin_suspend_client",
-            "kotlin_server",
-            "kotlin_suspend_server",
+            KoraCodegen.Mode.JAVA_CLIENT.getMode(),
+            KoraCodegen.Mode.JAVA_ASYNC_CLIENT.getMode(),
+            KoraCodegen.Mode.JAVA_REACTIVE_CLIENT.getMode(),
+            KoraCodegen.Mode.JAVA_SERVER.getMode(),
+            KoraCodegen.Mode.JAVA_ASYNC_SERVER.getMode(),
+            KoraCodegen.Mode.JAVA_REACTIVE_SERVER.getMode(),
+            KoraCodegen.Mode.KOTLIN_CLIENT.getMode(),
+            KoraCodegen.Mode.KOTLIN_SUSPEND_CLIENT.getMode(),
+            KoraCodegen.Mode.KOTLIN_SERVER.getMode(),
+            KoraCodegen.Mode.KOTLIN_SUSPEND_SERVER.getMode(),
         };
         var files = new String[]{
             "/example/petstoreV3_form.yaml",
