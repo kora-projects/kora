@@ -9,6 +9,7 @@ public class LogAspectClassNames {
     public static final ClassName logOff = log.nestedClass("off");
     public static final ClassName logResult = log.nestedClass("result");
     public static final ClassName structuredArgument = ClassName.get("ru.tinkoff.kora.logging.common.arg", "StructuredArgument");
+    public static final ClassName structuredArgumentMapper = ClassName.get("ru.tinkoff.kora.logging.common.arg", "StructuredArgumentMapper");
 
     public static final ClassName loggerFactory = ClassName.get("org.slf4j", "ILoggerFactory");
     public static final ClassName logger = ClassName.get("org.slf4j", "Logger");

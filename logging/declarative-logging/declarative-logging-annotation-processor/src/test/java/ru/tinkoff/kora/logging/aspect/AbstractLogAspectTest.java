@@ -50,7 +50,10 @@ public abstract class AbstractLogAspectTest extends AbstractAnnotationProcessorT
         result.assertSuccess();
         try {
             var generatedClass = result.loadClass("$Target__AopProxy");
-            var object = generatedClass.getConstructor(ILoggerFactory.class).newInstance(factory);
+            var constructor = generatedClass.getConstructors()[0];
+            var params = new Object[constructor.getParameterCount()];
+            params[0] = factory;
+            var object = constructor.newInstance(params);
             return new TestObject(generatedClass, object);
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -68,9 +71,14 @@ public abstract class AbstractLogAspectTest extends AbstractAnnotationProcessorT
         var writer = (StructuredArgumentWriter) captor.getValue();
         var mockGen = Mockito.mock(JsonGenerator.class);
         var data = new HashMap<String, String>();
+        var lastFieldName = new String[1];
         try {
             doAnswer(invocation -> data.put(invocation.getArgument(0, String.class), invocation.getArgument(1, String.class)))
                 .when(mockGen).writeStringField(anyString(), anyString());
+            doAnswer(invocation -> lastFieldName[0] = invocation.getArgument(0, String.class))
+                .when(mockGen).writeFieldName(anyString());
+            doAnswer(invocation -> data.put(lastFieldName[0], invocation.getArgument(0, String.class)))
+                .when(mockGen).writeString(anyString());
             writer.writeTo(mockGen);
         } catch (IOException e) {
             throw new RuntimeException(e);

@@ -183,6 +183,20 @@ public class CommonUtils {
         public AnnotationSpec toTagAnnotation() {
             return CommonUtils.toTagAnnotation(mapperTags);
         }
+
+        public boolean isGeneric() {
+            return mapperClass instanceof DeclaredType dt
+                && dt.asElement() instanceof TypeElement te
+                && !te.getTypeParameters().isEmpty();
+        }
+
+        public ParameterizedTypeName parameterized(TypeName tn) {
+            assert isGeneric();
+            if (mapperClass instanceof DeclaredType dt && dt.asElement() instanceof TypeElement te) {
+                return ParameterizedTypeName.get(ClassName.get(te), tn);
+            }
+            throw new IllegalStateException();
+        }
     }
 
     @Nullable
