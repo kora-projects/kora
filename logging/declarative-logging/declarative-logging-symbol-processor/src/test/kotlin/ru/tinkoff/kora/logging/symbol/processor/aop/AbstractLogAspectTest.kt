@@ -50,7 +50,10 @@ abstract class AbstractLogAspectTest : AbstractSymbolProcessorTest() {
         }
 
         val objectClass = compileResult.loadClass("\$Target__AopProxy")
-        val objectInstance = objectClass.constructors[0].newInstance(factory)
+        val constructor = objectClass.constructors.first()
+        val params = arrayOfNulls<Any>(constructor.parameterCount)
+        params[0] = factory
+        val objectInstance = constructor.newInstance(*params)
 
         return TestObject(objectClass.kotlin, objectInstance)
     }
@@ -105,12 +108,21 @@ abstract class AbstractLogAspectTest : AbstractSymbolProcessorTest() {
         val writer = captor.value as StructuredArgumentWriter
         val mockGen = Mockito.mock(JsonGenerator::class.java)
         val data = HashMap<String, String>()
+        var lastFieldName = ""
         Mockito.doAnswer { invocation: InvocationOnMock ->
             data.put(
                 invocation.getArgument(0, String::class.java),
                 invocation.getArgument(1, String::class.java)
             )
         }.`when`(mockGen).writeStringField(ArgumentMatchers.anyString(), ArgumentMatchers.anyString())
+        Mockito.doAnswer { invocation: InvocationOnMock ->
+            lastFieldName = invocation.getArgument(0, String::class.java)
+            null
+        }.`when`(mockGen).writeFieldName(ArgumentMatchers.anyString())
+        Mockito.doAnswer { invocation: InvocationOnMock ->
+            data[lastFieldName] = invocation.getArgument(0, String::class.java)
+            null
+        }.`when`(mockGen).writeString(ArgumentMatchers.anyString())
         writer.writeTo(mockGen)
         Assertions.assertThat(data).containsExactlyInAnyOrderEntriesOf(expectedData)
     }

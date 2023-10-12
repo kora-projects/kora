@@ -189,6 +189,15 @@ data class MappingData(val mapper: KSType?, val tags: Set<String>) {
         }
         return AnnotationSpec.builder(CommonClassNames.tag).addMember(tags.build()).build()
     }
+
+    fun isGeneric(): Boolean {
+        return mapper != null && mapper.declaration.typeParameters.isNotEmpty()
+    }
+
+    fun parameterized(tn: TypeName): TypeName {
+        assert(isGeneric())
+        return mapper!!.toClassName().parameterizedBy(tn)
+    }
 }
 
 fun KSAnnotated.parseMappingData(): MappersData {

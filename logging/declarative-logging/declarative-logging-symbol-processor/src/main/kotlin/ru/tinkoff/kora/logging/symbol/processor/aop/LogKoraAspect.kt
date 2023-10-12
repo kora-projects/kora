@@ -5,6 +5,8 @@ import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.ksp.toTypeName
 import org.slf4j.event.Level
 import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
@@ -12,6 +14,7 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.nextControlFlow
+import ru.tinkoff.kora.ksp.common.parseMappingData
 
 class LogKoraAspect : KoraAspect {
 
@@ -32,6 +35,7 @@ class LogKoraAspect : KoraAspect {
         val logOffAnnotation = logAnnotation.nestedClass("off")
         val logResultAnnotation = logAnnotation.nestedClass("result")
         val structuredArgument = ClassName("ru.tinkoff.kora.logging.common.arg", "StructuredArgument")
+        val structuredArgumentMapper = ClassName("ru.tinkoff.kora.logging.common.arg", "StructuredArgumentMapper")
         val iLoggerFactoryType = ClassName("org.slf4j", "ILoggerFactory")
         val loggerType = ClassName("org.slf4j", "Logger")
     }
@@ -54,14 +58,14 @@ class LogKoraAspect : KoraAspect {
         )
 
         val result = CodeBlock.builder()
-        result.generateInputLog(loggerFieldName, function)
-        result.generateOutputLog(loggerFieldName, function, superCall)
+        result.generateInputLog(aspectContext, loggerFieldName, function)
+        result.generateOutputLog(aspectContext, loggerFieldName, function, superCall)
 
         return KoraAspect.ApplyResult.MethodBody(result.build())
     }
 
 
-    private fun CodeBlock.Builder.generateInputLog(loggerName: String, function: KSFunctionDeclaration) {
+    private fun CodeBlock.Builder.generateInputLog(aspectContext: KoraAspect.AspectContext, loggerName: String, function: KSFunctionDeclaration) {
         val inLogLevel = function.inLogLevel()
         if (inLogLevel == null) {
             return
@@ -91,12 +95,24 @@ class LogKoraAspect : KoraAspect {
                 parametersByLevel.forEach { (level, parameters) ->
                     if (level <= inLogLevel) {
                         parameters.forEach { parameter ->
-                            appendFieldToMarkerGenerator(parameter.name!!.asString(), parameter.name!!.asString())
+                            val mapping = parameter.parseMappingData().getMapping(structuredArgumentMapper)
+                            val mapperType = mapping?.mapper?.let {
+                                if (mapping.isGeneric()) mapping.parameterized(parameter.type.resolve().toTypeName()) else it.toTypeName()
+                            } ?: structuredArgumentMapper.parameterizedBy(parameter.type.resolve().toTypeName())
+                            val mapper = aspectContext.fieldFactory.constructorParam(mapperType.copy(true), listOf())
+
+                            writeWithMapper(mapper, parameter.name!!.asString(), parameter.name!!.asString())
                         }
                     } else {
                         controlFlow("if (%N.%N())", loggerName, level.isEnabledMethod()) {
                             parameters.forEach { parameter ->
-                                appendFieldToMarkerGenerator(parameter.name!!.asString(), parameter.name!!.asString())
+                                val mapping = parameter.parseMappingData().getMapping(structuredArgumentMapper)
+                                val mapperType = mapping?.mapper?.let {
+                                    if (mapping.isGeneric()) mapping.parameterized(parameter.type.resolve().toTypeName()) else it.toTypeName()
+                                } ?: structuredArgumentMapper.parameterizedBy(parameter.type.resolve().toTypeName())
+                                val mapper = aspectContext.fieldFactory.constructorParam(mapperType.copy(true), listOf())
+
+                                writeWithMapper(mapper, parameter.name!!.asString(), parameter.name!!.asString())
                             }
                         }
                     }
@@ -112,7 +128,7 @@ class LogKoraAspect : KoraAspect {
         }
     }
 
-    private fun CodeBlock.Builder.generateOutputLog(loggerName: String, function: KSFunctionDeclaration, superCall: String) {
+    private fun CodeBlock.Builder.generateOutputLog(aspectContext: KoraAspect.AspectContext, loggerName: String, function: KSFunctionDeclaration, superCall: String) {
         addStatement("val %L = %L", RESULT_FIELD_NAME, function.superCall(superCall))
         val outLogLevel = function.outLogLevel()
         if (outLogLevel == null) {
@@ -132,7 +148,12 @@ class LogKoraAspect : KoraAspect {
         controlFlow("if (%N.%N())", loggerName, resultLogLevel.isEnabledMethod()) {
             controlFlow("val %L = %T.marker(%S) { gen -> ", DATA_OUT_FIELD_NAME, structuredArgument, DATA_PARAMETER_NAME) {
                 addStatement("gen.writeStartObject()")
-                appendFieldToMarkerGenerator(OUT_PARAMETER_NAME, RESULT_FIELD_NAME)
+                val mapping = function.parseMappingData().getMapping(structuredArgumentMapper)
+                val mapperType = mapping?.mapper?.let {
+                    if (mapping.isGeneric()) mapping.parameterized(function.returnType!!.resolve().toTypeName()) else it.toTypeName()
+                } ?: structuredArgumentMapper.parameterizedBy(function.returnType!!.resolve().toTypeName())
+                val mapper = aspectContext.fieldFactory.constructorParam(mapperType.copy(true), listOf())
+                writeWithMapper(mapper, OUT_PARAMETER_NAME, RESULT_FIELD_NAME)
                 addStatement("gen.writeEndObject()")
             }
             addStatement("%N.%N(%L, %S)", loggerName, outLogLevel.logMethod(), DATA_OUT_FIELD_NAME, MESSAGE_OUT)
@@ -175,13 +196,16 @@ class LogKoraAspect : KoraAspect {
         return Level.DEBUG
     }
 
-    private fun CodeBlock.Builder.appendFieldToMarkerGenerator(fieldName: String, parameterName: String) {
-        addStatement(
-            "%L.writeStringField(%S, %L.toString())",
-            MARKER_GENERATOR_PARAMETER_NAME,
-            fieldName,
-            parameterName
-        )
+    private fun CodeBlock.Builder.writeWithMapper(mapperName: String, fieldName: String, parameterName: String) {
+        controlFlow("this.%N.let", mapperName) {
+            controlFlow("if (it != null)") {
+                addStatement("gen.writeFieldName(%S)", fieldName)
+                addStatement("it.write(gen, %N)", parameterName)
+                nextControlFlow("else")
+                addStatement("gen.writeStringField(%S, %L.toString())", fieldName, parameterName)
+            }
+        }
+
     }
 
     private fun Level.logMethod() = this.name.lowercase()

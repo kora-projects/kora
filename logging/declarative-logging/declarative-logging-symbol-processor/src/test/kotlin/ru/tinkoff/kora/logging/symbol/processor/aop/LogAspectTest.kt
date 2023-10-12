@@ -203,4 +203,36 @@ class LogAspectTest : AbstractLogAspectTest() {
         o.verifyNoMoreInteractions()
         verifyOutData(mapOf("out" to "test-result"))
     }
+
+    @Test
+    fun testLogArgWithMapper() {
+        compile0("""
+            open class Target {
+                @Log.`in`
+                open fun test(arg1: String) {}
+            }
+        """.trimIndent(), """
+            class MyLogArgMapper : ru.tinkoff.kora.logging.common.arg.StructuredArgumentMapper<String> {
+              override fun write(gen: com.fasterxml.jackson.core.JsonGenerator, value: String) {
+                gen.writeString("mapped-" + value)
+              }
+            }
+        """.trimIndent())
+        compileResult.assertSuccess()
+
+        val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, new("MyLogArgMapper")))
+
+        Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
+        val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
+        reset(log, Level.DEBUG)
+        aopProxy.invoke<Any>("test", "arg1")
+        val o = Mockito.inOrder(log)
+        o.verify(log).isDebugEnabled
+        o.verify(log).info(inData.capture(), ArgumentMatchers.eq(">"))
+        o.verifyNoMoreInteractions()
+        verifyInData(mapOf("arg1" to "mapped-arg1"))
+        o.verify(log).isDebugEnabled
+        o.verifyNoMoreInteractions()
+    }
+
 }

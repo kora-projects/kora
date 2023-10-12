@@ -1,14 +1,15 @@
 package ru.tinkoff.kora.logging.aspect;
 
+import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 
-import jakarta.annotation.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
@@ -51,19 +52,19 @@ public class LogAspect implements KoraAspect {
 
         var isMono = CommonUtils.isMono(executableElement.getReturnType());
         if (isMono) {
-            return this.monoBody(executableElement, superCall, loggerFieldName);
+            return this.monoBody(aspectContext, executableElement, superCall, loggerFieldName);
         } else {
-            return this.blockingBody(executableElement, superCall, loggerFieldName);
+            return this.blockingBody(aspectContext, executableElement, superCall, loggerFieldName);
         }
     }
 
-    private ApplyResult blockingBody(ExecutableElement executableElement, String superCall, String loggerFieldName) {
+    private ApplyResult blockingBody(AspectContext aspectContext, ExecutableElement executableElement, String superCall, String loggerFieldName) {
         var logInLevel = logInLevel(executableElement, env);
         var logOutLevel = logOutLevel(executableElement, env);
 
         var b = CodeBlock.builder();
         if (logInLevel != null) {
-            b.add(this.buildLogIn(executableElement, logInLevel, loggerFieldName));
+            b.add(this.buildLogIn(aspectContext, executableElement, logInLevel, loggerFieldName));
         }
         var isVoid = executableElement.getReturnType().getKind() == TypeKind.VOID;
         if (isVoid) {
@@ -73,23 +74,41 @@ public class LogAspect implements KoraAspect {
         }
         if (logOutLevel != null) {
             var logResultLevel = logResultLevel(executableElement, logOutLevel, env);
-            var resultWriter = CodeBlock.builder().add("gen -> {$>\n")
-                .add("gen.writeStartObject();\n")
-                .add("gen.writeStringField($S, String.valueOf($N));\n", "out", RESULT_VAR_NAME)
-                .add("gen.writeEndObject();")
-                .add("$<\n}")
-                .build();
+            final CodeBlock resultWriter;
+            if (!isVoid && logResultLevel != null) {
+                var mapping = CommonUtils.parseMapping(executableElement).getMapping(structuredArgumentMapper);
+                var mapperType = mapping != null && mapping.mapperClass() != null
+                    ? mapping.isGeneric() ? mapping.parameterized(TypeName.get(executableElement.getReturnType())) : TypeName.get(mapping.mapperClass())
+                    : ParameterizedTypeName.get(structuredArgumentMapper, TypeName.get(executableElement.getReturnType()));
+                var mapper = aspectContext.fieldFactory().constructorParam(
+                    mapperType,
+                    List.of(AnnotationSpec.builder(CommonClassNames.nullable).build())
+                );
+                var resultWriterBuilder = CodeBlock.builder().add("gen -> {$>\n")
+                    .add("gen.writeStartObject();\n")
+                    .beginControlFlow("if (this.$N != null)", mapper)
+                    .addStatement("gen.writeFieldName($S)", "out")
+                    .addStatement("this.$N.write(gen, $N)", mapper, RESULT_VAR_NAME)
+                    .nextControlFlow("else")
+                    .addStatement("gen.writeStringField($S, String.valueOf($N))", "out", RESULT_VAR_NAME)
+                    .endControlFlow()
+                    .add("gen.writeEndObject();")
+                    .add("$<\n}");
+                resultWriter = resultWriterBuilder.build();
+            } else {
+                resultWriter = null;
+            }
 
             if (isVoid || logResultLevel == null) {
                 b.addStatement("$N.$L($S)", loggerFieldName, logOutLevel.toLowerCase(), MESSAGE_OUT);
             } else if (logOutLevel.equals(logResultLevel)) {
                 ifLogLevelEnabled(b, loggerFieldName, logOutLevel, () -> {
-                    b.addStatement("var $N = $T.marker($S, $L)", DATA_OUT_VAR_NAME, structuredArgument, "data", resultWriter);
+                    b.add("var $N = $T.marker($S, $L);\n", DATA_OUT_VAR_NAME, structuredArgument, "data", resultWriter);
                     b.add("$N.$L($N, $S);", loggerFieldName, logOutLevel.toLowerCase(), DATA_OUT_VAR_NAME, MESSAGE_OUT);
                 }).add("\n");
             } else {
                 ifLogLevelEnabled(b, loggerFieldName, logResultLevel, () -> {
-                    b.addStatement("var $N = $T.marker($S, $L)", DATA_OUT_VAR_NAME, structuredArgument, "data", resultWriter);
+                    b.add("var $N = $T.marker($S, $L);\n", DATA_OUT_VAR_NAME, structuredArgument, "data", resultWriter);
                     b.add("$N.$L($N, $S);", loggerFieldName, logOutLevel.toLowerCase(), DATA_OUT_VAR_NAME, MESSAGE_OUT);
                     b.add("$<\n} else {$>\n");
                     b.add("$N.$L($S);", loggerFieldName, logOutLevel.toLowerCase(), MESSAGE_OUT);
@@ -102,7 +121,7 @@ public class LogAspect implements KoraAspect {
         return new ApplyResult.MethodBody(b.build());
     }
 
-    private ApplyResult monoBody(ExecutableElement executableElement, String superCall, String loggerFieldName) {
+    private ApplyResult monoBody(AspectContext aspectContext, ExecutableElement executableElement, String superCall, String loggerFieldName) {
         var logInLevel = logInLevel(executableElement, env);
         var logOutLevel = logOutLevel(executableElement, env);
         var b = CodeBlock.builder();
@@ -113,7 +132,7 @@ public class LogAspect implements KoraAspect {
             b.add("var $N = $N;\n", finalResultName, RESULT_VAR_NAME);
             ifLogLevelEnabled(b, loggerFieldName, logInLevel, () -> {
                 b.add("$N = $T.defer(() -> {$>\n", RESULT_VAR_NAME, CommonClassNames.mono);
-                b.add(this.buildLogIn(executableElement, logInLevel, loggerFieldName));
+                b.add(this.buildLogIn(aspectContext, executableElement, logInLevel, loggerFieldName));
                 b.add("return $N;", finalResultName);
                 b.add("$<\n});");
             }).add("\n");
@@ -153,10 +172,10 @@ public class LogAspect implements KoraAspect {
         return new ApplyResult.MethodBody(b.add("return $N;\n", RESULT_VAR_NAME).build());
     }
 
-    private CodeBlock buildLogIn(ExecutableElement executableElement, String logInLevel, String loggerFieldName) {
+    private CodeBlock buildLogIn(AspectContext aspectContext, ExecutableElement executableElement, String logInLevel, String loggerFieldName) {
         var b = CodeBlock.builder();
         var methodLevelIdx = LEVELS.indexOf(logInLevel);
-        var logMarkerCode = this.logInMarker(loggerFieldName, executableElement, logInLevel);
+        var logMarkerCode = this.logInMarker(aspectContext, loggerFieldName, executableElement, logInLevel);
         if (logMarkerCode != null) {
             if (LEVELS.indexOf(logMarkerCode.minLogLevel()) <= methodLevelIdx) {
                 ifLogLevelEnabled(b, loggerFieldName, logInLevel, () -> {
@@ -190,7 +209,7 @@ public class LogAspect implements KoraAspect {
      * } </pre>
      */
     @Nullable
-    private LogInMarker logInMarker(String loggerField, ExecutableElement executableElement, String logInLevel) {
+    private LogInMarker logInMarker(AspectContext aspectContext, String loggerField, ExecutableElement executableElement, String logInLevel) {
         var parametersToLog = new ArrayList<VariableElement>(executableElement.getParameters().size());
         for (var parameter : executableElement.getParameters()) {
             if (AnnotationUtils.findAnnotation(parameter, logOff) == null) {
@@ -223,7 +242,20 @@ public class LogAspect implements KoraAspect {
                 b.add("\nif ($N.$N()) {$>", loggerField, "is" + CommonUtils.capitalize(level.toLowerCase()) + "Enabled");
             }
             for (var param : paramsForLevel) {
+                var mapping = CommonUtils.parseMapping(param).getMapping(structuredArgumentMapper);
+                var mapperType = mapping != null && mapping.mapperClass() != null
+                    ? mapping.isGeneric() ? mapping.parameterized(TypeName.get(param.asType())) : TypeName.get(mapping.mapperClass())
+                    : ParameterizedTypeName.get(structuredArgumentMapper, TypeName.get(param.asType()));
+                var mapper = aspectContext.fieldFactory().constructorParam(
+                    mapperType,
+                    List.of(AnnotationSpec.builder(CommonClassNames.nullable).build())
+                );
+                b.add("\nif (this.$N != null) {", mapper);
+                b.add("\n  gen.writeFieldName($S);", param.getSimpleName());
+                b.add("\n  this.$N.write(gen, $N);", mapper, param.getSimpleName());
+                b.add("\n} else {");
                 b.add("\ngen.writeStringField($S, String.valueOf($N));", param.getSimpleName(), param.getSimpleName());
+                b.add("\n}");
             }
             if (i > minLevelIdx) {
                 b.add("$<\n}");
