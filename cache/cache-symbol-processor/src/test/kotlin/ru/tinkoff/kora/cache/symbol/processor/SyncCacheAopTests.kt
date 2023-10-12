@@ -5,9 +5,12 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import ru.tinkoff.kora.cache.CacheKey
+import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
+import ru.tinkoff.kora.cache.CacheKeyMapper
+import ru.tinkoff.kora.cache.CacheKeyMapper.CacheKeyMapper3
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule
-import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCache2
+import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCache21
+import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCache22
 import ru.tinkoff.kora.cache.symbol.processor.testdata.CacheableSync
 import ru.tinkoff.kora.ksp.common.symbolProcess
 import java.math.BigDecimal
@@ -16,10 +19,10 @@ import java.math.BigDecimal
 @KspExperimental
 class SyncCacheAopTests : CaffeineCacheModule {
 
-    private val CACHE_CLASS = "ru.tinkoff.kora.cache.symbol.processor.testcache.\$DummyCache2Impl"
+    private val CACHE_CLASS = "ru.tinkoff.kora.cache.symbol.processor.testcache.\$DummyCache21Impl"
     private val SERVICE_CLASS = "ru.tinkoff.kora.cache.symbol.processor.testdata.\$CacheableSync__AopProxy"
 
-    private var cache: DummyCache2? = null
+    private var cache: DummyCache21? = null
     private var cachedService: CacheableSync? = null
 
     private fun getService(): CacheableSync {
@@ -29,7 +32,9 @@ class SyncCacheAopTests : CaffeineCacheModule {
 
         return try {
             val classLoader = symbolProcess(
-                listOf(DummyCache2::class, CacheableSync::class),
+                listOf(DummyCache21::class, CacheableSync::class),
+                CacheSymbolProcessorProvider(),
+                AopSymbolProcessorProvider(),
             )
 
             val cacheClass = classLoader.loadClass(CACHE_CLASS) ?: throw IllegalArgumentException("Expected class not found: $CACHE_CLASS")
@@ -37,10 +42,13 @@ class SyncCacheAopTests : CaffeineCacheModule {
                 CacheRunner.getCaffeineConfig(),
                 caffeineCacheFactory(null),
                 caffeineCacheTelemetry(null, null)
-            ) as DummyCache2
+            ) as DummyCache21
 
             val serviceClass = classLoader.loadClass(SERVICE_CLASS) ?: throw IllegalArgumentException("Expected class not found: $SERVICE_CLASS")
-            val inst = serviceClass.constructors[0].newInstance(cache) as CacheableSync
+            val inst = serviceClass.constructors[0].newInstance(
+                cache,
+                CacheKeyMapper.CacheKeyMapper2<DummyCache21.Key, String?, BigDecimal?> { k1, k2 -> DummyCache21.Key(k1 ?: "", k2) }
+            ) as CacheableSync
             inst
         } catch (e: Exception) {
             throw IllegalStateException(e.message, e)
@@ -144,8 +152,8 @@ class SyncCacheAopTests : CaffeineCacheModule {
         service.evictValue("1", BigDecimal.ZERO)
 
         // then
-        assertNull(cache!!.get(CacheKey.of("1", BigDecimal.ZERO)))
-        assertEquals(cached2, cache!!.get(CacheKey.of("2", BigDecimal.ZERO)))
+        assertNull(cache!!.get(DummyCache21.Key("1", BigDecimal.ZERO)))
+        assertEquals(cached2, cache!!.get(DummyCache21.Key("2", BigDecimal.ZERO)))
 
         val fromCache = service.getValue("1", BigDecimal.ZERO)
         assertNotEquals(cached, fromCache)
@@ -170,8 +178,8 @@ class SyncCacheAopTests : CaffeineCacheModule {
         service.evictAll()
 
         // then
-        assertNull(cache!!.get(CacheKey.of("1", BigDecimal.ZERO)))
-        assertNull(cache!!.get(CacheKey.of("2", BigDecimal.ZERO)))
+        assertNull(cache!!.get(DummyCache21.Key("1", BigDecimal.ZERO)))
+        assertNull(cache!!.get(DummyCache21.Key("2", BigDecimal.ZERO)))
 
         val fromCache = service.getValue("1", BigDecimal.ZERO)
         assertNotEquals(cached, fromCache)

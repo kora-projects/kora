@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.cache.annotation;
 
 import ru.tinkoff.kora.cache.Cache;
-import ru.tinkoff.kora.cache.CacheKeyMapper;
 import ru.tinkoff.kora.common.AopAnnotation;
 
 import java.lang.annotation.*;
@@ -22,8 +21,6 @@ public @interface Cacheable {
     Class<? extends Cache<?, ?>> value();
 
     /**
-     * Limit the automatic {@link CacheKeyMapper} to the given parameter names. Mutually exclusive with
-     *
      * @return The parameter names that make up the key.
      */
     String[] parameters() default {};

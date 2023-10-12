@@ -22,14 +22,17 @@ public interface CaffeineCacheModule {
             @Override
             public <K, V> Cache<K, V> build(@Nonnull String name, @Nonnull CaffeineCacheConfig config) {
                 var builder = Caffeine.newBuilder();
-                if (config.expireAfterWrite() != null)
+                if (config.expireAfterWrite() != null) {
                     builder.expireAfterWrite(config.expireAfterWrite());
-                if (config.expireAfterAccess() != null)
+                }
+                if (config.expireAfterAccess() != null) {
                     builder.expireAfterAccess(config.expireAfterAccess());
-                if (config.initialSize() != null)
+                }
+                if (config.initialSize() != null) {
                     builder.initialCapacity(config.initialSize());
-                if (config.maximumSize() != null)
-                    builder.maximumSize(config.maximumSize());
+                }
+
+                builder.maximumSize(config.maximumSize());
 
                 final Cache<K, V> cache;
                 if (cacheMetricsCollector != null) {

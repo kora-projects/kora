@@ -20,7 +20,7 @@ class SyncCacheAopTests extends Assertions {
     void getWhenCacheEmpty() {
         // given
         final DummyCache cache2 = new DummyCache("cache2");
-        final Cache<String, String> facade = CacheBuilder.builder(cache1)
+        final Cache<String, String> facade = Cache.builder(cache1)
             .addCache(cache2)
             .build();
 
@@ -32,7 +32,7 @@ class SyncCacheAopTests extends Assertions {
     void getForFacade1() {
         // given
         final DummyCache cache2 = new DummyCache("cache2");
-        final Cache<String, String> facade = CacheBuilder.builder(cache1)
+        final Cache<String, String> facade = Cache.builder(cache1)
             .addCache(cache2)
             .build();
 
@@ -48,7 +48,7 @@ class SyncCacheAopTests extends Assertions {
     void getForFacade2() {
         // given
         final DummyCache cache2 = new DummyCache("cache2");
-        final Cache<String, String> facade = CacheBuilder.builder(cache1)
+        final Cache<String, String> facade = Cache.builder(cache1)
             .addCache(cache2)
             .build();
 
@@ -64,7 +64,7 @@ class SyncCacheAopTests extends Assertions {
     void putForFacade12() {
         // given
         final DummyCache cache2 = new DummyCache("cache2");
-        final Cache<String, String> facade = CacheBuilder.builder(cache1)
+        final Cache<String, String> facade = Cache.builder(cache1)
             .addCache(cache2)
             .build();
 
@@ -82,7 +82,7 @@ class SyncCacheAopTests extends Assertions {
     void invalidateCacheForFacade() {
         // given
         final DummyCache cache2 = new DummyCache("cache2");
-        final Cache<String, String> facade = CacheBuilder.builder(cache1)
+        final Cache<String, String> facade = Cache.builder(cache1)
             .addCache(cache2)
             .build();
 
@@ -105,7 +105,7 @@ class SyncCacheAopTests extends Assertions {
     void invalidateAllCacheForFacade() {
         // given
         final DummyCache cache2 = new DummyCache("cache2");
-        final Cache<String, String> facade = CacheBuilder.builder(cache1)
+        final Cache<String, String> facade = Cache.builder(cache1)
             .addCache(cache2)
             .build();
 

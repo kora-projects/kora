@@ -2,13 +2,16 @@ dependencies {
     implementation project(":aop:aop-annotation-processor")
 
     implementation libs.javapoet
-    implementation libs.logback.classic
 
+    testImplementation libs.logback.classic
+    testImplementation libs.reactor.core
     testImplementation libs.prometheus.collector.caffeine
     testImplementation testFixtures(project(":annotation-processor-common"))
     testImplementation project(":internal:test-logging")
     testImplementation project(":cache:cache-caffeine")
     testImplementation project(":cache:cache-redis")
+    testImplementation project(":json:json-common")
+    testImplementation project(":config:config-common")
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

@@ -1,7 +1,5 @@
 dependencies {
-    api libs.reactor.core
     api project(":common")
-    api project(":logging:logging-common")
 
     testImplementation project(":internal:test-logging")
 }

@@ -1,13 +1,11 @@
 package ru.tinkoff.kora.cache.annotation.processor;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
-import ru.tinkoff.kora.cache.CacheKey;
-import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache2;
+import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache21;
 import ru.tinkoff.kora.cache.annotation.processor.testdata.sync.CacheableSync;
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule;
 
@@ -20,10 +18,10 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SyncCacheAopTests implements CaffeineCacheModule {
 
-    private static final String CACHED_IMPL = "ru.tinkoff.kora.cache.annotation.processor.testcache.$DummyCache2Impl";
+    private static final String CACHED_IMPL = "ru.tinkoff.kora.cache.annotation.processor.testcache.$DummyCache21Impl";
     private static final String CACHED_SERVICE = "ru.tinkoff.kora.cache.annotation.processor.testdata.sync.$CacheableSync__AopProxy";
 
-    private DummyCache2 cache = null;
+    private DummyCache21 cache = null;
     private CacheableSync service = null;
 
     private CacheableSync getService() {
@@ -32,7 +30,7 @@ class SyncCacheAopTests implements CaffeineCacheModule {
         }
 
         try {
-            var classLoader = TestUtils.annotationProcess(List.of(DummyCache2.class, CacheableSync.class),
+            var classLoader = TestUtils.annotationProcess(List.of(DummyCache21.class, CacheableSync.class),
                 new AopAnnotationProcessor(), new CacheAnnotationProcessor());
 
             var cacheClass = classLoader.loadClass(CACHED_IMPL);
@@ -42,7 +40,7 @@ class SyncCacheAopTests implements CaffeineCacheModule {
 
             final Constructor<?> cacheConstructor = cacheClass.getDeclaredConstructors()[0];
             cacheConstructor.setAccessible(true);
-            cache = (DummyCache2) cacheConstructor.newInstance(CacheRunner.getCaffeineConfig(),
+            cache = (DummyCache21) cacheConstructor.newInstance(CacheRunner.getCaffeineConfig(),
                 caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
 
             var serviceClass = classLoader.loadClass(CACHED_SERVICE);
@@ -198,8 +196,8 @@ class SyncCacheAopTests implements CaffeineCacheModule {
         service.evictValue("1", BigDecimal.ZERO);
 
         // then
-        assertNull(cache.get(CacheKey.of("1", BigDecimal.ZERO)));
-        assertEquals(cached2, cache.get(CacheKey.of("2", BigDecimal.ZERO)));
+        assertNull(cache.get(new DummyCache21.Key("1", BigDecimal.ZERO)));
+        assertEquals(cached2, cache.get(new DummyCache21.Key("2", BigDecimal.ZERO)));
 
         final String fromCache = service.getValue("1", BigDecimal.ZERO);
         assertNotEquals(cached, fromCache);
@@ -224,8 +222,8 @@ class SyncCacheAopTests implements CaffeineCacheModule {
         service.evictAll();
 
         // then
-        assertNull(cache.get(CacheKey.of("1", BigDecimal.ZERO)));
-        assertNull(cache.get(CacheKey.of("2", BigDecimal.ZERO)));
+        assertNull(cache.get(new DummyCache21.Key("1", BigDecimal.ZERO)));
+        assertNull(cache.get(new DummyCache21.Key("2", BigDecimal.ZERO)));
 
         final String fromCache = service.getValue("1", BigDecimal.ZERO);
         assertNotEquals(cached, fromCache);

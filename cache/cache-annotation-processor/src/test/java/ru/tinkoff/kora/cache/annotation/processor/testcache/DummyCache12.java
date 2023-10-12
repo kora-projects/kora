@@ -4,7 +4,7 @@ import ru.tinkoff.kora.cache.annotation.Cache;
 import ru.tinkoff.kora.cache.caffeine.CaffeineCache;
 import ru.tinkoff.kora.cache.redis.RedisCache;
 
-@Cache("dummy2")
+@Cache("dummy12")
 public interface DummyCache12 extends RedisCache<String, String> {
 
 }

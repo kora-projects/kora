@@ -1,17 +1,20 @@
 package ru.tinkoff.kora.cache.symbol.processor
 
+import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.Modifier
 import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
+import ru.tinkoff.kora.common.DefaultComponent
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
@@ -19,6 +22,8 @@ import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.configValueExtractor
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
+import ru.tinkoff.kora.ksp.common.TagUtils.parseTags
+import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 
 class CacheSymbolProcessor(
     private val environment: SymbolProcessorEnvironment
@@ -37,8 +42,7 @@ class CacheSymbolProcessor(
         private val REDIS_CACHE = ClassName("ru.tinkoff.kora.cache.redis", "RedisCache")
         private val REDIS_CACHE_IMPL = ClassName("ru.tinkoff.kora.cache.redis", "AbstractRedisCache")
         private val REDIS_CACHE_CONFIG = ClassName("ru.tinkoff.kora.cache.redis", "RedisCacheConfig")
-        private val REDIS_CACHE_CLIENT_SYNC = ClassName("ru.tinkoff.kora.cache.redis.client", "SyncRedisClient")
-        private val REDIS_CACHE_CLIENT_REACTIVE = ClassName("ru.tinkoff.kora.cache.redis.client", "ReactiveRedisClient")
+        private val REDIS_CACHE_CLIENT = ClassName("ru.tinkoff.kora.cache.redis", "RedisCacheClient")
         private val REDIS_CACHE_MAPPER_KEY = ClassName("ru.tinkoff.kora.cache.redis", "RedisCacheKeyMapper")
         private val REDIS_CACHE_MAPPER_VALUE = ClassName("ru.tinkoff.kora.cache.redis", "RedisCacheValueMapper")
     }
@@ -71,12 +75,24 @@ class CacheSymbolProcessor(
                 .build()
             fileImplSpec.writeTo(codeGenerator = environment.codeGenerator, aggregating = false)
 
-            val moduleSpec = TypeSpec.interfaceBuilder(ClassName(packageName, "$${cacheImplName.simpleName}Module"))
+            val moduleSpecBuilder = TypeSpec.interfaceBuilder(ClassName(packageName, "$${cacheImplName.simpleName}Module"))
                 .generated(CacheSymbolProcessor::class)
                 .addAnnotation(CommonClassNames.module)
                 .addFunction(getCacheMethodImpl(cacheContract, cacheContractType))
                 .addFunction(getCacheMethodConfig(cacheContract, cacheContractType, resolver))
-                .build()
+
+            if (cacheContractType.rawType == REDIS_CACHE) {
+                val superTypes = cacheContract.superTypes.toList()
+                val superType = superTypes[superTypes.size - 1]
+
+                val keyType = superType.resolve().arguments[0]
+                val declaration = keyType.type!!.resolve()
+                if (declaration.declaration is KSClassDeclaration && declaration.declaration.modifiers.contains(Modifier.DATA)) {
+                    moduleSpecBuilder.addFunction(getCacheRedisKeyMapperForData(declaration.declaration as KSClassDeclaration))
+                }
+            }
+
+            val moduleSpec = moduleSpecBuilder.build()
 
             val fileModuleSpec = FileSpec.builder(cacheContract.packageName.asString(), moduleSpec.name.toString())
                 .addType(moduleSpec)
@@ -173,11 +189,29 @@ class CacheSymbolProcessor(
                     .returns(cacheTypeName)
                     .build()
             }
+
             REDIS_CACHE -> {
                 val keyType = cacheContract.typeArguments[0]
                 val valueType = cacheContract.typeArguments[1]
                 val keyMapperType = REDIS_CACHE_MAPPER_KEY.parameterizedBy(keyType)
                 val valueMapperType = REDIS_CACHE_MAPPER_VALUE.parameterizedBy(valueType)
+
+                val cacheContractType = cacheClass.getAllSuperTypes()
+                    .filter { i -> i.toTypeName() == cacheContract }
+                    .first()
+
+                val keyMapperBuilder = ParameterSpec.builder("keyMapper", keyMapperType)
+                val keyTags = cacheContractType.arguments[0].parseTags()
+                if(keyTags.isNotEmpty()) {
+                    keyMapperBuilder.addAnnotation(keyTags.toTagAnnotation())
+                }
+
+                val valueMapperBuilder = ParameterSpec.builder("valueMapper", valueMapperType)
+                val valueTags = cacheContractType.arguments[1].parseTags()
+                if(valueTags.isNotEmpty()) {
+                    valueMapperBuilder.addAnnotation(valueTags.toTagAnnotation())
+                }
+
                 FunSpec.builder(methodName)
                     .addModifiers(KModifier.PUBLIC)
                     .addParameter(
@@ -189,15 +223,15 @@ class CacheSymbolProcessor(
                             )
                             .build()
                     )
-                    .addParameter("syncClient", REDIS_CACHE_CLIENT_SYNC)
-                    .addParameter("reactiveClient", REDIS_CACHE_CLIENT_REACTIVE)
+                    .addParameter("redisClient", REDIS_CACHE_CLIENT)
                     .addParameter("telemetry", REDIS_TELEMETRY)
-                    .addParameter("keyMapper", keyMapperType)
-                    .addParameter("valueMapper", valueMapperType)
-                    .addStatement("return %L(config, syncClient, reactiveClient, telemetry, keyMapper, valueMapper)", cacheImplName)
+                    .addParameter(keyMapperBuilder.build())
+                    .addParameter(valueMapperBuilder.build())
+                    .addStatement("return %L(config, redisClient, telemetry, keyMapper, valueMapper)", cacheImplName)
                     .returns(cacheTypeName)
                     .build()
             }
+
             else -> {
                 throw IllegalArgumentException("Unknown cache type: ${cacheContract.rawType}")
             }
@@ -213,6 +247,7 @@ class CacheSymbolProcessor(
                     .addParameter("telemetry", CAFFEINE_TELEMETRY)
                     .build()
             }
+
             REDIS_CACHE -> {
                 val keyType = cacheContract.typeArguments[0]
                 val valueType = cacheContract.typeArguments[1]
@@ -220,17 +255,83 @@ class CacheSymbolProcessor(
                 val valueMapperType = REDIS_CACHE_MAPPER_VALUE.parameterizedBy(valueType)
                 FunSpec.constructorBuilder()
                     .addParameter("config", REDIS_CACHE_CONFIG)
-                    .addParameter("syncClient", REDIS_CACHE_CLIENT_SYNC)
-                    .addParameter("reactiveClient", REDIS_CACHE_CLIENT_REACTIVE)
+                    .addParameter("redisClient", REDIS_CACHE_CLIENT)
                     .addParameter("telemetry", REDIS_TELEMETRY)
                     .addParameter("keyMapper", keyMapperType)
                     .addParameter("valueMapper", valueMapperType)
                     .build()
             }
+
             else -> {
                 throw IllegalArgumentException("Unknown cache type: ${cacheContract.rawType}")
             }
         }
+    }
+
+    private fun getCacheRedisKeyMapperForData(keyType: KSClassDeclaration): FunSpec {
+        val prefix = keyType.toClassName().simpleNames.joinToString("_")
+        val methodName = "${prefix}_RedisKeyMapper"
+        val methodBuilder = FunSpec.builder(methodName)
+            .addModifiers(KModifier.PUBLIC)
+            .addAnnotation(DefaultComponent::class)
+
+        val recordFields = keyType.getAllProperties().toList()
+        val keyBuilder = CodeBlock.builder()
+        val compositeKeyBuilder = CodeBlock.builder()
+        val copyBuilder = CodeBlock.builder()
+
+        copyBuilder.addStatement("var offset = 0")
+        for (i in recordFields.indices) {
+            val recordField = recordFields[i]
+            val mapperName = "keyMapper${i + 1}"
+
+            methodBuilder.addParameter(
+                mapperName,
+                REDIS_CACHE_MAPPER_KEY.parameterizedBy(recordField.type.toTypeName()),
+            )
+
+            val keyName = "_key" + (i + 1)
+            keyBuilder.addStatement("val %L = %L.apply(key.%L)", keyName, mapperName, recordField.simpleName.asString())
+            if (i == 0) {
+                compositeKeyBuilder.add("val _compositeKey = %T(", ByteArray::class)
+                for (j in recordFields.indices) {
+                    val compKeyName = "_key" + (j + 1)
+                    if (j != 0) {
+                        compositeKeyBuilder.add(" + %T.DELIMITER.size + %L.size", REDIS_CACHE_MAPPER_KEY, compKeyName)
+                    } else {
+                        compositeKeyBuilder.add("%L.size", compKeyName)
+                    }
+                }
+                copyBuilder.addStatement("%T.arraycopy(%L, 0, _compositeKey, 0, %L.size)", System::class.java, keyName, keyName)
+                copyBuilder.addStatement("offset += %L.size", keyName)
+            } else {
+                copyBuilder.addStatement(
+                    "%T.arraycopy(%T.DELIMITER, 0, _compositeKey, offset, %T.DELIMITER.size)",
+                    System::class, REDIS_CACHE_MAPPER_KEY, REDIS_CACHE_MAPPER_KEY
+                )
+                copyBuilder.addStatement("offset += %T.DELIMITER.size", REDIS_CACHE_MAPPER_KEY)
+                copyBuilder.addStatement("%T.arraycopy(%L, 0, _compositeKey, offset, %L.size)", System::class.java, keyName, keyName)
+                if (i != recordFields.size - 1) {
+                    copyBuilder.addStatement("offset += %L.size", keyName)
+                }
+            }
+        }
+
+        compositeKeyBuilder.addStatement(")")
+        copyBuilder.addStatement("_compositeKey")
+
+        return methodBuilder
+            .addCode(
+                CodeBlock.builder()
+                    .beginControlFlow("return %T { key -> ", REDIS_CACHE_MAPPER_KEY.parameterizedBy(keyType.toClassName()))
+                    .add(keyBuilder.build())
+                    .add(compositeKeyBuilder.build())
+                    .add(copyBuilder.build())
+                    .endControlFlow()
+                    .build()
+            )
+            .returns(REDIS_CACHE_MAPPER_KEY.parameterizedBy(keyType.toClassName()))
+            .build()
     }
 
     private fun getCacheSuperConstructorCall(cacheContract: KSClassDeclaration, cacheType: ParameterizedTypeName): CodeBlock {
@@ -239,13 +340,9 @@ class CacheSymbolProcessor(
 
         return when (cacheType.rawType) {
             CAFFEINE_CACHE -> CodeBlock.of("%S, config, factory, telemetry", configPath)
-            REDIS_CACHE -> CodeBlock.of("%S, config, syncClient, reactiveClient, telemetry, keyMapper, valueMapper", configPath)
+            REDIS_CACHE -> CodeBlock.of("%S, config, redisClient, telemetry, keyMapper, valueMapper", configPath)
             else -> throw IllegalArgumentException("Unknown cache type: ${cacheType.rawType}")
         }
-    }
-
-    private fun getPackage(element: KSAnnotated): String {
-        return element.toString()
     }
 }
 

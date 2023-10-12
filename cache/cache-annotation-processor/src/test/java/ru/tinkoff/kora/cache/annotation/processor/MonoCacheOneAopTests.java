@@ -1,12 +1,11 @@
 package ru.tinkoff.kora.cache.annotation.processor;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
-import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache1;
+import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache11;
 import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.mono.CacheableMonoOne;
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule;
 
@@ -20,10 +19,10 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class MonoCacheOneAopTests implements CaffeineCacheModule {
 
-    private static final String CACHED_IMPL = "ru.tinkoff.kora.cache.annotation.processor.testcache.$DummyCache1Impl";
+    private static final String CACHED_IMPL = "ru.tinkoff.kora.cache.annotation.processor.testcache.$DummyCache11Impl";
     private static final String CACHED_SERVICE = "ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.mono.$CacheableMonoOne__AopProxy";
 
-    private DummyCache1 cache = null;
+    private DummyCache11 cache = null;
     private CacheableMonoOne service = null;
 
     private CacheableMonoOne getService() {
@@ -32,7 +31,7 @@ class MonoCacheOneAopTests implements CaffeineCacheModule {
         }
 
         try {
-            var classLoader = TestUtils.annotationProcess(List.of(DummyCache1.class, CacheableMonoOne.class),
+            var classLoader = TestUtils.annotationProcess(List.of(DummyCache11.class, CacheableMonoOne.class),
                 new AopAnnotationProcessor(), new CacheAnnotationProcessor());
 
             var cacheClass = classLoader.loadClass(CACHED_IMPL);
@@ -42,7 +41,7 @@ class MonoCacheOneAopTests implements CaffeineCacheModule {
 
             final Constructor<?> cacheConstructor = cacheClass.getDeclaredConstructors()[0];
             cacheConstructor.setAccessible(true);
-            cache = (DummyCache1) cacheConstructor.newInstance(CacheRunner.getCaffeineConfig(),
+            cache = (DummyCache11) cacheConstructor.newInstance(CacheRunner.getCaffeineConfig(),
                 caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
 
             var serviceClass = classLoader.loadClass(CACHED_SERVICE);
