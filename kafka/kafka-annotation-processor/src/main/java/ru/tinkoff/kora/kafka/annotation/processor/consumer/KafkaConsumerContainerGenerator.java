@@ -3,7 +3,6 @@ package ru.tinkoff.kora.kafka.annotation.processor.consumer;
 import com.squareup.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.TagUtils;
-import ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames;
 import ru.tinkoff.kora.kafka.annotation.processor.consumer.KafkaConsumerHandlerGenerator.HandlerMethod;
 
 import javax.lang.model.element.ExecutableElement;
@@ -17,15 +16,17 @@ import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.prepar
 public class KafkaConsumerContainerGenerator {
 
     public MethodSpec generate(ExecutableElement executableElement, HandlerMethod handlerMethod, List<ConsumerParameter> parameters) {
-        var methodBuilder = MethodSpec.methodBuilder(prepareMethodName(executableElement, "Container"))
-            .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
-            .addAnnotation(CommonClassNames.root)
-            .returns(CommonClassNames.lifecycle);
-        var handlerTypeName = (ParameterizedTypeName) handlerMethod.method().returnType;
-
         var tagName = prepareConsumerTagName(executableElement);
         var tagsBlock = CodeBlock.of("$L.class", tagName);
         var tagAnnotation = AnnotationSpec.builder(CommonClassNames.tag).addMember("value", tagsBlock).build();
+
+        var methodBuilder = MethodSpec.methodBuilder(prepareMethodName(executableElement, "Container"))
+            .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+            .addAnnotation(CommonClassNames.root)
+            .addAnnotation(tagAnnotation)
+            .returns(CommonClassNames.lifecycle);
+        var handlerTypeName = (ParameterizedTypeName) handlerMethod.method().returnType;
+
         var configParameter = ParameterSpec
             .builder(kafkaConsumerConfig, "config")
             .addAnnotation(tagAnnotation)
@@ -62,7 +63,7 @@ public class KafkaConsumerContainerGenerator {
         }
         methodBuilder.addCode("if (config.driverProperties().getProperty($T.GROUP_ID_CONFIG) == null) {$>\n", commonClientConfigs);
         methodBuilder.beginControlFlow("if (config.topics() == null || config.topics().size() != 1)"); // todo allow list?
-        methodBuilder.addCode("throw new java.lang.IllegalArgumentException($S + config.topics());", "@KafkaListener require to specify 1 topic to subscribe when groupId is null, but received: ");
+        methodBuilder.addStatement("throw new java.lang.IllegalArgumentException($S + config.topics())", "@KafkaListener require to specify 1 topic to subscribe when groupId is null, but received: ");
         methodBuilder.endControlFlow();
         methodBuilder.addCode("return new $T<>(config, config.topics().get(0), keyDeserializer, valueDeserializer, telemetry, wrappedHandler);", kafkaAssignConsumerContainer);
         methodBuilder.addCode("$<\n} else {$>\n");

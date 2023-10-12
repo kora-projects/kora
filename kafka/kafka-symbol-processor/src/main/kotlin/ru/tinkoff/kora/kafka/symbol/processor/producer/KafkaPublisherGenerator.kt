@@ -309,7 +309,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                 b.addStatement("val _headers = %N", publishData.headersVar.name?.asString().toString())
             }
             if (publishData.keyVar == null) {
-                b.addStatement("val _key = byteArrayOf()")
+                b.addStatement("val _key: ByteArray? = null")
             } else {
                 b.addStatement("val _key = %N.serialize(_topic, _headers, %N)", keyParserName!!, publishData.keyVar.name?.asString().toString())
             }
