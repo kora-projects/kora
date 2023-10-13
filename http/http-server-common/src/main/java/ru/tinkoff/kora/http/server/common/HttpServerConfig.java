@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.http.server.common;
 
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
+import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetryConfig;
 
 import java.time.Duration;
 
@@ -23,4 +24,6 @@ public interface HttpServerConfig {
     default int blockingThreads() {return Math.min(Math.max(Runtime.getRuntime().availableProcessors(), 2) * 8, 200);}
 
     default Duration shutdownWait() {return Duration.ofMillis(100);}
+
+    HttpServerTelemetryConfig telemetry();
 }

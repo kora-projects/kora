@@ -11,6 +11,7 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerMetrics.KafkaProducerTxMetrics;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerTracer.KafkaProducerRecordSpan;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerTracer.KafkaProducerTxSpan;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.Map;
 import java.util.Properties;
@@ -30,10 +31,10 @@ public class DefaultKafkaProducerTelemetryFactory implements KafkaProducerTeleme
     }
 
     @Override
-    public KafkaProducerTelemetry get(Producer<?, ?> producer, Properties properties) {
-        var tracer = this.tracerFactory == null ? null : this.tracerFactory.get(producer, properties);
-        var logger = this.loggerFactory == null ? null : this.loggerFactory.get(producer, properties);
-        var metrics = this.metricsFactory == null ? null : this.metricsFactory.get(producer, properties);
+    public KafkaProducerTelemetry get(TelemetryConfig config, Producer<?, ?> producer, Properties properties) {
+        var tracer = this.tracerFactory == null ? null : this.tracerFactory.get(config.tracing(), producer, properties);
+        var logger = this.loggerFactory == null ? null : this.loggerFactory.get(config.logging(), producer, properties);
+        var metrics = this.metricsFactory == null ? null : this.metricsFactory.get(config.metrics(), producer, properties);
 
         return new DefaultKafkaProducerTelemetry(tracer, logger, metrics);
     }

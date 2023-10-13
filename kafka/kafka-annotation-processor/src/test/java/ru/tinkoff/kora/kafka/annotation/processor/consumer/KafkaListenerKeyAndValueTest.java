@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.kafka.common.consumer.KafkaListenerConfig;
-import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
+import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetryFactory;
 import ru.tinkoff.kora.kafka.common.exceptions.RecordKeyDeserializationException;
 import ru.tinkoff.kora.kafka.common.exceptions.RecordValueDeserializationException;
 
@@ -42,7 +42,7 @@ public class KafkaListenerKeyAndValueTest extends AbstractKafkaListenerAnnotatio
             """);
         compileResult.assertSuccess();
         var module = compileResult.loadClass("KafkaListenerClassModule");
-        var container = module.getMethod("kafkaListenerClassProcessContainer", KafkaListenerConfig.class, ValueOf.class, Deserializer.class, Deserializer.class, KafkaConsumerTelemetry.class);
+        var container = module.getMethod("kafkaListenerClassProcessContainer", KafkaListenerConfig.class, ValueOf.class, Deserializer.class, Deserializer.class, KafkaConsumerTelemetryFactory.class);
         var valueDeserializer = container.getParameters()[3];
 
         var valueTag = valueDeserializer.getAnnotation(Tag.class);
@@ -82,7 +82,7 @@ public class KafkaListenerKeyAndValueTest extends AbstractKafkaListenerAnnotatio
             }
             """);
         var module = compileResult.loadClass("KafkaListenerClassModule");
-        var container = module.getMethod("kafkaListenerClassProcessContainer", KafkaListenerConfig.class, ValueOf.class, Deserializer.class, Deserializer.class, KafkaConsumerTelemetry.class);
+        var container = module.getMethod("kafkaListenerClassProcessContainer", KafkaListenerConfig.class, ValueOf.class, Deserializer.class, Deserializer.class, KafkaConsumerTelemetryFactory.class);
         var keyDeserializer = container.getParameters()[2];
         var valueDeserializer = container.getParameters()[3];
 

@@ -11,6 +11,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerTelemetry;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_LogConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.test.kafka.KafkaParams;
 import ru.tinkoff.kora.test.kafka.KafkaTestContainer;
 
@@ -71,7 +75,11 @@ class TransactionalPublisherImplTest {
         var producerProps = new Properties();
         producerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, params.bootstrapServers());
 
-        var producerConfig = new $KafkaPublisherConfig_ConfigValueExtractor.KafkaPublisherConfig_Impl(producerProps);
+        var producerConfig = new $KafkaPublisherConfig_ConfigValueExtractor.KafkaPublisherConfig_Impl(producerProps, new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
+            new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
+            new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
+            new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Defaults()
+        ));
         var transactionalConfig = new $KafkaPublisherConfig_TransactionConfig_ConfigValueExtractor.TransactionConfig_Impl(
             "test-", 5, Duration.ofSeconds(5)
         );
@@ -122,7 +130,11 @@ class TransactionalPublisherImplTest {
         var producerProps = new Properties();
         producerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, params.bootstrapServers());
 
-        var producerConfig = new $KafkaPublisherConfig_ConfigValueExtractor.KafkaPublisherConfig_Impl(producerProps);
+        var producerConfig = new $KafkaPublisherConfig_ConfigValueExtractor.KafkaPublisherConfig_Impl(producerProps, new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
+            new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
+            new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
+            new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Defaults()
+        ));
         var transactionalConfig = new $KafkaPublisherConfig_TransactionConfig_ConfigValueExtractor.TransactionConfig_Impl(
             "test-", 5, Duration.ofSeconds(5)
         );

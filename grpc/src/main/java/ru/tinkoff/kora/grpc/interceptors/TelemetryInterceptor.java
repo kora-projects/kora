@@ -1,18 +1,19 @@
 package ru.tinkoff.kora.grpc.interceptors;
 
 import io.grpc.*;
+import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.grpc.telemetry.GrpcServerTelemetry;
 
 public class TelemetryInterceptor implements ServerInterceptor {
-    private final GrpcServerTelemetry telemetry;
+    private final ValueOf<GrpcServerTelemetry> telemetry;
 
-    public TelemetryInterceptor(GrpcServerTelemetry telemetry) {
+    public TelemetryInterceptor(ValueOf<GrpcServerTelemetry> telemetry) {
         this.telemetry = telemetry;
     }
 
     @Override
     public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call, Metadata headers, ServerCallHandler<ReqT, RespT> next) {
-        var ctx = this.telemetry.createContext(call, headers);
+        var ctx = this.telemetry.get().createContext(call, headers);
         var c = new TelemetryServerCall<>(call, ctx);
         var listener = next.startCall(c, headers);
         return new TelemetryServerCallListener<>(listener, ctx);

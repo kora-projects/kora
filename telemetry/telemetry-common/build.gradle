@@ -1,0 +1,5 @@
+dependencies {
+    api project(':config:config-common')
+
+    annotationProcessor project(':config:config-annotation-processor')
+}

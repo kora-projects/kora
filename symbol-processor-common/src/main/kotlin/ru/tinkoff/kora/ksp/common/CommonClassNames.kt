@@ -54,8 +54,11 @@ object CommonClassNames {
     val configParseException = ClassName("ru.tinkoff.kora.config.common.extractor", "ConfigValueExtractionException")
     val configValue = ClassName("ru.tinkoff.kora.config.common", "ConfigValue")
     val configValueExtractor = ClassName("ru.tinkoff.kora.config.common.extractor", "ConfigValueExtractor")
+    val configValueExtractorAnnotation = ClassName("ru.tinkoff.kora.config.common.annotation", "ConfigValueExtractor");
 
     val isNotEmpty = MemberName("kotlin.collections", "isNotEmpty")
+
+    val telemetryConfig = ClassName("ru.tinkoff.kora.telemetry.common", "TelemetryConfig")
 
     fun KSType.isList(): Boolean {
         val className = if (this.declaration is KSClassDeclaration) this.toClassName().canonicalName else this.toString()

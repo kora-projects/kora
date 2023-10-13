@@ -1,7 +1,10 @@
 package ru.tinkoff.kora.scheduling.annotation.processor;
 
 import com.squareup.javapoet.*;
-import ru.tinkoff.kora.annotation.processor.common.*;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
+import ru.tinkoff.kora.annotation.processor.common.NameUtils;
+import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -12,6 +15,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.io.IOException;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 
@@ -52,6 +56,7 @@ public class QuartzSchedulingGenerator {
             var tag = AnnotationUtils.<AnnotationMirror>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "value");
             var triggerParameter = ParameterSpec.builder(triggerClassName, "trigger").addAnnotation(AnnotationSpec.get(tag)).build();
             component.addParameter(triggerParameter);
+            component.addCode("var telemetry = telemetryFactory.get(null, $T.class, $S);\n", typeMirror, method.getSimpleName().toString());
         } else if (annotationType.equals(scheduleWithCron)) {
             var identity = Optional.ofNullable(AnnotationUtils.<String>parseAnnotationValue(elements, trigger.triggerAnnotation(), "identity"))
                 .filter(Predicate.not(String::isBlank))
@@ -64,17 +69,26 @@ public class QuartzSchedulingGenerator {
                 var b = MethodSpec.methodBuilder(configClassName.simpleName())
                     .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
                     .returns(configClassName)
-                    .addParameter(CommonClassNames.config, "config");
+                    .addParameter(CommonClassNames.config, "config")
+                    .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueExtractor, configClassName), "extractor");
 
                 if (cron != null && !cron.isBlank()) {
                     b.addStatement("var value = config.get($S)", configPath);
-                    b.addCode("if (value instanceof $T.NullValue) {\n  return new $T($S);\n}\n", CommonClassNames.configValue, configClassName, cron);
+                    b.beginControlFlow("if (value instanceof $T.NullValue)", CommonClassNames.configValue)
+                        .addCode("return extractor.extract($>\n")
+                        .addCode("new $T.ObjectValue(value.origin(), $T.of($S, new $T.StringValue(value.origin(), $S)))", CommonClassNames.configValue, Map.class, "cron", CommonClassNames.configValue, cron)
+                        .addCode("$<\n);\n")
+                        .endControlFlow();
                 } else {
                     b.addStatement("var value = config.get($S)", configPath);
                 }
                 b.beginControlFlow("if (value instanceof $T.StringValue str)", CommonClassNames.configValue)
-                    .addStatement("var cron = str.value();")
-                    .addStatement("return new $T(cron)", configClassName)
+                    .addStatement("var cron = str.value()")
+                    .addCode("return extractor.extract($>\n")
+                    .addCode("new $T.ObjectValue(value.origin(), $T.of($S, new $T.StringValue(value.origin(), cron)))", CommonClassNames.configValue, Map.class, "cron", CommonClassNames.configValue)
+                    .addCode("$<\n);\n")
+                    .nextControlFlow("else if (value instanceof $T.ObjectValue obj)", CommonClassNames.configValue)
+                    .addStatement("return extractor.extract(obj)")
                     .nextControlFlow("else")
                     .addStatement("throw ru.tinkoff.kora.config.common.extractor.ConfigValueExtractionException.unexpectedValueType(value, $T.StringValue.class)", CommonClassNames.configValue)
                     .endControlFlow();
@@ -93,11 +107,15 @@ public class QuartzSchedulingGenerator {
                   .withSchedule($T.cronSchedule($L))
                   .build();
                 """.stripIndent(), triggerBuilderClassName, identity, cronScheduleBuilderClassName, cronSchedule.toString());
+            if (configPath != null && !configPath.isBlank()) {
+                component.addCode("var telemetry = telemetryFactory.get(config.telemetry(), $T.class, $S);\n", typeMirror, method.getSimpleName().toString());
+            } else {
+                component.addCode("var telemetry = telemetryFactory.get(null, $T.class, $S);\n", typeMirror, method.getSimpleName().toString());
+            }
         } else {
             // never gonna happen
             throw new IllegalStateException();
         }
-        component.addCode("var telemetry = telemetryFactory.get($T.class, $S);\n", typeMirror, method.getSimpleName().toString());
 
         component
             .addCode("return new $T(telemetry, object, trigger);\n", jobClassName);
@@ -109,14 +127,31 @@ public class QuartzSchedulingGenerator {
         var configRecordName = NameUtils.getOuterClassesAsPrefix(method) + "CronConfig";
         var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
 
-        var rb = new RecordClassBuilder(configRecordName)
-            .addModifier(Modifier.PUBLIC);
+        var config = TypeSpec.interfaceBuilder(configRecordName)
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", "$S", JdkSchedulingGenerator.class.getCanonicalName()).build())
+            .addAnnotation(CommonClassNames.configValueExtractorAnnotation)
+            .addMethod(MethodSpec.methodBuilder("telemetry")
+                .returns(CommonClassNames.telemetryConfig)
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .build()
+            );
+
         if (defaultCron != null && !defaultCron.isBlank()) {
-            rb.addComponent("cron", TypeName.get(String.class), CodeBlock.of("$S", defaultCron));
+            config.addMethod(MethodSpec.methodBuilder("cron")
+                .returns(String.class)
+                .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                .addStatement("return $S", defaultCron)
+                .build()
+            );
         } else {
-            rb.addComponent("cron", TypeName.get(String.class));
+            config.addMethod(MethodSpec.methodBuilder("cron")
+                .returns(String.class)
+                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                .build()
+            );
         }
-        rb.writeTo(this.filer, packageName);
+        JavaFile.builder(packageName, config.build()).build().writeTo(this.filer);
 
         return ClassName.get(packageName, configRecordName);
     }

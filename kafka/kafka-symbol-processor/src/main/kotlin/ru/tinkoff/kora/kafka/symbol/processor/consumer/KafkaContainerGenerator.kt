@@ -29,10 +29,11 @@ class KafkaContainerGenerator {
             .addParameter(ParameterSpec.builder("handler", CommonClassNames.valueOf.parameterizedBy(handlerType)).addAnnotation(tagAnnotation).build())
             .addParameter(ParameterSpec.builder("keyDeserializer", KafkaClassNames.deserializer.parameterizedBy(keyType)).tag(handler.keyTag).build())
             .addParameter(ParameterSpec.builder("valueDeserializer", KafkaClassNames.deserializer.parameterizedBy(valueType)).tag(handler.valueTag).build())
-            .addParameter("telemetry", KafkaClassNames.kafkaConsumerTelemetry.parameterizedBy(keyType, valueType))
+            .addParameter("telemetryFactory", KafkaClassNames.kafkaConsumerTelemetryFactory.parameterizedBy(keyType, valueType))
             .addAnnotation(CommonClassNames.root)
             .addAnnotation(tagAnnotation)
             .returns(CommonClassNames.lifecycle)
+        funBuilder.addStatement("val telemetry = telemetryFactory.get(config.telemetry())")
         if (handlerType.rawType == KafkaClassNames.recordHandler) {
             funBuilder.addStatement("val wrappedHandler = %T.wrapHandlerRecord(telemetry, %L, handler)", KafkaClassNames.handlerWrapper, consumerParameter == null)
         } else {

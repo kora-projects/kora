@@ -13,6 +13,10 @@ import ru.tinkoff.kora.common.util.Either;
 import ru.tinkoff.kora.kafka.common.consumer.$KafkaListenerConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.kafka.common.consumer.containers.KafkaSubscribeConsumerContainer;
 import ru.tinkoff.kora.kafka.common.exceptions.RecordValueDeserializationException;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_LogConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.test.kafka.KafkaParams;
 import ru.tinkoff.kora.test.kafka.KafkaTestContainer;
 
@@ -40,7 +44,22 @@ class KafkaSubscribeConsumerContainerTest {
         driverProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         driverProps.put(CommonClientConfigs.GROUP_ID_CONFIG, UUID.randomUUID().toString());
         var testTopic = params.createTopic("test-topic", 3);
-        var config = new $KafkaListenerConfig_ConfigValueExtractor.KafkaListenerConfig_Impl(driverProps, List.of(testTopic), null, null, Either.right("earliest"), Duration.ofMillis(100), Duration.ofMillis(100), Integer.valueOf(1), Duration.ofMillis(10000));
+        var config = new $KafkaListenerConfig_ConfigValueExtractor.KafkaListenerConfig_Impl(
+            driverProps,
+            List.of(testTopic),
+            null,
+            null,
+            Either.right("earliest"),
+            Duration.ofMillis(100),
+            Duration.ofMillis(100),
+            Integer.valueOf(1),
+            Duration.ofMillis(10000),
+            new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
+                new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
+                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
+                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Defaults()
+            )
+        );
         var queue = new ArrayBlockingQueue<>(3);
         var container = new KafkaSubscribeConsumerContainer<>(config, new StringDeserializer(), new IntegerDeserializer(), (records, consumer, commitAllowed) -> {
             for (var record : records) {

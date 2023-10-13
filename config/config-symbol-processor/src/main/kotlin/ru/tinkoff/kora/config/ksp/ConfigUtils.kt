@@ -7,6 +7,7 @@ import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.common.util.Either
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.JavaUtils.isRecord
 import ru.tinkoff.kora.ksp.common.JavaUtils.recordComponents
 import ru.tinkoff.kora.ksp.common.MappingData
@@ -150,11 +151,11 @@ object ConfigUtils {
                 val functionType = function.asMemberOf(type)
                 val name = function.simpleName.asString()
                 if (seen.add(name)) {
-                    val isNullable = functionType.returnType!!.isMarkedNullable
+                    val isNullable = functionType.returnType!!.nullability == Nullability.NULLABLE || function.isAnnotationPresent { it.simpleName == "Nullable" }
                     val mapping = function.parseMappingData().getMapping(ConfigClassNames.configValueExtractor)
                     fields.add(
                         ConfigField(
-                            name, functionType.returnType!!.toTypeName(), isNullable, !function.isAbstract, mapping
+                            name, functionType.returnType!!.toTypeName().copy(isNullable), isNullable, !function.isAbstract, mapping
                         )
                     )
                 }

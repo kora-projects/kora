@@ -6,6 +6,7 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
+import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
@@ -13,14 +14,13 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTracer;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 
-import jakarta.annotation.Nullable;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 
-public class OpentelemetryKafkaConsumerTracer implements KafkaConsumerTracer {
+public final class OpentelemetryKafkaConsumerTracer implements KafkaConsumerTracer {
     private final Tracer tracer;
 
     public OpentelemetryKafkaConsumerTracer(Tracer tracer) {

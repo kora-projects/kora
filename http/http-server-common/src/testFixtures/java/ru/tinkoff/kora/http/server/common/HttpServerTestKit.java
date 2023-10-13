@@ -40,10 +40,10 @@ import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.$HttpServerConfig_ConfigValueExtractor.HttpServerConfig_Impl;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
-import ru.tinkoff.kora.http.server.common.telemetry.DefaultHttpServerTelemetry;
-import ru.tinkoff.kora.http.server.common.telemetry.HttpServerLogger;
-import ru.tinkoff.kora.http.server.common.telemetry.HttpServerMetrics;
-import ru.tinkoff.kora.http.server.common.telemetry.PrivateApiMetrics;
+import ru.tinkoff.kora.http.server.common.telemetry.*;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -89,7 +89,20 @@ public abstract class HttpServerTestKit {
         .build();
 
     protected HttpServerMetrics metrics = Mockito.mock(HttpServerMetrics.class);
+    protected HttpServerMetricsFactory metricsFactory = new HttpServerMetricsFactory() {
+        @Nullable
+        public HttpServerMetrics get(TelemetryConfig.MetricsConfig config) {
+            return metrics;
+        }
+    };
     protected HttpServerLogger logger = Mockito.mock(HttpServerLogger.class);
+    protected HttpServerLoggerFactory loggerFactory = new HttpServerLoggerFactory() {
+        @Nullable
+        @Override
+        public HttpServerLogger get(HttpServerLoggerConfig logging) {
+            return logger;
+        }
+    };
 
     protected abstract HttpServer httpServer(ValueOf<HttpServerConfig> config, PublicApiHandler publicApiHandler);
 
@@ -926,8 +939,23 @@ public abstract class HttpServerTestKit {
     }
 
     protected void startServer(boolean ignoreTrailingSlash, List<HttpServerInterceptor> interceptors, HttpServerRequestHandler... handlers) {
-        var config = new HttpServerConfig_Impl(0, 0, "/metrics", "/system/readiness", "/system/liveness", ignoreTrailingSlash, 1, 10, Duration.ofMillis(1));
-        var publicApiHandler = new PublicApiHandler(List.of(handlers), interceptors, new DefaultHttpServerTelemetry(this.metrics, this.logger, null), config);
+        var config = new HttpServerConfig_Impl(
+            0,
+            0,
+            "/metrics",
+            "/system/readiness",
+            "/system/liveness",
+            ignoreTrailingSlash,
+            1,
+            10,
+            Duration.ofMillis(1),
+            new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
+                new $HttpServerLoggerConfig_ConfigValueExtractor.HttpServerLoggerConfig_Impl(true, true),
+                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
+                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO)
+            )
+        );
+        var publicApiHandler = new PublicApiHandler(List.of(handlers), interceptors, new DefaultHttpServerTelemetryFactory(this.loggerFactory, this.metricsFactory, null), config);
         this.httpServer = this.httpServer(valueOf(config), publicApiHandler);
         try {
             this.httpServer.init();

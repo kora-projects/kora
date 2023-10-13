@@ -5,9 +5,6 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.database.common.QueryContext;
 
 public class DefaultDataBaseTelemetry implements DataBaseTelemetry {
-    private static final DataBaseTelemetryContext NOOP_CTX = exception -> {
-    };
-
     @Nullable
     private final DataBaseMetricWriter metricWriter;
     @Nullable
@@ -35,7 +32,7 @@ public class DefaultDataBaseTelemetry implements DataBaseTelemetry {
         var tracing = this.tracing;
         var logger = this.logger;
         if (metricWriter == null && tracing == null && (logger == null || !logger.isEnabled())) {
-            return NOOP_CTX;
+            return DataBaseTelemetryFactory.EMPTY_CTX;
         }
 
         var span = tracing == null ? null : tracing.createQuerySpan(ctx, query);

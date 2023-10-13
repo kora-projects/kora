@@ -3,16 +3,16 @@ package ru.tinkoff.kora.micrometer.module.http.client;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientMetrics;
-import ru.tinkoff.kora.micrometer.module.MetricsConfig;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class MicrometerHttpClientMetrics implements HttpClientMetrics {
     private final MeterRegistry meterRegistry;
     private final ConcurrentHashMap<DurationKey, DistributionSummary> duration = new ConcurrentHashMap<>();
-    private final MetricsConfig.HttpClientMetricsConfig config;
+    private final TelemetryConfig.MetricsConfig config;
 
-    public MicrometerHttpClientMetrics(MeterRegistry meterRegistry, MetricsConfig.HttpClientMetricsConfig config) {
+    public MicrometerHttpClientMetrics(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config) {
         this.meterRegistry = meterRegistry;
         this.config = config;
     }

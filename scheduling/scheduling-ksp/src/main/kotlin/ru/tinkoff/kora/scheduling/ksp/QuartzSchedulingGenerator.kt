@@ -6,6 +6,7 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.common.Tag
@@ -45,6 +46,7 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
                     .addAnnotation(tagAnnotationSpec)
                     .build()
                 component.addParameter(triggerParameter)
+                component.addCode("val telemetry = telemetryFactory.get(null, %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
             }
 
             "ScheduleWithCron" -> {
@@ -63,24 +65,35 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
                     val b = FunSpec.builder(configClassName.simpleName)
                         .returns(configClassName)
                         .addParameter("config", CommonClassNames.config)
+                        .addParameter("extractor", CommonClassNames.configValueExtractor.parameterizedBy(configClassName))
                     if (cron.isNotBlank()) {
                         b.addStatement("val value = config.get(%S)", configPath)
-                        b.addCode("if (value is %T.NullValue) {\n  return %T(%S);\n}\n", CommonClassNames.configValue, configClassName, cron)
+                        b.controlFlow("if (value is %T.NullValue)", CommonClassNames.configValue) {
+                            addCode("return extractor.extract(\n")
+                            addCode("  %T.ObjectValue(value.origin(), mapOf(%S to %T.StringValue(value.origin(), %S)))\n", CommonClassNames.configValue, "cron", CommonClassNames.configValue, cron)
+                            addCode(")!!\n")
+                        }
                     } else {
                         b.addStatement("val value = config.get(%S)!!", configPath)
                     }
+                    b.controlFlow("if (value is %T.ObjectValue)", CommonClassNames.configValue) {
+                        addStatement("return extractor.extract(value)!!")
+                    }
                     b.controlFlow("if (value is %T.StringValue)", CommonClassNames.configValue) {
-                        addStatement("return %T(value.value()!!)", configClassName)
+                        addCode("return extractor.extract(\n")
+                        addCode("  %T.ObjectValue(value.origin(), mapOf(%S to %T.StringValue(value.origin(), value.value())))\n", CommonClassNames.configValue, "cron", CommonClassNames.configValue)
+                        addCode(")!!\n")
                         nextControlFlow("else")
                         addStatement(
-                            "throw ru.tinkoff.kora.config.common.extractor.ConfigValueExtractionException.unexpectedValueType(value, %T.StringValue::class.java)",
+                            "throw %T.unexpectedValueType(value, %T.StringValue::class.java)",
+                            ClassName("ru.tinkoff.kora.config.common.extractor", "ConfigValueExtractionException"),
                             CommonClassNames.configValue
                         )
                     }
 
                     builder.addFunction(b.build())
                     component.addParameter("config", configClassName);
-                    cronSchedule = CodeBlock.of("config.cron")
+                    cronSchedule = CodeBlock.of("config.cron()")
                 }
                 component.addCode(
                     """
@@ -90,9 +103,13 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
                   .build();
                 """.trimIndent() + "\n", triggerBuilderClassName, identity, cronScheduleBuilderClassName, cronSchedule.toString()
                 );
+                if (!configPath.isNullOrBlank()) {
+                    component.addCode("val telemetry = telemetryFactory.get(config.telemetry(), %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
+                } else {
+                    component.addCode("val telemetry = telemetryFactory.get(null, %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
+                }
             }
         }
-        component.addCode("val telemetry = telemetryFactory.get(%T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
 
         component
             .addCode("return %T(telemetry, target, trigger);\n", jobClassName)
@@ -135,27 +152,19 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
 
     private fun generateCronConfigRecord(type: KSClassDeclaration, function: KSFunctionDeclaration, defaultCron: String): ClassName {
         val configClassName = type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_CronConfig"
-        val constructor = FunSpec.constructorBuilder()
-        if (defaultCron.isBlank()) {
-            constructor.addParameter("cron", STRING)
-        } else {
-            constructor.addParameter(
-                ParameterSpec.builder("cron", STRING)
-                    .defaultValue(CodeBlock.of("%S", defaultCron))
-                    .build()
-            )
-        }
-        val configType = TypeSpec.classBuilder(configClassName)
+        val configType = TypeSpec.interfaceBuilder(configClassName)
+            .addAnnotation(CommonClassNames.configValueExtractorAnnotation)
             .generated(QuartzSchedulingGenerator::class)
-            .addModifiers(KModifier.PUBLIC, KModifier.DATA)
-            .addProperty(
-                PropertySpec.builder("cron", STRING)
-                    .initializer("cron")
-                    .build()
-            )
-            .primaryConstructor(constructor.build())
-            .build()
-        FileSpec.get(type.packageName.asString(), configType).writeTo(env.codeGenerator, false, listOf(type.containingFile!!))
+            .addFunction(FunSpec.builder("telemetry").returns(ClassName("ru.tinkoff.kora.telemetry.common", "TelemetryConfig")).addModifiers(KModifier.ABSTRACT).build())
+
+        if (defaultCron.isBlank()) {
+            configType.addFunction(FunSpec.builder("cron").addModifiers(KModifier.ABSTRACT).returns(STRING).build())
+        } else {
+            configType.addFunction(FunSpec.builder("cron").returns(STRING).addStatement("return %S", defaultCron).build())
+        }
+
+        FileSpec.get(type.packageName.asString(), configType.build()).writeTo(env.codeGenerator, false, listOf(type.containingFile!!))
         return ClassName(type.packageName.asString(), configClassName)
+
     }
 }

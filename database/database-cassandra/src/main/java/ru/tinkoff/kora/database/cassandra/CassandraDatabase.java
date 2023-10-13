@@ -15,12 +15,13 @@ public final class CassandraDatabase implements CassandraConnectionFactory, Life
 
     public CassandraDatabase(CassandraConfig config, DataBaseTelemetryFactory telemetryFactory) {
         this.config = config;
-        this.telemetry = telemetryFactory.get(
+        this.telemetry = Objects.requireNonNullElse(telemetryFactory.get(
+            config.telemetry(),
             Objects.requireNonNullElse(config.basic().sessionName(), "cassandra"),
             "cassandra",
             "cassandra",
             Optional.ofNullable(config.auth()).map(CassandraConfig.CassandraCredentials::login).orElse("anonymous")
-        );
+        ), DataBaseTelemetryFactory.EMPTY);
     }
 
     @Override

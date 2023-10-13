@@ -9,6 +9,7 @@ import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.*;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetry;
+import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetryFactory;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -38,8 +39,8 @@ public class PublicApiHandler {
     private final HttpServerTelemetry telemetry;
     private final HttpServerConfig config;
 
-    public PublicApiHandler(List<HttpServerRequestHandler> handlers, List<HttpServerInterceptor> interceptors, HttpServerTelemetry httpServerTelemetry, HttpServerConfig config) {
-        this.telemetry = httpServerTelemetry;
+    public PublicApiHandler(List<HttpServerRequestHandler> handlers, List<HttpServerInterceptor> interceptors, HttpServerTelemetryFactory httpServerTelemetry, HttpServerConfig config) {
+        this.telemetry = Objects.requireNonNullElse(httpServerTelemetry.get(config.telemetry()), HttpServerTelemetry.EMPTY);
         this.config = config;
         this.pathTemplateMatcher = new HashMap<>();
         this.allMethodMatchers = new PathTemplateMatcher<>();

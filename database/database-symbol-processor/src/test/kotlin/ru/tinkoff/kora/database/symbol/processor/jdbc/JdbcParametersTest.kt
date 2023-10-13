@@ -8,6 +8,10 @@ import org.mockito.kotlin.verify
 import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.database.jdbc.`$JdbcDatabaseConfig_ConfigValueExtractor`.JdbcDatabaseConfig_Impl
 import ru.tinkoff.kora.database.jdbc.mapper.parameter.JdbcParameterColumnMapper
+import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_ConfigValueExtractor`
+import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_LogConfig_ConfigValueExtractor`
+import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_MetricsConfig_ConfigValueExtractor`
+import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_TracingConfig_ConfigValueExtractor`
 import java.time.Duration
 import java.util.*
 import kotlin.reflect.full.findAnnotations
@@ -49,7 +53,12 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             0,
             Duration.ofMillis(1000L),
             false,
-            Properties()
+            Properties(),
+            `$TelemetryConfig_ConfigValueExtractor`.TelemetryConfig_Impl(
+                `$TelemetryConfig_LogConfig_ConfigValueExtractor`.LogConfig_Impl(true),
+                `$TelemetryConfig_TracingConfig_ConfigValueExtractor`.TracingConfig_Impl(true),
+                `$TelemetryConfig_MetricsConfig_ConfigValueExtractor`.MetricsConfig_Defaults()
+            )
         )
         val repository = compileForArgs(
             arrayOf(config, executor),

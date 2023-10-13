@@ -169,7 +169,7 @@ public class SoapClientImplGenerator {
             }
             var executorFieldName = operationName + "RequestExecutor";
             constructorBuilder.addCode(
-                "this.$L = new $T(httpClient, telemetry, new $T(jaxb), $S, config.url(), config.timeout(), $S, $S);\n",
+                "this.$L = new $T(httpClient, telemetry, new $T(jaxb), $S, config, $S, $S);\n",
                 executorFieldName, soapClasses.soapRequestExecutor(), soapClasses.xmlToolsType(), serviceName, operationName, soapAction
             );
             builder.addField(soapClasses.soapRequestExecutor(), executorFieldName, Modifier.PRIVATE, Modifier.FINAL);

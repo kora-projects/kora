@@ -3,7 +3,6 @@ package ru.tinkoff.kora.grpc.telemetry;
 import io.grpc.Metadata;
 import io.grpc.ServerCall;
 import io.grpc.Status;
-
 import jakarta.annotation.Nullable;
 
 public interface GrpcServerTelemetry {

@@ -162,7 +162,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
             }
             val executorFieldName = operationName + "RequestExecutor"
             constructorBuilder.addCode(
-                "this.%L = %T(httpClient, telemetry, %T(jaxb), %S, config.url(), config.timeout(), %S, %S)\n",
+                "this.%L = %T(httpClient, telemetry, %T(jaxb), %S, config, %S, %S)\n",
                 executorFieldName, SoapRequestExecutor::class.java, soapClasses.xmlToolsType(), serviceName, operationName, soapAction
             )
             builder.addProperty(executorFieldName, SoapRequestExecutor::class, KModifier.PRIVATE)

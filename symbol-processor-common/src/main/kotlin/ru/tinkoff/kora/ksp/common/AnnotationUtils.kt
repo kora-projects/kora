@@ -4,6 +4,7 @@ import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSTypeReference
 import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.ksp.toClassName
 import kotlin.reflect.KClass
 
 object AnnotationUtils {
@@ -27,6 +28,7 @@ object AnnotationUtils {
 
 
     fun KSAnnotated.isAnnotationPresent(type: ClassName) = this.findAnnotations(type).firstOrNull() != null
+    fun KSAnnotated.isAnnotationPresent(predicate: (ClassName) -> Boolean) = this.annotations.any { predicate(it.annotationType.resolve().toClassName()) }
 
     fun KSAnnotated.findAnnotation(type: ClassName) = this.findAnnotations(type).firstOrNull()
 

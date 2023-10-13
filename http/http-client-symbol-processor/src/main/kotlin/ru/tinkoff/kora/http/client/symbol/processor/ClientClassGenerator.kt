@@ -524,7 +524,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
             }
             val name = method.simpleName.asString()
             builder.addCode(
-                "val %L = config.apply(httpClient, %T::class.java, %S, config.%LConfig, telemetryFactory, %S)\n",
+                "val %L = config.apply(httpClient, %T::class.java, %S, config.%L(), telemetryFactory, %S)\n",
                 name,
                 declaration.toClassName(),
                 name,

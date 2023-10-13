@@ -3,6 +3,7 @@ package ru.tinkoff.kora.kafka.common.consumer;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.util.Either;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.time.Duration;
 import java.util.List;
@@ -43,6 +44,8 @@ public interface KafkaListenerConfig {
         return Duration.ofMinutes(1);
     }
 
+    TelemetryConfig telemetry();
+
     default KafkaListenerConfig withDriverPropertiesOverrides(Map<String, Object> overrides) {
         var props = new Properties();
         props.putAll(driverProperties());
@@ -56,7 +59,8 @@ public interface KafkaListenerConfig {
             pollTimeout(),
             backoffTimeout(),
             threads(),
-            partitionRefreshInterval()
+            partitionRefreshInterval(),
+            telemetry()
         );
     }
 }

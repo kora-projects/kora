@@ -2,6 +2,7 @@ package ru.tinkoff.kora.scheduling.annotation.processor;
 
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
+import ru.tinkoff.kora.config.annotation.processor.processor.ConfigParserAnnotationProcessor;
 import ru.tinkoff.kora.scheduling.annotation.processor.controller.*;
 
 class KoraSchedulingAnnotationProcessorTest {
@@ -33,7 +34,7 @@ class KoraSchedulingAnnotationProcessorTest {
     private record ProcessResult(ClassLoader cl, Class<?> module) {}
 
     private ProcessResult process(Class<?> clazz) throws Exception {
-        var cl = TestUtils.annotationProcess(clazz, new KoraSchedulingAnnotationProcessor());
+        var cl = TestUtils.annotationProcess(clazz, new KoraSchedulingAnnotationProcessor(), new ConfigParserAnnotationProcessor());
         var module = cl.loadClass(clazz.getPackageName() + ".$" + clazz.getSimpleName() + "_SchedulingModule");
         return new ProcessResult(cl, module);
     }

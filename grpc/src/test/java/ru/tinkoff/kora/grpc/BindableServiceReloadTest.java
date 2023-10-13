@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
+import ru.tinkoff.kora.config.annotation.processor.processor.ConfigParserAnnotationProcessor;
 import ru.tinkoff.kora.grpc.app.Application;
 import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor;
 
@@ -20,9 +21,10 @@ public class BindableServiceReloadTest {
         }
     }
 
+    // todo rewrite this test without annotation processing
     @Test
     public void bindableServiceReloadTest() throws Exception {
-        var cl = TestUtils.annotationProcess(Application.class, new KoraAppProcessor());
+        var cl = TestUtils.annotationProcess(Application.class, new KoraAppProcessor(), new ConfigParserAnnotationProcessor());
         var graphObject = cl.loadClass(Application.class.getCanonicalName() + "Impl").getConstructors()[0].newInstance();
         var graph = (ApplicationGraphDraw) cl.loadClass(Application.class.getCanonicalName() + "Graph").getMethod("graph").invoke(graphObject);
         var refreshableGraph = graph.init();

@@ -2,6 +2,7 @@ package ru.tinkoff.kora.database.cassandra;
 
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.time.Duration;
 import java.util.List;
@@ -19,6 +20,8 @@ public interface CassandraConfig {
 
     @Nullable
     CassandraCredentials auth();
+
+    TelemetryConfig telemetry();
 
     @ConfigValueExtractor
     interface CassandraCredentials {

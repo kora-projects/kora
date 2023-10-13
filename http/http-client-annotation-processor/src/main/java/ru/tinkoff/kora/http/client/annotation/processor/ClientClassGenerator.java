@@ -3,7 +3,6 @@ package ru.tinkoff.kora.http.client.annotation.processor;
 import com.squareup.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
-import ru.tinkoff.kora.common.annotation.Generated;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.*;
@@ -40,7 +39,7 @@ public class ClientClassGenerator {
         var methods = this.parseMethods(element);
         var builder = CommonUtils.extendsKeepAop(element, typeName)
             .addOriginatingElement(element)
-            .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", "$S", ClientClassGenerator.class.getCanonicalName()).build());
+            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", "$S", ClientClassGenerator.class.getCanonicalName()).build());
         builder.addMethod(this.buildConstructor(builder, element, methods));
         builder.addField(String.class, "rootUrl", Modifier.PRIVATE, Modifier.FINAL);
 
@@ -583,7 +582,7 @@ public class ClientClassGenerator {
             var name = method.getSimpleName();
             var httpRoute = AnnotationUtils.findAnnotation(method, HttpClientClassNames.httpRoute);
             var httpPath = AnnotationUtils.parseAnnotationValueWithoutDefault(httpRoute, "path");
-            builder.addCode("var $L = config.apply(httpClient, $T.class, $S, config.$LConfig(), telemetryFactory, $S);\n", name, element, name, name, httpPath);
+            builder.addCode("var $L = config.apply(httpClient, $T.class, $S, config.$L(), telemetryFactory, $S);\n", name, element, name, name, httpPath);
             builder.addCode("this.$LUriTemplate = $L.url();\n", name, name);
             var hasUriParameters = methodData.parameters().stream().anyMatch(p -> p instanceof Parameter.QueryParameter || p instanceof Parameter.PathParameter);
             if (!hasUriParameters) {

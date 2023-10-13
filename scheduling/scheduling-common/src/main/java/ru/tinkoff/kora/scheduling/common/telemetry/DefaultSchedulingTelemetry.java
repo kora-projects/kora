@@ -35,12 +35,19 @@ public final class DefaultSchedulingTelemetry implements SchedulingTelemetry {
 
     @Override
     public SchedulingTelemetryContext get(Context ctx) {
-        var span = this.tracer == null ? null : this.tracer.createSpan(ctx);
-        if (this.logger != null) {
-            this.logger.logJobStart();
+        var metrics = this.metrics;
+        var logger = this.logger;
+        var tracer = this.tracer;
+        if (metrics == null && logger == null && tracer == null) {
+            return (t) -> {};
         }
 
-        return new DefaultTelemetryContext(this.metrics, span, this.logger);
+        var span = tracer == null ? null : tracer.createSpan(ctx);
+        if (logger != null) {
+            logger.logJobStart();
+        }
+
+        return new DefaultTelemetryContext(metrics, span, logger);
     }
 
     private static class DefaultTelemetryContext implements SchedulingTelemetryContext {

@@ -33,8 +33,8 @@ public interface GrpcModule extends NettyCommonModule {
     }
 
     @DefaultComponent
-    default DefaultGrpcServerTelemetry defaultGrpcServerTelemetry(@Nullable GrpcServerLogger logger, @Nullable GrpcServerMetricsFactory metrics, @Nullable GrpcServerTracer tracing) {
-        return new DefaultGrpcServerTelemetry(metrics, tracing, logger);
+    default DefaultGrpcServerTelemetry defaultGrpcServerTelemetry(GrpcServerConfig config, @Nullable GrpcServerLogger logger, @Nullable GrpcServerMetricsFactory metrics, @Nullable GrpcServerTracer tracing) {
+        return new DefaultGrpcServerTelemetry(config.telemetry(), metrics, tracing, logger);
     }
 
     @DefaultComponent
@@ -48,7 +48,7 @@ public interface GrpcModule extends NettyCommonModule {
         List<DynamicServerInterceptor> interceptors,
         EventLoopGroup eventLoop,
         @Tag(BossLoopGroup.class) EventLoopGroup bossEventLoop,
-        GrpcServerTelemetry telemetry) {
+        ValueOf<GrpcServerTelemetry> telemetry) {
         var builder = NettyServerBuilder.forPort(config.get().port())
             .bossEventLoopGroup(bossEventLoop)
             .workerEventLoopGroup(eventLoop)

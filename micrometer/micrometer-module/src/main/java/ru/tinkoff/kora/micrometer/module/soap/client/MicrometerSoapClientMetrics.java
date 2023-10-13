@@ -2,21 +2,21 @@ package ru.tinkoff.kora.micrometer.module.soap.client;
 
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
-import ru.tinkoff.kora.micrometer.module.MetricsConfig.SoapClientMetricsConfig;
 import ru.tinkoff.kora.soap.client.common.SoapResult;
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientMetrics;
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetry;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 public class MicrometerSoapClientMetrics implements SoapClientMetrics {
     private final DistributionSummary successDuration;
     private final DistributionSummary failureDuration;
 
-    public MicrometerSoapClientMetrics(MeterRegistry meterRegistry, SoapClientMetricsConfig config, String service, String method, String host, int port) {
+    public MicrometerSoapClientMetrics(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config, String service, String method, String host, int port) {
         this.successDuration = buildDuration(meterRegistry, config, service, method, host, port, "success");
         this.failureDuration = buildDuration(meterRegistry, config, service, method, host, port, "failure");
     }
 
-    private static DistributionSummary buildDuration(MeterRegistry meterRegistry, SoapClientMetricsConfig config, String service, String method, String host, int port, String rpcResult) {
+    private static DistributionSummary buildDuration(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config, String service, String method, String host, int port, String rpcResult) {
         var builder = DistributionSummary.builder("rpc.client.duration")
             .serviceLevelObjectives(config.slo())
             .baseUnit("milliseconds")

@@ -33,7 +33,7 @@ internal class SchedulingKspTest {
     }
 
     private fun <T : Any> process(type: KClass<T>) {
-        val cl = symbolProcess(type, SchedulingKspProvider())
+        val cl = symbolProcess(type)
 
         val module = cl.loadClass(type.asClassName().packageName + ".$" + type.simpleName + "_SchedulingModule")
     }

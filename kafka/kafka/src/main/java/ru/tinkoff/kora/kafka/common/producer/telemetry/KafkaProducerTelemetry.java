@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.kafka.common.producer.telemetry;
 
+import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
@@ -7,7 +8,6 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
 
-import jakarta.annotation.Nullable;
 import java.util.Map;
 
 public interface KafkaProducerTelemetry extends AutoCloseable {

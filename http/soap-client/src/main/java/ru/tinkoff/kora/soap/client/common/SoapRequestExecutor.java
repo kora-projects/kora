@@ -30,13 +30,13 @@ public class SoapRequestExecutor {
     private final SoapClientTelemetry telemetry;
     private final Duration timeout;
 
-    public SoapRequestExecutor(HttpClient httpClient, SoapClientTelemetryFactory telemetryFactory, XmlTools xmlTools, String service, String url, Duration timeout, String method, @Nullable String soapAction) {
+    public SoapRequestExecutor(HttpClient httpClient, SoapClientTelemetryFactory telemetryFactory, XmlTools xmlTools, String service, SoapServiceConfig config, String method, @Nullable String soapAction) {
         this.httpClient = httpClient;
         this.xmlTools = xmlTools;
-        this.url = url;
-        this.timeout = timeout;
+        this.url = config.url();
+        this.timeout = config.timeout();
         this.soapAction = soapAction;
-        this.telemetry = telemetryFactory.get(service, method, url);
+        this.telemetry = telemetryFactory.get(config.telemetry(), service, method, url);
     }
 
     public SoapResult call(SoapEnvelope requestEnvelope) throws SoapException {

@@ -3,13 +3,13 @@ package ru.tinkoff.kora.micrometer.module.http.server;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerMetrics;
-import ru.tinkoff.kora.micrometer.module.MetricsConfig.HttpServerMetricsConfig;
 import ru.tinkoff.kora.micrometer.module.http.server.tag.ActiveRequestsKey;
 import ru.tinkoff.kora.micrometer.module.http.server.tag.DurationKey;
 import ru.tinkoff.kora.micrometer.module.http.server.tag.MicrometerHttpServerTagsProvider;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
-import jakarta.annotation.Nullable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -18,9 +18,9 @@ public final class MicrometerHttpServerMetrics implements HttpServerMetrics {
     private final MicrometerHttpServerTagsProvider httpServerTagsProvider;
     private final ConcurrentHashMap<ActiveRequestsKey, AtomicInteger> requestCounters = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<DurationKey, DistributionSummary> duration = new ConcurrentHashMap<>();
-    private final HttpServerMetricsConfig config;
+    private final TelemetryConfig.MetricsConfig config;
 
-    public MicrometerHttpServerMetrics(MeterRegistry meterRegistry, MicrometerHttpServerTagsProvider httpServerTagsProvider, @Nullable HttpServerMetricsConfig config) {
+    public MicrometerHttpServerMetrics(MeterRegistry meterRegistry, MicrometerHttpServerTagsProvider httpServerTagsProvider, @Nullable TelemetryConfig.MetricsConfig config) {
         this.meterRegistry = meterRegistry;
         this.httpServerTagsProvider = httpServerTagsProvider;
         this.config = config;

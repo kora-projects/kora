@@ -35,19 +35,21 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
         this.databaseConfig = Objects.requireNonNull(databaseConfig);
         this.telemetry = Objects.requireNonNull(telemetry);
         this.dataSource = new HikariDataSource(JdbcDatabaseConfig.toHikariConfig(this.databaseConfig));
-        if (telemetry != null) {
+        if (telemetry.getMetricRegistry() != null) {
             this.dataSource.setMetricRegistry(telemetry.getMetricRegistry());
         }
     }
 
     private static DataBaseTelemetry getTelemetry(JdbcDatabaseConfig config, DataBaseTelemetryFactory factory) {
         var jdbcUrl = config.jdbcUrl();
-        return factory.get(
+        var telemetry = factory.get(
+            config.telemetry(),
             config.poolName(),
             "jdbc",
             jdbcUrl.substring(4, jdbcUrl.indexOf(":", 5)),
             config.username()
         );
+        return Objects.requireNonNullElse(telemetry, DataBaseTelemetryFactory.EMPTY);
     }
 
     @Override

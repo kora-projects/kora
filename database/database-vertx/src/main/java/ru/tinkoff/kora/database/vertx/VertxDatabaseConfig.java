@@ -4,6 +4,7 @@ import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.sqlclient.PoolOptions;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.time.Duration;
 import java.util.Objects;
@@ -68,4 +69,6 @@ public interface VertxDatabaseConfig {
             .setName(config.poolName())
             .setMaxSize(config.maxPoolSize());
     }
+
+    TelemetryConfig telemetry();
 }

@@ -1,5 +1,6 @@
 dependencies {
     api project(':http:http-client-common')
+    api project(':telemetry:telemetry-common')
 
     api libs.glassfish.jaxb.jakarta
     api libs.commons.codec

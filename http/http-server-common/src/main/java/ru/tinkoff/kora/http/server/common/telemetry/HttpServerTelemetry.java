@@ -6,6 +6,8 @@ import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.router.PublicApiRequest;
 
 public interface HttpServerTelemetry {
+    HttpServerTelemetryContext EMPTY_CTX = (statusCode, resultCode, headers, exception) -> {};
+    HttpServerTelemetry EMPTY = (request, routeTemplate) -> EMPTY_CTX;
 
     interface HttpServerTelemetryContext {
         void close(int statusCode, HttpResultCode resultCode, @Nullable HttpHeaders headers, @Nullable Throwable exception);

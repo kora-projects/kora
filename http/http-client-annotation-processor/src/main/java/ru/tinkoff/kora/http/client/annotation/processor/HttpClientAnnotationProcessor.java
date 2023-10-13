@@ -8,7 +8,6 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
-import java.io.IOException;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -29,7 +28,7 @@ public class HttpClientAnnotationProcessor extends AbstractKoraProcessor {
         }
         this.initialized = true;
         this.clientGenerator = new ClientClassGenerator(processingEnv);
-        this.configGenerator = new ConfigClassGenerator(processingEnv);
+        this.configGenerator = new ConfigClassGenerator();
         this.configModuleGenerator = new ConfigModuleGenerator(processingEnv);
     }
 
@@ -58,8 +57,6 @@ public class HttpClientAnnotationProcessor extends AbstractKoraProcessor {
             var typeElement = (TypeElement) httpClient;
             try {
                 this.generateClient(typeElement);
-            } catch (javax.annotation.processing.FilerException e) {
-                throw new RuntimeException(e);
             } catch (Exception exception) {
                 exception.printStackTrace();
             }
@@ -67,16 +64,13 @@ public class HttpClientAnnotationProcessor extends AbstractKoraProcessor {
         return !elements.isEmpty();
     }
 
-    private void generateClient(TypeElement element) throws IOException {
+    private void generateClient(TypeElement element) {
         var packageName = this.elements.getPackageOf(element).getQualifiedName().toString();
         var client = this.clientGenerator.generate(element);
         var config = this.configGenerator.generate(element);
         var configModule = this.configModuleGenerator.generate(element);
         CommonUtils.safeWriteTo(this.processingEnv, configModule);
         CommonUtils.safeWriteTo(this.processingEnv, JavaFile.builder(packageName, client).build());
-        var configFile = this.processingEnv.getFiler().createSourceFile(packageName + "." + config.name(), element);
-        try (var w = configFile.openWriter()) {
-            w.write(config.content());
-        }
+        CommonUtils.safeWriteTo(this.processingEnv, JavaFile.builder(packageName, config).build());
     }
 }

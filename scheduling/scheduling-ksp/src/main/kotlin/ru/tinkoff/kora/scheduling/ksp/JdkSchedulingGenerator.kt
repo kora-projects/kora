@@ -45,7 +45,6 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             .addParameter("target", typeClassName)
             .returns(fixedRateJobClassName)
             .addAnnotation(CommonClassNames.root)
-            .addCode("val telemetry = telemetryFactory.get(%T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
 
         if (configName.isNullOrBlank()) {
             if (period == null || period == 0L) {
@@ -54,6 +53,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             componentFunction
                 .addCode("val initialDelay = %T.of(%L, %L);\n", Duration::class, period, unit)
                 .addCode("val period = %T.of(%L, %L);\n", Duration::class, period, unit)
+                .addCode("val telemetry = telemetryFactory.get(null, %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
         } else {
             val configType = configType(
                 type, function,
@@ -64,8 +64,9 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
 
             componentFunction
                 .addParameter("config", ClassName(packageName, configType.name!!))
-                .addCode("val period = config.period;\n")
-                .addCode("val initialDelay = config.initialDelay;\n")
+                .addCode("val telemetry = telemetryFactory.get(config.telemetry(), %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
+                .addCode("val period = config.period();\n")
+                .addCode("val initialDelay = config.initialDelay();\n")
             builder.addFunction(configComponent(packageName, configType.name!!, configName))
         }
         componentFunction
@@ -87,13 +88,13 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             .addParameter("target", typeClassName)
             .returns(fixedDelayJobClassName)
             .addAnnotation(CommonClassNames.root)
-            .addCode("val telemetry = telemetryFactory.get(%T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
 
         if (configName.isNullOrBlank()) {
             if (delay == null || delay == 0L) {
                 throw ProcessingErrorException("Either delay() or config() annotation parameter must be provided", function)
             }
             componentFunction
+                .addCode("val telemetry = telemetryFactory.get(null, %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
                 .addCode("val initialDelay = %T.of(%L, %L);\n", Duration::class, delay, unit)
                 .addCode("val delay = %T.of(%L, %L);\n", Duration::class, delay, unit)
         } else {
@@ -106,8 +107,9 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
 
             componentFunction
                 .addParameter("config", ClassName(packageName, configType.name!!))
-                .addCode("val delay = config.delay;\n")
-                .addCode("val initialDelay = config.initialDelay;\n")
+                .addCode("val telemetry = telemetryFactory.get(config.telemetry(), %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
+                .addCode("val delay = config.delay();\n")
+                .addCode("val initialDelay = config.initialDelay();\n")
             builder.addFunction(configComponent(packageName, configType.name!!, configName))
         }
         componentFunction
@@ -128,13 +130,13 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             .addParameter("target", typeClassName)
             .returns(runOnceJobClassName)
             .addAnnotation(CommonClassNames.root)
-            .addCode("val telemetry = telemetryFactory.get(%T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
 
         if (configName.isNullOrBlank()) {
             if (delay == null || delay == 0L) {
                 throw ProcessingErrorException("Either delay() or config() annotation parameter must be provided", function)
             }
             componentFunction
+                .addCode("val telemetry = telemetryFactory.get(null, %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
                 .addCode("val delay = %T.of(%L, %L);\n", Duration::class, delay, unit)
         } else {
             val configType = configType(
@@ -145,7 +147,8 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
 
             componentFunction
                 .addParameter("config", ClassName(packageName, configType.name!!))
-                .addCode("val delay = config.delay;\n")
+                .addCode("val telemetry = telemetryFactory.get(config.telemetry(), %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
+                .addCode("val delay = config.delay();\n")
             builder.addFunction(configComponent(packageName, configType.name!!, configName))
         }
         componentFunction
@@ -168,23 +171,23 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
 
     private fun configType(type: KSClassDeclaration, function: KSFunctionDeclaration, vararg params: ConfigParameter): TypeSpec {
         val configClassName = type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Config"
-        val constructor = FunSpec.constructorBuilder()
-        val configType = TypeSpec.classBuilder(configClassName)
-            .addModifiers(KModifier.PUBLIC, KModifier.DATA)
+        val configType = TypeSpec.interfaceBuilder(configClassName)
+            .addAnnotation(CommonClassNames.configValueExtractorAnnotation)
             .generated(JdkSchedulingGenerator::class)
+            .addFunction(FunSpec.builder("telemetry").returns(ClassName("ru.tinkoff.kora.telemetry.common", "TelemetryConfig")).addModifiers(KModifier.ABSTRACT).build())
         for (param in params) {
-            constructor.addParameter(
-                ParameterSpec.builder(param.name, param.type)
-                    .defaultValue(param.defaultValue)
-                    .build()
-            )
-            configType.addProperty(
-                PropertySpec.builder(param.name, param.type)
-                    .initializer(param.name)
+            configType.addFunction(
+                FunSpec.builder(param.name)
+                    .returns(param.type)
+                    .apply {
+                        param.defaultValue?.let {
+                            addStatement("return %L", it)
+                        }
+                    }
                     .build()
             )
         }
-        return configType.primaryConstructor(constructor.build()).build()
+        return configType.build()
     }
 }
 

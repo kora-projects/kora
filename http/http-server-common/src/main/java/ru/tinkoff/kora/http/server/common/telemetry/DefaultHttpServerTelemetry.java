@@ -5,8 +5,6 @@ import ru.tinkoff.kora.http.server.common.router.PublicApiRequest;
 
 public final class DefaultHttpServerTelemetry implements HttpServerTelemetry {
     private static final String UNMATCHED_ROUTE_TEMPLATE = "UNKNOWN_ROUTE";
-    private static final HttpServerTelemetryContext NOOP_CTX = (statusCode, resultCode, httpHeaders, exception) -> {
-    };
 
     @Nullable
     private final HttpServerMetrics metrics;
@@ -27,7 +25,7 @@ public final class DefaultHttpServerTelemetry implements HttpServerTelemetry {
         var logger = this.logger;
         var tracer = this.tracer;
         if (metrics == null && tracer == null && (logger == null || !logger.isEnabled())) {
-            return NOOP_CTX;
+            return EMPTY_CTX;
         }
 
         var start = System.nanoTime();

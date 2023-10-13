@@ -6,8 +6,8 @@ import java.util.List;
 
 
 public class CommonClassNames {
-    public static final ClassName context = ClassName.get("ru.tinkoff.kora.common", "Context");
     public static final ClassName nullable = ClassName.get("jakarta.annotation", "Nullable");
+    public static final ClassName context = ClassName.get("ru.tinkoff.kora.common", "Context");
     public static final ClassName flowUtils = ClassName.get("ru.tinkoff.kora.common.util", "FlowUtils");
     public static final ClassName publisher = ClassName.get("org.reactivestreams", "Publisher");
     public static final ClassName mono = ClassName.get("reactor.core.publisher", "Mono");
@@ -46,6 +46,9 @@ public class CommonClassNames {
 
     public static final ClassName config = ClassName.get("ru.tinkoff.kora.config.common", "Config");
     public static final ClassName configValueExtractor = ClassName.get("ru.tinkoff.kora.config.common.extractor", "ConfigValueExtractor");
+    public static final ClassName configValueExtractorAnnotation = ClassName.get("ru.tinkoff.kora.config.common.annotation", "ConfigValueExtractor");
     public static final ClassName configValue = ClassName.get("ru.tinkoff.kora.config.common", "ConfigValue");
     public static final ClassName configValueExtractionException = ClassName.get("ru.tinkoff.kora.config.common.extractor", "ConfigValueExtractionException");
+
+    public static final ClassName telemetryConfig = ClassName.get("ru.tinkoff.kora.telemetry.common", "TelemetryConfig");
 }

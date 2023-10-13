@@ -6,6 +6,7 @@ dependencies {
     compileOnly libs.jetbrains.annotations
 
     api project(":common")
+    api project(":telemetry:telemetry-common")
     api project(":logging:logging-common")
 
     testFixturesApi project(":database:database-common")

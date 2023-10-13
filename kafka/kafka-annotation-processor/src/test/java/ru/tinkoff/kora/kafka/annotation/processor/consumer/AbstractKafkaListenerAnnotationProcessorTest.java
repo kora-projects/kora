@@ -25,6 +25,7 @@ import ru.tinkoff.kora.kafka.common.consumer.containers.ConsumerRecordWrapper;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.KafkaRecordHandler;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.KafkaRecordsHandler;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
+import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetryFactory;
 import ru.tinkoff.kora.kafka.common.exceptions.RecordKeyDeserializationException;
 import ru.tinkoff.kora.kafka.common.exceptions.RecordValueDeserializationException;
 
@@ -223,7 +224,7 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
                 assertThat(containerMethod.getParameters()[0].getAnnotation(Tag.class).value()).isEqualTo(tagValue);
                 assertThat(containerMethod.getParameters()[2].getParameterizedType()).isEqualTo(TypeRef.of(Deserializer.class, keyType));
                 assertThat(containerMethod.getParameters()[3].getParameterizedType()).isEqualTo(TypeRef.of(Deserializer.class, valueType));
-                assertThat(containerMethod.getParameters()[4].getParameterizedType()).isEqualTo(TypeRef.of(KafkaConsumerTelemetry.class, keyType, valueType));
+                assertThat(containerMethod.getParameters()[4].getParameterizedType()).isEqualTo(TypeRef.of(KafkaConsumerTelemetryFactory.class, keyType, valueType));
 
                 return containerMethod;
             }

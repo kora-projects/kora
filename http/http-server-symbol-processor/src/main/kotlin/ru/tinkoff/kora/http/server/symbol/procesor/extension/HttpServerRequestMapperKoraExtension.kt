@@ -17,6 +17,9 @@ import java.util.concurrent.CompletionStage
 
 class HttpServerRequestMapperKoraExtension : KoraExtension {
     override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
+        if (tags.isNotEmpty()) {
+            return null
+        }
         if (type.toClassName() != httpServerRequestMapper) {
             return null
         }
