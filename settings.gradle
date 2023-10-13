@@ -71,6 +71,7 @@ include(
     'vertx-common',
     'netty-common',
     'openapi:openapi-generator',
+    'openapi:openapi-management',
     'internal:test-logging',
     'internal:test-postgres',
     'internal:test-kafka',
