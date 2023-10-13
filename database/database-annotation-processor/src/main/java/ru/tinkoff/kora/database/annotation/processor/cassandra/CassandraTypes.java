@@ -19,8 +19,7 @@ public class CassandraTypes {
     public static final ClassName CONNECTION_FACTORY = ClassName.get("ru.tinkoff.kora.database.cassandra", "CassandraConnectionFactory");
     public static final ClassName REPOSITORY = ClassName.get("ru.tinkoff.kora.database.cassandra", "CassandraRepository");
 
-    public static final ClassName CASSANDRA_PROFILE = ClassName.get("ru.tinkoff.kora.database.common.annotation", "CassandraProfile");
-    public static final ClassName STATEMENT_SETTER = ClassName.get("ru.tinkoff.kora.database.cassandra.mapper.parameter", "CassandraStatementSetter");
+    public static final ClassName CASSANDRA_PROFILE = ClassName.get("ru.tinkoff.kora.database.cassandra.annotation", "CassandraProfile");
     public static final ClassName PARAMETER_COLUMN_MAPPER = ClassName.get("ru.tinkoff.kora.database.cassandra.mapper.parameter", "CassandraParameterColumnMapper");
     public static final ClassName ROW_MAPPER = ClassName.get("ru.tinkoff.kora.database.cassandra.mapper.result", "CassandraRowMapper");
     public static final ClassName RESULT_COLUMN_MAPPER = ClassName.get("ru.tinkoff.kora.database.cassandra.mapper.result", "CassandraRowColumnMapper");
@@ -32,5 +31,5 @@ public class CassandraTypes {
     public static final ClassName USER_DEFINED_TYPE = ClassName.get("com.datastax.oss.driver.api.core.type", "UserDefinedType");
     public static final ClassName LIST_TYPE = ClassName.get("com.datastax.oss.driver.api.core.type", "ListType");
     public static final ClassName UDT_VALUE = ClassName.get("com.datastax.oss.driver.api.core.data", "UdtValue");
-    public static final ClassName UDT_ANNOTATION = ClassName.get("ru.tinkoff.kora.database.cassandra", "UDT");
+    public static final ClassName UDT_ANNOTATION = ClassName.get("ru.tinkoff.kora.database.cassandra.annotation", "UDT");
 }

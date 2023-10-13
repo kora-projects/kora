@@ -67,7 +67,7 @@ class CassandraUdtTest : AbstractRepositoryTest() {
     fun testUdtExtension() {
         compile0(
             """
-                @ru.tinkoff.kora.database.cassandra.UDT
+                @ru.tinkoff.kora.database.cassandra.annotation.UDT
                 data class UdtEntity(val value1: String, val value2: String)
             """.trimIndent(), """
                         @KoraApp

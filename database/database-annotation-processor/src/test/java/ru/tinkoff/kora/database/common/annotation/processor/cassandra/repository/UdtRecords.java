@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.database.common.annotation.processor.cassandra.repository;
 
-import ru.tinkoff.kora.database.cassandra.UDT;
+import ru.tinkoff.kora.database.cassandra.annotation.UDT;
 
 public class UdtRecords {
 
