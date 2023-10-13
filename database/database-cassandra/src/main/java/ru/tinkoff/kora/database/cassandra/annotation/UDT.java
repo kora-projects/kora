@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.database.cassandra;
+package ru.tinkoff.kora.database.cassandra.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.database.symbol.processor.cassandra.repository
 
-import ru.tinkoff.kora.database.cassandra.UDT
+import ru.tinkoff.kora.database.cassandra.annotation.UDT
 
 class Udt {
     @UDT
