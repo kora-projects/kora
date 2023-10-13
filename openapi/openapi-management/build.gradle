@@ -1,0 +1,10 @@
+dependencies {
+    annotationProcessor project(':config:config-annotation-processor')
+
+    implementation project(":config:config-common")
+    implementation project(":http:http-server-common")
+
+    testImplementation(testFixtures(project(":annotation-processor-common")))
+}
+
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

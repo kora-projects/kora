@@ -1,0 +1,103 @@
+openapi: 3.0.1
+info:
+  title: Kora
+  description: Сервис Kora
+  version: kora-1.0.0
+  contact:
+    name: Kora
+servers:
+  - url: /
+    description: LOCAL
+paths:
+  /create/{id}:
+    post:
+      tags:
+        - V2
+      summary: Creates settings
+      description: Creates settings
+      operationId: create-users-v2_2
+      parameters:
+        - name: appName
+          in: query
+          required: true
+          schema:
+            type: string
+          example: app
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSettingTO'
+        required: true
+      responses:
+        "200":
+          description: Success or Error
+          content:
+            application/json;charset=utf-8:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/MessageResponseV2.SuccessResponse'
+                  - $ref: '#/components/schemas/MessageResponseV2.ErrorResponse'
+      security:
+        - token: [ ]
+components:
+  schemas:
+    UserSettingTO:
+      type: object
+      properties:
+        notificationOn:
+          type: boolean
+          description: Indicates is notification turned on/off
+        expireDate:
+          type: string
+          description: Users expiration date
+          format: date
+    MessageResponseV2.SuccessResponse:
+      required:
+        - status
+        - time
+        - trackingId
+      type: object
+      properties:
+        status:
+          type: string
+          description: Identify successful or failed response
+          example: Ok
+        time:
+          type: string
+          description: Timestamp of settlement period (ISO8601)
+          format: date-time
+          example: 2022-01-31T23:59:59.999+03:00
+        trackingId:
+          type: string
+          description: Unique request Tracking ID
+    MessageResponseV2.ErrorResponse:
+      required:
+        - status
+        - time
+        - trackingId
+      type: object
+      properties:
+        status:
+          type: string
+          description: Identify successful or failed response
+          example: Ok
+        time:
+          type: string
+          description: Timestamp of settlement period (ISO8601)
+          format: date-time
+          example: 2022-01-31T23:59:59.999+03:00
+        trackingId:
+          type: string
+          description: Unique request Tracking ID
+  securitySchemes:
+    token:
+      type: apiKey
+      description: "Авторизация token"
+      name: token
+      in: query

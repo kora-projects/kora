@@ -39,6 +39,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             library('opentelemetry-exporter-otlp-trace', 'io.opentelemetry', 'opentelemetry-exporter-otlp-trace').version('1.14.0')
 
             library('typesafe-config', 'com.typesafe', 'config').version("1.4.2")
+            library('snakeyaml-engine', 'org.snakeyaml', 'snakeyaml-engine').version("2.6")
 
             library('cassandra-driver', 'com.datastax.oss', 'java-driver-core').versionRef('cassandra')
 
