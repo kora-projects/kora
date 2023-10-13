@@ -12,6 +12,7 @@ dependencies {
 
     testImplementation project(':scheduling:scheduling-jdk')
     testImplementation project(':scheduling:scheduling-quartz')
+    testImplementation project(':config:config-annotation-processor')
     testImplementation testFixtures(project(':annotation-processor-common'))
     testImplementation testFixtures(project(':symbol-processor-common'))
 }

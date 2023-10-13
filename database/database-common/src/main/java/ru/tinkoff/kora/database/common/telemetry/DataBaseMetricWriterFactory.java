@@ -1,5 +1,9 @@
 package ru.tinkoff.kora.database.common.telemetry;
 
+import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
+
 public interface DataBaseMetricWriterFactory {
-    DataBaseMetricWriter get(String poolName);
+    @Nullable
+    DataBaseMetricWriter get(TelemetryConfig.MetricsConfig metrics, String poolName);
 }

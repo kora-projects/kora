@@ -16,6 +16,10 @@ import ru.tinkoff.kora.common.util.Either;
 import ru.tinkoff.kora.kafka.common.consumer.$KafkaListenerConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.kafka.common.consumer.containers.KafkaAssignConsumerContainer;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_LogConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.test.kafka.KafkaParams;
 import ru.tinkoff.kora.test.kafka.KafkaTestContainer;
 
@@ -43,7 +47,22 @@ class KafkaAssignConsumerContainerTest {
         driverProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, params.bootstrapServers());
         driverProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         var testTopic = params.createTopic("test-topic", 3);
-        var config = new $KafkaListenerConfig_ConfigValueExtractor.KafkaListenerConfig_Impl(driverProps, List.of(testTopic), null, null, Either.right("earliest"), Duration.ofMillis(100), Duration.ofMillis(100), Integer.valueOf(2), Duration.ofSeconds(1));
+        var config = new $KafkaListenerConfig_ConfigValueExtractor.KafkaListenerConfig_Impl(
+            driverProps,
+            List.of(testTopic),
+            null,
+            null,
+            Either.right("earliest"),
+            Duration.ofMillis(100),
+            Duration.ofMillis(100),
+            Integer.valueOf(2),
+            Duration.ofSeconds(1),
+            new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
+                new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
+                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
+                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Defaults()
+            )
+        );
         var deque = new ConcurrentLinkedDeque<>();
         @SuppressWarnings("unchecked")
         var telemetry = (KafkaConsumerTelemetry<String, Integer>) Mockito.mock(KafkaConsumerTelemetry.class);

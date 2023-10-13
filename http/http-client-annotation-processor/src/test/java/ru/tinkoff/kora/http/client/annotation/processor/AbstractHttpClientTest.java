@@ -4,14 +4,26 @@ import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest;
+import ru.tinkoff.kora.config.annotation.processor.processor.ConfigParserAnnotationProcessor;
+import ru.tinkoff.kora.config.common.extractor.BooleanConfigValueExtractor;
+import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
+import ru.tinkoff.kora.config.common.extractor.DoubleArrayConfigValueExtractor;
+import ru.tinkoff.kora.config.common.extractor.DurationConfigValueExtractor;
+import ru.tinkoff.kora.config.common.factory.MapConfigFactory;
 import ru.tinkoff.kora.http.client.common.HttpClient;
+import ru.tinkoff.kora.http.client.common.declarative.$HttpClientOperationConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetry;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryFactory;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_LogConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 import java.util.function.Function;
@@ -79,19 +91,30 @@ public abstract class AbstractHttpClientTest extends AbstractAnnotationProcessor
     }
 
     protected TestObject compileClient(List<Object> arguments, @Language("java") String... sources) {
-        compile(List.of(new HttpClientAnnotationProcessor()), sources);
+        compile(List.of(new HttpClientAnnotationProcessor(), new ConfigParserAnnotationProcessor()), sources);
         if (compileResult.isFailed()) {
             throw compileResult.compilationException();
         }
 
         var clientClass = compileResult.loadClass("$TestClient_ClientImpl");
-        var configParams = new Object[compileResult.loadClass("$TestClient_Config").getConstructors()[0].getParameterCount()];
-        configParams[0] = "http://test-url:8080";
+        var durationCVE = new DurationConfigValueExtractor();
+        var telemetryCVE = new $TelemetryConfig_ConfigValueExtractor(
+            new $TelemetryConfig_LogConfig_ConfigValueExtractor(new BooleanConfigValueExtractor()),
+            new $TelemetryConfig_TracingConfig_ConfigValueExtractor(new BooleanConfigValueExtractor()),
+            new $TelemetryConfig_MetricsConfig_ConfigValueExtractor(new BooleanConfigValueExtractor(), new DoubleArrayConfigValueExtractor(c -> c.asNumber().doubleValue()))
+        );
+        var configCVE = new $HttpClientOperationConfig_ConfigValueExtractor(durationCVE, telemetryCVE);
+
+
+        var configValueExtractor = (ConfigValueExtractor<?>) newObject("$$TestClient_Config_ConfigValueExtractor", configCVE, telemetryCVE, durationCVE);
+        var config = configValueExtractor.extract(MapConfigFactory.fromMap(Map.of(
+            "url", "http://test-url:8080"
+        )).root());
 
 
         var realArgs = new ArrayList<>(arguments);
         realArgs.add(0, httpClient);
-        realArgs.add(1, newObject("$TestClient_Config", configParams));
+        realArgs.add(1, config);
         realArgs.add(2, telemetryFactory);
         return this.client = new TestObject(clientClass, realArgs);
     }

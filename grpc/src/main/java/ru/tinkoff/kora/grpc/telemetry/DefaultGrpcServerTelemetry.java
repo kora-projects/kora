@@ -4,6 +4,7 @@ import io.grpc.Metadata;
 import io.grpc.ServerCall;
 import io.grpc.Status;
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 public final class DefaultGrpcServerTelemetry implements GrpcServerTelemetry {
     private static final GrpcServerTelemetryContext NOOP_CTX = new GrpcServerTelemetryContext() {
@@ -22,7 +23,7 @@ public final class DefaultGrpcServerTelemetry implements GrpcServerTelemetry {
 
         }
     };
-
+    private final TelemetryConfig config;
     @Nullable
     private final GrpcServerMetricsFactory metrics;
     @Nullable
@@ -30,7 +31,8 @@ public final class DefaultGrpcServerTelemetry implements GrpcServerTelemetry {
     @Nullable
     private final GrpcServerLogger logger;
 
-    public DefaultGrpcServerTelemetry(@Nullable GrpcServerMetricsFactory metrics, @Nullable GrpcServerTracer tracing, @Nullable GrpcServerLogger logger) {
+    public DefaultGrpcServerTelemetry(TelemetryConfig config, @Nullable GrpcServerMetricsFactory metrics, @Nullable GrpcServerTracer tracing, @Nullable GrpcServerLogger logger) {
+        this.config = config;
         this.metrics = metrics;
         this.tracing = tracing;
         this.logger = logger;
@@ -48,7 +50,7 @@ public final class DefaultGrpcServerTelemetry implements GrpcServerTelemetry {
         var start = System.nanoTime();
         var serviceName = service(call);
         var methodName = method(call);
-        var m = metrics == null ? null : metrics.get(call, headers, serviceName, methodName);
+        var m = metrics == null ? null : metrics.get(config.metrics(), call, headers, serviceName, methodName);
         var span = tracing == null ? null : tracing.createSpan(call, headers, serviceName, methodName);
         if (logger != null) {
             logger.logBegin(call, headers, serviceName, methodName);

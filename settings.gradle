@@ -23,6 +23,7 @@ include(
     'config:config-yaml',
     'config:config-annotation-processor',
     'config:config-symbol-processor',
+    'telemetry:telemetry-common',
     'json:json-common',
     'json:json-module',
     'json:jackson-module',

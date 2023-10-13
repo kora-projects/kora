@@ -1,5 +1,7 @@
 package ru.tinkoff.kora.jms.telemetry;
 
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
+
 public interface JmsConsumerTelemetryFactory {
-    JmsConsumerTelemetry get(String queueName);
+    JmsConsumerTelemetry get(TelemetryConfig config, String queueName);
 }

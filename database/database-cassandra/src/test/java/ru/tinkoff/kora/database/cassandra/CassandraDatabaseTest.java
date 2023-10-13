@@ -5,6 +5,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.database.common.telemetry.DefaultDataBaseTelemetryFactory;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_LogConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.test.cassandra.CassandraParams;
 import ru.tinkoff.kora.test.cassandra.CassandraTestContainer;
 
@@ -44,6 +48,11 @@ class CassandraDatabaseTest {
             params.username() == null ? null : new $CassandraConfig_CassandraCredentials_ConfigValueExtractor.CassandraCredentials_Impl(
                 params.username(),
                 params.password()
+            ),
+            new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
+                new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
+                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
+                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Defaults()
             )
         );
         return new CassandraDatabase(config, new DefaultDataBaseTelemetryFactory(null, null, null));

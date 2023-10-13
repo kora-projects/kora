@@ -44,6 +44,7 @@ public class DefaultDataBaseLogger implements DataBaseLogger {
         return StructuredArgument.marker("sqlQuery", gen -> {
             gen.writeStartObject();
             gen.writeStringField("pool", this.poolName);
+            gen.writeStringField("operation", queryContext.operation());
             gen.writeStringField("queryId", queryContext.queryId());
             gen.writeEndObject();
         });
@@ -53,6 +54,7 @@ public class DefaultDataBaseLogger implements DataBaseLogger {
         return StructuredArgument.marker("sqlQuery", gen -> {
             gen.writeStartObject();
             gen.writeStringField("pool", this.poolName);
+            gen.writeStringField("operation", queryContext.operation());
             gen.writeStringField("queryId", queryContext.queryId());
             gen.writeNumberField("processingTime", processingTime / 1_000_000);
             gen.writeEndObject();

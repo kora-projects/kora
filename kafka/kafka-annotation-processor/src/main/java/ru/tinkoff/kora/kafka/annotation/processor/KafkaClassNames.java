@@ -25,6 +25,7 @@ public final class KafkaClassNames {
     public static final ClassName kafkaAssignConsumerContainer = ClassName.get("ru.tinkoff.kora.kafka.common.consumer.containers", "KafkaAssignConsumerContainer");
     public static final ClassName handlerWrapper = ClassName.get("ru.tinkoff.kora.kafka.common.consumer.containers.handlers.wrapper", "HandlerWrapper");
     public static final ClassName kafkaConsumerTelemetry = ClassName.get("ru.tinkoff.kora.kafka.common.consumer.telemetry", "KafkaConsumerTelemetry");
+    public static final ClassName kafkaConsumerTelemetryFactory = ClassName.get("ru.tinkoff.kora.kafka.common.consumer.telemetry", "KafkaConsumerTelemetryFactory");
     public static final ClassName kafkaConsumerRecordsTelemetry = kafkaConsumerTelemetry.nestedClass("KafkaConsumerRecordsTelemetryContext");
     public static final ClassName kafkaConsumerRecordTelemetry = kafkaConsumerTelemetry.nestedClass("KafkaConsumerRecordTelemetryContext");
     public static final ClassName recordKeyDeserializationException = ClassName.get("ru.tinkoff.kora.kafka.common.exceptions", "RecordKeyDeserializationException");

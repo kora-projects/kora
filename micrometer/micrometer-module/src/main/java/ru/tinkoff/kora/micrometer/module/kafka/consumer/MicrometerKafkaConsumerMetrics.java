@@ -8,7 +8,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerMetrics;
-import ru.tinkoff.kora.micrometer.module.MetricsConfig.KafkaConsumerMetricsConfig;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,9 +17,9 @@ public class MicrometerKafkaConsumerMetrics implements KafkaConsumerMetrics, Lif
     private final MeterRegistry meterRegistry;
     private final ConcurrentHashMap<TopicPartition, DistributionSummary> metrics = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<TopicPartition, LagGauge> lagMetrics = new ConcurrentHashMap<>();
-    private final KafkaConsumerMetricsConfig config;
+    private final TelemetryConfig.MetricsConfig config;
 
-    public MicrometerKafkaConsumerMetrics(MeterRegistry meterRegistry, KafkaConsumerMetricsConfig config) {
+    public MicrometerKafkaConsumerMetrics(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config) {
         this.meterRegistry = meterRegistry;
         this.config = config;
     }

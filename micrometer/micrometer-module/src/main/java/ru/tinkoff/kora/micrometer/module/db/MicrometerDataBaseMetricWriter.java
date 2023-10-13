@@ -5,7 +5,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseMetricWriter;
-import ru.tinkoff.kora.micrometer.module.MetricsConfig.DbMetricsConfig;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -13,9 +13,9 @@ public final class MicrometerDataBaseMetricWriter implements DataBaseMetricWrite
     private final String poolName;
     private final ConcurrentHashMap<String, DbMetrics> metrics = new ConcurrentHashMap<>();
     private final MeterRegistry meterRegistry;
-    private final DbMetricsConfig config;
+    private final TelemetryConfig.MetricsConfig config;
 
-    public MicrometerDataBaseMetricWriter(MeterRegistry meterRegistry, DbMetricsConfig config, String poolName) {
+    public MicrometerDataBaseMetricWriter(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config, String poolName) {
         this.poolName = poolName;
         this.meterRegistry = meterRegistry;
         this.config = config;

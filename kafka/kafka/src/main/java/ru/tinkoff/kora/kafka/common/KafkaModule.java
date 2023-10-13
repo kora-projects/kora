@@ -1,18 +1,17 @@
 package ru.tinkoff.kora.kafka.common;
 
-import ru.tinkoff.kora.common.DefaultComponent;
-import ru.tinkoff.kora.kafka.common.consumer.telemetry.DefaultKafkaConsumerTelemetry;
-import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerLogger;
-import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerMetrics;
-import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTracer;
-import ru.tinkoff.kora.kafka.common.producer.telemetry.*;
-
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.common.DefaultComponent;
+import ru.tinkoff.kora.kafka.common.consumer.telemetry.DefaultKafkaConsumerTelemetryFactory;
+import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerLoggerFactory;
+import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerMetricsFactory;
+import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTracerFactory;
+import ru.tinkoff.kora.kafka.common.producer.telemetry.*;
 
 public interface KafkaModule extends KafkaDeserializersModule, KafkaSerializersModule {
     @DefaultComponent
-    default <K, V> DefaultKafkaConsumerTelemetry<K, V> defaultKafkaConsumerTelemetry(@Nullable KafkaConsumerLogger<K, V> logger, @Nullable KafkaConsumerTracer tracing, @Nullable KafkaConsumerMetrics metrics) {
-        return new DefaultKafkaConsumerTelemetry<>(logger, tracing, metrics);
+    default <K, V> DefaultKafkaConsumerTelemetryFactory<K, V> defaultKafkaConsumerTelemetryFactory(@Nullable KafkaConsumerLoggerFactory<K, V> logger, @Nullable KafkaConsumerTracerFactory tracing, @Nullable KafkaConsumerMetricsFactory metrics) {
+        return new DefaultKafkaConsumerTelemetryFactory<>(logger, metrics, tracing);
     }
 
     @DefaultComponent

@@ -3,6 +3,7 @@ package ru.tinkoff.kora.database.r2dbc;
 import io.r2dbc.pool.ConnectionPoolConfiguration;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.time.Duration;
 import java.util.Map;
@@ -55,4 +56,6 @@ public interface R2dbcDatabaseConfig {
     default Map<String, String> options() {
         return Map.of();
     }
+
+    TelemetryConfig telemetry();
 }

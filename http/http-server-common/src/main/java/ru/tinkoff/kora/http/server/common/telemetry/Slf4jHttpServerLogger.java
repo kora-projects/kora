@@ -11,6 +11,11 @@ import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 public final class Slf4jHttpServerLogger implements HttpServerLogger {
 
     private static final Logger log = LoggerFactory.getLogger(HttpServer.class);
+    private final boolean logStacktrace;
+
+    public Slf4jHttpServerLogger(boolean stacktrace) {
+        this.logStacktrace = stacktrace;
+    }
 
     @Override
     public boolean isEnabled() {
@@ -44,7 +49,7 @@ public final class Slf4jHttpServerLogger implements HttpServerLogger {
                        long processingTime,
                        @Nullable HttpHeaders headers,
                        @Nullable Throwable exception) {
-        if (!log.isInfoEnabled()) {
+        if (!log.isWarnEnabled()) {
             return;
         }
 
@@ -63,9 +68,23 @@ public final class Slf4jHttpServerLogger implements HttpServerLogger {
 
         if (log.isDebugEnabled() && headers != null && headers.size() > 0) {
             var headersString = HttpHeaders.toString(headers);
-            log.debug(marker, "HttpRequest responded {} for {}\n{}", statusCode, operation, headersString);
+            if (this.logStacktrace && exception != null) {
+                log.warn(marker, "HttpRequest responded {} for {}\n{}", statusCode, operation, headersString, exception);
+            } else {
+                log.debug(marker, "HttpRequest responded {} for {}\n{}", statusCode, operation, headersString);
+            }
         } else if (statusCode != null) {
-            log.info(marker, "HttpRequest responded {} for {}", statusCode, operation);
+            if (this.logStacktrace && exception != null) {
+                log.warn(marker, "HttpRequest responded {} for {}", statusCode, operation, exception);
+            } else {
+                log.info(marker, "HttpRequest responded {} for {}", statusCode, operation);
+            }
+        } else {
+            if (this.logStacktrace) {
+                log.warn(marker, "HttpRequest processing error for {}", operation, exception);
+            } else {
+                log.warn(marker, "HttpRequest processing error for {}", operation);
+            }
         }
     }
 }

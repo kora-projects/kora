@@ -35,6 +35,9 @@ public final class HttpClientResponseMapperKoraExtension implements KoraExtensio
     @Nullable
     @Override
     public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tags) {
+        if (!tags.isEmpty()) {
+            return null;
+        }
         var typeName = TypeName.get(typeMirror);
         if (!(typeName instanceof ParameterizedTypeName ptn)) {
             return null;

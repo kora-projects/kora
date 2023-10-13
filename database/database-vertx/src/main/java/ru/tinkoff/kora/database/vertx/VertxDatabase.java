@@ -16,6 +16,7 @@ import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory;
 import ru.tinkoff.kora.vertx.common.VertxUtil;
 
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
@@ -45,7 +46,10 @@ public class VertxDatabase implements Lifecycle, Wrapped<Pool>, VertxConnectionF
             VertxDatabaseConfig.toPgConnectOptions(vertxDatabaseConfig),
             VertxDatabaseConfig.toPgPoolOptions(vertxDatabaseConfig)
         );
-        this.telemetry = telemetryFactory.get(vertxDatabaseConfig.poolName(), "vertx", "postgres", vertxDatabaseConfig.username());
+        this.telemetry = Objects.requireNonNullElse(
+            telemetryFactory.get(vertxDatabaseConfig.telemetry(), vertxDatabaseConfig.poolName(), "vertx", "postgres", vertxDatabaseConfig.username()),
+            DataBaseTelemetryFactory.EMPTY
+        );
     }
 
     @Override

@@ -5,12 +5,22 @@ import org.mockito.Mockito
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
+import ru.tinkoff.kora.config.common.extractor.BooleanConfigValueExtractor
+import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor
+import ru.tinkoff.kora.config.common.extractor.DoubleArrayConfigValueExtractor
+import ru.tinkoff.kora.config.common.extractor.DurationConfigValueExtractor
+import ru.tinkoff.kora.config.common.factory.MapConfigFactory
 import ru.tinkoff.kora.http.client.common.HttpClient
+import ru.tinkoff.kora.http.client.common.declarative.`$HttpClientOperationConfig_ConfigValueExtractor`
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryFactory
 import ru.tinkoff.kora.http.common.body.HttpBody
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
+import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_ConfigValueExtractor`
+import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_LogConfig_ConfigValueExtractor`
+import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_MetricsConfig_ConfigValueExtractor`
+import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_TracingConfig_ConfigValueExtractor`
 import java.nio.ByteBuffer
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Flow
@@ -70,16 +80,25 @@ abstract class AbstractHttpClientTest : AbstractSymbolProcessorTest() {
             throw compileResult.compilationException()
         }
 
-        val clientClass = compileResult.loadClass("\$TestClient_ClientImpl")
+        val clientClass = compileResult.loadClass("\$TestClient_ClientImpl");
+        val durationCVE = DurationConfigValueExtractor();
+        val telemetryCVE = `$TelemetryConfig_ConfigValueExtractor`(
+            `$TelemetryConfig_LogConfig_ConfigValueExtractor`(BooleanConfigValueExtractor()),
+            `$TelemetryConfig_TracingConfig_ConfigValueExtractor`(BooleanConfigValueExtractor()),
+            `$TelemetryConfig_MetricsConfig_ConfigValueExtractor`(BooleanConfigValueExtractor(), DoubleArrayConfigValueExtractor { it.asNumber()!!.toDouble() })
+        );
+        val configCVE = `$HttpClientOperationConfig_ConfigValueExtractor`(durationCVE, telemetryCVE);
+
+
+        val configValueExtractor = new("\$\$TestClient_Config_ConfigValueExtractor", configCVE, telemetryCVE, durationCVE) as ConfigValueExtractor<*>
+        val config = configValueExtractor.extract(MapConfigFactory.fromMap(mapOf(
+            "url" to "http://test-url:8080"
+        )).root());
+
+
         val realArgs = arrayOfNulls<Any>(arguments.size + 3)
         realArgs[0] = httpClient
-        realArgs[1] = new("\$TestClient_Config", *Array(compileResult.loadClass("\$TestClient_Config").constructors[0].parameterCount) {
-            if (it == 0) {
-                "http://test-url:8080"
-            } else {
-                null
-            }
-        })
+        realArgs[1] = config
         realArgs[2] = telemetryFactory
         System.arraycopy(arguments.toTypedArray(), 0, realArgs, 3, arguments.size)
         for ((i, value) in realArgs.withIndex()) {

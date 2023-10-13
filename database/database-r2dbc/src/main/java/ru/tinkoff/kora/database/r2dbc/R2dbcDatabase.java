@@ -17,6 +17,7 @@ import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 
 public class R2dbcDatabase implements R2dbcConnectionFactory, Lifecycle, ReadinessProbe {
@@ -44,10 +45,13 @@ public class R2dbcDatabase implements R2dbcConnectionFactory, Lifecycle, Readine
     public R2dbcDatabase(R2dbcDatabaseConfig config, List<Function<ConnectionFactoryOptions.Builder, ConnectionFactoryOptions.Builder>> customizers, DataBaseTelemetryFactory telemetryFactory) {
         this.config = config;
         this.connectionFactory = r2dbcConnectionFactory(config, customizers);
-        this.telemetry = telemetryFactory.get(config.poolName(),
+        this.telemetry = Objects.requireNonNullElse(telemetryFactory.get(
+            config.telemetry(),
+            config.poolName(),
             "r2dbc",
             config.r2dbcUrl().substring(5, config.r2dbcUrl().indexOf(":", 6)),
-            config.username());
+            config.username()
+        ), DataBaseTelemetryFactory.EMPTY);
     }
 
     @Override

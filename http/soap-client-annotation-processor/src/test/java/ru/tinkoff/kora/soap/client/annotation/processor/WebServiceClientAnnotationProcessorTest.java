@@ -7,15 +7,12 @@ import org.apache.cxf.jaxws.EndpointImpl;
 import org.apache.cxf.transport.http_jetty.JettyHTTPDestination;
 import org.apache.cxf.transport.http_jetty.JettyHTTPServerEngine;
 import org.assertj.core.api.Assertions;
-import org.assertj.core.api.InstanceOfAssertFactories;
 import org.assertj.core.api.InstanceOfAssertFactory;
 import org.asynchttpclient.Dsl;
 import org.eclipse.jetty.server.ServerConnector;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
-import reactor.core.Exceptions;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.http.client.async.AsyncHttpClient;
 import ru.tinkoff.kora.http.client.common.HttpClient;
@@ -25,6 +22,7 @@ import ru.tinkoff.kora.http.client.common.telemetry.Sl4fjHttpClientLogger;
 import ru.tinkoff.kora.soap.client.common.SoapServiceConfig;
 import ru.tinkoff.kora.soap.client.common.telemetry.DefaultSoapClientTelemetryFactory;
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetryFactory;
+import ru.tinkoff.kora.telemetry.common.*;
 
 import javax.xml.ws.Endpoint;
 import java.io.ByteArrayOutputStream;
@@ -280,7 +278,21 @@ class WebServiceClientAnnotationProcessorTest {
         var constructor = type.getConstructor(HttpClient.class, SoapClientTelemetryFactory.class, SoapServiceConfig.class);
         var httpClient = this.httpClient.with(new TelemetryInterceptor(new DefaultHttpClientTelemetry(null, null, new Sl4fjHttpClientLogger(log, log))));
         var telemetry = new DefaultSoapClientTelemetryFactory(null);
-        return constructor.newInstance(httpClient, telemetry, (SoapServiceConfig) () -> url);
+        return constructor.newInstance(httpClient, telemetry, new SoapServiceConfig() {
+            @Override
+            public String url() {
+                return url;
+            }
+
+            @Override
+            public TelemetryConfig telemetry() {
+                return new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
+                    new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
+                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
+                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Defaults()
+                );
+            }
+        });
     }
 
     private List<String> files(String path) {

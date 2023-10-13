@@ -102,7 +102,7 @@ final class KafkaPublisherGenerator {
         builder.addStatement("var properties = new $T()", Properties.class);
         builder.addStatement("properties.putAll(config.driverProperties())");
         builder.addStatement("properties.putAll(additionalProperties)");
-        builder.addCode("return new $T(telemetryFactory, properties, topicConfig$>", implementationName);
+        builder.addCode("return new $T(telemetryFactory, config.telemetry(), properties, topicConfig$>", implementationName);
 
         record TypeWithTag(TypeName typeName, Set<String> tag) {}
         var parameters = new HashMap<TypeWithTag, String>();
@@ -152,6 +152,7 @@ final class KafkaPublisherGenerator {
         var b = CommonUtils.extendsKeepAop(publisher, implementationName)
             .addOriginatingElement(publisher)
             .addSuperinterface(generatedPublisher)
+            .addField(CommonClassNames.telemetryConfig, "telemetryConfig", Modifier.PRIVATE, Modifier.FINAL)
             .addField(ClassName.get(Properties.class), "driverProperties", Modifier.PRIVATE, Modifier.FINAL)
             .addField(topicConfigTypeName, "topicConfig", Modifier.PRIVATE, Modifier.FINAL)
             .addField(KafkaClassNames.producerTelemetryFactory, "telemetryFactory", Modifier.PRIVATE, Modifier.FINAL)
@@ -161,7 +162,7 @@ final class KafkaPublisherGenerator {
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addAnnotation(Override.class)
                 .addCode("this.delegate = new $T<>(driverProperties, new $T(), new $T());\n", KafkaClassNames.kafkaProducer, byteArraySerializer, byteArraySerializer)
-                .addCode("this.telemetry = this.telemetryFactory.get(this.delegate, driverProperties);\n", KafkaClassNames.kafkaProducer)
+                .addCode("this.telemetry = this.telemetryFactory.get(this.telemetryConfig, this.delegate, driverProperties);\n", KafkaClassNames.kafkaProducer)
                 .build())
             .addMethod(MethodSpec.methodBuilder("release")
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
@@ -190,6 +191,8 @@ final class KafkaPublisherGenerator {
         var constructorBuilder = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC)
             .addParameter(producerTelemetryFactory, "telemetryFactory")
+            .addParameter(CommonClassNames.telemetryConfig, "telemetryConfig")
+            .addStatement("this.telemetryConfig = telemetryConfig")
             .addParameter(ClassName.get(Properties.class), "driverProperties")
             .addParameter(topicConfigTypeName, "topicConfig")
             .addStatement("this.driverProperties = driverProperties")

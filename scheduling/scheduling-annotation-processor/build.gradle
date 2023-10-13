@@ -4,6 +4,7 @@ dependencies {
     testImplementation project(':config:config-common')
     testImplementation project(':scheduling:scheduling-quartz')
     testImplementation project(':scheduling:scheduling-jdk')
+    testImplementation project(':config:config-annotation-processor')
     testImplementation testFixtures(project(':annotation-processor-common'))
 }
 

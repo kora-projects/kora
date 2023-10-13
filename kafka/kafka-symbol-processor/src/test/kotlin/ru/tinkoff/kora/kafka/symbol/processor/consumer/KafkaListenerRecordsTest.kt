@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.kafka.common.consumer.KafkaListenerConfig
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.KafkaRecordsHandler
-import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry
+import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetryFactory
 
 class KafkaListenerRecordsTest : AbstractKafkaListenerAnnotationProcessorTest() {
     @Test
@@ -58,7 +58,7 @@ class KafkaListenerRecordsTest : AbstractKafkaListenerAnnotationProcessorTest() 
             KafkaRecordsHandler::class.java,
             Deserializer::class.java,
             Deserializer::class.java,
-            KafkaConsumerTelemetry::class.java
+            KafkaConsumerTelemetryFactory::class.java
         )
         val keyDeserializer = container.parameters[2]
         val valueDeserializer = container.parameters[3]

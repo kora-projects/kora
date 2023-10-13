@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.jms.telemetry;
 
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 public final class DefaultJmsConsumerTelemetryFactory implements JmsConsumerTelemetryFactory {
     @Nullable
@@ -17,9 +18,9 @@ public final class DefaultJmsConsumerTelemetryFactory implements JmsConsumerTele
     }
 
     @Override
-    public JmsConsumerTelemetry get(String queueName) {
-        var logger = this.loggerFactory == null ? null : this.loggerFactory.get(queueName);
-        var metrics = this.metricsFactory == null ? null : this.metricsFactory.get(queueName);
+    public JmsConsumerTelemetry get(TelemetryConfig config, String queueName) {
+        var logger = this.loggerFactory == null ? null : this.loggerFactory.get(config.logging(), queueName);
+        var metrics = this.metricsFactory == null ? null : this.metricsFactory.get(config.metrics(), queueName);
         return new DefaultJmsConsumerTelemetry(
             this.tracing, metrics, logger
         );

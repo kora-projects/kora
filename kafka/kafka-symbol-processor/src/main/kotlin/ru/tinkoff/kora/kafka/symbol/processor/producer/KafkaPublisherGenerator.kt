@@ -138,7 +138,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
             addStatement("var properties = %T()", Properties::class.asClassName())
             addStatement("properties.putAll(config.driverProperties())")
             addStatement("properties.putAll(additionalProperties)")
-            add("%T(telemetryFactory, properties", implementationTypeName).indent()
+            add("%T(telemetryFactory, config.telemetry(), properties", implementationTypeName).indent()
             topicConfig?.let { add(", topicConfig") }
             val parameters = HashMap<TypeWithTag, String>()
             val counter = AtomicInteger(0)
@@ -187,6 +187,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
             .addOriginatingKSFile(classDeclaration.containingFile!!)
             .addSuperinterface(KafkaClassNames.generatedPublisher)
             .addProperty(PropertySpec.builder("telemetryFactory", producerTelemetryFactory, KModifier.PRIVATE, KModifier.FINAL).initializer("telemetryFactory").build())
+            .addProperty(PropertySpec.builder("telemetryConfig", CommonClassNames.telemetryConfig, KModifier.PRIVATE, KModifier.FINAL).initializer("telemetryConfig").build())
             .addProperty(PropertySpec.builder("driverProperties", Properties::class, KModifier.PRIVATE, KModifier.FINAL).initializer("driverProperties").build())
             .apply { topicConfig?.let { addProperty(PropertySpec.builder("topicConfig", it, KModifier.PRIVATE, KModifier.FINAL).initializer("topicConfig").build()) } }
             .addProperty(
@@ -207,7 +208,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                 FunSpec.builder("init")
                     .addModifiers(KModifier.OVERRIDE)
                     .addStatement("this.delegate = %T(driverProperties, %T(), %T())", KafkaClassNames.kafkaProducer, KafkaClassNames.byteArraySerializer, KafkaClassNames.byteArraySerializer)
-                    .addStatement("this.telemetry = this.telemetryFactory.get(this.delegate, driverProperties)")
+                    .addStatement("this.telemetry = this.telemetryFactory.get(this.telemetryConfig, this.delegate, driverProperties)")
                     .build()
             )
             .addFunction(
@@ -238,6 +239,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
 
         val constructorBuilder = FunSpec.constructorBuilder()
             .addParameter("telemetryFactory", producerTelemetryFactory)
+            .addParameter("telemetryConfig", CommonClassNames.telemetryConfig)
             .addParameter("driverProperties", Properties::class)
             .apply { topicConfig?.let { addParameter("topicConfig", it) } }
 

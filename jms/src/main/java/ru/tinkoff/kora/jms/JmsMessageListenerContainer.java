@@ -34,7 +34,7 @@ public class JmsMessageListenerContainer implements Lifecycle {
         this.config = config;
         this.messageListener = messageListener;
         this.log = LoggerFactory.getLogger(JmsMessageListenerContainer.class);
-        this.telemetry = telemetryFactory.get(config.queueName());
+        this.telemetry = telemetryFactory.get(config.telemetry(), config.queueName());
     }
 
     @Override

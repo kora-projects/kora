@@ -15,7 +15,12 @@ import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandlerImpl;
+import ru.tinkoff.kora.http.server.common.telemetry.$HttpServerLoggerConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.http.server.common.telemetry.$HttpServerTelemetryConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetry;
+import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetryFactory;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -63,8 +68,10 @@ class PublicApiHandlerProcessTests {
         var handlers = List.of(handler(method, route));
         var telemetry = Mockito.mock(HttpServerTelemetry.class);
         when(telemetry.get(any(), anyString())).thenReturn(mock(HttpServerTelemetry.HttpServerTelemetryContext.class));
+        var telemetryFactory = Mockito.mock(HttpServerTelemetryFactory.class);
+        when(telemetryFactory.get(any())).thenReturn(telemetry);
         var config = config(false);
-        var handler = new PublicApiHandler(handlers, All.of(), telemetry, config);
+        var handler = new PublicApiHandler(handlers, All.of(), telemetryFactory, config);
 
         // when
         var request = new PublicApiRequestImpl(method, path, "foo", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
@@ -110,8 +117,10 @@ class PublicApiHandlerProcessTests {
         var handlers = List.of(handler(method, route));
         var telemetry = Mockito.mock(HttpServerTelemetry.class);
         when(telemetry.get(any(), anyString())).thenReturn(mock(HttpServerTelemetry.HttpServerTelemetryContext.class));
+        var telemetryFactory = Mockito.mock(HttpServerTelemetryFactory.class);
+        when(telemetryFactory.get(any())).thenReturn(telemetry);
         var config = config(true);
-        var handler = new PublicApiHandler(handlers, All.of(), telemetry, config);
+        var handler = new PublicApiHandler(handlers, All.of(), telemetryFactory, config);
 
         // when
         var request = new PublicApiRequestImpl(method, path, "foo", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
@@ -131,7 +140,9 @@ class PublicApiHandlerProcessTests {
         var telemetry = Mockito.mock(HttpServerTelemetry.class);
         when(telemetry.get(any(), anyString())).thenReturn(mock(HttpServerTelemetry.HttpServerTelemetryContext.class));
         var config = config(false);
-        var handler = new PublicApiHandler(handlers, All.of(), telemetry, config);
+        var telemetryFactory = Mockito.mock(HttpServerTelemetryFactory.class);
+        when(telemetryFactory.get(any())).thenReturn(telemetry);
+        var handler = new PublicApiHandler(handlers, All.of(), telemetryFactory, config);
 
         var request = new PublicApiRequestImpl("POST", "/baz", "test", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
         var rs = handler.process(Context.clear(), request);
@@ -142,7 +153,20 @@ class PublicApiHandlerProcessTests {
 
     private HttpServerConfig config(boolean ignoreTrailingSlash) {
         return new HttpServerConfig_Impl(
-            8080, 8085, "/metrics", "/system/readiness", "/system/liveness", ignoreTrailingSlash, 10, 10, Duration.ofMillis(100)
+            8080,
+            8085,
+            "/metrics",
+            "/system/readiness",
+            "/system/liveness",
+            ignoreTrailingSlash,
+            10,
+            10,
+            Duration.ofMillis(100),
+            new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
+                new $HttpServerLoggerConfig_ConfigValueExtractor.HttpServerLoggerConfig_Defaults(),
+                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
+                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Defaults()
+            )
         );
     }
 

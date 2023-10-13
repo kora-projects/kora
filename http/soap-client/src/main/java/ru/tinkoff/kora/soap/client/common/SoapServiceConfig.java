@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.soap.client.common;
 
-import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.time.Duration;
 
@@ -13,4 +13,6 @@ public interface SoapServiceConfig {
     default Duration timeout() {
         return Duration.ofSeconds(60);
     }
+
+    TelemetryConfig telemetry();
 }

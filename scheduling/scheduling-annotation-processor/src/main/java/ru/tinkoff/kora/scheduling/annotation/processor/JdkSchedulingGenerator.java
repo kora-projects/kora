@@ -1,18 +1,18 @@
 package ru.tinkoff.kora.scheduling.annotation.processor;
 
 import com.squareup.javapoet.*;
-import ru.tinkoff.kora.annotation.processor.common.*;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
+import ru.tinkoff.kora.annotation.processor.common.NameUtils;
+import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 
 import javax.annotation.processing.Filer;
-import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
-import javax.lang.model.util.Types;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
@@ -66,34 +66,48 @@ public class JdkSchedulingGenerator {
             .addParameter(jdkSchedulingExecutor, "service")
             .addParameter(TypeName.get(type.asType()), "object")
             .returns(runOnceJobClassName)
-            .addAnnotation(CommonClassNames.root)
-            .addCode("var telemetry = telemetryFactory.get($T.class, $S);\n", type, method.getSimpleName());
+            .addAnnotation(CommonClassNames.root);
 
         if (configName.isEmpty()) {
             if (delay == null || delay == 0) {
                 throw new ProcessingErrorException("Either delay() or config() annotation parameter must be provided", method, trigger.triggerAnnotation());
             }
             componentMethod
+                .addCode("var telemetry = telemetryFactory.get(null, $T.class, $S);\n", type, method.getSimpleName())
                 .addCode("var delay = $T.of($L, $T.$L);\n", Duration.class, delay, ChronoUnit.class, unit);
         } else {
-            new RecordClassBuilder(configClassName)
-                .addModifier(Modifier.PUBLIC)
-                .addComponent(
-                    "delay",
-                    TypeName.get(Duration.class),
-                    delay == null || delay == 0 ? null : CodeBlock.of("$T.of($L, $T.$L)", Duration.class, delay, ChronoUnit.class, unit)
-                )
-                .writeTo(this.filer, packageName);
+            var config = TypeSpec.interfaceBuilder(configClassName)
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", "$S", JdkSchedulingGenerator.class.getCanonicalName()).build())
+                .addAnnotation(CommonClassNames.configValueExtractorAnnotation)
+                .addMethod(MethodSpec.methodBuilder("telemetry")
+                    .returns(CommonClassNames.telemetryConfig)
+                    .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                    .build()
+                );
+            if (delay == null || delay == 0) {
+                config.addMethod(MethodSpec.methodBuilder("delay")
+                    .returns(Duration.class)
+                    .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                    .build()
+                );
+            } else {
+                config.addMethod(MethodSpec.methodBuilder("delay")
+                    .returns(Duration.class)
+                    .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                    .addStatement("return $T.of($L, $T.$L)", Duration.class, delay, ChronoUnit.class, unit)
+                    .build()
+                );
+            }
+            module.addMethod(configComponent(packageName, configClassName, configName));
+            JavaFile.builder(packageName, config.build()).build().writeTo(this.filer);
 
-            var configComponent = configComponent(packageName, configClassName, configName);
-
-            componentMethod
-                .addParameter(ClassName.get(packageName, configClassName), "config")
-                .addCode("var delay = config.delay();\n");
-            module.addMethod(configComponent);
+            componentMethod.addParameter(ClassName.get(packageName, configClassName), "config");
+            componentMethod.addCode("var telemetry = telemetryFactory.get(config.telemetry(), $T.class, $S);\n", type, method.getSimpleName());
+            componentMethod.addCode("var delay = config.delay();\n");
         }
-        componentMethod
-            .addCode("return new $T(telemetry, service, object::$L, delay);\n", runOnceJobClassName, method.getSimpleName());
+
+        componentMethod.addCode("return new $T(telemetry, service, object::$L, delay);\n", runOnceJobClassName, method.getSimpleName());
         module.addMethod(componentMethod.build());
     }
 
@@ -111,38 +125,54 @@ public class JdkSchedulingGenerator {
             .addParameter(jdkSchedulingExecutor, "service")
             .addParameter(TypeName.get(type.asType()), "object")
             .returns(fixedDelayJobClassName)
-            .addAnnotation(CommonClassNames.root)
-            .addCode("var telemetry = telemetryFactory.get($T.class, $S);\n", type, method.getSimpleName());
+            .addAnnotation(CommonClassNames.root);
 
         if (configName.isEmpty()) {
             if (delay == null || delay == 0) {
                 throw new ProcessingErrorException("Either delay() or config() annotation parameter must be provided", method, trigger.triggerAnnotation());
             }
             componentMethod
+                .addCode("var telemetry = telemetryFactory.get(null, $T.class, $S);\n", type, method.getSimpleName())
                 .addCode("var initialDelay = $T.of($L, $T.$L);\n", Duration.class, initialDelay, ChronoUnit.class, unit)
                 .addCode("var delay = $T.of($L, $T.$L);\n", Duration.class, delay, ChronoUnit.class, unit);
         } else {
-            new RecordClassBuilder(configClassName)
-                .addModifier(Modifier.PUBLIC)
-                .addComponent(
-                    "initialDelay",
-                    TypeName.get(Duration.class),
-                    CodeBlock.of("$T.of($L, $T.$L)", Duration.class, initialDelay, ChronoUnit.class, unit)
-                )
-                .addComponent(
-                    "delay",
-                    TypeName.get(Duration.class),
-                    delay == 0 ? null : CodeBlock.of("$T.of($L, $T.$L)", Duration.class, delay, ChronoUnit.class, unit)
-                )
-                .writeTo(this.filer, packageName);
-
-            var configComponent = configComponent(packageName, configClassName, configName);
+            var config = TypeSpec.interfaceBuilder(configClassName)
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", "$S", JdkSchedulingGenerator.class.getCanonicalName()).build())
+                .addAnnotation(CommonClassNames.configValueExtractorAnnotation)
+                .addMethod(MethodSpec.methodBuilder("telemetry")
+                    .returns(CommonClassNames.telemetryConfig)
+                    .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                    .build()
+                );
+            componentMethod.addParameter(ClassName.get(packageName, configClassName), "config");
+            if (delay == null || delay == 0) {
+                config.addMethod(MethodSpec.methodBuilder("delay")
+                    .returns(Duration.class)
+                    .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                    .build()
+                );
+            } else {
+                config.addMethod(MethodSpec.methodBuilder("delay")
+                    .returns(Duration.class)
+                    .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                    .addStatement("return $T.of($L, $T.$L)", Duration.class, delay, ChronoUnit.class, unit)
+                    .build()
+                );
+            }
+            config.addMethod(MethodSpec.methodBuilder("initialDelay")
+                .returns(Duration.class)
+                .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                .addStatement("return $T.of($L, $T.$L)", Duration.class, initialDelay, ChronoUnit.class, unit)
+                .build()
+            );
+            module.addMethod(configComponent(packageName, configClassName, configName));
+            JavaFile.builder(packageName, config.build()).build().writeTo(this.filer);
 
             componentMethod
-                .addParameter(ClassName.get(packageName, configClassName), "config")
+                .addCode("var telemetry = telemetryFactory.get(config.telemetry(), $T.class, $S);\n", type, method.getSimpleName())
                 .addCode("var initialDelay = config.initialDelay();\n")
                 .addCode("var delay = config.delay();\n");
-            module.addMethod(configComponent);
         }
         componentMethod
             .addCode("return new $T(telemetry, service, object::$L, initialDelay, delay);\n", fixedDelayJobClassName, method.getSimpleName());
@@ -163,38 +193,54 @@ public class JdkSchedulingGenerator {
             .addParameter(jdkSchedulingExecutor, "service")
             .addParameter(TypeName.get(type.asType()), "object")
             .returns(fixedRateJobClassName)
-            .addAnnotation(CommonClassNames.root)
-            .addCode("var telemetry = telemetryFactory.get($T.class, $S);\n", type, method.getSimpleName());
+            .addAnnotation(CommonClassNames.root);
 
         if (configName.isEmpty()) {
             if (period == null || period == 0) {
                 throw new ProcessingErrorException("Either period() or config() annotation parameter must be provided", method, trigger.triggerAnnotation());
             }
             componentMethod
+                .addCode("var telemetry = telemetryFactory.get(null, $T.class, $S);\n", type, method.getSimpleName())
                 .addCode("var initialDelay = $T.of($L, $T.$L);\n", Duration.class, initialDelay, ChronoUnit.class, unit)
                 .addCode("var period = $T.of($L, $T.$L);\n", Duration.class, period, ChronoUnit.class, unit);
         } else {
-            new RecordClassBuilder(configClassName)
-                .addModifier(Modifier.PUBLIC)
-                .addComponent(
-                    "initialDelay",
-                    TypeName.get(Duration.class),
-                    CodeBlock.of("$T.of($L, $T.$L)", Duration.class, initialDelay, ChronoUnit.class, unit)
-                )
-                .addComponent(
-                    "period",
-                    TypeName.get(Duration.class),
-                    period == null || period == 0 ? null : CodeBlock.of("$T.of($L, $T.$L)", Duration.class, period, ChronoUnit.class, unit)
-                )
-                .writeTo(this.filer, packageName);
+            var config = TypeSpec.interfaceBuilder(configClassName)
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", "$S", JdkSchedulingGenerator.class.getCanonicalName()).build())
+                .addAnnotation(CommonClassNames.configValueExtractorAnnotation)
+                .addMethod(MethodSpec.methodBuilder("telemetry")
+                    .returns(CommonClassNames.telemetryConfig)
+                    .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                    .build()
+                );
+            if (period == null || period == 0) {
+                config.addMethod(MethodSpec.methodBuilder("period")
+                    .returns(Duration.class)
+                    .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                    .build()
+                );
+            } else {
+                config.addMethod(MethodSpec.methodBuilder("period")
+                    .returns(Duration.class)
+                    .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                    .addStatement("return $T.of($L, $T.$L)", Duration.class, period, ChronoUnit.class, unit)
+                    .build()
+                );
+            }
+            config.addMethod(MethodSpec.methodBuilder("initialDelay")
+                .returns(Duration.class)
+                .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                .addStatement("return $T.of($L, $T.$L)", Duration.class, initialDelay, ChronoUnit.class, unit)
+                .build()
+            );
+            module.addMethod(configComponent(packageName, configClassName, configName));
+            JavaFile.builder(packageName, config.build()).build().writeTo(this.filer);
 
-            var configComponent = configComponent(packageName, configClassName, configName);
-
+            componentMethod.addParameter(ClassName.get(packageName, configClassName), "config");
             componentMethod
-                .addParameter(ClassName.get(packageName, configClassName), "config")
+                .addCode("var telemetry = telemetryFactory.get(config.telemetry(), $T.class, $S);\n", type, method.getSimpleName())
                 .addCode("var initialDelay = config.initialDelay();\n")
                 .addCode("var period = config.period();\n");
-            module.addMethod(configComponent);
         }
         componentMethod
             .addCode("return new $T(telemetry, service, object::$L, initialDelay, period);\n", fixedRateJobClassName, method.getSimpleName());
