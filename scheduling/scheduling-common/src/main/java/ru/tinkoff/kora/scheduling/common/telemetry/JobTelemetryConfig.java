@@ -58,7 +58,7 @@ public final class JobTelemetryConfig implements TelemetryConfig {
 
         private OperationMetricConfig(MetricsConfig client, @Nullable MetricsConfig job) {
             this.client = Objects.requireNonNull(client);
-            this.job = Objects.requireNonNull(job);
+            this.job = job;
         }
 
         @Nullable
@@ -85,7 +85,7 @@ public final class JobTelemetryConfig implements TelemetryConfig {
         private final TracingConfig job;
 
         private OperationTracingConfig(TracingConfig client, @Nullable TracingConfig job) {
-            this.client = client;
+            this.client = Objects.requireNonNull(client);
             this.job = job;
         }
 
