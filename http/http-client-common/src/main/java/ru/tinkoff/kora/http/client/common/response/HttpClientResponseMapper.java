@@ -12,15 +12,14 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
 public interface HttpClientResponseMapper<T> extends Mapping.MappingFunction {
+
     @Nullable
     T apply(HttpClientResponse response) throws IOException, HttpClientDecoderException;
 
     static <T> HttpClientResponseMapper<T> fromAsync(HttpClientResponseMapper<CompletionStage<T>> delegate) {
         return response -> {
             try {
-                delegate.apply(response).toCompletableFuture().get();
-            } catch (HttpClientException e) {
-                throw e;
+                return delegate.apply(response).toCompletableFuture().get();
             } catch (InterruptedException e) {
                 throw new HttpClientUnknownException(e);
             } catch (ExecutionException e) {
@@ -29,7 +28,6 @@ public interface HttpClientResponseMapper<T> extends Mapping.MappingFunction {
                 }
                 throw new HttpClientUnknownException(Objects.requireNonNullElse(e.getCause(), e));
             }
-            return null;
         };
     }
 
