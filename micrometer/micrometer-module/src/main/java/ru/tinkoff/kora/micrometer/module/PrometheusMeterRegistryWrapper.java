@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.micrometer.module;
 
-import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
@@ -16,7 +15,7 @@ import ru.tinkoff.kora.application.graph.Wrapped;
 
 import java.util.List;
 
-public final class PrometheusMeterRegistryWrapper implements Lifecycle, Wrapped<MeterRegistry> {
+public final class PrometheusMeterRegistryWrapper implements Lifecycle, Wrapped<PrometheusMeterRegistry> {
     private final List<PrometheusMeterRegistryInitializer> initializers;
     private volatile PrometheusMeterRegistry registry;
     private volatile JvmGcMetrics gcMetrics;

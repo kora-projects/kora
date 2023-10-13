@@ -2,6 +2,7 @@ package ru.tinkoff.kora.micrometer.module;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
+import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.micrometer.module.cache.MicrometerCacheMetrics;
@@ -23,12 +24,10 @@ import ru.tinkoff.kora.micrometer.module.resilient.MicrometerTimeoutMetrics;
 import ru.tinkoff.kora.micrometer.module.scheduling.MicrometerSchedulingMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.soap.client.MicrometerSoapClientMetricsFactory;
 
-import java.util.List;
-
 public interface MetricsModule {
 
     @Root
-    default PrometheusMeterRegistryWrapper prometheusMeterRegistry(List<PrometheusMeterRegistryInitializer> initializers) {
+    default PrometheusMeterRegistryWrapper prometheusMeterRegistry(All<PrometheusMeterRegistryInitializer> initializers) {
         return new PrometheusMeterRegistryWrapper(initializers);
     }
 
