@@ -6,14 +6,30 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Indicates entity field name to column name mapping.
+ * <b>Русский</b>: Аннотация указывает, соотношения имя поля в сущности и имя в колонке таблицы базы данных.
+ * <hr>
+ * <b>English</b>: Annotation specifies the relationship between the field name in an entity and the name in a column of a database table.
+ * <br>
+ * <br>
+ * Пример / Example:
+ * <pre>
+ * {@code
+ * @Table("users")
+ * public record User(@Column("fullname") String fullName) {}
+ * }
+ * </pre>
+ *
+ * @see Table
+ * @see Repository
  */
 @Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.RECORD_COMPONENT})
 @Retention(RetentionPolicy.CLASS)
 public @interface Column {
 
     /**
-     * @return column name that will be associated with marked field
+     * <b>Русский</b>: Имя поля сущности в базе данных.
+     * <hr>
+     * <b>English</b>: The name of the entity field in the database.
      */
     String value();
 }
