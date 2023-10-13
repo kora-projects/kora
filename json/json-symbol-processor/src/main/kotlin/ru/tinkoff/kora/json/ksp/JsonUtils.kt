@@ -76,8 +76,11 @@ fun KSPropertyDeclaration.findJsonField(): KSAnnotation? {
     if (fieldAnnotation != null) {
         return fieldAnnotation
     }
-    val constructor = this.parent as KSFunctionDeclaration
-    val jsonClass = constructor.parentDeclaration as KSClassDeclaration
+    val jsonClass = when (this.parentDeclaration) {
+        is KSFunctionDeclaration -> this.parentDeclaration?.parentDeclaration as KSClassDeclaration
+        is KSClassDeclaration -> this.parentDeclaration as KSClassDeclaration
+        else -> throw IllegalStateException("Unknown parent type for property ${this.parentDeclaration?.qualifiedName?.asString()}: ${this.javaClass}")
+    }
 
     val primaryConstructorParameterAnnotation = jsonClass.primaryConstructor?.parameters?.find { it.name?.asString() == this.simpleName.asString() }?.let {
         findJsonField(it)
