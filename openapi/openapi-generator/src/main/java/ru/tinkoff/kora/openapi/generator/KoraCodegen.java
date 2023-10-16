@@ -77,7 +77,10 @@ public class KoraCodegen extends DefaultCodegen {
                 }
             }
 
-            throw new UnsupportedOperationException("Unknown Mode is provided: " + option + ", available modes: " + Arrays.toString(Mode.values()));
+            final List<String> modes = Arrays.stream(Mode.values())
+                    .map(Mode::getMode)
+                    .toList();
+            throw new UnsupportedOperationException("Unknown Mode is provided: " + option + ", available modes: " + modes);
         }
 
         public boolean isServer() {
