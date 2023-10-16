@@ -96,13 +96,13 @@ public class CassandraTypesExtension implements KoraExtension {
         var entityType = dt.getTypeArguments().get(0);
         var element = (TypeElement) this.types.asElement(entityType);
         if (AnnotationUtils.findAnnotation(element, CassandraTypes.UDT_ANNOTATION) != null) {
-            return KoraExtensionDependencyGenerator.generatedFrom(elements, element, CassandraTypes.ROW_MAPPER);
+            return KoraExtensionDependencyGenerator.generatedFrom(elements, element, CassandraTypes.RESULT_COLUMN_MAPPER);
         }
         if (element.getQualifiedName().contentEquals("java.util.List")) {
             entityType = ((DeclaredType) entityType).getTypeArguments().get(0);
             element = (TypeElement) this.types.asElement(entityType);
             if (AnnotationUtils.findAnnotation(element, CassandraTypes.UDT_ANNOTATION) != null) {
-                return KoraExtensionDependencyGenerator.generatedFrom(elements, element, CassandraTypes.ROW_MAPPER);
+                return KoraExtensionDependencyGenerator.generatedFrom(elements, element, CassandraTypes.RESULT_COLUMN_MAPPER);
             }
         }
         return null;
