@@ -10,11 +10,13 @@ import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
 
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 
 public interface HttpServerRequestMapperModule {
+
     default HttpServerRequestMapper<HttpServerRequest> noopRequestMapper() {
         return (r) -> r;
     }
@@ -25,14 +27,14 @@ public interface HttpServerRequestMapperModule {
 
     default HttpServerRequestMapper<ByteBuffer> byteBufBodyRequestMapper() {
         return (r) -> r.body().getFullContentIfAvailable() != null
-            ? r.body().getFullContentIfAvailable()
-            : r.body().asBufferStage().toCompletableFuture().join();
+                ? r.body().getFullContentIfAvailable()
+                : r.body().asBufferStage().toCompletableFuture().join();
     }
 
     default HttpServerRequestMapper<CompletionStage<ByteBuffer>> byteBufAsyncBodyRequestMapper() {
         return (r) -> r.body().getFullContentIfAvailable() != null
-            ? CompletableFuture.completedFuture(r.body().getFullContentIfAvailable())
-            : r.body().asBufferStage();
+                ? CompletableFuture.completedFuture(r.body().getFullContentIfAvailable())
+                : r.body().asBufferStage();
     }
 
     default HttpServerRequestMapper<CompletionStage<byte[]>> byteArrayAsyncRequestMapper() {
@@ -62,6 +64,40 @@ public interface HttpServerRequestMapperModule {
                 return array;
             }
             return FlowUtils.toByteArrayFuture(request.body()).join();
+        };
+    }
+
+    default HttpServerRequestMapper<CompletionStage<String>> stringAsyncRequestMapper(HttpServerRequestMapper<CompletionStage<byte[]>> mapper) {
+        return (request) -> {
+            var full = request.body().getFullContentIfAvailable();
+            if (full != null) {
+                if (full.hasArray() && full.arrayOffset() == 0 && full.array().length == full.remaining()) {
+                    return CompletableFuture.completedFuture(new String(full.array(), StandardCharsets.UTF_8));
+                }
+                var array = new byte[full.remaining()];
+                full.get(array);
+                return CompletableFuture.completedFuture(new String(array, StandardCharsets.UTF_8));
+            }
+
+            return FlowUtils.toByteArrayFuture(request.body())
+                    .thenApply(bytes -> {
+                        if(bytes == null) {
+                            return null;
+                        }
+
+                        return new String(bytes, StandardCharsets.UTF_8);
+                    });
+        };
+    }
+
+    default HttpServerRequestMapper<String> stringRequestMapper(HttpServerRequestMapper<byte[]> mapper) {
+        return request -> {
+            final byte[] bytes = mapper.apply(request);
+            if(bytes == null) {
+                return null;
+            }
+
+            return new String(bytes, StandardCharsets.UTF_8);
         };
     }
 
