@@ -6,15 +6,21 @@ import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Flow;
 
 public interface HttpClientRequestMapperModule {
+
     default HttpClientRequestMapper<byte[]> byteArrayHttpClientRequestMapper() {
         return (ctx, body) -> HttpBody.octetStream(body);
     }
 
     default HttpClientRequestMapper<ByteBuffer> byteBufferHttpClientRequestMapper() {
         return (ctx, body) -> HttpBody.octetStream(body);
+    }
+
+    default HttpClientRequestMapper<String> stringHttpClientRequestMapper() {
+        return (ctx, body) -> HttpBody.octetStream(body.getBytes(StandardCharsets.UTF_8));
     }
 
     default HttpClientRequestMapper<Flow.Publisher<ByteBuffer>> byteBufferPublisherHttpClientRequestMapper() {
