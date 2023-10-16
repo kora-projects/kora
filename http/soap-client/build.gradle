@@ -1,4 +1,6 @@
 dependencies {
+    annotationProcessor project(':config:config-annotation-processor')
+
     api project(':http:http-client-common')
     api project(':telemetry:telemetry-common')
 

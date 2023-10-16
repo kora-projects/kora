@@ -3,12 +3,12 @@ plugins {
 }
 
 dependencies {
+    annotationProcessor project(':config:config-annotation-processor')
+
     api project(':common')
     api project(':logging:logging-common')
     api project(':http:http-common')
     api project(':telemetry:telemetry-common')
-
-    annotationProcessor project(':config:config-annotation-processor')
 
     testImplementation libs.reactor.core
 
