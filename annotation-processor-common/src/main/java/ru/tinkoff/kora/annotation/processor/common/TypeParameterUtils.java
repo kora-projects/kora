@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.annotation.processor.common;
 
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.*;
 
 public class TypeParameterUtils {
@@ -85,5 +86,26 @@ public class TypeParameterUtils {
                     .reduce(false, (a, b) -> a || b);
             }
         }, null);
+    }
+
+    public static boolean hasRawTypes(TypeMirror type) {
+        return switch (type.getKind()) {
+            case DECLARED -> {
+                var dt = (DeclaredType) type;
+                var te = (TypeElement) dt.asElement();
+
+                if (!te.getTypeParameters().isEmpty() && dt.getTypeArguments().isEmpty()) {
+                    yield true;
+                }
+                for (var typeArgument : dt.getTypeArguments()) {
+                    if (hasRawTypes(typeArgument)) {
+                        yield true;
+                    }
+                }
+                yield false;
+            }
+            case ARRAY -> hasRawTypes(((ArrayType) type).getComponentType());
+            default -> false;
+        };
     }
 }

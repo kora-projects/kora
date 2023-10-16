@@ -59,7 +59,7 @@ public class GraphResolutionHelper {
     }
 
     @Nullable
-    public static ComponentDeclaration findFinalDependency(DependencyClaim dependencyClaim) {
+    public static ComponentDeclaration findFinalDependency(ProcessingContext ctx, DependencyClaim dependencyClaim) {
         if (dependencyClaim.type().getKind() != TypeKind.DECLARED) {
             return null;
         }
@@ -78,7 +78,7 @@ public class GraphResolutionHelper {
         var tags = TagUtils.parseTagValue(element);
 
         if (dependencyClaim.tagsMatches(tags)) {
-            return ComponentDeclaration.fromDependency(element);
+            return ComponentDeclaration.fromDependency(ctx, element);
         } else {
             return null;
         }

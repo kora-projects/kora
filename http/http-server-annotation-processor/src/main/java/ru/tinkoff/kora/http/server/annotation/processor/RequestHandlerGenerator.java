@@ -219,12 +219,12 @@ public class RequestHandlerGenerator {
         b.beginControlFlow("try");
         var returnType = (DeclaredType) requestMappingData.executableType().getReturnType();
         if (returnType.getTypeArguments().get(0).toString().equals("java.lang.Void")) {
-            b.add("return _controller.$N($L).toFuture()\n", requestMappingData.executableElement().getSimpleName(), executeParameters);
+            b.add("return _controller.$N($L).contextWrite(_rctx -> $T.inject(_rctx, _ctx)).toFuture()\n", requestMappingData.executableElement().getSimpleName(), executeParameters, CommonClassNames.context.nestedClass("Reactor"));
             b.add("  .thenApply(__unused_ -> $T.of(200));\n", HttpServerClassNames.httpServerResponse);
         } else if (returnType.getTypeArguments().get(0).toString().equals(httpServerResponse.canonicalName())) {
-            b.add("return _controller.$N($L).toFuture();\n", requestMappingData.executableElement().getSimpleName(), executeParameters);
+            b.add("return _controller.$N($L).contextWrite(_rctx -> $T.inject(_rctx, _ctx)).toFuture();\n", requestMappingData.executableElement().getSimpleName(), executeParameters, CommonClassNames.context.nestedClass("Reactor"));
         } else {
-            b.add("return _controller.$N($L).toFuture()$>\n", requestMappingData.executableElement().getSimpleName(), executeParameters);
+            b.add("return _controller.$N($L).contextWrite(_rctx -> $T.inject(_rctx, _ctx)).toFuture()$>\n", requestMappingData.executableElement().getSimpleName(), executeParameters, CommonClassNames.context.nestedClass("Reactor"));
             b.add(".thenApply(_result -> {$>\n");
             b.add("try {\n");
             b.add("  return _responseMapper.apply(_ctx, _request, _result);\n");

@@ -2,12 +2,11 @@ package ru.tinkoff.kora.kora.app.annotation.processor.component;
 
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
-import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
-import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
-import ru.tinkoff.kora.annotation.processor.common.TagUtils;
+import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim.DependencyClaimType;
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclaration;
 
+import javax.lang.model.element.Element;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeMirror;
@@ -26,7 +25,7 @@ public class ComponentDependencyHelper {
                 var parameterElement = element.getParameters().get(i);
                 var tags = TagUtils.parseTagValue(parameterElement);
                 var isNullable = AnnotationUtils.findAnnotation(parameterElement, name -> name.endsWith("Nullable")) != null;
-                result.add(parseClaim(parameterType, tags, isNullable));
+                result.add(parseClaim(element, parameterType, tags, isNullable));
             }
             return result;
         } else if (componentDeclaration instanceof ComponentDeclaration.DiscoveredAsDependencyComponent discoveredAsDependency) {
@@ -38,7 +37,7 @@ public class ComponentDependencyHelper {
                 var parameterElement = element.getParameters().get(i);
                 var tags = TagUtils.parseTagValue(parameterElement);
                 var isNullable = AnnotationUtils.findAnnotation(parameterElement, name -> name.endsWith("Nullable")) != null;
-                result.add(parseClaim(parameterType, tags, isNullable));
+                result.add(parseClaim(element, parameterType, tags, isNullable));
             }
             return result;
         } else if (componentDeclaration instanceof ComponentDeclaration.AnnotatedComponent annotated) {
@@ -50,7 +49,7 @@ public class ComponentDependencyHelper {
                 var parameterElement = element.getParameters().get(i);
                 var tags = TagUtils.parseTagValue(parameterElement);
                 var isNullable = AnnotationUtils.findAnnotation(parameterElement, name -> name.endsWith("Nullable")) != null;
-                result.add(parseClaim(parameterType, tags, isNullable));
+                result.add(parseClaim(element, parameterType, tags, isNullable));
             }
             return result;
         } else if (componentDeclaration instanceof ComponentDeclaration.FromExtensionComponent fromExtension) {
@@ -61,14 +60,18 @@ public class ComponentDependencyHelper {
                 var parameterElement = element.getParameters().get(i);
                 var tags = TagUtils.parseTagValue(parameterElement);
                 var isNullable = AnnotationUtils.findAnnotation(parameterElement, name -> name.endsWith("Nullable")) != null;
-                result.add(parseClaim(parameterType, tags, isNullable));
+                result.add(parseClaim(element, parameterType, tags, isNullable));
             }
             return result;
         }
         throw new IllegalArgumentException();
     }
 
-    public static DependencyClaim parseClaim(TypeMirror parameterType, Set<String> tags, boolean isNullable) {
+    public static DependencyClaim parseClaim(Element sourceElement, TypeMirror parameterType, Set<String> tags, boolean isNullable) {
+        if (TypeParameterUtils.hasRawTypes(parameterType)) {
+            throw new ProcessingErrorException("Components with raw types can break dependency resolution in unpredictable way so they are forbidden", sourceElement);
+        }
+
         var typeName = TypeName.get(parameterType);
         if (typeName instanceof ParameterizedTypeName ptn && parameterType instanceof DeclaredType dt) {
             if (ptn.rawType.canonicalName().equals(CommonClassNames.typeRef.canonicalName())) {

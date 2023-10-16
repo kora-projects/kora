@@ -167,11 +167,11 @@ public class GraphBuilder {
                     processing.sourceDeclarations().add(optionalDeclaration);
                     stack.addLast(componentFrame.withCurrentDependency(currentDependency));
                     stack.addLast(new ProcessingState.ResolutionFrame.Component(
-                        optionalDeclaration, List.of(ComponentDependencyHelper.parseClaim(((DeclaredType) dependencyClaim.type()).getTypeArguments().get(0), dependencyClaim.tags(), true))
+                        optionalDeclaration, List.of(ComponentDependencyHelper.parseClaim(componentFrame.declaration().source(), ((DeclaredType) dependencyClaim.type()).getTypeArguments().get(0), dependencyClaim.tags(), true))
                     ));
                     continue frame;
                 }
-                var finalClassComponent = GraphResolutionHelper.findFinalDependency(dependencyClaim);
+                var finalClassComponent = GraphResolutionHelper.findFinalDependency(ctx, dependencyClaim);
                 if (finalClassComponent != null) {
                     processing.sourceDeclarations().add(finalClassComponent);
                     stack.addLast(componentFrame.withCurrentDependency(currentDependency));
@@ -196,7 +196,7 @@ public class GraphBuilder {
                         );
                     } else {
                         var generated = (ExtensionResult.GeneratedResult) extensionResult;
-                        var extensionComponent = ComponentDeclaration.fromExtension(generated);
+                        var extensionComponent = ComponentDeclaration.fromExtension(ctx, generated);
                         if (extensionComponent.isTemplate()) {
                             processing.templates().add(extensionComponent);
                         } else {
@@ -221,6 +221,18 @@ public class GraphBuilder {
                 }
                 for (var hint : hints) {
                     msg.append("\n  Hint: ").append(hint.message());
+                }
+                msg.append("\nDependency chain:");
+                msg.append("\n  ").append(declaration.declarationString());
+                var i = stack.descendingIterator();
+                while (i.hasNext()) {
+                    var iFrame = i.next();
+                    if (iFrame instanceof ProcessingState.ResolutionFrame.Root root) {
+                        msg.append("\n  ").append(processing.rootSet().get(root.rootIndex()).declarationString());
+                        break;
+                    }
+                    var c = (ProcessingState.ResolutionFrame.Component) iFrame;
+                    msg.append("\n  ").append(c.declaration().declarationString());
                 }
                 throw new UnresolvedDependencyException(
                     msg.toString(),

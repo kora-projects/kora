@@ -30,7 +30,10 @@ import java.nio.file.StandardOpenOption
 import java.util.*
 import java.util.concurrent.Future
 import java.util.stream.Collectors
-import kotlin.io.path.*
+import kotlin.io.path.ExperimentalPathApi
+import kotlin.io.path.copyToRecursively
+import kotlin.io.path.createDirectories
+import kotlin.io.path.deleteRecursively
 import kotlin.reflect.KClass
 import kotlin.reflect.full.callSuspend
 import kotlin.reflect.full.memberFunctions
@@ -187,6 +190,7 @@ abstract class AbstractSymbolProcessorTest {
             ksp + "kspOutputDir=" + kotlinOutPath.resolveSibling("in-test-generated-kspOutputDir"),
             ksp + "classOutputDir=" + kotlinOutPath.resolveSibling("in-test-generated-classOutputDir"),
             ksp + "incremental=false",
+            ksp + "withCompilation=true",
             ksp + "javaOutputDir=" + kotlinOutPath.resolveSibling("in-test-generated-javaOutputDir"),
             ksp + "projectBaseDir=" + Path.of(".").toAbsolutePath(),
             ksp + "resourceOutputDir=" + kotlinOutPath.resolveSibling("in-test-generated-resourceOutputDir"),
@@ -213,20 +217,7 @@ abstract class AbstractSymbolProcessorTest {
         }
         if (collector.hasErrors()) {
             compileResult = CompileResult(testPackage(), code, cl, sw.toString(StandardCharsets.UTF_8).split("\n"))
-        }
-        k2JvmArgs.pluginClasspaths = null;
-        k2JvmArgs.freeArgs = srcFiles + Files.walk(kotlinOutputDir)
-            .filter { it.isRegularFile() }
-            .map {
-                kotlinOutPath.resolve("sources").resolve(it.relativeTo(kotlinOutputDir)).toAbsolutePath().toString()
-            }
-            .toList()
-        code = co.exec(collector, Services.EMPTY, k2JvmArgs);
-        if (code != ExitCode.OK) {
-            compileResult = CompileResult(testPackage(), code, cl, sw.toString(StandardCharsets.UTF_8).split("\n"))
-        }
-        if (collector.hasErrors()) {
-            compileResult = CompileResult(testPackage(), code, cl, sw.toString(StandardCharsets.UTF_8).split("\n"))
+            return compileResult
         }
         cl = URLClassLoader("test-cl", arrayOf(URL("file://$inTestGeneratedDestination/")), Thread.currentThread().contextClassLoader)
         println("$code:\n$sw")
