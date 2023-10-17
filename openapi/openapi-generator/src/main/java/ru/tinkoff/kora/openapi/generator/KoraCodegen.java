@@ -85,8 +85,8 @@ public class KoraCodegen extends DefaultCodegen {
 
         public boolean isServer() {
             return switch (this) {
-                case JAVA_CLIENT, JAVA_ASYNC_CLIENT, JAVA_REACTIVE_CLIENT, KOTLIN_CLIENT, KOTLIN_SUSPEND_CLIENT -> false;
                 case JAVA_SERVER, JAVA_ASYNC_SERVER, JAVA_REACTIVE_SERVER, KOTLIN_SERVER, KOTLIN_SUSPEND_SERVER -> true;
+                default -> false;
             };
         }
 
@@ -1398,7 +1398,7 @@ public class KoraCodegen extends DefaultCodegen {
                 response.vendorExtensions.put("singleResponse", op.responses.size() == 1);
             }
             if (op.hasAuthMethods) {
-                if (this.codegenMode.name().contains("SERVER")) {
+                if (this.codegenMode.isServer()) {
                     var operationAuthMethods = new TreeSet<String>();
                     for (var authMethod : op.authMethods) {
                         tags.add(upperCase(toVarName(authMethod.name)));
