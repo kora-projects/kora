@@ -38,8 +38,28 @@ public class JdbcEmbeddedEntityTest extends AbstractExtensionTest {
 
         var rowMapper = (JdbcRowMapper<?>) graph.get(draw.getNodes().get(0));
         var rs = mockResultSet(
-            of("f1_f1", 10),
-            of("f1_f2", 20)
+            of("f1", 10),
+            of("f2", 20)
+        );
+
+        var row = rowMapper.apply(rs);
+        assertThat(row).isEqualTo(newObject("TestRecord", newObject("EmbeddedRecord", 10, 20)));
+    }
+
+    @Test
+    public void testSimpleEmbeddedRecordWithValue() throws SQLException {
+        var expectedType = ParameterizedTypeName.get(ClassName.get(JdbcRowMapper.class), className("TestRecord"));
+
+        var graph = compile(expectedType, List.of(),
+                "public record EmbeddedRecord (int f1, int f2){}",
+                "public record TestRecord (@Embedded(\"f1_\") EmbeddedRecord f1){}"
+        );
+        assertThat(draw.getNodes()).hasSize(2);
+
+        var rowMapper = (JdbcRowMapper<?>) graph.get(draw.getNodes().get(0));
+        var rs = mockResultSet(
+                of("f1_f1", 10),
+                of("f1_f2", 20)
         );
 
         var row = rowMapper.apply(rs);
@@ -59,24 +79,55 @@ public class JdbcEmbeddedEntityTest extends AbstractExtensionTest {
         var rowMapper = (JdbcRowMapper<?>) graph.get(draw.getNodes().get(0));
 
         assertThat(rowMapper.apply(mockResultSet(
-            of("f1_f1", "test"),
-            of("f1_f2", 20)
+            of("f1", "test"),
+            of("f2", 20)
         )))
             .isEqualTo(newObject("TestRecord", newObject("EmbeddedRecord", "test", 20)));
 
         assertThat(rowMapper.apply(mockResultSet(
-            of("f1_f1", (String) null),
-            of("f1_f2", 20)
+            of("f1", (String) null),
+            of("f2", 20)
         )))
             .isEqualTo(newObject("TestRecord", newObject("EmbeddedRecord", null, 20)));
 
         assertThatThrownBy(() -> rowMapper.apply(mockResultSet(
-            of("f1_f1", "test"),
-            of("f1_f2", (Integer) null)
+            of("f1", "test"),
+            of("f2", (Integer) null)
         )))
             .isInstanceOf(NullPointerException.class)
-            .hasMessage("Result field f1_f2 is not nullable but row f1_f2 has null");
+            .hasMessage("Result field f1_f2 is not nullable but row f2 has null");
+    }
 
+    @Test
+    public void testEmbeddedRecordWithNullableFieldWithValue() throws SQLException {
+        var expectedType = ParameterizedTypeName.get(ClassName.get(JdbcRowMapper.class), className("TestRecord"));
+
+        var graph = compile(expectedType, List.of(),
+                "public record EmbeddedRecord (@Nullable String f1, int f2){}",
+                "public record TestRecord (@Embedded(\"f1_\") EmbeddedRecord f1){}"
+        );
+        assertThat(draw.getNodes()).hasSize(2);
+
+        var rowMapper = (JdbcRowMapper<?>) graph.get(draw.getNodes().get(0));
+
+        assertThat(rowMapper.apply(mockResultSet(
+                of("f1_f1", "test"),
+                of("f1_f2", 20)
+        )))
+                .isEqualTo(newObject("TestRecord", newObject("EmbeddedRecord", "test", 20)));
+
+        assertThat(rowMapper.apply(mockResultSet(
+                of("f1_f1", (String) null),
+                of("f1_f2", 20)
+        )))
+                .isEqualTo(newObject("TestRecord", newObject("EmbeddedRecord", null, 20)));
+
+        assertThatThrownBy(() -> rowMapper.apply(mockResultSet(
+                of("f1_f1", "test"),
+                of("f1_f2", (Integer) null)
+        )))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("Result field f1_f2 is not nullable but row f1_f2 has null");
     }
 
     @Test
@@ -93,31 +144,69 @@ public class JdbcEmbeddedEntityTest extends AbstractExtensionTest {
 
 
         assertThat(rowMapper.apply(mockResultSet(
-            of("f1_f1", 10),
-            of("f1_f2", 20)
+            of("f1", 10),
+            of("f2", 20)
         ))).isEqualTo(newObject("TestRecord", newObject("EmbeddedRecord", 10, 20)));
 
         assertThat(rowMapper.apply(mockResultSet(
-            of("f1_f1", (Integer) null),
-            of("f1_f2", (Integer) null)
+            of("f1", (Integer) null),
+            of("f2", (Integer) null)
         ))).isEqualTo(newObject("TestRecord", new Object[]{null}));
 
         assertThatThrownBy(() -> rowMapper.apply(mockResultSet(
-            of("f1_f1", 10),
-            of("f1_f2", (Integer) null)
+            of("f1", 10),
+            of("f2", (Integer) null)
         ))).isInstanceOf(NullPointerException.class);
 
         assertThatThrownBy(() -> rowMapper.apply(mockResultSet(
-            of("f1_f1", (Integer) null),
-            of("f1_f2", 10)
+            of("f1", (Integer) null),
+            of("f2", 10)
         ))).isInstanceOf(NullPointerException.class);
 
         assertThatThrownBy(() -> rowMapper.apply(mockResultSet(
-            of("f1_f1", 10),
-            of("f1_f2", (Integer) null)
+            of("f1", 10),
+            of("f2", (Integer) null)
         ))).isInstanceOf(NullPointerException.class);
     }
 
+    @Test
+    public void testNullableEmbeddedRecordWithValue() throws SQLException {
+        var expectedType = ParameterizedTypeName.get(ClassName.get(JdbcRowMapper.class), className("TestRecord"));
+
+        var graph = compile(expectedType, List.of(),
+                "public record EmbeddedRecord (int f1, int f2){}",
+                "public record TestRecord (@Nullable @Embedded(\"f1_\") EmbeddedRecord f1){}"
+        );
+        assertThat(draw.getNodes()).hasSize(2);
+
+        var rowMapper = (JdbcRowMapper<?>) graph.get(draw.getNodes().get(0));
+
+
+        assertThat(rowMapper.apply(mockResultSet(
+                of("f1_f1", 10),
+                of("f1_f2", 20)
+        ))).isEqualTo(newObject("TestRecord", newObject("EmbeddedRecord", 10, 20)));
+
+        assertThat(rowMapper.apply(mockResultSet(
+                of("f1_f1", (Integer) null),
+                of("f1_f2", (Integer) null)
+        ))).isEqualTo(newObject("TestRecord", new Object[]{null}));
+
+        assertThatThrownBy(() -> rowMapper.apply(mockResultSet(
+                of("f1_f1", 10),
+                of("f1_f2", (Integer) null)
+        ))).isInstanceOf(NullPointerException.class);
+
+        assertThatThrownBy(() -> rowMapper.apply(mockResultSet(
+                of("f1_f1", (Integer) null),
+                of("f1_f2", 10)
+        ))).isInstanceOf(NullPointerException.class);
+
+        assertThatThrownBy(() -> rowMapper.apply(mockResultSet(
+                of("f1_f1", 10),
+                of("f1_f2", (Integer) null)
+        ))).isInstanceOf(NullPointerException.class);
+    }
 
     public ResultSet mockResultSet(JdbcColumn<?>... columns) throws SQLException {
         var rs = Mockito.mock(ResultSet.class);

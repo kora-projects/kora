@@ -128,7 +128,7 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
                     if (embedded == null) {
                         return@map field
                     }
-                    val prefix = embedded.findValue<String>("value")?.ifEmpty { null } ?: "${property.simpleName.asString()}_"
+                    val prefix = embedded.findValue<String>("value")?.ifEmpty { null } ?: ""
                     val entity = parseEntity(type)!!
                     val embeddedFields = entity.fields.map { f -> EmbeddedEntityField.Field(field, f.property, f.type, prefix + (f as SimpleEntityField).columnName, f.mapping) }
                     EmbeddedEntityField(field, property, type, embeddedFields)

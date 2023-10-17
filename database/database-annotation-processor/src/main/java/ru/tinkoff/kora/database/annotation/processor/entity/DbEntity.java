@@ -252,7 +252,7 @@ public class DbEntity {
                 if (embedded == null) {
                     return field;
                 }
-                var prefix = Objects.requireNonNullElse(AnnotationUtils.parseAnnotationValueWithoutDefault(embedded, "value"), columnName + "_");
+                var prefix = Objects.requireNonNullElse(AnnotationUtils.parseAnnotationValueWithoutDefault(embedded, "value"), "");
                 var entity = parseEntity(types, type);
                 var embeddedFields = new ArrayList<EmbeddedEntityField.Field>();
                 for (var entityField : entity.entityFields) {
