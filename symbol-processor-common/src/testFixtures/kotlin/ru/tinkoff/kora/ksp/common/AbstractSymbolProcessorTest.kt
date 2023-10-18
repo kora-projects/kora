@@ -127,12 +127,12 @@ abstract class AbstractSymbolProcessorTest {
 
         fun compilationException(): Throwable {
             val errorMessages = mutableListOf<String>()
-            val indexOfFirst = messages.indexOfFirst { it.startsWith("error: ") }
+            val indexOfFirst = messages.indexOfFirst { it.contains("error: ") }
             if (indexOfFirst >= 0) {
                 errorMessages.add(messages[indexOfFirst])
                 for (i in indexOfFirst + 1 until messages.size) {
                     val message = messages[i]
-                    if (message.startsWith("error: [") || message.startsWith("warn: [") || message.startsWith("info: [") || message.startsWith("logging: [")) {
+                    if (message.contains("error: [") || message.contains("warn: [") || message.contains("info: [") || message.contains("logging: [")) {
                         break
                     } else {
                         errorMessages.add(message)
