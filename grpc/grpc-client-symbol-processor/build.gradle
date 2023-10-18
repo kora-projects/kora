@@ -1,0 +1,61 @@
+plugins {
+    id 'com.google.protobuf' version "0.9.3"
+}
+
+apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
+
+dependencies {
+    api project(':symbol-processor-common')
+
+    implementation project(':kora-app-symbol-processor')
+
+    testImplementation libs.grpc.kotlin.stub
+    testImplementation libs.grpc.protobuf
+    testImplementation project(':grpc:grpc-client')
+    testImplementation project(':config:config-symbol-processor')
+    testImplementation testFixtures(project(':symbol-processor-common'))
+    testImplementation 'javax.annotation:javax.annotation-api:1.3.2'
+}
+
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
+
+def grpcVersion = libs.versions.grpc.java.get()
+def grpcKotlinVersion = libs.versions.grpc.kotlin.get()
+
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:3.21.9"
+    }
+    plugins {
+        grpc {
+            artifact = "io.grpc:protoc-gen-grpc-java:$grpcVersion"
+        }
+        grpckt {
+            artifact = "io.grpc:protoc-gen-grpc-kotlin:${grpcKotlinVersion}:jdk8@jar"
+        }
+    }
+    generateProtoTasks {
+        ofSourceSet("test").forEach {
+            it.plugins {
+                grpckt
+                grpc
+            }
+            it.builtins {
+                kotlin
+            }
+        }
+    }
+}
+
+sourceSets {
+    test {
+        java {
+            srcDir project.file('build/generated/source/proto/test/grpc')
+            srcDir project.file('build/generated/source/proto/test/java')
+        }
+        kotlin {
+            srcDir project.file('build/generated/source/proto/test/grpckt')
+        }
+    }
+}

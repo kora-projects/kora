@@ -15,7 +15,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             version('vertx', '4.3.4')
             version('testcontainers', '1.18.3')
             version('cassandra', '4.15.0')
-            version('grpc', '1.50.2')
+            version('grpc-java', '1.50.2')
             version('grpc-kotlin', '1.3.0')
             version('kotlin-testing', '1.4.9')
             version('ksp', '1.9.10-1.0.13')
@@ -119,10 +119,10 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
 
             library("grpc-kotlin-stub", "io.grpc", "grpc-kotlin-stub").versionRef("grpc-kotlin")
             library("grpc-kotlin-gen", "io.grpc", "protoc-gen-grpc-kotlin").versionRef("grpc-kotlin")
-            library("grpc-protobuf", "io.grpc", "grpc-protobuf").versionRef("grpc")
-            library("grpc-netty", "io.grpc", "grpc-netty").versionRef("grpc")
-            library("grpc-stub", "io.grpc", "grpc-stub").versionRef("grpc")
-            library("grpc-java-gen", "io.grpc", "protoc-gen-grpc-java").versionRef("grpc")
+            library("grpc-protobuf", "io.grpc", "grpc-protobuf").versionRef('grpc-java')
+            library("grpc-netty", "io.grpc", "grpc-netty").versionRef('grpc-java')
+            library("grpc-stub", "io.grpc", "grpc-stub").versionRef('grpc-java')
+            library("grpc-java-gen", "io.grpc", "protoc-gen-grpc-java").versionRef('grpc-java')
 
             library("testcontainers-core", "org.testcontainers", "testcontainers").versionRef("testcontainers")
             library("testcontainers-junit-jupiter", "org.testcontainers", "junit-jupiter").versionRef("testcontainers")

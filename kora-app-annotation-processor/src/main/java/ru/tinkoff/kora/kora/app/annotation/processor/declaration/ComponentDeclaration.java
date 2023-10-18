@@ -1,5 +1,7 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.declaration;
 
+import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.CodeBlock;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.kora.app.annotation.processor.ProcessingContext;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
@@ -10,6 +12,7 @@ import javax.tools.Diagnostic;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 
 public sealed interface ComponentDeclaration {
     TypeMirror type();
@@ -87,17 +90,14 @@ public sealed interface ComponentDeclaration {
         }
     }
 
-    record FromExtensionComponent(TypeMirror type, ExecutableElement sourceMethod, List<TypeMirror> methodParameterTypes) implements ComponentDeclaration {
-        @Override
-        public Element source() {
-            return this.sourceMethod;
-        }
-
-        @Override
-        public Set<String> tags() {
-            return Set.of();
-        }
-
+    record FromExtensionComponent(
+        TypeMirror type,
+        Element source,
+        List<TypeMirror> dependencyTypes,
+        List<Set<String>> dependencyTags,
+        Set<String> tags,
+        Function<CodeBlock, CodeBlock> generator
+    ) implements ComponentDeclaration {
         @Override
         public boolean isInterceptor() {
             return false;
@@ -105,7 +105,7 @@ public sealed interface ComponentDeclaration {
 
         @Override
         public String declarationString() {
-            return sourceMethod.getEnclosingElement().toString() + "." + sourceMethod.getSimpleName();
+            return source.getEnclosingElement().toString() + "." + source.getSimpleName();
         }
     }
 
@@ -204,19 +204,43 @@ public sealed interface ComponentDeclaration {
         var sourceMethod = generatedResult.sourceElement();
         if (sourceMethod.getKind() == ElementKind.CONSTRUCTOR) {
             var parameterTypes = sourceMethod.getParameters().stream().map(VariableElement::asType).toList();
+            var parameterTags = sourceMethod.getParameters().stream().map(TagUtils::parseTagValue).toList();
             var typeElement = (TypeElement) sourceMethod.getEnclosingElement();
+            var tag = TagUtils.parseTagValue(sourceMethod);
+            if (tag.isEmpty()) {
+                tag = TagUtils.parseTagValue(typeElement);
+            }
             var type = typeElement.asType();
             if (TypeParameterUtils.hasRawTypes(type)) {
                 throw new ProcessingErrorException("Components with raw types can break dependency resolution in unpredictable way so they are forbidden", sourceMethod);
             }
-            return new FromExtensionComponent(type, sourceMethod, parameterTypes);
+            var className = ClassName.get(typeElement);
+
+            return new FromExtensionComponent(type, sourceMethod, parameterTypes, parameterTags, tag, dependencies -> typeElement.getTypeParameters().isEmpty()
+                ? CodeBlock.of("new $T($L)", className, dependencies)
+                : CodeBlock.of("new $T<>($L)", className, dependencies));
         } else {
             var type = generatedResult.targetType().getReturnType();
             var parameterTypes = generatedResult.targetType().getParameterTypes();
             if (TypeParameterUtils.hasRawTypes(type)) {
                 throw new ProcessingErrorException("Components with raw types can break dependency resolution in unpredictable way so they are forbidden", sourceMethod);
             }
-            return new FromExtensionComponent(type, sourceMethod, new ArrayList<>(parameterTypes));
+            var parameterTags = sourceMethod.getParameters().stream().map(TagUtils::parseTagValue).toList();
+            var tag = TagUtils.parseTagValue(sourceMethod);
+            var typeElement = (TypeElement) sourceMethod.getEnclosingElement();
+            var className = ClassName.get(typeElement);
+            return new FromExtensionComponent(type, sourceMethod, new ArrayList<>(parameterTypes), parameterTags, tag, dependencies -> CodeBlock.of("$T.$N($L)", className, sourceMethod.getSimpleName(), dependencies));
         }
+    }
+
+    static ComponentDeclaration fromExtension(ExtensionResult.CodeBlockResult generatedResult) {
+        return new FromExtensionComponent(
+            generatedResult.componentType(),
+            generatedResult.source(),
+            generatedResult.dependencyTypes(),
+            generatedResult.dependencyTags(),
+            generatedResult.componentTag(),
+            generatedResult.codeBlock()
+        );
     }
 }

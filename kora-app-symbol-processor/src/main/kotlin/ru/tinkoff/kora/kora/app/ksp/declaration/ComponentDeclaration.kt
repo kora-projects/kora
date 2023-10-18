@@ -1,13 +1,19 @@
 package ru.tinkoff.kora.kora.app.ksp.declaration
 
+import com.google.devtools.ksp.closestClassDeclaration
+import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.symbol.*
+import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.ksp.toClassName
 import ru.tinkoff.kora.kora.app.ksp.ProcessingContext
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.fixPlatformType
 import ru.tinkoff.kora.ksp.common.TagUtils
+import ru.tinkoff.kora.ksp.common.TagUtils.parseTags
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
 sealed interface ComponentDeclaration {
@@ -70,14 +76,14 @@ sealed interface ComponentDeclaration {
 
     data class FromExtensionComponent(
         override val type: KSType,
-        val sourceMethod: KSFunctionDeclaration,
+        override val source: KSDeclaration,
         val methodParameterTypes: List<KSType>,
-
-        ) : ComponentDeclaration {
-        override val source get() = this.sourceMethod
-        override val tags get() = setOf<String>()
+        val methodParameterTags: List<Set<String>>,
+        override val tags: Set<String>,
+        val generator: (CodeBlock) -> CodeBlock
+    ) : ComponentDeclaration {
         override fun declarationString(): String {
-            return sourceMethod.parentDeclaration?.qualifiedName?.asString().toString() + sourceMethod.simpleName.asString()
+            return source.parentDeclaration?.qualifiedName?.asString().toString() + source.simpleName.asString()
         }
 
     }
@@ -161,11 +167,37 @@ sealed interface ComponentDeclaration {
             val sourceMethod = extensionResult.constructor
             val sourceType = extensionResult.type
             val parameterTypes = sourceType.parameterTypes.map { it!!.fixPlatformType(ctx.resolver) }
+            val parameterTags = sourceMethod.parameters.map { it.parseTags() }
             val type = sourceType.returnType!!
             if (type.isError) {
                 throw ProcessingErrorException("Component type is not resolvable in the current round of processing", sourceMethod)
             }
-            return FromExtensionComponent(type, sourceMethod, parameterTypes)
+            val tag = sourceMethod.parseTags()
+
+            return FromExtensionComponent(type, sourceMethod, parameterTypes, parameterTags, tag) {
+                if (sourceMethod.isConstructor()) {
+                    val clazz = sourceMethod.closestClassDeclaration()!!
+                    CodeBlock.of("%T(%L)", clazz.toClassName(), it)
+                } else {
+                    val parent = sourceMethod.parentDeclaration
+                    if (parent is KSClassDeclaration) {
+                        CodeBlock.of("%M(%L)", MemberName(parent.toClassName(), sourceMethod.simpleName.asString()), it)
+                    } else {
+                        CodeBlock.of("%M(%L)", MemberName(sourceMethod.packageName.asString(), sourceMethod.simpleName.asString()), it)
+                    }
+                }
+            }
+        }
+
+        fun fromExtension(extensionResult: ExtensionResult.CodeBlockResult): FromExtensionComponent {
+            return FromExtensionComponent(
+                extensionResult.componentType,
+                extensionResult.source,
+                extensionResult.dependencyTypes,
+                extensionResult.dependencyTags,
+                extensionResult.componentTag,
+                extensionResult.codeBlock
+            )
         }
     }
 }

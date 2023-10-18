@@ -194,6 +194,16 @@ public class GraphBuilder {
                         throw new NewRoundException(
                             processing, extension, dependencyClaim.type(), dependencyClaim.tags()
                         );
+                    } else if (extensionResult instanceof ExtensionResult.CodeBlockResult codeBlockResult) {
+                        var extensionComponent = ComponentDeclaration.fromExtension(codeBlockResult);
+                        if (extensionComponent.isTemplate()) {
+                            processing.templates().add(extensionComponent);
+                        } else {
+                            processing.sourceDeclarations().add(extensionComponent);
+                        }
+                        stack.addLast(componentFrame.withCurrentDependency(currentDependency));
+                        continue frame;
+
                     } else {
                         var generated = (ExtensionResult.GeneratedResult) extensionResult;
                         var extensionComponent = ComponentDeclaration.fromExtension(ctx, generated);

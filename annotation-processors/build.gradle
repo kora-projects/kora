@@ -14,4 +14,5 @@ dependencies {
     api project(':validation:validation-annotation-processor')
     api project(':mapstruct:mapstruct-java-extension')
     api project(':logging:declarative-logging:declarative-logging-annotation-processor')
+    api project(':grpc:grpc-client-annotation-processor')
 }

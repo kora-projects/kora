@@ -8,6 +8,7 @@ import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 import ru.tinkoff.kora.application.graph.LifecycleWrapper;
 import ru.tinkoff.kora.common.DefaultComponent;
+import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.ConfigValue;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
@@ -19,7 +20,7 @@ import java.net.URISyntaxException;
 
 public interface OpentelemetryGrpcExporterModule extends NettyCommonModule, OpentelemetryTracingModule {
     @DefaultComponent
-    default LifecycleWrapper<SpanExporter> spanExporter(OpentelemetryGrpcExporterConfig exporterConfig, EventLoopGroup eventLoopGroup) throws URISyntaxException {
+    default LifecycleWrapper<SpanExporter> spanExporter(OpentelemetryGrpcExporterConfig exporterConfig, @Tag(WorkerLoopGroup.class) EventLoopGroup eventLoopGroup) throws URISyntaxException {
         if (!(exporterConfig instanceof OpentelemetryGrpcExporterConfig.FromConfig config)) {
             return new LifecycleWrapper<>(SpanExporter.composite(), v -> {}, v -> {});
         }

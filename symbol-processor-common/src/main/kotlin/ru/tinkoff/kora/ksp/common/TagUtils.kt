@@ -1,9 +1,7 @@
 package ru.tinkoff.kora.ksp.common
 
 import com.google.devtools.ksp.symbol.*
-import com.squareup.kotlinpoet.AnnotationSpec
-import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.ParameterSpec
+import com.squareup.kotlinpoet.*
 
 object TagUtils {
     val ignoreList = setOf("Component", "DefaultComponent")
@@ -16,7 +14,21 @@ object TagUtils {
         return parseTagValue(this)
     }
 
-    fun ParameterSpec.Builder.tag(tag: Set<String>): ParameterSpec.Builder {
+    fun FunSpec.Builder.addTag(tag: Set<String>): FunSpec.Builder {
+        if (tag.isEmpty()) {
+            return this
+        }
+        return this.addAnnotation(tag.toTagAnnotation())
+    }
+
+    fun ParameterSpec.Builder.addTag(tag: Set<String>): ParameterSpec.Builder {
+        if (tag.isEmpty()) {
+            return this
+        }
+        return this.addAnnotation(tag.toTagAnnotation())
+    }
+
+    fun TypeSpec.Builder.addTag(tag: Set<String>): TypeSpec.Builder {
         if (tag.isEmpty()) {
             return this
         }

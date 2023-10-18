@@ -195,9 +195,9 @@ public abstract class AbstractAnnotationProcessorTest {
         }
     }
 
-    public static class GraphContainer implements Graph {
+    public static class GraphContainer implements Graph, AutoCloseable {
         private final ApplicationGraphDraw draw;
-        private final Graph graph;
+        private final RefreshableGraph graph;
 
         public GraphContainer(ApplicationGraphDraw draw) {
             this.draw = draw;
@@ -245,6 +245,11 @@ public abstract class AbstractAnnotationProcessorTest {
         @Override
         public <T> PromiseOf<T> promiseOf(Node<T> node) {
             return graph.promiseOf(node);
+        }
+
+        @Override
+        public void close() throws Exception {
+            this.graph.release();
         }
     }
 

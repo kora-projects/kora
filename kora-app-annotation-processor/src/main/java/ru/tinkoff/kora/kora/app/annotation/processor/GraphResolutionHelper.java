@@ -225,13 +225,16 @@ public class GraphResolutionHelper {
                         }
                     }
                 }
-                for (var methodParameterType : extensionComponent.methodParameterTypes()) {
+                for (var methodParameterType : extensionComponent.dependencyTypes()) {
                     realParams.add(ComponentTemplateHelper.replace(types, methodParameterType, map));
                 }
                 declarations.add(new ComponentDeclaration.FromExtensionComponent(
                     realReturnType,
-                    extensionComponent.sourceMethod(),
-                    realParams
+                    extensionComponent.source(),
+                    realParams,
+                    extensionComponent.dependencyTags(),
+                    extensionComponent.tags(),
+                    extensionComponent.generator()
                 ));
             } else if (sourceDeclaration instanceof ComponentDeclaration.PromisedProxyComponent promisedProxyComponent) {
                 declarations.add(promisedProxyComponent.withType(realReturnType));
@@ -241,7 +244,7 @@ public class GraphResolutionHelper {
                 throw new IllegalArgumentException(sourceDeclaration.toString());
             }
         }
-        if (declarations.size() == 0) {
+        if (declarations.isEmpty()) {
             return declarations;
         }
         if (declarations.size() == 1) {

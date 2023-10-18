@@ -54,6 +54,10 @@ interface AppWithInterceptor {
             if (!(type == interfaceType || type == interfaceType.makeNullable())) {
                 return null
             }
+            if (tags.isNotEmpty()) {
+                return null
+            }
+
             return ret@{
                 val packageName = interfaceDeclaration.packageName.asString()
                 val typeName = "AppWithInterceptorInterface1Impl"

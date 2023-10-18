@@ -7,6 +7,8 @@ import ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim.D
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclaration;
 
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeMirror;
@@ -24,7 +26,7 @@ public class ComponentDependencyHelper {
                 var parameterType = moduleComponent.methodParameterTypes().get(i);
                 var parameterElement = element.getParameters().get(i);
                 var tags = TagUtils.parseTagValue(parameterElement);
-                var isNullable = AnnotationUtils.findAnnotation(parameterElement, name -> name.endsWith("Nullable")) != null;
+                var isNullable = CommonUtils.isNullable(parameterElement);
                 result.add(parseClaim(element, parameterType, tags, isNullable));
             }
             return result;
@@ -36,7 +38,7 @@ public class ComponentDependencyHelper {
                 var parameterType = type.getParameterTypes().get(i);
                 var parameterElement = element.getParameters().get(i);
                 var tags = TagUtils.parseTagValue(parameterElement);
-                var isNullable = AnnotationUtils.findAnnotation(parameterElement, name -> name.endsWith("Nullable")) != null;
+                var isNullable = CommonUtils.isNullable(parameterElement);
                 result.add(parseClaim(element, parameterType, tags, isNullable));
             }
             return result;
@@ -48,19 +50,21 @@ public class ComponentDependencyHelper {
                 var parameterType = type.getParameterTypes().get(i);
                 var parameterElement = element.getParameters().get(i);
                 var tags = TagUtils.parseTagValue(parameterElement);
-                var isNullable = AnnotationUtils.findAnnotation(parameterElement, name -> name.endsWith("Nullable")) != null;
+                var isNullable = CommonUtils.isNullable(parameterElement);
                 result.add(parseClaim(element, parameterType, tags, isNullable));
             }
             return result;
         } else if (componentDeclaration instanceof ComponentDeclaration.FromExtensionComponent fromExtension) {
-            var element = fromExtension.sourceMethod();
-            var result = new ArrayList<DependencyClaim>(element.getParameters().size() + 1);
-            for (int i = 0; i < fromExtension.methodParameterTypes().size(); i++) {
-                var parameterType = fromExtension.methodParameterTypes().get(i);
-                var parameterElement = element.getParameters().get(i);
-                var tags = TagUtils.parseTagValue(parameterElement);
-                var isNullable = AnnotationUtils.findAnnotation(parameterElement, name -> name.endsWith("Nullable")) != null;
-                result.add(parseClaim(element, parameterType, tags, isNullable));
+            var result = new ArrayList<DependencyClaim>(fromExtension.dependencyTypes().size() + 1);
+            var executable = fromExtension.source().getKind() == ElementKind.METHOD || fromExtension.source().getKind() == ElementKind.CONSTRUCTOR
+                ? (ExecutableElement) fromExtension.source()
+                : null;
+            for (int i = 0; i < fromExtension.dependencyTypes().size(); i++) {
+                var parameterType = fromExtension.dependencyTypes().get(i);
+                var tags = fromExtension.dependencyTags().get(i);
+                var element = executable == null ? null : executable.getParameters().get(i);
+                var isNullable = element != null && CommonUtils.isNullable(element);
+                result.add(parseClaim(fromExtension.source(), parameterType, tags, isNullable));
             }
             return result;
         }

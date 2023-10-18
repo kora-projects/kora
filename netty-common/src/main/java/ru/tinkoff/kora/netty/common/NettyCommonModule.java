@@ -15,15 +15,19 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.NettyRuntime;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.application.graph.LifecycleWrapper;
 import ru.tinkoff.kora.common.Tag;
 
-import jakarta.annotation.Nullable;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 public interface NettyCommonModule {
+    final class BossLoopGroup {}
 
+    final class WorkerLoopGroup {}
+
+    @Tag(WorkerLoopGroup.class)
     default LifecycleWrapper<EventLoopGroup> nettyEventLoopGroupLifecycle(@Tag(NettyCommonModule.class) @Nullable ThreadFactory threadFactory, @Tag(NettyCommonModule.class) @Nullable Integer size) {
         return new LifecycleWrapper<>(
             eventLoopGroup(threadFactory, size),
@@ -33,7 +37,6 @@ public interface NettyCommonModule {
         );
     }
 
-    final class BossLoopGroup {}
 
     @Tag(BossLoopGroup.class)
     default LifecycleWrapper<EventLoopGroup> nettyEventBossLoopGroupLifecycle(@Tag(NettyCommonModule.class) @Nullable ThreadFactory threadFactory) {

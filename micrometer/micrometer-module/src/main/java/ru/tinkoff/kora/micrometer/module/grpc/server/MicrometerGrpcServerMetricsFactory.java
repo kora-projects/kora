@@ -5,8 +5,8 @@ import io.grpc.ServerCall;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
-import ru.tinkoff.kora.grpc.telemetry.GrpcServerMetrics;
-import ru.tinkoff.kora.grpc.telemetry.GrpcServerMetricsFactory;
+import ru.tinkoff.kora.grpc.server.telemetry.GrpcServerMetrics;
+import ru.tinkoff.kora.grpc.server.telemetry.GrpcServerMetricsFactory;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.concurrent.ConcurrentHashMap;

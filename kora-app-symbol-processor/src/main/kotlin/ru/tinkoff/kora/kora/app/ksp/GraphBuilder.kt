@@ -164,7 +164,9 @@ object GraphBuilder {
                     val claim = ComponentDependencyHelper.parseClaim(type, dependencyClaim.tags, declaration.source)
                     stack.addLast(
                         ProcessingState.ResolutionFrame.Component(
-                            optionalDeclaration, listOf(claim)
+                            optionalDeclaration, listOf(
+                            claim
+                        )
                         )
                     )
                     continue@frame
@@ -183,6 +185,15 @@ object GraphBuilder {
                     if (extensionResult is ExtensionResult.RequiresCompilingResult) {
                         stack.addLast(frame.copy(currentDependency = currentDependency))
                         throw NewRoundException(processing, extension, dependencyClaim.type, dependencyClaim.tags)
+                    } else if (extensionResult is ExtensionResult.CodeBlockResult) {
+                        val extensionComponent = ComponentDeclaration.fromExtension(extensionResult)
+                        if (extensionComponent.isTemplate()) {
+                            processing.templateDeclarations.add(extensionComponent)
+                        } else {
+                            processing.sourceDeclarations.add(extensionComponent)
+                        }
+                        stack.addLast(frame.copy(currentDependency = currentDependency))
+                        continue@frame
                     } else {
                         extensionResult as ExtensionResult.GeneratedResult
                         val extensionComponent = ComponentDeclaration.fromExtension(ctx, extensionResult)
