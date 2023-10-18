@@ -121,6 +121,7 @@ public record TemplateModel(
         return result;
     }
 
+    // public interface SubEntityOf<T> { }
     private static Optional<TypeElement> findFullEntity(Elements elements, Types types, TypeElement type) {
         return type.getInterfaces()
             .stream()
