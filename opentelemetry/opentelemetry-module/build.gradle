@@ -3,7 +3,8 @@ dependencies {
 
     compileOnly project(':http:http-server-common')
     compileOnly project(':http:http-client-common')
-    compileOnly project(':grpc')
+    compileOnly project(':grpc:grpc-server')
+    compileOnly project(':grpc:grpc-client')
     compileOnly project(':kafka:kafka')
     compileOnly project(':jms')
     compileOnly project(':database:database-common')

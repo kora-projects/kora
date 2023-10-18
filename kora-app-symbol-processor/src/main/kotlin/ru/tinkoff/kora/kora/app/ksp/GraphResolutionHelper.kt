@@ -2,6 +2,7 @@ package ru.tinkoff.kora.kora.app.ksp
 
 import com.google.devtools.ksp.isOpen
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeArgument
 import ru.tinkoff.kora.kora.app.ksp.component.ComponentDependency.*
@@ -219,7 +220,12 @@ object GraphResolutionHelper {
                 }
 
                 is ComponentDeclaration.FromExtensionComponent -> {
-                    val classDeclaration = template.sourceMethod.returnType!!.resolve().declaration
+                    val sourceMethod = template.source
+                    if (sourceMethod !is KSFunctionDeclaration) {
+                        continue
+                    }
+
+                    val classDeclaration = sourceMethod.returnType!!.resolve().declaration
                     val match = ComponentTemplateHelper.match(ctx, classDeclaration.typeParameters, template.type, dependencyClaim.type)
                     if (match !is ComponentTemplateHelper.TemplateMatch.Some) {
                         continue
@@ -234,13 +240,14 @@ object GraphResolutionHelper {
                     for (methodParameterType in template.methodParameterTypes) {
                         realParams.add(ComponentTemplateHelper.replace(ctx.resolver, methodParameterType, map)!!)
                     }
-                    result.add(
-                        ComponentDeclaration.FromExtensionComponent(
-                            realReturnType,
-                            template.sourceMethod,
-                            realParams
-                        )
-                    )
+                    result.add(ComponentDeclaration.FromExtensionComponent(
+                        realReturnType,
+                        sourceMethod,
+                        realParams,
+                        template.methodParameterTags,
+                        template.tags,
+                        template.generator
+                    ))
                 }
 
                 is ComponentDeclaration.DiscoveredAsDependencyComponent -> throw IllegalStateException()

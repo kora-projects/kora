@@ -1,0 +1,20 @@
+plugins {
+    id 'com.google.protobuf' version "0.9.3"
+}
+
+dependencies {
+    api project(':netty-common')
+    api project(':logging:logging-common')
+    api project(':telemetry:telemetry-common')
+    annotationProcessor project(':config:config-annotation-processor')
+
+    api libs.grpc.netty
+    api libs.grpc.stub
+
+    compileOnly libs.grpc.kotlin.stub
+    compileOnly libs.kotlin.coroutines.core
+
+    testImplementation libs.grpc.java.gen
+    testImplementation libs.grpc.protobuf
+    testImplementation 'javax.annotation:javax.annotation-api:1.3.2'
+}

@@ -8,6 +8,7 @@ import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.micrometer.module.cache.MicrometerCacheMetrics;
 import ru.tinkoff.kora.micrometer.module.cache.caffeine.MicrometerCaffeineCacheMetricCollector;
 import ru.tinkoff.kora.micrometer.module.db.MicrometerDataBaseMetricWriterFactory;
+import ru.tinkoff.kora.micrometer.module.grpc.client.MicrometerGrpcClientMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.grpc.server.MicrometerGrpcServerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.http.client.MicrometerHttpClientMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.http.server.MicrometerHttpServerMetricsFactory;
@@ -59,6 +60,11 @@ public interface MetricsModule {
     @DefaultComponent
     default MicrometerGrpcServerMetricsFactory micrometerGrpcServerMetricsFactory(MeterRegistry meterRegistry) {
         return new MicrometerGrpcServerMetricsFactory(meterRegistry);
+    }
+
+    @DefaultComponent
+    default MicrometerGrpcClientMetricsFactory micrometerGrpcClientMetricsFactory(MeterRegistry registry) {
+        return new MicrometerGrpcClientMetricsFactory(registry);
     }
 
     @DefaultComponent

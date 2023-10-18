@@ -254,14 +254,17 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             var type = (TypeElement) classElement;
             var interfaces = KoraAppUtils.collectInterfaces(this.types, type);
             if (log.isInfoEnabled()) {
-                log.info("Effective modules of {}:\n{}", classElement, Stream.concat(interfaces.stream(), this.modules.stream()).map(Object::toString).sorted().collect(Collectors.joining("\n")).indent(4));
+                log.info("Effective modules of {}:\n{}", classElement, Stream.concat(Stream.of(type), this.modules.stream()).flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream())
+                    .map(Object::toString).sorted()
+                    .collect(Collectors.joining("\n")).indent(4));
             }
             var mixedInModuleComponents = KoraAppUtils.parseComponents(this.ctx, interfaces.stream().map(ModuleDeclaration.MixedInModule::new).toList());
             if (log.isDebugEnabled()) {
                 log.info("Effective methods of {}:\n{}", classElement, mixedInModuleComponents.stream().map(Object::toString).sorted().collect(Collectors.joining("\n")).indent(4));
             }
             var submodules = KoraAppUtils.findKoraSubmoduleModules(this.elements, interfaces);
-            var allModules = Stream.concat(this.modules.stream(), submodules.stream()).sorted(Comparator.comparing(Objects::toString)).toList();
+            var discoveredModules = this.modules.stream().flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream());
+            var allModules = Stream.concat(discoveredModules, submodules.stream()).sorted(Comparator.comparing(Objects::toString)).toList();
             var annotatedModulesComponents = KoraAppUtils.parseComponents(this.ctx, allModules.stream().map(ModuleDeclaration.AnnotatedModule::new).toList());
             var allComponents = new ArrayList<ComponentDeclaration>(this.components.size() + mixedInModuleComponents.size() + annotatedModulesComponents.size());
             for (var component : this.components) {
@@ -428,6 +431,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             statement.add("$L.class, ", tag);
         }
         statement.add("}, g -> ");
+        var dependenciesCode = this.generateDependenciesCode(component, graphTypeName, components);
 
         if (declaration instanceof ComponentDeclaration.AnnotatedComponent annotatedComponent) {
             statement.add("new $T", annotatedComponent.typeElement());
@@ -439,7 +443,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 }
                 statement.add(">");
             }
-            statement.add("(");
+            statement.add("($L)", dependenciesCode);
         } else if (declaration instanceof ComponentDeclaration.FromModuleComponent moduleComponent) {
             if (moduleComponent.module() instanceof ModuleDeclaration.AnnotatedModule annotatedModule) {
                 statement.add("impl.module$L.", allModules.indexOf(annotatedModule.element()));
@@ -454,54 +458,28 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 }
                 statement.add(">");
             }
-            statement.add("$L(", moduleComponent.method().getSimpleName());
+            statement.add("$L($L)", moduleComponent.method().getSimpleName(), dependenciesCode);
         } else if (declaration instanceof ComponentDeclaration.FromExtensionComponent extension) {
-            var elem = extension.sourceMethod();
-            if (elem.getKind() == ElementKind.CONSTRUCTOR) {
-                TypeElement typeElement = (TypeElement) elem.getEnclosingElement();
-                var builderStr = typeElement.getTypeParameters().isEmpty() ? "new $T(" : "new $T<>(";
-                var tpe = types.erasure(typeElement.asType());
-                statement.add(builderStr, tpe);
-            } else if (elem.getModifiers().contains(Modifier.STATIC)) {
-                TypeElement typeElement = (TypeElement) elem.getEnclosingElement();
-                var tpe = types.erasure(typeElement.asType());
-                statement.add("$T.$L(", tpe, elem.getSimpleName());
-            } else {
-                throw new ProcessingErrorException("Result of extension processing should be constructor or static function", elem);
-            }
+            statement.add(extension.generator().apply(dependenciesCode));
         } else if (declaration instanceof ComponentDeclaration.DiscoveredAsDependencyComponent asDependencyComponent) {
-            statement.add("new $T", ClassName.get(asDependencyComponent.typeElement()));
-            if (!asDependencyComponent.typeElement().getTypeParameters().isEmpty()) {
-                statement.add("<>");
+            if (asDependencyComponent.typeElement().getTypeParameters().isEmpty()) {
+                statement.add("new $T($L)", ClassName.get(asDependencyComponent.typeElement()), dependenciesCode);
+            } else {
+                statement.add("new $T<>($L)", ClassName.get(asDependencyComponent.typeElement()), dependenciesCode);
             }
-            statement.add("(");
         } else if (declaration instanceof ComponentDeclaration.PromisedProxyComponent promisedProxyComponent) {
-            statement.add("new $T", promisedProxyComponent.className());
-            if (!promisedProxyComponent.typeElement().getTypeParameters().isEmpty()) {
-                statement.add("<>");
+            if (promisedProxyComponent.typeElement().getTypeParameters().isEmpty()) {
+                statement.add("new $T($L)", promisedProxyComponent.className(), dependenciesCode);
+            } else {
+                statement.add("new $T<>($L)", promisedProxyComponent.className(), dependenciesCode);
             }
-            statement.add("(");
         } else if (declaration instanceof ComponentDeclaration.OptionalComponent optional) {
-            statement.add("$T", Optional.class);
-            statement.add(".<$T>ofNullable(", ((DeclaredType) optional.type()).getTypeArguments().get(0));
+            var optionalOf = ((DeclaredType) optional.type()).getTypeArguments().get(0);
+            statement.add("$T.<$T>ofNullable($L)", Optional.class, optionalOf, dependenciesCode);
         } else {
             throw new RuntimeException("Unknown type " + declaration);
         }
         var resolvedDependencies = component.dependencies();
-        if (!resolvedDependencies.isEmpty()) {
-            statement.indent();
-            statement.add("\n");
-        }
-        for (int i = 0, dependenciesSize = resolvedDependencies.size(); i < dependenciesSize; i++) {
-            if (i > 0) statement.add(",\n");
-            var resolvedDependency = resolvedDependencies.get(i);
-            statement.add(resolvedDependency.write(this.ctx, graphTypeName, components));
-        }
-        if (!resolvedDependencies.isEmpty()) {
-            statement.unindent();
-            statement.add("\n");
-        }
-        statement.add(")");
         statement.add(", $T.of(", List.class);
         var interceptorsFor = interceptors.interceptorsFor(component);
         for (int i = 0; i < interceptorsFor.size(); i++) {
@@ -550,6 +528,24 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         }
         statement.add(")");
         return statement.build();
+    }
+
+    private CodeBlock generateDependenciesCode(ResolvedComponent component, ClassName graphTypeName, List<ResolvedComponent> components) {
+        var resolvedDependencies = component.dependencies();
+        if (resolvedDependencies.isEmpty()) {
+            return CodeBlock.of("");
+        }
+        var b = CodeBlock.builder();
+        b.indent();
+        b.add("\n");
+        for (int i = 0, dependenciesSize = resolvedDependencies.size(); i < dependenciesSize; i++) {
+            if (i > 0) b.add(",\n");
+            var resolvedDependency = resolvedDependencies.get(i);
+            b.add(resolvedDependency.write(this.ctx, graphTypeName, components));
+        }
+        b.unindent();
+        b.add("\n");
+        return b.build();
     }
 
     private JavaFile generateImpl(TypeElement classElement, List<TypeElement> modules) throws IOException {

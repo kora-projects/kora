@@ -10,6 +10,10 @@ public class DurationConfigValueExtractor implements ConfigValueExtractor<Durati
     @Override
     @Nullable
     public Duration extract(ConfigValue<?> value) {
+        return extractFromValue(value);
+    }
+
+    public static Duration extractFromValue(ConfigValue<?> value) {
         if (value instanceof ConfigValue.NullValue nv) {
             return null;
         }
@@ -32,7 +36,7 @@ public class DurationConfigValueExtractor implements ConfigValueExtractor<Durati
         var originalUnitString = getUnits(s);
         var unitString = originalUnitString;
         var numberString = ConfigImplUtil.unicodeTrim(s.substring(0, s.length()
-                                                                     - unitString.length()));
+            - unitString.length()));
 
         // this would be caught later anyway, but the error message
         // is more helpful if we check it here.

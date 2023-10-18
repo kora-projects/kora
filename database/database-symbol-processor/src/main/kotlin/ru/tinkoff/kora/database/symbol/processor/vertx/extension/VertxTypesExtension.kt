@@ -43,8 +43,10 @@ class VertxTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val 
         }
     )
 
-    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
-        if (tags.isNotEmpty()) return null
+    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tag: Set<String>): (() -> ExtensionResult)? {
+        if (tag.isNotEmpty()) {
+            return null
+        }
         if (type.declaration.qualifiedName?.asString()?.equals(VertxTypes.rowMapper.canonicalName) == true) {
             val rowType = type.arguments[0].type!!.resolve()
             return this.generateRowMapper(resolver, rowType)

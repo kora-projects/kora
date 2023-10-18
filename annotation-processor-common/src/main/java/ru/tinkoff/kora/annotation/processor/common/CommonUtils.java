@@ -9,6 +9,7 @@ import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.naming.NameConverter;
 
 import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.AnnotatedConstruct;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 import javax.lang.model.util.Types;
@@ -36,19 +37,19 @@ public class CommonUtils {
         return Character.toUpperCase(firstChar) + s.substring(1);
     }
 
-    public static boolean isNullable(Element element) {
+    public static boolean isNullable(AnnotatedConstruct element) {
         var isNullable = element.getAnnotationMirrors()
             .stream()
             .anyMatch(a -> a.getAnnotationType().toString().endsWith(".Nullable"));
 
-        if (isNullable || element.getKind() != ElementKind.RECORD_COMPONENT) {
+        if (isNullable || !(element instanceof RecordComponentElement rce)) {
             return isNullable;
         }
 
-        return element.getEnclosingElement().getEnclosedElements()
+        return rce.getEnclosingElement().getEnclosedElements()
             .stream()
             .filter(e -> e.getKind() == ElementKind.FIELD)
-            .filter(e -> e.getSimpleName().contentEquals(element.getSimpleName()))
+            .filter(e -> e.getSimpleName().contentEquals(rce.getSimpleName()))
             .anyMatch(CommonUtils::isNullable);
     }
 

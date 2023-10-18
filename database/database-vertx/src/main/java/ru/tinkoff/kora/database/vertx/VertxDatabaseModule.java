@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.database.vertx;
 
 import io.netty.channel.EventLoopGroup;
+import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory;
@@ -11,7 +12,7 @@ public interface VertxDatabaseModule extends VertxDatabaseBaseModule {
         return extractor.extract(value);
     }
 
-    default VertxDatabase vertxDatabase(VertxDatabaseConfig vertxDatabaseConfig, EventLoopGroup eventLoopGroup, DataBaseTelemetryFactory telemetryFactory) {
+    default VertxDatabase vertxDatabase(VertxDatabaseConfig vertxDatabaseConfig, @Tag(WorkerLoopGroup.class) EventLoopGroup eventLoopGroup, DataBaseTelemetryFactory telemetryFactory) {
         return new VertxDatabase(vertxDatabaseConfig, eventLoopGroup, telemetryFactory);
     }
 }

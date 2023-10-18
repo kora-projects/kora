@@ -28,7 +28,7 @@ public class KafkaTestContainer implements ParameterResolver, AfterEachCallback,
         if (container == null) {
             container = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.4.0"))
                 .withKraft()
-                .withExposedPorts(9092, 9093);
+                .withExposedPorts(9092, 9093)
             ;
 
             container.start();

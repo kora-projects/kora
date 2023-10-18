@@ -197,7 +197,10 @@ class KoraAppProcessor(
             val rootModule = ModuleDeclaration.MixedInModule(declaration)
             val filterObjectMethods: (KSFunctionDeclaration) -> Boolean = {
                 val name = it.simpleName.asString()
-                name != "equals" && name != "hashCode" && name != "toString"// todo find out a better way to filter object methods
+                !it.modifiers.contains(Modifier.PRIVATE)
+                    && name != "equals"
+                    && name != "hashCode"
+                    && name != "toString"// todo find out a better way to filter object methods
             }
             val mixedInComponents = declaration.getAllFunctions()
                 .filter(filterObjectMethods)
@@ -219,7 +222,7 @@ class KoraAppProcessor(
                 .filter { !it.asStarProjectedType().isAssignableFrom(rootErasure) }
                 .map { ModuleDeclaration.AnnotatedModule(it) }
             val annotatedModuleComponentsTmp = annotatedModules
-                .flatMap { it.element.getAllFunctions().filter(filterObjectMethods).map { f -> ComponentDeclaration.fromModule(ctx!!, it, f) } }
+                .flatMap { it.element.getDeclaredFunctions().filter(filterObjectMethods).map { f -> ComponentDeclaration.fromModule(ctx!!, it, f) } }
             val annotatedModuleComponents = ArrayList(annotatedModuleComponentsTmp)
             for (annotatedComponent in annotatedModuleComponentsTmp) {
                 if (annotatedComponent.method.modifiers.contains(Modifier.OVERRIDE)) {
@@ -552,6 +555,7 @@ class KoraAppProcessor(
         }
         statement.add("),\n")
         statement.add("{ ")
+        val dependenciesCode = this.getDependenciesCode(component, components)
 
         when (declaration) {
             is ComponentDeclaration.AnnotatedComponent -> {
@@ -566,7 +570,7 @@ class KoraAppProcessor(
                     }
                     statement.add(">")
                 }
-                statement.add("(")
+                statement.add("(%L)", dependenciesCode)
             }
 
             is ComponentDeclaration.FromModuleComponent -> {
@@ -586,49 +590,26 @@ class KoraAppProcessor(
                     }
                     statement.add(">")
                 }
-                statement.add("(")
+                statement.add("(%L)", dependenciesCode)
             }
 
             is ComponentDeclaration.FromExtensionComponent -> {
-                val elem = declaration.sourceMethod
-                if (elem.isConstructor()) {
-                    val clazz = elem.closestClassDeclaration()!!
-                    statement.add("%T(", clazz.toClassName())
-                } else {
-                    val parent = elem.parentDeclaration
-                    if (parent is KSClassDeclaration) {
-                        statement.add("%M(", MemberName(parent.toClassName(), elem.simpleName.asString()))
-                    } else {
-                        statement.add("%M(", MemberName(elem.packageName.asString(), elem.simpleName.asString()))
-                    }
-                }
+                statement.add(declaration.generator(dependenciesCode))
             }
 
             is ComponentDeclaration.DiscoveredAsDependencyComponent -> {
-                statement.add("%T(", declaration.classDeclaration.toClassName())
+                statement.add("%T(%L)", declaration.classDeclaration.toClassName(), dependenciesCode)
             }
 
             is ComponentDeclaration.PromisedProxyComponent -> {
-                statement.add("%T(", declaration.className)
+                statement.add("%T(%L)", declaration.className, dependenciesCode)
             }
 
             is ComponentDeclaration.OptionalComponent -> {
-                statement.add("%T.ofNullable(", Optional::class.asClassName())
+                statement.add("%T.ofNullable(%L)", Optional::class.asClassName(), dependenciesCode)
             }
         }
-        if (component.dependencies.isNotEmpty()) {
-            statement.indent().add("\n")
-        }
-        for ((i, dependency) in component.dependencies.withIndex()) {
-            if (i > 0) {
-                statement.add(",\n")
-            }
-            statement.add(dependency.write(ctx!!, components))
-        }
-        if (component.dependencies.isNotEmpty()) {
-            statement.unindent().add("\n")
-        }
-        statement.add(") },\n")
+        statement.add(" },\n")
         statement.add("listOf(")
         for ((i, interceptor) in interceptors.interceptorsFor(declaration).withIndex()) {
             if (i > 0) {
@@ -692,5 +673,20 @@ class KoraAppProcessor(
         statement.unindent()
         statement.add("\n)")
         return statement.add("\n").build()
+    }
+
+    private fun getDependenciesCode(component: ResolvedComponent, components: List<ResolvedComponent>): CodeBlock {
+        if (component.dependencies.isEmpty()) {
+            return CodeBlock.of("")
+        }
+        val block = CodeBlock.builder().indent().add("\n")
+        for ((i, dependency) in component.dependencies.withIndex()) {
+            if (i > 0) {
+                block.add(",\n")
+            }
+            block.add(dependency.write(ctx!!, components))
+        }
+        block.unindent().add("\n")
+        return block.build()
     }
 }

@@ -1,11 +1,13 @@
 package ru.tinkoff.kora.ksp.common
 
+import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import com.google.devtools.ksp.visitor.KSEmptyVisitor
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
@@ -128,6 +130,13 @@ object KspCommonUtils {
 
     fun KSClassDeclaration.collectFinalSealedSubtypes(): Sequence<KSClassDeclaration> = this.getSealedSubclasses()
         .flatMap { if (it.modifiers.contains(Modifier.SEALED)) it.collectFinalSealedSubtypes() else sequenceOf(it) }
+
+    fun Resolver.getClassDeclarationByName(cn: ClassName) = this.getClassDeclarationByName(cn.canonicalName)
+
+    fun TypeSpec.Builder.addOriginatingKSFile(kDecl: KSDeclaration): TypeSpec.Builder {
+        kDecl.containingFile?.let { this.addOriginatingKSFile(it) }
+        return this
+    }
 }
 
 

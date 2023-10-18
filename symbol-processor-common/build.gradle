@@ -4,16 +4,15 @@ plugins {
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
-    api project(':common')// todo delete
-
-    api libs.ksp.api
-    api libs.kotlin.reflect
     api libs.kotlinpoet
     api libs.kotlinpoet.ksp
+    api libs.ksp.api
+    api project(':common')// todo delete
+
+    implementation libs.kotlin.reflect
 
     testFixturesImplementation 'io.github.classgraph:classgraph:4.8.162'
 
-//    testFixturesImplementation libs.kotlin.compile.testing
     testFixturesImplementation libs.kotlin.compiler
     testFixturesImplementation libs.kotlin.compiler
     testFixturesImplementation libs.junit.jupiter

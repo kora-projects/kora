@@ -18,8 +18,8 @@ object GraphUtil {
         return draw
     }
 
-    class GraphContainer(val draw: ApplicationGraphDraw) {
-        private val graph = draw.init()!!
+    class GraphContainer(val draw: ApplicationGraphDraw) : AutoCloseable {
+        val graph = draw.init()!!
 
         fun <T : Any> findByType(type: Class<T>) = draw.nodes.asSequence()
             .map { graph.get(it) }
@@ -30,5 +30,9 @@ object GraphUtil {
             .map { graph.get(it) }
             .filterIsInstance(type)
             .toList()
+
+        override fun close() {
+            graph.release()
+        }
     }
 }

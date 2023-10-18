@@ -3,7 +3,7 @@ package ru.tinkoff.kora.micrometer.module.grpc.server;
 import io.grpc.Status;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
-import ru.tinkoff.kora.grpc.telemetry.GrpcServerMetrics;
+import ru.tinkoff.kora.grpc.server.telemetry.GrpcServerMetrics;
 
 public final class MicrometerGrpcServerMetrics implements GrpcServerMetrics {
     private final DistributionSummary duration;

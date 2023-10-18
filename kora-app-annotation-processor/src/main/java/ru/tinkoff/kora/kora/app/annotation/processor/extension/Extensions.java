@@ -29,10 +29,10 @@ public record Extensions(List<KoraExtension> extensions) {
 
 
     @Nullable
-    public KoraExtension.KoraExtensionDependencyGenerator findExtension(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tags) {
+    public KoraExtension.KoraExtensionDependencyGenerator findExtension(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tag) {
         var extensions = new ArrayList<KoraExtension.KoraExtensionDependencyGenerator>();
         for (var extension : this.extensions) {
-            var generator = extension.getDependencyGenerator(roundEnvironment, typeMirror, tags);
+            var generator = extension.getDependencyGenerator(roundEnvironment, typeMirror, tag);
             if (generator != null) {
                 extensions.add(generator);
             }
