@@ -10,6 +10,7 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.MappersData
+import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.getNameConverter
 import ru.tinkoff.kora.ksp.common.parseMappingData
 
@@ -129,7 +130,10 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
                         return@map field
                     }
                     val prefix = embedded.findValue<String>("value")?.ifEmpty { null } ?: ""
-                    val entity = parseEntity(type)!!
+                    val entity = parseEntity(type)
+                    if (entity == null) {
+                        throw ProcessingErrorException("Embedded field should be of data type", property)
+                    }
                     val embeddedFields = entity.fields.map { f -> EmbeddedEntityField.Field(field, f.property, f.type, prefix + (f as SimpleEntityField).columnName, f.mapping) }
                     EmbeddedEntityField(field, property, type, embeddedFields)
                 }
