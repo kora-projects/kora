@@ -48,6 +48,7 @@ class CacheOperationUtils {
         private val KEY_MAPPER_8 = ClassName("ru.tinkoff.kora.cache", "CacheKeyMapper", "CacheKeyMapper8")
         private val KEY_MAPPER_9 = ClassName("ru.tinkoff.kora.cache", "CacheKeyMapper", "CacheKeyMapper9")
 
+        private val REDIS_CACHE = ClassName("ru.tinkoff.kora.cache.redis", "RedisCache")
         private val CACHE_ASYNC = ClassName("ru.tinkoff.kora.cache", "AsyncCache")
         private val ANNOTATION_CACHEABLE = ClassName("ru.tinkoff.kora.cache.annotation", "Cacheable")
         private val ANNOTATION_CACHEABLES = ClassName("ru.tinkoff.kora.cache.annotation", "Cacheables")
@@ -185,29 +186,41 @@ class CacheOperationUtils {
                         listOf(mapper.tags.toTagAnnotation())
 
                     val fieldMapper = aspectContext.fieldFactory.constructorParam(mapper.mapper!!, tags)
-                    cacheKey = CacheOperation.CacheKey(cacheKeyMirror, CodeBlock.of("%L.map(%L)", fieldMapper, parameters.joinToString(", ")))
+                    cacheKey = CacheOperation.CacheKey(
+                        cacheKeyMirror,
+                        CodeBlock.of("%L.map(%L)", fieldMapper, parameters.joinToString(", "))
+                    )
                 } else if (parameters.size == 1) {
                     cacheKey = CacheOperation.CacheKey(cacheKeyMirror, CodeBlock.of(parameters[0]))
                 } else if (type == CacheOperation.Type.EVICT_ALL) {
                     cacheKey = null
                 } else {
                     val parameterResult = parameters.asSequence()
-                        .flatMap { param -> method.parameters.asSequence().filter { p -> p.name!!.asString() == param } }
+                        .flatMap { param ->
+                            method.parameters.asSequence().filter { p -> p.name!!.asString() == param }
+                        }
                         .toList()
 
                     val keyConstructor = findKeyConstructor(cacheKeyDeclaration, parameterResult)
                     if (keyConstructor != null) {
-                        cacheKey = CacheOperation.CacheKey(cacheKeyMirror, CodeBlock.of("%T(%L)", cacheKeyMirror.toTypeName(), parameters.joinToString(", ")))
+                        cacheKey = CacheOperation.CacheKey(
+                            cacheKeyMirror,
+                            CodeBlock.of("%T(%L)", cacheKeyMirror.toTypeName(), parameters.joinToString(", "))
+                        )
                     } else {
                         if (parameters.size > 9) {
                             throw ProcessingErrorException(
-                                "@${annotations.first().shortName.asString()} doesn't support more than 9 parameters for Cache Key", method
+                                "@${annotations.first().shortName.asString()} doesn't support more than 9 parameters for Cache Key",
+                                method
                             )
                         }
 
                         val mapperType = getKeyMapper(cacheKeyMirror, parameterResult)
                         val fieldMapper = aspectContext.fieldFactory.constructorParam(mapperType, listOf())
-                        cacheKey = CacheOperation.CacheKey(cacheKeyMirror, CodeBlock.of("%L.map(%L)", fieldMapper, parameters.joinToString(", ")))
+                        cacheKey = CacheOperation.CacheKey(
+                            cacheKeyMirror,
+                            CodeBlock.of("%L.map(%L)", fieldMapper, parameters.joinToString(", "))
+                        )
                     }
                 }
 
@@ -305,7 +318,12 @@ class CacheOperationUtils {
                 7 -> KEY_MAPPER_7
                 8 -> KEY_MAPPER_8
                 9 -> KEY_MAPPER_9
-                else -> throw ProcessingErrorException(ProcessingError("Cache doesn't support ${parameters.size} parameters for Cache Key", parameters[0]))
+                else -> throw ProcessingErrorException(
+                    ProcessingError(
+                        "Cache doesn't support ${parameters.size} parameters for Cache Key",
+                        parameters[0]
+                    )
+                )
             }
 
             val args = ArrayList<TypeName>()

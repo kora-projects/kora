@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
+import ru.tinkoff.kora.cache.CacheKeyMapper.CacheKeyMapper2
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule
 import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCache21
 import ru.tinkoff.kora.cache.symbol.processor.testdata.suspended.CacheableSuspend
@@ -35,15 +36,19 @@ class SuspendCacheAopTests : CaffeineCacheModule {
                 AopSymbolProcessorProvider(),
             )
 
-            val cacheClass = classLoader.loadClass(CACHE_CLASS) ?: throw IllegalArgumentException("Expected class not found: $CACHE_CLASS")
+            val cacheClass = classLoader.loadClass(CACHE_CLASS)
+                ?: throw IllegalArgumentException("Expected class not found: $CACHE_CLASS")
             cache = cacheClass.constructors[0].newInstance(
                 CacheRunner.getCaffeineConfig(),
                 caffeineCacheFactory(null),
                 caffeineCacheTelemetry(null, null)
             ) as DummyCache21
 
-            val serviceClass = classLoader.loadClass(SERVICE_CLASS) ?: throw IllegalArgumentException("Expected class not found: $SERVICE_CLASS")
-            val inst = serviceClass.constructors[0].newInstance(cache) as CacheableSuspend
+            val serviceClass = classLoader.loadClass(SERVICE_CLASS)
+                ?: throw IllegalArgumentException("Expected class not found: $SERVICE_CLASS")
+            val mapper = CacheKeyMapper2<DummyCache21.Key, String, BigDecimal?>
+                { arg1, arg2 -> DummyCache21.Key(arg1, arg2 ?: BigDecimal.ZERO) }
+            val inst = serviceClass.constructors[0].newInstance(cache, mapper) as CacheableSuspend
             inst
         } catch (e: Exception) {
             throw IllegalStateException(e.message, e)

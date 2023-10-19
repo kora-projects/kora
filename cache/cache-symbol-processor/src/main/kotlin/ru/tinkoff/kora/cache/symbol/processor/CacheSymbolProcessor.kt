@@ -24,6 +24,7 @@ import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 import ru.tinkoff.kora.ksp.common.TagUtils.parseTags
 import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
+import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
 class CacheSymbolProcessor(
     private val environment: SymbolProcessorEnvironment
@@ -52,7 +53,10 @@ class CacheSymbolProcessor(
         val symbolsToProcess = symbols.filter { it.validate() }.filterIsInstance<KSClassDeclaration>()
         for (cacheContract in symbolsToProcess) {
             if (cacheContract.classKind != ClassKind.INTERFACE) {
-                environment.logger.error("@Cache annotation is intended to be used on interfaces, but was: ${cacheContract.classKind}", cacheContract)
+                environment.logger.error(
+                    "@Cache annotation is intended to be used on interfaces, but was: ${cacheContract.classKind}",
+                    cacheContract
+                )
                 continue
             }
 
@@ -75,11 +79,12 @@ class CacheSymbolProcessor(
                 .build()
             fileImplSpec.writeTo(codeGenerator = environment.codeGenerator, aggregating = false)
 
-            val moduleSpecBuilder = TypeSpec.interfaceBuilder(ClassName(packageName, "$${cacheImplName.simpleName}Module"))
-                .generated(CacheSymbolProcessor::class)
-                .addAnnotation(CommonClassNames.module)
-                .addFunction(getCacheMethodImpl(cacheContract, cacheContractType))
-                .addFunction(getCacheMethodConfig(cacheContract, cacheContractType, resolver))
+            val moduleSpecBuilder =
+                TypeSpec.interfaceBuilder(ClassName(packageName, "$${cacheImplName.simpleName}Module"))
+                    .generated(CacheSymbolProcessor::class)
+                    .addAnnotation(CommonClassNames.module)
+                    .addFunction(getCacheMethodImpl(cacheContract, cacheContractType))
+                    .addFunction(getCacheMethodConfig(cacheContract, cacheContractType, resolver))
 
             if (cacheContractType.rawType == REDIS_CACHE) {
                 val superTypes = cacheContract.superTypes.toList()
@@ -106,7 +111,10 @@ class CacheSymbolProcessor(
     private fun getCacheSuperType(candidate: KSClassDeclaration): ParameterizedTypeName? {
         val supertypes = candidate.superTypes.toList()
         if (supertypes.size != 1) {
-            environment.logger.error("@Cache annotated interface should implement one one interface and it should be one of: ${REDIS_CACHE},${CAFFEINE_CACHE}", candidate)
+            environment.logger.error(
+                "@Cache annotated interface should implement one one interface and it should be one of: ${REDIS_CACHE},${CAFFEINE_CACHE}",
+                candidate
+            )
             return null
         }
         val supertype = supertypes[0].toTypeName() as ParameterizedTypeName
@@ -130,7 +138,11 @@ class CacheSymbolProcessor(
         }
     }
 
-    private fun getCacheMethodConfig(cacheContract: KSClassDeclaration, cacheType: ParameterizedTypeName, resolver: Resolver): FunSpec {
+    private fun getCacheMethodConfig(
+        cacheContract: KSClassDeclaration,
+        cacheType: ParameterizedTypeName,
+        resolver: Resolver
+    ): FunSpec {
         val configPath = cacheContract.annotations
             .filter { a -> a.annotationType.resolve().toClassName() == ANNOTATION_CACHE }
             .flatMap { a -> a.arguments }
@@ -202,13 +214,13 @@ class CacheSymbolProcessor(
 
                 val keyMapperBuilder = ParameterSpec.builder("keyMapper", keyMapperType)
                 val keyTags = cacheContractType.arguments[0].parseTags()
-                if(keyTags.isNotEmpty()) {
+                if (keyTags.isNotEmpty()) {
                     keyMapperBuilder.addAnnotation(keyTags.toTagAnnotation())
                 }
 
                 val valueMapperBuilder = ParameterSpec.builder("valueMapper", valueMapperType)
                 val valueTags = cacheContractType.arguments[1].parseTags()
-                if(valueTags.isNotEmpty()) {
+                if (valueTags.isNotEmpty()) {
                     valueMapperBuilder.addAnnotation(valueTags.toTagAnnotation())
                 }
 
@@ -287,11 +299,11 @@ class CacheSymbolProcessor(
 
             methodBuilder.addParameter(
                 mapperName,
-                REDIS_CACHE_MAPPER_KEY.parameterizedBy(recordField.type.toTypeName()),
+                REDIS_CACHE_MAPPER_KEY.parameterizedBy(recordField.type.resolve().makeNotNullable().toTypeName()),
             )
 
             val keyName = "_key" + (i + 1)
-            keyBuilder.addStatement("val %L = %L.apply(key.%L)", keyName, mapperName, recordField.simpleName.asString())
+            keyBuilder.addStatement("val %L = %L.apply(key.%L)!!", keyName, mapperName, recordField.simpleName.asString())
             if (i == 0) {
                 compositeKeyBuilder.add("val _compositeKey = %T(", ByteArray::class)
                 for (j in recordFields.indices) {
@@ -302,7 +314,12 @@ class CacheSymbolProcessor(
                         compositeKeyBuilder.add("%L.size", compKeyName)
                     }
                 }
-                copyBuilder.addStatement("%T.arraycopy(%L, 0, _compositeKey, 0, %L.size)", System::class.java, keyName, keyName)
+                copyBuilder.addStatement(
+                    "%T.arraycopy(%L, 0, _compositeKey, 0, %L.size)",
+                    System::class.java,
+                    keyName,
+                    keyName
+                )
                 copyBuilder.addStatement("offset += %L.size", keyName)
             } else {
                 copyBuilder.addStatement(
@@ -310,7 +327,12 @@ class CacheSymbolProcessor(
                     System::class, REDIS_CACHE_MAPPER_KEY, REDIS_CACHE_MAPPER_KEY
                 )
                 copyBuilder.addStatement("offset += %T.DELIMITER.size", REDIS_CACHE_MAPPER_KEY)
-                copyBuilder.addStatement("%T.arraycopy(%L, 0, _compositeKey, offset, %L.size)", System::class.java, keyName, keyName)
+                copyBuilder.addStatement(
+                    "%T.arraycopy(%L, 0, _compositeKey, offset, %L.size)",
+                    System::class.java,
+                    keyName,
+                    keyName
+                )
                 if (i != recordFields.size - 1) {
                     copyBuilder.addStatement("offset += %L.size", keyName)
                 }
@@ -323,7 +345,10 @@ class CacheSymbolProcessor(
         return methodBuilder
             .addCode(
                 CodeBlock.builder()
-                    .beginControlFlow("return %T { key -> ", REDIS_CACHE_MAPPER_KEY.parameterizedBy(keyType.toClassName()))
+                    .beginControlFlow(
+                        "return %T { key -> ",
+                        REDIS_CACHE_MAPPER_KEY.parameterizedBy(keyType.toClassName())
+                    )
                     .add(keyBuilder.build())
                     .add(compositeKeyBuilder.build())
                     .add(copyBuilder.build())
@@ -334,7 +359,10 @@ class CacheSymbolProcessor(
             .build()
     }
 
-    private fun getCacheSuperConstructorCall(cacheContract: KSClassDeclaration, cacheType: ParameterizedTypeName): CodeBlock {
+    private fun getCacheSuperConstructorCall(
+        cacheContract: KSClassDeclaration,
+        cacheType: ParameterizedTypeName
+    ): CodeBlock {
         val configPath = cacheContract.findAnnotation(ANNOTATION_CACHE)
             ?.findValueNoDefault<String>("value")!!
 

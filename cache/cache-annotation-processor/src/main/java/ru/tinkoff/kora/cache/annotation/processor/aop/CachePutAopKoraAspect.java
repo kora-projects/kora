@@ -35,6 +35,8 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         if (MethodUtils.isFlux(method)) {
             throw new ProcessingErrorException("@CachePut can't be applied for types assignable from " + CommonClassNames.flux, method);
+        } else if(MethodUtils.isVoid(method)) {
+            throw new ProcessingErrorException("@CachePut can't be applied for type Void", method);
         }
 
         final CacheOperation operation = CacheOperationUtils.getCacheOperation(method, env, aspectContext);

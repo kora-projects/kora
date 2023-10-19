@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.cache.symbol.processor.testdata
 
-import jakarta.annotation.Nonnull
 import ru.tinkoff.kora.cache.CacheKeyMapper.CacheKeyMapper2
 import ru.tinkoff.kora.cache.annotation.CachePut
 import ru.tinkoff.kora.cache.annotation.Cacheable
@@ -12,11 +11,14 @@ import java.math.BigDecimal
 open class CacheableMapper {
     var value = "1"
 
-    class CacheMapper : CacheKeyMapper2<DummyCache21.Key?, String?, BigDecimal?> {
+    class CacheMapper : CacheKeyMapper2<DummyCache21.Key, String?, BigDecimal?> {
 
-        @Nonnull
-        override fun map(arg1: String?, arg2: BigDecimal?): DummyCache21.Key {
-            return DummyCache21.Key(arg1 ?: "", arg2)
+        override fun map(arg1: String?, arg2: BigDecimal?): DummyCache21.Key? {
+            if(arg1 == null || arg2 == null) {
+                return null
+            }
+
+            return DummyCache21.Key(arg1, arg2)
         }
     }
 
