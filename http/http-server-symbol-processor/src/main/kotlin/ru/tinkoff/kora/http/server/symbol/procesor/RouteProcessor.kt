@@ -5,6 +5,7 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
+import ru.tinkoff.kora.http.server.symbol.procesor.HttpServerClassNames.cookie
 import ru.tinkoff.kora.http.server.symbol.procesor.HttpServerClassNames.header
 import ru.tinkoff.kora.http.server.symbol.procesor.HttpServerClassNames.httpRoute
 import ru.tinkoff.kora.http.server.symbol.procesor.HttpServerClassNames.httpServerRequest
@@ -63,6 +64,7 @@ class RouteProcessor {
                 it.isAnnotationPresent(query) -> funBuilder.addQueryParameterMapper(it)
                 it.isAnnotationPresent(path) -> funBuilder.addPathParameterMapper(it)
                 it.isAnnotationPresent(header) -> funBuilder.addHeaderParameterMapper(it)
+                it.isAnnotationPresent(cookie) -> funBuilder.addCookieParameterMapper(it)
                 else -> {
                     val type = it.type.toTypeName()
                     if (type != CommonClassNames.context && type != httpServerRequest) {
@@ -164,6 +166,9 @@ class RouteProcessor {
         param.findAnnotation(path)?.let {
             return parsePathParameter(param, it)
         }
+        param.findAnnotation(cookie)?.let {
+            return parseCookieParameter(param, it)
+        }
         val type = param.type.toTypeName()
         if (type == CommonClassNames.context) {
             addStatement("val %N = _ctx", param.name!!.asString())
@@ -232,6 +237,36 @@ class RouteProcessor {
         }
     }
 
+    private fun FunSpec.Builder.parseCookieParameter(parameter: KSValueParameter, annotation: KSAnnotation) {
+        val name = annotation.findValueNoDefault<String>("value").let {
+            if (it.isNullOrBlank()) {
+                parameter.name!!.asString()
+            } else {
+                it
+            }
+        }
+        val parameterName = parameter.name!!.asString()
+        val parameterTypeName = parameter.type.toTypeName()
+        val extractor = ExtractorFunctions.cookie[parameterTypeName]
+        if (extractor != null) {
+            addStatement("val %N = %M(_request, %S)", parameterName, extractor, name)
+        } else {
+            if (parameterTypeName.isNullable) {
+                val stringExtractor = ExtractorFunctions.cookie[STRING.copy(true)]!!
+                val readerParameterName = "_${parameterName}StringParameterReader"
+                addCode("val %N = ", parameterName).check400 {
+                    addStatement("%M(_request, %S)?.let(%N::read)", stringExtractor, name, readerParameterName)
+                }
+            } else {
+                val stringExtractor = ExtractorFunctions.cookie[STRING]!!
+                val readerParameterName = "_${parameterName}StringParameterReader"
+                addCode("val %N = ", parameterName).check400 {
+                    addStatement("%N.read(%M(_request, %S))", readerParameterName, stringExtractor, name)
+                }
+            }
+        }
+    }
+
     private fun FunSpec.Builder.parseQueryParameter(parameter: KSValueParameter, annotation: KSAnnotation) {
         val name = annotation.findValueNoDefault<String>("value").let {
             if (it.isNullOrBlank()) {
@@ -284,6 +319,7 @@ class RouteProcessor {
     private fun FunSpec.Builder.addQueryParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.query, parameter)
     private fun FunSpec.Builder.addPathParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.path, parameter)
     private fun FunSpec.Builder.addHeaderParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.header, parameter)
+    private fun FunSpec.Builder.addCookieParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.cookie, parameter)
     private fun FunSpec.Builder.addRequestParameterMapper(parameter: KSValueParameter, isBlocking: Boolean) {
         val paramName = parameter.name!!.asString()
         val paramType = parameter.type.toTypeName()

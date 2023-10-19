@@ -155,6 +155,30 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
     }
 
     @Test
+    fun testCookies() {
+        compile("""
+            @HttpController
+            class Controller {
+
+                @HttpRoute(method = GET, path = "/cookieString")
+                suspend fun headerString(@Cookie(value = "someCookie") string: String) {}
+
+                @HttpRoute(method = GET, path = "/cookieNullableString")
+                suspend fun headerNullableString(@Cookie string: String?) {}
+
+                @HttpRoute(method = GET, path = "/cookieCookie")
+                suspend fun headerInteger(@Cookie cookie: ru.tinkoff.kora.http.common.cookie.Cookie) {}
+
+                @HttpRoute(method = GET, path = "/cookieNullableCookie")
+                suspend fun headerNullableInteger(@Cookie cookie: ru.tinkoff.kora.http.common.cookie.Cookie?) {}
+            }
+            
+            """.trimIndent())
+        compileResult.assertSuccess()
+        compileResult.loadClass("ControllerModule").verifyNoDependencies()
+    }
+
+    @Test
     fun testContext() {
         val m = compile("""
             import ru.tinkoff.kora.common.Context;

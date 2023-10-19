@@ -1,10 +1,14 @@
 package ru.tinkoff.kora.http.server.common.router;
 
 import ru.tinkoff.kora.http.common.body.HttpBodyInput;
+import ru.tinkoff.kora.http.common.cookie.Cookie;
+import ru.tinkoff.kora.http.common.cookie.Cookies;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 class LazyRequest implements HttpServerRequest {
@@ -15,6 +19,7 @@ class LazyRequest implements HttpServerRequest {
     private final String route;
     private HttpHeaders headers;
     private Map<String, ? extends Collection<String>> queryParams;
+    private List<Cookie> cookies;
 
     LazyRequest(PublicApiRequest publicApiRequest, Map<String, String> pathParams, String routeTemplate) {
         this.publicApiRequest = publicApiRequest;
@@ -46,6 +51,19 @@ class LazyRequest implements HttpServerRequest {
             this.headers = headers = this.publicApiRequest.headers();
         }
         return headers;
+    }
+
+    @Override
+    public List<Cookie> cookies() {
+        var cookies = this.cookies;
+        if (cookies == null) {
+            cookies = this.cookies = new ArrayList<>();
+            var cookie = this.headers().getAll("Cookie");
+            if (cookie != null) {
+                Cookies.parseRequestCookies(200, false, cookie, cookies);
+            }
+        }
+        return this.cookies;
     }
 
     @Override

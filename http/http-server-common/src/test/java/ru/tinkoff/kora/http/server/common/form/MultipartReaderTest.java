@@ -8,16 +8,15 @@ import org.junit.jupiter.api.Test;
 import reactor.adapter.JdkFlowAdapter;
 import reactor.core.publisher.Flux;
 import ru.tinkoff.kora.http.common.body.HttpBodyInput;
+import ru.tinkoff.kora.http.common.cookie.Cookie;
+import ru.tinkoff.kora.http.common.cookie.Cookies;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Flow;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -277,6 +276,14 @@ class MultipartReaderTest {
                 entries[i] = Map.entry(headers[i].getKey(), List.of(headers[i].getValue()));
             }
             return HttpHeaders.of(entries);
+        }
+
+        @Override
+        public List<Cookie> cookies() {
+            var list = new ArrayList<Cookie>();
+            var cookies = headers().getAll("Cookies");
+            Cookies.parseRequestCookies(500, true, cookies, list);
+            return list;
         }
 
         @Override

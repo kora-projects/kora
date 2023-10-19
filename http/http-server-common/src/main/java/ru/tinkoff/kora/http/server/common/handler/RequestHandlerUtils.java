@@ -2,6 +2,7 @@ package ru.tinkoff.kora.http.server.common.handler;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.http.common.cookie.Cookie;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponseException;
 
@@ -547,5 +548,41 @@ public final class RequestHandlerUtils {
                 }
             })
             .toList();
+    }
+
+    @Nullable
+    public static Cookie parseOptionalCookie(HttpServerRequest request, String name) {
+        var cookies = request.cookies();
+        for (var cookie : cookies) {
+            if (Objects.equals(cookie.name(), name)) {
+                return cookie;
+            }
+        }
+        return null;
+    }
+
+    public static Cookie parseCookie(HttpServerRequest request, String name) {
+        var result = parseOptionalCookie(request, name);
+        if (result == null) {
+            throw HttpServerResponseException.of(400, "Cookie '%s' is required".formatted(name));
+        }
+        return result;
+    }
+
+    @Nullable
+    public static String parseOptionalCookieString(HttpServerRequest request, String name) {
+        var cookie = parseOptionalCookie(request, name);
+        if (cookie != null) {
+            return cookie.value();
+        }
+        return null;
+    }
+
+    public static String parseCookieString(HttpServerRequest request, String name) {
+        var result = parseOptionalCookieString(request, name);
+        if (result == null) {
+            throw HttpServerResponseException.of(400, "Cookie '%s' is required".formatted(name));
+        }
+        return result;
     }
 }
