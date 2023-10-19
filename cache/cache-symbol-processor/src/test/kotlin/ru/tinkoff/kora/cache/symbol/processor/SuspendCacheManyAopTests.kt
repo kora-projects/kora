@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
+import ru.tinkoff.kora.cache.CacheKeyMapper
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule
 import ru.tinkoff.kora.cache.redis.RedisCacheKeyMapper
 import ru.tinkoff.kora.cache.redis.RedisCacheMapperModule
@@ -69,7 +70,11 @@ class SuspendCacheManyAopTests : CaffeineCacheModule, RedisCacheMapperModule {
             ) as DummyCache22
 
             val serviceClass = classLoader.loadClass(SERVICE_CLASS) ?: throw IllegalArgumentException("Expected class not found: $SERVICE_CLASS")
-            val inst = serviceClass.constructors[0].newInstance(cache1, cache2) as CacheableSuspendMany
+            val mapper1 = CacheKeyMapper.CacheKeyMapper2<DummyCache21.Key, String, BigDecimal?>
+            { arg1, arg2 -> DummyCache21.Key(arg1, arg2 ?: BigDecimal.ZERO) }
+            val mapper2 = CacheKeyMapper.CacheKeyMapper2<DummyCache22.Key, String, BigDecimal?>
+            { arg1, arg2 -> DummyCache22.Key(arg1, arg2 ?: BigDecimal.ZERO) }
+            val inst = serviceClass.constructors[0].newInstance(cache1, mapper1, cache2, mapper2) as CacheableSuspendMany
             inst
         } catch (e: Exception) {
             throw IllegalStateException(e.message, e)

@@ -7,5 +7,5 @@ import java.math.BigDecimal
 @Cache("dummy21")
 interface DummyCache21 : CaffeineCache<DummyCache21.Key, String> {
 
-    data class Key(val k1: String, val k2: BigDecimal?)
+    data class Key(val k1: String, val k2: BigDecimal)
 }

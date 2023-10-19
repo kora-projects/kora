@@ -62,7 +62,7 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
     @Override
     public V computeIfAbsent(@Nonnull K key, @Nonnull Function<K, V> mappingFunction) {
         if (key == null) {
-            return null;
+            return mappingFunction.apply(key);
         }
 
         var telemetryContext = telemetry.create("COMPUTE_IF_ABSENT", name);
@@ -76,7 +76,7 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
     @Override
     public Map<K, V> computeIfAbsent(@Nonnull Collection<K> keys, @Nonnull Function<Set<K>, Map<K, V>> mappingFunction) {
         if (keys == null || keys.isEmpty()) {
-            return Collections.emptyMap();
+            return mappingFunction.apply(Collections.emptySet());
         }
 
         var telemetryContext = telemetry.create("COMPUTE_IF_ABSENT_MANY", name);

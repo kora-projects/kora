@@ -13,6 +13,7 @@ import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import java.util.concurrent.Future
 
@@ -33,6 +34,8 @@ class CacheableAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheA
             throw ProcessingErrorException("@Cacheable can't be applied for types assignable from ${CommonClassNames.mono}", method)
         } else if (method.isFlux()) {
             throw ProcessingErrorException("@Cacheable can't be applied for types assignable from ${CommonClassNames.flux}", method)
+        } else if (method.isVoid()) {
+            throw ProcessingErrorException("@Cacheable can't be applied for types assignable from ${Void::class}", method)
         }
 
         val operation = getCacheOperation(method, resolver, aspectContext)

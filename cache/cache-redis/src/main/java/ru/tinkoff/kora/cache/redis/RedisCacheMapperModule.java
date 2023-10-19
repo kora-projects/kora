@@ -25,7 +25,7 @@ public interface RedisCacheMapperModule extends JsonCommonModule {
 
     @Json
     @DefaultComponent
-    default <V> RedisCacheValueMapper<V> jsonRedisValueMapper(JsonWriter<V> jsonWriter, JsonReader<V> jsonReader, TypeRef<V> valueRef) {
+    default <V> RedisCacheValueMapper<V> jsonRedisValueMapper(JsonWriter<V> jsonWriter, JsonReader<V> jsonReader) {
         return new RedisCacheValueMapper<>() {
             @Override
             public byte[] write(V value) {
