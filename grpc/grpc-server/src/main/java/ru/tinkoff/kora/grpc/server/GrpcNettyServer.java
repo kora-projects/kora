@@ -13,16 +13,16 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class GrpcServer implements Lifecycle, ReadinessProbe {
+public class GrpcNettyServer implements Lifecycle, ReadinessProbe {
 
-    private static final Logger logger = LoggerFactory.getLogger(GrpcServer.class);
+    private static final Logger logger = LoggerFactory.getLogger(GrpcNettyServer.class);
 
     private final ValueOf<NettyServerBuilder> nettyServerBuilder;
     private Server server;
 
     private final AtomicReference<GrpcServerState> state = new AtomicReference<>(GrpcServerState.INIT);
 
-    public GrpcServer(ValueOf<NettyServerBuilder> nettyServerBuilder) {
+    public GrpcNettyServer(ValueOf<NettyServerBuilder> nettyServerBuilder) {
         this.nettyServerBuilder = nettyServerBuilder;
     }
 

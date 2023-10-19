@@ -5,14 +5,14 @@ import io.grpc.ServerCall;
 import io.grpc.Status;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.tinkoff.kora.grpc.server.GrpcServer;
+import ru.tinkoff.kora.grpc.server.GrpcNettyServer;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
 import jakarta.annotation.Nullable;
 
 public final class Slf4jGrpcServerLogger implements GrpcServerLogger {
 
-    private static final Logger log = LoggerFactory.getLogger(GrpcServer.class);
+    private static final Logger log = LoggerFactory.getLogger(GrpcNettyServer.class);
 
     @Override
     public boolean isEnabled() {

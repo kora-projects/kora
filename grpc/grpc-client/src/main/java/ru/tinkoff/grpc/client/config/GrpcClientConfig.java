@@ -18,6 +18,6 @@ public interface GrpcClientConfig {
     TelemetryConfig telemetry();
 
     static GrpcClientConfig defaultConfig(Config config, ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor<GrpcClientConfig> extractor, String serviceName) {
-        return Objects.requireNonNull(extractor.extract(config.get("grpc.client." + serviceName)));
+        return Objects.requireNonNull(extractor.extract(config.get("grpcClient." + serviceName)));
     }
 }
