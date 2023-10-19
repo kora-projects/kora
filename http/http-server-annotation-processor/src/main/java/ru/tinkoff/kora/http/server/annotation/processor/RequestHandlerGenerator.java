@@ -216,6 +216,8 @@ public class RequestHandlerGenerator {
                 b.endControlFlow();
             }
         }
+        b.addStatement("var oldCtx = $T.current()", CommonClassNames.context);
+        b.addStatement("_ctx.inject()");
         b.beginControlFlow("try");
         var returnType = (DeclaredType) requestMappingData.executableType().getReturnType();
         if (returnType.getTypeArguments().get(0).toString().equals("java.lang.Void")) {
@@ -235,6 +237,8 @@ public class RequestHandlerGenerator {
         }
         b.nextControlFlow("catch (Exception e)");
         b.addStatement("throw new $T(e)", CompletionException.class);
+        b.nextControlFlow("finally");
+        b.addStatement("oldCtx.inject()");
         b.endControlFlow();
 
         if (!mappedParameters.isEmpty()) {
@@ -275,6 +279,8 @@ public class RequestHandlerGenerator {
                 b.endControlFlow();
             }
         }
+        b.addStatement("var oldCtx = $T.current()", CommonClassNames.context);
+        b.addStatement("_ctx.inject()");
         b.beginControlFlow("try");
         var returnType = (DeclaredType) requestMappingData.executableType().getReturnType();
         if (returnType.getTypeArguments().get(0).toString().equals("java.lang.Void")) {
@@ -294,6 +300,8 @@ public class RequestHandlerGenerator {
         }
         b.nextControlFlow("catch (Exception e)");
         b.addStatement("throw new $T(e)", CompletionException.class);
+        b.nextControlFlow("finally");
+        b.addStatement("oldCtx.inject()");
         b.endControlFlow();
 
         if (!mappedParameters.isEmpty()) {
