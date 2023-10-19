@@ -12,15 +12,13 @@ class GrpcClientExtensionTest : AbstractSymbolProcessorTest() {
         val patchedSources = Arrays.copyOf(sources, sources.size + 1)
         patchedSources[sources.size] = """
             @ru.tinkoff.kora.common.Module
-            interface ConfigModule : ru.tinkoff.grpc.client.GrpcNettyClientModule, ru.tinkoff.kora.config.common.DefaultConfigExtractorsModule {
+            interface ConfigModule : ru.tinkoff.grpc.client.GrpcClientModule, ru.tinkoff.kora.config.common.DefaultConfigExtractorsModule {
               fun config(): ru.tinkoff.kora.config.common.Config {
                 return ru.tinkoff.kora.config.common.factory.MapConfigFactory.fromMap(java.util.Map.of(
-                  "grpc", java.util.Map.of(
-                    "client", java.util.Map.of(
-                      "Events", java.util.Map.of(
-                        "url", "http://localhost:8080",
-                        "timeout", "20s"
-                      )
+                  "grpcClient", java.util.Map.of(
+                    "Events", java.util.Map.of(
+                      "url", "http://localhost:8080",
+                      "timeout", "20s"
                     )
                   )
                 ))

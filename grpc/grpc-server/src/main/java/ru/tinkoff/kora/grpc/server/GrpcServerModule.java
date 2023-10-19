@@ -28,8 +28,8 @@ public interface GrpcServerModule extends NettyCommonModule {
     }
 
     @Root
-    default GrpcServer grpcServer(ValueOf<NettyServerBuilder> serverBuilder) {
-        return new GrpcServer(serverBuilder);
+    default GrpcNettyServer grpcNettyServer(ValueOf<NettyServerBuilder> serverBuilder) {
+        return new GrpcNettyServer(serverBuilder);
     }
 
     @DefaultComponent
@@ -42,7 +42,7 @@ public interface GrpcServerModule extends NettyCommonModule {
         return new Slf4jGrpcServerLogger();
     }
 
-    default NettyServerBuilder serverBuilder(
+    default NettyServerBuilder grpcNettyServerBuilder(
         ValueOf<GrpcServerConfig> config,
         List<DynamicBindableService> services,
         List<DynamicServerInterceptor> interceptors,

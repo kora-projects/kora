@@ -10,7 +10,7 @@ import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.netty.common.NettyCommonModule;
 
-public interface GrpcNettyClientModule extends NettyCommonModule {
+public interface GrpcClientModule extends NettyCommonModule {
     @DefaultComponent
     default DefaultGrpcClientTelemetryFactory defaultGrpcClientTelemetryFactory(@Nullable GrpcClientMetricsFactory metrics, @Nullable GrpcClientTracerFactory tracer, @Nullable GrpcClientLoggerFactory logger) {
         return new DefaultGrpcClientTelemetryFactory(metrics, tracer, logger);

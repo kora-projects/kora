@@ -16,15 +16,13 @@ class GrpcClientExtensionTest extends AbstractAnnotationProcessorTest {
         var patchedSources = Arrays.copyOf(sources, sources.length + 1);
         patchedSources[sources.length] = """
             @ru.tinkoff.kora.common.Module
-            public interface ConfigModule extends ru.tinkoff.grpc.client.GrpcNettyClientModule, ru.tinkoff.kora.config.common.DefaultConfigExtractorsModule {
+            public interface ConfigModule extends ru.tinkoff.grpc.client.GrpcClientModule, ru.tinkoff.kora.config.common.DefaultConfigExtractorsModule {
               default ru.tinkoff.kora.config.common.Config config() {
                 return ru.tinkoff.kora.config.common.factory.MapConfigFactory.fromMap(java.util.Map.of(
-                  "grpc", java.util.Map.of(
-                    "client", java.util.Map.of(
-                      "Events", java.util.Map.of(
-                        "url", "http://localhost:8080",
-                        "timeout", "20s"
-                      )
+                  "grpcClient", java.util.Map.of(
+                    "Events", java.util.Map.of(
+                      "url", "http://localhost:8080",
+                      "timeout", "20s"
                     )
                   )
                 ));
