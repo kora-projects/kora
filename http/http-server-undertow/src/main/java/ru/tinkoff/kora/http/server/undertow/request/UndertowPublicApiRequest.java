@@ -124,7 +124,7 @@ public class UndertowPublicApiRequest implements PublicApiRequest {
             }
             buffer.flip();
             var secondData = new byte[buffer.remaining()];
-            buffer.get(firstData);
+            buffer.get(secondData);
             return new UndertowRequestHttpBody(context, exchange, firstData, secondData);
         }
     }
