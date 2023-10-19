@@ -196,7 +196,6 @@ public class Cookies {
      * @param maxCookies        The maximum number of cookies. Used to prevent hash collision attacks
      * @param allowEqualInValue if true equal characters are allowed in cookie values
      * @param cookies           The cookie values to parse
-     * @return A pared cookie map
      * @see Cookie
      * @see <a href="http://tools.ietf.org/search/rfc2109">rfc2109</a>
      */
