@@ -65,7 +65,7 @@ public class FlowUtils {
             @Override
             public void onNext(ByteBuffer byteBuffer) {
                 if (length < maxLength) {
-                    list.add(byteBuffer);
+                    list.add(byteBuffer.slice());
                     length += byteBuffer.remaining();
                 }
             }

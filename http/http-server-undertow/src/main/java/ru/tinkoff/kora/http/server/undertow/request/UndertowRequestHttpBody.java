@@ -13,6 +13,7 @@ import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -71,6 +72,7 @@ public final class UndertowRequestHttpBody implements HttpBodyInput {
             buffer.clear();
             Connectors.resetRequestChannel(exchange);
             var channel = exchange.getRequestChannel();
+            Connectors.resetRequestChannel(exchange);
             var res = channel.read(buffer);
             if (res == -1) {
                 FlowUtils.<ByteBuffer>empty(context).subscribe(s);
@@ -97,7 +99,7 @@ public final class UndertowRequestHttpBody implements HttpBodyInput {
             }
             buffer.flip();
             var secondData = new byte[buffer.remaining()];
-            buffer.get(firstData);
+            buffer.get(secondData);
             var subscription = new UndertowRequestHttpBodySubscription2(s, exchange, firstData, secondData);
             s.onSubscribe(subscription);
             return;
@@ -131,7 +133,24 @@ public final class UndertowRequestHttpBody implements HttpBodyInput {
         var exchange = this.exchange;
         var future = new CompletableFuture<ByteBuffer>();
         exchange.getRequestReceiver().receiveFullBytes(
-            (ex, message) -> future.complete(ByteBuffer.wrap(message)),
+            (ex, message) -> {
+                var fd = this.firstData;
+                var sd = this.secondData;
+                if (fd == null) {
+                    future.complete(ByteBuffer.wrap(message));
+                    return;
+                }
+                if (sd == null) {
+                    var result = Arrays.copyOf(fd, fd.length + message.length);
+                    System.arraycopy(message, 0, result, fd.length, message.length);
+                    future.complete(ByteBuffer.wrap(result));
+                    return;
+                }
+                var result = Arrays.copyOf(fd, fd.length + sd.length + message.length);
+                System.arraycopy(sd, 0, result, fd.length, sd.length);
+                System.arraycopy(message, 0, result, fd.length + sd.length, message.length);
+                future.complete(ByteBuffer.wrap(result));
+            },
             (ex, error) -> future.completeExceptionally(error)
         );
         return future;
@@ -142,7 +161,24 @@ public final class UndertowRequestHttpBody implements HttpBodyInput {
         var exchange = this.exchange;
         var future = new CompletableFuture<byte[]>();
         exchange.getRequestReceiver().receiveFullBytes(
-            (ex, message) -> future.complete(message),
+            (ex, message) -> {
+                var fd = this.firstData;
+                var sd = this.secondData;
+                if (fd == null) {
+                    future.complete(message);
+                    return;
+                }
+                if (sd == null) {
+                    var result = Arrays.copyOf(fd, fd.length + message.length);
+                    System.arraycopy(message, 0, result, fd.length, message.length);
+                    future.complete(result);
+                    return;
+                }
+                var result = Arrays.copyOf(fd, fd.length + sd.length + message.length);
+                System.arraycopy(sd, 0, result, fd.length, sd.length);
+                System.arraycopy(message, 0, result, fd.length + sd.length, message.length);
+                future.complete(result);
+            },
             (ex, error) -> future.completeExceptionally(error)
         );
         return future;

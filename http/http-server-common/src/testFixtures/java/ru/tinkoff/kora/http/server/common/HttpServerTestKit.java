@@ -1,10 +1,9 @@
 package ru.tinkoff.kora.http.server.common;
 
 import jakarta.annotation.Nullable;
-import okhttp3.ConnectionPool;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
+import okhttp3.*;
+import okio.BufferedSink;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -479,6 +478,50 @@ public abstract class HttpServerTestKit {
             assertThat(response.body().bytes()).isEqualTo(data);
         }
         verifyResponse("GET", "/", 200, HttpResultCode.SUCCESS, "localhost", "http", ArgumentMatchers::isNull, anyLong());
+    }
+
+    @Test
+    void serverWithBigRequest() throws IOException {
+        var data = new byte[10 * 1024 * 1024];
+        ThreadLocalRandom.current().nextBytes(data);
+        var httpResponse = HttpServerResponse.of(200);
+        var handler = handler(POST, "/", (context, request) -> FlowUtils.toByteArrayFuture(request.body()).thenApply(b -> {
+            assertThat(b).isEqualTo(data);
+            return httpResponse;
+        }));
+
+        this.startServer(handler);
+
+        var request = request("/")
+            .post(RequestBody.create(data))
+            .post(new RequestBody() {
+                @Nullable
+                @Override
+                public MediaType contentType() {
+                    return null;
+                }
+
+                @Override
+                public long contentLength() throws IOException {
+                    return data.length;
+                }
+
+                @Override
+                public void writeTo(@NotNull BufferedSink bufferedSink) throws IOException {
+                    bufferedSink.flush();
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                    }
+                    bufferedSink.write(data);
+                }
+            })
+            .build();
+
+        try (var response = client.newBuilder().readTimeout(10, TimeUnit.SECONDS).build().newCall(request).execute()) {
+            assertThat(response.code()).isEqualTo(200);
+        }
+        verifyResponse("POST", "/", 200, HttpResultCode.SUCCESS, "localhost", "http", ArgumentMatchers::isNull, anyLong());
     }
 
     @Test
