@@ -100,7 +100,7 @@ public class RequestHandlerGenerator {
 
         var hasNonBodyParams = false;
         for (var parameter : parameters) {
-            if (Set.of(PATH, QUERY, HEADER).contains(parameter.parameterType)) {
+            if (Set.of(PATH, QUERY, HEADER, COOKIE).contains(parameter.parameterType)) {
                 handler.addStatement("final $T $N", parameter.type, parameter.variableElement.getSimpleName());
                 hasNonBodyParams = true;
             }
@@ -112,6 +112,7 @@ public class RequestHandlerGenerator {
                 case PATH -> this.definePathParameter(parameter, methodBuilder);
                 case QUERY -> this.defineQueryParameter(parameter, methodBuilder);
                 case HEADER -> this.defineHeaderParameter(parameter, methodBuilder);
+                case COOKIE -> this.defineCookieParameter(parameter, methodBuilder);
                 case MAPPED_HTTP_REQUEST -> CodeBlock.of("");
                 case REQUEST -> CodeBlock.of("var $L = _request;\n", parameter.name());
                 case CONTEXT -> CodeBlock.of("var $L = _ctx;\n", parameter.name());
@@ -307,7 +308,8 @@ public class RequestHandlerGenerator {
         if (!mappedParameters.isEmpty()) {
             b.add("$<\n});\n");
         }
-        return b.build();    }
+        return b.build();
+    }
 
     private CodeBlock generateBlockingCall(RequestMappingData requestMappingData, List<Parameter> parameters, String requestName) {
         var executeParameters = parameters.stream()
@@ -448,6 +450,67 @@ public class RequestHandlerGenerator {
                     code.add("$L = $L == null ? null : $L.read($L);", parameter.variableElement, transitParameterName, parameterReaderName, transitParameterName);
                 } else {
                     code.add("$L = $L.read($T.parseStringHeaderParameter(_request, $S));", parameter.variableElement, parameterReaderName, requestHandlerUtils, parameter.name);
+                }
+                return code.build();
+            }
+        }
+        return code.build();
+    }
+
+    private CodeBlock defineCookieParameter(Parameter parameter, MethodSpec.Builder methodBuilder) {
+        var code = CodeBlock.builder();
+        var typeString = parameter.type.toString();
+        switch (typeString) {
+            case "java.lang.String" -> {
+                if (isNullable(parameter)) {
+                    code.add("$L = $T.parseOptionalCookieString(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                } else {
+                    code.add("$L = $T.parseCookieString(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                }
+            }
+            case "ru.tinkoff.kora.http.common.cookie.Cookie" -> {
+                if (isNullable(parameter)) {
+                    code.add("$L = $T.parseOptionalCookie(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                } else {
+                    code.add("$L = $T.parseCookie(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                }
+            }
+            case "java.util.Optional<java.lang.String>" -> {
+                code.add("$L = $T.ofNullable($T.parseOptionalCookieString(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
+            }
+            case "java.util.Optional<ru.tinkoff.kora.http.common.cookie.Cookie>" -> {
+                code.add("$L = $T.ofNullable($T.parseOptionalCookie(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
+            }
+
+            default -> {
+                if (CommonUtils.isOptional(parameter.type)) {
+                    var optionalParameter = ((DeclaredType) parameter.type).getTypeArguments().get(0);
+                    var parameterReaderType = ParameterizedTypeName.get(
+                        HttpServerClassNames.stringParameterReader,
+                        TypeName.get(optionalParameter)
+                    );
+
+                    var parameterReaderName = "_" + parameter.variableElement.getSimpleName().toString() + "Reader";
+
+                    methodBuilder.addParameter(parameterReaderType, parameterReaderName);
+                    code.add("var $L_cookie = $T.parseOptionalCookieString(_request, $S);\n", parameter.variableElement, requestHandlerUtils, parameter.name);
+                    code.add("$L = $T.ofNullable($L_cookie).map($L::read);", parameter.variableElement, Optional.class, parameter.variableElement, parameterReaderName);
+                    return code.build();
+                }
+
+                var parameterReaderType = ParameterizedTypeName.get(
+                    HttpServerClassNames.stringParameterReader,
+                    TypeName.get(parameter.type).box()
+                );
+                var parameterReaderName = "_" + parameter.variableElement.getSimpleName() + "Reader";
+                methodBuilder.addParameter(parameterReaderType, parameterReaderName);
+
+                if (isNullable(parameter)) {
+                    var transitParameterName = "_" + parameter.variableElement.getSimpleName() + "RawValue";
+                    code.add("var $N = $T.parseOptionalCookieString(_request, $S);\n", transitParameterName, requestHandlerUtils, parameter.name);
+                    code.add("$L = $L == null ? null : $L.read($L);", parameter.variableElement, transitParameterName, parameterReaderName, transitParameterName);
+                } else {
+                    code.add("$L = $L.read($T.parseCookieString(_request, $S));", parameter.variableElement, parameterReaderName, requestHandlerUtils, parameter.name);
                 }
                 return code.build();
             }
@@ -646,6 +709,16 @@ public class RequestHandlerGenerator {
                 parameters.add(new Parameter(HEADER, headerParameterName, parameterType, parameter));
                 continue;
             }
+            var cookie = AnnotationUtils.findAnnotation(parameter, HttpServerClassNames.cookie);
+            if (cookie != null) {
+                var value = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(cookie, "value");
+                var cookieParameterName = value == null || value.isBlank()
+                    ? parameter.getSimpleName().toString()
+                    : value;
+
+                parameters.add(new Parameter(COOKIE, cookieParameterName, parameterType, parameter));
+                continue;
+            }
             var path = AnnotationUtils.findAnnotation(parameter, HttpServerClassNames.path);
             if (path != null) {
                 var value = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(path, "value");
@@ -779,6 +852,7 @@ public class RequestHandlerGenerator {
     enum ParameterType {
         MAPPED_HTTP_REQUEST,
         HEADER,
+        COOKIE,
         QUERY,
         PATH,
         REQUEST,

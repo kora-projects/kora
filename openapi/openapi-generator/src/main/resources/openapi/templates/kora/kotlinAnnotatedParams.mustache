@@ -7,7 +7,7 @@
       {{/vendorExtensions.x-has-pattern}}{{/vendorExtensions.x-validate}}{{#isQueryParam}}@ru.tinkoff.kora.http.common.annotation.Query("{{baseName}}")
       {{/isQueryParam}}{{#isPathParam}}@ru.tinkoff.kora.http.common.annotation.Path("{{baseName}}")
       {{/isPathParam}}{{#isHeaderParam}}@ru.tinkoff.kora.http.common.annotation.Header("{{baseName}}")
-      {{/isHeaderParam}}{{#isCookieParam}}/* TODO Cookies */
+      {{/isHeaderParam}}{{#isCookieParam}}@ru.tinkoff.kora.http.common.annotation.Cookie("{{baseName}}")
       {{/isCookieParam}}{{#isBodyParam}}{{#vendorExtensions.hasMapperTag}}@{{vendorExtensions.mapperTag}}{{/vendorExtensions.hasMapperTag}}
       {{/isBodyParam}}{{paramName}}: {{{dataType}}}{{^required}}?{{/required}}{{#hasFormParams}},{{/hasFormParams}}{{^hasFormParams}}{{^-last}},{{/-last}}{{/hasFormParams}}
 {{/isFormParam}}{{/allParams}}    {{#hasFormParams}}

@@ -9,6 +9,7 @@ object HttpServerClassNames {
     val query = ClassName("ru.tinkoff.kora.http.common.annotation", "Query");
     val header = ClassName("ru.tinkoff.kora.http.common.annotation", "Header");
     val path = ClassName("ru.tinkoff.kora.http.common.annotation", "Path");
+    val cookie = ClassName("ru.tinkoff.kora.http.common.annotation", "Cookie");
     val blockingRequestExecutor = ClassName("ru.tinkoff.kora.http.server.common.handler", "BlockingRequestExecutor");
 
     val httpServerResponse = ClassName("ru.tinkoff.kora.http.server.common", "HttpServerResponse");

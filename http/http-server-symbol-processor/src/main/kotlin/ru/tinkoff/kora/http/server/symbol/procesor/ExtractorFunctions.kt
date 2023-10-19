@@ -28,6 +28,13 @@ object ExtractorFunctions {
         LIST.parameterizedBy(INT).copy(true) to MemberName(extractorsPackage, "parseOptionalIntegerListHeaderParameter"),
     )
 
+    val cookie = mapOf<TypeName, MemberName>(
+        STRING to MemberName(extractorsPackage, "parseCookieString"),
+        STRING.copy(true) to MemberName(extractorsPackage, "parseOptionalCookieString"),
+        ClassName("ru.tinkoff.kora.http.common.cookie", "Cookie") to MemberName(extractorsPackage, "parseCookie"),
+        ClassName("ru.tinkoff.kora.http.common.cookie", "Cookie").copy(true) to MemberName(extractorsPackage, "parseOptionalCookie"),
+    )
+
     val query = mapOf<TypeName, MemberName>(
         STRING to MemberName(extractorsPackage, "parseStringQueryParameter"),
         STRING.copy(true) to MemberName(extractorsPackage, "parseOptionalStringQueryParameter"),

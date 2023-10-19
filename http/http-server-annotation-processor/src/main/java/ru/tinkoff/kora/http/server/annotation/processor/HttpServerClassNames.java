@@ -7,6 +7,7 @@ public class HttpServerClassNames {
     public static final ClassName query = ClassName.get("ru.tinkoff.kora.http.common.annotation", "Query");
     public static final ClassName header = ClassName.get("ru.tinkoff.kora.http.common.annotation", "Header");
     public static final ClassName path = ClassName.get("ru.tinkoff.kora.http.common.annotation", "Path");
+    public static final ClassName cookie = ClassName.get("ru.tinkoff.kora.http.common.annotation", "Cookie");
 
     public static final ClassName httpServerResponse = ClassName.get("ru.tinkoff.kora.http.server.common", "HttpServerResponse");
     public static final ClassName httpServerResponseException = ClassName.get("ru.tinkoff.kora.http.server.common", "HttpServerResponseException");
