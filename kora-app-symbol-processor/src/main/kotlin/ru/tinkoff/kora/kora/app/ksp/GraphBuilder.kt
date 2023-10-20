@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.kora.app.ksp
 
+import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.isOpen
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
@@ -284,6 +285,16 @@ object GraphBuilder {
 
     private fun generatePromisedProxy(ctx: ProcessingContext, claimTypeDeclaration: KSClassDeclaration): ComponentDeclaration {
         val resultClassName = claimTypeDeclaration.getOuterClassesAsPrefix() + claimTypeDeclaration.simpleName.asString() + "_PromisedProxy"
+        val packageName = claimTypeDeclaration.packageName.asString()
+        val alreadyGenerated = ctx.resolver.getClassDeclarationByName("$packageName.$resultClassName")
+        if (alreadyGenerated != null) {
+            return ComponentDeclaration.PromisedProxyComponent(
+                claimTypeDeclaration.asType(listOf()), // some weird behaviour here: asType with empty list returns type with type parameters as type, no other way to get them
+                claimTypeDeclaration,
+                ClassName(packageName, resultClassName)
+            )
+        }
+
         val typeTpr = claimTypeDeclaration.typeParameters.toTypeParameterResolver()
         val typeParameters = claimTypeDeclaration.typeParameters.map { it.toTypeVariableName(typeTpr) }
         val typeName = if (typeParameters.isEmpty())  claimTypeDeclaration.toClassName() else claimTypeDeclaration.toClassName().parameterizedBy(typeParameters)
@@ -353,7 +364,6 @@ object GraphBuilder {
             type.addFunction(method.build())
         }
 
-        val packageName = claimTypeDeclaration.packageName.asString()
         val file = FileSpec.builder(packageName, resultClassName)
             .addType(type.build())
             .build()
