@@ -305,7 +305,13 @@ public class GraphBuilder {
     }
 
     private static ComponentDeclaration generatePromisedProxy(ProcessingContext ctx, TypeElement typeElement) {
-        var resultClassName = NameUtils.generatedType(typeElement, "PromisedProxy");
+        var packageElement = ctx.elements.getPackageOf(typeElement);
+        var resultClassName = NameUtils.generatedType(typeElement, CommonClassNames.promisedProxy);
+        var alreadyGenerated = ctx.elements.getTypeElement(packageElement.getQualifiedName() + "." + resultClassName);
+        if (alreadyGenerated != null) {
+            return new ComponentDeclaration.PromisedProxyComponent(typeElement, ClassName.get(packageElement.getQualifiedName().toString(), resultClassName));
+        }
+
         var typeMirror = typeElement.asType();
         var typeName = TypeName.get(typeMirror);
         var promiseType = ParameterizedTypeName.get(CommonClassNames.promiseOf, WildcardTypeName.subtypeOf(typeName));
@@ -366,7 +372,6 @@ public class GraphBuilder {
             method.addCode(");\n");
             type.addMethod(method.build());
         }
-        var packageElement = ctx.elements.getPackageOf(typeElement);
         var javaFile = JavaFile.builder(packageElement.getQualifiedName().toString(), type.build());
         try {
             javaFile.build().writeTo(ctx.filer);
