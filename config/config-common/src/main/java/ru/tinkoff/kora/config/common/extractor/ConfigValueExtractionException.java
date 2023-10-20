@@ -29,11 +29,12 @@ public class ConfigValueExtractionException extends RuntimeException {
 
     public static ConfigValueExtractionException unexpectedValueType(ConfigValue<?> value, Class<? extends ConfigValue<?>> expectedType) {
         var message = String.format(
-            "Expected %s value type but %s found, origin '%s', path '%s'",
-            expectedType,
-            value.getClass(),
-            value.origin().config().description(),
-            value.origin().path()
+            "Config expected value with type '%s' but received type '%s' and value '%s' at path '%s' for origin '%s'",
+            expectedType.getSimpleName(),
+            value.getClass().getSimpleName(),
+            value.value(),
+            value.origin().path(),
+            value.origin().config().description()
         );
 
         return new ConfigValueExtractionException(value.origin().config(), message, null);
@@ -41,10 +42,11 @@ public class ConfigValueExtractionException extends RuntimeException {
 
     public static ConfigValueExtractionException parsingError(ConfigValue<?> value, Exception error) {
         var message = String.format(
-            "Parameter parsing error, origin '%s', message: %s, path: '%s'",
-            value.origin().config().description(),
+            "Config value parsing failed with '%s' for value '%s' at path: '%s' for origin '%s'",
             error.getMessage(),
-            value.origin().path()
+            value.value(),
+            value.origin().path(),
+            value.origin().config().description()
         );
 
         return new ConfigValueExtractionException(value.origin().config(), message, error);
@@ -52,18 +54,19 @@ public class ConfigValueExtractionException extends RuntimeException {
 
     public static ConfigValueExtractionException missingValue(ConfigValue<?> value) {
         var message = String.format(
-            "Expected value, but got null, origin '%s', path: '%s'",
-            value.origin().config().description(),
-            value.origin().path()
+            "Config expected value, but got null at path: '%s' for origin '%s'",
+            value.origin().path(),
+            value.origin().config().description()
         );
 
         return new ConfigValueExtractionException(value.origin().config(), message, null);
     }
+
     public static ConfigValueExtractionException missingValueAfterParse(ConfigValue<?> value) {
         var message = String.format(
-            "Expected value, but got null after parsing, origin '%s', path: '%s'",
-            value.origin().config().description(),
-            value.origin().path()
+            "Config expected value, but got null after parsing at path: '%s' for origin '%s'",
+            value.origin().path(),
+            value.origin().config().description()
         );
 
         return new ConfigValueExtractionException(value.origin().config(), message, null);

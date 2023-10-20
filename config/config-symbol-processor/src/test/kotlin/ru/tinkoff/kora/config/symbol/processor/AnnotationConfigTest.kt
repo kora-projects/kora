@@ -65,8 +65,7 @@ class AnnotationConfigTest : AbstractConfigTest() {
 
         assertThatThrownBy { extractor.extract(MapConfigFactory.fromMap(mapOf<String, Any?>()).root()) }
             .isInstanceOf(ConfigValueExtractionException::class.java)
-            .hasMessageStartingWith("Expected value, but got null")
-            .hasMessageEndingWith("path: 'ROOT.value'")
+            .hasMessageStartingWith("Config expected value, but got null at path: 'ROOT.value' for origin");
     }
 
     @Test
