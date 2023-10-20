@@ -18,6 +18,11 @@ public interface GrpcClientConfig {
     TelemetryConfig telemetry();
 
     static GrpcClientConfig defaultConfig(Config config, ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor<GrpcClientConfig> extractor, String serviceName) {
-        return Objects.requireNonNull(extractor.extract(config.get("grpcClient." + serviceName)));
+        var packageEnding = serviceName.lastIndexOf('.');
+        var serviceSimpleName = (packageEnding == -1)
+                ? serviceName
+                : serviceName.substring(packageEnding + 1);
+
+        return Objects.requireNonNull(extractor.extract(config.get("grpcClient." + serviceSimpleName)));
     }
 }
