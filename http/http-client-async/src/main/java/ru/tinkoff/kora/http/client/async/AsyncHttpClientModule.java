@@ -6,13 +6,14 @@ import org.asynchttpclient.DefaultAsyncHttpClientConfig;
 import org.asynchttpclient.Dsl;
 import org.asynchttpclient.proxy.ProxyServer;
 import org.asynchttpclient.proxy.ProxyType;
+import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.http.client.common.HttpClientConfig;
 import ru.tinkoff.kora.http.client.common.HttpClientModule;
 import ru.tinkoff.kora.netty.common.NettyCommonModule;
 
 public interface AsyncHttpClientModule extends NettyCommonModule, HttpClientModule {
 
-    default AsyncHttpClientConfig nettyClientConfig(EventLoopGroup eventLoopGroup, HttpClientConfig config) {
+    default AsyncHttpClientConfig nettyClientConfig(@Tag(WorkerLoopGroup.class) EventLoopGroup eventLoopGroup, HttpClientConfig config) {
         DefaultAsyncHttpClientConfig.Builder builder = Dsl.config()
             .setEventLoopGroup(eventLoopGroup)
             .setConnectTimeout((int) config.connectTimeout().toMillis())
