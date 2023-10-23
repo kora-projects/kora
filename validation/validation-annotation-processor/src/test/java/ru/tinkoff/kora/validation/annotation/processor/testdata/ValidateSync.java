@@ -34,6 +34,14 @@ public class ValidateSync {
             : 1;
     }
 
+    @Range(from = 1, to = 2)
+    @Validate
+    public Integer validatedOutputNullable(@Nullable ValidTaz c4) {
+        return (c4 == null)
+                ? null
+                : 1;
+    }
+
     @Size(min = 1, max = 1)
     @Nullable
     @Valid

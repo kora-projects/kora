@@ -30,7 +30,6 @@ public class ValidateFlux {
     }
 
     @Range(from = 1, to = 2)
-    @Nullable
     @Validate
     public Flux<Integer> validatedOutputSimple(@Nullable ValidTaz c4) {
         return (c4 == null)

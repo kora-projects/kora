@@ -65,3 +65,9 @@ javaPlugin.sourceSets {
         }
     }
 }
+
+sourceSets {
+    testGenerated {
+        java.srcDirs += "$buildDir/out"
+    }
+}
