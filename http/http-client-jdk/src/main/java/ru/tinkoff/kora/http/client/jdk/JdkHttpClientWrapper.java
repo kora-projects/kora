@@ -27,6 +27,7 @@ public class JdkHttpClientWrapper implements Lifecycle, Wrapped<HttpClient> {
         var executorThreads = this.config.threads();
         this.executor = Executors.newFixedThreadPool(executorThreads);
         var builder = HttpClient.newBuilder()
+            .version(this.config.httpVersion())
             .executor(this.executor)
             .connectTimeout(this.baseConfig.connectTimeout())
             .followRedirects(HttpClient.Redirect.NORMAL);
