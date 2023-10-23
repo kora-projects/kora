@@ -4,10 +4,7 @@ import org.junit.jupiter.api.Assertions;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
 import ru.tinkoff.kora.application.graph.TypeRef;
-import ru.tinkoff.kora.validation.annotation.processor.testdata.ValidTaz;
-import ru.tinkoff.kora.validation.annotation.processor.testdata.ValidateFlux;
-import ru.tinkoff.kora.validation.annotation.processor.testdata.ValidateMono;
-import ru.tinkoff.kora.validation.annotation.processor.testdata.ValidateSync;
+import ru.tinkoff.kora.validation.annotation.processor.testdata.*;
 import ru.tinkoff.kora.validation.common.Validator;
 import ru.tinkoff.kora.validation.common.constraint.ValidatorModule;
 
@@ -27,6 +24,24 @@ public abstract class ValidateRunner extends Assertions implements ValidatorModu
                 getTazValidator(),
                 sizeListConstraintFactory(TypeRef.of(ValidTaz.class)),
                 listValidator(getTazValidator(), TypeRef.of(ValidTaz.class))
+            );
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    protected ValidateFuture getValidateFuture() {
+        try {
+            final ClassLoader classLoader = getClassLoader();
+            final Class<?> clazz = classLoader.loadClass("ru.tinkoff.kora.validation.annotation.processor.testdata.$ValidateFuture__AopProxy");
+            return (ValidateFuture) clazz.getConstructors()[0].newInstance(
+                    rangeIntegerConstraintFactory(),
+                    notEmptyStringConstraintFactory(),
+                    getTazValidator(),
+                    sizeListConstraintFactory(TypeRef.of(ValidTaz.class)),
+                    listValidator(getTazValidator(), TypeRef.of(ValidTaz.class))
             );
         } catch (RuntimeException e) {
             throw e;
@@ -86,7 +101,7 @@ public abstract class ValidateRunner extends Assertions implements ValidatorModu
     private ClassLoader getClassLoader() {
         try {
             if (classLoader == null) {
-                final List<Class<?>> classes = List.of(ValidTaz.class, ValidateFlux.class, ValidateMono.class, ValidateSync.class);
+                final List<Class<?>> classes = List.of(ValidTaz.class, ValidateFuture.class, ValidateFlux.class, ValidateMono.class, ValidateSync.class);
                 classLoader = TestUtils.annotationProcess(classes, new ValidAnnotationProcessor(), new AopAnnotationProcessor());
             }
 

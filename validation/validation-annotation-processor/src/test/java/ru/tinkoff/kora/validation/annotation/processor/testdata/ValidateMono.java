@@ -30,7 +30,6 @@ public class ValidateMono {
     }
 
     @Range(from = 1, to = 2)
-    @Nullable
     @Validate
     public Mono<Integer> validatedOutputSimple(@Nullable ValidTaz c4) {
         return (c4 == null)
