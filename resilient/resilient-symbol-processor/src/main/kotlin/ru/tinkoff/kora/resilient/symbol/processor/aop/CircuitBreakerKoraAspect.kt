@@ -3,6 +3,7 @@ package ru.tinkoff.kora.resilient.symbol.processor.aop
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ksp.toClassName
@@ -20,11 +21,12 @@ import java.util.concurrent.Future
 class CircuitBreakerKoraAspect(val resolver: Resolver) : KoraAspect {
 
     companion object {
-        const val ANNOTATION_TYPE: String = "ru.tinkoff.kora.resilient.circuitbreaker.annotation.CircuitBreaker"
+        private val ANNOTATION_TYPE = ClassName("ru.tinkoff.kora.resilient.circuitbreaker.annotation", "CircuitBreaker")
+        private val PERMITTED_EXCEPTION = ClassName("ru.tinkoff.kora.resilient.circuitbreaker", "CallNotPermittedException")
     }
 
     override fun getSupportedAnnotationTypes(): Set<String> {
-        return setOf(ANNOTATION_TYPE)
+        return setOf(ANNOTATION_TYPE.canonicalName)
     }
 
     override fun apply(method: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
@@ -36,7 +38,7 @@ class CircuitBreakerKoraAspect(val resolver: Resolver) : KoraAspect {
             throw ProcessingErrorException("@CircuitBreaker can't be applied for types assignable from ${CommonClassNames.flux}", method)
         }
 
-        val annotation = method.annotations.filter { a -> a.annotationType.resolve().toClassName().canonicalName == ANNOTATION_TYPE }.first()
+        val annotation = method.annotations.filter { a -> a.annotationType.resolve().toClassName() == ANNOTATION_TYPE }.first()
         val circuitBreakerName = annotation.arguments.asSequence().filter { arg -> arg.name!!.getShortName() == "value" }.map { arg -> arg.value.toString() }.first()
 
         val managerType = resolver.getClassDeclarationByName("ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreakerManager")!!.asType(listOf())
@@ -72,13 +74,14 @@ class CircuitBreakerKoraAspect(val resolver: Resolver) : KoraAspect {
                 %L
                 %L.releaseOnSuccess()
                 %L
-            } catch (e: ru.tinkoff.kora.resilient.circuitbreaker.CallNotPermittedException) {
+            } catch (e: %T) {
                 throw e
             } catch (e: java.lang.Exception) {
                 %L.releaseOnError(e)
                 throw e
             }
-            """.trimIndent(), fieldCircuitBreaker, methodCall, fieldCircuitBreaker, returnCall, fieldCircuitBreaker
+            """.trimIndent(), fieldCircuitBreaker, methodCall, fieldCircuitBreaker,
+            returnCall, PERMITTED_EXCEPTION, fieldCircuitBreaker
         ).build()
     }
 
@@ -95,14 +98,15 @@ class CircuitBreakerKoraAspect(val resolver: Resolver) : KoraAspect {
                     %L.acquire()
                     %M(%L)
                     %L.releaseOnSuccess()
-                } catch (e: ru.tinkoff.kora.resilient.circuitbreaker.CallNotPermittedException) {
+                } catch (e: %T) {
                     throw e
                 } catch (e: java.lang.Exception) {
                     %L.releaseOnError(e)
                     throw e
                 }
             }
-            """.trimIndent(), flowMember, fieldCircuitBreaker, emitMember, superMethod.toString(), fieldCircuitBreaker, fieldCircuitBreaker
+            """.trimIndent(), flowMember, fieldCircuitBreaker, emitMember, superMethod.toString(),
+            fieldCircuitBreaker, PERMITTED_EXCEPTION, fieldCircuitBreaker
         ).build()
     }
 

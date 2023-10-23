@@ -2,18 +2,15 @@ package ru.tinkoff.kora.resilient.annotation.processor.aop;
 
 import com.squareup.javapoet.CodeBlock;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
-import ru.tinkoff.kora.annotation.processor.common.ProcessingError;
-import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
-import javax.tools.Diagnostic;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.Future;
+import java.util.concurrent.CompletionException;
 
 import static com.squareup.javapoet.CodeBlock.joining;
 
@@ -34,10 +31,6 @@ public class FallbackKoraAspect implements KoraAspect {
 
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
-        if (MethodUtils.isFuture(method)) {
-            throw new ProcessingErrorException("@Fallback can't be applied for types assignable from " + Future.class, method);
-        }
-
         final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream().filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE)).findFirst();
         final FallbackMeta fallback = mirror.flatMap(a -> a.getElementValues().entrySet().stream()
                 .filter(e -> e.getKey().getSimpleName().contentEquals("method"))
@@ -61,6 +54,8 @@ public class FallbackKoraAspect implements KoraAspect {
             body = buildBodyMono(method, fallback, superCall, fieldFallback);
         } else if (MethodUtils.isFlux(method)) {
             body = buildBodyFlux(method, fallback, superCall, fieldFallback);
+        } else if (MethodUtils.isFuture(method)) {
+            body = buildBodyFuture(method, fallback, superCall, fieldFallback);
         } else {
             body = buildBodySync(method, fallback, superCall, fieldFallback);
         }
@@ -99,12 +94,28 @@ public class FallbackKoraAspect implements KoraAspect {
         }
     }
 
+    private CodeBlock buildBodyFuture(ExecutableElement method, FallbackMeta fallbackCall, String superCall, String fieldFallback) {
+        final String fallbackMethod = fallbackCall.call();
+        final CodeBlock superMethod = buildMethodCall(method, superCall);
+
+        return CodeBlock.builder().add("""
+                return $L.exceptionally(e -> {
+                    if ($L.canFallback(e)) {
+                        return $L.toCompletableFuture().join();
+                    }
+                    if(e instanceof $T ex) {
+                        throw ex;
+                    }
+                    throw new $T(e);
+                });""", superMethod.toString(), fieldFallback, fallbackMethod,
+            RuntimeException.class, CompletionException.class).build();
+    }
+
     private CodeBlock buildBodyMono(ExecutableElement method, FallbackMeta fallbackCall, String superCall, String fieldFallback) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
         final String fallbackMethod = fallbackCall.call();
         return CodeBlock.builder().add("""
-            return $L
-                .onErrorResume(e -> $L.canFallback(e), e -> $L);
+            return $L.onErrorResume($L::canFallback, e -> $L);
             """, superMethod.toString(), fieldFallback, fallbackMethod).build();
     }
 
@@ -112,8 +123,7 @@ public class FallbackKoraAspect implements KoraAspect {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
         final String fallbackMethod = fallbackCall.call();
         return CodeBlock.builder().add("""
-            return $L
-                .onErrorResume(e -> $L.canFallback(e), e -> $L);
+            return $L.onErrorResume($L::canFallback, e -> $L);
             """, superMethod.toString(), fieldFallback, fallbackMethod).build();
     }
 

@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.resilient.timeout;
 
+import jakarta.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import jakarta.annotation.Nonnull;
 import java.time.Duration;
 import java.util.concurrent.*;
 import java.util.function.Function;

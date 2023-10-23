@@ -1,9 +1,8 @@
 package ru.tinkoff.kora.resilient.retry;
 
+import jakarta.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import jakarta.annotation.Nonnull;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
@@ -25,9 +24,12 @@ record KoraRetryState(
     @Override
     public int getAttempts() {
         final int usedAttempts = attempts.get();
-        return (usedAttempts > attemptsMax)
-            ? attemptsMax
-            : usedAttempts;
+        return Math.min(usedAttempts, attemptsMax);
+    }
+
+    @Override
+    public int getAttemptsMax() {
+        return attemptsMax;
     }
 
     @Override

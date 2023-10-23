@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.resilient.timeout;
 
+import jakarta.annotation.Nonnull;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
-import jakarta.annotation.Nonnull;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;

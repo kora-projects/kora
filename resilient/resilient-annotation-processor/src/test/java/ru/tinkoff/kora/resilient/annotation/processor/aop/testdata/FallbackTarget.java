@@ -7,6 +7,8 @@ import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.resilient.fallback.annotation.Fallback;
 
 import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 @Component
 @Root
@@ -61,7 +63,20 @@ public class FallbackTarget {
 
     }
 
-    @Fallback(value = "custom_fallback2", method = "getFallbackMono()")
+    @Fallback(value = "custom_fallback2", method = "getFallbackFuture()")
+    public CompletionStage<String> getValueFuture() {
+        if (alwaysFail)
+            return CompletableFuture.failedFuture(new IllegalStateException("Failed"));
+
+        return CompletableFuture.completedFuture(VALUE);
+    }
+
+    protected CompletionStage<String> getFallbackFuture() {
+        return CompletableFuture.completedFuture(FALLBACK);
+    }
+
+
+    @Fallback(value = "custom_fallback3", method = "getFallbackMono()")
     public Mono<String> getValueMono() {
         if (alwaysFail)
             return Mono.error(new IllegalStateException("Failed"));
@@ -73,7 +88,7 @@ public class FallbackTarget {
         return Mono.just(FALLBACK);
     }
 
-    @Fallback(value = "custom_fallback3", method = "getFallbackFlux()")
+    @Fallback(value = "custom_fallback4", method = "getFallbackFlux()")
     public Flux<String> getValueFlux() {
         if (alwaysFail)
             return Flux.error(new IllegalStateException("Failed"));

@@ -9,7 +9,7 @@ import ru.tinkoff.kora.resilient.annotation.processor.aop.testdata.*;
 import java.io.IOException;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class FallbackTests extends AppRunner {
+class FallbackSyncTests extends AppRunner {
 
     private FallbackTarget getService() {
         final InitializedGraph graph = getGraph(AppWithConfig.class,
@@ -93,33 +93,5 @@ class FallbackTests extends AppRunner {
         } catch (IOException e) {
             fail(e);
         }
-    }
-
-    @Test
-    void monoFallback() {
-        // given
-        var service = getService();
-        service.alwaysFail = false;
-
-        // when
-        assertEquals(FallbackTarget.VALUE, service.getValueMono().block());
-        service.alwaysFail = true;
-
-        // then
-        assertEquals(FallbackTarget.FALLBACK, service.getValueMono().block());
-    }
-
-    @Test
-    void fluxFallback() {
-        // given
-        var service = getService();
-        service.alwaysFail = false;
-
-        // when
-        assertEquals(FallbackTarget.VALUE, service.getValueFlux().blockFirst());
-        service.alwaysFail = true;
-
-        // then
-        assertEquals(FallbackTarget.FALLBACK, service.getValueFlux().blockFirst());
     }
 }

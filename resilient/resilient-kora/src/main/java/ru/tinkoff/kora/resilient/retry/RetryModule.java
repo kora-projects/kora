@@ -1,10 +1,9 @@
 package ru.tinkoff.kora.resilient.retry;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
-
-import jakarta.annotation.Nullable;
 
 public interface RetryModule {
 
