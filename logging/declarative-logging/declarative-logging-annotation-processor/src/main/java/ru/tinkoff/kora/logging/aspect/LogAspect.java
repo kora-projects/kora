@@ -5,9 +5,7 @@ import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
-import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
-import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -40,6 +38,10 @@ public class LogAspect implements KoraAspect {
 
     @Override
     public ApplyResult apply(ExecutableElement executableElement, String superCall, AspectContext aspectContext) {
+        if (MethodUtils.isFlux(executableElement)) {
+            throw new ProcessingErrorException("@Log can't be applied for types assignable from " + CommonClassNames.flux, executableElement);
+        }
+
         var loggerName = executableElement.getEnclosingElement() + "." + executableElement.getSimpleName();
         var loggerFactoryFieldName = aspectContext.fieldFactory().constructorParam(
             loggerFactory,
@@ -50,9 +52,12 @@ public class LogAspect implements KoraAspect {
             CodeBlock.builder().add("$N.getLogger($S)", loggerFactoryFieldName, loggerName).build()
         );
 
-        var isMono = CommonUtils.isMono(executableElement.getReturnType());
+        var isMono = MethodUtils.isMono(executableElement);
+        var isFuture = MethodUtils.isFuture(executableElement);
         if (isMono) {
             return this.monoBody(aspectContext, executableElement, superCall, loggerFieldName);
+        } else if (isFuture) {
+            return this.futureBody(aspectContext, executableElement, superCall, loggerFieldName);
         } else {
             return this.blockingBody(aspectContext, executableElement, superCall, loggerFieldName);
         }
@@ -170,6 +175,78 @@ public class LogAspect implements KoraAspect {
         }
 
         return new ApplyResult.MethodBody(b.add("return $N;\n", RESULT_VAR_NAME).build());
+    }
+
+    private ApplyResult futureBody(AspectContext aspectContext, ExecutableElement executableElement, String superCall, String loggerFieldName) {
+        var logInLevel = logInLevel(executableElement, env);
+        var logOutLevel = logOutLevel(executableElement, env);
+
+        var b = CodeBlock.builder();
+        if (logInLevel != null) {
+            b.add(this.buildLogIn(aspectContext, executableElement, logInLevel, loggerFieldName));
+        }
+
+        var methodGeneric = MethodUtils.getGenericType(executableElement.getReturnType()).orElseThrow();
+
+        var isVoid = MethodUtils.getGenericType(executableElement.getReturnType())
+            .map(CommonUtils::isVoid)
+            .orElse(false);
+
+        b.add("return $L", KoraAspect.callSuper(executableElement, superCall));
+
+        if (logOutLevel != null) {
+            var logResultLevel = logResultLevel(executableElement, logOutLevel, env);
+            final CodeBlock resultWriter;
+            b.beginControlFlow(".thenApply($L -> ", RESULT_VAR_NAME);
+            if (!isVoid && logResultLevel != null) {
+                var mapping = CommonUtils.parseMapping(executableElement).getMapping(structuredArgumentMapper);
+                var mapperType = mapping != null && mapping.mapperClass() != null
+                    ? mapping.isGeneric() ? mapping.parameterized(TypeName.get(methodGeneric)) : TypeName.get(mapping.mapperClass())
+                    : ParameterizedTypeName.get(structuredArgumentMapper, TypeName.get(methodGeneric));
+                var mapper = aspectContext.fieldFactory().constructorParam(
+                    mapperType,
+                    List.of(AnnotationSpec.builder(CommonClassNames.nullable).build())
+                );
+                var resultWriterBuilder = CodeBlock.builder().add("gen -> {$>\n")
+                    .add("gen.writeStartObject();\n")
+                    .beginControlFlow("if (this.$N != null)", mapper)
+                    .addStatement("gen.writeFieldName($S)", "out")
+                    .addStatement("this.$N.write(gen, $N)", mapper, RESULT_VAR_NAME)
+                    .nextControlFlow("else")
+                    .addStatement("gen.writeStringField($S, String.valueOf($N))", "out", RESULT_VAR_NAME)
+                    .endControlFlow()
+                    .add("gen.writeEndObject();")
+                    .add("$<\n}");
+                resultWriter = resultWriterBuilder.build();
+
+            } else {
+                resultWriter = null;
+            }
+
+            if (isVoid || logResultLevel == null) {
+                b.addStatement("$N.$L($S)", loggerFieldName, logOutLevel.toLowerCase(), MESSAGE_OUT);
+            } else if (logOutLevel.equals(logResultLevel)) {
+                ifLogLevelEnabled(b, loggerFieldName, logOutLevel, () -> {
+                    b.add("var $N = $T.marker($S, $L);\n", DATA_OUT_VAR_NAME, structuredArgument, "data", resultWriter);
+                    b.add("$N.$L($N, $S);", loggerFieldName, logOutLevel.toLowerCase(), DATA_OUT_VAR_NAME, MESSAGE_OUT);
+                }).add("\n");
+            } else {
+                ifLogLevelEnabled(b, loggerFieldName, logResultLevel, () -> {
+                    b.add("var $N = $T.marker($S, $L);\n", DATA_OUT_VAR_NAME, structuredArgument, "data", resultWriter);
+                    b.add("$N.$L($N, $S);", loggerFieldName, logOutLevel.toLowerCase(), DATA_OUT_VAR_NAME, MESSAGE_OUT);
+                    b.add("$<\n} else {$>\n");
+                    b.add("$N.$L($S);", loggerFieldName, logOutLevel.toLowerCase(), MESSAGE_OUT);
+                });
+            }
+
+            b.add("\n");
+            b.addStatement("return $L", RESULT_VAR_NAME);
+            b.endControlFlow(")");
+        } else {
+            b.add(";");
+        }
+
+        return new ApplyResult.MethodBody(b.build());
     }
 
     private CodeBlock buildLogIn(AspectContext aspectContext, ExecutableElement executableElement, String logInLevel, String loggerFieldName) {
