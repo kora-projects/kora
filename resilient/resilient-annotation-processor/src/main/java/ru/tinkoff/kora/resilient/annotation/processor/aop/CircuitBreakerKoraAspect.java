@@ -2,27 +2,25 @@ package ru.tinkoff.kora.resilient.annotation.processor.aop;
 
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
-import ru.tinkoff.kora.annotation.processor.common.ProcessingError;
-import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeMirror;
-import javax.tools.Diagnostic;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.Future;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 import static com.squareup.javapoet.CodeBlock.joining;
 
 public class CircuitBreakerKoraAspect implements KoraAspect {
 
     private static final String ANNOTATION_TYPE = "ru.tinkoff.kora.resilient.circuitbreaker.annotation.CircuitBreaker";
+    private static final ClassName PERMITTED_EXCEPTION = ClassName.get("ru.tinkoff.kora.resilient.circuitbreaker", "CallNotPermittedException");
 
     private final ProcessingEnvironment env;
 
@@ -37,10 +35,6 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
 
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
-        if (MethodUtils.isFuture(method)) {
-            throw new ProcessingErrorException("@CircuitBreaker can't be applied for types assignable from " + Future.class, method);
-        }
-
         final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream().filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE)).findFirst();
         final String circuitBreakerName = mirror.flatMap(a -> a.getElementValues().entrySet().stream()
                 .filter(e -> e.getKey().getSimpleName().contentEquals("value"))
@@ -58,6 +52,8 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
             body = buildBodyMono(method, superCall, fieldCircuit);
         } else if (MethodUtils.isFlux(method)) {
             body = buildBodyFlux(method, superCall, fieldCircuit);
+        } else if (MethodUtils.isFuture(method)) {
+            body = buildBodyFuture(method, superCall, fieldCircuit);
         } else {
             body = buildBodySync(method, superCall, fieldCircuit);
         }
@@ -65,7 +61,7 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
         return new ApplyResult.MethodBody(body);
     }
 
-    private CodeBlock buildBodySync(ExecutableElement method, String superCall, String circuitBreakerField) {
+    private CodeBlock buildBodySync(ExecutableElement method, String superCall, String cbField) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
         final CodeBlock methodCall = MethodUtils.isVoid(method)
             ? superMethod
@@ -75,52 +71,69 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
             ? CodeBlock.of("return")
             : CodeBlock.of("return t", superMethod.toString());
 
-        final ClassName cbException = ClassName.get("ru.tinkoff.kora.resilient.timeout", "TimeoutExhaustedException");
-
         return CodeBlock.builder().add("""
-            var _circuitBreaker = $L;
             try {
-                _circuitBreaker.acquire();
+                $L.acquire();
                 $L;
-                _circuitBreaker.releaseOnSuccess();
+                $L.releaseOnSuccess();
                 $L;
             } catch ($T e) {
                 throw e;
             } catch (Exception e) {
-                _circuitBreaker.releaseOnError(e);
+                $L.releaseOnError(e);
                 throw e;
             }
-            """, circuitBreakerField, methodCall.toString(), returnCall.toString(), cbException).build();
+            """, cbField, methodCall.toString(), cbField, returnCall.toString(), PERMITTED_EXCEPTION, cbField).build();
     }
 
-    private CodeBlock buildBodyMono(ExecutableElement method, String superCall, String circuitBreakerField) {
+    private CodeBlock buildBodyFuture(ExecutableElement method, String superCall, String cbField) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
 
         return CodeBlock.builder().add("""
-            var _circuitBreaker = $L;
-
-            return Mono.defer(() -> {
-                  _circuitBreaker.acquire();
-                  return $L
-                      .doOnSuccess(r -> _circuitBreaker.releaseOnSuccess())
-                      .doOnError(_circuitBreaker::releaseOnError);
-            });
-            """, circuitBreakerField, superMethod.toString()).build();
+                try {
+                    $L.acquire();
+                    return $L.thenApply(_r -> {
+                                $L.releaseOnSuccess();
+                                return _r;
+                            })
+                            .exceptionally(e -> {
+                                $L.releaseOnError(e);
+                                if(e instanceof $T ex) {
+                                    throw ex;
+                                }
+                                throw new $T(e);
+                            });
+                } catch ($T e) {
+                    return $T.failedFuture(e);
+                }
+                """, cbField, superMethod, cbField, cbField, RuntimeException.class,
+            CompletionException.class, PERMITTED_EXCEPTION, CompletableFuture.class).build();
     }
 
-    private CodeBlock buildBodyFlux(ExecutableElement method, String superCall, String circuitBreakerField) {
+    private CodeBlock buildBodyMono(ExecutableElement method, String superCall, String cbField) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
 
         return CodeBlock.builder().add("""
-            var _circuitBreaker = $L;
-
-            return Flux.defer(() -> {
-                  _circuitBreaker.acquire();
+            return $T.defer(() -> {
+                  $L.acquire();
                   return $L
-                      .doOnComplete(() -> _circuitBreaker.releaseOnSuccess())
-                      .doOnError(_circuitBreaker::releaseOnError);
+                      .doOnSuccess(r -> $L.releaseOnSuccess())
+                      .doOnError($L::releaseOnError);
             });
-            """, circuitBreakerField, superMethod.toString()).build();
+            """, CommonClassNames.mono, cbField, superMethod.toString(), cbField, cbField).build();
+    }
+
+    private CodeBlock buildBodyFlux(ExecutableElement method, String superCall, String cbField) {
+        final CodeBlock superMethod = buildMethodCall(method, superCall);
+
+        return CodeBlock.builder().add("""
+            return $T.defer(() -> {
+                  $L.acquire();
+                  return $L
+                      .doOnComplete($L::releaseOnSuccess)
+                      .doOnError($L::releaseOnError);
+            });
+            """, CommonClassNames.flux, cbField, superMethod.toString(), cbField, cbField).build();
     }
 
     private CodeBlock buildMethodCall(ExecutableElement method, String call) {

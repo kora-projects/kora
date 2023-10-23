@@ -3,17 +3,17 @@ package ru.tinkoff.kora.resilient.annotation.processor.aop;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
-import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.Future;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.function.Function;
 
 import static com.squareup.javapoet.CodeBlock.joining;
 
@@ -21,9 +21,9 @@ public class RetryKoraAspect implements KoraAspect {
 
     private static final ClassName REACTOR_RETRY_BUILDER = ClassName.get("ru.tinkoff.kora.resilient.retry", "KoraRetryReactorBuilder");
     private static final ClassName REACTOR_RETRY = ClassName.get("reactor.util.retry", "Retry");
-    private static final ClassName RETRY_STATUS = ClassName.get("ru.tinkoff.kora.resilient.retry", "Retry", "RetryState", "RetryStatus");
     private static final ClassName RETRY_EXCEPTION = ClassName.get("ru.tinkoff.kora.resilient.retry", "RetryExhaustedException");
     private static final String ANNOTATION_TYPE = "ru.tinkoff.kora.resilient.retry.annotation.Retry";
+    private static final ClassName RETRY_STATE = ClassName.get("ru.tinkoff.kora.resilient.retry", "Retry", "RetryState", "RetryStatus");
 
     private final ProcessingEnvironment env;
 
@@ -38,10 +38,6 @@ public class RetryKoraAspect implements KoraAspect {
 
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
-        if (MethodUtils.isFuture(method)) {
-            throw new ProcessingErrorException("@Retry can't be applied for types assignable from " + Future.class, method);
-        }
-
         final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream().filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE)).findFirst();
         final String retryableName = mirror.flatMap(a -> a.getElementValues().entrySet().stream()
                 .filter(e -> e.getKey().getSimpleName().contentEquals("value"))
@@ -53,22 +49,26 @@ public class RetryKoraAspect implements KoraAspect {
             var reactorBuilderType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement(REACTOR_RETRY_BUILDER.canonicalName()));
             var reactorBuilderField = aspectContext.fieldFactory().constructorParam(reactorBuilderType, List.of());
             var retrierType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement(REACTOR_RETRY.canonicalName()));
-            var fieldRetrier = aspectContext.fieldFactory().constructorInitialized(retrierType,
-                CodeBlock.of("$L.get($S);", reactorBuilderField, retryableName));
+            var fieldRetrier = aspectContext.fieldFactory().constructorInitialized(retrierType, CodeBlock.of("$L.get($S);", reactorBuilderField, retryableName));
             body = buildBodyMono(method, superCall, fieldRetrier);
         } else if (MethodUtils.isFlux(method)) {
             var reactorBuilderType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement(REACTOR_RETRY_BUILDER.canonicalName()));
             var reactorBuilderField = aspectContext.fieldFactory().constructorParam(reactorBuilderType, List.of());
             var retrierType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement(REACTOR_RETRY.canonicalName()));
-            var fieldRetrier = aspectContext.fieldFactory().constructorInitialized(retrierType,
-                CodeBlock.of("$L.get($S);", reactorBuilderField, retryableName));
+            var fieldRetrier = aspectContext.fieldFactory().constructorInitialized(retrierType, CodeBlock.of("$L.get($S);", reactorBuilderField, retryableName));
             body = buildBodyFlux(method, superCall, fieldRetrier);
-        } else {
+        } else if (MethodUtils.isFuture(method)) {
             var managerType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.retry.RetryManager"));
             var fieldManager = aspectContext.fieldFactory().constructorParam(managerType, List.of());
             var retrierType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.retry.Retry"));
             var fieldRetrier = aspectContext.fieldFactory().constructorInitialized(retrierType,
                 CodeBlock.of("$L.get($S);", fieldManager, retryableName));
+            body = buildBodyFuture(method, superCall, fieldRetrier);
+        } else {
+            var managerType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.retry.RetryManager"));
+            var fieldManager = aspectContext.fieldFactory().constructorParam(managerType, List.of());
+            var retrierType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.retry.Retry"));
+            var fieldRetrier = aspectContext.fieldFactory().constructorInitialized(retrierType, CodeBlock.of("$L.get($S);", fieldManager, retryableName));
             body = buildBodySync(method, superCall, fieldRetrier);
         }
 
@@ -76,46 +76,47 @@ public class RetryKoraAspect implements KoraAspect {
     }
 
     private CodeBlock buildBodySync(ExecutableElement method, String superCall, String fieldRetry) {
-        var builder = CodeBlock.builder()
-            .addStatement("var _suppressed = new $T<Exception>();", ArrayList.class)
-            .beginControlFlow("try (var _state = $L.asState())", fieldRetry)
-            .beginControlFlow("while (true)")
-            .beginControlFlow("try");
+        var builder = CodeBlock.builder();
 
         if (MethodUtils.isVoid(method)) {
-            builder.addStatement(buildMethodCall(method, superCall));
-            builder.addStatement("return");
+            builder.addStatement("$L.retry(() -> $L)", fieldRetry, buildMethodCall(method, superCall));
         } else {
-            builder.add("return ").addStatement(buildMethodCall(method, superCall));
+            builder.addStatement("return $L.retry(() -> $L)", fieldRetry, buildMethodCall(method, superCall));
         }
 
-        builder.nextControlFlow("catch (Exception _e)");
-        builder.addStatement("var _status = _state.onException(_e)");
-        builder.beginControlFlow("if ($T.REJECTED == _status)", RETRY_STATUS)
-            .add("""
-                for (var _exception : _suppressed) {
-                    _e.addSuppressed(_exception);
-                }""")
-            .addStatement("throw _e")
-            .nextControlFlow("else if($T.ACCEPTED == _status)", RETRY_STATUS)
-            .add("""
-                _suppressed.add(_e);
-                _state.doDelay();
-                """)
-            .nextControlFlow("else if($T.EXHAUSTED  == _status)", RETRY_STATUS)
-            .add("""
-                var _exhaustedException = new $T(_state.getAttempts(), _e);
-                for (var _exception : _suppressed) {
-                    _exhaustedException.addSuppressed(_exception);
-                }
-                throw _exhaustedException;
-                """, RETRY_EXCEPTION)
-            .endControlFlow();
+        return builder.build();
+    }
 
-        builder
-            .endControlFlow()   // try
-            .endControlFlow()   // while
-            .endControlFlow();  // try retry state
+    private CodeBlock buildBodyFuture(ExecutableElement method, String superCall, String fieldRetry) {
+        var builder = CodeBlock.builder();
+
+        var methodCall = buildMethodCall(method, superCall);
+        builder.add("""
+                var _future = $L;
+                var _retryState = $L.asState();
+                for (int _i = 0; _i <= _retryState.getAttemptsMax(); _i++) {
+                    _future = _future.thenApply($T::completedFuture)
+                            .exceptionally(_e -> {
+                                var _ex = (_e instanceof $T)
+                                        ? _e.getCause()
+                                        : _e;
+                                        
+                                var _state = _retryState.onException(_ex);
+                                if(_state == $T.ACCEPTED) {
+                                    return $T.runAsync(_retryState::doDelay).thenCompose(_r -> $L);
+                                } else if(_state == $T.REJECTED) {
+                                    _retryState.close();
+                                    return $T.failedFuture(_ex);
+                                } else {
+                                    _retryState.close();
+                                    return $T.failedFuture(new $T(_retryState.getAttemptsMax(), _ex));
+                                }
+                            })
+                            .thenCompose($T.identity());
+                }
+                return _future;
+                """, methodCall, fieldRetry, CompletableFuture.class, CompletionException.class, RETRY_STATE, CompletableFuture.class,
+            methodCall, RETRY_STATE, CompletableFuture.class, CompletableFuture.class, RETRY_EXCEPTION, Function.class);
 
         return builder.build();
     }

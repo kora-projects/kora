@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.resilient.timeout;
 
 import jakarta.annotation.Nonnull;
+
 import java.time.Duration;
 import java.util.concurrent.Callable;
 

@@ -1,12 +1,12 @@
 package ru.tinkoff.kora.resilient.timeout;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.resilient.timeout.annotation.Timeout;
 
-import jakarta.annotation.Nullable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 

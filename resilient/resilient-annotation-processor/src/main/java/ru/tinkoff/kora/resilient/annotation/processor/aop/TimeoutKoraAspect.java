@@ -3,19 +3,18 @@ package ru.tinkoff.kora.resilient.annotation.processor.aop;
 import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
-import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 
-import jakarta.annotation.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.type.DeclaredType;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.Future;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static com.squareup.javapoet.CodeBlock.joining;
@@ -23,6 +22,7 @@ import static com.squareup.javapoet.CodeBlock.joining;
 public class TimeoutKoraAspect implements KoraAspect {
 
     private static final String ANNOTATION_TYPE = "ru.tinkoff.kora.resilient.timeout.annotation.Timeout";
+    private static final ClassName EXHAUSTED_EXCEPTION = ClassName.get("ru.tinkoff.kora.resilient.timeout", "TimeoutExhaustedException");
 
     private final ProcessingEnvironment env;
 
@@ -37,10 +37,6 @@ public class TimeoutKoraAspect implements KoraAspect {
 
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
-        if (MethodUtils.isFuture(method)) {
-            throw new ProcessingErrorException("@Timeout can't be applied for types assignable from " + Future.class, method);
-        }
-
         final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream().filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE)).findFirst();
         final String timeoutName = mirror.flatMap(a -> a.getElementValues().entrySet().stream()
                 .filter(e -> e.getKey().getSimpleName().contentEquals("value"))
@@ -60,6 +56,8 @@ public class TimeoutKoraAspect implements KoraAspect {
             body = buildBodyMono(method, superCall, timeoutName, fieldTimeout, fieldMetrics);
         } else if (MethodUtils.isFlux(method)) {
             body = buildBodyFlux(method, superCall, timeoutName, fieldTimeout, fieldMetrics);
+        } else if (MethodUtils.isFuture(method)) {
+            body = buildBodyFuture(method, superCall, timeoutName, fieldTimeout, fieldMetrics);
         } else {
             body = buildBodySync(method, superCall, fieldTimeout);
         }
@@ -84,38 +82,57 @@ public class TimeoutKoraAspect implements KoraAspect {
         }
     }
 
-    private CodeBlock buildBodyMono(ExecutableElement method, String superCall, String timeoutName, String fieldTimeout, String fieldMetrics) {
+    private CodeBlock buildBodyFuture(ExecutableElement method, String superCall, String timeoutName, String fieldTimeout, String fieldMetrics) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
-        final ClassName timeoutException = ClassName.get("ru.tinkoff.kora.resilient.timeout", "TimeoutExhaustedException");
 
         return CodeBlock.builder().add("""
-            return $L
-                .timeout($L.timeout())
-                .onErrorMap(e -> e instanceof $T, e -> new $T($S, "Timeout exceeded " + $L.timeout()))
-                .doOnError(e -> {
-                    if(e instanceof $T && $L != null) {
-                        $L.recordTimeout($S, $L.timeout().toNanos());
-                    }
-                });
-            """, superMethod.toString(), fieldTimeout, TimeoutException.class, timeoutException, timeoutName,
-            fieldTimeout, timeoutException, fieldMetrics, fieldMetrics, timeoutName, fieldTimeout).build();
+                return $L.toCompletableFuture()
+                    .orTimeout($L.timeout().toMillis(), $T.MILLISECONDS)
+                    .exceptionally(e -> {
+                      if(e instanceof $T) {
+                        if($L != null) {
+                            $L.recordTimeout($S, $L.timeout().toNanos());
+                        }
+                        throw new $T($S, "Timeout exceeded " + $L.timeout());
+                      } else if(e instanceof $T ex) {
+                        throw ex;
+                      }
+                      throw new $T(e);
+                    });""", superMethod.toString(), fieldTimeout, TimeUnit.class, TimeoutException.class,
+            fieldMetrics, fieldMetrics, timeoutName, fieldTimeout, EXHAUSTED_EXCEPTION, timeoutName, fieldTimeout,
+            RuntimeException.class, CompletionException.class).build();
+    }
+
+    private CodeBlock buildBodyMono(ExecutableElement method, String superCall, String timeoutName, String fieldTimeout, String fieldMetrics) {
+        final CodeBlock superMethod = buildMethodCall(method, superCall);
+
+        return CodeBlock.builder().add("""
+                return $L
+                    .timeout($L.timeout())
+                    .onErrorMap(e -> e instanceof $T, e -> new $T($S, "Timeout exceeded " + $L.timeout()))
+                    .doOnError(e -> {
+                        if(e instanceof $T && $L != null) {
+                            $L.recordTimeout($S, $L.timeout().toNanos());
+                        }
+                    });
+                """, superMethod.toString(), fieldTimeout, TimeoutException.class, EXHAUSTED_EXCEPTION, timeoutName,
+            fieldTimeout, EXHAUSTED_EXCEPTION, fieldMetrics, fieldMetrics, timeoutName, fieldTimeout).build();
     }
 
     private CodeBlock buildBodyFlux(ExecutableElement method, String superCall, String timeoutName, String fieldTimeout, String fieldMetrics) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
-        final ClassName timeoutException = ClassName.get("ru.tinkoff.kora.resilient.timeout", "TimeoutExhaustedException");
 
         return CodeBlock.builder().add("""
-            return $L
-                .timeout($L.timeout())
-                .onErrorMap(e -> e instanceof $T, e -> new $T($S, "Timeout exceeded " + $L.timeout()))
-                .doOnError(e -> {
-                    if(e instanceof $T && $L != null) {
-                        $L.recordTimeout($S, $L.timeout().toNanos());
-                    }
-                });
-            """, superMethod.toString(), fieldTimeout, TimeoutException.class, timeoutException, timeoutName,
-            fieldTimeout, timeoutException, fieldMetrics, fieldMetrics, timeoutName, fieldTimeout).build();
+                return $L
+                    .timeout($L.timeout())
+                    .onErrorMap(e -> e instanceof $T, e -> new $T($S, "Timeout exceeded " + $L.timeout()))
+                    .doOnError(e -> {
+                        if(e instanceof $T && $L != null) {
+                            $L.recordTimeout($S, $L.timeout().toNanos());
+                        }
+                    });
+                """, superMethod.toString(), fieldTimeout, TimeoutException.class, EXHAUSTED_EXCEPTION, timeoutName,
+            fieldTimeout, EXHAUSTED_EXCEPTION, fieldMetrics, fieldMetrics, timeoutName, fieldTimeout).build();
     }
 
     private CodeBlock buildMethodCall(ExecutableElement method, String call) {

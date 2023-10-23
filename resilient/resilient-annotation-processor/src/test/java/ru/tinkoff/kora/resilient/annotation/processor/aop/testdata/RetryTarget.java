@@ -7,9 +7,10 @@ import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.resilient.retry.annotation.Retry;
-import ru.tinkoff.kora.resilient.timeout.TimeoutExhaustedException;
 
 import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
@@ -28,7 +29,7 @@ public class RetryTarget {
     }
 
     @Retry("custom1")
-    public void retrySyncCheckedException(String arg) throws IOException, TimeoutExhaustedException {
+    public void retrySyncCheckedException(String arg) throws IOException {
         logger.info("Retry retrySyncCheckedException executed for: {}", arg);
         if (retryAttempts.getAndDecrement() > 0) {
             throw new IllegalStateException("Ops");
@@ -45,7 +46,19 @@ public class RetryTarget {
         return arg;
     }
 
-    @Retry("custom1")
+    @Retry("custom2")
+    public CompletionStage<String> retryFuture(String arg) {
+        return CompletableFuture.supplyAsync(() -> {
+            logger.info("Retry Future executed for: {}", arg);
+            if (retryAttempts.getAndDecrement() > 0) {
+                throw new IllegalStateException("Ops");
+            }
+
+            return arg;
+        });
+    }
+
+    @Retry("custom3")
     public Mono<String> retryMono(String arg) {
         return Mono.fromCallable(() -> {
             logger.info("Retry Mono executed for: {}", arg);
@@ -57,7 +70,7 @@ public class RetryTarget {
         });
     }
 
-    @Retry("custom1")
+    @Retry("custom4")
     public Flux<String> retryFlux(String arg) {
         return Flux.from(Mono.fromCallable(() -> {
             logger.info("Retry Flux executed for: {}", arg);

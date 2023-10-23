@@ -6,10 +6,8 @@ import org.junit.jupiter.api.TestInstance;
 import ru.tinkoff.kora.resilient.annotation.processor.aop.testdata.*;
 import ru.tinkoff.kora.resilient.retry.RetryExhaustedException;
 
-import java.time.Duration;
-
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class RetryTests extends AppRunner {
+class RetrySyncTests extends AppRunner {
 
     private RetryTarget getService() {
         final InitializedGraph graph = getGraph(AppWithConfig.class,
@@ -86,64 +84,6 @@ class RetryTests extends AppRunner {
             fail("Should not happen");
         } catch (RetryExhaustedException ex) {
             assertNotNull(ex.getMessage());
-        }
-    }
-
-    @Test
-    void monoRetrySuccess() {
-        // given
-        var service = retryableTarget;
-
-        // then
-        service.setRetryAttempts(RETRY_SUCCESS);
-
-        // then
-        assertEquals("1", service.retryMono("1").block(Duration.ofMinutes(1)));
-    }
-
-    @Test
-    void monoRetryFail() {
-        // given
-        var service = retryableTarget;
-
-        // then
-        service.setRetryAttempts(RETRY_FAIL);
-
-        // then
-        try {
-            service.retryMono("1").block(Duration.ofMinutes(1));
-            fail("Should not happen");
-        } catch (RetryExhaustedException e) {
-            assertNotNull(e.getMessage());
-        }
-    }
-
-    @Test
-    void fluxRetrySuccess() {
-        // given
-        var service = retryableTarget;
-
-        // then
-        service.setRetryAttempts(RETRY_SUCCESS);
-
-        // then
-        assertEquals("1", service.retryFlux("1").blockFirst(Duration.ofMinutes(1)));
-    }
-
-    @Test
-    void fluxRetryFail() {
-        // given
-        var service = retryableTarget;
-
-        // then
-        service.setRetryAttempts(RETRY_FAIL);
-
-        // then
-        try {
-            service.retryFlux("1").blockFirst(Duration.ofMinutes(1));
-            fail("Should not happen");
-        } catch (RetryExhaustedException e) {
-            assertNotNull(e.getMessage());
         }
     }
 }

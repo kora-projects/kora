@@ -1,8 +1,7 @@
 package ru.tinkoff.kora.resilient.retry;
 
-import ru.tinkoff.kora.resilient.ResilientException;
-
 import jakarta.annotation.Nonnull;
+import ru.tinkoff.kora.resilient.ResilientException;
 
 /**
  * Exception that indicates all Retry attempts exhausted

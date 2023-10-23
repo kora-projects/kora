@@ -8,7 +8,7 @@ import ru.tinkoff.kora.resilient.timeout.TimeoutExhaustedException;
 import java.io.IOException;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class TimeoutTests extends AppRunner {
+class TimeoutSyncTests extends AppRunner {
 
     private TimeoutTarget getService() {
         final InitializedGraph graph = getGraph(AppWithConfig.class,
@@ -59,23 +59,5 @@ class TimeoutTests extends AppRunner {
 
         var ex = assertThrows(IOException.class, service::getValueSyncCheckedExceptionVoidFailed);
         assertEquals("OPS", ex.getMessage());
-    }
-
-    @Test
-    void monoTimeout() {
-        // given
-        var service = getService();
-
-        // then
-        assertThrows(TimeoutExhaustedException.class, () -> service.getValueMono().block());
-    }
-
-    @Test
-    void fluxTimeout() {
-        // given
-        var service = getService();
-
-        // when
-        assertThrows(TimeoutExhaustedException.class, () -> service.getValueFlux().blockFirst());
     }
 }

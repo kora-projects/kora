@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.resilient.circuitbreaker.annotation;
 
 import ru.tinkoff.kora.common.AopAnnotation;
-import ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreakerConfig;
 import ru.tinkoff.kora.resilient.circuitbreaker.CallNotPermittedException;
+import ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreakerConfig;
 
 import java.lang.annotation.*;
 

@@ -2,12 +2,22 @@ package ru.tinkoff.kora.resilient.retry;
 
 import jakarta.annotation.Nonnull;
 
-import java.util.function.Supplier;
-
 /**
  * Retry executor implementation
  */
 public interface Retry {
+
+    @FunctionalInterface
+    interface RetryRunnable<E extends Throwable> {
+
+        void run() throws E;
+    }
+
+    @FunctionalInterface
+    interface RetrySupplier<T, E extends Throwable> {
+
+        T get() throws E;
+    }
 
     /**
      * Retry State implementation for manual retry execution handling
@@ -24,6 +34,8 @@ public interface Retry {
         RetryStatus onException(@Nonnull Throwable throwable);
 
         int getAttempts();
+
+        int getAttemptsMax();
 
         long getDelayNanos();
 
@@ -43,7 +55,7 @@ public interface Retry {
      * @param runnable to execute for successful completion
      * @throws RetryExhaustedException if exhausted all attempts
      */
-    void retry(@Nonnull Runnable runnable) throws RetryExhaustedException;
+    <E extends Throwable> void retry(@Nonnull RetryRunnable<E> runnable) throws RetryExhaustedException, E;
 
     /**
      * @param supplier to use for value extraction
@@ -51,7 +63,7 @@ public interface Retry {
      * @return value is succeeded
      * @throws RetryExhaustedException if exhausted all attempts
      */
-    <T> T retry(@Nonnull Supplier<T> supplier) throws RetryExhaustedException;
+    <T, E extends Throwable> T retry(@Nonnull RetrySupplier<T, E> supplier) throws RetryExhaustedException, E;
 
     /**
      * @param supplier to use for value extraction
@@ -59,5 +71,5 @@ public interface Retry {
      * @param <T>      type of value
      * @return value is succeeded
      */
-    <T> T retry(@Nonnull Supplier<T> supplier, Supplier<T> fallback);
+    <T, E extends Throwable> T retry(@Nonnull RetrySupplier<T, E> supplier, RetrySupplier<T, E> fallback) throws E;
 }

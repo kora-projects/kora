@@ -6,7 +6,6 @@ import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Supplier;
 
 final class KoraRetry implements Retry {
 
@@ -42,7 +41,7 @@ final class KoraRetry implements Retry {
     }
 
     @Override
-    public void retry(@Nonnull Runnable runnable) {
+    public <E extends Throwable> void retry(@Nonnull RetryRunnable<E> runnable) throws RetryExhaustedException, E {
         internalRetry(() -> {
             runnable.run();
             return null;
@@ -50,16 +49,16 @@ final class KoraRetry implements Retry {
     }
 
     @Override
-    public <T> T retry(@Nonnull Supplier<T> supplier) {
+    public <T, E extends Throwable> T retry(@Nonnull RetrySupplier<T, E> supplier) throws E {
         return internalRetry(supplier, null);
     }
 
     @Override
-    public <T> T retry(@Nonnull Supplier<T> supplier, @Nonnull Supplier<T> fallback) {
+    public <T, E extends Throwable> T retry(@Nonnull RetrySupplier<T, E> supplier, @Nonnull RetrySupplier<T, E> fallback) throws E {
         return internalRetry(supplier, fallback);
     }
 
-    private <T> T internalRetry(Supplier<T> consumer, @Nullable Supplier<T> fallback) {
+    private <T, E extends Throwable> T internalRetry(RetrySupplier<T, E> consumer, @Nullable RetrySupplier<T, E> fallback) throws E {
         final List<Exception> suppressed = new ArrayList<>();
         try (var state = asState()) {
             while (true) {
