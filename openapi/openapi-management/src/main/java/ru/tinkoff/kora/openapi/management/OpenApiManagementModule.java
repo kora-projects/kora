@@ -26,8 +26,11 @@ public interface OpenApiManagementModule {
     }
 
     default HttpServerRequestHandler swaggerUIManagementController(OpenApiManagementConfig config) {
-        if (config.swaggerui() == null || !config.swaggerui().enabled()) {
-            return HttpServerRequestHandlerImpl.of(HttpMethod.GET, config.rapidoc().endpoint(),
+        if (config.swaggerui() == null) {
+            return HttpServerRequestHandlerImpl.of(HttpMethod.GET, "/swagger-ui",
+                    (context, request) -> CompletableFuture.completedFuture(HttpServerResponse.of(404)));
+        } else if (!config.enabled() || !config.swaggerui().enabled()) {
+            return HttpServerRequestHandlerImpl.of(HttpMethod.GET, config.swaggerui().endpoint(),
                     (context, request) -> CompletableFuture.completedFuture(HttpServerResponse.of(404)));
         }
 
@@ -36,7 +39,10 @@ public interface OpenApiManagementModule {
     }
 
     default HttpServerRequestHandler rapidocManagementController(OpenApiManagementConfig config) {
-        if (config.rapidoc() == null || !config.rapidoc().enabled()) {
+        if (config.rapidoc() == null) {
+            return HttpServerRequestHandlerImpl.of(HttpMethod.GET, "/rapidoc",
+                    (context, request) -> CompletableFuture.completedFuture(HttpServerResponse.of(404)));
+        } else if (!config.enabled() || !config.rapidoc().enabled()) {
             return HttpServerRequestHandlerImpl.of(HttpMethod.GET, config.rapidoc().endpoint(),
                     (context, request) -> CompletableFuture.completedFuture(HttpServerResponse.of(404)));
         }
