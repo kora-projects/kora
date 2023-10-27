@@ -59,7 +59,7 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
 
     protected <K, V> ConsumerRecord<K, V> errorValue() {
         var errorDeser = Mockito.mock(Deserializer.class);
-        when(errorDeser.deserialize(any(), any(), any())).thenThrow(IllegalArgumentException.class);
+        when(errorDeser.deserialize(any(), any(), any(byte[].class))).thenThrow(IllegalArgumentException.class);
         when(errorDeser.deserialize(any(), any())).thenThrow(IllegalArgumentException.class);
         Deserializer<K> deser = (topic, data) -> null;
 
@@ -68,7 +68,7 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
 
     protected <K, V> ConsumerRecord<K, V> errorValue(K key) {
         var errorDeser = Mockito.mock(Deserializer.class);
-        when(errorDeser.deserialize(any(), any(), any())).thenThrow(IllegalArgumentException.class);
+        when(errorDeser.deserialize(any(), any(), any(byte[].class))).thenThrow(IllegalArgumentException.class);
         when(errorDeser.deserialize(any(), any())).thenThrow(IllegalArgumentException.class);
         Deserializer<K> deser = (topic, data) -> key;
 
@@ -77,7 +77,7 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
 
     protected <K, V> ConsumerRecord<K, V> errorKey(V value) {
         var errorDeser = Mockito.mock(Deserializer.class);
-        when(errorDeser.deserialize(any(), any(), any())).thenThrow(IllegalArgumentException.class);
+        when(errorDeser.deserialize(any(), any(), any(byte[].class))).thenThrow(IllegalArgumentException.class);
         when(errorDeser.deserialize(any(), any())).thenThrow(IllegalArgumentException.class);
         Deserializer<V> deser = (topic, data) -> value;
 

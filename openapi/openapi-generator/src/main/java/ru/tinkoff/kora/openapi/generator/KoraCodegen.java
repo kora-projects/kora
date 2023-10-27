@@ -18,6 +18,7 @@ import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.parameters.RequestBody;
 import io.swagger.v3.oas.models.servers.Server;
 import io.swagger.v3.parser.util.SchemaTypeUtil;
+import jakarta.annotation.Nullable;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -31,7 +32,6 @@ import org.openapitools.codegen.utils.ModelUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import jakarta.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -474,6 +474,7 @@ public class KoraCodegen extends DefaultCodegen {
                     }));
                 var uniqueMappedModels = model.discriminator.getMappedModels().stream().map(CodegenDiscriminator.MappedModel::getModelName).collect(Collectors.toSet());
                 model.vendorExtensions.put("x-unique-mapped-models", uniqueMappedModels);
+                model.discriminator.getVendorExtensions().put("x-unique-mapped-models", uniqueMappedModels);
                 for (var mappedModel : model.discriminator.getMappedModels()) {
                     var childModel = allModels.get(mappedModel.getModelName());
                     childModel.parentModel = model;
@@ -845,7 +846,7 @@ public class KoraCodegen extends DefaultCodegen {
         } else if (ModelUtils.isMapSchema(target)) {
             // Note: ModelUtils.isMapSchema(p) returns true when p is a composed schema that also defines
             // additionalproperties: true
-            var inner = getAdditionalProperties(target);
+            var inner = ModelUtils.getAdditionalProperties(target);
             if (inner == null) {
                 LOGGER.error("`{}` (map property) does not have a proper inner type defined. Default to type:string", p.getName());
                 inner = new StringSchema().description("TODO default missing map inner type to string");
@@ -901,11 +902,12 @@ public class KoraCodegen extends DefaultCodegen {
             String mapInstantiationType = instantiationTypes().getOrDefault("map", "HashMap");
             final String pattern = "new " + mapInstantiationType + "<%s>()";
 
-            if (getAdditionalProperties(schema) == null) {
+            Schema schemaProperties = ModelUtils.getAdditionalProperties(schema);
+            if (schemaProperties == null) {
                 return null;
             }
 
-            String typeDeclaration = String.format(Locale.ROOT, "String, %s", getTypeDeclaration(getAdditionalProperties(schema)));
+            String typeDeclaration = String.format(Locale.ROOT, "String, %s", getTypeDeclaration(schemaProperties));
             Object java8obj = additionalProperties.get("java8");
             if (java8obj != null) {
                 Boolean java8 = Boolean.valueOf(java8obj.toString());
@@ -1548,8 +1550,8 @@ public class KoraCodegen extends DefaultCodegen {
                 }
                 for (Operation operation : path.readOperations()) {
                     LOGGER.info("Processing operation {}", operation.getOperationId());
-                    if (hasBodyParameter(openAPI, operation) || hasFormParameter(openAPI, operation)) {
-                        String defaultContentType = hasFormParameter(openAPI, operation) ? "application/x-www-form-urlencoded" : "application/json";
+                    if (hasBodyParameter(operation) || hasFormParameter(operation)) {
+                        String defaultContentType = hasFormParameter(operation) ? "application/x-www-form-urlencoded" : "application/json";
                         List<String> consumes = new ArrayList<>(getConsumesInfo(openAPI, operation));
                         String contentType = consumes == null || consumes.isEmpty() ? defaultContentType : consumes.get(0);
                         operation.addExtension("x-contentType", contentType);
@@ -1940,7 +1942,7 @@ public class KoraCodegen extends DefaultCodegen {
         }
 
         // See https://github.com/OpenAPITools/openapi-generator/pull/1729#issuecomment-449937728
-        var s = getAdditionalProperties(schema);
+        var s = ModelUtils.getAdditionalProperties(schema);
         // 's' may be null if 'additionalProperties: false' in the OpenAPI schema.
         if (s != null) {
             codegenModel.additionalPropertiesType = getSchemaType(s);

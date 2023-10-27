@@ -15,6 +15,7 @@ public final class ByteBufferInputStream extends InputStream {
         return this.buffer.remaining();
     }
 
+    @Override
     public int read() {
         if (!this.buffer.hasRemaining()) {
             return -1;
@@ -22,6 +23,7 @@ public final class ByteBufferInputStream extends InputStream {
         return this.buffer.get() & 0xFF;
     }
 
+    @Override
     public int read(byte[] bytes, int off, int len) {
         if (len == 0) {
             return 0;
