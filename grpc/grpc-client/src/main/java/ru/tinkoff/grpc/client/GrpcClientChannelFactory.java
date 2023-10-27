@@ -1,25 +1,25 @@
 package ru.tinkoff.grpc.client;
 
 import io.grpc.ChannelCredentials;
-import io.grpc.internal.AbstractManagedChannelImplBuilder;
+import io.grpc.ManagedChannelBuilder;
 import io.grpc.internal.GrpcUtil;
 
 import java.net.SocketAddress;
 
 public interface GrpcClientChannelFactory {
-    default AbstractManagedChannelImplBuilder<?> forAddress(String host, int port) {
+    default ManagedChannelBuilder<?> forAddress(String host, int port) {
         return forTarget(GrpcUtil.authorityFromHostAndPort(host, port));
     }
 
-    default AbstractManagedChannelImplBuilder<?> forAddress(String host, int port, ChannelCredentials creds) {
+    default ManagedChannelBuilder<?> forAddress(String host, int port, ChannelCredentials creds) {
         return forTarget(GrpcUtil.authorityFromHostAndPort(host, port), creds);
     }
 
-    AbstractManagedChannelImplBuilder<?> forAddress(SocketAddress serverAddress);
+    ManagedChannelBuilder<?> forAddress(SocketAddress serverAddress);
 
-    AbstractManagedChannelImplBuilder<?> forAddress(SocketAddress serverAddress, ChannelCredentials creds);
+    ManagedChannelBuilder<?> forAddress(SocketAddress serverAddress, ChannelCredentials creds);
 
-    AbstractManagedChannelImplBuilder<?> forTarget(String target);
+    ManagedChannelBuilder<?> forTarget(String target);
 
-    AbstractManagedChannelImplBuilder<?> forTarget(String target, ChannelCredentials creds);
+    ManagedChannelBuilder<?> forTarget(String target, ChannelCredentials creds);
 }

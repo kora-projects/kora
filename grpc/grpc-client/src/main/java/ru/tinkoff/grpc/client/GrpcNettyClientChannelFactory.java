@@ -1,7 +1,7 @@
 package ru.tinkoff.grpc.client;
 
 import io.grpc.ChannelCredentials;
-import io.grpc.internal.AbstractManagedChannelImplBuilder;
+import io.grpc.ManagedChannelBuilder;
 import io.grpc.netty.NettyChannelBuilder;
 import io.netty.channel.EventLoopGroup;
 import ru.tinkoff.kora.netty.common.NettyCommonModule;
@@ -16,28 +16,28 @@ public final class GrpcNettyClientChannelFactory implements GrpcClientChannelFac
     }
 
     @Override
-    public AbstractManagedChannelImplBuilder<?> forAddress(SocketAddress serverAddress) {
+    public ManagedChannelBuilder<?> forAddress(SocketAddress serverAddress) {
         return NettyChannelBuilder.forAddress(serverAddress)
             .channelType(NettyCommonModule.channelType())
             .eventLoopGroup(this.eventLoopGroup);
     }
 
     @Override
-    public AbstractManagedChannelImplBuilder<?> forAddress(SocketAddress serverAddress, ChannelCredentials creds) {
+    public ManagedChannelBuilder<?> forAddress(SocketAddress serverAddress, ChannelCredentials creds) {
         return NettyChannelBuilder.forAddress(serverAddress, creds)
             .channelType(NettyCommonModule.channelType())
             .eventLoopGroup(this.eventLoopGroup);
     }
 
     @Override
-    public AbstractManagedChannelImplBuilder<?> forTarget(String target) {
+    public ManagedChannelBuilder<?> forTarget(String target) {
         return NettyChannelBuilder.forTarget(target)
             .channelType(NettyCommonModule.channelType())
             .eventLoopGroup(this.eventLoopGroup);
     }
 
     @Override
-    public AbstractManagedChannelImplBuilder<?> forTarget(String target, ChannelCredentials creds) {
+    public ManagedChannelBuilder<?> forTarget(String target, ChannelCredentials creds) {
         return NettyChannelBuilder.forTarget(target, creds)
             .channelType(NettyCommonModule.channelType())
             .eventLoopGroup(this.eventLoopGroup);
