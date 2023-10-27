@@ -3,7 +3,6 @@ package ru.tinkoff.kora.config.common;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 public sealed interface PathElement {
     static PathElement.Index get(int index) {
@@ -23,19 +22,20 @@ public sealed interface PathElement {
 
     final class Key implements PathElement {
         private final String name;
-        private final List<String> relaxedNames;
+        private volatile List<String> relaxedNames = null;
 
-        public Key(String name) {
+        private Key(String name) {
             this.name = name;
-            this.relaxedNames = new ArrayList<>(3);
         }
 
         public List<String> relaxedNames() {
-            if (!this.relaxedNames.isEmpty()) {
-                return this.relaxedNames;
+            var names = this.relaxedNames;
+            if (names != null) {
+                return names;
             }
-            this.relaxedNames.addAll(parseRelaxedNames(name));// todo maybe some way to provide custom parser?
-            return this.relaxedNames;
+            var parsed = parseRelaxedNames(name);
+            this.relaxedNames = parsed;
+            return parsed;
         }
 
         public String name() {
@@ -47,7 +47,7 @@ public sealed interface PathElement {
             return this.name;
         }
 
-        private static Set<String> parseRelaxedNames(String fieldName) {
+        private static List<String> parseRelaxedNames(String fieldName) {
             var parts = new ArrayList<String>();
             int prevI = 0;
             for (int i = 0; i < fieldName.length(); i++) {
@@ -96,7 +96,11 @@ public sealed interface PathElement {
             var kebab = String.join("-", parts);
             var snake = String.join("_", parts);
 
-            return new LinkedHashSet<>(List.of(fieldName, kebab, snake));
+            var set = new LinkedHashSet<String>();
+            set.add(fieldName);
+            set.add(kebab);
+            set.add(snake);
+            return new ArrayList<>(set);
         }
     }
 

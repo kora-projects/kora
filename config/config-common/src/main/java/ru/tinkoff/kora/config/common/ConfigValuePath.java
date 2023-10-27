@@ -21,7 +21,7 @@ public interface ConfigValuePath {
     }
 
     default ConfigValuePath child(String key) {
-        return new SimpleConfigValuePath(new PathElement.Key(Objects.requireNonNull(key)), this);
+        return new SimpleConfigValuePath(PathElement.get(Objects.requireNonNull(key)), this);
     }
 
     default ConfigValuePath child(int index) {

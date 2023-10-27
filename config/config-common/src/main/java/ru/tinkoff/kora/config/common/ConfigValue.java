@@ -150,7 +150,7 @@ sealed public interface ConfigValue<T> {
         }
 
         public ConfigValue<?> get(String key) {
-            return this.get(new PathElement.Key(key));
+            return this.get(PathElement.get(key));
         }
 
         public ConfigValue<?> get(PathElement.Key key) {
