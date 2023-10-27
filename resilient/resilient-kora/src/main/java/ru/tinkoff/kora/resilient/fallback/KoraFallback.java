@@ -23,7 +23,7 @@ final class KoraFallback implements Fallback {
     @Override
     public boolean canFallback(Throwable throwable) {
         if (failurePredicate.test(throwable)) {
-            logger.debug("Initiating Fallback '{}' due to: {}", name, throwable.getClass().getCanonicalName());
+            logger.debug("Initiating Fallback '{}' due to: {}", name, throwable.toString());
             metrics.recordExecute(name, throwable);
             return true;
         } else {
