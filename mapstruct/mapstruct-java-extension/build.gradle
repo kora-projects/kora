@@ -1,5 +1,4 @@
 dependencies {
-    implementation project(':annotation-processor-common')
     implementation project(':kora-app-annotation-processor')
 
     testImplementation "org.mapstruct:mapstruct:1.5.5.Final"

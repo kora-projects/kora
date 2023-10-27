@@ -21,6 +21,24 @@ public class MapstructKoraExtensionTest extends AbstractAnnotationProcessorTest 
             """;
     }
 
+    protected GraphContainer compileInner(@Language("java") String... sources) {
+        @Language("java")
+        var realSources = Arrays.copyOf(sources, sources.length + 1);
+        realSources[sources.length] = """
+            @KoraApp
+            public interface TestApp {
+              @Root
+              default String root(SomeInterface.TestMapper testMapper) {
+                return "";
+              }
+            }
+            """;
+        this.compile(List.of(new KoraAppProcessor(), new MappingProcessor()), realSources);
+        compileResult.assertSuccess();
+
+        return loadGraph("TestApp");
+    }
+
     protected GraphContainer compile(@Language("java") String... sources) {
         @Language("java")
         var realSources = Arrays.copyOf(sources, sources.length + 1);
@@ -41,7 +59,8 @@ public class MapstructKoraExtensionTest extends AbstractAnnotationProcessorTest 
 
     @Test
     public void test() {
-        var graph = compile("""
+        var graph = compile(
+            """
             public enum CarType {TYPE1, TYPE2}
             """, """
             public record Car(String make, int numberOfSeats, CarType type) {
@@ -56,6 +75,30 @@ public class MapstructKoraExtensionTest extends AbstractAnnotationProcessorTest 
                 CarDto carToCarDto(Car car);
             }
             """);
+        assertThat(graph.draw().size()).isEqualTo(2);
+    }
+
+    @Test
+    public void testInner() {
+        var graph = compileInner("""
+            public enum CarType {TYPE1, TYPE2}
+            """, """
+            public record Car(String make, int numberOfSeats, CarType type) {
+            }
+            """, """
+            public record CarDto(String make, int seatCount, String type) {
+            }
+            """, """
+            public interface SomeInterface {
+            
+                @Mapper
+                interface TestMapper {
+                    @Mapping(source = "numberOfSeats", target = "seatCount")
+                    CarDto carToCarDto(Car car);
+                }
+            }
+            """);
+
         assertThat(graph.draw().size()).isEqualTo(2);
     }
 
