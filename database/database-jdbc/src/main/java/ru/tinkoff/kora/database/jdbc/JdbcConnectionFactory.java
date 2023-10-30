@@ -9,6 +9,13 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
+/**
+ * <b>Русский</b>: Фабрика соединений JDBC которая позволяет выполнять запросы в ручном режиме и в рамках транзакции.
+ * <hr>
+ * <b>English</b>: JDBC's connection factory that allows you to fulfil requests in manual mode or transaction mode.
+ *
+ * @see JdbcRepository
+ */
 public interface JdbcConnectionFactory {
     <T> T withConnection(JdbcHelper.SqlFunction1<Connection, T> callback) throws RuntimeSqlException;
 

@@ -8,6 +8,13 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 import java.time.Duration;
 import java.util.Properties;
 
+/**
+ * <b>Русский</b>: Конфигурация описывающая соединения к Jdbc базе данных.
+ * <hr>
+ * <b>English</b>: Configuration describing connections to the Jdbc database.
+ *
+ * @see JdbcRepository
+ */
 @ConfigValueExtractor
 public interface JdbcDatabaseConfig {
     String username();

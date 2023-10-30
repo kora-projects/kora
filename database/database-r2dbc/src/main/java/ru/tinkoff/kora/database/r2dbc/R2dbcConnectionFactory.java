@@ -12,6 +12,13 @@ import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+/**
+ * <b>Русский</b>: Фабрика соединений R2dbc которая позволяет выполнять запросы в ручном режиме и в рамках транзакции.
+ * <hr>
+ * <b>English</b>: R2dbc's connection factory that allows you to fulfil requests in manual mode or transaction mode.
+ *
+ * @see R2dbcRepository
+ */
 public interface R2dbcConnectionFactory {
 
     Mono<Connection> currentConnection();

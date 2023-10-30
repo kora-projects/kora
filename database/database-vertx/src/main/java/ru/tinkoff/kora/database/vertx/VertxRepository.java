@@ -12,7 +12,7 @@ import ru.tinkoff.kora.database.common.annotation.Repository;
  * <pre>
  * {@code
  * @Repository
- * public interface MyRepository extends CassandraRepository {
+ * public interface MyRepository extends VertxRepository {
  *
  * }
  * }

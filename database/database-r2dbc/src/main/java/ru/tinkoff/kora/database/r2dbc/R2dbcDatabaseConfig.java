@@ -8,6 +8,13 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 import java.time.Duration;
 import java.util.Map;
 
+/**
+ * <b>Русский</b>: Конфигурация описывающая соединения к R2dbc базе данных.
+ * <hr>
+ * <b>English</b>: Configuration describing connections to the R2dbc database.
+ *
+ * @see R2dbcRepository
+ */
 @ConfigValueExtractor
 public interface R2dbcDatabaseConfig {
     String r2dbcUrl();

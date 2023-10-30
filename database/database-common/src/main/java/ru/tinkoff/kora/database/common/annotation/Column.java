@@ -14,7 +14,6 @@ import java.lang.annotation.Target;
  * Пример / Example:
  * <pre>
  * {@code
- * @Table("users")
  * public record User(@Column("fullname") String fullName) {}
  * }
  * </pre>

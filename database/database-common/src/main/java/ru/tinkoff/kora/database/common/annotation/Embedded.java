@@ -21,7 +21,6 @@ import java.util.Optional;
  * Пример / Example:
  * <pre>
  * {@code
- * @Table("users")
  * public record User(long id, @Embedded("user_") Name name) {
  *
  *     public record Name(String name, String surname) { }

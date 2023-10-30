@@ -19,7 +19,6 @@ import ru.tinkoff.kora.database.common.RowMapper;
  * Пример / Example:
  * <pre>
  * {@code
- * @Table("users")
  * public record User(@Mapping(MyCassandraRowColumnMapper.class) String fullName) {}
  * }
  * </pre>
