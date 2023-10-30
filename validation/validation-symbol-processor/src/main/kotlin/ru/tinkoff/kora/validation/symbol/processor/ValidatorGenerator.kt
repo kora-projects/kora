@@ -209,7 +209,7 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
             source,
             declaration,
             ValidatorType(
-                VALIDATOR_TYPE.parameterizedBy(declaration.asType(listOf()).toTypeName())
+                VALIDATOR_TYPE.parameterizedBy(declaration.asType(listOf()).toTypeName().copy(false))
             ),
             fields
         )
@@ -248,7 +248,7 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
 
     private fun generateForSealed(symbol: KSClassDeclaration) {
         val typeName = symbol.asType(listOf()).toTypeName()
-        val validatorTypeName = VALIDATOR_TYPE.parameterizedBy(typeName)
+        val validatorTypeName = VALIDATOR_TYPE.parameterizedBy(typeName.copy(false))
         val validatorSpecBuilder = TypeSpec.classBuilder(symbol.generatedClassName("Validator"))
             .addSuperinterface(validatorTypeName)
             .generated(ValidatorGenerator::class)
@@ -267,7 +267,7 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
         for ((i, subclass) in symbol.collectFinalSealedSubtypes().withIndex()) {
             val name = "_validator${i + 1}"
             val subtypeName = subclass.asType(listOf()).toTypeName()
-            val fieldValidator = VALIDATOR_TYPE.parameterizedBy(subtypeName)
+            val fieldValidator = VALIDATOR_TYPE.parameterizedBy(subtypeName.copy(false))
             validatorSpecBuilder.addProperty(name, fieldValidator, KModifier.PRIVATE)
             constructor.addParameter(name, fieldValidator)
                 .addStatement("this.%N = %N", name, name)

@@ -24,7 +24,7 @@ data class ValidatorMeta(
 )
 
 data class Validated(val target: Type) {
-    fun validator(): Type = VALIDATOR_TYPE.canonicalName.asType(listOf(target))
+    fun validator(): Type = VALIDATOR_TYPE.canonicalName.asType(listOf(target.copy(isNullable = false)))
 }
 
 data class ValidatorType(val contract: TypeName)
@@ -47,7 +47,7 @@ data class Constraint(val annotation: Type, val factory: Factory) {
 
     data class Factory(val type: Type, val parameters: Map<String, Any>) {
 
-        fun validator(): Type = VALIDATOR_TYPE.canonicalName.asType(type.generic)
+        fun validator(): Type = VALIDATOR_TYPE.canonicalName.asType(type.generic.map { it.copy(isNullable = false) })
     }
 }
 
