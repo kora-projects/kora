@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static ru.tinkoff.kora.annotation.processor.common.TestUtils.classpath;
 
@@ -168,6 +167,7 @@ class KoraCodegenTest {
             ksp + "kspOutputDir=" + kotlinOutPath.resolveSibling("in-test-generated-kspOutputDir"),
             ksp + "classOutputDir=" + kotlinOutPath.resolveSibling("in-test-generated-classOutputDir"),
             ksp + "incremental=false",
+            ksp + "withCompilation=true",
             ksp + "javaOutputDir=" + kotlinOutPath.resolveSibling("in-test-generated-javaOutputDir"),
             ksp + "projectBaseDir=" + Path.of(".").toAbsolutePath(),
             ksp + "resourceOutputDir=" + kotlinOutPath.resolveSibling("in-test-generated-resourceOutputDir"),
@@ -191,20 +191,6 @@ class KoraCodegenTest {
             Files.copy(it, to);
         }
 
-        if (code != ExitCode.OK) {
-            throw new RuntimeException(sw.toString());
-        }
-        if (collector.hasErrors()) {
-            throw new RuntimeException(sw.toString());
-        }
-        k2JvmArgs.setPluginClasspaths(null);
-        k2JvmArgs.setFreeArgs(Stream.concat(targetFiles.stream(), Files.walk(kotlinOutputDir)
-                .filter(Files::isRegularFile)
-                .map(it -> kotlinOutPath.resolve("sources").resolve(it.relativize(kotlinOutputDir)).toAbsolutePath().toString()))
-            .collect(Collectors.toList())
-        );
-
-        code = co.exec(collector, Services.EMPTY, k2JvmArgs);
         if (code != ExitCode.OK) {
             throw new RuntimeException(sw.toString());
         }

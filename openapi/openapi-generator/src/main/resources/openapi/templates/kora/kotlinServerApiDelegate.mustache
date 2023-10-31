@@ -12,7 +12,7 @@ package {{package}}
 interface {{classname}}Delegate {
 {{#operations}}
 {{#operation}}
-    suspend fun {{operationId}}(
+    {{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}(
 {{#allParams}}      {{^isFormParam}}
       {{paramName}}: {{{dataType}}}{{^required}}?{{/required}}{{#hasFormParams}},{{/hasFormParams}}{{^hasFormParams}}{{^-last}},{{/-last}}{{/hasFormParams}}
 {{/isFormParam}}{{/allParams}}    {{#hasFormParams}}
