@@ -26,7 +26,7 @@ import java.lang.annotation.Target;
 public @interface Column {
 
     /**
-     * <b>Русский</b>: Имя поля сущности в базе данных.
+     * @return <b>Русский</b>: Имя поля сущности в базе данных.
      * <hr>
      * <b>English</b>: The name of the entity field in the database.
      */

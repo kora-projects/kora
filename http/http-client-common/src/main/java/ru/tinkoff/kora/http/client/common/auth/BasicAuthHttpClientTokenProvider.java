@@ -8,12 +8,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 public class BasicAuthHttpClientTokenProvider implements HttpClientTokenProvider {
-    private final String token;
+
     private final CompletableFuture<String> tokenFuture;
 
     public BasicAuthHttpClientTokenProvider(String username, String password) {
         var usernameAndPassword = username + ":" + password;
-        this.token = Base64.getEncoder().encodeToString(usernameAndPassword.getBytes(StandardCharsets.US_ASCII));
+        var token = Base64.getEncoder().encodeToString(usernameAndPassword.getBytes(StandardCharsets.US_ASCII));
         this.tokenFuture = CompletableFuture.completedFuture(token);
     }
 
