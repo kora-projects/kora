@@ -1,5 +1,6 @@
-package ru.tinkoff.kora.test.extension.junit5.mock;
+package ru.tinkoff.kora.test.extension.junit5.mockito;
 
+import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.common.Tag;
@@ -9,7 +10,6 @@ import ru.tinkoff.kora.test.extension.junit5.KoraGraphModification;
 import ru.tinkoff.kora.test.extension.junit5.TestComponent;
 import ru.tinkoff.kora.test.extension.junit5.testdata.*;
 
-import jakarta.annotation.Nonnull;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -28,8 +28,8 @@ public class MockGraphModificationTests implements KoraAppTestGraphModifier {
     @Override
     public @Nonnull KoraGraphModification graph() {
         return KoraGraphModification.create()
-            .mockComponent(TestComponent1.class)
-            .mockComponent(TestComponent2.class, List.of(LifecycleComponent.class));
+                .replaceComponent(TestComponent1.class, () -> Mockito.mock(TestComponent1.class))
+                .replaceComponent(TestComponent2.class, List.of(LifecycleComponent.class), () -> Mockito.mock(TestComponent2.class));
     }
 
     @Test

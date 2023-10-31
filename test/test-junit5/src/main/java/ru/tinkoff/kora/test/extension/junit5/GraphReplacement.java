@@ -6,7 +6,8 @@ import ru.tinkoff.kora.application.graph.Node;
 
 import java.util.function.Function;
 
-record GraphReplacement<T>(Function<KoraAppGraph, ? extends T> function, GraphCandidate candidate) implements GraphModification {
+record GraphReplacement<T>(Function<KoraAppGraph, ? extends T> function,
+                           GraphCandidate candidate) implements GraphModification {
 
     @Override
     public void accept(ApplicationGraphDraw graphDraw) {

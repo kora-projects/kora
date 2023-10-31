@@ -15,7 +15,7 @@ final class GraphUtils {
 
     private static final Class<?>[] TAG_ANY = new Class<?>[]{Tag.Any.class};
 
-    private GraphUtils() {}
+    private GraphUtils() { }
 
     static <T> Set<Node<T>> findNodeByType(ApplicationGraphDraw graph, GraphCandidate candidate) {
         return findNodeByType(graph, candidate.type(), candidate.tagsAsArray());
@@ -26,8 +26,8 @@ final class GraphUtils {
         if (tags == null || tags.length == 0) {
             final Node<T> node = (Node<T>) graph.findNodeByType(type);
             return (node == null)
-                ? Set.of()
-                : Set.of(node);
+                    ? Set.of()
+                    : Set.of(node);
         } else if (Arrays.equals(TAG_ANY, tags)) {
             final Set<Node<T>> nodes = new HashSet<>();
             for (var graphNode : graph.getNodes()) {
@@ -107,8 +107,8 @@ final class GraphUtils {
                 return Optional.of(tc);
             } else if (type instanceof ParameterizedType tp) {
                 return (tp.getRawType() instanceof Class<?>)
-                    ? Optional.ofNullable(((Class<?>) tp.getRawType()))
-                    : Optional.ofNullable(KoraJUnit5Extension.class.getClassLoader().loadClass(tp.getRawType().getTypeName()));
+                        ? Optional.ofNullable(((Class<?>) tp.getRawType()))
+                        : Optional.ofNullable(KoraJUnit5Extension.class.getClassLoader().loadClass(tp.getRawType().getTypeName()));
             } else {
                 return Optional.empty();
             }

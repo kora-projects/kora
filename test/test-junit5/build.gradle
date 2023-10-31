@@ -1,13 +1,22 @@
 dependencies {
+    compileOnly libs.mockito.core
+    compileOnly "io.mockk:mockk:1.13.8"
+
     api libs.junit.platform.launcher
     api libs.junit.jupiter
-    api libs.mockito.core
 
     implementation project(":common")
-    implementation project(":config:config-hocon")
+    implementation project(":config:config-common")
 
     testAnnotationProcessor project(":annotation-processors")
     testImplementation project(":annotation-processors")
+    testImplementation project(":config:config-hocon")
+
+    testImplementation "io.mockk:mockk:1.13.8"
+    testImplementation libs.mockito.core
+    testImplementation libs.kotlin.stdlib.lib
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
+apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
+

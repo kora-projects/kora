@@ -1,12 +1,12 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
+import jakarta.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.RefreshableGraph;
 import ru.tinkoff.kora.test.extension.junit5.KoraJUnit5Extension.TestClassMetadata;
 
-import jakarta.annotation.Nonnull;
 import java.io.IOException;
 import java.time.Duration;
 

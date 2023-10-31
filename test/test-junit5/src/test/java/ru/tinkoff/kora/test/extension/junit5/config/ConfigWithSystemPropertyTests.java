@@ -19,7 +19,7 @@ public class ConfigWithSystemPropertyTests implements KoraAppTestConfigModifier 
     @Override
     public @Nonnull KoraConfigModification config() {
         return KoraConfigModification.ofSystemProperty("one", "1")
-            .withSystemProperty("two", "2");
+                .withSystemProperty("two", "2");
     }
 
     @Test
