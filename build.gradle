@@ -211,7 +211,6 @@ subprojects {
             events("passed", "skipped", "failed")
             exceptionFormat("full")
         }
-        systemProperty "junit.jupiter.extensions.autodetection.enabled", "true"
         finalizedBy jacocoTestReport // report is always generated after tests run
     }
 

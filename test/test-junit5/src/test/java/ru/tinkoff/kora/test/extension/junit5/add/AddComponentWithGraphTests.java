@@ -26,12 +26,12 @@ public class AddComponentWithGraphTests implements KoraAppTestGraphModifier {
     @Override
     public @Nonnull KoraGraphModification graph() {
         return KoraGraphModification.create()
-            .addComponent(
-                LifecycleComponent.class, List.of(TestComponent23.class),
-                g -> {
-                    final TestComponent2 simpleComponent2 = g.getFirst(TestComponent2.class, LifecycleComponent.class);
-                    return (LifecycleComponent) () -> "?" + simpleComponent2.get();
-                });
+                .addComponent(
+                        LifecycleComponent.class, List.of(TestComponent23.class),
+                        g -> {
+                            final TestComponent2 simpleComponent2 = g.getFirst(TestComponent2.class, LifecycleComponent.class);
+                            return (LifecycleComponent) () -> "?" + simpleComponent2.get();
+                        });
     }
 
     @Test

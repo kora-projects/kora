@@ -1,11 +1,11 @@
-package ru.tinkoff.kora.test.extension.junit5.mock;
+package ru.tinkoff.kora.test.extension.junit5.mockito;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
-import ru.tinkoff.kora.test.extension.junit5.MockComponent;
 import ru.tinkoff.kora.test.extension.junit5.TestComponent;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplication;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent1;
@@ -20,23 +20,23 @@ public class MockBeforeEachAfterEachParameterTests {
     private TestComponent12 bean;
 
     @BeforeEach
-    void setupMocks(@MockComponent TestComponent1 mock) {
+    void setupMocks(@Mock @TestComponent TestComponent1 mock) {
         assertNull(mock.get());
         Mockito.when(mock.get()).thenReturn("?");
     }
 
     @AfterEach
-    void checkMocks(@MockComponent TestComponent1 mock) {
+    void checkMocks(@Mock @TestComponent TestComponent1 mock) {
         assertNotNull(mock.get());
     }
 
     @Test
-    void fieldMocked(@MockComponent TestComponent1 mock) {
+    void fieldMocked(@Mock @TestComponent TestComponent1 mock) {
         assertEquals("?", mock.get());
     }
 
     @Test
-    void fieldMockedAndInBeanDependency(@MockComponent TestComponent1 mock) {
+    void fieldMockedAndInBeanDependency(@Mock @TestComponent TestComponent1 mock) {
         assertEquals("?", mock.get());
         assertEquals("?2", bean.get());
     }

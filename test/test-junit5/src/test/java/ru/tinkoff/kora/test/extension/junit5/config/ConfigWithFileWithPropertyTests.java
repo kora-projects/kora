@@ -21,7 +21,7 @@ public class ConfigWithFileWithPropertyTests implements KoraAppTestConfigModifie
     @Override
     public @Nonnull KoraConfigModification config() {
         return KoraConfigModification.ofResourceFile("config/application-env.conf")
-            .withSystemProperty("ENV_SECOND", "value");
+                .withSystemProperty("ENV_SECOND", "value");
     }
 
     @Test

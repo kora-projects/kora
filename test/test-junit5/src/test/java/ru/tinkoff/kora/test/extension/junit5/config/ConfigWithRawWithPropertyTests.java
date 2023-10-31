@@ -21,13 +21,13 @@ public class ConfigWithRawWithPropertyTests implements KoraAppTestConfigModifier
     @Override
     public @Nonnull KoraConfigModification config() {
         return KoraConfigModification.ofString("""
-                myconfig {
-                  myinnerconfig {
-                    second = ${ENV_SECOND}
-                  }
-                }
-                """)
-            .withSystemProperty("ENV_SECOND", "value");
+                        myconfig {
+                          myinnerconfig {
+                            second = ${ENV_SECOND}
+                          }
+                        }
+                        """)
+                .withSystemProperty("ENV_SECOND", "value");
     }
 
     @Test

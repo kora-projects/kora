@@ -52,7 +52,7 @@ def modifyPom(Node pom) {
                     artifactId "maven-surefire-plugin"
                     delegate.version "2.22.2"
                     configuration {
-                        argLine "--enable-preview -Djunit.jupiter.extensions.autodetection.enabled=true"
+                        argLine "--enable-preview"
                     }
                 }
             }

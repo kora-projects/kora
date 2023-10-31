@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.test.extension.junit5.replace;
 
+import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTestGraphModifier;
@@ -9,8 +10,6 @@ import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplication;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent1;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent12;
 
-import jakarta.annotation.Nonnull;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @KoraAppTest(TestApplication.class)
@@ -19,15 +18,15 @@ public class ReplaceWithGraphTests implements KoraAppTestGraphModifier {
     @Override
     public @Nonnull KoraGraphModification graph() {
         return KoraGraphModification.create()
-            .replaceComponent(TestComponent12.class, graph -> {
-                var component1 = graph.getFirst(TestComponent1.class);
-                return new TestComponent12(component1) {
-                    @Override
-                    public String get() {
-                        return "?" + component1.get();
-                    }
-                };
-            });
+                .replaceComponent(TestComponent12.class, graph -> {
+                    var component1 = graph.getFirst(TestComponent1.class);
+                    return new TestComponent12(component1) {
+                        @Override
+                        public String get() {
+                            return "?" + component1.get();
+                        }
+                    };
+                });
     }
 
     @Test
