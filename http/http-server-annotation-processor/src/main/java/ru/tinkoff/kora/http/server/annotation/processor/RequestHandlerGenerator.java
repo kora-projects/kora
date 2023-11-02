@@ -342,7 +342,7 @@ public class RequestHandlerGenerator {
 
     private CodeBlock definePathParameter(Parameter parameter, MethodSpec.Builder methodBuilder) {
         var code = CodeBlock.builder();
-        var typeString = parameter.type.toString();
+        var typeString = TypeName.get(parameter.type).withoutAnnotations().toString();
         switch (typeString) {
             case "java.lang.Integer", "int" -> code.add("$L = $T.parseIntegerPathParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
             case "java.lang.Long", "long" -> code.add("$L = $T.parseLongPathParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
@@ -365,7 +365,7 @@ public class RequestHandlerGenerator {
 
     private CodeBlock defineHeaderParameter(Parameter parameter, MethodSpec.Builder methodBuilder) {
         var code = CodeBlock.builder();
-        var typeString = parameter.type.toString();
+        var typeString = TypeName.get(parameter.type).withoutAnnotations().toString();
         switch (typeString) {
             case "java.lang.String" -> {
                 if (isNullable(parameter)) {
@@ -459,7 +459,7 @@ public class RequestHandlerGenerator {
 
     private CodeBlock defineCookieParameter(Parameter parameter, MethodSpec.Builder methodBuilder) {
         var code = CodeBlock.builder();
-        var typeString = parameter.type.toString();
+        var typeString = TypeName.get(parameter.type).withoutAnnotations().toString();
         switch (typeString) {
             case "java.lang.String" -> {
                 if (isNullable(parameter)) {
@@ -520,7 +520,7 @@ public class RequestHandlerGenerator {
 
     private CodeBlock defineQueryParameter(Parameter parameter, MethodSpec.Builder methodBuilder) {
         var code = CodeBlock.builder();
-        var typeString = parameter.type.toString();
+        var typeString = TypeName.get(parameter.type).withoutAnnotations().toString();
         switch (typeString) {
             case "java.util.UUID" -> {
                 if (isNullable(parameter)) {
