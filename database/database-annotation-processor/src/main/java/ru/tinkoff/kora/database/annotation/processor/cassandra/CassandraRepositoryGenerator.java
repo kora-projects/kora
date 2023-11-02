@@ -103,8 +103,14 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
                 b.beginControlFlow(".flatMapMany(_st ->");
             }
             b.addStatement("var _stmt = _st.boundStatementBuilder()");
+        } else if (CommonUtils.isFuture(returnType)) {
+            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext($T.current(), _query)", CommonClassNames.context);
+            b.addStatement("var _session = this._connectionFactory.currentSession()");
+            b.addCode("return _session.prepareAsync(_query.sql()).thenCompose(_st -> {$>\n");
+            b.addStatement("var _stmt = _st.boundStatementBuilder()");
+
         } else {
-            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.current(), _query)");
+            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext($T.current(), _query)", CommonClassNames.context);
             b.addStatement("var _session = this._connectionFactory.currentSession()");
             b.addStatement("var _stmt = _session.prepare(_query.sql()).boundStatementBuilder()");
         }
@@ -132,6 +138,14 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
                   });
                 """);
             b.endControlFlow(")");// defer
+        } else if (CommonUtils.isFuture(returnType)) {
+            if (CommonUtils.isVoid(((DeclaredType) returnType).getTypeArguments().get(0))) {
+                b.addStatement("return _session.executeAsync(_s).thenApply(_rs -> (Void)null)");
+            } else {
+                Objects.requireNonNull(resultMapperName, () -> "Illegal State occurred when expected to get result mapper, but got null in " + method.getEnclosingElement().getSimpleName() + "#" + method.getSimpleName());
+                b.addCode("return _session.executeAsync(_s).thenCompose($N::apply);", resultMapperName);
+            }
+            b.addCode("$<\n}).whenComplete((_result, _error) -> _telemetry.close(_error));\n");
         } else {
             b.beginControlFlow("try");
             b.addStatement("var _rs = _session.execute(_s)");
@@ -191,6 +205,24 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
                     return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTags(), c -> CodeBlock.of("$T.monoList($L)", CassandraTypes.REACTIVE_RESULT_SET_MAPPER, c)));
                 } else {
                     return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTags(), c -> CodeBlock.of("$T.mono($L)", CassandraTypes.REACTIVE_RESULT_SET_MAPPER, c)));
+                }
+            }
+            return Optional.of(new DbUtils.Mapper(mapperType, Set.of()));
+        }
+        if (CommonUtils.isFuture(returnType)) {
+            var futureParam = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
+            if (CommonUtils.isVoid(futureParam)) {
+                return Optional.empty();
+            }
+            var mapperType = ParameterizedTypeName.get(CassandraTypes.ASYNC_RESULT_SET_MAPPER, TypeName.get(futureParam));
+            if (reactiveResultSetMapper != null) {
+                return Optional.of(new DbUtils.Mapper(reactiveResultSetMapper.mapperClass(), mapperType, reactiveResultSetMapper.mapperTags()));
+            }
+            if (rowMapper != null) {
+                if (CommonUtils.isList(futureParam)) {
+                    return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTags(), c -> CodeBlock.of("$T.list($L)", CassandraTypes.ASYNC_RESULT_SET_MAPPER, c)));
+                } else {
+                    return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTags(), c -> CodeBlock.of("$T.one($L)", CassandraTypes.ASYNC_RESULT_SET_MAPPER, c)));
                 }
             }
             return Optional.of(new DbUtils.Mapper(mapperType, Set.of()));

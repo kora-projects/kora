@@ -76,4 +76,36 @@ class CassandraExtensionTest : AbstractSymbolProcessorTest() {
         )
         compileResult.assertSuccess()
     }
+
+    @Test
+    fun testListAsyncResultSetMapper() {
+        compile0(
+            """
+            @ru.tinkoff.kora.common.KoraApp
+            interface TestApp : ru.tinkoff.kora.database.cassandra.CassandraModule {
+                @ru.tinkoff.kora.common.annotation.Root
+                fun root(m: ru.tinkoff.kora.database.cassandra.mapper.result.CassandraAsyncResultSetMapper<List<TestEntity>>) = ""
+            }
+            """.trimIndent(), """
+                    data class TestEntity(val value: String)
+                    """.trimIndent()
+        )
+        compileResult.assertSuccess()
+    }
+
+    @Test
+    fun testSingleAsyncResultSetMapper() {
+        compile0(
+            """
+            @ru.tinkoff.kora.common.KoraApp
+            interface TestApp : ru.tinkoff.kora.database.cassandra.CassandraModule {
+                @ru.tinkoff.kora.common.annotation.Root
+                fun root(m: ru.tinkoff.kora.database.cassandra.mapper.result.CassandraAsyncResultSetMapper<TestEntity>) = ""
+            }
+            """.trimIndent(), """
+                    data class TestEntity(val value: String)
+                    """.trimIndent()
+        )
+        compileResult.assertSuccess()
+    }
 }

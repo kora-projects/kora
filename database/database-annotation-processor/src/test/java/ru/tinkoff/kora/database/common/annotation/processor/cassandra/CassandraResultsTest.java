@@ -5,10 +5,12 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraAsyncResultSetMapper;
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraReactiveResultSetMapper;
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraResultSetMapper;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -69,6 +71,42 @@ public class CassandraResultsTest extends AbstractCassandraRepositoryTest {
         verify(executor.mockSession).prepare("SELECT count(*) FROM test");
         verify(executor.mockSession).execute(any(Statement.class));
         verify(mapper).apply(executor.resultSet);
+    }
+
+    @Test
+    public void testReturnFutureObject() {
+        var mapper = Mockito.mock(CassandraAsyncResultSetMapper.class);
+        var repository = compileCassandra(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("SELECT count(*) FROM test")
+                CompletionStage<Integer> test();
+            }
+            """);
+
+        when(mapper.apply(any())).thenReturn(CompletableFuture.completedFuture(42));
+        var result = repository.invoke("test");
+
+        assertThat(result).isEqualTo(42);
+        verify(executor.mockSession).prepareAsync("SELECT count(*) FROM test");
+        verify(executor.mockSession).executeAsync(any(Statement.class));
+        verify(mapper).apply(executor.asyncResultSet);
+    }
+
+    @Test
+    public void testReturnFutureVoid() {
+        var repository = compileCassandra(List.of(), """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("SELECT count(*) FROM test")
+                CompletionStage<Void> test();
+            }
+            """);
+
+        var result = repository.invoke("test");
+
+        verify(executor.mockSession).prepareAsync("SELECT count(*) FROM test");
+        verify(executor.mockSession).executeAsync(any(Statement.class));
     }
 
     @Test

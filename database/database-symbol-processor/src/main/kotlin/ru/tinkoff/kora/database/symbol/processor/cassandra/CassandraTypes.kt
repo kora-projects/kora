@@ -20,6 +20,7 @@ object CassandraTypes {
     val rowMapper = ClassName("ru.tinkoff.kora.database.cassandra.mapper.result", "CassandraRowMapper")
     val rowColumnMapper = ClassName("ru.tinkoff.kora.database.cassandra.mapper.result", "CassandraRowColumnMapper")
     val reactiveResultSetMapper = ClassName("ru.tinkoff.kora.database.cassandra.mapper.result", "CassandraReactiveResultSetMapper")
+    val asyncResultSetMapper = ClassName("ru.tinkoff.kora.database.cassandra.mapper.result", "CassandraAsyncResultSetMapper")
     val resultSetMapper = ClassName("ru.tinkoff.kora.database.cassandra.mapper.result", "CassandraResultSetMapper")
 
     val udt = ClassName("ru.tinkoff.kora.database.cassandra.annotation", "UDT")

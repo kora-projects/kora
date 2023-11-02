@@ -10,9 +10,6 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.database.symbol.processor.DbUtils
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.addMapper
-import ru.tinkoff.kora.database.symbol.processor.DbUtils.asFlow
-import ru.tinkoff.kora.database.symbol.processor.DbUtils.awaitSingle
-import ru.tinkoff.kora.database.symbol.processor.DbUtils.awaitSingleOrNull
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.findQueryMethods
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.operationName
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.parseExecutorTag
@@ -26,6 +23,9 @@ import ru.tinkoff.kora.database.symbol.processor.model.QueryParameterParser
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.CommonClassNames.await
+import ru.tinkoff.kora.ksp.common.CommonClassNames.context
+import ru.tinkoff.kora.ksp.common.CommonClassNames.flowBuilder
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isFlow
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
 import ru.tinkoff.kora.ksp.common.FieldFactory
@@ -71,49 +71,58 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         val returnType = function.returnType!!
         val isSuspend = funDeclaration.isSuspend()
         val isFlow = funDeclaration.isFlow()
-        if (isSuspend || isFlow) {
-            b.addCode("return ")
-            b.controlFlow("%T.deferContextual { _reactorCtx ->", if (isFlow) CommonClassNames.flux else CommonClassNames.mono) {
-                b.addStatement("val _telemetry = this._cassandraConnectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.Reactor.current(_reactorCtx), _query)")
-                b.addStatement("val _session = this._cassandraConnectionFactory.currentSession()")
-                b.addCode("%T.fromCompletionStage(_session.prepareAsync(_query.sql()))", CommonClassNames.mono)
-                b.controlFlow(".%L { _st ->", if (isSuspend) "flatMap" else "flatMapMany") {
-                    b.addStatement("var _stmt = _st.boundStatementBuilder()")
+        b.addStatement("val _telemetry = this._cassandraConnectionFactory.telemetry().createContext(%T.current(), _query)", context)
+        b.addStatement("val _session = this._cassandraConnectionFactory.currentSession()")
+        if (isFlow) {
+            b.controlFlow("return %M", flowBuilder) {
+                controlFlow("try") {
+                    addStatement("val _st = _session.prepareAsync(_query.sql()).%M()", await)
+                    addStatement("var _stmt = _st.boundStatementBuilder()")
                     if (profile != null) {
-                        b.addStatement("_stmt.setExecutionProfileName(%S)", profile)
+                        addStatement("_stmt.setExecutionProfileName(%S)", profile)
                     }
-                    StatementSetterGenerator.generate(b, query, parameters, batchParam, parameterMappers)
-                    b.addStatement("val _rrs = _session.executeReactive(_s)")
-                    if (returnType == resolver.builtIns.unitType) {
-                        b.addStatement("%T.from(_rrs).then().thenReturn(%T)", CommonClassNames.flux, UNIT)
-                    } else {
-                        b.addCode("%N.apply(_rrs)", resultMapper!!)
-                        if (!function.returnType!!.isMarkedNullable) {
-                            addCode("!!")
+                    StatementSetterGenerator.generate(this, query, parameters, batchParam, parameterMappers)
+                    addStatement("var _rrs = _session.executeAsync(_s).%M()", await)
+                    controlFlow("for (_item in _rrs.currentPage())") {
+                        addCode("emit(%N.apply(_item))", resultMapper!!)
+                    }
+                    controlFlow("while (_rrs.hasMorePages())") {
+                        addStatement("_rrs = _rrs.fetchNextPage().%M()", await)
+                        controlFlow("for (_item in _rrs.currentPage())") {
+                            addCode("emit(%N.apply(_item))", resultMapper!!)
                         }
-                        addCode("\n")
                     }
-                }
-                b.controlFlow(".doOnEach { _s ->") {
-                    controlFlow("if (_s.isOnComplete)") {
-                        addStatement("_telemetry.close(null)")
-                        nextControlFlow("else if (_s.isOnError())")
-                        addStatement("_telemetry.close(_s.throwable)")
-                    }
+                    addStatement("_telemetry.close(null)")
+                    nextControlFlow("catch (_e: Exception)")
+                    addStatement("_telemetry.close(_e)")
+                    addStatement("throw _e")
                 }
             }
-            if (isSuspend) {
-                if (returnType.isMarkedNullable) {
-                    b.addCode(".%M()", awaitSingleOrNull)
-                } else {
-                    b.addCode(".%M()", awaitSingle)
+        } else if (isSuspend) {
+            b.controlFlow("try") {
+                addStatement("val _st = _session.prepareAsync(_query.sql()).%M()", await)
+                addStatement("var _stmt = _st.boundStatementBuilder()")
+                if (profile != null) {
+                    addStatement("_stmt.setExecutionProfileName(%S)", profile)
                 }
-            } else {
-                b.addCode(".%M()", asFlow)
+                StatementSetterGenerator.generate(this, query, parameters, batchParam, parameterMappers)
+                addStatement("val _rrs = _session.executeAsync(_s).%M()", await)
+                if (returnType != resolver.builtIns.unitType) {
+                    if (function.returnType!!.isMarkedNullable) {
+                        addStatement("val _result = (%N as %T).apply(_rrs).%M()", resultMapper!!, CassandraTypes.asyncResultSetMapper.parameterizedBy(function.returnType!!.toTypeName()), await)
+                    } else {
+                        addStatement("val _result = %N.apply(_rrs).%M()", resultMapper!!, await)
+                    }
+                } else {
+                    addStatement("val _result = %T", UNIT)
+                }
+                addStatement("_telemetry.close(null)")
+                addStatement("return _result")
+                nextControlFlow("catch (_e: Exception)")
+                addStatement("_telemetry.close(_e)")
+                addStatement("throw _e")
             }
         } else {
-            b.addStatement("val _telemetry = this._cassandraConnectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.current(), _query)")
-            b.addStatement("val _session = this._cassandraConnectionFactory.currentSession()")
             b.addStatement("var _stmt = _session.prepare(_query.sql()).boundStatementBuilder()")
             if (profile != null) {
                 b.addStatement("_stmt.setExecutionProfileName(%S)", profile)
@@ -154,18 +163,18 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         val rowMapper = mappings.getMapping(CassandraTypes.rowMapper)
         if (method.modifiers.contains(Modifier.SUSPEND)) {
             val returnTypeName = returnType.toTypeName().copy(false)
-            val mapperType = CassandraTypes.reactiveResultSetMapper.parameterizedBy(returnTypeName, CommonClassNames.mono.parameterizedBy(returnTypeName))
+            val mapperType = CassandraTypes.asyncResultSetMapper.parameterizedBy(returnTypeName)
             if (reactiveResultSetMapper != null) {
                 return Mapper(reactiveResultSetMapper, mapperType, mapperName)
             }
             if (rowMapper != null) {
                 if (returnType.isList()) {
                     return Mapper(rowMapper, mapperType, mapperName) {
-                        CodeBlock.of("%T.monoList(%L)", CassandraTypes.reactiveResultSetMapper, it)
+                        CodeBlock.of("%T.list(%L)", CassandraTypes.asyncResultSetMapper, it)
                     }
                 } else {
                     return Mapper(rowMapper, mapperType, mapperName) {
-                        CodeBlock.of("%T.mono(%L)", CassandraTypes.reactiveResultSetMapper, it)
+                        CodeBlock.of("%T.one(%L)", CassandraTypes.asyncResultSetMapper, it)
                     }
                 }
             }
@@ -177,14 +186,9 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         if (returnType.isFlow()) {
             val flowParam = returnType.arguments[0]
             val returnTypeName = flowParam.toTypeName().copy(false)
-            val mapperType = CassandraTypes.reactiveResultSetMapper.parameterizedBy(returnTypeName, CommonClassNames.flux.parameterizedBy(returnTypeName))
-            if (reactiveResultSetMapper != null) {
-                return Mapper(reactiveResultSetMapper, mapperType, mapperName)
-            }
+            val mapperType = CassandraTypes.rowMapper.parameterizedBy(returnTypeName)
             if (rowMapper != null) {
-                return Mapper(rowMapper, mapperType, mapperName) {
-                    CodeBlock.of("%T.flux(%L)", CassandraTypes.reactiveResultSetMapper, it)
-                }
+                return Mapper(rowMapper, mapperType, mapperName)
             }
             return Mapper(mapperType, mapperName)
         }

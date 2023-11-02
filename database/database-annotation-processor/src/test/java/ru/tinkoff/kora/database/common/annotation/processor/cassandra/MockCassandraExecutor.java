@@ -49,6 +49,7 @@ public class MockCassandraExecutor implements CassandraConnectionFactory {
         when(boundStatementBuilder.setExecutionProfileName(any())).thenReturn(boundStatementBuilder);
         when(boundStatementBuilder.build()).thenReturn(boundStatement);
         when(telemetry.createContext(any(), any())).thenReturn(this.telemetryCtx);
+        when(mockSession.executeAsync(any(Statement.class))).thenReturn(CompletableFuture.completedFuture(asyncResultSet));
         when(mockSession.executeReactive(any(Statement.class))).thenReturn(reactiveResultSet);
         doAnswer(invocation -> {
             Flux.just(row).subscribe(invocation.getArgument(0, Subscriber.class));
