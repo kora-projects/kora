@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.http.common;
 
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
+import ru.tinkoff.kora.http.common.header.MutableHttpHeaders;
 
 record HttpResponseEntityImpl<T>(int code, MutableHttpHeaders headers, T body) implements HttpResponseEntity<T> {
 

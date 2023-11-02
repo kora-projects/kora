@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.http.common.header;
 
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.http.common.MutableHttpHeaders;
 
 import java.util.*;
 

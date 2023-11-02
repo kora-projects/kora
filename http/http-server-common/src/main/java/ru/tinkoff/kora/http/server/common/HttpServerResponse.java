@@ -1,10 +1,10 @@
 package ru.tinkoff.kora.http.server.common;
 
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.http.common.MutableHttpHeaders;
 import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
+import ru.tinkoff.kora.http.common.header.MutableHttpHeaders;
 
 public interface HttpServerResponse {
     int code();

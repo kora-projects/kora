@@ -8,7 +8,7 @@ import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTracer;
-import ru.tinkoff.kora.http.common.MutableHttpHeaders;
+import ru.tinkoff.kora.http.common.header.MutableHttpHeaders;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 
 import java.net.URI;

@@ -2,8 +2,8 @@ package ru.tinkoff.kora.http.client.common.request;
 
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.http.common.HttpMethod;
-import ru.tinkoff.kora.http.common.MutableHttpHeaders;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
+import ru.tinkoff.kora.http.common.header.MutableHttpHeaders;
 
 import java.net.URI;
 import java.time.Duration;
