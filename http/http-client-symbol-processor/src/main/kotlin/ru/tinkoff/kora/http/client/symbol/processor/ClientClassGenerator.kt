@@ -45,7 +45,6 @@ import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.writeTagValue
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.findRepeatableAnnotation
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.MappingData
-import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.parseAnnotationValue
 import ru.tinkoff.kora.ksp.common.parseMappingData
 import java.net.URI
@@ -608,8 +607,9 @@ class ClientClassGenerator(private val resolver: Resolver) {
         return declaration.findRepeatableAnnotation(responseCodeMapper, responseCodeMappers).map { mapper ->
             val type = mapper.findValueNoDefault<KSType>("type")
             val mapperType = mapper.findValueNoDefault<KSType>("mapper")
+            val code = mapper.findValueNoDefault<Int>("code")!!
             if (type == null && mapperType == null) {
-                throw ProcessingErrorException("Either 'type' or 'mapper' should be specified", declaration)
+                return@map ResponseCodeMapperData(code, null, null, true)
             }
             val isAssignable = when {
                 type != null -> declaration.returnType!!.resolve().isAssignableFrom(type)
@@ -624,7 +624,6 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
                 else -> throw IllegalStateException()
             }
-            val code = mapper.findValueNoDefault<Int>("code")!!
 
             ResponseCodeMapperData(code, type, mapperType, isAssignable)
         }
@@ -650,15 +649,25 @@ class ClientClassGenerator(private val resolver: Resolver) {
         fun responseMapperType(returnType: KSType, suspend: Boolean): TypeName {
             if (type != null) {
                 val typeName = type.toTypeName().copy(nullable = false)
-                return httpClientResponseMapper.parameterizedBy(if (suspend) CompletionStage::class.asClassName().parameterizedBy(typeName) else typeName)
+                if (suspend) {
+                    return httpClientResponseMapper.parameterizedBy(CompletionStage::class.asClassName().parameterizedBy(typeName))
+                } else {
+                    return httpClientResponseMapper.parameterizedBy(typeName)
+                }
             } else if (mapper != null) {
                 if (mapper.declaration is KSClassDeclaration && mapper.declaration.typeParameters.isNotEmpty()) {
                     val typeArg = returnType.toTypeName().copy(false)
                     return mapper.toClassName().parameterizedBy(mapper.declaration.typeParameters.map { typeArg })
                 }
                 return mapper.toTypeName()
+            } else {
+                val returnTypeName = returnType.toTypeName().copy(nullable = false)
+                if (suspend) {
+                    return httpClientResponseMapper.parameterizedBy(CompletionStage::class.asClassName().parameterizedBy(returnTypeName))
+                } else {
+                    return httpClientResponseMapper.parameterizedBy(returnTypeName)
+                }
             }
-            throw IllegalStateException()
         }
     }
 

@@ -38,6 +38,38 @@ class ResponseCodeMapperTest : AbstractHttpClientTest() {
     }
 
     @Test
+    fun testCodeMapperNoParams() {
+        val client = compile(listOf<Any>(newGenerated("TestMapper")), """
+            @HttpClient
+            interface TestClient {
+              @Tag(TestClient::class)
+              @ResponseCodeMapper(code = 200)
+              @ResponseCodeMapper(code = 404, mapper = NullMapper::class)
+              @HttpRoute(method = "POST", path = "/test")
+              fun test(): String?
+            }
+            """.trimIndent(), """
+            class TestMapper : HttpClientResponseMapper<String> {
+              override fun apply(rs: HttpClientResponse): String {
+                  return "test-string-from-mapper";
+              }
+            }
+            """.trimIndent(), """
+            class NullMapper <T> : HttpClientResponseMapper<T> {
+              override fun apply(rs: HttpClientResponse): T? {
+                  return null;
+              }
+            }
+            """.trimIndent())
+        onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(200) }
+        client.invoke<String?>("test")
+
+        Mockito.reset(httpClient)
+        onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(404) }
+        assertThat(client.invoke<String?>("test")).isNull()
+    }
+
+    @Test
     fun testCodeMappersByType() {
         val client = compile(listOf<Any>(newGenerated("Rs1Mapper"), newGenerated("Rs2Mapper")), """
             @HttpClient
