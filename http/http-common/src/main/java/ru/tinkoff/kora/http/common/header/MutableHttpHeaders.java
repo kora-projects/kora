@@ -1,6 +1,4 @@
-package ru.tinkoff.kora.http.common;
-
-import ru.tinkoff.kora.http.common.header.HttpHeaders;
+package ru.tinkoff.kora.http.common.header;
 
 import java.util.ArrayList;
 import java.util.Collection;
