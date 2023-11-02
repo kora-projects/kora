@@ -19,6 +19,7 @@ object CommonClassNames {
     val list = List::class.asClassName()
     val synchronousSink = ClassName("reactor.core.publisher", "SynchronousSink")
     val await = MemberName("kotlinx.coroutines.future", "await")
+    val flowBuilder = MemberName("kotlinx.coroutines.flow", "flow")
 
     val context = ClassName("ru.tinkoff.kora.common", "Context")
     val aopAnnotation = ClassName("ru.tinkoff.kora.common", "AopAnnotation")

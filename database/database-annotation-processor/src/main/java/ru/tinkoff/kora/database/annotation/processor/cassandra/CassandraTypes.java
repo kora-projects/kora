@@ -24,6 +24,7 @@ public class CassandraTypes {
     public static final ClassName ROW_MAPPER = ClassName.get("ru.tinkoff.kora.database.cassandra.mapper.result", "CassandraRowMapper");
     public static final ClassName RESULT_COLUMN_MAPPER = ClassName.get("ru.tinkoff.kora.database.cassandra.mapper.result", "CassandraRowColumnMapper");
     public static final ClassName REACTIVE_RESULT_SET_MAPPER = ClassName.get("ru.tinkoff.kora.database.cassandra.mapper.result", "CassandraReactiveResultSetMapper");
+    public static final ClassName ASYNC_RESULT_SET_MAPPER = ClassName.get("ru.tinkoff.kora.database.cassandra.mapper.result", "CassandraAsyncResultSetMapper");
     public static final ClassName RESULT_SET_MAPPER = ClassName.get("ru.tinkoff.kora.database.cassandra.mapper.result", "CassandraResultSetMapper");
     public static final ParameterizedTypeName SETTABLE_BY_NAME = ParameterizedTypeName.get(ClassName.get("com.datastax.oss.driver.api.core.data", "SettableByName"), WildcardTypeName.subtypeOf(TypeName.OBJECT));
     public static final ClassName GETTABLE_BY_NAME = ClassName.get("com.datastax.oss.driver.api.core.data", "GettableByName");

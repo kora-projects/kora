@@ -16,6 +16,7 @@ import ru.tinkoff.kora.database.cassandra.CassandraConnectionFactory
 import ru.tinkoff.kora.database.common.QueryContext
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CompletionStage
 import java.util.function.Function
 
 class MockCassandraExecutor : CassandraConnectionFactory {
@@ -54,6 +55,7 @@ class MockCassandraExecutor : CassandraConnectionFactory {
         }
         whenever(telemetry.createContext(any(), any())).thenReturn(telemetryCtx)
         whenever(mockSession.executeReactive(any<Statement<*>>())).thenReturn(MockReactiveResultSet(listOf()))
+        whenever(mockSession.executeAsync(any<Statement<*>>())).thenReturn(CompletableFuture.completedFuture(MockAsyncResultSet(listOf())))
         whenever(mockSession.execute(any<Statement<*>>())).thenReturn(resultSet)
     }
 
@@ -93,6 +95,37 @@ class MockCassandraExecutor : CassandraConnectionFactory {
 
         override fun wasApplied(): Publisher<Boolean> {
             return Mono.just(true)
+        }
+
+    }
+
+    class MockAsyncResultSet(private val rows: List<Row>) : AsyncResultSet {
+        override fun getColumnDefinitions(): ColumnDefinitions {
+            TODO("Not yet implemented")
+        }
+
+        override fun getExecutionInfo(): ExecutionInfo {
+            TODO("Not yet implemented")
+        }
+
+        override fun remaining(): Int {
+            TODO("Not yet implemented")
+        }
+
+        override fun currentPage(): Iterable<Row> {
+            return rows
+        }
+
+        override fun hasMorePages(): Boolean {
+            return false
+        }
+
+        override fun fetchNextPage(): CompletionStage<AsyncResultSet> {
+            TODO("Not yet implemented")
+        }
+
+        override fun wasApplied(): Boolean {
+            return true
         }
 
     }

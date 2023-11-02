@@ -82,6 +82,9 @@ public class CassandraTypesExtension implements KoraExtension {
         if (typeMirror.toString().startsWith("ru.tinkoff.kora.database.cassandra.mapper.result.CassandraResultSetMapper<")) {
             return this.generateResultSetMapper(roundEnvironment, dt);
         }
+        if (typeMirror.toString().startsWith("ru.tinkoff.kora.database.cassandra.mapper.result.CassandraAsyncResultSetMapper<")) {
+            return this.generateAsyncResultSetMapper(roundEnvironment, dt);
+        }
         if (typeMirror.toString().startsWith("ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowMapper<")) {
             return this.generateResultRowMapper(roundEnvironment, dt);
         }
@@ -169,7 +172,6 @@ public class CassandraTypesExtension implements KoraExtension {
             JavaFile.builder(packageElement.getQualifiedName().toString(), type.build()).build().writeTo(this.filer);
             return ExtensionResult.nextRound();
         };
-
     }
 
     @Nullable
@@ -190,6 +192,43 @@ public class CassandraTypesExtension implements KoraExtension {
                 .filter(e -> e.getKind() == ElementKind.METHOD && e.getModifiers().contains(Modifier.STATIC))
                 .map(ExecutableElement.class::cast)
                 .filter(m -> m.getSimpleName().contentEquals("singleResultSetMapper"))
+                .findFirst()
+                .orElseThrow();
+            var tp = (TypeVariable) singleResultSetMapper.getTypeParameters().get(0).asType();
+            var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, listType), singleResultSetMapper.asType());
+            return ExtensionResult.fromExecutable(singleResultSetMapper, executableType);
+        };
+    }
+
+    @Nullable
+    private KoraExtensionDependencyGenerator generateAsyncResultSetMapper(RoundEnvironment roundEnvironment, DeclaredType typeMirror) {
+        //CassandraResultSetMapper<List<T>>
+        var listType = typeMirror.getTypeArguments().get(0);
+        if (!(listType instanceof DeclaredType dt)) {
+            return null;
+        }
+        if (CommonUtils.isList(listType)) {
+            return () -> {
+                var tn = (ParameterizedTypeName) TypeName.get(listType);
+                var rowType = dt.getTypeArguments().get(0);
+                var singleResultSetMapper = this.elements.getTypeElement(CassandraTypes.ASYNC_RESULT_SET_MAPPER.canonicalName()).getEnclosedElements()
+                    .stream()
+                    .filter(e -> e.getKind() == ElementKind.METHOD && e.getModifiers().contains(Modifier.STATIC))
+                    .map(ExecutableElement.class::cast)
+                    .filter(m -> m.getSimpleName().contentEquals("list"))
+                    .findFirst()
+                    .orElseThrow();
+                var tp = (TypeVariable) singleResultSetMapper.getTypeParameters().get(0).asType();
+                var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, rowType), singleResultSetMapper.asType());
+                return ExtensionResult.fromExecutable(singleResultSetMapper, executableType);
+            };
+        }
+        return () -> {
+            var singleResultSetMapper = this.elements.getTypeElement(CassandraTypes.ASYNC_RESULT_SET_MAPPER.canonicalName()).getEnclosedElements()
+                .stream()
+                .filter(e -> e.getKind() == ElementKind.METHOD && e.getModifiers().contains(Modifier.STATIC))
+                .map(ExecutableElement.class::cast)
+                .filter(m -> m.getSimpleName().contentEquals("one"))
                 .findFirst()
                 .orElseThrow();
             var tp = (TypeVariable) singleResultSetMapper.getTypeParameters().get(0).asType();

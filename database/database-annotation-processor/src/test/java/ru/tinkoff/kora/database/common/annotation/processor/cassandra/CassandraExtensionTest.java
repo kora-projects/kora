@@ -116,6 +116,44 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
             .matches(doesImplement(CassandraRowMapper.class));
     }
 
+    @Test
+    public void testSingleAsyncResultSetMapper() {
+        compile(List.of(new KoraAppProcessor()), """
+            @ru.tinkoff.kora.common.KoraApp
+            public interface TestApp extends ru.tinkoff.kora.database.cassandra.CassandraModule {
+              @Root
+              default String root(ru.tinkoff.kora.database.cassandra.mapper.result.CassandraAsyncResultSetMapper<TestRecord> r) {return "";}
+            }
+            """, """
+            public record TestRecord(int value) {}
+            """);
+
+        compileResult.assertSuccess();
+        assertThat(compileResult.loadClass("$TestRecord_CassandraRowMapper"))
+            .isNotNull()
+            .isFinal()
+            .matches(doesImplement(CassandraRowMapper.class));
+    }
+
+    @Test
+    public void testListAsyncResultSetMapper() {
+        compile(List.of(new KoraAppProcessor()), """
+            @ru.tinkoff.kora.common.KoraApp
+            public interface TestApp extends ru.tinkoff.kora.database.cassandra.CassandraModule {
+              @Root
+              default String root(ru.tinkoff.kora.database.cassandra.mapper.result.CassandraAsyncResultSetMapper<java.util.List<TestRecord>> r) {return "";}
+            }
+            """, """
+            public record TestRecord(int value) {}
+            """);
+
+        compileResult.assertSuccess();
+        assertThat(compileResult.loadClass("$TestRecord_CassandraRowMapper"))
+            .isNotNull()
+            .isFinal()
+            .matches(doesImplement(CassandraRowMapper.class));
+    }
+
     private static Predicate<Class<?>> doesImplement(Class<?> anInterface) {
         return aClass -> {
             for (var aClassInterface : aClass.getInterfaces()) {

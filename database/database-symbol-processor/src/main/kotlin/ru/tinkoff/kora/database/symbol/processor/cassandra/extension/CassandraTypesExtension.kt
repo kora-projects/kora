@@ -51,6 +51,9 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
         if (type.declaration.qualifiedName?.asString()?.equals(CassandraTypes.resultSetMapper.canonicalName) == true) {
             return this.generateResultSetMapper(resolver, type)
         }
+        if (type.declaration.qualifiedName?.asString()?.equals(CassandraTypes.asyncResultSetMapper.canonicalName) == true) {
+            return this.generateAsyncResultSetMapper(resolver, type)
+        }
         if (type.declaration.qualifiedName?.asString()?.equals(CassandraTypes.rowMapper.canonicalName) == true) {
             return this.generateRowMapper(resolver, type)
         }
@@ -190,6 +193,59 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
             FileSpec.get(packageName, type.build()).writeTo(codeGenerator, true, listOfNotNull(rowClassDeclaration.containingFile))
 
             ExtensionResult.RequiresCompilingResult
+        }
+    }
+
+    private fun generateAsyncResultSetMapper(resolver: Resolver, type: KSType): (() -> ExtensionResult)? {
+        val resultType = type.arguments[0].type!!.resolve()
+        if (resultType.isMarkedNullable) {
+            return null
+        }
+        val resultClassDecl = resultType.declaration as KSClassDeclaration
+        if (resultClassDecl.qualifiedName?.asString() == "kotlin.collections.List") {
+            val rowType = resultType.arguments[0].type!!.resolve()
+            if (rowType.isMarkedNullable) {
+                return null
+            }
+            val resultSetMapperDecl = resolver.getClassDeclarationByName(CassandraTypes.asyncResultSetMapper.canonicalName)!!
+            val rowMapperDecl = resolver.getClassDeclarationByName(CassandraTypes.rowMapper.canonicalName)!!
+
+            val resultSetMapperType = resultSetMapperDecl.asType(
+                listOf(
+                    resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(resultType), Variance.INVARIANT)
+                )
+            )
+            val rowMapperType = rowMapperDecl.asType(
+                listOf(
+                    resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(rowType), Variance.INVARIANT)
+                )
+            )
+
+            val functionDecl = resolver.getFunctionDeclarationsByName(CassandraTypes.asyncResultSetMapper.canonicalName + ".list").first()
+            val functionType = functionDecl.parametrized(resultSetMapperType, listOf(rowMapperType))
+            return {
+                ExtensionResult.fromExecutable(functionDecl, functionType)
+            }
+        } else {
+            val resultSetMapperDecl = resolver.getClassDeclarationByName(CassandraTypes.asyncResultSetMapper.canonicalName)!!
+            val rowMapperDecl = resolver.getClassDeclarationByName(CassandraTypes.rowMapper.canonicalName)!!
+
+            val resultSetMapperType = resultSetMapperDecl.asType(
+                listOf(
+                    resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(resultType), Variance.INVARIANT)
+                )
+            )
+            val rowMapperType = rowMapperDecl.asType(
+                listOf(
+                    resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(resultType), Variance.INVARIANT)
+                )
+            )
+
+            val functionDecl = resolver.getFunctionDeclarationsByName(CassandraTypes.asyncResultSetMapper.canonicalName + ".one").first()
+            val functionType = functionDecl.parametrized(resultSetMapperType, listOf(rowMapperType))
+            return {
+                ExtensionResult.fromExecutable(functionDecl, functionType)
+            }
         }
     }
 
