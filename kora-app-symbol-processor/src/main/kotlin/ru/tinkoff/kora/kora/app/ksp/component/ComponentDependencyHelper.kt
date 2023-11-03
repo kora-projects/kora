@@ -8,7 +8,9 @@ import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.TagUtils
+import ru.tinkoff.kora.ksp.common.exception.ProcessingError
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
+import javax.tools.Diagnostic
 
 object ComponentDependencyHelper {
     fun parseDependencyClaim(declaration: ComponentDeclaration): List<DependencyClaim> {
@@ -62,9 +64,13 @@ object ComponentDependencyHelper {
 
     fun parseClaim(parameterType: KSType, tags: Set<String>, element: KSAnnotated): DependencyClaim {
         if (parameterType.isError) {
-            throw ProcessingErrorException("Dependency type is not resolvable in the current round of processing", element)
+            throw ProcessingErrorException(ProcessingError("Dependency type is not resolvable in the current round of processing: $element", element, Diagnostic.Kind.WARNING))
         }
-        val typeName = parameterType.toTypeName()
+        val typeName = try {
+            parameterType.toTypeName()
+        } catch (e: IllegalArgumentException) {
+            throw ProcessingErrorException(ProcessingError("Dependency type is not resolvable in the current round of processing: $element", element, Diagnostic.Kind.WARNING))
+        }
         if (typeName is ParameterizedTypeName) {
             val firstTypeParam = parameterType.arguments[0].type!!.resolve()
             if (typeName.rawType == CommonClassNames.typeRef) {

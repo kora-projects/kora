@@ -371,13 +371,13 @@ class ConfigParserGenerator(private val resolver: Resolver) {
     }
 
     private fun buildConfigInterfaceImplementation(typeDecl: KSClassDeclaration, fields: List<ConfigField>): TypeSpec? {
-        var b = TypeSpec.classBuilder(typeDecl.simpleName.asString() + "_Impl")
+        val b = TypeSpec.classBuilder(typeDecl.simpleName.asString() + "_Impl")
             .addModifiers(KModifier.DATA)
             .addSuperinterface(typeDecl.toTypeName(listOf()))
         val constructor = FunSpec.constructorBuilder()
         for (field in fields) {
             constructor.addParameter(field.name, field.typeName)
-            b.addProperty(PropertySpec.builder(field.name, field.typeName).initializer("%N", field.name).build())
+            b.addProperty(PropertySpec.builder(field.name, field.typeName, KModifier.PRIVATE).initializer("%N", field.name).build())
             b.addFunction(
                 FunSpec.builder(field.name)
                     .addModifiers(KModifier.OVERRIDE)
