@@ -39,6 +39,6 @@ class InvalidTypeTest : AbstractSymbolProcessorTest() {
         )
 
         assertThat(compileResult.isFailed()).isTrue
-        assertThat(compileResult.messages).anyMatch { it.endsWith("TestApp.kt:12: Dependency type is not resolvable in the current round of processing") }
+        assertThat(compileResult.messages).anyMatch { it.endsWith("TestApp.kt:12: Dependency type is not resolvable in the current round of processing: dependency") }
     }
 }
