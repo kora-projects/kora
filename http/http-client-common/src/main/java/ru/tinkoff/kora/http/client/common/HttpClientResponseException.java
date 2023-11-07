@@ -21,6 +21,12 @@ public class HttpClientResponseException extends HttpClientException {
     }
 
     public static <T> CompletionStage<T> fromResponse(HttpClientResponse response) {
+        var full = response.body().getFullContentIfAvailable();
+        if (full != null) {
+            var bytes = new byte[full.remaining()];
+            full.get(bytes);
+            return CompletableFuture.failedFuture(new HttpClientResponseException(response.code(), response.headers(), bytes));
+        }
         return FlowUtils.toByteArrayFuture(response.body(), 4096)
             .handle((bytes, error) -> {
                 if (bytes == null) {
@@ -35,6 +41,12 @@ public class HttpClientResponseException extends HttpClientException {
     }
 
     public static CompletableFuture<HttpClientResponseException> fromResponseFuture(HttpClientResponse response) {
+        var full = response.body().getFullContentIfAvailable();
+        if (full != null) {
+            var bytes = new byte[full.remaining()];
+            full.get(bytes);
+            return CompletableFuture.completedFuture(new HttpClientResponseException(response.code(), response.headers(), bytes));
+        }
         return FlowUtils.toByteArrayFuture(response.body(), 4096)
             .handle((bytes, error) -> {
                 if (bytes == null) {

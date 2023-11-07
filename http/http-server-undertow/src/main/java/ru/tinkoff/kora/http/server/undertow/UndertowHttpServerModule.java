@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.http.server.undertow;
 
+import jakarta.annotation.Nullable;
 import org.xnio.XnioWorker;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.DefaultComponent;
@@ -7,12 +8,11 @@ import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor;
 import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
-import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTracer;
-
-import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTracerFactory;
 
 public interface UndertowHttpServerModule extends UndertowModule {
-    default UndertowPublicApiHandler undertowPublicApiHandler(PublicApiHandler publicApiHandler, @Nullable HttpServerTracer tracer) {
+    default UndertowPublicApiHandler undertowPublicApiHandler(PublicApiHandler publicApiHandler, @Nullable HttpServerTracerFactory tracerFactory, HttpServerConfig config) {
+        var tracer = tracerFactory == null ? null : tracerFactory.get(config.telemetry().tracing());
         return new UndertowPublicApiHandler(publicApiHandler, tracer);
     }
 
