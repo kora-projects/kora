@@ -3,8 +3,8 @@ package ru.tinkoff.kora.database.annotation.processor.vertx;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.TypeName;
-
 import jakarta.annotation.Nullable;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
@@ -27,6 +27,8 @@ public class VertxNativeTypes {
         Map.entry(TypeName.LONG.box(), (row, column) -> CodeBlock.of("$L.getLong($L)", row, column)),
         Map.entry(TypeName.DOUBLE, (row, column) -> CodeBlock.of("$L.getDouble($L)", row, column)),
         Map.entry(TypeName.DOUBLE.box(), (row, column) -> CodeBlock.of("$L.getDouble($L)", row, column)),
+        Map.entry(TypeName.FLOAT, (row, column) -> CodeBlock.of("$L.getFloat($L)", row, column)),
+        Map.entry(TypeName.FLOAT.box(), (row, column) -> CodeBlock.of("$L.getFloat($L)", row, column)),
         Map.entry(ClassName.get(String.class), (row, column) -> CodeBlock.of("$L.getString($L)", row, column)),
         Map.entry(ClassName.get(BigDecimal.class), (row, column) -> CodeBlock.of("$L.getNumeric($L).bigDecimalValue()", row, column)),
         Map.entry(ClassName.get(BigInteger.class), (row, column) -> CodeBlock.of("$L.getBoolean($L).bigIntegerValue()", row, column)),

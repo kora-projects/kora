@@ -39,6 +39,12 @@ public class CassandraNativeTypes {
             (stmt, var, i) -> CodeBlock.of("$L.setDouble($L, $L)", stmt, i, var)
         );
         var doubleBoxed = doublePrimitive.boxed();
+        var floatPrimitive = CassandraNativeType.of(
+            TypeName.FLOAT,
+            (rsName, i) -> CodeBlock.of("$L.getFloat($L)", rsName, i),
+            (stmt, var, i) -> CodeBlock.of("$L.setFloat($L, $L)", stmt, i, var)
+        );
+        var floatBoxed = floatPrimitive.boxed();
         var string = CassandraNativeType.of(
             ClassName.get(String.class),
             (rsName, i) -> CodeBlock.of("$L.getString($L)", rsName, i),
@@ -89,6 +95,8 @@ public class CassandraNativeTypes {
             longBoxed,
             doublePrimitive,
             doubleBoxed,
+            floatPrimitive,
+            floatBoxed,
             string,
             bigDecimal,
             byteBuffer,

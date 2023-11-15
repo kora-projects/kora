@@ -59,6 +59,16 @@ public interface JdbcModule extends DataBaseModule {
         };
     }
 
+    default JdbcRowMapper<Float> floatJdbcRowMapper() {
+        return rs -> {
+            var value = rs.getFloat(1);
+            if (rs.wasNull()) {
+                return null;
+            }
+            return value;
+        };
+    }
+
     default JdbcRowMapper<String> stringJdbcRowMapper() {
         return rs -> {
             var value = rs.getString(1);

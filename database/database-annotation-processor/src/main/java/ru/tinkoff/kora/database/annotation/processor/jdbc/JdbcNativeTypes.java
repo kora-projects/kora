@@ -4,8 +4,8 @@ import com.squareup.javapoet.ArrayTypeName;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.TypeName;
-
 import jakarta.annotation.Nullable;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -44,6 +44,13 @@ public class JdbcNativeTypes {
             (stmtName, i) -> CodeBlock.of("$L.setNull($L, $T.DOUBLE)", stmtName, i, java.sql.Types.class)
         );
         var doubleBoxed = doublePrimitive.boxed();
+        var floatPrimitive = JdbcNativeType.of(
+            TypeName.FLOAT,
+            (rsName, i) -> CodeBlock.of("$L.getFloat($L)", rsName, i),
+            (stmt, var, i) -> CodeBlock.of("$L.setFloat($L, $L)", stmt, i, var),
+            (stmtName, i) -> CodeBlock.of("$L.setNull($L, $T.FLOAT)", stmtName, i, java.sql.Types.class)
+        );
+        var floatBoxed = floatPrimitive.boxed();
         var string = JdbcNativeType.of(
             ClassName.get(String.class),
             (rsName, i) -> CodeBlock.of("$L.getString($L)", rsName, i),
@@ -84,6 +91,8 @@ public class JdbcNativeTypes {
             longBoxed,
             doublePrimitive,
             doubleBoxed,
+            floatPrimitive,
+            floatBoxed,
             string,
             bigDecimal,
             byteArray,

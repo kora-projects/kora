@@ -55,6 +55,12 @@ public interface CassandraModule extends DataBaseModule {
             : row.getDouble(1);
     }
 
+    default CassandraRowMapper<Float> floatCassandraRowMapper() {
+        return row -> row.isNull(0)
+            ? null
+            : row.getFloat(1);
+    }
+
     default CassandraRowMapper<Boolean> booleanCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
