@@ -3,8 +3,8 @@ package ru.tinkoff.kora.database.annotation.processor.r2dbc;
 import com.squareup.javapoet.ArrayTypeName;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.TypeName;
-
 import jakarta.annotation.Nullable;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
@@ -20,6 +20,8 @@ public class R2dbcNativeTypes {
         TypeName.LONG.box(),
         TypeName.DOUBLE,
         TypeName.DOUBLE.box(),
+        TypeName.FLOAT,
+        TypeName.FLOAT.box(),
         TypeName.BOOLEAN,
         TypeName.BOOLEAN.box(),
         ClassName.get(String.class),

@@ -40,6 +40,10 @@ public interface VertxDatabaseBaseModule extends NettyCommonModule, VertxCommonM
         return row -> row.getDouble(0);
     }
 
+    default VertxRowMapper<Float> floatVertxRowMapper() {
+        return row -> row.getFloat(0);
+    }
+
     default VertxRowMapper<Boolean> booleanVertxRowMapper() {
         return row -> row.getBoolean(0);
     }
