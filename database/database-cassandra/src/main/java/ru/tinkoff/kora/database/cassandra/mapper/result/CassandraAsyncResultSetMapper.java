@@ -9,6 +9,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 public interface CassandraAsyncResultSetMapper<T> extends Mapping.MappingFunction {
+
     CompletionStage<T> apply(AsyncResultSet rows);
 
     static <T> CassandraAsyncResultSetMapper<T> one(CassandraRowMapper<T> rowMapper) {
@@ -17,7 +18,7 @@ public interface CassandraAsyncResultSetMapper<T> extends Mapping.MappingFunctio
             if (first != null) {
                 return CompletableFuture.completedFuture(rowMapper.apply(first));
             } else {
-                return null;
+                return CompletableFuture.completedFuture(null);
             }
         };
     }
