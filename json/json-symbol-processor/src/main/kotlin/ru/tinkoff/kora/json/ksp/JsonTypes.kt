@@ -31,5 +31,4 @@ object JsonTypes {
     val jsonToken = ClassName("com.fasterxml.jackson.core", "JsonToken")
     val jsonParserSequence = ClassName("com.fasterxml.jackson.core.util", "JsonParserSequence")
     val serializedString = ClassName("com.fasterxml.jackson.core.io", "SerializedString")
-
 }
