@@ -1,6 +1,8 @@
 package ru.tinkoff.kora.test.extension.junit5.mockito;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.mockito.Spy;
 import org.mockito.internal.util.MockUtil;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
@@ -13,24 +15,30 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @KoraAppTest(TestApplication.class)
-public class SpyFieldsTests {
+public class SpyFromFieldTests {
 
     @Spy
     @TestComponent
-    private TestComponent1 mock = new TestComponent1();
+    private TestComponent1 spy = new TestComponent1();
     @TestComponent
     private TestComponent12 bean;
 
-    @Test
-    void fieldMocked() {
-        assertTrue(MockUtil.isSpy(mock));
-        assertEquals("1", mock.get());
+    @BeforeEach
+    void setupSpy() {
+        assertTrue(MockUtil.isSpy(spy));
+        Mockito.when(spy.get()).thenReturn("?");
     }
 
     @Test
-    void fieldMockedAndInBeanDependency() {
-        assertTrue(MockUtil.isSpy(mock));
-        assertEquals("1", mock.get());
-        assertEquals("12", bean.get());
+    void fieldSpy() {
+        assertTrue(MockUtil.isSpy(spy));
+        assertEquals("?", spy.get());
+    }
+
+    @Test
+    void fieldSpyAndBeanDependency() {
+        assertTrue(MockUtil.isSpy(spy));
+        assertEquals("?", spy.get());
+        assertEquals("?2", bean.get());
     }
 }

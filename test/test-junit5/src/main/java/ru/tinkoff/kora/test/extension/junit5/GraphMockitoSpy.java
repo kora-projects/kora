@@ -1,27 +1,37 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
+import jakarta.annotation.Nullable;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Node;
+import ru.tinkoff.kora.application.graph.internal.NodeImpl;
 
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 
-record GraphMockitoSpy(GraphCandidate candidate, Class<?> mockClass, Object value) implements GraphModification {
+record GraphMockitoSpy(GraphCandidate candidate,
+                       Class<?> mockClass,
+                       @Nullable Object value) implements GraphModification {
+
+    public static GraphModification ofAnnotated(GraphCandidate candidate, AnnotatedElement element) {
+        var classToMock = getClassToMock(candidate);
+        return new GraphMockitoSpy(candidate, classToMock, null);
+    }
 
     public static GraphModification ofField(GraphCandidate candidate, Field field, Object testClassInstance) {
         var classToMock = getClassToMock(candidate);
         try {
             field.setAccessible(true);
             var inst = field.get(testClassInstance);
-            if (inst == null) {
-                throw new IllegalArgumentException("Can't @Spy component '%s' because it is null, initialize field first".formatted(candidate.toString()));
-            }
-
             return new GraphMockitoSpy(candidate, classToMock, inst);
         } catch (IllegalAccessException e) {
             throw new IllegalArgumentException("Can't extract @Spy component '%s' from: %s".formatted(candidate.type(), testClassInstance));
         }
+    }
+
+    public boolean isSpyGraph() {
+        return value == null;
     }
 
     @Override
@@ -49,6 +59,17 @@ record GraphMockitoSpy(GraphCandidate candidate, Class<?> mockClass, Object valu
     @SuppressWarnings("unchecked")
     private <T> void replaceNode(ApplicationGraphDraw graphDraw, Node<?> node) {
         var casted = (Node<T>) node;
-        graphDraw.replaceNode(casted, g -> ((T) Mockito.spy(value)));
+
+        if (value != null) {
+            graphDraw.replaceNode(casted, g -> {
+                var spyCandidate = (T) value;
+                return Mockito.spy(spyCandidate);
+            });
+        } else {
+            graphDraw.replaceNodeKeepDependencies(casted, g -> {
+                var spyCandidate = ((NodeImpl<T>) node).factory.get(g);
+                return Mockito.spy(spyCandidate);
+            });
+        }
     }
 }

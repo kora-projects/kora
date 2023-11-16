@@ -12,28 +12,28 @@ import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent1
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent12
 
 @KoraAppTest(TestApplication::class)
-class SpykFieldsTests {
+class SpykFromFieldTests {
 
     @field:SpyK
     @TestComponent
-    var mock: TestComponent1 = TestComponent1()
+    var spy: TestComponent1 = TestComponent1()
 
     @TestComponent
     lateinit var bean: TestComponent12
 
     @BeforeEach
     fun setupMocks() {
-        every { mock.get() } returns "?"
+        every { spy.get() } returns "?"
     }
 
     @Test
     fun fieldMocked() {
-        assertEquals("?", mock.get())
+        assertEquals("?", spy.get())
     }
 
     @Test
     fun fieldMockedAndInBeanDependency() {
-        assertEquals("?", mock.get())
+        assertEquals("?", spy.get())
         assertEquals("?2", bean.get())
     }
 }

@@ -4,8 +4,8 @@ import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Root;
 
-@Component
 @Root
+@Component
 public final class TestComponent23 {
 
     private final TestComponent2 lifecycleComponent;
