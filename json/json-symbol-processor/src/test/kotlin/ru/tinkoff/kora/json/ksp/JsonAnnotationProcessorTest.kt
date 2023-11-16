@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter
 import com.google.devtools.ksp.KspExperimental
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.json.common.*
 import ru.tinkoff.kora.json.ksp.AbstractJsonSymbolProcessorTest.Companion.reader
@@ -12,12 +13,14 @@ import ru.tinkoff.kora.json.ksp.AbstractJsonSymbolProcessorTest.Companion.reader
 import ru.tinkoff.kora.json.ksp.AbstractJsonSymbolProcessorTest.Companion.writer
 import ru.tinkoff.kora.json.ksp.AbstractJsonSymbolProcessorTest.Companion.writerClass
 import ru.tinkoff.kora.json.ksp.dto.*
+import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.symbolProcess
 import ru.tinkoff.kora.ksp.common.symbolProcessJava
 import java.io.IOException
 import java.io.StringWriter
 import java.math.BigDecimal
 import java.math.BigInteger
+import java.util.function.Supplier
 import kotlin.reflect.KClass
 
 @KspExperimental
@@ -32,8 +35,8 @@ internal class JsonAnnotationProcessorTest {
         )
         val writer: JsonWriter<DtoWithSupportedTypes?> = cl.writer(
             DtoWithSupportedTypes::class.java, ListJsonWriter { obj: JsonGenerator, v: Int? ->
-            obj.writeNumber(v!!)
-        },
+                obj.writeNumber(v!!)
+            },
             SetJsonWriter { obj: JsonGenerator, v: Int? ->
                 obj.writeNumber(
                     v!!
@@ -131,7 +134,6 @@ internal class JsonAnnotationProcessorTest {
         )
     }
 
-
     @Test
     fun testWriteJsonInnerDto() {
         val cl = jsonClassLoader(DtoWithInnerDto::class)
@@ -207,6 +209,38 @@ internal class JsonAnnotationProcessorTest {
             }""".trimIndent()
             )
         assertThat(`object`).isEqualTo(expected)
+    }
+
+    @Test
+    fun testReaderDtoThrowsException() {
+        val reader = processClass(DtoOnlyReader::class)
+        assertThat(reader.reader).isNotNull()
+
+        val ex = assertThrows(JsonParseException::class.java) {
+            fromJson(
+                reader, """
+            {
+              "field1" : "1"
+            }""".trimIndent()
+            )
+        }
+
+        assertThat(ex.message).startsWith("Some of required json fields were not received: field2(renamedField2) field3(field3)")
+    }
+
+    @Test
+    fun testReaderDtoWith32FieldsThrowsException() {
+        val reader = processClass(DtoWith32Fields::class)
+        assertThat(reader.reader).isNotNull()
+
+        assertThrows(JsonParseException::class.java) {
+            fromJson(
+                reader, """
+            {
+              "field1" : 1
+            }""".trimIndent()
+            )
+        }
     }
 
     @Test

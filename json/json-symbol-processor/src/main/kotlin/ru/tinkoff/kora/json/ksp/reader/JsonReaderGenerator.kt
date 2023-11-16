@@ -93,19 +93,19 @@ class JsonReaderGenerator(val resolver: Resolver) {
                 addStatement("else -> \"\"")
             }
         if (meta.fields.size > maxFields) {
-            functionBody.controlFlow("if (!_receivedFields.equals(ALL_FIELDS_RECEIVED))") {
+            functionBody.controlFlow("if (_receivedFields != ALL_FIELDS_RECEIVED)") {
                 addStatement(" _receivedFields.flip(0, %L)", meta.fields.size)
                 addStatement("val __error = %T(\"Some of required json fields were not received:\")", StringBuilder::class)
 
                 addStatement("var __i = _receivedFields.nextSetBit(0)")
-                controlFlow("while(__i >= 0)") {
+                controlFlow("while (__i >= 0)") {
                     add("__error.append(\" \").append(\n")
                     indent()
                     add(errorSwitch.build())
                     unindent()
                     add(")\n")
+                    add("__i = _receivedFields.nextSetBit(__i + 1)\n")
                 }
-
                 addStatement("throw %T(_parser, __error.toString())", JsonTypes.jsonParseException)
             }
         } else {
@@ -120,8 +120,8 @@ class JsonReaderGenerator(val resolver: Resolver) {
                         unindent()
                         add(")\n")
                     }
-                    addStatement("throw %T(_parser, __error.toString())", JsonTypes.jsonParseException)
                 }
+                addStatement("throw %T(_parser, __error.toString())", JsonTypes.jsonParseException)
             }
         }
         generateReturnResult(meta, functionBody)
