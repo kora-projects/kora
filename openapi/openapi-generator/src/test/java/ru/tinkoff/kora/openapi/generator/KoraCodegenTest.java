@@ -60,6 +60,7 @@ class KoraCodegenTest {
         };
         var files = new String[]{
             "/example/petstoreV3_form.yaml",
+            "/example/petstoreV3_request_parameters.yaml",
             "/example/petstoreV3_validation.yaml",
             "/example/petstoreV3_single_response.yaml",
             "/example/petstoreV3_security_api_key.yaml",
@@ -182,13 +183,12 @@ class KoraCodegenTest {
         var co = new K2JVMCompiler();
         var code = co.exec(collector, Services.EMPTY, k2JvmArgs);
         Files.createDirectories(kotlinOutPath.resolve("sources"));
-        Files.copy(kotlinOutputDir, kotlinOutPath.resolve("sources"), StandardCopyOption.REPLACE_EXISTING);
         var iter = Files.walk(kotlinOutputDir).filter(Files::isRegularFile).iterator();
         while (iter.hasNext()) {
             var it = iter.next();
-            var to = kotlinOutPath.resolve("sources").resolve(it.relativize(kotlinOutputDir));
+            var to = kotlinOutPath.resolve("sources").resolve(kotlinOutputDir.relativize(it));
             Files.createDirectories(to.getParent());
-            Files.copy(it, to);
+            Files.copy(it, to, StandardCopyOption.REPLACE_EXISTING);
         }
 
         if (code != ExitCode.OK) {
