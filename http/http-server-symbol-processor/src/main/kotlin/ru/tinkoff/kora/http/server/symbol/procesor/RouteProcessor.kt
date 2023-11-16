@@ -25,12 +25,15 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.await
+import ru.tinkoff.kora.ksp.common.CommonClassNames.isCollection
+import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.findRepeatableAnnotation
 import ru.tinkoff.kora.ksp.common.makeTagAnnotationSpec
 import ru.tinkoff.kora.ksp.common.parseMappingData
 import java.util.concurrent.CompletionException
 import java.util.concurrent.CompletionStage
+import javax.lang.model.type.DeclaredType
 
 
 class RouteProcessor {
@@ -61,9 +64,21 @@ class RouteProcessor {
         function.parameters.forEach {
             val type = it.type.toTypeName()
             when {
-                it.isAnnotationPresent(query) -> funBuilder.addQueryParameterMapper(it)
+                it.isAnnotationPresent(query) -> {
+                    if(it.type.resolve().isCollection()) {
+                        funBuilder.addQueryParameterMapper(it, it.type.resolve().arguments[0].toTypeName())
+                    } else {
+                        funBuilder.addQueryParameterMapper(it)
+                    }
+                }
+                it.isAnnotationPresent(header) -> {
+                    if(it.type.resolve().isCollection()) {
+                        funBuilder.addHeaderParameterMapper(it, it.type.resolve().arguments[0].toTypeName())
+                    } else {
+                        funBuilder.addHeaderParameterMapper(it)
+                    }
+                }
                 it.isAnnotationPresent(path) -> funBuilder.addPathParameterMapper(it)
-                it.isAnnotationPresent(header) -> funBuilder.addHeaderParameterMapper(it)
                 it.isAnnotationPresent(cookie) -> funBuilder.addCookieParameterMapper(it)
                 else -> {
                     val type = it.type.toTypeName()
@@ -215,23 +230,38 @@ class RouteProcessor {
                 it
             }
         }
+
         val parameterName = parameter.name!!.asString()
         val parameterTypeName = parameter.type.toTypeName()
         val extractor = ExtractorFunctions.header[parameterTypeName]
         if (extractor != null) {
             addStatement("val %N = %M(_request, %S)", parameterName, extractor, name)
         } else {
-            if (parameterTypeName.isNullable) {
-                val stringExtractor = ExtractorFunctions.header[STRING.copy(true)]!!
+            if (parameter.type.resolve().isList()) {
                 val readerParameterName = "_${parameterName}StringParameterReader"
-                addCode("val %N = ", parameterName).check400 {
-                    addStatement("%M(_request, %S)?.let(%N::read)", stringExtractor, name, readerParameterName)
+                if (parameterTypeName.isNullable) {
+                    val extractor = ExtractorFunctions.header[LIST.parameterizedBy(STRING).copy(true)]!!
+                    addCode("val %N = ", parameterName).check400 {
+                        addStatement("%M(_request, %S)?.map { %N.read(it) }?.toList()", extractor, name, readerParameterName)
+                    }
+                } else {
+                    val extractor = ExtractorFunctions.header[LIST.parameterizedBy(STRING)]!!
+                    addCode("val %N = ", parameterName).check400 {
+                        addStatement("%M(_request, %S).map { %N.read(it) }.toList()", extractor, name, readerParameterName)
+                    }
                 }
             } else {
-                val stringExtractor = ExtractorFunctions.header[STRING]!!
                 val readerParameterName = "_${parameterName}StringParameterReader"
-                addCode("val %N = ", parameterName).check400 {
-                    addStatement("%N.read(%M(_request, %S))", readerParameterName, stringExtractor, name)
+                if (parameterTypeName.isNullable) {
+                    val stringExtractor = ExtractorFunctions.header[STRING.copy(true)]!!
+                    addCode("val %N = ", parameterName).check400 {
+                        addStatement("%M(_request, %S)?.let(%N::read)", stringExtractor, name, readerParameterName)
+                    }
+                } else {
+                    val stringExtractor = ExtractorFunctions.header[STRING]!!
+                    addCode("val %N = ", parameterName).check400 {
+                        addStatement("%N.read(%M(_request, %S))", readerParameterName, stringExtractor, name)
+                    }
                 }
             }
         }
@@ -281,17 +311,32 @@ class RouteProcessor {
         if (extractor != null) {
             addStatement("val %N = %M(_request, %S)", parameterName, extractor, name)
         } else {
-            if (parameterTypeName.isNullable) {
-                val stringExtractor = ExtractorFunctions.query[STRING.copy(true)]!!
+            if (parameter.type.resolve().isList()) {
                 val readerParameterName = "_${parameterName}StringParameterReader"
-                addCode("val %N = ", parameterName).check400 {
-                    addStatement("%M(_request, %S)?.let(%N::read)", stringExtractor, name, readerParameterName)
+                if (parameterTypeName.isNullable) {
+                    val extractor = ExtractorFunctions.query[LIST.parameterizedBy(STRING).copy(true)]!!
+                    addCode("val %N = ", parameterName).check400 {
+                        addStatement("%M(_request, %S)?.map { %N.read(it) }?.toList()", extractor, name, readerParameterName)
+                    }
+                } else {
+                    val extractor = ExtractorFunctions.query[LIST.parameterizedBy(STRING)]!!
+                    addCode("val %N = ", parameterName).check400 {
+                        addStatement("%M(_request, %S).map { %N.read(it) }.toList()", extractor, name, readerParameterName)
+                    }
                 }
             } else {
-                val stringExtractor = ExtractorFunctions.query[STRING]!!
-                val readerParameterName = "_${parameterName}StringParameterReader"
-                addCode("val %N = ", parameterName).check400 {
-                    addStatement("%N.read(%M(_request, %S))", readerParameterName, stringExtractor, name)
+                if (parameterTypeName.isNullable) {
+                    val stringExtractor = ExtractorFunctions.query[STRING.copy(true)]!!
+                    val readerParameterName = "_${parameterName}StringParameterReader"
+                    addCode("val %N = ", parameterName).check400 {
+                        addStatement("%M(_request, %S)?.let(%N::read)", stringExtractor, name, readerParameterName)
+                    }
+                } else {
+                    val stringExtractor = ExtractorFunctions.query[STRING]!!
+                    val readerParameterName = "_${parameterName}StringParameterReader"
+                    addCode("val %N = ", parameterName).check400 {
+                        addStatement("%N.read(%M(_request, %S))", readerParameterName, stringExtractor, name)
+                    }
                 }
             }
         }
@@ -316,10 +361,12 @@ class RouteProcessor {
         }
     }
 
-    private fun FunSpec.Builder.addQueryParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.query, parameter)
-    private fun FunSpec.Builder.addPathParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.path, parameter)
-    private fun FunSpec.Builder.addHeaderParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.header, parameter)
-    private fun FunSpec.Builder.addCookieParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.cookie, parameter)
+    private fun FunSpec.Builder.addQueryParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.query, parameter, parameter.type.toTypeName())
+    private fun FunSpec.Builder.addQueryParameterMapper(parameter: KSValueParameter, parameterTypeName: TypeName) = addStringParameterMapper(ExtractorFunctions.query, parameter, parameterTypeName)
+    private fun FunSpec.Builder.addHeaderParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.header, parameter, parameter.type.toTypeName())
+    private fun FunSpec.Builder.addHeaderParameterMapper(parameter: KSValueParameter, parameterTypeName: TypeName) = addStringParameterMapper(ExtractorFunctions.header, parameter, parameterTypeName)
+    private fun FunSpec.Builder.addPathParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.path, parameter, parameter.type.toTypeName())
+    private fun FunSpec.Builder.addCookieParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.cookie, parameter, parameter.type.toTypeName())
     private fun FunSpec.Builder.addRequestParameterMapper(parameter: KSValueParameter, isBlocking: Boolean) {
         val paramName = parameter.name!!.asString()
         val paramType = parameter.type.toTypeName()
@@ -336,9 +383,8 @@ class RouteProcessor {
         addParameter(b.build())
     }
 
-    private fun FunSpec.Builder.addStringParameterMapper(knownMappers: Map<TypeName, MemberName>, parameter: KSValueParameter) {
+    private fun FunSpec.Builder.addStringParameterMapper(knownMappers: Map<TypeName, MemberName>, parameter: KSValueParameter, parameterTypeName: TypeName) {
         val parameterName = parameter.name!!.asString()
-        val parameterTypeName = parameter.type.toTypeName()
         val extractor = knownMappers[parameterTypeName]
         if (extractor == null) {
             val readerParameterName = "_${parameterName}StringParameterReader"

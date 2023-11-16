@@ -7,6 +7,7 @@ import ru.tinkoff.kora.http.common.header.HttpHeaders
 import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper
 import ru.tinkoff.kora.http.server.common.handler.StringParameterReader
+import java.lang.reflect.ParameterizedType
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.ForkJoinPool
 import kotlin.reflect.KClass
@@ -53,6 +54,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
         compile("""
             @HttpController
             class Controller {
+            
                 @HttpRoute(method = GET, path = "/queryString")
                 suspend fun queryString(@Query("value") value1: String) {
                 }
@@ -116,6 +118,74 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             """.trimIndent())
         compileResult.assertSuccess()
         compileResult.loadClass("ControllerModule").verifyNoDependencies()
+    }
+
+    @Test
+    fun testQueryEnum() {
+        compile("""
+            @HttpController
+            class Controller {
+            
+                enum class TestEnum {
+                    VAL1, VAL2
+                }
+            
+                @HttpRoute(method = GET, path = "/queryEnum")
+                suspend fun queryEnum(@Query("value") value1: TestEnum) { }
+            
+                @HttpRoute(method = GET, path = "/queryNullableEnum")
+                suspend fun queryNullableEnum(@Query value: TestEnum?) { }
+
+                @HttpRoute(method = GET, path = "/queryEnumList")
+                suspend fun queryEnumList(@Query value: List<TestEnum>) { }
+
+                @HttpRoute(method = GET, path = "/queryNullableEnumList")
+                suspend fun queryNullableEnumList(@Query value: List<TestEnum>?) { }
+            }
+            """.trimIndent())
+
+        compileResult.assertSuccess()
+        val clazz = compileResult.loadClass("ControllerModule")
+        clazz.methods.forEach {
+            Assertions.assertThat(it.parameters).hasSize(2)
+            Assertions.assertThat(it.parameters[1].type).isAssignableFrom(StringParameterReader::class.java)
+            val type = it.parameters[1].parameterizedType as ParameterizedType
+            Assertions.assertThat(type.actualTypeArguments[0].typeName).endsWith("TestEnum")
+        }
+    }
+
+    @Test
+    fun testHeaderEnum() {
+        compile("""
+            @HttpController
+            class Controller {
+            
+                enum class TestEnum {
+                    VAL1, VAL2
+                }
+            
+                @HttpRoute(method = GET, path = "/headerEnum")
+                suspend fun queryEnum(@Header("value") value1: TestEnum) { }
+            
+                @HttpRoute(method = GET, path = "/headerNullableEnum")
+                suspend fun queryNullableEnum(@Header("value") value: TestEnum?) { }
+
+                @HttpRoute(method = GET, path = "/headerEnumList")
+                suspend fun queryEnumList(@Header("value") value: List<TestEnum>) { }
+
+                @HttpRoute(method = GET, path = "/headerNullableEnumList")
+                suspend fun queryNullableEnumList(@Header("value") value: List<TestEnum>?) { }
+            }
+            """.trimIndent())
+
+        compileResult.assertSuccess()
+        val clazz = compileResult.loadClass("ControllerModule")
+        clazz.methods.forEach {
+            Assertions.assertThat(it.parameters).hasSize(2)
+            Assertions.assertThat(it.parameters[1].type).isAssignableFrom(StringParameterReader::class.java)
+            val type = it.parameters[1].parameterizedType as ParameterizedType
+            Assertions.assertThat(type.actualTypeArguments[0].typeName).endsWith("TestEnum")
+        }
     }
 
     @Test
