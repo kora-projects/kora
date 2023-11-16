@@ -15,21 +15,26 @@ dependencies {
     testImplementation(project(":json:json-common"))
     testImplementation(project(":json:jackson-module"))
     testImplementation(project(":json:json-annotation-processor"))
+    testImplementation(project(":json:json-symbol-processor"))
     testImplementation(project(":http:http-client-common"))
     testImplementation(project(":http:http-client-annotation-processor"))
+    testImplementation(project(":http:http-client-symbol-processor"))
     testImplementation(project(":http:http-server-common"))
     testImplementation(project(":http:http-server-annotation-processor"))
+    testImplementation(project(":http:http-server-symbol-processor"))
     testImplementation(project(":validation:validation-module"))
     testImplementation(project(":validation:validation-annotation-processor"))
     testImplementation(project(":validation:validation-symbol-processor"))
     testImplementation(project(":aop:aop-annotation-processor"))
     testImplementation(testFixtures(project(":annotation-processor-common")))
+    testImplementation(project(":aop:aop-symbol-processor"))
+    testImplementation(testFixtures(project(":symbol-processor-common")))
 
-    testImplementation libs.kotlin.compiler
     testImplementation libs.reactor.core
+    testImplementation(libs.kotlin.compiler)
+    testImplementation(libs.kotlin.stdlib.lib)
+    testImplementation(libs.kotlin.coroutines.reactor)
 }
-
-apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 
 
 def javaPlugin = project.extensions.getByType(JavaPluginExtension)
@@ -71,3 +76,6 @@ sourceSets {
         java.srcDirs += "$buildDir/out"
     }
 }
+
+apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
