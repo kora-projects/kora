@@ -10,6 +10,7 @@ import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
 import ru.tinkoff.kora.http.server.common.handler.StringParameterReader;
 
+import java.lang.reflect.ParameterizedType;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ForkJoinPool;
 
@@ -111,7 +112,6 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
                 public void queryIntegerList(@Query List<Integer> value) {
                 }
 
-
                 @HttpRoute(method = GET, path = "/queryLong")
                 public void queryLong(@Query long value) {
                 }
@@ -178,6 +178,82 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
 
         compileResult.assertSuccess();
         verifyNoDependencies(compileResult.loadClass("ControllerModule"));
+    }
+
+    @Test
+    public void testQueryEnum() {
+        compile("""
+            @HttpController
+            public class Controller {
+            
+                public enum TestEnum {
+                    VAL1, VAL2
+                }
+
+                @HttpRoute(method = GET, path = "/queryEnum")
+                public void queryString(@Query("value") TestEnum value1) { }
+
+                @HttpRoute(method = GET, path = "/queryNullableEnum")
+                public void queryNullableString(@Query @Nullable TestEnum value) { }
+
+                @HttpRoute(method = GET, path = "/queryOptionalEnum")
+                public void queryOptionalString(@Query Optional<TestEnum> value) { }
+
+                @HttpRoute(method = GET, path = "/queryListEnum")
+                public void queryStringList(@Query List<TestEnum> value) { }
+                
+                @HttpRoute(method = GET, path = "/queryNullableListEnum")
+                public void queryNullableStringList(@Query @Nullable List<TestEnum> value) { }
+            }
+            """);
+
+        compileResult.assertSuccess();
+        final Class<?> controllerModule = compileResult.loadClass("ControllerModule");
+        for (var moduleMethod : controllerModule.getMethods()) {
+            Assertions.assertThat(moduleMethod.getParameters()).hasSize(3);
+            Assertions.assertThat(moduleMethod.getParameters()[2].getType()).isAssignableFrom(StringParameterReader.class);
+
+            var type = ((ParameterizedType) moduleMethod.getParameters()[2].getParameterizedType());
+            Assertions.assertThat(type.getActualTypeArguments()[0].getTypeName()).endsWith("TestEnum");
+        }
+    }
+
+    @Test
+    public void testHeaderEnum() {
+        compile("""
+            @HttpController
+            public class Controller {
+            
+                public enum TestEnum {
+                    VAL1, VAL2
+                }
+
+                @HttpRoute(method = GET, path = "/headerEnum")
+                public void queryString(@Header TestEnum value1) { }
+
+                @HttpRoute(method = GET, path = "/headerNullableEnum")
+                public void queryNullableString(@Header @Nullable TestEnum value) { }
+
+                @HttpRoute(method = GET, path = "/headerOptionalEnum")
+                public void queryOptionalString(@Header Optional<TestEnum> value) { }
+
+                @HttpRoute(method = GET, path = "/headerListEnum")
+                public void queryStringList(@Header List<TestEnum> value) { }
+                
+                @HttpRoute(method = GET, path = "/headerNullableListEnum")
+                public void queryNullableStringList(@Header @Nullable List<TestEnum> value) { }
+            }
+            """);
+
+        compileResult.assertSuccess();
+        final Class<?> controllerModule = compileResult.loadClass("ControllerModule");
+        for (var moduleMethod : controllerModule.getMethods()) {
+            Assertions.assertThat(moduleMethod.getParameters()).hasSize(3);
+            Assertions.assertThat(moduleMethod.getParameters()[2].getType()).isAssignableFrom(StringParameterReader.class);
+
+            var type = ((ParameterizedType) moduleMethod.getParameters()[2].getParameterizedType());
+            Assertions.assertThat(type.getActualTypeArguments()[0].getTypeName()).endsWith("TestEnum");
+        }
     }
 
     @Test

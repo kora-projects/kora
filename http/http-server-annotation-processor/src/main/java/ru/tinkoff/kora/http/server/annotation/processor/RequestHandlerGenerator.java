@@ -422,16 +422,15 @@ public class RequestHandlerGenerator {
                         HttpServerClassNames.stringParameterReader,
                         TypeName.get(listParameter)
                     );
-                    methodBuilder.addParameter(parameterReaderType, "_" + parameter.name + "Reader");
+
+                    final String parameterReaderName = "_" + parameter.name + "Reader";
+                    methodBuilder.addParameter(parameterReaderType, parameterReaderName);
 
                     if (isNullable(parameter)) {
-                        code.add("""
-                                var _optional_$L = $T.parseOptionalStringListHeaderParameter(_request, $S);
-                                $N = (_optional_$L == null) ? null : _optional_$L.stream().map($L::read).toList();
-                                """, parameter.variableElement, requestHandlerUtils, parameter.name,
-                            parameter.variableElement, parameter.variableElement, parameter.variableElement, "_" + parameter.name + "Reader");
+                        code.add("$L = $T.ofNullable($T.parseOptionalStringListHeaderParameter(_request, $S)).map(_var_$L -> _var_$L.stream().map($L::read).toList()).orElse(null);",
+                            parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name, parameter.variableElement, parameter.variableElement, parameterReaderName);
                     } else {
-                        code.add("$L = $T.parseStringListHeaderParameter(_request, $S).stream().map($L::read).toList();", parameter.variableElement, requestHandlerUtils, parameter.name, "_" + parameter.name + "Reader");
+                        code.add("$L = $T.parseStringListHeaderParameter(_request, $S).stream().map($L::read).toList();", parameter.variableElement, requestHandlerUtils, parameter.name, parameterReaderName);
                     }
 
                     return code.build();
