@@ -11,7 +11,9 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.ParameterizedType;
 import java.util.Optional;
 
-record GraphMockitoMock(GraphCandidate candidate, Class<?> mockClass, String name,
+record GraphMockitoMock(GraphCandidate candidate,
+                        Class<?> mockClass,
+                        String name,
                         Mock annotation) implements GraphModification {
 
     public static GraphModification ofAnnotated(GraphCandidate candidate, AnnotatedElement element, String defaultName) {

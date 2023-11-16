@@ -11,7 +11,11 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.ParameterizedType;
 import java.util.Optional;
 
-record GraphMockkMock(GraphCandidate candidate, Class<?> mockClass, String mockkName, boolean relaxed, boolean relaxUnitFun) implements GraphModification {
+record GraphMockkMock(GraphCandidate candidate,
+                      Class<?> mockClass,
+                      String mockkName,
+                      boolean relaxed,
+                      boolean relaxUnitFun) implements GraphModification {
 
     public static GraphModification ofAnnotated(GraphCandidate candidate, AnnotatedElement element, String defaultName) {
         var annotation = element.getAnnotation(MockK.class);

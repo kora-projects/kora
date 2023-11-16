@@ -3,8 +3,8 @@ package ru.tinkoff.kora.test.extension.junit5.testdata;
 import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.common.annotation.Root;
 
-@Component
 @Root
+@Component
 public class TestComponent12 implements LifecycleComponent {
 
     private final TestComponent1 component1;
