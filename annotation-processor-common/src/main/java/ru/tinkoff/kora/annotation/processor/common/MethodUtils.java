@@ -25,8 +25,20 @@ public final class MethodUtils {
         return CommonUtils.isVoid(method.getReturnType());
     }
 
+    public static boolean isMonoVoid(ExecutableElement method) {
+        return isMono(method) && getGenericType(method.getReturnType()).filter(CommonUtils::isVoid).isPresent();
+    }
+
+    public static boolean isFutureVoid(ExecutableElement method) {
+        return isFuture(method) && getGenericType(method.getReturnType()).filter(CommonUtils::isVoid).isPresent();
+    }
+
     public static boolean isOptional(ExecutableElement method) {
         return CommonUtils.isOptional(method.getReturnType());
+    }
+
+    public static boolean isPublisher(ExecutableElement method) {
+        return CommonUtils.isPublisher(method.getReturnType());
     }
 
     public static boolean isVoidGeneric(TypeMirror returnType) {
