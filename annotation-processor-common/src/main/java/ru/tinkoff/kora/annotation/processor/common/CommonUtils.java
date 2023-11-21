@@ -470,6 +470,12 @@ public class CommonUtils {
             && dt.asElement().toString().equals(CommonClassNames.flux.canonicalName());
     }
 
+    public static boolean isPublisher(TypeMirror type) {
+        return type.getKind() == TypeKind.DECLARED
+            && type instanceof DeclaredType dt
+            && dt.asElement().toString().equals(CommonClassNames.publisher.canonicalName());
+    }
+
     public static boolean isFuture(TypeMirror type) {
         if (type.getKind() != TypeKind.DECLARED) {
             return false;

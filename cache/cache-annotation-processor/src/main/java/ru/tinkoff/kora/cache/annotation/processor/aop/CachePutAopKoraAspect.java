@@ -35,6 +35,8 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         if (MethodUtils.isFlux(method)) {
             throw new ProcessingErrorException("@CachePut can't be applied for types assignable from " + CommonClassNames.flux, method);
+        } else if (MethodUtils.isPublisher(method)) {
+            throw new ProcessingErrorException("@CachePut can't be applied for type " + CommonClassNames.publisher, method);
         } else if(MethodUtils.isVoid(method)) {
             throw new ProcessingErrorException("@CachePut can't be applied for type Void", method);
         }
@@ -42,8 +44,16 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
         final CacheOperation operation = CacheOperationUtils.getCacheOperation(method, env, aspectContext);
         final CodeBlock body;
         if (MethodUtils.isMono(method)) {
+            if(MethodUtils.isMonoVoid(method)) {
+                throw new ProcessingErrorException("@CachePut can't be applied for type Void", method);
+            }
+
             body = buildBodyMono(method, operation, superCall);
         } else if (MethodUtils.isFuture(method)) {
+            if(MethodUtils.isFutureVoid(method)) {
+                throw new ProcessingErrorException("@CachePut can't be applied for type Void", method);
+            }
+
             body = buildBodyFuture(method, operation, superCall);
         } else {
             body = buildBodySync(method, operation, superCall);
@@ -52,16 +62,8 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
         return new ApplyResult.MethodBody(body);
     }
 
-    private CodeBlock buildBodySync(ExecutableElement method,
-                                    CacheOperation operation,
-                                    String superCall) {
-        final String superMethod = getSuperMethod(method, superCall);
-
-        // cache variables
+    private CodeBlock getSyncBlock(ExecutableElement method, CacheOperation operation) {
         final CodeBlock.Builder builder = CodeBlock.builder();
-
-        // cache super method
-        builder.add("var _value = ").add(superMethod).add(";\n");
 
         final boolean isOptional = MethodUtils.isOptional(method);
         final boolean isPrimitive = method.getReturnType() instanceof PrimitiveType;
@@ -114,8 +116,20 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
             builder.endControlFlow();
         }
 
-        builder.add("return _value;");
+        return builder.add("return _value;").build();
+    }
 
+    private CodeBlock buildBodySync(ExecutableElement method,
+                                    CacheOperation operation,
+                                    String superCall) {
+        final String superMethod = getSuperMethod(method, superCall);
+
+        // cache variables
+        final CodeBlock.Builder builder = CodeBlock.builder();
+
+        // cache super method
+        builder.add("var _value = ").add(superMethod).add(";\n");
+        builder.add(getSyncBlock(method, operation));
         return builder.build();
     }
 
@@ -127,10 +141,48 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
         // cache variables
         final CodeBlock.Builder builder = CodeBlock.builder();
 
-        // cache super method
+        if(operation.executions().stream().allMatch(e -> e.contract() == CacheOperation.CacheExecution.Contract.SYNC)) {
+            // create keys
+            for (int i = 0; i < operation.executions().size(); i++) {
+                var cache = operation.executions().get(i);
+                boolean prevKeyMatch = false;
+                for (int j = 0; j < i; j++) {
+                    var prevCachePut = operation.executions().get(j);
+                    if (env.getTypeUtils().isSubtype(cache.cacheKey().type(), prevCachePut.cacheKey().type())) {
+                        prevKeyMatch = true;
+                        break;
+                    }
+                }
 
-        if (operation.executions().size() > 1) {
+                if (!prevKeyMatch) {
+                    var keyField = "_key" + (i + 1);
+                    builder
+                        .add("var $L = ", keyField)
+                        .addStatement(cache.cacheKey().code());
+                }
+            }
 
+            builder.add("return ").add(superMethod)
+                .beginControlFlow(".doOnSuccess(_result -> ");
+
+            builder.beginControlFlow("if(_result != null)");
+
+            // cache put
+            for (int i = 0; i < operation.executions().size(); i++) {
+                var cache = operation.executions().get(i);
+
+                String keyField = "_key" + (i + 1);
+                for (int i1 = 0; i1 < i; i1++) {
+                    var prevCache = operation.executions().get(i1);
+                    if (env.getTypeUtils().isSubtype(cache.cacheKey().type(), prevCache.cacheKey().type())) {
+                        keyField = "_key" + (i1 + 1);
+                    }
+                }
+
+                builder.addStatement("$L.put($L, _result)", cache.field(), keyField);
+            }
+            builder.endControlFlow().endControlFlow(")");
+        } else if (operation.executions().size() > 1) {
             // create keys
             for (int i = 0; i < operation.executions().size(); i++) {
                 var cache = operation.executions().get(i);
@@ -153,7 +205,7 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
 
             builder.add("return ")
                 .add(superMethod)
-                .add(".flatMap(_result -> $T.merge($T.of(\n", CommonClassNames.flux, List.class);
+                .add(".flatMap(_result -> $T.merge(\n", CommonClassNames.flux);
 
             // cache put
             for (int i = 0; i < operation.executions().size(); i++) {
@@ -180,7 +232,7 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
 
                 builder.add("\t").add(template, CommonClassNames.mono, cache.field(), keyField);
             }
-            builder.add(")).then(Mono.just(_result)));");
+            builder.add(").then(Mono.just(_result)));");
         } else {
             builder.add("return ").add(superMethod);
             builder.add("""
@@ -205,62 +257,111 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
         final CodeBlock.Builder builder = CodeBlock.builder();
 
         // cache super method
-        builder.add("return $L\n", superMethod)
-            .indent()
-            .beginControlFlow(".thenCompose(_value ->");
+        if(operation.executions().stream().allMatch(e -> e.contract() == CacheOperation.CacheExecution.Contract.SYNC)) {
+            // create keys
+            for (int i = 0; i < operation.executions().size(); i++) {
+                var cache = operation.executions().get(i);
+                boolean prevKeyMatch = false;
+                for (int j = 0; j < i; j++) {
+                    var prevCachePut = operation.executions().get(j);
+                    if (env.getTypeUtils().isSubtype(cache.cacheKey().type(), prevCachePut.cacheKey().type())) {
+                        prevKeyMatch = true;
+                        break;
+                    }
+                }
 
-        builder.beginControlFlow("if(_value == null)")
-            .addStatement("return $T.completedFuture(null)", CompletableFuture.class)
-            .endControlFlow();
-
-        // create keys
-        for (int i = 0; i < operation.executions().size(); i++) {
-            var cache = operation.executions().get(i);
-            boolean prevKeyMatch = false;
-            for (int j = 0; j < i; j++) {
-                var prevCachePut = operation.executions().get(j);
-                if (env.getTypeUtils().isSubtype(cache.cacheKey().type(), prevCachePut.cacheKey().type())) {
-                    prevKeyMatch = true;
-                    break;
+                if (!prevKeyMatch) {
+                    var keyField = "_key" + (i + 1);
+                    builder
+                        .add("var $L = ", keyField)
+                        .addStatement(cache.cacheKey().code());
                 }
             }
 
-            if (!prevKeyMatch) {
-                var keyField = "_key" + (i + 1);
-                builder.add("var $L = ", keyField).addStatement(cache.cacheKey().code());
+            builder.add("return ").add(superMethod)
+                .beginControlFlow(".thenApply(_result -> ");
+
+            builder.beginControlFlow("if(_result != null)");
+
+            // cache put
+            for (int i = 0; i < operation.executions().size(); i++) {
+                var cache = operation.executions().get(i);
+
+                String keyField = "_key" + (i + 1);
+                for (int i1 = 0; i1 < i; i1++) {
+                    var prevCache = operation.executions().get(i1);
+                    if (env.getTypeUtils().isSubtype(cache.cacheKey().type(), prevCache.cacheKey().type())) {
+                        keyField = "_key" + (i1 + 1);
+                    }
+                }
+
+                builder.addStatement("$L.put($L, _result)", cache.field(), keyField);
             }
-        }
 
-        builder.add("return $T.allOf(\n", CompletableFuture.class);
+            builder.endControlFlow()
+                .addStatement("return _result")
+                .endControlFlow(")");
+            return builder.build();
+        } else {
 
-        // cache put
-        for (int i = 0; i < operation.executions().size(); i++) {
-            if (i != 0) {
-                builder.add(",\n");
-            }
+            // cache super method
+            builder.add("return $L\n", superMethod)
+                .indent()
+                .beginControlFlow(".thenCompose(_value ->");
 
-            var cache = operation.executions().get(i);
-            var putKeyField = "_key" + (i + 1);
-            for (int i1 = 0; i1 < i; i1++) {
-                var prevCachePut = operation.executions().get(i1);
-                if (env.getTypeUtils().isSubtype(cache.cacheKey().type(), prevCachePut.cacheKey().type())) {
-                    putKeyField = "_key" + (i1 + 1);
+            builder.beginControlFlow("if(_value == null)")
+                .addStatement("return $T.completedFuture(null)", CompletableFuture.class)
+                .endControlFlow();
+
+            // create keys
+            for (int i = 0; i < operation.executions().size(); i++) {
+                var cache = operation.executions().get(i);
+                boolean prevKeyMatch = false;
+                for (int j = 0; j < i; j++) {
+                    var prevCachePut = operation.executions().get(j);
+                    if (env.getTypeUtils().isSubtype(cache.cacheKey().type(), prevCachePut.cacheKey().type())) {
+                        prevKeyMatch = true;
+                        break;
+                    }
+                }
+
+                if (!prevKeyMatch) {
+                    var keyField = "_key" + (i + 1);
+                    builder.add("var $L = ", keyField).addStatement(cache.cacheKey().code());
                 }
             }
 
-            if (cache.contract() == CacheOperation.CacheExecution.Contract.ASYNC) {
-                builder.add("\t$L.putAsync($L, _value).toCompletableFuture()", cache.field(), putKeyField);
-            } else {
-                builder.add("\t$T.completedFuture($L.put($L, _value))", CompletableFuture.class, cache.field(), putKeyField);
+            builder.add("return $T.allOf(\n", CompletableFuture.class);
+
+            // cache put
+            for (int i = 0; i < operation.executions().size(); i++) {
+                if (i != 0) {
+                    builder.add(",\n");
+                }
+
+                var cache = operation.executions().get(i);
+                var putKeyField = "_key" + (i + 1);
+                for (int i1 = 0; i1 < i; i1++) {
+                    var prevCachePut = operation.executions().get(i1);
+                    if (env.getTypeUtils().isSubtype(cache.cacheKey().type(), prevCachePut.cacheKey().type())) {
+                        putKeyField = "_key" + (i1 + 1);
+                    }
+                }
+
+                if (cache.contract() == CacheOperation.CacheExecution.Contract.ASYNC) {
+                    builder.add("\t$L.putAsync($L, _value).toCompletableFuture()", cache.field(), putKeyField);
+                } else {
+                    builder.add("\t$T.completedFuture($L.put($L, _value))", CompletableFuture.class, cache.field(), putKeyField);
+                }
             }
+
+            builder
+                .add("\n).thenApply(_v -> _value);\n");
+
+            return builder
+                .endControlFlow(")")
+                .unindent()
+                .build();
         }
-
-        builder
-            .add("\n).thenApply(_v -> _value);\n");
-
-        return builder
-            .endControlFlow(")")
-            .unindent()
-            .build();
     }
 }

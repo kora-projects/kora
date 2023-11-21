@@ -27,13 +27,13 @@ public class CacheableMonoMany {
 
     @CacheInvalidate(DummyCache21.class)
     @CacheInvalidate(DummyCache22.class)
-    public Mono<Void> evictValue(String arg1, BigDecimal arg2) {
-        return Mono.empty();
+    public Mono<String> evictValue(String arg1, BigDecimal arg2) {
+        return Mono.just("1");
     }
 
     @CacheInvalidate(value = DummyCache21.class, invalidateAll = true)
     @CacheInvalidate(value = DummyCache22.class, invalidateAll = true)
-    public Mono<Void> evictAll() {
-        return Mono.empty();
+    public Mono<String> evictAll() {
+        return Mono.just("1");
     }
 }
