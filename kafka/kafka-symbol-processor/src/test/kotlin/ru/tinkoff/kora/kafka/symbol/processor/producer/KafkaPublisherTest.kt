@@ -21,6 +21,7 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
             import org.apache.kafka.common.header.Header
             import org.apache.kafka.clients.producer.Callback
             import org.apache.kafka.clients.producer.RecordMetadata
+            import java.util.concurrent.Future
         """.trimIndent()
     }
 
@@ -315,6 +316,23 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
             interface TestProducer {
               @Topic("test.sendTopic")
               suspend fun send(value: String): RecordMetadata
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        val clazz = compileResult.loadClass("\$TestProducer_Impl")
+        assertThat(clazz).isNotNull()
+        clazz.getConstructor(KafkaProducerTelemetryFactory::class.java, TelemetryConfig::class.java, Properties::class.java, compileResult.loadClass("\$TestProducer_TopicConfig"), Serializer::class.java)
+    }
+
+    @Test
+    fun testReturnFutureRecordMetadata() {
+        compile0(
+            """
+            @KafkaPublisher("test")
+            interface TestProducer {
+              @Topic("test.sendTopic")
+              fun send(value: String): Future<RecordMetadata>
             }
             """.trimIndent()
         )

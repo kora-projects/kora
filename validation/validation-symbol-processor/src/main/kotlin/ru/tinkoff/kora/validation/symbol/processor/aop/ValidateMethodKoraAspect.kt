@@ -10,6 +10,7 @@ import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isCompletionStage
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
@@ -17,6 +18,7 @@ import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.validation.symbol.processor.*
 import ru.tinkoff.kora.validation.symbol.processor.ValidUtils.getConstraints
+import java.util.concurrent.CompletionStage
 import java.util.concurrent.Future
 
 class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
@@ -32,6 +34,8 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
         if (validationOutputCode != null) {
             if (method.isFuture()) {
                 throw ProcessingErrorException("@Validate Return Value can't be applied for types assignable from ${Future::class.java}", method)
+            } else if (method.isCompletionStage()) {
+                throw ProcessingErrorException("@Validate Return Value can't be applied for types assignable from ${CompletionStage::class.java}", method)
             } else if (method.isMono()) {
                 throw ProcessingErrorException("@Validate Return Value can't be applied for types assignable from ${CommonClassNames.mono}", method)
             } else if (method.isFlux()) {

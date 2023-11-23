@@ -24,6 +24,7 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.extendsKeepAop
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.overridingKeepAop
 import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
@@ -348,7 +349,9 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                     addStatement("%N.onCompletion(_meta, _ex)", publishData.callback.name?.asString().toString())
                 }
             }
-                .addCode(".get()\n")
+            if (!publishMethod.isFuture()) {
+                b.addCode(".get()\n")
+            }
         }
 
         return b.build()

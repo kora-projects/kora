@@ -38,7 +38,7 @@ import ru.tinkoff.kora.ksp.common.CommonAopUtils.overridingKeepAop
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.await
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isCollection
-import ru.tinkoff.kora.ksp.common.CommonClassNames.isFuture
+import ru.tinkoff.kora.ksp.common.CommonClassNames.isCompletionStage
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.writeTagValue
@@ -616,7 +616,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 mapperType != null -> {
                     val supertype = mapperType.findSupertype(httpClientResponseMapper)!!
                     var typeArg = supertype.arguments[0].type!!.resolve()
-                    if (typeArg.isFuture()) {
+                    if (typeArg.isCompletionStage()) {
                         typeArg = typeArg.arguments[0].type!!.resolve()
                     }
                     typeArg.declaration is KSTypeParameter || declaration.returnType!!.resolve().isAssignableFrom(typeArg)
