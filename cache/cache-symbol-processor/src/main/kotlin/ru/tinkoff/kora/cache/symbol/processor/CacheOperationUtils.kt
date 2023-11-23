@@ -17,6 +17,7 @@ import jakarta.annotation.Nullable
 import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isCompletionStage
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isPublisher
@@ -27,10 +28,7 @@ import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 import ru.tinkoff.kora.ksp.common.exception.ProcessingError
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.parseMappingData
-import java.util.function.Consumer
 import java.util.stream.Stream
-import javax.lang.model.element.VariableElement
-import javax.lang.model.type.TypeMirror
 import javax.tools.Diagnostic
 
 @KspExperimental
@@ -139,7 +137,7 @@ class CacheOperationUtils {
                 }
             }
 
-            if (method.isMono() || method.isFlux() || method.isPublisher() || method.isFuture() || method.isFlow()) {
+            if (method.isMono() || method.isFlux() || method.isPublisher() || method.isFuture() || method.isCompletionStage() || method.isFlow()) {
                 throw IllegalArgumentException("@${annotations[0].shortName.getShortName()} annotation doesn't support return type ${method.returnType} in $origin")
             }
 

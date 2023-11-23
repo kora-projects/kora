@@ -17,6 +17,7 @@ object CommonClassNames {
     val flux = ClassName("reactor.core.publisher", "Flux")
     val flow = ClassName("kotlinx.coroutines.flow", "Flow")
     val list = List::class.asClassName()
+    val future = Future::class.asClassName()
     val synchronousSink = ClassName("reactor.core.publisher", "SynchronousSink")
     val await = MemberName("kotlinx.coroutines.future", "await")
     val flowBuilder = MemberName("kotlinx.coroutines.flow", "flow")
@@ -125,8 +126,9 @@ object CommonClassNames {
     fun KSType.isFlux() = declaration is KSClassDeclaration && declaration.qualifiedName!!.asString() == flux.canonicalName
     fun KSType.isFlow() = declaration is KSClassDeclaration && declaration.qualifiedName!!.asString() == flow.canonicalName
     fun KSType.isPublisher() = declaration is KSClassDeclaration && declaration.qualifiedName!!.asString() == publisher.canonicalName
+    fun KSType.isFuture() = declaration is KSClassDeclaration && declaration.qualifiedName!!.asString() == future.canonicalName
 
-    fun KSType.isFuture(): Boolean {
+    fun KSType.isCompletionStage(): Boolean {
         if (declaration !is KSClassDeclaration) {
             return false
         }

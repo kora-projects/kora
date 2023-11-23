@@ -11,11 +11,13 @@ import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isCompletionStage
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
+import java.util.concurrent.CompletionStage
 import java.util.concurrent.Future
 
 @KspExperimental
@@ -42,6 +44,8 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
     override fun apply(method: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
         if (method.isFuture()) {
             throw ProcessingErrorException("@Timeout can't be applied for types assignable from ${Future::class.java}", method)
+        } else if (method.isCompletionStage()) {
+            throw ProcessingErrorException("@Timeout can't be applied for types assignable from ${CompletionStage::class.java}", method)
         } else if (method.isMono()) {
             throw ProcessingErrorException("@Timeout can't be applied for types assignable from ${CommonClassNames.mono}", method)
         } else if (method.isFlux()) {
