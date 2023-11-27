@@ -12,6 +12,7 @@ import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.nextControlFlow
 import ru.tinkoff.kora.ksp.common.parseMappingData
@@ -64,7 +65,6 @@ class LogKoraAspect : KoraAspect {
         return KoraAspect.ApplyResult.MethodBody(result.build())
     }
 
-
     private fun CodeBlock.Builder.generateInputLog(aspectContext: KoraAspect.AspectContext, loggerName: String, function: KSFunctionDeclaration) {
         val inLogLevel = function.inLogLevel()
         if (inLogLevel == null) {
@@ -88,6 +88,7 @@ class LogKoraAspect : KoraAspect {
                 maxOf(parameterLogLevel, inLogLevel)
             }
             .toSortedMap()
+
         val minimalParametersLogLevel = parametersByLevel.minOf { it.key }
         controlFlow("if (%N.%N())", loggerName, minimalParametersLogLevel.isEnabledMethod()) {
             controlFlow("val %N = %T.marker(%S) { gen -> ", DATA_IN_FIELD_NAME, structuredArgument, DATA_PARAMETER_NAME) {
@@ -140,7 +141,7 @@ class LogKoraAspect : KoraAspect {
         }
 
         val resultLogLevel = function.resultLogLevel()
-        if (resultLogLevel == null) {
+        if (resultLogLevel == null || function.isVoid()) {
             logOutput()
             addStatement("return %N", RESULT_FIELD_NAME)
             return
