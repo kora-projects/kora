@@ -22,11 +22,16 @@ object CommonAopUtils {
         } else {
             b.superclass(type.toClassName())
         }
+
+        if(hasAopAnnotations(type)) {
+            b.addModifiers(KModifier.OPEN)
+        } else {
+            b.addModifiers(KModifier.FINAL)
+        }
+
         for (annotationMirror in type.annotations) {
             if (isAopAnnotation(annotationMirror)) {
-                b.addModifiers(KModifier.OPEN)
                 b.addAnnotation(annotationMirror.annotationType.resolve().toClassName())
-                b.addModifiers(KModifier.OPEN)
             }
         }
         return b
