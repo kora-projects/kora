@@ -3,18 +3,17 @@ package ru.tinkoff.kora.http.server.undertow.request;
 import io.undertow.server.Connectors;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.Headers;
+import io.undertow.util.SameThreadExecutor;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.common.util.flow.ErrorSubscription;
-import ru.tinkoff.kora.common.util.flow.SingleSubscription;
 import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow.Subscriber;
@@ -22,25 +21,14 @@ import java.util.concurrent.Flow.Subscriber;
 public final class UndertowRequestHttpBody implements HttpBodyInput {
     private final Context context;
     private final HttpServerExchange exchange;
-    private byte[] firstData;
-    private byte[] secondData;
 
-    public UndertowRequestHttpBody(Context context, HttpServerExchange exchange) {
+    @Nullable
+    private Queue<byte[]> prefetchedData;
+
+    public UndertowRequestHttpBody(Context context, HttpServerExchange exchange, @Nullable Queue<byte[]> prefetchedData) {
         this.context = context;
         this.exchange = exchange;
-    }
-
-    public UndertowRequestHttpBody(Context context, HttpServerExchange exchange, byte[] firstData) {
-        this.context = context;
-        this.exchange = exchange;
-        this.firstData = Objects.requireNonNull(firstData);
-    }
-
-    public UndertowRequestHttpBody(Context context, HttpServerExchange exchange, byte[] firstData, byte[] secondData) {
-        this.context = context;
-        this.exchange = exchange;
-        this.firstData = Objects.requireNonNull(firstData);
-        this.secondData = Objects.requireNonNull(secondData);
+        this.prefetchedData = prefetchedData;
     }
 
     @Override
@@ -58,51 +46,41 @@ public final class UndertowRequestHttpBody implements HttpBodyInput {
     @Override
     public void subscribe(Subscriber<? super ByteBuffer> s) {
         var exchange = this.exchange;
-        var firstData = this.firstData;
-        if (firstData != null) {
-            var secondData = this.secondData;
-            var subscription = new UndertowRequestHttpBodySubscription2(s, exchange, firstData, secondData);
+
+        Queue<byte[]> prefetched = this.prefetchedData;
+        if (prefetched != null && !prefetched.isEmpty()) {
+            var subscription = new UndertowRequestHttpBodySubscription(s, exchange, prefetched);
+            this.prefetchedData = null;
             s.onSubscribe(subscription);
-            this.firstData = null;
-            this.secondData = null;
             return;
         }
+
         try (var pooled = exchange.getConnection().getByteBufferPool().allocate()) {
             var buffer = pooled.getBuffer();
             buffer.clear();
             Connectors.resetRequestChannel(exchange);
             var channel = exchange.getRequestChannel();
             Connectors.resetRequestChannel(exchange);
+
+            prefetched = new LinkedList<>();
+
             var res = channel.read(buffer);
             if (res == -1) {
                 FlowUtils.<ByteBuffer>empty(context).subscribe(s);
                 return;
-            } else if (res == 0) {
-                var subscription = new UndertowRequestHttpBodySubscription0(s, exchange);
-                s.onSubscribe(subscription);
-                return;
             }
-            buffer.flip();
-            firstData = new byte[buffer.remaining()];
-            buffer.get(firstData);
-            buffer.clear();
 
-            res = channel.read(buffer);
-            if (res == 0) {
-                var subscription = new UndertowRequestHttpBodySubscription2(s, exchange, firstData, null);
-                s.onSubscribe(subscription);
-                return;
+            while (res > 0) {
+                buffer.flip();
+                var data = new byte[buffer.remaining()];
+                buffer.get(data);
+                buffer.clear();
+                prefetched.add(data);
+                res = channel.read(buffer);
             }
-            if (res < 0) {
-                s.onSubscribe(new SingleSubscription<>(s, context, ByteBuffer.wrap(firstData)));
-                return;
-            }
-            buffer.flip();
-            var secondData = new byte[buffer.remaining()];
-            buffer.get(secondData);
-            var subscription = new UndertowRequestHttpBodySubscription2(s, exchange, firstData, secondData);
+
+            var subscription = new UndertowRequestHttpBodySubscription(s, exchange, prefetched);
             s.onSubscribe(subscription);
-            return;
         } catch (IOException e) {
             var subscription = new ErrorSubscription<>(s, context, e);
             s.onSubscribe(subscription);
@@ -134,24 +112,19 @@ public final class UndertowRequestHttpBody implements HttpBodyInput {
         var future = new CompletableFuture<ByteBuffer>();
         exchange.getRequestReceiver().receiveFullBytes(
             (ex, message) -> {
-                var fd = this.firstData;
-                var sd = this.secondData;
-                if (fd == null) {
-                    future.complete(ByteBuffer.wrap(message));
-                    return;
-                }
-                if (sd == null) {
-                    var result = Arrays.copyOf(fd, fd.length + message.length);
-                    System.arraycopy(message, 0, result, fd.length, message.length);
+                ex.dispatch(SameThreadExecutor.INSTANCE, () -> {
+                    var prefetched = this.prefetchedData;
+                    if (prefetched == null || prefetchedData.isEmpty()) {
+                        future.complete(ByteBuffer.wrap(message));
+                        return;
+                    }
+                    this.prefetchedData = null;
+
+                    var result = buildArray(prefetched, message);
                     future.complete(ByteBuffer.wrap(result));
-                    return;
-                }
-                var result = Arrays.copyOf(fd, fd.length + sd.length + message.length);
-                System.arraycopy(sd, 0, result, fd.length, sd.length);
-                System.arraycopy(message, 0, result, fd.length + sd.length, message.length);
-                future.complete(ByteBuffer.wrap(result));
+                });
             },
-            (ex, error) -> future.completeExceptionally(error)
+            (ex, error) -> ex.dispatch(SameThreadExecutor.INSTANCE, () -> future.completeExceptionally(error))
         );
         return future;
     }
@@ -162,25 +135,40 @@ public final class UndertowRequestHttpBody implements HttpBodyInput {
         var future = new CompletableFuture<byte[]>();
         exchange.getRequestReceiver().receiveFullBytes(
             (ex, message) -> {
-                var fd = this.firstData;
-                var sd = this.secondData;
-                if (fd == null) {
-                    future.complete(message);
-                    return;
-                }
-                if (sd == null) {
-                    var result = Arrays.copyOf(fd, fd.length + message.length);
-                    System.arraycopy(message, 0, result, fd.length, message.length);
+                ex.dispatch(SameThreadExecutor.INSTANCE, () -> {
+                    var prefetched = this.prefetchedData;
+                    if (prefetched == null || prefetchedData.isEmpty()) {
+                        future.complete(message);
+                        return;
+                    }
+                    this.prefetchedData = null;
+
+                    var result = buildArray(prefetched, message);
                     future.complete(result);
-                    return;
-                }
-                var result = Arrays.copyOf(fd, fd.length + sd.length + message.length);
-                System.arraycopy(sd, 0, result, fd.length, sd.length);
-                System.arraycopy(message, 0, result, fd.length + sd.length, message.length);
-                future.complete(result);
+                });
             },
-            (ex, error) -> future.completeExceptionally(error)
+            (ex, error) -> ex.dispatch(SameThreadExecutor.INSTANCE, () -> future.completeExceptionally(error))
         );
         return future;
+    }
+
+    private byte[] buildArray(Queue<byte[]> prefetched, byte[] message) {
+        var all = new ArrayList<byte[]>();
+        var size = message.length;
+        while (!prefetched.isEmpty()) {
+            var data = prefetched.poll();
+            all.add(data);
+            size += data.length;
+        }
+
+        all.add(message);
+
+        var result = new byte[size];
+        var pos = 0;
+        for (byte[] bytes : all) {
+            System.arraycopy(bytes, 0, result, pos, bytes.length);
+            pos += bytes.length;
+        }
+        return result;
     }
 }

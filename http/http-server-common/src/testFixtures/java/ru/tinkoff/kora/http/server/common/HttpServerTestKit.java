@@ -4,10 +4,7 @@ import jakarta.annotation.Nullable;
 import okhttp3.*;
 import okio.BufferedSink;
 import org.jetbrains.annotations.NotNull;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.*;
 import org.mockito.AdditionalMatchers;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
@@ -38,6 +35,7 @@ import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.common.header.MutableHttpHeaders;
 import ru.tinkoff.kora.http.server.common.$HttpServerConfig_ConfigValueExtractor.HttpServerConfig_Impl;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
+import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
 import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
 import ru.tinkoff.kora.http.server.common.telemetry.*;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
@@ -799,9 +797,10 @@ public abstract class HttpServerTestKit {
             executor.submit(() -> {
                 try (var is = new ByteBufferPublisherInputStream(request.body())) {
                     var data = is.readAllBytes();
-                    org.junit.jupiter.api.Assertions.assertTrue(data.length == size);
+                    Assertions.assertEquals(data.length, size);
                     sink.success(httpResponse);
-                } catch (IOException e) {
+                } catch (Throwable e) {
+                    e.printStackTrace();
                     sink.error(e);
                 }
             });
@@ -818,8 +817,75 @@ public abstract class HttpServerTestKit {
         try (var response = client.newCall(request).execute()) {
             assertThat(response.code()).isEqualTo(200);
             assertThat(response.body().string()).isEqualTo("hello world");
+        } finally {
+            executor.shutdown();
         }
-        executor.shutdown();
+
+    }
+
+    @Test
+    void testSyncByteArrayRequestMapper() throws IOException {
+        var module = new HttpServerRequestMapperModule() {};
+        var mapper = module.byteArrayRequestMapper();
+
+        testByteArrayMapper(mapper);
+    }
+
+    @Test
+    void testAsyncByteArrayRequestMapper() throws IOException {
+        var module = new HttpServerRequestMapperModule() {};
+        var mapper = module.byteArrayAsyncRequestMapper();
+
+        var syncWrapper = new HttpServerRequestMapper<byte[]>() {
+            @Override
+            public byte[] apply(HttpServerRequest request) throws Exception {
+                return mapper.apply(request).toCompletableFuture().get();
+            }
+        };
+
+        testByteArrayMapper(syncWrapper);
+    }
+
+    private void testByteArrayMapper(HttpServerRequestMapper<byte[]> mapper) throws IOException {
+        var httpResponse = HttpServerResponse.of(200, HttpBody.plaintext("hello world"));
+        var executor = Executors.newSingleThreadExecutor();
+        var size = 2 * 1024 * 1024;
+        var body = new ConcurrentLinkedDeque<byte[]>();
+        for (int i = 0; i < 5; i++) {
+            var buf = new byte[size];
+            ThreadLocalRandom.current().nextBytes(buf);
+            body.add(buf);
+        }
+        var handler = handler(POST, "/", request -> Mono.create(sink -> {
+            executor.submit(() -> {
+                try {
+                    var data = mapper.apply(request);
+                    var expectedData = body.pollFirst();
+                    Assertions.assertArrayEquals(data, expectedData);
+                    sink.success(httpResponse);
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                    sink.error(e);
+                }
+            });
+        }));
+
+        this.startServer(handler);
+        try {
+            byte[] buf;
+            while ((buf = body.peek()) != null) {
+                var request = request("/")
+                    .post(RequestBody.create(buf))
+                    .build();
+
+                try (var response = client.newCall(request).execute()) {
+                    assertThat(response.code()).isEqualTo(200);
+                    assertThat(response.body().string()).isEqualTo("hello world");
+                }
+            }
+        } finally {
+            executor.shutdown();
+        }
     }
 
     @Test
