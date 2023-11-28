@@ -1393,6 +1393,16 @@ public class KoraCodegen extends DefaultCodegen {
                 var response = op.responses.get(i);
                 response.vendorExtensions.put("hasMore", true);
             }
+            for (var response : op.responses) {
+                if (response.isBinary) {
+                    var i = response.getContent().keySet().iterator();
+                    if (i.hasNext()) {
+                        response.vendorExtensions.put("contentType", i.next());
+                    } else {
+                        response.vendorExtensions.put("contentType", "application/octet-stream");
+                    }
+                }
+            }
             op.vendorExtensions.put("singleResponse", op.responses.size() == 1);
             for (var response : op.responses) {
                 response.vendorExtensions.put("singleResponse", op.responses.size() == 1);

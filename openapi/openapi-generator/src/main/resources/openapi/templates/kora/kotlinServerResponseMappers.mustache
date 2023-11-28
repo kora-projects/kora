@@ -7,6 +7,7 @@ import ru.tinkoff.kora.http.server.common.HttpServerResponse
 import ru.tinkoff.kora.http.server.common.SimpleHttpServerResponse
 import ru.tinkoff.kora.http.common.HttpResponseEntity
 import ru.tinkoff.kora.http.common.header.HttpHeaders
+import ru.tinkoff.kora.http.common.body.HttpBody
 import ru.tinkoff.kora.common.Context
 import {{package}}.{{classname}}Responses.*
 
@@ -40,13 +41,14 @@ interface {{classname}}ServerResponseMappers {
 {{/vendorExtensions.singleResponse}}
           val headers = HttpHeaders.of(){{#headers}}
           headers.set("{{baseName}}", rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}});{{/headers}}
-          {{^dataType}}
+          {{#isBinary}}
+          return HttpServerResponse.of({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, HttpBody.of(ctx, "{{{vendorExtensions.contentType}}}", rs.content));
+          {{/isBinary}}{{^isBinary}}{{^dataType}}
           return HttpServerResponse.of({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers)
-          {{/dataType}}
-          {{#dataType}}
+          {{/dataType}}{{#dataType}}
           val entity = HttpResponseEntity.of({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, rs.content)
           return response{{code}}Delegate.apply(ctx, rq, entity)
-          {{/dataType}}{{^vendorExtensions.singleResponse}}
+          {{/dataType}}{{/isBinary}}{{^vendorExtensions.singleResponse}}
         }{{/vendorExtensions.singleResponse}}
       {{/responses}}{{^vendorExtensions.singleResponse}}
       }{{/vendorExtensions.singleResponse}}

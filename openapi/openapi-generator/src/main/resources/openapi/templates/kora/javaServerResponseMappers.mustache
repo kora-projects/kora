@@ -4,6 +4,7 @@ import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.common.HttpResponseEntity;
+import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.common.Context;
 
@@ -47,18 +48,15 @@ public interface {{classname}}ServerResponseMappers {
       var rs = response;{{/vendorExtensions.singleResponse}}
         var headers = HttpHeaders.of();{{#headers}}
         headers.set("{{baseName}}", rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}());{{/headers}}
-        {{^dataType}}
-        return HttpServerResponse.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers);
-        {{/dataType}}
-        {{#dataType}}
+        {{#isBinary}}
+        return HttpServerResponse.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, HttpBody.of(ctx, "{{{vendorExtensions.contentType}}}", rs.content()));{{/isBinary}}{{^isBinary}}{{^dataType}}
+        return HttpServerResponse.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers);{{/dataType}}{{#dataType}}
         var entity = HttpResponseEntity.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, rs.content());
-        return this.response{{code}}Delegate.apply(ctx, request, entity);
-        {{/dataType}}
-        {{^vendorExtensions.singleResponse}}
-        }{{/vendorExtensions.singleResponse}}{{/responses}}
-        {{^vendorExtensions.singleResponse}}
-        throw new IllegalStateException();
-        {{/vendorExtensions.singleResponse}}
+        return this.response{{code}}Delegate.apply(ctx, request, entity);{{/dataType}}{{/isBinary}}{{^vendorExtensions.singleResponse}}
+      }{{/vendorExtensions.singleResponse}}{{/responses}}
+      {{^vendorExtensions.singleResponse}}
+      throw new IllegalStateException();
+      {{/vendorExtensions.singleResponse}}
     }
   }
 
