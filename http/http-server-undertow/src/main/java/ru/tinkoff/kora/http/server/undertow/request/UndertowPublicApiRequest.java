@@ -11,10 +11,7 @@ import ru.tinkoff.kora.http.server.common.router.PublicApiRequest;
 import ru.tinkoff.kora.http.server.undertow.UndertowHttpHeaders;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Predicate;
 
 public class UndertowPublicApiRequest implements PublicApiRequest {
@@ -96,36 +93,67 @@ public class UndertowPublicApiRequest implements PublicApiRequest {
             return HttpBody.empty();
         }
         if (!exchange.isInIoThread()) {
-            return new UndertowRequestHttpBody(context, exchange);
+            return new UndertowRequestHttpBody(context, exchange, null);
         }
         try (var pooled = exchange.getConnection().getByteBufferPool().allocate()) {
             var buffer = pooled.getBuffer();
             buffer.clear();
             Connectors.resetRequestChannel(exchange);
             var channel = exchange.getRequestChannel();
+
             var res = channel.read(buffer);
             if (res == -1) {
                 return HttpBody.empty();
             } else if (res == 0) {
-                return new UndertowRequestHttpBody(context, exchange);
+                return new UndertowRequestHttpBody(context, exchange, null);
             }
+            // fast path for single buffer requests
             buffer.flip();
-            var firstData = new byte[buffer.remaining()];
-            buffer.get(firstData);
+            var data = new byte[res];
+            buffer.get(data);
             buffer.clear();
 
             res = channel.read(buffer);
-            if (res == 0) {
-                return new UndertowRequestHttpBody(context, exchange, firstData);
+            if (res == -1) {
+                var contentType = exchange.getRequestHeaders().getFirst(Headers.CONTENT_TYPE);
+                return HttpBody.of(context, contentType, data);
             }
+            // slower path for multiple buffer requests that has not arrived yet
+            if (res == 0) {
+                var prefetched = new LinkedList<byte[]>();
+                prefetched.add(data);
+                return new UndertowRequestHttpBody(context, exchange, prefetched);
+            }
+
+            // slow path with linked list for multiple buffer requests
+            var prefetched = new LinkedList<byte[]>();
+            prefetched.add(data);
+            var len = data.length;
+
+            while (res > 0) {
+                buffer.flip();
+                data = new byte[res];
+                len += res;
+                buffer.get(data);
+                buffer.clear();
+                prefetched.add(data);
+                res = channel.read(buffer);
+            }
+
             if (res < 0) {
                 var contentType = exchange.getRequestHeaders().getFirst(Headers.CONTENT_TYPE);
-                return HttpBody.of(context, contentType, firstData);
+                data = new byte[len];
+                var pos = 0;
+
+                for (var bytes : prefetched) {
+                    System.arraycopy(bytes, 0, data, pos, bytes.length);
+                    pos += bytes.length;
+                }
+
+                return HttpBody.of(context, contentType, data);
             }
-            buffer.flip();
-            var secondData = new byte[buffer.remaining()];
-            buffer.get(secondData);
-            return new UndertowRequestHttpBody(context, exchange, firstData, secondData);
+
+            return new UndertowRequestHttpBody(context, exchange, prefetched);
         }
     }
 }

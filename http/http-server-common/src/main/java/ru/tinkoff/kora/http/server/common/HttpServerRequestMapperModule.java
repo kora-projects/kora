@@ -48,7 +48,7 @@ public interface HttpServerRequestMapperModule {
                 full.get(array);
                 return CompletableFuture.completedFuture(array);
             }
-            return FlowUtils.toByteArrayFuture(request.body());
+            return request.body().asArrayStage();
         };
     }
 
@@ -63,7 +63,14 @@ public interface HttpServerRequestMapperModule {
                 full.get(array);
                 return array;
             }
-            return FlowUtils.toByteArrayFuture(request.body()).join();
+
+            try (var is = request.body().asInputStream()) {
+                if (is != null) {
+                    return is.readAllBytes();
+                }
+            }
+
+            return request.body().asArrayStage().toCompletableFuture().join();
         };
     }
 
