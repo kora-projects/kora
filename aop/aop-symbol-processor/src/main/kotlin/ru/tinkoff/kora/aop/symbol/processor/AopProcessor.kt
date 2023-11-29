@@ -100,6 +100,7 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
         val typeBuilder: TypeSpec.Builder = TypeSpec.classBuilder(aopProxyName(classDeclaration))
             .superclass(classDeclaration.toClassName())
             .addModifiers(KModifier.PUBLIC, KModifier.FINAL)
+            .addAnnotation(CommonClassNames.aopProxy)
 
         classDeclaration.parseTags().let { tags ->
             if (tags.isNotEmpty()) {

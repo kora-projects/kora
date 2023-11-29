@@ -152,7 +152,8 @@ public class AopProcessor {
 
         var typeBuilder = TypeSpec.classBuilder(AopUtils.aopProxyName(typeElement))
             .superclass(typeElement.asType())
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addAnnotation(CommonClassNames.aopProxy);
 
         var tag = TagUtils.parseTagValue(typeElement);
         if (tag != null && !tag.isEmpty()) {

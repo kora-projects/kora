@@ -16,6 +16,7 @@ public class CommonClassNames {
 
     public static final ClassName root = ClassName.get("ru.tinkoff.kora.common.annotation", "Root");
     public static final ClassName aopAnnotation = ClassName.get("ru.tinkoff.kora.common", "AopAnnotation");
+    public static final ClassName aopProxy = ClassName.get("ru.tinkoff.kora.common", "AopProxy");
     public static final ClassName mapping = ClassName.get("ru.tinkoff.kora.common", "Mapping");
     public static final ClassName mappings = ClassName.get("ru.tinkoff.kora.common", "Mapping", "Mappings");
     public static final ClassName namingStrategy = ClassName.get("ru.tinkoff.kora.common", "NamingStrategy");

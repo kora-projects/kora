@@ -341,4 +341,19 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
         assertThat(clazz).isNotNull()
         clazz.getConstructor(KafkaProducerTelemetryFactory::class.java, TelemetryConfig::class.java, Properties::class.java, compileResult.loadClass("\$TestProducer_TopicConfig"), Serializer::class.java)
     }
+
+    @Test
+    fun testAop() {
+        compile0(
+            """
+            @KafkaPublisher("test")
+            interface TestProducer {
+              @Topic("test.sendTopic")
+              @ru.tinkoff.kora.logging.common.annotation.Log
+              fun send(value: String)
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+    }
 }

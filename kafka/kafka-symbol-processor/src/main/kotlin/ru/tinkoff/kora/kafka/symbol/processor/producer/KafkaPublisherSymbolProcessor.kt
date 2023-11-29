@@ -7,13 +7,18 @@ import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.ANY
+import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
+import ru.tinkoff.kora.ksp.common.CommonAopUtils
+import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
+import ru.tinkoff.kora.ksp.common.generatedClassName
 
 class KafkaPublisherSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbolProcessor(env) {
 
@@ -30,6 +35,32 @@ class KafkaPublisherSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseS
                 deferred.add(it)
             }
         }
+        for (aopProxy in resolver.getSymbolsWithAnnotation(CommonClassNames.aopProxy.canonicalName)) {
+            if (aopProxy is KSClassDeclaration) {
+                val proxySupertype = aopProxy.superTypes.firstOrNull() ?: continue
+                val proxySupertypeDecl = proxySupertype.resolve().declaration
+                if (proxySupertypeDecl !is KSClassDeclaration) continue
+                for (publisher in proxySupertypeDecl.superTypes) {
+                    val publisherDeclaration = publisher.resolve().declaration as KSClassDeclaration
+                    if (CommonAopUtils.hasAopAnnotations(publisherDeclaration)) {
+                        val annotation = publisherDeclaration.findAnnotation(KafkaClassNames.kafkaPublisherAnnotation)!!
+                        val publishMethods = publisherDeclaration.getAllFunctions()
+                            .filter { it.findOverridee()?.parentDeclaration?.qualifiedName?.asString() != "kotlin.Any" }
+                            .toList()
+
+                        val topicConfig = if (publishMethods.any { it.isAnnotationPresent(KafkaClassNames.kafkaTopicAnnotation) }) {
+                            ClassName(publisherDeclaration.packageName.asString(), publisherDeclaration.generatedClassName("TopicConfig"))
+                        } else {
+                            null
+                        }
+                        publisherGenerator.generatePublisherModule(publisherDeclaration, publishMethods, annotation, topicConfig, aopProxy)
+
+                    }
+                }
+
+            }
+        }
+
 
         for (producer in producers) {
             if (producer !is KSClassDeclaration || producer.classKind != ClassKind.INTERFACE) {
@@ -45,7 +76,11 @@ class KafkaPublisherSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseS
                         .toList()
                     val topicConfig = publisherGenerator.generateConfig(producer, publishMethods)
                     publisherGenerator.generatePublisherImpl(producer, publishMethods, topicConfig)
-                    publisherGenerator.generatePublisherModule(producer, publishMethods, annotation, topicConfig)
+
+                    // we'll generate module after aop proxy generated
+                    if (!CommonAopUtils.hasAopAnnotations(producer)) {
+                        publisherGenerator.generatePublisherModule(producer, publishMethods, annotation, topicConfig, null)
+                    }
                     continue
                 }
                 if (supertypes.size > 1) {

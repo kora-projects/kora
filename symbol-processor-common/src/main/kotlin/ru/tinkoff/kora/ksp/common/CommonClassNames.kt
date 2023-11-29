@@ -24,6 +24,7 @@ object CommonClassNames {
 
     val context = ClassName("ru.tinkoff.kora.common", "Context")
     val aopAnnotation = ClassName("ru.tinkoff.kora.common", "AopAnnotation")
+    val aopProxy = ClassName("ru.tinkoff.kora.common", "AopProxy")
     val mapping = ClassName("ru.tinkoff.kora.common", "Mapping")
     val mappings = ClassName("ru.tinkoff.kora.common", "Mapping", "Mappings")
     val namingStrategy = ClassName("ru.tinkoff.kora.common", "NamingStrategy")

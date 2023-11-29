@@ -1,5 +1,7 @@
 package ru.tinkoff.kora.kafka.symbol.processor.producer
 
+import com.google.devtools.ksp.getConstructors
+import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSAnnotation
@@ -8,10 +10,7 @@ import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.jvm.volatile
-import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
-import com.squareup.kotlinpoet.ksp.toClassName
-import com.squareup.kotlinpoet.ksp.toTypeName
-import com.squareup.kotlinpoet.ksp.writeTo
+import com.squareup.kotlinpoet.ksp.*
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.kafkaTopicAnnotation
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.producerRecord
@@ -30,6 +29,7 @@ import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
+import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.generatedClassName
 import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
@@ -37,7 +37,7 @@ import java.util.function.Function
 
 class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver: Resolver) {
 
-    fun generatePublisherModule(publisher: KSClassDeclaration, publishMethods: List<KSFunctionDeclaration>, publisherAnnotation: KSAnnotation, topicConfig: ClassName?) {
+    fun generatePublisherModule(publisher: KSClassDeclaration, publishMethods: List<KSFunctionDeclaration>, publisherAnnotation: KSAnnotation, topicConfig: ClassName?, aopProxy: KSClassDeclaration?) {
         val packageName = publisher.packageName.asString()
         val moduleName = publisher.generatedClassName("PublisherModule")
         val module = TypeSpec.interfaceBuilder(moduleName)
@@ -45,7 +45,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
             .addAnnotation(CommonClassNames.module)
             .generated(KafkaPublisherGenerator::class)
 
-        module.addFunction(this.buildPublisherFactoryFunction(publisher, publishMethods, topicConfig))
+        module.addFunction(this.buildPublisherFactoryFunction(publisher, publishMethods, topicConfig, aopProxy))
         module.addFunction(this.buildPublisherFactoryImpl(publisher))
         module.addFunction(this.buildPublisherConfig(publisher, publisherAnnotation))
         topicConfig?.let {
@@ -117,7 +117,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
             .build()
     }
 
-    private fun buildPublisherFactoryFunction(publisher: KSClassDeclaration, publishMethods: List<KSFunctionDeclaration>, topicConfig: ClassName?): FunSpec {
+    private fun buildPublisherFactoryFunction(publisher: KSClassDeclaration, publishMethods: List<KSFunctionDeclaration>, topicConfig: ClassName?, aopProxy: KSClassDeclaration?): FunSpec {
         val propertiesTag = AnnotationSpec.builder(CommonClassNames.tag).addMember("%T::class", publisher.toClassName()).build()
         val config = ParameterSpec.builder("config", KafkaClassNames.publisherConfig).addAnnotation(propertiesTag).build()
         val packageName = publisher.packageName.asString()
@@ -139,7 +139,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
             addStatement("var properties = %T()", Properties::class.asClassName())
             addStatement("properties.putAll(config.driverProperties())")
             addStatement("properties.putAll(additionalProperties)")
-            add("%T(telemetryFactory, config.telemetry(), properties", implementationTypeName).indent()
+            add("%T(telemetryFactory, config.telemetry(), properties", aopProxy?.toClassName() ?: implementationTypeName).indent()
             topicConfig?.let { add(", topicConfig") }
             val parameters = HashMap<TypeWithTag, String>()
             val counter = AtomicInteger(0)
@@ -172,6 +172,20 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                     funBuilder.addParameter(parameter.build())
                     parameters[valueType] = valueParserName
                     add(", %N", valueParserName)
+                }
+            }
+
+            if (aopProxy != null) {
+                val constructor = aopProxy.getConstructors().filter { it.isPublic() }.firstOrNull() ?: throw ProcessingErrorException("Can't find aop proxy constructor", aopProxy)
+                val baseParams = 3 + counter.get() + (topicConfig?.let { 1 } ?: 0)
+                for (i in baseParams until constructor.parameters.size) {
+                    val param = constructor.parameters[i]
+                    val b = ParameterSpec.builder(param.name!!.asString(), param.type.toTypeName())
+                    for (annotation in param.annotations) {
+                        b.addAnnotation(annotation.toAnnotationSpec())
+                    }
+                    funBuilder.addParameter(b.build())
+                    add(", %N", param.name!!.asString())
                 }
             }
             builder.unindent().add("\n)\n")
