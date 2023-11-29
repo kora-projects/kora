@@ -149,7 +149,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
 
             library('commons.codec', 'commons-codec', 'commons-codec').version('1.16.0')
 
-            library('openapi-generator', 'org.openapitools', 'openapi-generator').version('7.0.1')
+            library('openapi-generator', 'org.openapitools', 'openapi-generator').version('7.1.0')
             library('swagger-core', 'io.swagger.core.v3', 'swagger-core').versionRef("swagger")
             library('swagger-annotations', 'io.swagger.core.v3', 'swagger-annotations').versionRef("swagger")
             library('swagger-models', 'io.swagger.core.v3', 'swagger-models').versionRef("swagger")
