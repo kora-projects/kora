@@ -21,6 +21,10 @@ components:
       title: ValidationErrorDto
       type: object
       properties:
+        fieldNonRequired:
+          type: string
+        fieldRequired:
+          type: string
         type:
           type: string
       discriminator:
@@ -29,6 +33,8 @@ components:
           'Block.Error1': '#/components/schemas/BlockValidationErrorDto'
           'Block.Error2': '#/components/schemas/BlockValidationErrorDto'
           'Prop.Error': '#/components/schemas/PropValidationErrorDto'
+      required:
+        - fieldRequired
 
     PropValidationErrorDto:
       title: PropValidationErrorDto
