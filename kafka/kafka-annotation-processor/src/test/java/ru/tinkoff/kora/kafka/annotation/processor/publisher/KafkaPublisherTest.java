@@ -3,6 +3,7 @@ package ru.tinkoff.kora.kafka.annotation.processor.publisher;
 import org.apache.kafka.common.serialization.Serializer;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest;
+import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.kafka.annotation.processor.producer.KafkaPublisherAnnotationProcessor;
 import ru.tinkoff.kora.kafka.common.producer.KafkaPublisherConfig;
@@ -295,5 +296,17 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         var clazz = this.compileResult.loadClass("$TestProducer_Impl");
         assertThat(clazz).isNotNull();
         clazz.getConstructor(KafkaProducerTelemetryFactory.class, TelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
+    }
+
+    @Test
+    public void kafkaPublisherWithAop() throws Exception {
+        compile(List.of(new KafkaPublisherAnnotationProcessor(), new AopAnnotationProcessor()), """
+            @KafkaPublisher("test")
+            public interface TestProducer {
+              @ru.tinkoff.kora.logging.common.annotation.Log
+              @Topic("test.sendTopic")
+              void send(Long key, String value);
+            }
+            """);
     }
 }

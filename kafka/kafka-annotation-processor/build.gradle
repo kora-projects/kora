@@ -1,8 +1,13 @@
 dependencies {
-    api project(':annotation-processor-common')
+    implementation project(':annotation-processor-common')
+    implementation project(':kora-app-annotation-processor')
 
     testImplementation project(':kafka:kafka')
     testImplementation project(':config:config-common')
+
+    testImplementation project(':logging:logging-common')
+    testImplementation project(':aop:aop-annotation-processor')
+    testImplementation project(':logging:declarative-logging:declarative-logging-annotation-processor')
     testImplementation testFixtures(project(':annotation-processor-common'))
 }
 

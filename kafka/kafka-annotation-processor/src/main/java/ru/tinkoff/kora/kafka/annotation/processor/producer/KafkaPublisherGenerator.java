@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.kafka.annotation.processor.producer;
 
 import com.squareup.javapoet.*;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames;
 import ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaPublisherUtils;
@@ -36,7 +37,7 @@ final class KafkaPublisherGenerator {
         this.processingEnv = processingEnv;
     }
 
-    public void generatePublisherModule(TypeElement typeElement, List<ExecutableElement> publishMethods, AnnotationMirror publisherAnnotation) throws IOException {
+    public void generatePublisherModule(TypeElement typeElement, List<ExecutableElement> publishMethods, AnnotationMirror publisherAnnotation, @Nullable TypeElement aopProxy) throws IOException {
         var packageName = this.elements.getPackageOf(typeElement).getQualifiedName().toString();
         var moduleName = NameUtils.generatedType(typeElement, "PublisherModule");
         var module = TypeSpec.interfaceBuilder(moduleName)
@@ -46,7 +47,7 @@ final class KafkaPublisherGenerator {
             .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
                 .addMember("value", "$S", KafkaPublisherAnnotationProcessor.class.getCanonicalName()).build());
 
-        module.addMethod(this.buildPublisherFactoryFunction(typeElement, publishMethods));
+        module.addMethod(this.buildPublisherFactoryFunction(typeElement, publishMethods, aopProxy));
         module.addMethod(this.buildPublisherFactoryImpl(typeElement));
         module.addMethod(this.buildProducerConfigMethod(typeElement, publisherAnnotation));
         module.addMethod(this.buildTopicConfigMethod(typeElement, publishMethods, publisherAnnotation));
@@ -83,7 +84,7 @@ final class KafkaPublisherGenerator {
         return builder.build();
     }
 
-    private MethodSpec buildPublisherFactoryFunction(TypeElement publisher, List<ExecutableElement> publishMethods) {
+    private MethodSpec buildPublisherFactoryFunction(TypeElement publisher, List<ExecutableElement> publishMethods, @Nullable TypeElement aopProxy) {
         var propertiesTag = AnnotationSpec.builder(CommonClassNames.tag).addMember("value", "$T.class", publisher).build();
         var config = ParameterSpec.builder(KafkaClassNames.publisherConfig, "config").addAnnotation(propertiesTag).build();
         var packageName = this.elements.getPackageOf(publisher).getQualifiedName().toString();
@@ -102,7 +103,7 @@ final class KafkaPublisherGenerator {
         builder.addStatement("var properties = new $T()", Properties.class);
         builder.addStatement("properties.putAll(config.driverProperties())");
         builder.addStatement("properties.putAll(additionalProperties)");
-        builder.addCode("return new $T(telemetryFactory, config.telemetry(), properties, topicConfig$>", implementationName);
+        builder.addCode("return new $T(telemetryFactory, config.telemetry(), properties, topicConfig$>", aopProxy == null ? implementationName : ClassName.get(aopProxy));
 
         record TypeWithTag(TypeName typeName, Set<String> tag) {}
         var parameters = new HashMap<TypeWithTag, String>();
@@ -138,7 +139,25 @@ final class KafkaPublisherGenerator {
                 builder.addCode(", $N", valueParserName);
             }
         }
-        builder.addCode("$<\n);$<\n");
+        builder.addCode("$<\n");
+        if (aopProxy != null) {
+            var constructors = CommonUtils.findConstructors(aopProxy, m -> m.contains(Modifier.PUBLIC));
+            if (constructors.size() != 1) {
+                throw new ProcessingErrorException("Can't find aop proxy constructor", aopProxy);
+            }
+            var constructor = constructors.get(0);
+            for (int i = 4 + counter.get(); i < constructor.getParameters().size(); i++) {
+                var param = constructor.getParameters().get(i);
+                var b = ParameterSpec.builder(TypeName.get(param.asType()), param.getSimpleName().toString());
+                for (var annotationMirror : param.getAnnotationMirrors()) {
+                    b.addAnnotation(AnnotationSpec.get(annotationMirror));
+                }
+
+                builder.addParameter(b.build());
+                builder.addCode(", $N", param.getSimpleName());
+            }
+        }
+        builder.addCode(");$<\n");
         builder.addCode("};\n");
         return builder.build();
     }

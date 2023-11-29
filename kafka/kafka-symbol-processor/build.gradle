@@ -5,8 +5,12 @@ dependencies {
 
     testImplementation project(':kafka:kafka')
     testImplementation project(':config:config-common')
+    testImplementation project(':logging:logging-common')
+    testImplementation project(':aop:aop-symbol-processor')
+    testImplementation project(':logging:declarative-logging:declarative-logging-symbol-processor')
+
     testImplementation testFixtures(project(':symbol-processor-common'))
-    testImplementation(libs.kotlin.coroutines.reactor)
+    testImplementation(libs.kotlin.coroutines.jdk8)
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
