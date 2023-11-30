@@ -80,12 +80,33 @@ paths:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/Pet"
-                default:
-                    description: unexpected error
-                    content:
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/Error"
+    /pets/{petId}/photo:
+      get:
+        summary: Photo of a specific pet
+        operationId: petPhotoById
+        tags:
+          - pets
+        parameters:
+          - name: petId
+            in: path
+            required: true
+            description: The id of the pet to retrieve
+            schema:
+              type: string
+        responses:
+          '200':
+            description: Expected response to a valid request
+            content:
+              image/jpeg:
+                schema:
+                  type: string
+                  format: binary
+          default:
+            description: unexpected error
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/Error"
 components:
     schemas:
         Pet:

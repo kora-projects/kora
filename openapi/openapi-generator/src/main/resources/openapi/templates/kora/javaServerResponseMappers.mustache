@@ -48,13 +48,16 @@ public interface {{classname}}ServerResponseMappers {
           java.util.Map.entry("{{baseName}}", java.util.List.of(rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}())){{^-last}},{{/-last}}
         {{/headers}}
         );
+        {{#isBinary}}
+        return Mono.just(new SimpleHttpServerResponse({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, "{{{vendorExtensions.contentType}}}", headers, java.nio.ByteBuffer.wrap(rs.content())));
+        {{/isBinary}}{{^isBinary}}
         {{^dataType}}
         return Mono.just(new SimpleHttpServerResponse({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, "application/octet-stream", headers, null));
         {{/dataType}}
         {{#dataType}}
         var entity = new HttpServerResponseEntity<>({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, rs.content(), headers);
         return this.response{{code}}Delegate.apply(entity);
-        {{/dataType}}
+        {{/dataType}}{{/isBinary}}
       {{^vendorExtensions.singleResponse}}
       }{{/vendorExtensions.singleResponse}}{{/responses}}
       {{^vendorExtensions.singleResponse}}
