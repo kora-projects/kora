@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.kafka.common.consumer.containers;
 
+import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
@@ -16,7 +17,6 @@ import ru.tinkoff.kora.kafka.common.consumer.KafkaListenerConfig;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.BaseKafkaRecordsHandler;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
 
-import jakarta.annotation.Nullable;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -70,113 +70,106 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
     public void launchPollLoop(Consumer<K, V> consumer, int number, long started) {
         var allPartitions = this.partitions.get();
         var partitions = List.<TopicPartition>of();
-        try (consumer) {
-            consumers.add(consumer);
-            logger.info("Kafka Consumer '{}' started in {}",
-                consumerPrefix, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        logger.info("Kafka Consumer '{}' started in {}", consumerPrefix, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
 
-            boolean isFirstPoll = true;
-            while (isActive.get()) {
-                var changed = this.refreshPartitions(allPartitions);
-                if (changed) {
-                    logger.info("Kafka Consumer '{}' refreshing and reassigning partitions...", consumerPrefix);
+        boolean isFirstPoll = true;
+        while (isActive.get()) {
+            var changed = this.refreshPartitions(allPartitions);
+            if (changed) {
+                logger.info("Kafka Consumer '{}' refreshing and reassigning partitions...", consumerPrefix);
 
-                    allPartitions = this.partitions.get();
-                    partitions = new ArrayList<>(allPartitions.size() / threads + 1);
-                    for (var i = number; i < allPartitions.size(); i++) {
-                        if (i % this.config.threads() == number) {
-                            partitions.add(allPartitions.get(i));
-                        }
+                allPartitions = this.partitions.get();
+                partitions = new ArrayList<>(allPartitions.size() / threads + 1);
+                for (var i = number; i < allPartitions.size(); i++) {
+                    if (i % this.config.threads() == number) {
+                        partitions.add(allPartitions.get(i));
                     }
+                }
 
-                    consumer.assign(partitions);
-                    synchronized (this.offsets) {
-                        this.offsets.ensureCapacity(partitions.size());
-                        for (var partition : partitions) {
-                            var offset = this.offsets.get(partition.partition());
-                            if (offset == null) { // new partition
-                                if (config.offset().right() != null) {
-                                    var resetTo = Objects.requireNonNull(config.offset().right());
-                                    if (resetTo.equals("earliest")) {
-                                        consumer.seekToBeginning(List.of(partition));
-                                    } else {
-                                        consumer.seekToEnd(List.of(partition));
-                                    }
-                                } else if (config.offset().left() != null) {
-                                    var resetToDuration = Objects.requireNonNull(config.offset().left());
-                                    var resetTo = Instant.now().minus(resetToDuration).getEpochSecond();// todo millis?
-                                    var resetToOffset = consumer.offsetsForTimes(Map.of(partition, resetTo)).get(partition).offset();
-                                    consumer.seek(partition, resetToOffset);
+                consumer.assign(partitions);
+                synchronized (this.offsets) {
+                    this.offsets.ensureCapacity(partitions.size());
+                    for (var partition : partitions) {
+                        var offset = this.offsets.get(partition.partition());
+                        if (offset == null) { // new partition
+                            if (config.offset().right() != null) {
+                                var resetTo = Objects.requireNonNull(config.offset().right());
+                                if (resetTo.equals("earliest")) {
+                                    consumer.seekToBeginning(List.of(partition));
+                                } else {
+                                    consumer.seekToEnd(List.of(partition));
                                 }
-                            } else {
-                                consumer.seek(partition, offset + 1);
+                            } else if (config.offset().left() != null) {
+                                var resetToDuration = Objects.requireNonNull(config.offset().left());
+                                var resetTo = Instant.now().minus(resetToDuration).getEpochSecond();// todo millis?
+                                var resetToOffset = consumer.offsetsForTimes(Map.of(partition, resetTo)).get(partition).offset();
+                                consumer.seek(partition, resetToOffset);
                             }
+                        } else {
+                            consumer.seek(partition, offset + 1);
                         }
                     }
-                }
-
-                if (partitions.isEmpty()) {
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException ignore) {}
-                    continue;
-                }
-
-                try {
-                    logger.trace("Kafka Consumer '{}' polling...", consumerPrefix);
-
-                    var records = consumer.poll(config.pollTimeout());
-                    if (isFirstPoll) {
-                        logger.info("Kafka Consumer '{}' first poll in {}",
-                            consumerPrefix, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
-                        isFirstPoll = false;
-                    }
-
-                    // log
-                    if (!records.isEmpty() && logger.isTraceEnabled()) {
-                        var logTopics = new HashSet<String>(records.partitions().size());
-                        var logPartitions = new HashSet<Integer>(records.partitions().size());
-                        for (TopicPartition partition : records.partitions()) {
-                            logPartitions.add(partition.partition());
-                            logTopics.add(partition.topic());
-                        }
-
-                        logger.trace("Kafka Consumer '{}' polled '{}' records from topics {} and partitions {}",
-                            consumerPrefix, records.count(), logTopics, logPartitions);
-                    } else if (!records.isEmpty() && logger.isDebugEnabled()) {
-                        logger.debug("Kafka Consumer '{}' polled '{}' records", consumerPrefix, records.count());
-                    } else {
-                        logger.trace("Kafka Consumer '{}' polled '0' records", consumerPrefix);
-                    }
-
-                    handler.handle(records, consumer, false);
-                    for (var partition : records.partitions()) {
-                        var partitionRecords = records.records(partition);
-                        var lastRecord = partitionRecords.get(partitionRecords.size() - 1);
-                        synchronized (this.offsets) {
-                            this.offsets.set(partition.partition(), lastRecord.offset());
-                            this.refreshLag(consumer);
-                        }
-                    }
-
-                    backoffTimeout.set(config.backoffTimeout().toMillis());
-                } catch (WakeupException ignore) {
-                } catch (Exception e) {
-                    logger.error("Kafka Consumer '{}' got unhandled exception", consumerPrefix, e);
-                    try {
-                        Thread.sleep(backoffTimeout.get());
-                    } catch (InterruptedException ie) {
-                        logger.error("Kafka Consumer '{}' error interrupting thread", consumerPrefix, ie);
-                    }
-                    if (backoffTimeout.get() < 60000) backoffTimeout.set(backoffTimeout.get() * 2);
-                    break;
-                } finally {
-                    Context.clear();
                 }
             }
-            Thread.interrupted();
-        } finally {
-            this.consumers.remove(consumer);
+
+            if (partitions.isEmpty()) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ignore) {}
+                continue;
+            }
+
+            try {
+                logger.trace("Kafka Consumer '{}' polling...", consumerPrefix);
+
+                var records = consumer.poll(config.pollTimeout());
+                if (isFirstPoll) {
+                    logger.info("Kafka Consumer '{}' first poll in {}",
+                        consumerPrefix, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+                    isFirstPoll = false;
+                }
+
+                // log
+                if (!records.isEmpty() && logger.isTraceEnabled()) {
+                    var logTopics = new HashSet<String>(records.partitions().size());
+                    var logPartitions = new HashSet<Integer>(records.partitions().size());
+                    for (TopicPartition partition : records.partitions()) {
+                        logPartitions.add(partition.partition());
+                        logTopics.add(partition.topic());
+                    }
+
+                    logger.trace("Kafka Consumer '{}' polled '{}' records from topics {} and partitions {}",
+                        consumerPrefix, records.count(), logTopics, logPartitions);
+                } else if (!records.isEmpty() && logger.isDebugEnabled()) {
+                    logger.debug("Kafka Consumer '{}' polled '{}' records", consumerPrefix, records.count());
+                } else {
+                    logger.trace("Kafka Consumer '{}' polled '0' records", consumerPrefix);
+                }
+
+                handler.handle(records, consumer, false);
+                for (var partition : records.partitions()) {
+                    var partitionRecords = records.records(partition);
+                    var lastRecord = partitionRecords.get(partitionRecords.size() - 1);
+                    synchronized (this.offsets) {
+                        this.offsets.set(partition.partition(), lastRecord.offset());
+                        this.refreshLag(consumer);
+                    }
+                }
+
+                backoffTimeout.set(config.backoffTimeout().toMillis());
+            } catch (WakeupException ignore) {
+            } catch (Exception e) {
+                logger.error("Kafka Consumer '{}' got unhandled exception", consumerPrefix, e);
+                try {
+                    Thread.sleep(backoffTimeout.get());
+                } catch (InterruptedException ie) {
+                    logger.error("Kafka Consumer '{}' error interrupting thread", consumerPrefix, ie);
+                }
+                if (backoffTimeout.get() < 60000) backoffTimeout.set(backoffTimeout.get() * 2);
+                break;
+            } finally {
+                Context.clear();
+            }
         }
     }
 
@@ -259,9 +252,17 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
                     var number = i;
                     executorService.execute(() -> {
                         while (isActive.get()) {
-                            var consumer = initializeConsumer();
-                            if (consumer != null) {
-                                launchPollLoop(consumer, number, started);
+                            try (var consumer = initializeConsumer()) {
+                                if (consumer != null) {
+                                    consumers.add(consumer);
+                                    try {
+                                        launchPollLoop(consumer, number, started);
+                                    } catch (Exception e) {
+                                        logger.error("Kafka poll loop '{}' got unhandled exception", consumerPrefix, e);
+                                    } finally {
+                                        consumers.remove(consumer);
+                                    }
+                                }
                             }
                         }
                     });
