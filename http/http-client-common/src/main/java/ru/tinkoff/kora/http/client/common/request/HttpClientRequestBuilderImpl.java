@@ -45,12 +45,12 @@ public class HttpClientRequestBuilderImpl implements HttpClientRequestBuilder {
 
     @Override
     public HttpClientRequest build() {
-        var uri = resolveUri(this.fromUri, this.uriTemplate, this.templateParams, this.queryParams);
+        var resolved = resolveUri(this.fromUri, this.uriTemplate, this.templateParams, this.queryParams);
 
         return new DefaultHttpClientRequest(
             this.method,
-            uri,
-            this.uriTemplate,
+            resolved.uri,
+            resolved.uriTemplate,
             this.headers,
             this.body,
             this.requestTimeout
@@ -117,11 +117,13 @@ public class HttpClientRequestBuilderImpl implements HttpClientRequestBuilder {
 
     private record QueryParam(String name, @Nullable String value) {}
 
-    private static URI resolveUri(@Nullable URI fromUri, String uriTemplate, List<TemplateParam> templateParams, List<QueryParam> queryParams) {
+    private record ResolvedUri(URI uri, String uriTemplate) {}
+
+    private static ResolvedUri resolveUri(@Nullable URI fromUri, String uriTemplate, List<TemplateParam> templateParams, List<QueryParam> queryParams) {
         if (templateParams.isEmpty() && queryParams.isEmpty()) {
             return fromUri != null
-                ? fromUri
-                : URI.create(uriTemplate);
+                ? buildResolvedUri(fromUri, uriTemplate, uriTemplate, fromUri)
+                : buildResolvedUri(null, uriTemplate, uriTemplate, URI.create(uriTemplate));
         }
         var template = fromUri != null
             ? fromUri.toString()
@@ -132,7 +134,7 @@ public class HttpClientRequestBuilderImpl implements HttpClientRequestBuilder {
         }
 
         if (queryParams.isEmpty()) {
-            return URI.create(template);
+            return buildResolvedUri(fromUri, uriTemplate, template, URI.create(template));
         }
 
         var noQMarK = fromUri != null && fromUri.getRawQuery() != null;
@@ -145,6 +147,19 @@ public class HttpClientRequestBuilderImpl implements HttpClientRequestBuilder {
                 b.add(entry.name(), entry.value);
             }
         }
-        return URI.create(template + b.build());
+        URI uri = URI.create(template + b.build());
+        return buildResolvedUri(fromUri, uriTemplate, template, uri);
+    }
+
+    private static ResolvedUri buildResolvedUri(URI fromUri, String uriTemplate, String template, URI uri) {
+        String resultTemplate = uriTemplate;
+        if (fromUri == null && resultTemplate.startsWith("http")) {
+            var pathStart = template.lastIndexOf(uri.getRawPath());
+            if (pathStart > 0) {
+                resultTemplate = resultTemplate.substring(pathStart);
+            }
+        }
+
+        return new ResolvedUri(uri, resultTemplate);
     }
 }

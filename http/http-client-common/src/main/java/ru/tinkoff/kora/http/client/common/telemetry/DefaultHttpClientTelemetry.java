@@ -48,7 +48,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
                 request.uri().getHost(),
                 request.uri().getScheme(),
                 request.uri().getAuthority(),
-                request.uri().getPath()
+                request.uriTemplate()
             );
         }
     }
