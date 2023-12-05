@@ -190,7 +190,14 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
                         Context.clear();
                     }
                 }
-                Thread.interrupted();
+            } catch (Exception e) {
+                logger.error("Kafka poll loop '{}' got unhandled exception", consumerPrefix, e);
+                try {
+                    Thread.sleep(backoffTimeout.get());
+                } catch (InterruptedException ie) {
+                    //shutdown
+                }
+                if (backoffTimeout.get() < 60000) backoffTimeout.set(backoffTimeout.get() * 2);
             } finally {
                 this.consumers.remove(consumer);
             }
