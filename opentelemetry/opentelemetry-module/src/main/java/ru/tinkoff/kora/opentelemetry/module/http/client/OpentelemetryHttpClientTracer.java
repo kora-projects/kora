@@ -7,11 +7,13 @@ import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
+import ru.tinkoff.kora.http.client.common.request.UriQueryBuilder;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTracer;
 import ru.tinkoff.kora.http.common.header.MutableHttpHeaders;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 
 public final class OpentelemetryHttpClientTracer implements HttpClientTracer {
     private final Tracer tracer;
@@ -26,8 +28,29 @@ public final class OpentelemetryHttpClientTracer implements HttpClientTracer {
         var builder = this.tracer.spanBuilder(operation(request.method(), request.uriTemplate(), request.uri()))
             .setSpanKind(SpanKind.CLIENT)
             .setParent(otctx.getContext());
+
+        var targetUri = request.uri();
+        if (targetUri.getRawUserInfo() != null) {
+            try {
+                targetUri = new URI(
+                    targetUri.getScheme(),
+                    null,
+                    targetUri.getHost(),
+                    targetUri.getPort(),
+                    targetUri.getPath(),
+                    targetUri.getQuery(),
+                    targetUri.getFragment()
+                );
+            } catch (URISyntaxException e) {
+                targetUri = null;
+            }
+        }
+
+
         builder.setAttribute(SemanticAttributes.HTTP_METHOD, request.method());
-        builder.setAttribute(SemanticAttributes.HTTP_URL, request.uriTemplate());
+        if (targetUri != null) {
+            builder.setAttribute(SemanticAttributes.HTTP_URL, targetUri.toString());
+        }
         var span = builder.startSpan();
 
         var newCtx = otctx.add(span);

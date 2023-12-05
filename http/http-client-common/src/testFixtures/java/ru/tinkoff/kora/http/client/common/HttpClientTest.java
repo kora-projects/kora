@@ -222,7 +222,8 @@ public abstract class HttpClientTest extends HttpClientTestBase {
     protected void testConnectionError(CallType type) throws Exception {
         ctx.getLogger("ru.tinkoff.kora.http.client").setLevel(Level.OFF);
 
-        var request = HttpClientRequest.post("http://google.com:1488/")
+        var request = HttpClientRequest.post("http://google.com:1488/foo/{bar}/baz")
+            .templateParam("bar", "rab")
             .body(HttpBody.plaintext("test-request"))
             .build();
 
@@ -252,7 +253,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
             eq("POST"),
             eq("google.com"),
             eq("http"),
-            eq("/")
+            eq("/foo/{bar}/baz")
         );
     }
 
