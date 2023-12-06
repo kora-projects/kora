@@ -13,6 +13,7 @@ import java.util.regex.Pattern;
 
 @ConfigValueExtractor
 public interface KafkaListenerConfig {
+
     Properties driverProperties();
 
     @Nullable

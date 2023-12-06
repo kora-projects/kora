@@ -48,18 +48,18 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
         Deserializer<V> valueDeserializer,
         BaseKafkaRecordsHandler<K, V> handler
     ) {
-        if (config.driverProperties().getProperty(CommonClientConfigs.GROUP_ID_CONFIG) == null) {
+        if (config.driverProperties().get(CommonClientConfigs.GROUP_ID_CONFIG) == null) {
             throw new IllegalArgumentException("Group id is required for subscribe container");
         }
         this.handler = handler;
         this.backoffTimeout = new AtomicLong(config.backoffTimeout().toMillis());
         this.consumerPrefix = getConsumerPrefix(config);
-        var autoCommit = config.driverProperties().getProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG);
+        var autoCommit = config.driverProperties().get(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG);
         if (autoCommit == null) {
             config = config.withDriverPropertiesOverrides(Map.of(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false));
             this.commitAllowed = true;
         } else {
-            this.commitAllowed = !Boolean.parseBoolean(autoCommit);
+            this.commitAllowed = !Boolean.parseBoolean(String.valueOf(autoCommit));
         }
         this.config = config;
         this.keyDeserializer = keyDeserializer;
