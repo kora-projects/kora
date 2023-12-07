@@ -17,6 +17,38 @@ paths:
           description: Updated
 components:
   schemas:
+    Delivery:
+      type: object
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/DeliveryTypeEnum'
+      discriminator:
+        propertyName: type
+        mapping:
+          SPB: '#/components/schemas/BigDelivery'
+          MSK: '#/components/schemas/BigDelivery'
+
+    BigDelivery:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Delivery'
+        - type: object
+          properties:
+            contractName:
+              type: string
+
+    DeliveryTypeEnum:
+      type: string
+      enum:
+        - SPB
+        - MSK
+
     ValidationErrorDto:
       title: ValidationErrorDto
       type: object

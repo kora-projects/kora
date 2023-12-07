@@ -43,7 +43,7 @@ import java.util.stream.Stream;
 
 import static org.openapitools.codegen.utils.StringUtils.*;
 
-@SuppressWarnings({"rawtypes","unchecked"})
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class KoraCodegen extends DefaultCodegen {
 
     private final Logger LOGGER = LoggerFactory.getLogger(KoraCodegen.class);
@@ -72,7 +72,7 @@ public class KoraCodegen extends DefaultCodegen {
 
         public static Mode ofMode(String option) {
             for (Mode value : Mode.values()) {
-                if(value.getMode().equals(option)) {
+                if (value.getMode().equals(option)) {
                     return value;
                 }
             }
@@ -140,41 +140,41 @@ public class KoraCodegen extends DefaultCodegen {
         invokerPackage = "org.openapitools.api";
 
         modifyFeatureSet(features -> features
-            .wireFormatFeatures(EnumSet.of(WireFormatFeature.JSON))
-            .securityFeatures(EnumSet.of(SecurityFeature.ApiKey, SecurityFeature.BasicAuth, SecurityFeature.BearerToken, SecurityFeature.OAuth2_AuthorizationCode))
-            .excludeGlobalFeatures(
-                GlobalFeature.XMLStructureDefinitions,
-                GlobalFeature.Callbacks,
-                GlobalFeature.LinkObjects,
-                GlobalFeature.ParameterStyling
-            )
-            .excludeSchemaSupportFeatures(SchemaSupportFeature.Polymorphism)
-            .includeClientModificationFeatures(ClientModificationFeature.BasePath)
+                .wireFormatFeatures(EnumSet.of(WireFormatFeature.JSON))
+                .securityFeatures(EnumSet.of(SecurityFeature.ApiKey, SecurityFeature.BasicAuth, SecurityFeature.BearerToken, SecurityFeature.OAuth2_AuthorizationCode))
+                .excludeGlobalFeatures(
+                        GlobalFeature.XMLStructureDefinitions,
+                        GlobalFeature.Callbacks,
+                        GlobalFeature.LinkObjects,
+                        GlobalFeature.ParameterStyling
+                )
+                .excludeSchemaSupportFeatures(SchemaSupportFeature.Polymorphism)
+                .includeClientModificationFeatures(ClientModificationFeature.BasePath)
         );
 
         supportsInheritance = true;
         hideGenerationTimestamp = true;
 
         setReservedWordsLowerCase(
-            Arrays.asList(
-                // special words
-                "object",
-                // used as internal variables, can collide with parameter names
-                "error",
-                "localVarPath", "localVarQueryParams", "localVarCollectionQueryParams",
-                "localVarHeaderParams", "localVarCookieParams", "localVarFormParams", "localVarPostBody",
-                "localVarAccepts", "localVarAccept", "localVarContentTypes",
-                "localVarContentType", "localVarAuthNames", "localReturnType",
-                //  "ApiClient", "ApiException", "ApiResponse", "Configuration", "StringUtil",
+                Arrays.asList(
+                        // special words
+                        "object",
+                        // used as internal variables, can collide with parameter names
+                        "error",
+                        "localVarPath", "localVarQueryParams", "localVarCollectionQueryParams",
+                        "localVarHeaderParams", "localVarCookieParams", "localVarFormParams", "localVarPostBody",
+                        "localVarAccepts", "localVarAccept", "localVarContentTypes",
+                        "localVarContentType", "localVarAuthNames", "localReturnType",
+                        //  "ApiClient", "ApiException", "ApiResponse", "Configuration", "StringUtil",
 
-                // language reserved words
-                "abstract", "continue", "for", "new", "switch", "assert",
-                "default", "if", "package", "synchronized", "boolean", "do", "goto", "private",
-                "this", "break", "double", "implements", "protected", "throw", "byte", "else",
-                "import", "public", "throws", "case", "enum", "instanceof", "return", "transient",
-                "catch", "extends", "int", "short", "try", "char", "final", "interface", "static",
-                "void", "class", "finally", "long", "strictfp", "volatile", "const", "float",
-                "native", "super", "while", "null")
+                        // language reserved words
+                        "abstract", "continue", "for", "new", "switch", "assert",
+                        "default", "if", "package", "synchronized", "boolean", "do", "goto", "private",
+                        "this", "break", "double", "implements", "protected", "throw", "byte", "else",
+                        "import", "public", "throws", "case", "enum", "instanceof", "return", "transient",
+                        "catch", "extends", "int", "short", "try", "char", "final", "interface", "static",
+                        "void", "class", "finally", "long", "strictfp", "volatile", "const", "float",
+                        "native", "super", "while", "null")
         );
 
 
@@ -328,17 +328,17 @@ public class KoraCodegen extends DefaultCodegen {
         embeddedTemplateDir = templateDir = "openapi/templates/kora";
         if (!this.codegenMode.isJava()) {
             languageSpecificPrimitives = new HashSet<>(
-                Arrays.asList(
-                    "ByteArray",
-                    "String",
-                    "boolean",
-                    "Boolean",
-                    "Double",
-                    "Int",
-                    "Long",
-                    "Float",
-                    "Object"
-                )
+                    Arrays.asList(
+                            "ByteArray",
+                            "String",
+                            "boolean",
+                            "Boolean",
+                            "Double",
+                            "Int",
+                            "Long",
+                            "Float",
+                            "Object"
+                    )
             );
             typeMapping.put("file", "ByteArray");
             if (additionalProperties.containsKey(OBJECT_TYPE)) {
@@ -356,20 +356,20 @@ public class KoraCodegen extends DefaultCodegen {
             typeMapping.put("ByteArray", "ByteArray");
         } else {
             languageSpecificPrimitives = new HashSet<>(
-                Arrays.asList(
-                    "String",
-                    "boolean",
-                    "Boolean",
-                    "double",
-                    "Double",
-                    "int",
-                    "Integer",
-                    "long",
-                    "Long",
-                    "float",
-                    "Float",
-                    "Object",
-                    "byte[]")
+                    Arrays.asList(
+                            "String",
+                            "boolean",
+                            "Boolean",
+                            "double",
+                            "Double",
+                            "int",
+                            "Integer",
+                            "long",
+                            "Long",
+                            "float",
+                            "Float",
+                            "Object",
+                            "byte[]")
             );
             typeMapping.put("AnyType", objectType);
             typeMapping.put("object", objectType);
@@ -413,7 +413,7 @@ public class KoraCodegen extends DefaultCodegen {
             this.additionalProperties.put(CodegenConstants.INVOKER_PACKAGE, derivedInvokerPackage);
             this.setInvokerPackage((String) additionalProperties.get(CodegenConstants.INVOKER_PACKAGE));
             LOGGER.info("Invoker Package Name, originally not set, is now derived from model package name: {}",
-                derivedInvokerPackage);
+                    derivedInvokerPackage);
         } else {
             //not set, use default to be passed to template
             additionalProperties.put(CodegenConstants.INVOKER_PACKAGE, invokerPackage);
@@ -466,12 +466,12 @@ public class KoraCodegen extends DefaultCodegen {
             }
             if (model.discriminator != null) {
                 var map = model.discriminator.getMappedModels().stream()
-                    .collect(Collectors.toMap(CodegenDiscriminator.MappedModel::getModelName, m -> List.of(m.getMappingName()), (l1, l2) -> {
-                        var l = new ArrayList<String>(l1.size() + l2.size());
-                        l.addAll(l1);
-                        l.addAll(l2);
-                        return l;
-                    }));
+                        .collect(Collectors.toMap(CodegenDiscriminator.MappedModel::getModelName, m -> List.of(m.getMappingName()), (l1, l2) -> {
+                            var l = new ArrayList<String>(l1.size() + l2.size());
+                            l.addAll(l1);
+                            l.addAll(l2);
+                            return l;
+                        }));
                 var uniqueMappedModels = model.discriminator.getMappedModels().stream().map(CodegenDiscriminator.MappedModel::getModelName).collect(Collectors.toSet());
                 model.vendorExtensions.put("x-unique-mapped-models", uniqueMappedModels);
                 model.discriminator.getVendorExtensions().put("x-unique-mapped-models", uniqueMappedModels);
@@ -480,6 +480,7 @@ public class KoraCodegen extends DefaultCodegen {
                     childModel.parentModel = model;
                     childModel.parent = model.classname;
                     var mappings = map.get(mappedModel.getModelName());
+
                     if (mappings.size() == 1) {
                         childModel.vars.removeIf(prop -> StringUtils.equals(model.discriminator.getPropertyBaseName(), prop.baseName));
                         childModel.hasVars = !childModel.allVars.isEmpty();
@@ -492,6 +493,10 @@ public class KoraCodegen extends DefaultCodegen {
                             property.setRequired(true);
                             childModel.requiredVars.add(property);
                             childModel.setHasRequired(!childModel.requiredVars.isEmpty());
+                        }
+
+                        if (model.discriminator.getPropertyBaseName().equals(property.baseName)) {
+                            property.isDiscriminator = true;
                         }
 
                         var sb = new StringBuilder().append("(");
@@ -507,10 +512,32 @@ public class KoraCodegen extends DefaultCodegen {
                             }
                         }
                         childModel.vendorExtensions.put("x-discriminator-values-check", sb.append(")").toString());
+                        childModel.vendorExtensions.put("x-discriminator-constant", mappings.get(0));
                     }
                     var separators = this.codegenMode.isJava() ? new String[]{"{\"", "\"}"} : new String[]{"[\"", "\"]"};
                     var discriminatorValues = mappings.stream().collect(Collectors.joining("\", \"", separators[0], separators[1]));
                     childModel.vendorExtensions.put("x-discriminator-value", discriminatorValues);
+
+                    if (mappings.size() == 1) {
+                        childModel.vendorExtensions.put("x-discriminator-constant", "\"" + mappings.get(0) + "\"");
+                    } else {
+                        var discriminatorConsts = mappings.stream().collect(Collectors.joining("\", \"", "\"", "\""));
+                        childModel.vendorExtensions.put("x-discriminator-constants", discriminatorConsts);
+                        childModel.vendorExtensions.remove("x-discriminator-constant");
+
+                        var mappingValues = mappings.stream()
+                                .map(m -> {
+                                    final String key = Arrays.stream(m.split("[^a-zA-Z0-9]"))
+                                            .map(String::strip)
+                                            .map(String::toUpperCase)
+                                            .collect(Collectors.joining("_"));
+
+                                    return Map.of("discriminatorField", key, "discriminatorValue", "\"" + m + "\"");
+                                })
+                                .collect(Collectors.toList());
+
+                        childModel.vendorExtensions.put("x-discriminator-constant-fields", mappingValues);
+                    }
                 }
             }
             if (codegenMode.isJava()) {
@@ -1313,11 +1340,11 @@ public class KoraCodegen extends DefaultCodegen {
 
             op.vendorExtensions.put("x-java-import", operationImports);
             var multipartForm = op.consumes != null && op.consumes.stream()
-                .map(m -> m.get("mediaType"))
-                .anyMatch("multipart/form-data"::equalsIgnoreCase);
+                    .map(m -> m.get("mediaType"))
+                    .anyMatch("multipart/form-data"::equalsIgnoreCase);
             var urlEncodedForm = op.consumes != null && op.consumes.stream()
-                .map(m -> m.get("mediaType"))
-                .anyMatch("application/x-www-form-urlencoded"::equalsIgnoreCase);
+                    .map(m -> m.get("mediaType"))
+                    .anyMatch("application/x-www-form-urlencoded"::equalsIgnoreCase);
             op.vendorExtensions.put("multipartForm", multipartForm);
             op.vendorExtensions.put("urlEncodedForm", urlEncodedForm);
             for (var response : op.responses) {
@@ -1346,25 +1373,25 @@ public class KoraCodegen extends DefaultCodegen {
                 if (formParam.isModel) {
                     formParam.vendorExtensions.put("requiresMapper", true);
                     var type = allModels.stream()
-                        .filter(m -> m.getModel().name.equals(formParam.dataType))
-                        .findFirst()
-                        .map(m -> m.get("importPath").toString())
-                        .get();
+                            .filter(m -> m.getModel().name.equals(formParam.dataType))
+                            .findFirst()
+                            .map(m -> m.get("importPath").toString())
+                            .get();
                     if (formParam.contentType != null && formParam.contentType.equals("application/json")) {
                         formParam.vendorExtensions.put("mapperTag", this.jsonAnnotation);
                         formParamsWithMappers.add(new HashMap<>(Map.of(
-                            "paramName", formParam.paramName,
-                            "requireTag", true,
-                            "mapperTag", this.jsonAnnotation,
-                            "paramType", type,
-                            "last", false
+                                "paramName", formParam.paramName,
+                                "requireTag", true,
+                                "mapperTag", this.jsonAnnotation,
+                                "paramType", type,
+                                "last", false
                         )));
                     } else {
                         formParamsWithMappers.add(new HashMap<>(Map.of(
-                            "paramName", formParam.paramName,
-                            "requireTag", false,
-                            "paramType", type,
-                            "last", false
+                                "paramName", formParam.paramName,
+                                "requireTag", false,
+                                "paramType", type,
+                                "last", false
                         )));
                     }
                 }
@@ -1420,9 +1447,9 @@ public class KoraCodegen extends DefaultCodegen {
                                 authName = upperCase(toVarName(authMethod.name) + "NoScopes");
                             } else {
                                 var scopes = authMethod.scopes.stream()
-                                    .map(it -> this.upperCase(toVarName(it.get("scope").toString())))
-                                    .sorted()
-                                    .collect(Collectors.joining("With"));
+                                        .map(it -> this.upperCase(toVarName(it.get("scope").toString())))
+                                        .sorted()
+                                        .collect(Collectors.joining("With"));
                                 authName = upperCase(toVarName(authMethod.name) + "With" + scopes);
                             }
                         } else {
@@ -1527,9 +1554,9 @@ public class KoraCodegen extends DefaultCodegen {
         }
         if (this.codegenMode == Mode.JAVA_CLIENT || this.codegenMode == Mode.JAVA_REACTIVE_CLIENT || this.codegenMode == Mode.KOTLIN_CLIENT) {
             var annotationParams = httpClientAnnotationParams.entrySet()
-                .stream()
-                .map(e -> e.getKey() + " = " + e.getValue())
-                .collect(Collectors.joining(", ", "(", ")"));
+                    .stream()
+                    .map(e -> e.getKey() + " = " + e.getValue())
+                    .collect(Collectors.joining(", ", "(", ")"));
             objs.put("annotationParams", annotationParams);
         }
         return objs;
@@ -1581,19 +1608,19 @@ public class KoraCodegen extends DefaultCodegen {
             //       - ENUM_A
             //       - ENUM_B
             Stream.concat(
-                    Stream.of(openAPI.getComponents().getSchemas()),
-                    openAPI.getComponents().getSchemas().values().stream()
-                        .filter(schema -> schema.getProperties() != null)
-                        .map(Schema::getProperties))
-                .forEach(schemas -> schemas.replaceAll(
-                    (name, s) -> Stream.of(s)
-                        .filter(schema -> schema instanceof ComposedSchema)
-                        .map(schema -> (ComposedSchema) schema)
-                        .filter(schema -> Objects.nonNull(schema.getAnyOf()))
-                        .flatMap(schema -> schema.getAnyOf().stream())
-                        .filter(schema -> Objects.nonNull(schema.getEnum()))
-                        .findFirst()
-                        .orElse((Schema) s)));
+                            Stream.of(openAPI.getComponents().getSchemas()),
+                            openAPI.getComponents().getSchemas().values().stream()
+                                    .filter(schema -> schema.getProperties() != null)
+                                    .map(Schema::getProperties))
+                    .forEach(schemas -> schemas.replaceAll(
+                            (name, s) -> Stream.of(s)
+                                    .filter(schema -> schema instanceof ComposedSchema)
+                                    .map(schema -> (ComposedSchema) schema)
+                                    .filter(schema -> Objects.nonNull(schema.getAnyOf()))
+                                    .flatMap(schema -> schema.getAnyOf().stream())
+                                    .filter(schema -> Objects.nonNull(schema.getEnum()))
+                                    .findFirst()
+                                    .orElse((Schema) s)));
         }
         var securitySchemas = openAPI.getComponents().getSecuritySchemes();
         if (!Objects.requireNonNullElse(securitySchemas, Map.of()).isEmpty()) {
@@ -1670,7 +1697,7 @@ public class KoraCodegen extends DefaultCodegen {
 
         // number
         if ("Integer".equals(datatype) || "Int".equals(datatype) || "Long".equals(datatype) ||
-            "Float".equals(datatype) || "Double".equals(datatype) || "BigDecimal".equals(datatype)) {
+                "Float".equals(datatype) || "Double".equals(datatype) || "BigDecimal".equals(datatype)) {
             String varName = "NUMBER_" + value;
             varName = varName.replaceAll("-", "MINUS_");
             varName = varName.replaceAll("\\+", "PLUS_");
@@ -1964,15 +1991,15 @@ public class KoraCodegen extends DefaultCodegen {
     @Override
     protected ImmutableMap.Builder<String, Mustache.Lambda> addMustacheLambdas() {
         return super.addMustacheLambdas()
-            .put("trim", (fragment, out) -> {
-                var text = fragment.execute();
-                out.write(text.trim());
-            })
-            .put("classname", (fragment, out) -> {
-                var text = fragment.execute();
-                out.write(this.upperCase(toVarName(text)));
-            })
-            ;
+                .put("trim", (fragment, out) -> {
+                    var text = fragment.execute();
+                    out.write(text.trim());
+                })
+                .put("classname", (fragment, out) -> {
+                    var text = fragment.execute();
+                    out.write(this.upperCase(toVarName(text)));
+                })
+                ;
     }
 
     @Override
