@@ -14,6 +14,7 @@ class DbEntityReader(
     private val nullCheckGenerator: (FieldData) -> CodeBlock,
 ) {
     data class FieldData(val type: KSType, val mapperFieldName: String, val columnName: String, val fieldName: String, val isNullable: Boolean)
+
     data class ReadEntityCodeBlock(val block: CodeBlock, val requiredMappers: List<Mapper>) {
         fun enrich(type: TypeSpec.Builder, constructor: FunSpec.Builder) {
             DbUtils.addMappers(type, constructor, requiredMappers)
@@ -32,10 +33,12 @@ class DbEntityReader(
             val mapperTypeParameter = entityField.type.toTypeName().copy(false)
             val fieldType = mapperTypeParameter.copy(true)
             if (mapper != null) {
-                val mapperType = if (mapper.mapper != null)
+                val mapperType = if (mapper.mapper != null) {
                     mapper.mapper!!.toClassName()
-                else
+                } else {
                     this.fieldMapperName.parameterizedBy(mapperTypeParameter)
+                }
+
                 if (mapper.mapper != null && mapper.tags.isEmpty()) {
                     mappers.add(Mapper(mapper, mapperType, mapperFieldName))
                 } else {
@@ -44,7 +47,7 @@ class DbEntityReader(
                     if (tag != null) {
                         param.addAnnotation(tag)
                     }
-                    mappers.add(Mapper(mapperType, mapperFieldName))
+                    mappers.add(Mapper(mapperType, mapperFieldName).copy(tags = mapper.tags))
                 }
                 b.add("var %N: %T = %L", fieldName, fieldType, mapperCallGenerator(fieldData))
             } else {

@@ -34,6 +34,10 @@ class JdbcExtensionTest {
         )
     }
 
+    class TestRowResultColumnMapper : JdbcResultColumnMapper<String> {
+        override fun apply(row: ResultSet?, index: Int): String = row!!.getString(index)
+    }
+
     data class TestRow(val f1: String, val f2: String)
 
     @Test
