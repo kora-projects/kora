@@ -6,10 +6,14 @@
 package {{package}};
 
 import ru.tinkoff.kora.json.common.annotation.*;
+import ru.tinkoff.kora.common.annotation.Generated;
+import ru.tinkoff.kora.common.Component;
+import jakarta.annotation.Nullable;
 
 
 {{#models}}
 {{#model}}
+{{#vendorExtensions.x-enable-validation}}import ru.tinkoff.kora.validation.common.annotation.*;{{/vendorExtensions.x-enable-validation}}
 {{#isEnum}}
 
 {{>javaEnumClass}}
@@ -21,7 +25,8 @@ import ru.tinkoff.kora.json.common.annotation.*;
 /**
  * {{#description}}{{.}}{{/description}}{{^description}}{{classname}}{{/description}}
  */
- @ru.tinkoff.kora.json.common.annotation.Json
+@Generated("openapi generator kora java")
+@Json
 @JsonDiscriminatorField("{{{propertyBaseName}}}")
 public sealed interface {{classname}} permits {{#vendorExtensions.x-unique-mapped-models}}{{.}}{{^-last}}, {{/-last}}{{/vendorExtensions.x-unique-mapped-models}} {
 {{#allVars}}{{^isDiscriminator}}
@@ -30,7 +35,7 @@ public sealed interface {{classname}} permits {{#vendorExtensions.x-unique-mappe
    */
   {{{datatypeWithEnum}}} {{name}}();
 
-  {{{classname}}} with{{#lambda.titlecase}}{{name}}{{/lambda.titlecase}}({{^required}}@jakarta.annotation.Nullable{{/required}} {{{datatypeWithEnum}}} {{name}});
+  {{{classname}}} with{{#lambda.titlecase}}{{name}}{{/lambda.titlecase}}({{^required}}@Nullable{{/required}} {{{datatypeWithEnum}}} {{name}});
 {{/isDiscriminator}}{{/allVars}}
 }
 {{/discriminator}}
@@ -39,22 +44,33 @@ public sealed interface {{classname}} permits {{#vendorExtensions.x-unique-mappe
  * {{#description}}{{.}}{{/description}}{{^description}}{{classname}}{{/description}}{{#allVars}}
  * @param {{name}} {{#description}}{{.}}{{/description}}{{^description}}{{name}}{{/description}}{{/allVars}}
  */
-@ru.tinkoff.kora.json.common.annotation.JsonWriter
-@ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
+@Generated("openapi generator kora java")
+@JsonWriter
 {{#vendorExtensions.x-discriminator-value}}@JsonDiscriminatorValue({{{vendorExtensions.x-discriminator-value}}}){{/vendorExtensions.x-discriminator-value}}
-{{#vendorExtensions.x-enable-validation}}@ru.tinkoff.kora.validation.common.annotation.Valid{{/vendorExtensions.x-enable-validation}}
+{{#vendorExtensions.x-enable-validation}}@Valid{{/vendorExtensions.x-enable-validation}}
 public record {{classname}} (
 {{#allVars}}
   @JsonField("{{baseName}}"){{^required}}
-  @jakarta.annotation.Nullable{{/required}}
-  {{#vendorExtensions.x-has-min-max}}@ru.tinkoff.kora.validation.common.annotation.Range(from = {{minimum}}, to = {{maximum}}, boundary = ru.tinkoff.kora.validation.common.annotation.Range.Boundary.{{#exclusiveMinimum}}EXCLUSIVE{{/exclusiveMinimum}}{{^exclusiveMinimum}}INCLUSIVE{{/exclusiveMinimum}}_{{#exclusiveMaximum}}EXCLUSIVE{{/exclusiveMaximum}}{{^exclusiveMaximum}}INCLUSIVE{{/exclusiveMaximum}})
-  {{/vendorExtensions.x-has-min-max}}{{#vendorExtensions.x-has-min-max-items}}@ru.tinkoff.kora.validation.common.annotation.Size(min = {{minItems}}, max = {{maxItems}})
-  {{/vendorExtensions.x-has-min-max-items}}{{#vendorExtensions.x-has-min-max-length}}@ru.tinkoff.kora.validation.common.annotation.Size(min = {{minLength}}, max = {{maxLength}})
-  {{/vendorExtensions.x-has-min-max-length}}{{#vendorExtensions.x-has-pattern}}@ru.tinkoff.kora.validation.common.annotation.Pattern("{{{pattern}}}")
-  {{/vendorExtensions.x-has-pattern}}{{#vendorExtensions.x-has-valid-model}}@ru.tinkoff.kora.validation.common.annotation.Valid
+  @Nullable{{/required}}
+  {{#vendorExtensions.x-has-min-max}}@Range(from = {{minimum}}, to = {{maximum}}, boundary = Range.Boundary.{{#exclusiveMinimum}}EXCLUSIVE{{/exclusiveMinimum}}{{^exclusiveMinimum}}INCLUSIVE{{/exclusiveMinimum}}_{{#exclusiveMaximum}}EXCLUSIVE{{/exclusiveMaximum}}{{^exclusiveMaximum}}INCLUSIVE{{/exclusiveMaximum}})
+  {{/vendorExtensions.x-has-min-max}}{{#vendorExtensions.x-has-min-max-items}}@Size(min = {{minItems}}, max = {{maxItems}})
+  {{/vendorExtensions.x-has-min-max-items}}{{#vendorExtensions.x-has-min-max-length}}@Size(min = {{minLength}}, max = {{maxLength}})
+  {{/vendorExtensions.x-has-min-max-length}}{{#vendorExtensions.x-has-pattern}}@Pattern("{{{pattern}}}")
+  {{/vendorExtensions.x-has-pattern}}{{#vendorExtensions.x-has-valid-model}}@Valid
   {{/vendorExtensions.x-has-valid-model}}{{{datatypeWithEnum}}} {{name}}{{^-last}},{{/-last}}
 {{/allVars}}){{#vendorExtensions.x-discriminator-value}} implements {{parent}} {{/vendorExtensions.x-discriminator-value}}{
+{{#vendorExtensions.x-discriminator-constant}}
+
+{{/vendorExtensions.x-discriminator-constant}}
+{{#vendorExtensions.x-discriminator-constants}}
+
+  public static final java.util.List<String> DISCRIMINATORS = java.util.List.of({{{vendorExtensions.x-discriminator-constants}}});
+  {{#vendorExtensions.x-discriminator-constant-fields}}
+  public static final String DISCRIMINATOR_{{discriminatorField}} = {{{discriminatorValue}}};
+  {{/vendorExtensions.x-discriminator-constant-fields}}
+{{/vendorExtensions.x-discriminator-constants}}
 {{#isArray}}
+
 public static String schema = """
  {{{items}}}
 """;
@@ -68,7 +84,7 @@ public static String schema = """
     this({{#allVars}}{{#required}}{{name}}{{/required}}{{^required}}null{{/required}}{{^-last}}, {{/-last}}{{/allVars}});
   }
 {{/additionalConstructor}}
-  @ru.tinkoff.kora.json.common.annotation.JsonReader
+  @JsonReader
   public {{classname}} { {{#vendorExtensions.x-discriminator-values-check}}
     if {{{vendorExtensions.x-discriminator-values-check}}} {
       throw new IllegalStateException("Invalid discriminator value");
@@ -93,7 +109,7 @@ public static String schema = """
 {{#allVars}}
 
 {{#vendorExtensions.x-discriminator-value}}{{#isOverridden}}  @Override
-{{/isOverridden}}{{/vendorExtensions.x-discriminator-value}}  public {{{classname}}} with{{#lambda.titlecase}}{{name}}{{/lambda.titlecase}}({{^required}}@jakarta.annotation.Nullable{{/required}} {{{datatypeWithEnum}}} {{name}}) {
+{{/isOverridden}}{{/vendorExtensions.x-discriminator-value}}  public {{{classname}}} with{{#lambda.titlecase}}{{name}}{{/lambda.titlecase}}({{^required}}@Nullable{{/required}} {{{datatypeWithEnum}}} {{name}}) {
     if (this.{{name}} == {{name}}) return this;
     return new {{{classname}}}({{#allVars}}
       {{name}}{{^-last}},{{/-last}}{{/allVars}}
