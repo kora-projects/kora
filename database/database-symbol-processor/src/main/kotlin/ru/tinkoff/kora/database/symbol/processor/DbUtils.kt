@@ -13,6 +13,7 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.overridingKeepAop
 import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.MappingData
+import ru.tinkoff.kora.ksp.common.TagUtils.addTag
 import ru.tinkoff.kora.ksp.common.parseMappingData
 
 object DbUtils {
@@ -49,11 +50,11 @@ object DbUtils {
         for (mapper in mappers) {
             if (mapper.mapperType == null) {
                 type.addProperty(mapper.fieldName, mapper.fieldTypeName, KModifier.PRIVATE)
-                constructor.addParameter(mapper.fieldName, mapper.fieldTypeName)
+                constructor.addParameter(ParameterSpec.builder(mapper.fieldName, mapper.fieldTypeName)
+                    .addTag(mapper.tags)
+                    .build())
                 constructor.addCode("this.`%L` = `%L`;\n", mapper.fieldName, mapper.fieldName)
-                continue
-            }
-            if (hasDefaultConstructor(mapper.mapperType)) {
+            } else if (hasDefaultConstructor(mapper.mapperType)) {
                 if (companion == null) {
                     companion = TypeSpec.companionObjectBuilder(null)
                 }
@@ -79,7 +80,6 @@ object DbUtils {
         if (companion != null) {
             type.typeSpecs.removeIf { it.isCompanion }
             type.addType(companion.build())
-
         }
     }
 

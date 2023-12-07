@@ -1,9 +1,12 @@
 package ru.tinkoff.kora.database.common.annotation.processor.jdbc;
 
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.application.graph.TypeRef;
+import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.database.annotation.processor.RepositoryAnnotationProcessor;
 import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityJavaBean;
 import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRecord;
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultColumnMapper;
@@ -19,6 +22,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
 public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
+
+    @Override
+    protected String commonImports() {
+        return super.commonImports() +
+                """
+                import ru.tinkoff.kora.database.jdbc.*;
+                import ru.tinkoff.kora.database.jdbc.mapper.result.*;
+                import ru.tinkoff.kora.database.jdbc.mapper.parameter.*;
+                import ru.tinkoff.kora.common.Mapping;
+                import java.sql.*;
+                """;
+    }
+
     @Test
     void testTypes() throws Exception {
         TestUtils.testKoraExtension(
@@ -40,6 +56,49 @@ public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
     }
 
     public record TestRow(String f1, String f2) {}
+
+    @Test
+    void testRowMapperWithTags() {
+        compile(List.of(new KoraAppProcessor(), new RepositoryAnnotationProcessor()),
+                """
+                @KoraApp
+                public interface Application extends JdbcDatabaseModule {
+                
+                    @Root
+                    default String testRowMapper(JdbcResultSetMapper<TestRow> tm) {
+                        return "";
+                    }
+                    
+                    @Tag(String.class)
+                    default JdbcResultColumnMapper<String> taggedMapper() {
+                        return ResultSet::getString;
+                    }
+                }
+                """,
+                """
+                record TestRow(String f1, String f2, @Tag(String.class) String f3, @Mapping(TestRowResultColumnMapper.class) String f4) { }
+                """,
+                """
+                public final class TestRowResultColumnMapper implements JdbcResultColumnMapper<String> {
+                    @Override
+                    public String apply(ResultSet row, int index) throws SQLException {
+                        return row.getString(index);
+                    }
+                }
+                """
+        );
+
+        compileResult.assertSuccess();
+        var graph = loadGraphDraw("Application");
+        Assertions.assertThat(graph.getNodes()).hasSize(4);
+
+        var mapper = compileResult.loadClass("$TestRow_JdbcRowMapper");
+        var constructor = mapper.getConstructors()[0];
+        Assertions.assertThat(constructor.getParameters()).hasSize(1);
+
+        Assertions.assertThat(constructor.getParameters()[0].getAnnotations()).hasSize(1);
+        Assertions.assertThat(constructor.getParameters()[0].getAnnotations()[0]).isInstanceOf(Tag.class);
+    }
 
     @Test
     void testRowMapper() throws Exception {
