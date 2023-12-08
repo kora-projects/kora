@@ -9,18 +9,21 @@ import ru.tinkoff.kora.config.common.annotation.SystemProperties;
 import ru.tinkoff.kora.config.common.factory.MapConfigFactory;
 import ru.tinkoff.kora.config.common.factory.MergeConfigFactory;
 import ru.tinkoff.kora.config.common.origin.ConfigOrigin;
+import ru.tinkoff.kora.config.common.origin.EnvironmentOrigin;
+import ru.tinkoff.kora.config.common.origin.SystemPropertiesOrigin;
 
 import java.util.Optional;
 
 public interface CommonConfigModule extends DefaultConfigExtractorsModule {
+
     @Environment
     default Config environmentConfig() {
-        return MapConfigFactory.fromMap("System environment", System.getenv());
+        return MapConfigFactory.fromMap(new EnvironmentOrigin("Environment Variables"), System.getenv());
     }
 
     @SystemProperties
     default Config systemProperties() {
-        return MapConfigFactory.fromProperties("System properties", System.getProperties());
+        return MapConfigFactory.fromProperties(new SystemPropertiesOrigin("System Properties"), System.getProperties());
     }
 
     default Config config(@Environment Config environment, @SystemProperties Config systemProperties, @Nullable @ApplicationConfig Config applicationConfig) {

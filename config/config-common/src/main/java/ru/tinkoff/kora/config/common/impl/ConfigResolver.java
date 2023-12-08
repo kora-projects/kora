@@ -3,16 +3,23 @@ package ru.tinkoff.kora.config.common.impl;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.ConfigValue;
 import ru.tinkoff.kora.config.common.ConfigValuePath;
+import ru.tinkoff.kora.config.common.origin.EnvironmentOrigin;
+import ru.tinkoff.kora.config.common.origin.SystemPropertiesOrigin;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 
 public final class ConfigResolver {
-    private record ResolveContext(Config root, ArrayDeque<ConfigValuePath> chain) {}
+
+    private record ResolveContext(Config root, ArrayDeque<ConfigValuePath> chain, boolean resolveProperties) {}
 
     public static Config resolve(Config config) {
-        var ctx = new ResolveContext(config, new ArrayDeque<>());
+        var resolveSystemProperty = System.getenv("KORA_SYSTEM_PROPERTIES_RESOLVE_ENABLED");
+        if (resolveSystemProperty == null) {
+            resolveSystemProperty = System.getProperty("kora.system.properties.resolve.enabled", "true");
+        }
+        var ctx = new ResolveContext(config, new ArrayDeque<>(), Boolean.parseBoolean(resolveSystemProperty));
         var newRoot = resolve(ctx, config.root());
         if (newRoot == config.root()) {
             return config;
@@ -73,10 +80,18 @@ public final class ConfigResolver {
         throw new IllegalStateException("Unknown value type: " + value.getClass());
     }
 
-
     private static ConfigValue<?> resolve(ResolveContext ctx, ConfigValue.StringValue stringValue) {
-        var buf = stringValue.value().toCharArray();
+        if (stringValue.origin().config() instanceof EnvironmentOrigin) {
+            return stringValue;
+        } else if (stringValue.origin().config() instanceof SystemPropertiesOrigin) {
+            if (!ctx.resolveProperties()) {
+                return stringValue;
+            }
+        }
+
         enum Token {STRING, REFERENCE, REFERENCE_DEFAULT_VALUE, REFERENCE_NULLABLE}
+
+        var buf = stringValue.value().toCharArray();
         var parts = new ArrayList<ConfigValue<?>>();
         var token = Token.STRING;
         var tokenStart = 0;
@@ -87,8 +102,8 @@ public final class ConfigResolver {
                 if (token == Token.STRING) {
                     token = buf[i + 2] == '?'
                         ? Token.REFERENCE_NULLABLE
-                        : Token.REFERENCE
-                    ;
+                        : Token.REFERENCE;
+
                     var strLen = i - tokenStart;
                     if (strLen > 0) {
                         parts.add(new ConfigValue.StringValue(stringValue.origin(), new String(buf, tokenStart, strLen)));
