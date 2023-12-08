@@ -11,3 +11,23 @@ dependencies {
     testImplementation libs.kotlin.coroutines.reactor
     testImplementation libs.reactor.test
 }
+
+sourceSets.main {
+    resources {
+        srcDirs "build/kora-version"
+    }
+}
+
+project.tasks.register("generateKoraVersion") {
+    def path = "build/kora-version/META-INF/kora/version/${project.name}"
+    it.outputs.file(path)
+    def output = file(path)
+    output.mkdirs()
+    output.delete()
+    output.createNewFile()
+    output.write(version.toString())
+}
+
+jar {
+    dependsOn("generateKoraVersion")
+}
