@@ -13,6 +13,7 @@ import ru.tinkoff.kora.config.common.origin.SimpleConfigOrigin;
 import java.util.*;
 
 public class MapConfigFactory {
+
     public static Config fromMap(Map<String, ?> map) {
         return fromMap("Map@" + System.identityHashCode(map), map);
     }
