@@ -90,6 +90,13 @@ public class KoraCodegen extends DefaultCodegen {
             };
         }
 
+        public boolean isClient() {
+            return switch (this) {
+                case JAVA_CLIENT, JAVA_ASYNC_CLIENT, JAVA_REACTIVE_CLIENT, KOTLIN_CLIENT, KOTLIN_SUSPEND_CLIENT -> true;
+                default -> false;
+            };
+        }
+
         public boolean isJava() {
             return this != KOTLIN_CLIENT && this != KOTLIN_SERVER && this != KOTLIN_SUSPEND_CLIENT && this != KOTLIN_SUSPEND_SERVER;
         }
@@ -1552,7 +1559,7 @@ public class KoraCodegen extends DefaultCodegen {
                 }
             }
         }
-        if (this.codegenMode == Mode.JAVA_CLIENT || this.codegenMode == Mode.JAVA_REACTIVE_CLIENT || this.codegenMode == Mode.KOTLIN_CLIENT) {
+        if (this.codegenMode.isClient()) {
             var annotationParams = httpClientAnnotationParams.entrySet()
                     .stream()
                     .map(e -> e.getKey() + " = " + e.getValue())
