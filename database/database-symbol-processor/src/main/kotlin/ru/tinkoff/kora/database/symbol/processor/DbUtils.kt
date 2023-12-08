@@ -23,6 +23,8 @@ object DbUtils {
     val columnAnnotation = ClassName("ru.tinkoff.kora.database.common.annotation", "Column")
     val entityConstructorAnnotation = ClassName("ru.tinkoff.kora.database.common.annotation", "EntityConstructor")
     val queryAnnotation = ClassName("ru.tinkoff.kora.database.common.annotation", "Query")
+    val idAnnotation = ClassName("ru.tinkoff.kora.database.common.annotation", "Id")
+    val tableAnnotation = ClassName("ru.tinkoff.kora.database.common.annotation", "Table")
     val batchAnnotation = ClassName("ru.tinkoff.kora.database.common.annotation", "Batch")
     val embeddedAnnotation = ClassName("ru.tinkoff.kora.database.common.annotation", "Embedded")
     val updateCount = ClassName("ru.tinkoff.kora.database.common", "UpdateCount")

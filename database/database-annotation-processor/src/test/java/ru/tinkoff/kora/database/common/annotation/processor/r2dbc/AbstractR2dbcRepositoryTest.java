@@ -11,6 +11,8 @@ public abstract class AbstractR2dbcRepositoryTest extends AbstractRepositoryTest
     @Override
     protected String commonImports() {
         return super.commonImports() + """
+            import ru.tinkoff.kora.database.common.annotation.*;
+            import ru.tinkoff.kora.database.common.*;
             import ru.tinkoff.kora.database.r2dbc.*;
             import ru.tinkoff.kora.database.r2dbc.mapper.result.*;
             import ru.tinkoff.kora.database.r2dbc.mapper.parameter.*;

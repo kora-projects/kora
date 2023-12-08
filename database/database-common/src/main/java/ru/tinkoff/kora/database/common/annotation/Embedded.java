@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
 /**
  * Specifies a field that should not be used as a column in query results and parameters, but that should be used as column set of parent entity.
  */
-@Target({ElementType.FIELD, ElementType.PARAMETER})
+@Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.RECORD_COMPONENT})
 @Retention(RetentionPolicy.CLASS)
 public @interface Embedded {
 

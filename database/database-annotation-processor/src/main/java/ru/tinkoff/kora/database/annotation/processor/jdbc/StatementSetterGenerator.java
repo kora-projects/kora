@@ -110,7 +110,7 @@ public class StatementSetterGenerator {
             }
         }
         if (batchParam != null) {
-            b.add("_stmt.addBatch();$<\n};\n");
+            b.add("_stmt.addBatch();$<\n}\n");
         }
         return b.build();
     }

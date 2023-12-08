@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.database.annotation.processor.jdbc;
 
 import com.squareup.javapoet.*;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
@@ -10,7 +11,6 @@ import ru.tinkoff.kora.database.annotation.processor.RepositoryGenerator;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameterParser;
 
-import jakarta.annotation.Nullable;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
@@ -21,6 +21,7 @@ import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
+import java.sql.Statement;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -59,7 +60,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             var parameters = QueryParameterParser.parse(this.types, JdbcTypes.CONNECTION, JdbcTypes.PARAMETER_COLUMN_MAPPER, method, methodType);
             var queryAnnotation = AnnotationUtils.findAnnotation(method, DbUtils.QUERY_ANNOTATION);
             var queryString = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(queryAnnotation, "value");
-            var query = QueryWithParameters.parse(filer, queryString, parameters);
+            var query = QueryWithParameters.parse(filer, types, queryString, parameters, repositoryType, method);
             var resultMapper = this.parseResultMapper(method, methodType, parameters)
                 .map(rm -> DbUtils.addMapper(resultMappers, rm))
                 .orElse(null);
@@ -85,7 +86,8 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             return Optional.empty();
         }
         var batchParam = parameters.stream().filter(QueryParameter.BatchParameter.class::isInstance).findFirst().orElse(null);
-        if (batchParam != null) {
+        var generatedKeys = AnnotationUtils.isAnnotationPresent(method, DbUtils.ID_ANNOTATION);
+        if (batchParam != null && !generatedKeys) {
             // either void or update count, no way to parse results from db with jdbc api
             return Optional.empty();
         }
@@ -151,16 +153,21 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
               $S
             );
             var _telemetry = this._connectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.current(), _query);
-            try (_conToClose; var _stmt = _conToUse.prepareStatement(_query.sql())) {$>
             """, connection, JdbcTypes.CONNECTION, DbUtils.QUERY_CONTEXT, query.rawQuery(), sql, DbUtils.operationName(method));
+
+        var generatedKeys = AnnotationUtils.isAnnotationPresent(method, DbUtils.ID_ANNOTATION);
+        if (generatedKeys) {
+            b.addCode("try (_conToClose; var _stmt = _conToUse.prepareStatement(_query.sql(), $T.RETURN_GENERATED_KEYS)) {$>\n", Statement.class);
+        } else {
+            b.addCode("try (_conToClose; var _stmt = _conToUse.prepareStatement(_query.sql())) {$>\n");
+        }
         b.addCode(StatementSetterGenerator.generate(method, query, parameters, batchParam, parameterMappers));
         if (MethodUtils.isVoid(method) || isMono && MethodUtils.isVoidGeneric(methodType.getReturnType())) {
             if (batchParam != null) {
                 b.addStatement("var _batchResult = _stmt.executeBatch()");
             } else {
-                b
-                    .addStatement("_stmt.execute();")
-                    .addStatement("var updateCount = _stmt.getUpdateCount()");
+                b.addStatement("_stmt.execute();");
+                b.addStatement("var updateCount = _stmt.getUpdateCount()");
             }
             b.addStatement("_telemetry.close(null)");
             if (isMono) {
@@ -179,6 +186,17 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                 b.addStatement("var _batchResult = _stmt.executeBatch()");
                 b.addStatement("_telemetry.close(null)");
                 b.addStatement("return _batchResult");
+            } else if (generatedKeys) {
+                var result = CommonUtils.isNullable(method) || method.getReturnType().getKind().isPrimitive() || isMono
+                    ? CodeBlock.of("_result")
+                    : CodeBlock.of("$T.requireNonNull(_result)", Objects.class);
+
+                b.addStatement("var _batchResult = _stmt.executeBatch()");
+                b.addCode("try (var _rs = _stmt.getGeneratedKeys()) {$>\n")
+                    .addCode("var _result = $L.apply(_rs);\n", resultMapperName)
+                    .addCode("_telemetry.close(null);\n")
+                    .addCode("return $L;", result)
+                    .addCode("$<\n}\n");
             } else {
                 b.addStatement("var _batchResult = _stmt.executeBatch()");
                 b.addStatement("_telemetry.close(null)");
@@ -188,6 +206,17 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                 .addStatement("var _updateCount = _stmt.executeLargeUpdate()")
                 .addStatement("_telemetry.close(null)")
                 .addStatement("return new $T(_updateCount)", DbUtils.UPDATE_COUNT);
+        } else if (generatedKeys) {
+            var result = CommonUtils.isNullable(method) || method.getReturnType().getKind().isPrimitive() || isMono
+                ? CodeBlock.of("_result")
+                : CodeBlock.of("$T.requireNonNull(_result)", Objects.class);
+
+            b.addCode("_stmt.execute();\n");
+            b.addCode("try (var _rs = _stmt.getGeneratedKeys()) {$>\n")
+                .addCode("var _result = $L.apply(_rs);\n", resultMapperName)
+                .addCode("_telemetry.close(null);\n")
+                .addCode("return $L;", result)
+                .addCode("$<\n}\n");
         } else {
             var result = CommonUtils.isNullable(method) || method.getReturnType().getKind().isPrimitive() || isMono
                 ? CodeBlock.of("_result")

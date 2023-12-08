@@ -24,6 +24,7 @@ class MockJdbcExecutor : JdbcConnectionFactory {
         Mockito.reset(resultSet, preparedStatement, callableStatement, mockConnection, telemetry)
         whenever(mockConnection.prepareCall(ArgumentMatchers.anyString())).thenReturn(callableStatement)
         whenever(mockConnection.prepareStatement(ArgumentMatchers.anyString())).thenReturn(preparedStatement)
+        whenever(mockConnection.prepareStatement(ArgumentMatchers.anyString(), any<Int>())).thenReturn(preparedStatement)
         whenever(telemetry.createContext(any(), any())).thenReturn(telemetryCtx)
         whenever(preparedStatement.executeQuery()).thenReturn(resultSet)
     }

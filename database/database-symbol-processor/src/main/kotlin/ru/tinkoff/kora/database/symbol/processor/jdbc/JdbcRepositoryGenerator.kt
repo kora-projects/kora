@@ -22,12 +22,14 @@ import ru.tinkoff.kora.database.symbol.processor.model.QueryParameter
 import ru.tinkoff.kora.database.symbol.processor.model.QueryParameterParser
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
 import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.parseMappingData
+import java.sql.Statement
 import java.util.concurrent.Executor
 
 class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenerator {
@@ -47,7 +49,7 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
             val parameters = QueryParameterParser.parse(JdbcTypes.connection, JdbcTypes.jdbcParameterColumnMapper, method, methodType)
             val queryAnnotation = method.findAnnotation(DbUtils.queryAnnotation)!!
             val queryString = queryAnnotation.findValue<String>("value")!!
-            val query = QueryWithParameters.parse(queryString, parameters)
+            val query = QueryWithParameters.parse(queryString, parameters, method)
             val resultMapper = this.parseResultMapper(method, parameters, methodType)?.let { resultMappers.addMapper(it) }
             DbUtils.parseParameterMappers(method, parameters, query, JdbcTypes.jdbcParameterColumnMapper) { JdbcNativeTypes.findNativeType(it.toTypeName()) != null }
                 .forEach { parameterMappers.addMapper(it) }
@@ -57,8 +59,16 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         return typeBuilder.primaryConstructor(constructorBuilder.build()).build()
     }
 
-    private fun generate(method: KSFunctionDeclaration, methodType: KSFunction, query: QueryWithParameters, parameters: List<QueryParameter>, resultMapperName: String?, parameterMappers: FieldFactory): FunSpec {
+    private fun generate(
+        method: KSFunctionDeclaration,
+        methodType: KSFunction,
+        query: QueryWithParameters,
+        parameters: List<QueryParameter>,
+        resultMapperName: String?,
+        parameterMappers: FieldFactory
+    ): FunSpec {
         val batchParam = parameters.firstOrNull { it is QueryParameter.BatchParameter }
+        val isGeneratedKeys = method.isAnnotationPresent(DbUtils.idAnnotation)
         var sql = query.rawQuery
         for (parameter in query.parameters.sortedByDescending { it.sqlParameterName.length }) {
             sql = sql.replace(":${parameter.sqlParameterName}", "?")
@@ -83,44 +93,68 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.current(), _query)")
         b.controlFlow("try") {
             controlFlow("_conToClose.use") {
-                controlFlow("_conToUse!!.prepareStatement(_query.sql()).use { _stmt ->") {
-                    StatementSetterGenerator.generate(b, query, parameters, batchParam, parameterMappers)
-                    if (methodType.returnType!! == resolver.builtIns.unitType) {
-                        if (batchParam != null) {
-                            addStatement("_stmt.executeBatch()")
-                        } else {
-                            addStatement("_stmt.execute()")
-                            addStatement("_stmt.getUpdateCount()")
-                        }
-                        addStatement("_telemetry.close(null)")
-                    } else if (returnTypeName == updateCount) {
-                        if (batchParam != null) {
-                            addStatement("val _updateCount = _stmt.executeLargeBatch().sum()")
-                        } else {
-                            addStatement("val _updateCount = _stmt.executeLargeUpdate()")
-                        }
+                if (isGeneratedKeys)
+                    beginControlFlow("_conToUse!!.prepareStatement(_query.sql(), %T.RETURN_GENERATED_KEYS).use { _stmt ->", Statement::class)
+                else
+                    beginControlFlow("_conToUse!!.prepareStatement(_query.sql()).use { _stmt ->")
+
+                StatementSetterGenerator.generate(b, query, parameters, batchParam, parameterMappers)
+                if (methodType.returnType!! == resolver.builtIns.unitType) {
+                    if (batchParam != null) {
+                        addStatement("_stmt.executeBatch()")
+                    } else {
+                        addStatement("_stmt.execute()")
+                        addStatement("_stmt.getUpdateCount()")
+                    }
+                    addStatement("_telemetry.close(null)")
+                } else if (returnTypeName == updateCount) {
+                    if (batchParam != null) {
+                        addStatement("val _updateCount = _stmt.executeLargeBatch().sum()")
+                    } else {
+                        addStatement("val _updateCount = _stmt.executeLargeUpdate()")
+                    }
+                    addStatement("_telemetry.close(null)")
+                    addCode("return")
+                    if (method.isSuspend()) {
+                        addCode("@withContext")
+                    }
+                    addCode(" %T(_updateCount)\n", updateCount)
+                } else if (isGeneratedKeys) {
+                    if (batchParam != null) {
+                        addStatement("val _updateCount = _stmt.executeLargeBatch().sum()")
+                    } else {
+                        addStatement("val _updateCount = _stmt.executeLargeUpdate()")
+                    }
+                    controlFlow("_stmt.generatedKeys.use { _rs ->") {
+                        addStatement("val _result = %N.apply(_rs)", resultMapperName!!)
                         addStatement("_telemetry.close(null)")
                         addCode("return")
                         if (method.isSuspend()) {
                             addCode("@withContext")
                         }
-                        addCode(" %T(_updateCount)\n", updateCount)
-                    } else {
-                        controlFlow("_stmt.executeQuery().use { _rs ->") {
-                            addStatement("val _result = %N.apply(_rs)", resultMapperName!!)
-                            addStatement("_telemetry.close(null)")
-                            addCode("return")
-                            if (method.isSuspend()) {
-                                addCode("@withContext")
-                            }
-                            addCode(" _result")
-                            if (!methodType.returnType!!.isMarkedNullable) {
-                                addCode("!!")
-                            }
-                            addCode("\n")
+                        addCode(" _result")
+                        if (!methodType.returnType!!.isMarkedNullable) {
+                            addCode("!!")
                         }
+                        addCode("\n")
+                    }
+                } else {
+                    controlFlow("_stmt.executeQuery().use { _rs ->") {
+                        addStatement("val _result = %N.apply(_rs)", resultMapperName!!)
+                        addStatement("_telemetry.close(null)")
+                        addCode("return")
+                        if (method.isSuspend()) {
+                            addCode("@withContext")
+                        }
+                        addCode(" _result")
+                        if (!methodType.returnType!!.isMarkedNullable) {
+                            addCode("!!")
+                        }
+                        addCode("\n")
                     }
                 }
+
+                endControlFlow()
             }
             nextControlFlow("catch (_e: java.sql.SQLException)")
             addStatement("_telemetry.close(_e)")
@@ -136,9 +170,12 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
     }
 
     private fun parseResultMapper(method: KSFunctionDeclaration, parameters: List<QueryParameter>, methodType: KSFunction): Mapper? {
+        val isGeneratedKeys = method.isAnnotationPresent(DbUtils.idAnnotation)
         for (parameter in parameters) {
             if (parameter is QueryParameter.BatchParameter) {
-                return null
+                if (!isGeneratedKeys) {
+                    return null
+                }
             }
         }
         val returnType = methodType.returnType!!

@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.database.annotation.processor.r2dbc;
 
 import com.squareup.javapoet.*;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.Tag;
@@ -10,7 +11,6 @@ import ru.tinkoff.kora.database.annotation.processor.RepositoryGenerator;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameterParser;
 
-import jakarta.annotation.Nullable;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
@@ -65,7 +65,7 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
             var parameters = QueryParameterParser.parse(this.types, R2dbcTypes.CONNECTION, R2dbcTypes.PARAMETER_COLUMN_MAPPER, method, methodType);
             var queryAnnotation = AnnotationUtils.findAnnotation(method, DbUtils.QUERY_ANNOTATION);
             var queryString = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(queryAnnotation, "value");
-            var query = QueryWithParameters.parse(filer, queryString, parameters);
+            var query = QueryWithParameters.parse(filer, types, queryString, parameters, repositoryType, method);
             var resultMapper = this.parseResultMapper(method, parameters, methodType)
                 .map(rm -> DbUtils.addMapper(resultMappers, rm))
                 .orElse(null);
@@ -82,6 +82,7 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
     }
 
     private MethodSpec generate(ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters, @Nullable String resultMapperName, FieldFactory parameterMappers) {
+        final boolean generatedKeys = AnnotationUtils.isAnnotationPresent(method, DbUtils.ID_ANNOTATION);
         var sql = query.rawQuery();
         for (var parameter : query.parameters().stream().sorted(Comparator.<QueryWithParameters.QueryParameter>comparingInt(s -> s.sqlParameterName().length()).reversed()).toList()) {
             for (var sqlIndex : parameter.sqlIndexes()) {
@@ -112,7 +113,12 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
         b.addCode("var _stmt = $N.createStatement(_query.sql());\n", connectionName);
 
         R2dbcStatementSetterGenerator.generate(b, method, query, parameters, batchParam, parameterMappers);
-        b.addCode("var _flux = $T.<$T>from(_stmt.execute());\n", CommonClassNames.flux, R2dbcTypes.RESULT);
+
+        if (generatedKeys) {
+            b.addCode("var _flux = $T.<$T>from(_stmt.returnGeneratedValues().execute());\n", CommonClassNames.flux, R2dbcTypes.RESULT);
+        } else {
+            b.addCode("var _flux = $T.<$T>from(_stmt.execute());\n", CommonClassNames.flux, R2dbcTypes.RESULT);
+        }
 
         var mappings = CommonUtils.parseMapping(method);
         var resultFluxMapper = mappings.getMapping(R2dbcTypes.RESULT_FLUX_MAPPER);
@@ -154,26 +160,20 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
         var returnType = methodType.getReturnType();
         final boolean isFlux = CommonUtils.isFlux(returnType);
         final boolean isMono = CommonUtils.isMono(returnType);
+        final boolean generatedKeys = AnnotationUtils.isAnnotationPresent(method, DbUtils.ID_ANNOTATION);
         for (var parameter : parameters) {
             if (parameter instanceof QueryParameter.BatchParameter) {
-                if (isMono) {
-                    var resultType = ((DeclaredType) methodType.getReturnType()).getTypeArguments().get(0);
-                    if (resultType.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
-                        return Optional.empty();
-                    }
-                    if (CommonUtils.isVoid(resultType)) {
-                        return Optional.empty();
-                    }
+                final TypeMirror realReturnType = (isMono || isFlux)
+                    ? Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0))
+                    : method.getReturnType();
+
+                if (CommonUtils.isVoid(realReturnType)) {
                     return Optional.empty();
-                }
-                if (CommonUtils.isVoid(parameter.type())) {
+                } else if (DbUtils.UPDATE_COUNT.canonicalName().equals(realReturnType.toString())) {
                     return Optional.empty();
+                } else if (!generatedKeys) {
+                    throw new ProcessingErrorException("@Batch operations doesn't support return type other than UpdateCount or generated IDs", method);
                 }
-                if (methodType.getReturnType().toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
-                    return Optional.empty();
-                }
-                var type = ParameterizedTypeName.get(R2dbcTypes.RESULT_FLUX_MAPPER, TypeName.get(methodType.getReturnType()), TypeName.get(methodType.getReturnType()));
-                return Optional.of(new DbUtils.Mapper(type, TagUtils.parseTagValue(method)));
             }
         }
 
@@ -185,11 +185,16 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
                 return Optional.empty();
             }
         }
+
         if (isMono || isFlux) {
             var publisherParam = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
             if (CommonUtils.isVoid(publisherParam)) {
                 return Optional.empty();
             }
+            if (publisherParam.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
+                return Optional.empty();
+            }
+
             var mapperType = ParameterizedTypeName.get(R2dbcTypes.RESULT_FLUX_MAPPER, TypeName.get(publisherParam), TypeName.get(returnType));
             if (resultFluxMapper != null) {
                 return Optional.of(new DbUtils.Mapper(resultFluxMapper.mapperClass(), mapperType, resultFluxMapper.mapperTags()));
@@ -204,9 +209,6 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
                 } else {
                     return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTags(), c -> CodeBlock.of("$T.mono($L)", R2dbcTypes.RESULT_FLUX_MAPPER, c)));
                 }
-            }
-            if (publisherParam.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
-                return Optional.empty();
             }
             return Optional.of(new DbUtils.Mapper(mapperType, mappings.mapperTags()));
         }

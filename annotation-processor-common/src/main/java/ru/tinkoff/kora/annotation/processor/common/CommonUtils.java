@@ -259,6 +259,15 @@ public class CommonUtils {
         return null;
     }
 
+    public static NameConverter getNameConverter(NameConverter defaultValue, TypeElement typeElement) {
+        var converter = getNameConverter(typeElement);
+        if (converter != null) {
+            return converter;
+        } else {
+            return defaultValue;
+        }
+    }
+
     @Nullable
     public static NameConverter getNameConverter(TypeElement typeElement) {
         var namingStrategy = typeElement.getAnnotation(NamingStrategy.class);

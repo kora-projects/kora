@@ -12,7 +12,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -204,6 +204,27 @@ public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
 
         verify(executor.preparedStatement).executeLargeBatch();
         assertThat(result).containsExactly(1, 2, 3);
+    }
+
+    @Test
+    public void returnGeneratedIds() throws SQLException {
+        var repository = compileJdbc(List.of(JdbcResultSetMapper.listResultSetMapper(rs -> rs.getLong(1))), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(test) VALUES (:someint)")
+                @Id
+                java.util.List<Long> returnIds(@Batch java.util.List<Integer> someint);
+            }
+            """);
+
+        when(executor.resultSet.next()).thenReturn(true, true, true, false);
+        when(executor.resultSet.getLong(anyInt())).thenReturn(1L, 2L, 3L);
+        when(executor.mockConnection.prepareStatement(anyString(), anyInt())).thenReturn(executor.preparedStatement);
+        when(executor.preparedStatement.getGeneratedKeys()).thenReturn(executor.resultSet);
+        var result = (List<Long>) repository.invoke("returnIds", List.of(1, 2, 3));
+
+        verify(executor.preparedStatement).getGeneratedKeys();
+        assertThat(result).containsExactly(1L, 2L, 3L);
     }
 
     @Test

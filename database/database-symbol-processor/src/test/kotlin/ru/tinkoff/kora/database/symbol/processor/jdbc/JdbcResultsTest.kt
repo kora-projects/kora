@@ -11,6 +11,7 @@ import ru.tinkoff.kora.common.Context
 import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.database.common.UpdateCount
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultSetMapper
+import java.sql.Statement
 import java.util.concurrent.Executor
 import kotlin.reflect.full.findAnnotations
 import kotlin.reflect.jvm.jvmErasure
@@ -154,6 +155,27 @@ class JdbcResultsTest : AbstractJdbcRepositoryTest() {
         Assertions.assertThat(result?.value).isEqualTo(85)
         verify(executor.mockConnection).prepareStatement("INSERT INTO test(value) VALUES (?)")
         verify(executor.preparedStatement).executeLargeBatch()
+    }
+
+    @Test
+    fun testReturnBatchGeneratedIds() {
+        val repository = compile(listOf<Any>(JdbcResultSetMapper.listResultSetMapper { r -> r.getLong(1) }), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                @Id
+                fun test(@Batch value: List<String>): List<Long>
+            }
+            """.trimIndent())
+        whenever(executor.preparedStatement.executeLargeBatch()).thenReturn(longArrayOf(1L, 1L))
+        whenever(executor.preparedStatement.generatedKeys).thenReturn(executor.resultSet)
+        whenever(executor.resultSet.next()).thenReturn(true, true, false)
+        whenever(executor.resultSet.getLong(1)).thenReturn(1L, 2L)
+        val result = repository.invoke<List<Long>>("test", listOf("test1", "test2"))
+        Assertions.assertThat(result).containsExactly(1L, 2L)
+        verify(executor.mockConnection).prepareStatement("INSERT INTO test(value) VALUES (?)", Statement.RETURN_GENERATED_KEYS)
+        verify(executor.preparedStatement).executeLargeBatch()
+        verify(executor.preparedStatement).generatedKeys
     }
 
     @Test

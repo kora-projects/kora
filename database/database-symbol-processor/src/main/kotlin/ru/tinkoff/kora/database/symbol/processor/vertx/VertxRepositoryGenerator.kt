@@ -47,7 +47,7 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
             val parameters = QueryParameterParser.parse(listOf(VertxTypes.sqlConnection, VertxTypes.sqlClient), VertxTypes.parameterColumnMapper, method, methodType)
             val queryAnnotation = method.findAnnotation(DbUtils.queryAnnotation)!!
             val queryString = queryAnnotation.findValue<String>("value")!!
-            val query = QueryWithParameters.parse(queryString, parameters)
+            val query = QueryWithParameters.parse(queryString, parameters, method)
             val resultMapperName = this.parseResultMapper(method, parameters, methodType)?.let { resultMappers.addMapper(it) }
             DbUtils.parseParameterMappers(method, parameters, query, VertxTypes.parameterColumnMapper) { VertxNativeTypes.findNativeType(it.toTypeName()) != null }
                 .forEach { parameterMappers.addMapper(it) }
