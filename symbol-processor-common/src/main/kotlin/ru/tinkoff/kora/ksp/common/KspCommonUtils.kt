@@ -282,6 +282,10 @@ fun findMethods(ksAnnotated: KSAnnotated, functionFilter: (KSFunctionDeclaration
     return result
 }
 
+fun KSClassDeclaration.getNameConverter(default: NameConverter): NameConverter {
+    return getNameConverter() ?: default
+}
+
 fun KSClassDeclaration.getNameConverter(): NameConverter? {
     val namingStrategy = this.findAnnotation(CommonClassNames.namingStrategy)
     return if (namingStrategy != null) {

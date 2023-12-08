@@ -9,6 +9,7 @@ import org.mockito.kotlin.whenever
 import reactor.core.publisher.Mono
 import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.database.common.UpdateCount
+import ru.tinkoff.kora.database.r2dbc.R2dbcModule
 import ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcResultFluxMapper
 import kotlin.reflect.full.findAnnotations
 import kotlin.reflect.jvm.jvmErasure
@@ -104,6 +105,27 @@ class R2dbcResultsTest : AbstractR2dbcTest() {
         executor.setUpdateCountResult(42)
         val result = repository.invoke<UpdateCount>("test", listOf("test1", "test2"))
         assertThat(result?.value).isEqualTo(42)
+        verify(executor.con).createStatement("INSERT INTO test(value) VALUES ($1)")
+        verify(executor.statement).execute()
+    }
+
+    @Test
+    fun testReturnBatchGeneratedIds() {
+        val repository = compile(listOf<Any>(R2dbcResultFluxMapper.monoList { r -> r.get(0) as Long }), """
+            @Repository
+            interface TestRepository : R2dbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                @Id
+                suspend fun test(@ru.tinkoff.kora.database.common.annotation.Batch value: List<String>): List<Long>
+            }
+            """.trimIndent())
+        executor.setRows(listOf(
+            listOf(MockR2dbcExecutor.MockColumn("1", 1L)),
+            listOf(MockR2dbcExecutor.MockColumn("1", 2L))
+        ))
+
+        val result = repository.invoke<List<Long>>("test", listOf("test1", "test2"))
+        assertThat(result).containsExactly(1L, 2L)
         verify(executor.con).createStatement("INSERT INTO test(value) VALUES ($1)")
         verify(executor.statement).execute()
     }

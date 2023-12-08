@@ -19,6 +19,7 @@ import javax.tools.JavaFileObject;
 import javax.tools.ToolProvider;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -97,7 +98,13 @@ public abstract class AbstractAnnotationProcessorTest {
                             .filter(i -> i >= 0)
                             .min()
                             .getAsInt();
-                        return s.substring(classStart, classEnd).trim();
+                        var className = s.substring(classStart, classEnd).trim();
+                        int generic = className.indexOf('<');
+                        if(generic == -1) {
+                            return className;
+                        } else {
+                            return className.substring(0, generic);
+                        }
                     })
                     .get();
 
@@ -126,7 +133,9 @@ public abstract class AbstractAnnotationProcessorTest {
     public Object newObject(String className, Object... params) {
         try {
             var clazz = this.compileResult.loadClass(className);
-            return clazz.getConstructors()[0].newInstance(params);
+            Constructor<?> declaredConstructor = clazz.getDeclaredConstructors()[0];
+            declaredConstructor.setAccessible(true);
+            return declaredConstructor.newInstance(params);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

@@ -4,6 +4,9 @@ import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 
 import jakarta.annotation.Nullable;
 import javax.annotation.processing.Filer;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.util.Types;
 import javax.tools.StandardLocation;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -36,7 +39,12 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
         return null;
     }
 
-    public static QueryWithParameters parse(Filer filer, String rawSql, List<ru.tinkoff.kora.database.annotation.processor.model.QueryParameter> parameters) {
+    public static QueryWithParameters parse(Filer filer,
+                                            Types types,
+                                            String rawSql,
+                                            List<ru.tinkoff.kora.database.annotation.processor.model.QueryParameter> parameters,
+                                            DeclaredType repositoryType,
+                                            ExecutableElement method) {
         if (rawSql.startsWith("classpath:/")) {
             var path = rawSql.substring(11);
             var i = path.lastIndexOf("/");
@@ -61,6 +69,7 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
             }
         }
 
+        var sql = new QueryMacrosParser(types).parse(rawSql, repositoryType, method);
         List<QueryParameter> params = new ArrayList<>();
 
         for (int i = 0; i < parameters.size(); i++) {
@@ -74,11 +83,11 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
                 parameter = batchParameter.parameter();
             }
             if (parameter instanceof ru.tinkoff.kora.database.annotation.processor.model.QueryParameter.SimpleParameter simpleParameter) {
-                parseSimpleParameter(rawSql, i, parameterName).ifPresent(params::add);
+                parseSimpleParameter(sql, i, parameterName).ifPresent(params::add);
             }
             if (parameter instanceof ru.tinkoff.kora.database.annotation.processor.model.QueryParameter.EntityParameter entityParameter) {
                 for (var field : entityParameter.entity().columns()) {
-                    parseSimpleParameter(rawSql, i, field.queryParameterName(parameterName)).ifPresent(params::add);
+                    parseSimpleParameter(sql, i, field.queryParameterName(parameterName)).ifPresent(params::add);
                 }
             }
             if (params.size() == size) {
@@ -101,7 +110,7 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
             ))
             .toList();
 
-        return new QueryWithParameters(rawSql, params);
+        return new QueryWithParameters(sql, params);
     }
 
 

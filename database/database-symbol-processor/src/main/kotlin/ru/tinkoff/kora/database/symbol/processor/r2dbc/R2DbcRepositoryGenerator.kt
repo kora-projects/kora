@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.database.symbol.processor.r2dbc
 
-import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunction
@@ -26,6 +25,7 @@ import ru.tinkoff.kora.database.symbol.processor.model.QueryParameter
 import ru.tinkoff.kora.database.symbol.processor.model.QueryParameterParser
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
@@ -38,7 +38,6 @@ import ru.tinkoff.kora.ksp.common.parseMappingData
 class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
     private val repositoryInterface = resolver.getClassDeclarationByName(resolver.getKSNameFromString(R2dbcTypes.repository.canonicalName))?.asStarProjectedType()
 
-    @KspExperimental
     override fun generate(repositoryType: KSClassDeclaration, typeBuilder: TypeSpec.Builder, constructorBuilder: FunSpec.Builder): TypeSpec {
         this.enrichWithExecutor(repositoryType, typeBuilder, constructorBuilder)
         val repositoryResolvedType = repositoryType.asStarProjectedType()
@@ -49,7 +48,7 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
             val parameters = QueryParameterParser.parse(R2dbcTypes.connection, R2dbcTypes.parameterColumnMapper, method, methodType)
             val queryAnnotation = method.findAnnotation(DbUtils.queryAnnotation)!!
             val queryString = queryAnnotation.findValue<String>("value")!!
-            val query = QueryWithParameters.parse(queryString, parameters)
+            val query = QueryWithParameters.parse(queryString, parameters, method)
             val resultMapper = this.parseResultMapper(method, parameters, methodType)?.let { resultMappers.addMapper(it) }
             DbUtils.parseParameterMappers(method, parameters, query, R2dbcTypes.parameterColumnMapper) { R2dbcNativeTypes.findNativeType(it.toTypeName()) != null }
                 .forEach { parameterMappers.addMapper(it) }
@@ -60,18 +59,19 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
         return typeBuilder.primaryConstructor(constructorBuilder.build()).build()
     }
 
-    private fun generate(funDeclaration: KSFunctionDeclaration, function: KSFunction, query: QueryWithParameters, parameters: List<QueryParameter>, resultMapperName: String?, parameterMappers: FieldFactory): FunSpec {
+    private fun generate(method: KSFunctionDeclaration, function: KSFunction, query: QueryWithParameters, parameters: List<QueryParameter>, resultMapperName: String?, parameterMappers: FieldFactory): FunSpec {
+        val isGeneratedKeys = method.isAnnotationPresent(DbUtils.idAnnotation)
         var sql = query.rawQuery
         for (p in query.parameters.asSequence().withIndex().sortedByDescending { it.value.sqlParameterName.length }) {
             val parameter = p.value
             sql = sql.replace(":" + parameter.sqlParameterName, "$" + (p.index + 1))
         }
-        val b = funDeclaration.queryMethodBuilder(resolver)
-        b.addCode("val _query = %T(\n  %S,\n  %S\n,  %S\n)\n", DbUtils.queryContext, query.rawQuery, sql, funDeclaration.operationName())
+        val b = method.queryMethodBuilder(resolver)
+        b.addCode("val _query = %T(\n  %S,\n  %S\n,  %S\n)\n", DbUtils.queryContext, query.rawQuery, sql, method.operationName())
         val batchParam = parameters.firstOrNull { it is QueryParameter.BatchParameter }
         val returnType = function.returnType!!
-        val isSuspend = funDeclaration.isSuspend()
-        val isFlow = funDeclaration.isFlow()
+        val isSuspend = method.isSuspend()
+        val isFlow = method.isFlow()
         b.addCode("return ")
         b.controlFlow("%T.deferContextual { _reactorCtx ->", if (isFlow) CommonClassNames.flux else CommonClassNames.mono) {
             b.addStatement("val _telemetry = this._r2dbcConnectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.Reactor.current(_reactorCtx), _query)")
@@ -118,11 +118,13 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
         return b.build()
     }
 
-    @KspExperimental
     private fun parseResultMapper(method: KSFunctionDeclaration, parameters: List<QueryParameter>, methodType: KSFunction): Mapper? {
+        val isGeneratedKeys = method.isAnnotationPresent(DbUtils.idAnnotation)
         for (parameter in parameters) {
             if (parameter is QueryParameter.BatchParameter) {
-                return null
+                if (!isGeneratedKeys) {
+                    return null
+                }
             }
         }
         val returnType = methodType.returnType!!

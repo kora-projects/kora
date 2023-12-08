@@ -8,6 +8,7 @@ import ru.tinkoff.kora.database.common.UpdateCount;
 import ru.tinkoff.kora.database.common.annotation.processor.r2dbc.MockR2dbcExecutor.MockColumn;
 import ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcResultFluxMapper;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 
@@ -337,8 +338,35 @@ public class R2dbcResultsTest extends AbstractR2dbcRepositoryTest {
             List.of(new MockColumn("count", 0))
         ));
         var result = repository.<List<Integer>>invoke("test");
+
         assertThat(result).contains(42, 42);
         verify(executor.con).createStatement("SELECT count(*) FROM test");
+        verify(executor.statement).execute();
+        executor.reset();
+    }
+
+    @Test
+    public void returnGeneratedIds() {
+        var repository = compileR2dbc(List.of(R2dbcResultFluxMapper.monoList(row -> row.get(0, Long.class))), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("INSERT INTO test(test) VALUES (:someint)")
+                @Id
+                Mono<java.util.List<Long>> returnIds(@ru.tinkoff.kora.database.common.annotation.Batch java.util.List<Integer> someint);
+            }
+            """);
+
+        executor.setRows(List.of(
+            List.of(new MockColumn("id", 1L)),
+            List.of(new MockColumn("id", 2L)),
+            List.of(new MockColumn("id", 3L))
+        ));
+        when(executor.statement.returnGeneratedValues()).thenReturn(executor.statement);
+
+        var result = (List<Long>) repository.invoke("returnIds", List.of(1, 2, 3));
+        assertThat(result).containsExactly(1L, 2L, 3L);
+        verify(executor.con).createStatement("INSERT INTO test(test) VALUES ($1)");
+        verify(executor.statement).returnGeneratedValues();
         verify(executor.statement).execute();
         executor.reset();
     }

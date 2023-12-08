@@ -59,7 +59,7 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
             var parameters = QueryParameterParser.parse(this.types, CassandraTypes.CONNECTION, CassandraTypes.PARAMETER_COLUMN_MAPPER, method, methodType);
             var queryAnnotation = AnnotationUtils.findAnnotation(method, DbUtils.QUERY_ANNOTATION);
             var queryString = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(queryAnnotation, "value");
-            var query = QueryWithParameters.parse(filer, queryString, parameters);
+            var query = QueryWithParameters.parse(filer, types, queryString, parameters, repositoryType, method);
             var resultMapperName = this.parseResultMapper(method, parameters, methodType)
                 .map(rm -> DbUtils.addMapper(resultMappers, rm))
                 .orElse(null);

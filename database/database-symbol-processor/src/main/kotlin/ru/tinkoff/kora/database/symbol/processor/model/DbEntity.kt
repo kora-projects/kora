@@ -115,6 +115,7 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
                 }
                 throw IllegalStateException()
             }
+
             val fields = typeDeclaration.primaryConstructor!!.parameters
                 .map {
                     val property = property(it)
@@ -126,9 +127,12 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
                     }
                     val field = SimpleEntityField(property, type, columnName, mapping)
                     val embedded = it.findAnnotation(DbUtils.embeddedAnnotation)
+                        ?: property.findAnnotation(DbUtils.embeddedAnnotation)
+
                     if (embedded == null) {
                         return@map field
                     }
+
                     val prefix = embedded.findValue<String>("value")?.ifEmpty { null } ?: ""
                     val entity = parseEntity(type)
                     if (entity == null) {

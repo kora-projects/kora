@@ -6,14 +6,17 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Indicates entity field name to column name mapping.
+ * Indicates database table name mapping should be used for specific model.
  */
-@Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.RECORD_COMPONENT})
+@Target({ElementType.TYPE})
 @Retention(RetentionPolicy.CLASS)
-public @interface Column {
+public @interface Table {
 
     /**
-     * @return column name that will be associated with marked field
+     * @return database table name.
      */
     String value();
+
+    String alias() default "";
 }
+

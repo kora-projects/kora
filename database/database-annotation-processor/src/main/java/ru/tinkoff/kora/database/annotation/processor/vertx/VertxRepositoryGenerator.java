@@ -68,7 +68,7 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
             var parameters = QueryParameterParser.parse(this.types, List.of(VertxTypes.CONNECTION, VertxTypes.SQL_CLIENT), VertxTypes.PARAMETER_COLUMN_MAPPER, method, methodType);
             var queryAnnotation = AnnotationUtils.findAnnotation(method, DbUtils.QUERY_ANNOTATION);
             var queryString = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(queryAnnotation, "value");
-            var query = QueryWithParameters.parse(filer, queryString, parameters);
+            var query = QueryWithParameters.parse(filer, types, queryString, parameters, repositoryType, method);
             var resultMapper = this.parseResultMapper(method, parameters, methodType)
                 .map(rm -> DbUtils.addMapper(resultMappers, rm))
                 .orElse(null);

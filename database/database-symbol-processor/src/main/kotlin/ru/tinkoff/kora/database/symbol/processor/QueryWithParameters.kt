@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.database.symbol.processor
 
+import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import java.io.BufferedInputStream
 import java.nio.charset.Charset
@@ -27,7 +28,7 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
 
     companion object {
 
-        fun parse(rq: String, parameters: List<ru.tinkoff.kora.database.symbol.processor.model.QueryParameter>): QueryWithParameters {
+        fun parse(rq: String, parameters: List<ru.tinkoff.kora.database.symbol.processor.model.QueryParameter>, method: KSFunctionDeclaration): QueryWithParameters {
             val params = mutableListOf<QueryParameter>()
             var rawSql = rq
             if (rawSql.startsWith("classpath:/")) {
@@ -37,6 +38,10 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
                     it.readAllBytes().toString(Charset.defaultCharset())
                 }
             }
+
+            val parser = QueryMacrosParser()
+            rawSql = parser.parse(rawSql, method)
+
             parameters.forEachIndexed { i, _parameter ->
                 var parameter = _parameter
                 val parameterName = parameter.name
@@ -64,19 +69,24 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
                     }
                 }
                 if (params.size == size) {
-                    throw ProcessingErrorException("Parameter usage was not found in sql: ${parameter.name}", parameter.variable)
+                    throw ProcessingErrorException(
+                        "Parameter usage was not found in sql: ${parameter.name}",
+                        parameter.variable
+                    )
                 }
             }
+
             val paramsNumbers = params.asSequence()
                 .map { it.sqlIndexes }
                 .flatten()
                 .sorted()
+
             val processedParams = params
-                .map { p: QueryParameter ->
+                .map { p ->
                     QueryParameter(
-                        p.sqlParameterName, p.methodIndex, p.sqlIndexes
-                            .map { paramsNumbers.indexOf(it) }
-                    )
+                        p.sqlParameterName,
+                        p.methodIndex,
+                        p.sqlIndexes.map { paramsNumbers.indexOf(it) })
                 }
 
             return QueryWithParameters(rawSql, processedParams)
