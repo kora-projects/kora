@@ -8,10 +8,13 @@ import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+/**
+ * <b>Русский</b>: Базовый интерфейс HTTP клиента для всех реализаций
+ * <hr>
+ * <b>English</b>: Basic HTTP client interface for all implementations
+ */
 public interface HttpClient {
-    /**
-     * Result Mono can throw wrapped {@link HttpClientException}
-     */
+
     CompletionStage<HttpClientResponse> execute(HttpClientRequest request);
 
     default HttpClient with(HttpClientInterceptor interceptor) {

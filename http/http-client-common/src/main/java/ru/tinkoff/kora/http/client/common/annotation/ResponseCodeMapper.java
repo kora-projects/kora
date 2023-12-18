@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.http.client.common.annotation;
 
-import org.jetbrains.annotations.Range;
-import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper;
 
 import java.lang.annotation.*;

@@ -10,6 +10,19 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Flow;
 
+/**
+ * <b>Русский</b>: Описывает тело HTTP ответа
+ * <hr>
+ * <b>English</b>: Describes HTTP response body
+ * <br>
+ * <br>
+ * Пример / Example:
+ * <pre>
+ * {@code
+ * HttpBody.of("application/octet-stream", new byte{ 0x0 })
+ * }
+ * </pre>
+ */
 public interface HttpBodyOutput extends HttpBody, Flow.Publisher<ByteBuffer> {
     static HttpBodyOutput of(String contentType, Flow.Publisher<? extends ByteBuffer> content) {
         return new StreamingHttpBodyOutput(contentType, -1, content);

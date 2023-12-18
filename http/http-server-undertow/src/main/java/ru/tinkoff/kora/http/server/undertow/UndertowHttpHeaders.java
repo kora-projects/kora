@@ -17,13 +17,13 @@ public class UndertowHttpHeaders extends AbstractHttpHeaders implements HttpHead
 
     @Nullable
     @Override
-    public String getFirst(String name) {
-        return this.headerMap.getFirst(name);
+    public String getFirst(String headerName) {
+        return this.headerMap.getFirst(headerName);
     }
 
     @Override
-    public List<String> getAll(String name) {
-        var headers = this.headerMap.get(name);
+    public List<String> getAll(String headerName) {
+        var headers = this.headerMap.get(headerName);
         if (headers == null) {
             return null;
         }
@@ -31,8 +31,8 @@ public class UndertowHttpHeaders extends AbstractHttpHeaders implements HttpHead
     }
 
     @Override
-    public boolean has(String key) {
-        return headerMap.contains(key);
+    public boolean has(String headerName) {
+        return headerMap.contains(headerName);
     }
 
     @Override

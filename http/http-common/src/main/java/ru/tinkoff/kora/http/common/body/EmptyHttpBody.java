@@ -13,9 +13,13 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 
 public final class EmptyHttpBody implements HttpBodyInput, HttpBodyOutput {
-    public static EmptyHttpBody INSTANCE = new EmptyHttpBody();
+
+    public final static EmptyHttpBody INSTANCE = new EmptyHttpBody();
+
     private static final byte[] emptyArray = new byte[0];
     private static final ByteBuffer emptyBuffer = ByteBuffer.wrap(emptyArray);
+
+    private EmptyHttpBody() { }
 
     @Override
     public ByteBuffer getFullContentIfAvailable() {
