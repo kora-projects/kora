@@ -11,7 +11,9 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Class that defines public API for writing JSON content.
+ * <b>Русский</b>: Контракт писателя JSON со всеми методами записи
+ * <hr>
+ * <b>English</b>: JSON writer contract with all write methods
  */
 public interface JsonWriter<T> {
 
