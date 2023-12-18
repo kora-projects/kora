@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 
 public interface HttpClientResponse extends Closeable {
+
     int code();
 
     HttpHeaders headers();

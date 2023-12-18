@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 public interface HttpClientRequestBuilder {
+
     HttpClientRequest build();
 
     HttpClientRequestBuilder templateParam(String name, String value);

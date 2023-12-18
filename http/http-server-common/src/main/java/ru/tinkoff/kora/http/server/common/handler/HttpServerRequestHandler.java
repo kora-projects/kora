@@ -7,6 +7,7 @@ import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import java.util.concurrent.CompletionStage;
 
 public interface HttpServerRequestHandler {
+
     String method();
 
     String routeTemplate();
