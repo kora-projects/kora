@@ -189,7 +189,7 @@ public record PathTemplate(String templateString, boolean template, String base,
         int i;
         for (i = baseLength; i < path.length(); ++i) {
             final char currentChar = path.charAt(i);
-            if (currentChar == '?' || current.part.equals("*")) {
+            if (current.part.equals("*")) {
                 break;
             } else if (currentChar == '/') {
                 String result = path.substring(stringStart, i);
