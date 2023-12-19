@@ -5,15 +5,14 @@ dependencies {
     api project(":vertx-common")
     api project(":common")
 
-    api(libs.vertx.pg.client)
+    api(libs.vertx.sql.client)
     compileOnly(libs.reactor.core)
     compileOnly(libs.kotlin.stdlib.lib)
     compileOnly(libs.kotlin.coroutines.jdk8)
-    implementation "com.ongres.scram:common:2.1"
-    implementation "com.ongres.scram:client:2.1"
 
     annotationProcessor project(':config:config-annotation-processor')
 
     testImplementation project(':internal:test-postgres')
     testImplementation libs.reactor.test
+    testImplementation libs.vertx.pg.client
 }

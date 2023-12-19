@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.database.vertx;
 
-import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.sqlclient.PoolOptions;
+import io.vertx.sqlclient.SqlConnectOptions;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
@@ -11,15 +11,11 @@ import java.util.Objects;
 
 @ConfigValueExtractor
 public interface VertxDatabaseConfig {
+    String pgUri();
+
     String username();
 
     String password();
-
-    String host();
-
-    int port();
-
-    String database();
 
     String poolName();
 
@@ -49,17 +45,17 @@ public interface VertxDatabaseConfig {
     @Nullable
     Duration initializationFailTimeout();
 
-    static PgConnectOptions toPgConnectOptions(VertxDatabaseConfig config) {
-        return new PgConnectOptions()
-            .setMetricsName(config.poolName())
-            .setHost(config.host())
-            .setPort(config.port())
-            .setDatabase(config.database())
+    static SqlConnectOptions toPgConnectOptions(VertxDatabaseConfig config) {
+        var options = SqlConnectOptions.fromUri(config.pgUri());
+
+        options
+            .setCachePreparedStatements(config.cachePreparedStatements())
             .setUser(config.username())
             .setPassword(config.password())
             .setConnectTimeout(Math.toIntExact(config.connectionTimeout().toMillis()))
             .setIdleTimeout(Math.toIntExact(config.idleTimeout().toMillis()))
-            .setCachePreparedStatements(config.cachePreparedStatements());
+            .setMetricsName(config.poolName());
+        return options;
     }
 
     static PoolOptions toPgPoolOptions(VertxDatabaseConfig config) {

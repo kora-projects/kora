@@ -2,7 +2,6 @@ package ru.tinkoff.kora.database.vertx;
 
 import io.netty.channel.EventLoopGroup;
 import io.vertx.core.Promise;
-import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Transaction;
@@ -41,7 +40,7 @@ public class VertxDatabase implements Lifecycle, Wrapped<Pool>, VertxConnectionF
 
     public VertxDatabase(VertxDatabaseConfig vertxDatabaseConfig, EventLoopGroup eventLoopGroup, DataBaseTelemetryFactory telemetryFactory) {
         this.config = vertxDatabaseConfig;
-        this.pool = PgPool.pool(
+        this.pool = Pool.pool(
             VertxUtil.customEventLoopVertx(eventLoopGroup),
             VertxDatabaseConfig.toPgConnectOptions(vertxDatabaseConfig),
             VertxDatabaseConfig.toPgPoolOptions(vertxDatabaseConfig)
