@@ -41,11 +41,9 @@ class VertxConnectionFactoryTest {
 
     private static void withDb(PostgresParams params, Consumer<VertxDatabase> consumer) {
         var config = new $VertxDatabaseConfig_ConfigValueExtractor.VertxDatabaseConfig_Impl(
+            "postgres://%s:%d/%s".formatted(params.host(), params.port(), params.db()),
             params.user(),
             params.password(),
-            params.host(),
-            params.port(),
-            params.db(),
             "test",
             Duration.ofMillis(1000),
             Duration.ofMillis(1000),

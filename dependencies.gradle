@@ -90,6 +90,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
 
             library('vertx-core', 'io.vertx', 'vertx-core').versionRef('vertx')
             library('vertx-pg-client', 'io.vertx', 'vertx-pg-client').versionRef('vertx')
+            library('vertx-sql-client', 'io.vertx', 'vertx-sql-client').versionRef('vertx')
 
             library('r2dbc-spi', 'io.r2dbc', 'r2dbc-spi').version('1.0.0.RELEASE')
             library('r2dbc-pool', 'io.r2dbc', 'r2dbc-pool').version('1.0.1.RELEASE')
