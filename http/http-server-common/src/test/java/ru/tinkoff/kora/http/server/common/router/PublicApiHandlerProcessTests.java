@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.http.server.common.router;
 
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -57,7 +58,11 @@ class PublicApiHandlerProcessTests {
             Arguments.of("POST", "/foo/{bar}/baz/", "/foo/bar/baz/baz", 200, 404),
             Arguments.of("POST", "/foo/{bar}/baz", "/foo/bar/baz/baz", 200, 404),
             Arguments.of("POST", "/foo/{bar}/baz/baz", "/foo/bar/baz", 200, 404),
-            Arguments.of("POST", "/foo/{bar}/baz/baz", "/foo/bar/baz/", 200, 404)
+            Arguments.of("POST", "/foo/{bar}/baz/baz", "/foo/bar/baz/", 200, 404),
+            Arguments.of("POST", "/foo/{bar}", "/foo/b%20ar", 200, 200), // %20 - пробел
+            Arguments.of("POST", "/foo/{bar}", "/foo/b%3Far", 200, 200), // %3F - ?
+            Arguments.of("POST", "/foo/{bar}/baz", "/foo/b%20ar/baz", 200, 200), // %20 - пробел
+            Arguments.of("POST", "/foo/{bar}/baz", "/foo/b%3Far/baz", 200, 200) // %3F - ?
         );
     }
 

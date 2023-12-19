@@ -27,7 +27,32 @@ public final class RequestHandlerUtils {
         if (result == null) {
             throw HttpServerResponseException.of(400, "Path parameter '%s' is required".formatted(name));
         }
-        return result;
+
+        return decodeUrlSlashIfExist(result);
+    }
+
+    // %2F - / (slash)
+    private static String decodeUrlSlashIfExist(String pathValue) {
+        var encodedSymbolIndex = pathValue.indexOf('%');
+        if (encodedSymbolIndex == -1) {
+            return pathValue;
+        }
+
+        var lastEncodedSymbolIndex = 0;
+        var builder = new StringBuilder(pathValue.length());
+        var lengthLimit = pathValue.length() - 2;
+        while (encodedSymbolIndex != -1 && (encodedSymbolIndex) < lengthLimit) {
+            var isSlash = pathValue.charAt(encodedSymbolIndex + 1) == '2' && pathValue.charAt(encodedSymbolIndex + 2) == 'F';
+            if (isSlash) {
+                builder.append(pathValue, lastEncodedSymbolIndex, encodedSymbolIndex).append('/');
+                lastEncodedSymbolIndex = encodedSymbolIndex + 3;
+            }
+
+            encodedSymbolIndex = pathValue.indexOf('%', encodedSymbolIndex + 1);
+        }
+
+        builder.append(pathValue.substring(lastEncodedSymbolIndex));
+        return builder.toString();
     }
 
     @Nonnull
@@ -36,7 +61,6 @@ public final class RequestHandlerUtils {
         if (result == null) {
             throw HttpServerResponseException.of(400, "Path parameter '%s' is required".formatted(name));
         }
-
 
         try {
             return UUID.fromString(result);
