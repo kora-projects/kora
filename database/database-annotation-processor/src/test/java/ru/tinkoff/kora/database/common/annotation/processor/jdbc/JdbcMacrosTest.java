@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
 
@@ -79,6 +80,25 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
             """);
 
         repository.invoke("insert", newGeneratedObject("Entity", "1", 1, "1", "1").get());
+        verify(executor.mockConnection).prepareStatement("INSERT INTO entities(id, value1, value2, value3) VALUES (?, ?, ?, ?)");
+    }
+
+    @Test
+    void insertBatch() throws SQLException {
+        var repository = compileJdbc(List.of(), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                            
+                @Query("INSERT INTO %{entity#inserts}")
+                UpdateCount insert(@Batch java.util.List<Entity> entity);
+            }
+            """, """
+                @Table("entities")
+                record Entity(@Id String id, @Column("value1") int field1, String value2, @Nullable String value3) {}
+            """);
+
+        when(executor.preparedStatement.executeLargeBatch()).thenReturn(new long[] {1L});
+        repository.invoke("insert", List.of(newGeneratedObject("Entity", "1", 1, "1", "1").get()));
         verify(executor.mockConnection).prepareStatement("INSERT INTO entities(id, value1, value2, value3) VALUES (?, ?, ?, ?)");
     }
 
@@ -159,6 +179,25 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
     }
 
     @Test
+    void upsertBatch() throws SQLException {
+        var repository = compileJdbc(List.of(), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                            
+                @Query("INSERT INTO %{entity#inserts} ON CONFLICT (id) DO UPDATE SET %{entity#updates}")
+                UpdateCount insert(@Batch java.util.List<Entity> entity);
+            }
+            """, """
+                @Table("entities")
+                record Entity(@Id String id, @Column("value1") int field1, String value2, @Nullable String value3) {}
+            """);
+
+        when(executor.preparedStatement.executeLargeBatch()).thenReturn(new long[] {1L});
+        repository.invoke("insert", List.of(newGeneratedObject("Entity", "1", 1, "1", "1").get()));
+        verify(executor.mockConnection).prepareStatement("INSERT INTO entities(id, value1, value2, value3) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET value1 = ?, value2 = ?, value3 = ?");
+    }
+
+    @Test
     void entityTableAndUpdate() throws SQLException {
         var repository = compileJdbc(List.of(), """
             @Repository
@@ -173,6 +212,25 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
             """);
 
         repository.invoke("insert", newGeneratedObject("Entity", "1", 1, "1", "1").get());
+        verify(executor.mockConnection).prepareStatement("UPDATE entities SET value1 = ?, value2 = ?, value3 = ? WHERE id = ?");
+    }
+
+    @Test
+    void entityTableAndUpdateBatch() throws SQLException {
+        var repository = compileJdbc(List.of(), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                            
+                @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+                UpdateCount insert(@Batch java.util.List<Entity> entity);
+            }
+            """, """
+                @Table("entities")
+                record Entity(@Id String id, @Column("value1") int field1, String value2, @Nullable String value3) {}
+            """);
+
+        when(executor.preparedStatement.executeLargeBatch()).thenReturn(new long[] {1L});
+        repository.invoke("insert", List.of(newGeneratedObject("Entity", "1", 1, "1", "1").get()));
         verify(executor.mockConnection).prepareStatement("UPDATE entities SET value1 = ?, value2 = ?, value3 = ? WHERE id = ?");
     }
 

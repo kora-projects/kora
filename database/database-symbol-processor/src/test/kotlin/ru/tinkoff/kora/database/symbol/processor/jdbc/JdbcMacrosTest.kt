@@ -85,6 +85,30 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
     }
 
     @Test
+    fun insertBatch() {
+        val repository = compile(
+            listOf<Any>(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                            
+                @Query("INSERT INTO %{entity#inserts}")
+                fun insert(@Batch entity: List<Entity>): UpdateCount
+            }
+            
+            """.trimIndent(), """
+                @Table("entities")
+                data class Entity(@field:Id val id: String, @field:Column("value1") val field1: Long, val value2: String, val value3: String?)
+            
+            """.trimIndent()
+        )
+
+        Mockito.`when`(executor.preparedStatement.executeLargeBatch()).thenReturn(longArrayOf(1L))
+        repository.invoke<Any>("insert", listOf(newGenerated("Entity", "1", 1, "1", "1").invoke()))
+        Mockito.verify(executor.mockConnection)
+            .prepareStatement("INSERT INTO entities(id, value1, value2, value3) VALUES (?, ?, ?, ?)")
+    }
+
+    @Test
     fun insertsWithoutId() {
         val repository = compile(
             listOf<Any>(), """
@@ -163,7 +187,7 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
             interface TestRepository : JdbcRepository {
                             
                 @Query("INSERT INTO %{entity#inserts} ON CONFLICT (id) DO UPDATE SET %{entity#updates}")
-                fun insert(entity: Entity): UpdateCount
+                fun upsert(entity: Entity): UpdateCount
             }
             
             """.trimIndent(), """
@@ -172,7 +196,31 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
             
             """.trimIndent()
         )
-        repository.invoke<Any>("insert", newGenerated("Entity", "1", 1, "1", "1").invoke())
+        repository.invoke<Any>("upsert", newGenerated("Entity", "1", 1, "1", "1").invoke())
+        Mockito.verify(executor.mockConnection)
+            .prepareStatement("INSERT INTO entities(id, value1, value2, value3) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET value1 = ?, value2 = ?, value3 = ?")
+    }
+
+    @Test
+    fun upsertBatch() {
+        val repository = compile(
+            listOf<Any>(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                            
+                @Query("INSERT INTO %{entity#inserts} ON CONFLICT (id) DO UPDATE SET %{entity#updates}")
+                fun upsert(@Batch entity: List<Entity>): UpdateCount
+            }
+            
+            """.trimIndent(), """
+                @Table("entities")
+                data class Entity(@field:Id val id: String, @field:Column("value1") val field1: Long, val value2: String, val value3: String?)
+            
+            """.trimIndent()
+        )
+
+        Mockito.`when`(executor.preparedStatement.executeLargeBatch()).thenReturn(longArrayOf(1L))
+        repository.invoke<Any>("upsert", listOf(newGenerated("Entity", "1", 1, "1", "1").invoke()))
         Mockito.verify(executor.mockConnection)
             .prepareStatement("INSERT INTO entities(id, value1, value2, value3) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET value1 = ?, value2 = ?, value3 = ?")
     }
@@ -195,6 +243,30 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
             """.trimIndent()
         )
         repository.invoke<Any>("insert", newGenerated("Entity", "1", 1, "1", "1").invoke())
+        Mockito.verify(executor.mockConnection)
+            .prepareStatement("UPDATE entities SET value1 = ?, value2 = ?, value3 = ? WHERE id = ?")
+    }
+
+    @Test
+    fun entityTableAndUpdateBatch() {
+        val repository = compile(
+            listOf<Any>(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                            
+                @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+                fun insert(@Batch entity: List<Entity>): UpdateCount
+            }
+            
+            """.trimIndent(), """
+                @Table("entities")
+                data class Entity(@field:Id val id: String, @field:Column("value1") val field1: Long, val value2: String, val value3: String?)
+            
+            """.trimIndent()
+        )
+
+        Mockito.`when`(executor.preparedStatement.executeLargeBatch()).thenReturn(longArrayOf(1L))
+        repository.invoke<Any>("insert", listOf(newGenerated("Entity", "1", 1, "1", "1").invoke()))
         Mockito.verify(executor.mockConnection)
             .prepareStatement("UPDATE entities SET value1 = ?, value2 = ?, value3 = ? WHERE id = ?")
     }
