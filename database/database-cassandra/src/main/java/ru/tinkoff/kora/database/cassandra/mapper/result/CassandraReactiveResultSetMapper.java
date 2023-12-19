@@ -25,6 +25,10 @@ public interface CassandraReactiveResultSetMapper<T, P extends Publisher<T>> ext
         });
     }
 
+    static CassandraReactiveResultSetMapper<Void, Mono<Void>> monoVoid() {
+        return rs -> Flux.from(rs).then();
+    }
+
     static <T> CassandraReactiveResultSetMapper<List<T>, Mono<List<T>>> monoList(CassandraRowMapper<T> rowMapper) {
         return rs -> Flux.from(rs)
             .map(rowMapper::apply)

@@ -1,8 +1,5 @@
 package ru.tinkoff.kora.database.cassandra;
 
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraReactiveResultSetMapper;
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraResultSetMapper;
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowMapper;
 import ru.tinkoff.kora.database.common.DataBaseModule;
@@ -10,25 +7,12 @@ import ru.tinkoff.kora.database.common.DataBaseModule;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.time.*;
-import java.util.List;
 import java.util.Optional;
 
 public interface CassandraModule extends DataBaseModule {
 
     default <T> CassandraResultSetMapper<Optional<T>> cassandraOptionalResultSetMapper(CassandraRowMapper<T> rowMapper) {
         return CassandraResultSetMapper.optionalResultSetMapper(rowMapper);
-    }
-
-    default <T> CassandraReactiveResultSetMapper<T, Flux<T>> cassandraFluxReactiveResultSetMapper(CassandraRowMapper<T> rowMapper) {
-        return CassandraReactiveResultSetMapper.flux(rowMapper);
-    }
-
-    default <T> CassandraReactiveResultSetMapper<T, Mono<T>> cassandraMonoReactiveResultSetMapper(CassandraRowMapper<T> rowMapper) {
-        return CassandraReactiveResultSetMapper.mono(rowMapper);
-    }
-
-    default <T> CassandraReactiveResultSetMapper<List<T>, Mono<List<T>>> cassandraMonoListReactiveResultSetMapper(CassandraRowMapper<T> rowMapper) {
-        return CassandraReactiveResultSetMapper.monoList(rowMapper);
     }
 
     default CassandraRowMapper<String> stringCassandraRowMapper() {
@@ -107,9 +91,5 @@ public interface CassandraModule extends DataBaseModule {
         return row -> row.isNull(0)
             ? null
             : row.getInstant(0);
-    }
-
-    default CassandraReactiveResultSetMapper<Void, Mono<Void>> voidMonoCassandraReactiveResultSetMapper() {
-        return rs -> Flux.from(rs).then();
     }
 }

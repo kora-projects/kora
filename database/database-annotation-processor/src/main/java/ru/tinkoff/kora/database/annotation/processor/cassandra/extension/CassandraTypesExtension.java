@@ -2,10 +2,7 @@ package ru.tinkoff.kora.database.annotation.processor.cassandra.extension;
 
 import com.squareup.javapoet.*;
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
-import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.annotation.processor.common.GenericTypeResolver;
-import ru.tinkoff.kora.annotation.processor.common.NameUtils;
+import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.database.annotation.processor.DbEntityReadHelper;
 import ru.tinkoff.kora.database.annotation.processor.cassandra.CassandraNativeTypes;
@@ -32,9 +29,6 @@ import java.util.Map;
 import java.util.Set;
 
 import static ru.tinkoff.kora.database.annotation.processor.cassandra.CassandraTypes.RESULT_SET;
-
-//CassandraRowMapper<T>
-//CassandraResultSetMapper<List<T>> TODO
 
 public class CassandraTypesExtension implements KoraExtension {
 
@@ -76,22 +70,26 @@ public class CassandraTypesExtension implements KoraExtension {
         if (!tag.isEmpty()) {
             return null;
         }
-        if (!(typeMirror instanceof DeclaredType dt)) {
+        var typeName = TypeName.get(typeMirror).withoutAnnotations();
+        if (!(typeName instanceof ParameterizedTypeName ptn) || !(typeMirror instanceof DeclaredType dt)) {
             return null;
         }
-        if (typeMirror.toString().startsWith("ru.tinkoff.kora.database.cassandra.mapper.result.CassandraResultSetMapper<")) {
+        if (ptn.rawType.equals(CassandraTypes.RESULT_SET_MAPPER)) {
             return this.generateResultSetMapper(roundEnvironment, dt);
         }
-        if (typeMirror.toString().startsWith("ru.tinkoff.kora.database.cassandra.mapper.result.CassandraAsyncResultSetMapper<")) {
+        if (ptn.rawType.equals(CassandraTypes.ASYNC_RESULT_SET_MAPPER)) {
             return this.generateAsyncResultSetMapper(roundEnvironment, dt);
         }
-        if (typeMirror.toString().startsWith("ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowMapper<")) {
+        if (ptn.rawType.equals(CassandraTypes.REACTIVE_RESULT_SET_MAPPER)) {
+            return this.generateReactiveResultSetMapper(roundEnvironment, ptn, dt);
+        }
+        if (ptn.rawType.equals(CassandraTypes.ROW_MAPPER)) {
             return this.generateResultRowMapper(roundEnvironment, dt);
         }
-        if (typeMirror.toString().startsWith("ru.tinkoff.kora.database.cassandra.mapper.parameter.CassandraParameterColumnMapper<")) {
+        if (ptn.rawType.equals(CassandraTypes.PARAMETER_COLUMN_MAPPER)) {
             return this.generateParameterColumnMapper(roundEnvironment, dt);
         }
-        if (typeMirror.toString().startsWith("ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowColumnMapper<")) {
+        if (ptn.rawType.equals(CassandraTypes.RESULT_COLUMN_MAPPER)) {
             return this.generateRowColumnMapper(roundEnvironment, dt);
         }
         return null;
@@ -187,13 +185,7 @@ public class CassandraTypesExtension implements KoraExtension {
             return this.listResultSetMapper(typeMirror, tn, (DeclaredType) rowType);
         }
         return () -> {
-            var singleResultSetMapper = this.elements.getTypeElement(CassandraTypes.RESULT_SET_MAPPER.canonicalName()).getEnclosedElements()
-                .stream()
-                .filter(e -> e.getKind() == ElementKind.METHOD && e.getModifiers().contains(Modifier.STATIC))
-                .map(ExecutableElement.class::cast)
-                .filter(m -> m.getSimpleName().contentEquals("singleResultSetMapper"))
-                .findFirst()
-                .orElseThrow();
+            var singleResultSetMapper = findStaticMethod(CassandraTypes.RESULT_SET_MAPPER, "singleResultSetMapper");
             var tp = (TypeVariable) singleResultSetMapper.getTypeParameters().get(0).asType();
             var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, listType), singleResultSetMapper.asType());
             return ExtensionResult.fromExecutable(singleResultSetMapper, executableType);
@@ -211,30 +203,53 @@ public class CassandraTypesExtension implements KoraExtension {
             return () -> {
                 var tn = (ParameterizedTypeName) TypeName.get(listType);
                 var rowType = dt.getTypeArguments().get(0);
-                var singleResultSetMapper = this.elements.getTypeElement(CassandraTypes.ASYNC_RESULT_SET_MAPPER.canonicalName()).getEnclosedElements()
-                    .stream()
-                    .filter(e -> e.getKind() == ElementKind.METHOD && e.getModifiers().contains(Modifier.STATIC))
-                    .map(ExecutableElement.class::cast)
-                    .filter(m -> m.getSimpleName().contentEquals("list"))
-                    .findFirst()
-                    .orElseThrow();
+                var singleResultSetMapper = findStaticMethod(CassandraTypes.ASYNC_RESULT_SET_MAPPER, "list");
                 var tp = (TypeVariable) singleResultSetMapper.getTypeParameters().get(0).asType();
                 var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, rowType), singleResultSetMapper.asType());
                 return ExtensionResult.fromExecutable(singleResultSetMapper, executableType);
             };
         }
         return () -> {
-            var singleResultSetMapper = this.elements.getTypeElement(CassandraTypes.ASYNC_RESULT_SET_MAPPER.canonicalName()).getEnclosedElements()
-                .stream()
-                .filter(e -> e.getKind() == ElementKind.METHOD && e.getModifiers().contains(Modifier.STATIC))
-                .map(ExecutableElement.class::cast)
-                .filter(m -> m.getSimpleName().contentEquals("one"))
-                .findFirst()
-                .orElseThrow();
+            var singleResultSetMapper = findStaticMethod(CassandraTypes.ASYNC_RESULT_SET_MAPPER, "one");
             var tp = (TypeVariable) singleResultSetMapper.getTypeParameters().get(0).asType();
             var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, listType), singleResultSetMapper.asType());
             return ExtensionResult.fromExecutable(singleResultSetMapper, executableType);
         };
+    }
+
+    @Nullable
+    private KoraExtensionDependencyGenerator generateReactiveResultSetMapper(RoundEnvironment roundEnvironment, ParameterizedTypeName ptn, DeclaredType typeMirror) {
+        if (ptn.typeArguments.size() < 2 || !(ptn.typeArguments.get(1) instanceof ParameterizedTypeName publisherTypeName)) {
+            return null;
+        }
+        if (publisherTypeName.rawType.equals(CommonClassNames.flux)) {
+            var fluxMapper = findStaticMethod(CassandraTypes.REACTIVE_RESULT_SET_MAPPER, "flux");
+            var rowType = typeMirror.getTypeArguments().get(0);
+            var tp = (TypeVariable) fluxMapper.getTypeParameters().get(0).asType();
+            var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, rowType), fluxMapper.asType());
+            return () -> ExtensionResult.fromExecutable(fluxMapper, executableType);
+        }
+        if (publisherTypeName.rawType.equals(CommonClassNames.mono)) {
+            var monoParam = typeMirror.getTypeArguments().get(0);
+            var monoParamTypeName = TypeName.get(monoParam);
+            if (monoParam instanceof DeclaredType monoDt && monoParamTypeName instanceof ParameterizedTypeName monoPtn && monoPtn.rawType.equals(CommonClassNames.list)) {
+                var rowType = monoDt.getTypeArguments().get(0);
+                var monoList = findStaticMethod(CassandraTypes.REACTIVE_RESULT_SET_MAPPER, "monoList");
+                var tp = (TypeVariable) monoList.getTypeParameters().get(0).asType();
+                var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, rowType), monoList.asType());
+                return () -> ExtensionResult.fromExecutable(monoList, executableType);
+            }
+            if (monoParamTypeName.equals(TypeName.VOID.box())) {
+                var monoVoid = findStaticMethod(CassandraTypes.REACTIVE_RESULT_SET_MAPPER, "monoVoid");
+                return () -> ExtensionResult.fromExecutable(monoVoid, (ExecutableType) monoVoid.asType());
+            }
+            var rowType = monoParam;
+            var mono = findStaticMethod(CassandraTypes.REACTIVE_RESULT_SET_MAPPER, "mono");
+            var tp = (TypeVariable) mono.getTypeParameters().get(0).asType();
+            var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, rowType), mono.asType());
+            return () -> ExtensionResult.fromExecutable(mono, executableType);
+        }
+        return null;
     }
 
     private KoraExtensionDependencyGenerator listResultSetMapper(DeclaredType typeMirror, ParameterizedTypeName listType, DeclaredType rowTypeMirror) {
@@ -243,13 +258,7 @@ public class CassandraTypesExtension implements KoraExtension {
         var entity = DbEntity.parseEntity(this.types, rowTypeMirror);
         if (entity == null) {
             return () -> {
-                var listResultSetMapper = this.elements.getTypeElement(CassandraTypes.RESULT_SET_MAPPER.canonicalName()).getEnclosedElements()
-                    .stream()
-                    .filter(e -> e.getKind() == ElementKind.METHOD && e.getModifiers().contains(Modifier.STATIC))
-                    .map(ExecutableElement.class::cast)
-                    .filter(m -> m.getSimpleName().contentEquals("listResultSetMapper"))
-                    .findFirst()
-                    .orElseThrow();
+                var listResultSetMapper = findStaticMethod(CassandraTypes.RESULT_SET_MAPPER, "listResultSetMapper");
                 var tp = (TypeVariable) listResultSetMapper.getTypeParameters().get(0).asType();
                 var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, rowTypeMirror), listResultSetMapper.asType());
                 return ExtensionResult.fromExecutable(listResultSetMapper, executableType);
@@ -296,5 +305,15 @@ public class CassandraTypesExtension implements KoraExtension {
             JavaFile.builder(packageElement.getQualifiedName().toString(), typeSpec).build().writeTo(this.filer);
             return ExtensionResult.nextRound();
         };
+    }
+
+    private ExecutableElement findStaticMethod(ClassName className, String methodName) {
+        return this.elements.getTypeElement(className.canonicalName()).getEnclosedElements()
+            .stream()
+            .filter(e -> e.getKind() == ElementKind.METHOD && e.getModifiers().contains(Modifier.STATIC))
+            .map(ExecutableElement.class::cast)
+            .filter(m -> m.getSimpleName().contentEquals(methodName))
+            .findFirst()
+            .orElseThrow();
     }
 }
