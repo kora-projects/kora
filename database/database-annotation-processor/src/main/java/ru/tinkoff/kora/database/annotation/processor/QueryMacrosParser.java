@@ -101,11 +101,13 @@ final class QueryMacrosParser {
             if (fieldName.equals(SPECIAL_ID)) {
                 for (var f : fields)
                     if (AnnotationUtils.isAnnotationPresent(f, DbUtils.ID_ANNOTATION)) field = f;
-                if (field == null) throw new IllegalArgumentException("@Id annotated field not found, but was present in query marcos: " + selects.strip());
+                if (field == null)
+                    throw new IllegalArgumentException("@Id annotated field not found, but was present in query marcos: " + selects.strip());
             } else {
                 for (var f : fields)
                     if (f.getSimpleName().contentEquals(fieldName)) field = f;
-                if (field == null) throw new IllegalArgumentException("Field '" + fieldName + "' not found, but was present in query marcos: " + selects.strip());
+                if (field == null)
+                    throw new IllegalArgumentException("Field '" + fieldName + "' not found, but was present in query marcos: " + selects.strip());
             }
             var isEmbedded = AnnotationUtils.isAnnotationPresent(field, DbUtils.EMBEDDED_ANNOTATION);
             if (isEmbedded) {
@@ -215,13 +217,19 @@ final class QueryMacrosParser {
         if (TARGET_RETURN.equals(targetName)) {
             if (MethodUtils.isVoid(method)) {
                 throw new ProcessingErrorException("Macros command specified 'return' target, but return value is type Void", method);
+            } else if (method.getReturnType().toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
+                throw new ProcessingErrorException("Macros command specified 'return' target, but return value is type UpdateCount", method);
             }
 
             if (CommonUtils.isFuture(methodType.getReturnType())
                 || CommonUtils.isMono(methodType.getReturnType())
                 || CommonUtils.isFlux(methodType.getReturnType())
+                || CommonUtils.isOptional(methodType.getReturnType())
                 || CommonUtils.isCollection(methodType.getReturnType())) {
                 targetMirror = MethodUtils.getGenericType(methodType.getReturnType()).orElseThrow();
+                if (CommonUtils.isOptional(targetMirror) || CommonUtils.isCollection(targetMirror)) {
+                    targetMirror = MethodUtils.getGenericType(targetMirror).orElseThrow();
+                }
             } else {
                 targetMirror = methodType.getReturnType();
             }
@@ -236,6 +244,13 @@ final class QueryMacrosParser {
 
             if (targetMirror == null) {
                 throw new ProcessingErrorException("Macros command unspecified target received: " + targetName, method);
+            }
+
+            if (CommonUtils.isCollection(targetMirror) || CommonUtils.isOptional(targetMirror)) {
+                targetMirror = MethodUtils.getGenericType(targetMirror).orElseThrow();
+                if (CommonUtils.isOptional(targetMirror) || CommonUtils.isCollection(targetMirror)) {
+                    targetMirror = MethodUtils.getGenericType(targetMirror).orElseThrow();
+                }
             }
         }
 

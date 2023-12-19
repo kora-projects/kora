@@ -5,13 +5,14 @@ import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.google.devtools.ksp.symbol.KSTypeReference
 import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.common.naming.SnakeCaseNameConverter
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isCollection
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isCompletionStage
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
-import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
@@ -191,10 +192,16 @@ class QueryMacrosParser {
                     "Macros command specified 'return' target, but return value is type Void",
                     method
                 )
+            } else if(method.returnType?.toTypeName() == DbUtils.updateCount) {
+                throw ProcessingErrorException(
+                    "Macros command specified 'return' target, but return value is type UpdateCount",
+                    method
+                )
             }
 
-            reference = if (method.isFuture() || method.isMono() || method.isFlux() || method.returnType!!.resolve().isCollection()) {
-                method.returnType!!.resolve().arguments[0].type!!
+            val resolved = method.returnType!!.resolve()
+            reference = if (method.isCompletionStage() || method.isMono() || method.isFlux() || resolved.isCollection()) {
+                resolved.arguments[0].type!!
             } else {
                 method.returnType!!
             }
@@ -202,7 +209,14 @@ class QueryMacrosParser {
             reference = method.parameters.stream()
                 .filter { p -> p.name!!.asString().contentEquals(targetName) }
                 .findFirst()
-                .map { obj -> obj.type }
+                .map { obj ->
+                    val resolved = obj.type.resolve()
+                    if (resolved.isCollection()) {
+                        resolved.arguments[0].type!!
+                    } else {
+                        obj.type
+                    }
+                }
                 .orElseThrow {
                     ProcessingErrorException(
                         "Macros command unspecified target received: $targetName",
