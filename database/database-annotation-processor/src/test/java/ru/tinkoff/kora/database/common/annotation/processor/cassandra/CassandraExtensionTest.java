@@ -40,13 +40,20 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
         );
     }
 
+    @Override
+    protected String commonImports() {
+        return super.commonImports() + """
+            import ru.tinkoff.kora.database.cassandra.mapper.result.*;
+            """;
+    }
+
     @Test
     void testRowMapper() {
         compile(List.of(new KoraAppProcessor()), """
             @ru.tinkoff.kora.common.KoraApp
             public interface TestApp extends ru.tinkoff.kora.database.cassandra.CassandraModule{
               @Root
-              default String root(ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowMapper<TestRecord> r) {return "";}
+              default String root(CassandraRowMapper<TestRecord> r) {return "";}
             }
             """, """
             public record TestRecord(int value) {}
@@ -66,7 +73,7 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
             public interface TestApp extends ru.tinkoff.kora.database.cassandra.CassandraModule {
 
               @Root
-              default String root(ru.tinkoff.kora.database.cassandra.mapper.result.CassandraResultSetMapper<java.util.List<TestRecord>> r) {return "";}
+              default String root(CassandraResultSetMapper<java.util.List<TestRecord>> r) {return "";}
             }
             """, """
             public record TestRecord(int value) {}
@@ -103,7 +110,7 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
             @ru.tinkoff.kora.common.KoraApp
             public interface TestApp extends ru.tinkoff.kora.database.cassandra.CassandraModule {
               @Root
-              default String root(ru.tinkoff.kora.database.cassandra.mapper.result.CassandraResultSetMapper<TestRecord> r) {return "";}
+              default String root(CassandraResultSetMapper<TestRecord> r) {return "";}
             }
             """, """
             public record TestRecord(int value) {}
@@ -122,7 +129,7 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
             @ru.tinkoff.kora.common.KoraApp
             public interface TestApp extends ru.tinkoff.kora.database.cassandra.CassandraModule {
               @Root
-              default String root(ru.tinkoff.kora.database.cassandra.mapper.result.CassandraAsyncResultSetMapper<TestRecord> r) {return "";}
+              default String root(CassandraAsyncResultSetMapper<TestRecord> r) {return "";}
             }
             """, """
             public record TestRecord(int value) {}
@@ -141,7 +148,85 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
             @ru.tinkoff.kora.common.KoraApp
             public interface TestApp extends ru.tinkoff.kora.database.cassandra.CassandraModule {
               @Root
-              default String root(ru.tinkoff.kora.database.cassandra.mapper.result.CassandraAsyncResultSetMapper<java.util.List<TestRecord>> r) {return "";}
+              default String root(CassandraAsyncResultSetMapper<java.util.List<TestRecord>> r) {return "";}
+            }
+            """, """
+            public record TestRecord(int value) {}
+            """);
+
+        compileResult.assertSuccess();
+        assertThat(compileResult.loadClass("$TestRecord_CassandraRowMapper"))
+            .isNotNull()
+            .isFinal()
+            .matches(doesImplement(CassandraRowMapper.class));
+    }
+
+    @Test
+    public void testSingleReactiveResultSetMapper() {
+        compile(List.of(new KoraAppProcessor()), """
+            import reactor.core.publisher.Mono;
+            @ru.tinkoff.kora.common.KoraApp
+            public interface TestApp extends ru.tinkoff.kora.database.cassandra.CassandraModule {
+              @Root
+              default String root(CassandraReactiveResultSetMapper<TestRecord, Mono<TestRecord>> r) {return "";}
+            }
+            """, """
+            public record TestRecord(int value) {}
+            """);
+
+        compileResult.assertSuccess();
+        assertThat(compileResult.loadClass("$TestRecord_CassandraRowMapper"))
+            .isNotNull()
+            .isFinal()
+            .matches(doesImplement(CassandraRowMapper.class));
+    }
+
+    @Test
+    public void testVoidMono() {
+        compile(List.of(new KoraAppProcessor()), """
+            import reactor.core.publisher.Mono;
+            @ru.tinkoff.kora.common.KoraApp
+            public interface TestApp extends ru.tinkoff.kora.database.cassandra.CassandraModule {
+              @Root
+              default String root(CassandraReactiveResultSetMapper<Void, Mono<Void>> r) {return "";}
+            }
+            """, """
+            public record TestRecord(int value) {}
+            """);
+
+        compileResult.assertSuccess();
+    }
+
+    @Test
+    public void testListReactiveResultSetMapper() {
+        compile(List.of(new KoraAppProcessor()), """
+            import java.util.List;
+            import reactor.core.publisher.Mono;
+                        
+            @ru.tinkoff.kora.common.KoraApp
+            public interface TestApp extends ru.tinkoff.kora.database.cassandra.CassandraModule {
+              @Root
+              default String root(CassandraReactiveResultSetMapper<List<TestRecord>, Mono<List<TestRecord>>> r) {return "";}
+            }
+            """, """
+            public record TestRecord(int value) {}
+            """);
+
+        compileResult.assertSuccess();
+        assertThat(compileResult.loadClass("$TestRecord_CassandraRowMapper"))
+            .isNotNull()
+            .isFinal()
+            .matches(doesImplement(CassandraRowMapper.class));
+    }
+
+    @Test
+    public void testFluxReactiveResultSetMapper() {
+        compile(List.of(new KoraAppProcessor()), """
+            import reactor.core.publisher.Flux;
+            @ru.tinkoff.kora.common.KoraApp
+            public interface TestApp extends ru.tinkoff.kora.database.cassandra.CassandraModule {
+              @Root
+              default String root(CassandraReactiveResultSetMapper<TestRecord, Flux<TestRecord>> r) {return "";}
             }
             """, """
             public record TestRecord(int value) {}
