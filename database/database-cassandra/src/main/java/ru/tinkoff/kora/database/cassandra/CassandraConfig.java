@@ -242,6 +242,7 @@ public interface CassandraConfig {
             @Nullable
             DriftWarningConfig driftWarning();
 
+            @ConfigValueExtractor
             interface DriftWarningConfig {
                 @Nullable
                 Duration threshold();
