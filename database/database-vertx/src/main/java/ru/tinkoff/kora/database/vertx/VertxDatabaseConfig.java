@@ -11,7 +11,7 @@ import java.util.Objects;
 
 @ConfigValueExtractor
 public interface VertxDatabaseConfig {
-    String pgUri();
+    String connectionUri();
 
     String username();
 
@@ -46,7 +46,7 @@ public interface VertxDatabaseConfig {
     Duration initializationFailTimeout();
 
     static SqlConnectOptions toPgConnectOptions(VertxDatabaseConfig config) {
-        var options = SqlConnectOptions.fromUri(config.pgUri());
+        var options = SqlConnectOptions.fromUri(config.connectionUri());
 
         options
             .setCachePreparedStatements(config.cachePreparedStatements())
