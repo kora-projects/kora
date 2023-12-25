@@ -84,7 +84,7 @@ public class LogAspect implements KoraAspect {
                 var mapping = CommonUtils.parseMapping(executableElement).getMapping(structuredArgumentMapper);
                 var mapperType = mapping != null && mapping.mapperClass() != null
                     ? mapping.isGeneric() ? mapping.parameterized(TypeName.get(executableElement.getReturnType())) : TypeName.get(mapping.mapperClass())
-                    : ParameterizedTypeName.get(structuredArgumentMapper, TypeName.get(executableElement.getReturnType()));
+                    : ParameterizedTypeName.get(structuredArgumentMapper, TypeName.get(executableElement.getReturnType()).box());
                 var mapper = aspectContext.fieldFactory().constructorParam(
                     mapperType,
                     List.of(AnnotationSpec.builder(CommonClassNames.nullable).build())

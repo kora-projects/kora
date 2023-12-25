@@ -78,7 +78,7 @@ public class LogAspectTest extends AbstractLogAspectTest {
         var aopProxy = compile("""
             public class Target {
               @Log.in
-              public void test(String arg1, @Log(TRACE) String arg2, @Log.off String arg3, int arg4) {}
+              public void test(String arg1, @Log(TRACE) String arg2, @Log.off String arg3, int arg4, boolean arg5) {}
             }
             """);
 
@@ -86,29 +86,29 @@ public class LogAspectTest extends AbstractLogAspectTest {
         var log = Objects.requireNonNull(loggers.get(testPackage() + ".Target.test"));
 
         reset(log, INFO);
-        aopProxy.invoke("test", "test1", "test2", "test3", 1);
+        aopProxy.invoke("test", "test1", "test2", "test3", 1, true);
         var o = Mockito.inOrder(log);
         o.verify(log).isDebugEnabled();
         o.verify(log).info(">");
         o.verifyNoMoreInteractions();
 
         reset(log, DEBUG);
-        aopProxy.invoke("test", "test1", "test2", "test3", 1);
+        aopProxy.invoke("test", "test1", "test2", "test3", 1, true);
         o = Mockito.inOrder(log);
         o.verify(log).isDebugEnabled();
         o.verify(log).info(inData.capture(), eq(">"));
         o.verifyNoMoreInteractions();
-        verifyInData(Map.of("arg1", "test1", "arg4", "1"));
+        verifyInData(Map.of("arg1", "test1", "arg4", "1", "arg5", "true"));
         o.verify(log).isTraceEnabled();
         o.verifyNoMoreInteractions();
 
         reset(log, TRACE);
-        aopProxy.invoke("test", "test1", "test2", "test3", 1);
+        aopProxy.invoke("test", "test1", "test2", "test3", 1, true);
         o = Mockito.inOrder(log);
         o.verify(log).isDebugEnabled();
         o.verify(log).info(inData.capture(), eq(">"));
         o.verifyNoMoreInteractions();
-        verifyInData(Map.of("arg1", "test1", "arg2", "test2", "arg4", "1"));
+        verifyInData(Map.of("arg1", "test1", "arg2", "test2", "arg4", "1", "arg5", "true"));
         o.verify(log).isTraceEnabled();
         o.verifyNoMoreInteractions();
     }
@@ -162,6 +162,34 @@ public class LogAspectTest extends AbstractLogAspectTest {
         o.verify(log).info(outData.capture(), eq("<"));
         o.verifyNoMoreInteractions();
         verifyOutData(Map.of("out", "test-result"));
+    }
+
+    @Test
+    public void testLogResultsPrimitive() {
+        var aopProxy = compile("""
+            public class Target {
+              @Log.out
+              public int test() { return 1; }
+            }
+            """);
+
+        verify(factory).getLogger(testPackage() + ".Target.test");
+        var log = Objects.requireNonNull(loggers.get(testPackage() + ".Target.test"));
+
+        reset(log, INFO);
+        aopProxy.invoke("test");
+        var o = Mockito.inOrder(log);
+        o.verify(log).isDebugEnabled();
+        o.verify(log).info("<");
+        o.verifyNoMoreInteractions();
+
+        reset(log, DEBUG);
+        aopProxy.invoke("test");
+        o = Mockito.inOrder(log);
+        o.verify(log).isDebugEnabled();
+        o.verify(log).info(outData.capture(), eq("<"));
+        o.verifyNoMoreInteractions();
+        verifyOutData(Map.of("out", "1"));
     }
 
     @Test
