@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.app;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.common.KoraSubmodule;
 import ru.tinkoff.kora.common.Tag;
@@ -31,6 +32,17 @@ public interface AppWithAppPart {
     @Component
     @Root
     class Class4<T extends Number> {}
+
+    @Component
+    @Root
+    class Class5 {
+
+        private final String s;
+
+        public Class5(@Nullable String s) {
+            this.s = s;
+        }
+    }
 
     @ru.tinkoff.kora.common.Module
     interface Module {

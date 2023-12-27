@@ -612,6 +612,9 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                     if (!tag.isEmpty()) {
                         pb.addAnnotation(TagUtils.makeAnnotationSpec(tag));
                     }
+                    if(CommonUtils.isNullable(parameter)) {
+                        pb.addAnnotation(Nullable.class);
+                    }
                     mb.addParameter(pb.build());
                     if (i > 0) {
                         mb.addCode(", ");
