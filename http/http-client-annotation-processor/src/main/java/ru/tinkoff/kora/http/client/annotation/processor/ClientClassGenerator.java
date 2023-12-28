@@ -124,18 +124,45 @@ public class ClientClassGenerator {
                             b.beginControlFlow("for (var $L : $L)", paramName, targetLiteral);
                             targetLiteral = paramName;
                         }
-                        b.addCode("_query.unsafeAdd($S, $T.encode(", URLEncoder.encode(p.queryParameterName(), StandardCharsets.UTF_8), URLEncoder.class);
-                        if (requiresConverter(type)) {
-                            b.addCode("$L.convert($L)", getConverterName(methodData, p.parameter()), targetLiteral);
+
+                        var isMap = CommonUtils.isMap(type);
+                        if (isMap) {
+                            var keyType = ((DeclaredType) type).getTypeArguments().get(0);
+                            if(!String.class.getCanonicalName().equals(keyType.toString())) {
+                                throw new ProcessingErrorException("@Query map key type must be String, but was: " + keyType, method);
+                            }
+
+                            type = ((DeclaredType) type).getTypeArguments().get(1);
+                            var paramName = "_" + targetLiteral + "_element";
+                            b.beginControlFlow("for (var $L : $L.entrySet())", paramName, targetLiteral);
+                            targetLiteral = paramName;
+
+                            b.beginControlFlow("if($L.getKey() != null && !$L.getKey().isBlank())", paramName, paramName);
+                            b.beginControlFlow("if($L.getValue() == null)", paramName);
+                            b.addStatement("_query.add($L.getKey())", paramName);
+                            b.nextControlFlow("else");
+                            b.addCode("_query.add($L.getKey(), ", paramName);
+                            if (requiresConverter(type)) {
+                                b.addCode("$L.convert($L.getValue())", getConverterName(methodData, p.parameter()), targetLiteral);
+                            } else {
+                                b.addCode("$T.toString($L.getValue())", Objects.class, targetLiteral);
+                            }
+                            b.addStatement(")", StandardCharsets.class);
+                            b.endControlFlow().endControlFlow().endControlFlow();
                         } else {
-                            b.addCode("$T.toString($L)", Objects.class, targetLiteral);
+                            b.addCode("_query.unsafeAdd($S, $T.encode(", URLEncoder.encode(p.queryParameterName(), StandardCharsets.UTF_8), URLEncoder.class);
+                            if (requiresConverter(type)) {
+                                b.addCode("$L.convert($L)", getConverterName(methodData, p.parameter()), targetLiteral);
+                            } else {
+                                b.addCode("$T.toString($L)", Objects.class, targetLiteral);
+                            }
+                            b.addCode(", $T.UTF_8));\n", StandardCharsets.class);
                         }
-                        b.addCode(", $T.UTF_8));\n", StandardCharsets.class);
 
                         if (isList) {
-                            b.endControlFlow()
-                                .endControlFlow();
+                            b.endControlFlow().endControlFlow();
                         }
+
                         if (nullable) {
                             b.endControlFlow();
                         }
@@ -164,10 +191,32 @@ public class ClientClassGenerator {
                     targetLiteral = paramName;
                 }
 
-                if (requiresConverter(type)) {
-                    b.addCode("_headers.add($S, $L.convert($L));\n", header.headerName(), getConverterName(methodData, header.parameter()), targetLiteral);
+                var isMap = CommonUtils.isMap(type);
+                if (isMap) {
+                    var keyType = ((DeclaredType) type).getTypeArguments().get(0);
+                    if(!String.class.getCanonicalName().equals(keyType.toString())) {
+                        throw new ProcessingErrorException("@Header map key type must be String, but was: " + keyType, method);
+                    }
+
+                    type = ((DeclaredType) type).getTypeArguments().get(1);
+                    b.beginControlFlow("for (var $L_header : $L.entrySet())", targetLiteral, targetLiteral);
+                    b.beginControlFlow("if($L_header.getKey() != null && !$L_header.getKey().isBlank() && $L_header.getValue() != null)", targetLiteral, targetLiteral, targetLiteral);
+                    if (requiresConverter(type)) {
+                        b.addStatement("_headers.add($L_header.getKey(), $L.convert($L_header.getValue()))", targetLiteral, getConverterName(methodData, header.parameter()), targetLiteral);
+                    } else {
+                        b.addStatement("_headers.add($L_header.getKey(), $L_header.getValue())", targetLiteral, targetLiteral);
+                    }
+                    b.endControlFlow().endControlFlow();
+                } else if(ClassName.get(type).equals(httpHeaders)) {
+                    b.beginControlFlow("for (var $L_header : $L)", targetLiteral, targetLiteral);
+                    b.addStatement("_headers.add($L_header.getKey(), $L_header.getValue())", targetLiteral, targetLiteral);
+                    b.endControlFlow();
                 } else {
-                    b.addCode("_headers.add($S, $T.toString($L));\n", header.headerName(), Objects.class, targetLiteral);
+                    if (requiresConverter(type)) {
+                        b.addCode("_headers.add($S, $L.convert($L));\n", header.headerName(), getConverterName(methodData, header.parameter()), targetLiteral);
+                    } else {
+                        b.addCode("_headers.add($S, $T.toString($L));\n", header.headerName(), Objects.class, targetLiteral);
+                    }
                 }
 
                 if (isList) {
@@ -452,7 +501,7 @@ public class ClientClassGenerator {
         for (var entry : parameterConverters.entrySet()) {
             var readerName = entry.getKey();
             var parameterizedTypeName = entry.getValue();
-            tb.addField(parameterizedTypeName, readerName);
+            tb.addField(parameterizedTypeName, readerName, Modifier.PRIVATE, Modifier.FINAL);
             builder.addParameter(parameterizedTypeName, readerName);
             builder.addStatement("this.$1L = $1L", readerName);
         }
@@ -759,6 +808,8 @@ public class ClientClassGenerator {
                     var type = queryParameter.parameter().asType();
                     if (CommonUtils.isCollection(type)) {
                         type = ((DeclaredType) type).getTypeArguments().get(0);
+                    } else if(CommonUtils.isMap(type)) {
+                        type = ((DeclaredType) type).getTypeArguments().get(1);
                     }
 
                     if (requiresConverter(type)) {
@@ -772,8 +823,11 @@ public class ClientClassGenerator {
                     var type = headerParameter.parameter().asType();
                     if (CommonUtils.isCollection(type)) {
                         type = ((DeclaredType) type).getTypeArguments().get(0);
+                    } else if(CommonUtils.isMap(type)) {
+                        type = ((DeclaredType) type).getTypeArguments().get(1);
                     }
-                    if (requiresConverter(type)) {
+
+                    if (requiresConverter(type) && !ClassName.get(headerParameter.parameter().asType()).equals(httpHeaders)) {
                         result.put(
                             getConverterName(method, headerParameter.parameter()),
                             getConverterTypeName(type)
