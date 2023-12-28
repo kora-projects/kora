@@ -13,11 +13,11 @@ public final class EnumStringParameterConverter<T extends Enum<T>> implements St
     }
 
     @Override
-    public String convert(T object) {
-        if (object == null) {
+    public String convert(T value) {
+        if (value == null) {
             return null;
         } else {
-            return this.values[object.ordinal()];
+            return this.values[value.ordinal()];
         }
     }
 }

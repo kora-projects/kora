@@ -66,6 +66,7 @@ abstract class AbstractHttpClientTest : AbstractSymbolProcessorTest() {
             import ru.tinkoff.kora.http.client.common.*
             import ru.tinkoff.kora.http.common.annotation.*
             import ru.tinkoff.kora.http.client.common.annotation.HttpClient
+            import ru.tinkoff.kora.http.common.header.HttpHeaders
             import java.util.concurrent.CompletionStage
             import java.util.concurrent.CompletableFuture
             import ru.tinkoff.kora.http.client.common.interceptor.HttpClientInterceptor

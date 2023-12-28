@@ -80,6 +80,7 @@ public abstract class AbstractHttpClientTest extends AbstractAnnotationProcessor
             import ru.tinkoff.kora.http.client.common.response.*;
             import ru.tinkoff.kora.http.client.common.*;
             import ru.tinkoff.kora.http.common.annotation.*;
+            import ru.tinkoff.kora.http.common.header.*;
             import ru.tinkoff.kora.http.client.common.annotation.HttpClient;
             import ru.tinkoff.kora.http.client.common.interceptor.HttpClientInterceptor;
             import ru.tinkoff.kora.http.client.common.interceptor.HttpClientInterceptor.InterceptChain;

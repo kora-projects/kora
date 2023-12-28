@@ -2,9 +2,11 @@ package ru.tinkoff.kora.http.client.annotation.processor.parameters;
 
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.http.client.annotation.processor.AbstractHttpClientTest;
+import ru.tinkoff.kora.http.client.common.writer.StringParameterConverter;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.argThat;
@@ -172,4 +174,45 @@ public class HttpClientQueryParametersTest extends AbstractHttpClientTest {
         verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=test1&qParam=test2")));
     }
 
+    @Test
+    public void testMapQueryParameter() {
+        var client = compileClient(List.of(), """
+            @HttpClient
+            public interface TestClient {
+              @HttpRoute(method = "POST", path = "/test")
+              void request(@Query java.util.Map<String, String> queryParams);
+            }
+            """);
+
+        reset(httpClient);
+        onRequest("POST", "http://test-url:8080/test?qParam=test1", rs -> rs.withCode(200));
+        client.invoke("request", Map.of("qParam", "test1"));
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=test1")));
+
+        reset(httpClient);
+        onRequest("POST", "http://test-url:8080/test?qParam=test1&qSec=test2", rs -> rs.withCode(200));
+        client.invoke("request", Map.of("qSec", "test2", "qParam", "test1"));
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=test1&qSec=test2")));
+    }
+
+    @Test
+    public void testMapQueryParameterWithConverter() {
+        var client = compileClient(List.of((StringParameterConverter<Object>) Object::toString), """
+            @HttpClient
+            public interface TestClient {
+              @HttpRoute(method = "POST", path = "/test")
+              void request(@Query java.util.Map<String, Object> queryParams);
+            }
+            """);
+
+        reset(httpClient);
+        onRequest("POST", "http://test-url:8080/test?qParam=test1", rs -> rs.withCode(200));
+        client.invoke("request", Map.of("qParam", "test1"));
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=test1")));
+
+        reset(httpClient);
+        onRequest("POST", "http://test-url:8080/test?qParam=test1&qSec=test2", rs -> rs.withCode(200));
+        client.invoke("request", Map.of("qSec", "test2", "qParam", "test1"));
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=test1&qSec=test2")));
+    }
 }

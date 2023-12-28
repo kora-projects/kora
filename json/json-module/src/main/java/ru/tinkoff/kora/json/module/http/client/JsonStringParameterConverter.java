@@ -14,9 +14,9 @@ public class JsonStringParameterConverter<T> implements StringParameterConverter
     }
 
     @Override
-    public String convert(T object) {
+    public String convert(T value) {
         try {
-            var bytes = this.writer.toByteArray(object);
+            var bytes = this.writer.toByteArray(value);
             return new String(bytes);
         } catch (IOException e) {
             throw new HttpClientEncoderException(e);

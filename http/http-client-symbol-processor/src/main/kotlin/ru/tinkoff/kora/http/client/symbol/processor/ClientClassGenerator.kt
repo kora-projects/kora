@@ -39,12 +39,14 @@ import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.await
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isCollection
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isCompletionStage
+import ru.tinkoff.kora.ksp.common.CommonClassNames.isMap
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.writeTagValue
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.findRepeatableAnnotation
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.MappingData
+import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.parseAnnotationValue
 import ru.tinkoff.kora.ksp.common.parseMappingData
 import java.net.URI
@@ -97,6 +99,8 @@ class ClientClassGenerator(private val resolver: Resolver) {
                         var parameterType = parameter.parameter.type.resolve()
                         if (parameterType.isCollection()) {
                             parameterType = parameterType.arguments[0].type?.resolve() ?: continue
+                        } else if(parameterType.isMap()) {
+                            parameterType = parameterType.arguments[1].type?.resolve() ?: continue
                         }
 
                         if (requiresConverter(parameterType)) {
@@ -108,9 +112,11 @@ class ClientClassGenerator(private val resolver: Resolver) {
                         var parameterType = parameter.parameter.type.resolve()
                         if (parameterType.isCollection()) {
                             parameterType = parameterType.arguments[0].type?.resolve() ?: continue
+                        } else if(parameterType.isMap()) {
+                            parameterType = parameterType.arguments[1].type?.resolve() ?: continue
                         }
 
-                        if (requiresConverter(parameterType)) {
+                        if (requiresConverter(parameterType) && httpHeaders != parameterType.toClassName()) {
                             result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
                         }
                     }
@@ -173,9 +179,20 @@ class ClientClassGenerator(private val resolver: Resolver) {
                         uriWithPlaceholdersStringB.append("placeholder");
                         if (requiresConverter(routePart.parameter!!.parameter.type.resolve())) {
                             val converterName = getConverterName(methodData, routePart.parameter.parameter);
-                            b.add("  .plus(%T.encode(%L.convert(%N), %T.UTF_8))\n", URLEncoder::class.asClassName(), converterName, routePart.parameter.parameter.name?.asString(), StandardCharsets::class.asClassName());
+                            b.add(
+                                "  .plus(%T.encode(%L.convert(%N), %T.UTF_8))\n",
+                                URLEncoder::class.asClassName(),
+                                converterName,
+                                routePart.parameter.parameter.name?.asString(),
+                                StandardCharsets::class.asClassName()
+                            );
                         } else {
-                            b.add("  .plus(%T.encode(%N.toString(), %T.UTF_8))\n", URLEncoder::class.asClassName(), routePart.parameter.parameter.name?.asString(), StandardCharsets::class.asClassName());
+                            b.add(
+                                "  .plus(%T.encode(%N.toString(), %T.UTF_8))\n",
+                                URLEncoder::class.asClassName(),
+                                routePart.parameter.parameter.name?.asString(),
+                                StandardCharsets::class.asClassName()
+                            );
                         }
                     }
                 }
@@ -203,50 +220,79 @@ class ClientClassGenerator(private val resolver: Resolver) {
                         b.beginControlFlow("if (%N != null)", literalName)
                     }
 
-                    if (iterable) {
-                        val argType = parameterType.arguments[0].type?.resolve()
-                        val iteratorName = literalName + "_iterator"
-                        val paramName = "_" + literalName + "_element"
-                        b.addStatement("val %N = %N.iterator()", iteratorName, literalName)
-                            .beginControlFlow("if (!%N.hasNext())", iteratorName)
-                            .addStatement("_query.unsafeAdd(%S)", URLEncoder.encode(it.queryParameterName, StandardCharsets.UTF_8))
-                            .nextControlFlow("else")
-                            .add("do {").add(CodeBlock.builder().indent().add("\n").build())
-                            .addStatement("val %N = %N.next()", paramName, iteratorName)
-                        literalName = paramName
+                    if (parameterType.isMap()) {
+                        val keyType = parameterType.arguments[0].type?.resolve()
+                        if (keyType!!.toClassName() != String::class.asClassName()) {
+                            throw ProcessingErrorException("@Query map key type must be String, but was: $keyType", method)
+                        }
 
-                        if (argType != null) {
-                            parameterType = argType
-                            if (argType.isMarkedNullable) {
-                                b.add("if (%L != null) ", literalName)
+                        b.beginControlFlow("%L.forEach { _k, _v -> ", literalName)
+                            .beginControlFlow("if(!_k.isNullOrBlank())")
+
+                        val argType = parameterType.arguments[1].type?.resolve()!!
+                        if(argType.isMarkedNullable) {
+                            b.beginControlFlow("if(_v == null)")
+                                .addStatement("_query.add(_k)")
+                                .nextControlFlow("else")
+                        }
+
+                        if (!requiresConverter(argType)) {
+                            b.addStatement("_query.add(_k, _v.toString())")
+                        } else {
+                            b.addStatement("_query.add(_k, %L.convert(_v))", getConverterName(methodData, it.parameter))
+                        }
+
+                        if(argType.isMarkedNullable) {
+                            b.endControlFlow()
+                        }
+                        b.endControlFlow().endControlFlow()
+                    } else {
+                        if (iterable) {
+                            val argType = parameterType.arguments[0].type?.resolve()
+                            val iteratorName = literalName + "_iterator"
+                            val paramName = "_" + literalName + "_element"
+                            b.addStatement("val %N = %N.iterator()", iteratorName, literalName)
+                                .beginControlFlow("if (!%N.hasNext())", iteratorName)
+                                .addStatement("_query.unsafeAdd(%S)", URLEncoder.encode(it.queryParameterName, StandardCharsets.UTF_8))
+                                .nextControlFlow("else")
+                                .add("do {").add(CodeBlock.builder().indent().add("\n").build())
+                                .addStatement("val %N = %N.next()", paramName, iteratorName)
+                            literalName = paramName
+
+                            if (argType != null) {
+                                parameterType = argType
+                                if (argType.isMarkedNullable) {
+                                    b.add("if (%L != null) ", literalName)
+                                }
                             }
+                        }
+
+                        if (!requiresConverter(parameterType)) {
+                            b.add(
+                                "_query.unsafeAdd(%S, %T.encode(%N.toString(), %T.UTF_8))\n",
+                                URLEncoder.encode(it.queryParameterName, StandardCharsets.UTF_8),
+                                URLEncoder::class.asClassName(),
+                                literalName,
+                                StandardCharsets::class.asClassName()
+                            )
+                        } else {
+                            b.add(
+                                "_query.unsafeAdd(%S, %T.encode(%L.convert(%L), %T.UTF_8))\n",
+                                URLEncoder.encode(it.queryParameterName, StandardCharsets.UTF_8),
+                                URLEncoder::class.asClassName(),
+                                getConverterName(methodData, it.parameter),
+                                literalName,
+                                StandardCharsets::class.asClassName()
+                            )
+                        }
+
+                        if (iterable) {
+                            b.add(CodeBlock.builder().unindent().build()).add("\n")
+                                .add("} while (%N.hasNext())", it.parameter.name!!.asString() + "_iterator")
+                            b.endControlFlow()
                         }
                     }
 
-                    if (!requiresConverter(parameterType)) {
-                        b.add(
-                            "_query.unsafeAdd(%S, %T.encode(%N.toString(), %T.UTF_8))\n",
-                            URLEncoder.encode(it.queryParameterName, StandardCharsets.UTF_8),
-                            URLEncoder::class.asClassName(),
-                            literalName,
-                            StandardCharsets::class.asClassName()
-                        )
-                    } else {
-                        b.add(
-                            "_query.unsafeAdd(%S, %T.encode(%L.convert(%L), %T.UTF_8))\n",
-                            URLEncoder.encode(it.queryParameterName, StandardCharsets.UTF_8),
-                            URLEncoder::class.asClassName(),
-                            getConverterName(methodData, it.parameter),
-                            literalName,
-                            StandardCharsets::class.asClassName()
-                        )
-                    }
-
-                    if (iterable) {
-                        b.add(CodeBlock.builder().unindent().build()).add("\n")
-                            .add("} while (%N.hasNext())", it.parameter.name!!.asString() + "_iterator")
-                        b.endControlFlow()
-                    }
                     if (nullable) {
                         b.endControlFlow()
                     }
@@ -265,29 +311,62 @@ class ClientClassGenerator(private val resolver: Resolver) {
             if (nullable) {
                 b.beginControlFlow("if (%N != null)", it.parameter.name?.asString().toString())
             }
-            if (iterable) {
-                val argType = parameterType.arguments[0].type?.resolve()
-                val iteratorName = literalName + "_iterator"
-                val paramName = "_" + literalName + "_element"
-                b.addStatement("val %N = %N.iterator()", iteratorName, literalName)
-                    .beginControlFlow("while (%N.hasNext())", it.parameter.name!!.asString() + "_iterator")
-                    .addStatement("val %N = %N.next()", paramName, iteratorName)
-                literalName = paramName
 
-                if (argType != null) {
-                    parameterType = argType
-                    if (argType.isMarkedNullable) {
-                        b.add("if (%L != null) ", literalName)
+            if(httpHeaders == parameterType.toClassName()) {
+                b.beginControlFlow("%L.forEach { _e -> ", literalName)
+                b.addStatement("_headers.add(_e.key, _e.value)", getConverterName(methodData, it.parameter))
+                b.endControlFlow()
+            } else if (parameterType.isMap()) {
+                val keyType = parameterType.arguments[0].type?.resolve()
+                if (keyType!!.toClassName() != String::class.asClassName()) {
+                    throw ProcessingErrorException("@Header map key type must be String, but was: $keyType", method)
+                }
+
+                b.beginControlFlow("%L.forEach { _k, _v -> ", literalName)
+                    .beginControlFlow("if(!_k.isNullOrBlank())")
+
+                val argType = parameterType.arguments[1].type?.resolve()!!
+                if(argType.isMarkedNullable) {
+                    b.beginControlFlow("if(_v != null)")
+                }
+
+                if (!requiresConverter(argType)) {
+                    b.addStatement("_headers.add(_k, _v.toString())")
+                } else {
+                    b.addStatement("_headers.add(_k, %L.convert(_v))", getConverterName(methodData, it.parameter))
+                }
+
+                if(argType.isMarkedNullable) {
+                    b.endControlFlow()
+                }
+                b.endControlFlow().endControlFlow()
+            } else {
+                if (iterable) {
+                    val argType = parameterType.arguments[0].type?.resolve()
+                    val iteratorName = literalName + "_iterator"
+                    val paramName = "_" + literalName + "_element"
+                    b.addStatement("val %N = %N.iterator()", iteratorName, literalName)
+                        .beginControlFlow("while (%N.hasNext())", it.parameter.name!!.asString() + "_iterator")
+                        .addStatement("val %N = %N.next()", paramName, iteratorName)
+                    literalName = paramName
+
+                    if (argType != null) {
+                        parameterType = argType
+                        if (argType.isMarkedNullable) {
+                            b.add("if (%L != null) ", literalName)
+                        }
                     }
                 }
-            }
-            if (!requiresConverter(parameterType)) {
-                b.addStatement("_headers.add(%S, %N.toString())", it.headerName, literalName)
-            } else {
-                b.addStatement("_headers.add(%S, %N.convert(%N))", it.headerName, getConverterName(methodData, it.parameter), literalName)
-            }
-            if (iterable) {
-                b.endControlFlow().add("\n")
+
+                if (!requiresConverter(parameterType)) {
+                    b.addStatement("_headers.add(%S, %N.toString())", it.headerName, literalName)
+                } else {
+                    b.addStatement("_headers.add(%S, %N.convert(%N))", it.headerName, getConverterName(methodData, it.parameter), literalName)
+                }
+
+                if (iterable) {
+                    b.endControlFlow().add("\n")
+                }
             }
 
             if (nullable) {
@@ -637,9 +716,11 @@ class ClientClassGenerator(private val resolver: Resolver) {
         val parameters: List<Parameter>
     ) {
         fun responseMapperType() = if (declaration.isSuspend()) {
-            httpClientResponseMapper.parameterizedBy(CompletionStage::class.asClassName().parameterizedBy(
-                returnType.toTypeName()
-            ))
+            httpClientResponseMapper.parameterizedBy(
+                CompletionStage::class.asClassName().parameterizedBy(
+                    returnType.toTypeName()
+                )
+            )
         } else {
             httpClientResponseMapper.parameterizedBy(returnType.toTypeName())
         }
