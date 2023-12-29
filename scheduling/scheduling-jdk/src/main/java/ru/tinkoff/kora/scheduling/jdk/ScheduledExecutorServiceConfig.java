@@ -1,11 +1,11 @@
 package ru.tinkoff.kora.scheduling.jdk;
 
-import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
-public record ScheduledExecutorServiceConfig(int threads) {
-    public ScheduledExecutorServiceConfig(@Nullable Integer threads) {
-        this(
-            threads != null ? threads : 10
-        );
+@ConfigValueExtractor
+public interface ScheduledExecutorServiceConfig {
+
+    default int threads() {
+        return 20;
     }
 }
