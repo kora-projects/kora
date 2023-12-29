@@ -43,7 +43,7 @@ public class RepositoryBuilder {
         log.info("Generating Repository for {}", repositoryElement);
         var name = NameUtils.generatedType(repositoryElement, "Impl");
         var builder = CommonUtils.extendsKeepAop(repositoryElement, name)
-            .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", CodeBlock.of("$S", RepositoryBuilder.class.getCanonicalName())).build())
+            .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", CodeBlock.of("$S", RepositoryAnnotationProcessor.class.getCanonicalName())).build())
             .addOriginatingElement(repositoryElement);
         var constructorBuilder = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC);

@@ -4,10 +4,7 @@ import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.http.client.annotation.processor.AbstractHttpClientTest;
 import ru.tinkoff.kora.http.client.common.writer.StringParameterConverter;
 
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.reset;
@@ -184,14 +181,13 @@ public class HttpClientQueryParametersTest extends AbstractHttpClientTest {
             }
             """);
 
-        reset(httpClient);
         onRequest("POST", "http://test-url:8080/test?qParam=test1", rs -> rs.withCode(200));
-        client.invoke("request", Map.of("qParam", "test1"));
+        client.invoke("request", mapOf("qParam", "test1"));
         verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=test1")));
 
         reset(httpClient);
         onRequest("POST", "http://test-url:8080/test?qParam=test1&qSec=test2", rs -> rs.withCode(200));
-        client.invoke("request", Map.of("qSec", "test2", "qParam", "test1"));
+        client.invoke("request", mapOf("qParam", "test1", "qSec", "test2"));
         verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=test1&qSec=test2")));
     }
 
@@ -205,14 +201,24 @@ public class HttpClientQueryParametersTest extends AbstractHttpClientTest {
             }
             """);
 
-        reset(httpClient);
         onRequest("POST", "http://test-url:8080/test?qParam=test1", rs -> rs.withCode(200));
-        client.invoke("request", Map.of("qParam", "test1"));
+        client.invoke("request", mapOf("qParam", "test1"));
         verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=test1")));
 
         reset(httpClient);
         onRequest("POST", "http://test-url:8080/test?qParam=test1&qSec=test2", rs -> rs.withCode(200));
-        client.invoke("request", Map.of("qSec", "test2", "qParam", "test1"));
+        client.invoke("request", mapOf("qParam", "test1", "qSec", "test2"));
         verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=test1&qSec=test2")));
+    }
+
+    private static Map<String, String> mapOf(String... kv) {
+        var m = new LinkedHashMap<String, String>();
+        for (int i = 0; i < kv.length; i++) {
+            var k = kv[i];
+            i++;
+            var v = kv[i];
+            m.put(k, v);
+        }
+        return m;
     }
 }

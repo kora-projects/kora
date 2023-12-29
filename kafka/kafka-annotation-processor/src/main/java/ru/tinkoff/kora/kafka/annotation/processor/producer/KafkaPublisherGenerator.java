@@ -3,6 +3,7 @@ package ru.tinkoff.kora.kafka.annotation.processor.producer;
 import com.squareup.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
+import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames;
 import ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaPublisherUtils;
 
@@ -41,11 +42,12 @@ final class KafkaPublisherGenerator {
         var packageName = this.elements.getPackageOf(typeElement).getQualifiedName().toString();
         var moduleName = NameUtils.generatedType(typeElement, "PublisherModule");
         var module = TypeSpec.interfaceBuilder(moduleName)
-            .addOriginatingElement(typeElement)
-            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(AnnotationSpec.builder(Generated.class)
+                .addMember("value", CodeBlock.of("$S", KafkaPublisherAnnotationProcessor.class.getCanonicalName()))
+                .build())
             .addAnnotation(CommonClassNames.module)
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
-                .addMember("value", "$S", KafkaPublisherAnnotationProcessor.class.getCanonicalName()).build());
+            .addOriginatingElement(typeElement)
+            .addModifiers(Modifier.PUBLIC);
 
         module.addMethod(this.buildPublisherFactoryFunction(typeElement, publishMethods, aopProxy));
         module.addMethod(this.buildPublisherFactoryImpl(typeElement));
@@ -169,6 +171,9 @@ final class KafkaPublisherGenerator {
         var topicConfigTypeName = ClassName.get(packageName, topicConfigName);
 
         var b = CommonUtils.extendsKeepAop(publisher, implementationName)
+            .addAnnotation(AnnotationSpec.builder(Generated.class)
+                .addMember("value", CodeBlock.of("$S", KafkaPublisherAnnotationProcessor.class.getCanonicalName()))
+                .build())
             .addOriginatingElement(publisher)
             .addSuperinterface(generatedPublisher)
             .addField(CommonClassNames.telemetryConfig, "telemetryConfig", Modifier.PRIVATE, Modifier.FINAL)
@@ -344,11 +349,10 @@ final class KafkaPublisherGenerator {
 
         final String name = dt.asElement().toString();
         return name.equals(Future.class.getCanonicalName());
-
     }
 
     public void generateConfig(TypeElement producer, List<ExecutableElement> publishMethods) throws IOException {
-        var record = new RecordClassBuilder(NameUtils.generatedType(producer, "TopicConfig"))
+        var record = new RecordClassBuilder(NameUtils.generatedType(producer, "TopicConfig"), KafkaPublisherAnnotationProcessor.class)
             .addModifier(Modifier.PUBLIC)
             .originatingElement(producer);
         for (int i = 0; i < publishMethods.size(); i++) {

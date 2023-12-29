@@ -36,6 +36,8 @@ public class UserDefinedTypeStatementSetterGenerator {
         var element = this.types.asElement(typeMirror);
         var packageName = this.elements.getPackageOf(element);
         var typeSpec = TypeSpec.classBuilder(NameUtils.generatedType(element, CassandraTypes.PARAMETER_COLUMN_MAPPER))
+            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
+                .addMember("value", CodeBlock.of("$S", UserDefinedTypeStatementSetterGenerator.class.getCanonicalName())).build())
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, TypeName.get(typeMirror)));
         var entity = Objects.requireNonNull(DbEntity.parseEntity(this.types, typeMirror));
@@ -69,6 +71,8 @@ public class UserDefinedTypeStatementSetterGenerator {
         var packageName = this.elements.getPackageOf(element);
         var listType = ParameterizedTypeName.get(CommonClassNames.list, TypeName.get(typeMirror));
         var typeSpec = TypeSpec.classBuilder(NameUtils.generatedType(element, "List_CassandraParameterColumnMapper"))
+            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
+                .addMember("value", CodeBlock.of("$S", UserDefinedTypeStatementSetterGenerator.class.getCanonicalName())).build())
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, listType));
         var entity = Objects.requireNonNull(DbEntity.parseEntity(this.types, typeMirror));

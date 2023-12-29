@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Set;
 
 public class RecordClassBuilder {
+
+    private final Class<?> origin;
     public final String name;
     public final Set<Modifier> modifiers = new HashSet<>();
     public final List<RecordComponent> components = new ArrayList<>();
@@ -23,8 +25,9 @@ public class RecordClassBuilder {
 
     public record RecordComponent(String name, TypeName type, List<AnnotationSpec> annotations, CodeBlock defaultValue) {}
 
-    public RecordClassBuilder(String name) {
+    public RecordClassBuilder(String name, Class<?> origin) {
         this.name = name;
+        this.origin = origin;
     }
 
     public RecordClassBuilder defaultConstructorBody(CodeBlock defaultConstructorBody) {
@@ -63,6 +66,10 @@ public class RecordClassBuilder {
 
     public String render() {
         var sb = new StringBuilder();
+
+        sb.append("import ").append(CommonClassNames.koraGenerated.canonicalName()).append(";\n\n");
+        sb.append("@").append(CommonClassNames.koraGenerated.simpleName()).append("(\"").append(origin.getCanonicalName()).append("\")").append("\n");
+
         for (var modifier : this.modifiers) {
             sb.append(modifier.toString()).append(' ');
         }
