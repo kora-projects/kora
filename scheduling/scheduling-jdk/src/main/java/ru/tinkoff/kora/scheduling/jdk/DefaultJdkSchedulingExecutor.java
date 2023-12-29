@@ -4,11 +4,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 
-import java.util.concurrent.*;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-public class DefaultJdkSchedulingExecutor implements Lifecycle, JdkSchedulingExecutor {
+public final class DefaultJdkSchedulingExecutor implements Lifecycle, JdkSchedulingExecutor {
     private static final Logger log = LoggerFactory.getLogger(DefaultJdkSchedulingExecutor.class);
+    private static final AtomicReferenceFieldUpdater<DefaultJdkSchedulingExecutor, ScheduledThreadPoolExecutor> SERVICE = AtomicReferenceFieldUpdater.newUpdater(
+        DefaultJdkSchedulingExecutor.class,
+        ScheduledThreadPoolExecutor.class,
+        "service"
+    );
 
     private final ScheduledExecutorServiceConfig config;
     private volatile ScheduledThreadPoolExecutor service;
@@ -20,19 +28,28 @@ public class DefaultJdkSchedulingExecutor implements Lifecycle, JdkSchedulingExe
     @Override
     public void init() {
         var counter = new AtomicInteger();
-        this.service = (ScheduledThreadPoolExecutor) Executors.newScheduledThreadPool(config.threads(), r -> {
+        var service = new ScheduledThreadPoolExecutor(0, r -> {
             var name = "kora-scheduling-" + counter.incrementAndGet();
             var t = new Thread(r, name);
             t.setDaemon(false);
             return t;
         });
-        this.service.setRemoveOnCancelPolicy(true);
+        service.setMaximumPoolSize(this.config.threads());
+        service.setKeepAliveTime(1, TimeUnit.MINUTES);
+        service.allowCoreThreadTimeOut(true);
+        service.setRemoveOnCancelPolicy(true);
+        if (!SERVICE.compareAndSet(this, null, service)) {
+            service.shutdownNow();
+        }
     }
 
     @Override
     public void release() throws InterruptedException {
-        this.service.shutdownNow();
-        this.service.awaitTermination(10, TimeUnit.SECONDS);
+        var service = SERVICE.getAndSet(this, null);
+        if (service != null) {
+            service.shutdownNow();
+            service.awaitTermination(10, TimeUnit.SECONDS);
+        }
     }
 
     @Override
