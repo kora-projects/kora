@@ -70,7 +70,7 @@ public interface ApiSecurity {
 
             var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}} = this.{{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}.extract(request, {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token){{^isOAuth}};{{/isOAuth}}{{#isOAuth}}{{#vendorExtensions.hasScopes}}
               .<Principal>thenApply((principal) -> { {{#scopes}}
-                 if (!principal.scopes().contains("{{scope}}")) throw HttpServerResponseException.of(403, "");{{/scopes}}
+                 if (!principal.scopes().contains("{{scope}}")) throw HttpServerResponseException.of(403, "Forbidden");{{/scopes}}
                  return principal;
               }){{/vendorExtensions.hasScopes}};{{/isOAuth}}{{/methods}}
             {{#methods}}
@@ -79,7 +79,7 @@ public interface ApiSecurity {
                 if ({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_error != null) { future.completeExceptionally({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_error); }
                 else if ({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_principal != null) { future.complete({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_principal); }
                 else { {{#vendorExtensions.isLast}}
-                  future.completeExceptionally(HttpServerResponseException.of(403, ""));{{/vendorExtensions.isLast}}{{^vendorExtensions.isLast}}
+                  future.completeExceptionally(HttpServerResponseException.of(403, "Forbidden"));{{/vendorExtensions.isLast}}{{^vendorExtensions.isLast}}
 
 {{/vendorExtensions.isLast}}
             {{/methods}}
@@ -94,7 +94,7 @@ public interface ApiSecurity {
             return future
               .thenCompose(principal -> {
                 if (principal == null) {
-                  throw HttpServerResponseException.of(403, "");
+                  throw HttpServerResponseException.of(403, "Forbidden");
                 }
                 Principal.set(ctx, principal);
                 try {
