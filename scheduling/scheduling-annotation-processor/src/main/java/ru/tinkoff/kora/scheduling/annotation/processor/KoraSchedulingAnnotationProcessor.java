@@ -1,12 +1,10 @@
 package ru.tinkoff.kora.scheduling.annotation.processor;
 
-import com.squareup.javapoet.AnnotationSpec;
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.JavaFile;
-import com.squareup.javapoet.TypeSpec;
+import com.squareup.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
+import ru.tinkoff.kora.common.annotation.Generated;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -100,8 +98,11 @@ public class KoraSchedulingAnnotationProcessor extends AbstractKoraProcessor {
 
     private void generateModule(TypeElement type, List<? extends Element> methods) throws IOException {
         var module = TypeSpec.interfaceBuilder("$" + type.getSimpleName() + "_SchedulingModule")
-            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(AnnotationSpec.builder(Generated.class)
+                .addMember("value", CodeBlock.of("$S", KoraSchedulingAnnotationProcessor.class.getCanonicalName()))
+                .build())
             .addAnnotation(AnnotationSpec.builder(ClassName.get("ru.tinkoff.kora.common", "Module")).build())
+            .addModifiers(Modifier.PUBLIC)
             .addOriginatingElement(type);
         for (var method : methods) {
             var m = (ExecutableElement) method;

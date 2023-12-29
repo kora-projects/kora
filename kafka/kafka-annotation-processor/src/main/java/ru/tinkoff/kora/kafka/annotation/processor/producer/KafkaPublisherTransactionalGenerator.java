@@ -5,6 +5,7 @@ import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
+import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -40,10 +41,12 @@ final class KafkaPublisherTransactionalGenerator {
         var publisherImplementationTypeName = ClassName.get(publisherPackageName, NameUtils.generatedType(publisherTypeElement, "Impl"));
         var moduleName = NameUtils.generatedType(typeElement, "Module");
         var module = TypeSpec.interfaceBuilder(moduleName)
-            .addOriginatingElement(typeElement)
-            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(AnnotationSpec.builder(Generated.class)
+                .addMember("value", CodeBlock.of("$S", KafkaPublisherAnnotationProcessor.class.getCanonicalName()))
+                .build())
             .addAnnotation(CommonClassNames.module)
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", "$S", KafkaPublisherAnnotationProcessor.class.getCanonicalName()).build());
+            .addOriginatingElement(typeElement)
+            .addModifiers(Modifier.PUBLIC);
 
         var configPath = Objects.requireNonNull(AnnotationUtils.<String>parseAnnotationValueWithoutDefault(annotation, "value"));
         var tag = AnnotationSpec.builder(CommonClassNames.tag).addMember("value", "$T.class", ClassName.get(typeElement)).build();
@@ -83,6 +86,9 @@ final class KafkaPublisherTransactionalGenerator {
         var implementationName = NameUtils.generatedType(typeElement, "Impl");
         var publisherImplementationTypeName = ClassName.get(publisherPackageName, NameUtils.generatedType(publisherTypeElement, "Impl"));
         var b = CommonUtils.extendsKeepAop(typeElement, implementationName)
+            .addAnnotation(AnnotationSpec.builder(Generated.class)
+                .addMember("value", CodeBlock.of("$S", KafkaPublisherAnnotationProcessor.class.getCanonicalName()))
+                .build())
             .addSuperinterface(CommonClassNames.lifecycle)
             .addOriginatingElement(typeElement)
             .addField(ParameterizedTypeName.get(KafkaClassNames.transactionalPublisherImpl, publisherImplementationTypeName), "delegate", Modifier.PRIVATE, Modifier.FINAL)

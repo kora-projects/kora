@@ -5,6 +5,7 @@ import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
+import ru.tinkoff.kora.common.annotation.Generated;
 
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -166,6 +167,9 @@ public class QuartzSchedulingGenerator {
             : CodeBlock.of("object::$L", method.getSimpleName());
 
         var typeSpec = TypeSpec.classBuilder(className)
+            .addAnnotation(AnnotationSpec.builder(Generated.class)
+                .addMember("value", CodeBlock.of("$S", QuartzSchedulingGenerator.class.getCanonicalName()))
+                .build())
             .superclass(koraQuartzJobClassName)
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addField(TypeName.get(typeMirror), "object", Modifier.PRIVATE, Modifier.FINAL)

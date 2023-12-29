@@ -27,7 +27,6 @@ public class DbUtils {
     public static final ClassName ID_ANNOTATION = ClassName.get("ru.tinkoff.kora.database.common.annotation", "Id");
     public static final ClassName TABLE_ANNOTATION = ClassName.get("ru.tinkoff.kora.database.common.annotation", "Table");
     public static final ClassName EMBEDDED_ANNOTATION = ClassName.get("ru.tinkoff.kora.database.common.annotation", "Embedded");
-    public static final ClassName SUB_ENTITY_OF_ANNOTATION = ClassName.get("ru.tinkoff.kora.database.common.annotation", "SubEntityOf");
     public static final ClassName ENTITY_CONSTRUCTOR_ANNOTATION = ClassName.get("ru.tinkoff.kora.database.common.annotation", "EntityConstructor");
     public static final ClassName QUERY_CONTEXT = ClassName.get("ru.tinkoff.kora.database.common", "QueryContext");
     public static final ClassName UPDATE_COUNT = ClassName.get("ru.tinkoff.kora.database.common", "UpdateCount");
