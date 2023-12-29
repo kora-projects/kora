@@ -48,9 +48,10 @@ class HttpControllerProcessor(
         val packageName = containingFile.packageName.asString()
         val moduleName = "${declaration.toClassName().simpleName}Module"
         val moduleBuilder = TypeSpec.interfaceBuilder(moduleName)
-            .addAnnotation(CommonClassNames.module)
             .generated(HttpControllerProcessor::class)
+            .addAnnotation(CommonClassNames.module)
             .addOriginatingKSFile(containingFile)
+
         val fileSpec = FileSpec.builder(
             packageName = packageName,
             fileName = moduleName

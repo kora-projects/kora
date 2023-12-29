@@ -7,6 +7,7 @@ import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.common.header.MutableHttpHeaders;
 
 public interface HttpServerResponse {
+
     int code();
 
     MutableHttpHeaders headers();

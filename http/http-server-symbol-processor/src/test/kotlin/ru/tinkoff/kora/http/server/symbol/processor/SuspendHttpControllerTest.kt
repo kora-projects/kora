@@ -117,7 +117,7 @@ class SuspendHttpControllerTest : AbstractHttpControllerTest() {
     }
 
     @Test
-    suspend fun testWithInterceptor() {
+    fun testWithInterceptor() {
         val module = this.compile("""
             @HttpController
             @InterceptWith(TestInterceptor1::class)
@@ -154,5 +154,4 @@ class SuspendHttpControllerTest : AbstractHttpControllerTest() {
             .hasStatus(400)
             .hasBody(ByteArray(0))
     }
-
 }

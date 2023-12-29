@@ -31,8 +31,10 @@ import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.findRepeatableAnnotation
 import ru.tinkoff.kora.ksp.common.makeTagAnnotationSpec
 import ru.tinkoff.kora.ksp.common.parseMappingData
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionException
 import java.util.concurrent.CompletionStage
+import java.util.concurrent.ExecutionException
 import javax.lang.model.type.DeclaredType
 
 
@@ -100,6 +102,7 @@ class RouteProcessor {
                 val interceptor = interceptors[i]
                 val interceptorName = "_interceptor" + (i + 1)
                 val newRequestName = "_request" + (i + 1)
+                funBuilder.beginControlFlow("try")
                 funBuilder.beginControlFlow("%N.intercept(_ctx, %N) { _ctx, %N ->", interceptorName, requestName, newRequestName)
                 requestName = newRequestName
                 val builder = ParameterSpec.builder(interceptorName, interceptor.type)
@@ -108,7 +111,11 @@ class RouteProcessor {
                 }
                 funBuilder.addParameter(builder.build())
             }
+
+            funBuilder.beginControlFlow("try")
+
             function.parameters.forEach { funBuilder.generateParameterDeclaration(it, requestName) }
+
             val params = function.parameters.joinToString(",") { it.name!!.asString() }
             if (isBlocking) {
                 funBuilder.controlFlow("_executor.execute(_ctx) {") {
@@ -161,10 +168,21 @@ class RouteProcessor {
                     }
                 }
             }
+
+            funBuilder
+                .nextControlFlow("catch (_e: Exception)")
+                .beginControlFlow("if (_e is %T)", httpServerResponse)
+                .addStatement("%T.failedFuture(_e)", CompletableFuture::class)
+                .nextControlFlow("else")
+                .addStatement("%T.failedFuture(%T.of(400, _e))", CompletableFuture::class, httpServerResponseException)
+                .endControlFlow()
+                .endControlFlow()
         }
 
-
         for (i in interceptors) {
+            funBuilder.nextControlFlow("catch (_e: Exception)")
+                .addStatement("%T.failedFuture(_e)", CompletableFuture::class)
+                .endControlFlow()
             funBuilder.endControlFlow()
         }
 
@@ -348,6 +366,12 @@ class RouteProcessor {
             callback(b)
             addCode(b.build())
             nextControlFlow("catch (_e: %T)", CompletionException::class.asClassName())
+            controlFlow("_e.cause?.let") {
+                addStatement("if (it is %T) throw it", httpServerResponse)
+                addStatement("throw %T.of(400, it)", httpServerResponseException)
+            }
+            addStatement("throw %T.of(400, _e)", httpServerResponseException)
+            nextControlFlow("catch (_e: %T)", ExecutionException::class.asClassName())
             controlFlow("_e.cause?.let") {
                 addStatement("if (it is %T) throw it", httpServerResponse)
                 addStatement("throw %T.of(400, it)", httpServerResponseException)

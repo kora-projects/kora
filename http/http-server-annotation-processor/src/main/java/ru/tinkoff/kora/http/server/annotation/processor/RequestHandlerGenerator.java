@@ -21,6 +21,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -99,13 +100,42 @@ public class RequestHandlerGenerator {
         var returnType = requestMappingData.executableType().getReturnType();
 
         var hasNonBodyParams = false;
+
+        var interceptors = Stream.concat(
+                AnnotationUtils.findAnnotations(controller, interceptWithClassName, interceptWithContainerClassName).stream().map(HttpServerUtils::parseInterceptor),
+                AnnotationUtils.findAnnotations(requestMappingData.executableElement(), interceptWithClassName, interceptWithContainerClassName).stream().map(HttpServerUtils::parseInterceptor)
+            )
+            .distinct()
+            .toList();
+
+        var requestMappingBlock = CodeBlock.builder();
+        var requestName = "_request";
+        for (int i = 0; i < interceptors.size(); i++) {
+            var interceptor = interceptors.get(i);
+            var interceptorName = "_interceptor" + (i + 1);
+            var newRequestName = "_request" + (i + 1);
+            var ctxName = "_ctx_" + (i + 1);
+            requestMappingBlock.beginControlFlow("try").add("return ");
+            requestMappingBlock.add("$L.intercept(_ctx, $L, ($N, $N) -> $>{\n", interceptorName, requestName, ctxName, newRequestName);
+            requestName = newRequestName;
+            var builder = ParameterSpec.builder(interceptor.type(), interceptorName);
+            if (interceptor.tag() != null) {
+                builder.addAnnotation(interceptor.tag());
+            }
+            methodBuilder.addParameter(builder.build());
+        }
+        handler.add(requestMappingBlock.build());
+
         for (var parameter : parameters) {
             if (Set.of(PATH, QUERY, HEADER, COOKIE).contains(parameter.parameterType)) {
                 handler.addStatement("final $T $N", parameter.type, parameter.variableElement.getSimpleName());
                 hasNonBodyParams = true;
             }
         }
-        if (hasNonBodyParams) handler.beginControlFlow("try");
+
+        if (hasNonBodyParams) {
+            handler.beginControlFlow("try");
+        }
 
         for (var parameter : parameters) {
             var codeBlock = switch (parameter.parameterType) {
@@ -120,43 +150,16 @@ public class RequestHandlerGenerator {
             handler.add(codeBlock);
             handler.add("\n");
         }
+
         if (hasNonBodyParams) {
             handler.nextControlFlow("catch (Exception _e)");
-            handler.addStatement("if (_e instanceof $T) throw _e", httpServerResponse);
-            handler.addStatement("throw $T.of(400, _e)", httpServerResponseException);
+            handler.beginControlFlow("if (_e instanceof $T)", httpServerResponse);
+            handler.addStatement("return $T.failedFuture(_e)", CompletableFuture.class);
+            handler.nextControlFlow("else");
+            handler.addStatement("return $T.failedFuture($T.of(400, _e))", CompletableFuture.class, httpServerResponseException);
             handler.endControlFlow();
-        }
-
-        var interceptors = Stream.concat(
-                AnnotationUtils.findAnnotations(controller, interceptWithClassName, interceptWithContainerClassName).stream().map(HttpServerUtils::parseInterceptor),
-                AnnotationUtils.findAnnotations(requestMappingData.executableElement(), interceptWithClassName, interceptWithContainerClassName).stream().map(HttpServerUtils::parseInterceptor)
-            )
-            .distinct()
-            .toList();
-        handler.add("\n");
-        if (!interceptors.isEmpty()) {
-            handler.add("return ");
-        }
-
-
-        var requestMappingBlock = CodeBlock.builder();
-        var requestName = "_request";
-        for (int i = 0; i < interceptors.size(); i++) {
-            var interceptor = interceptors.get(i);
-            var interceptorName = "$interceptor" + (i + 1);
-            var newRequestName = "$request" + (i + 1);
-            var ctxName = "_ctx_" + (i + 1);
-            if (i == interceptors.size() - 1) {
-                requestMappingBlock.add("$L.intercept(_ctx, $L, ($N, $N) -> $>{\n", interceptorName, requestName, ctxName, newRequestName);
-            } else {
-                requestMappingBlock.add("$L.intercept(_ctx, $L, ($N, $N) -> $>\n", interceptorName, requestName, ctxName, newRequestName);
-            }
-            requestName = newRequestName;
-            var builder = ParameterSpec.builder(interceptor.type(), interceptorName);
-            if (interceptor.tag() != null) {
-                builder.addAnnotation(interceptor.tag());
-            }
-            methodBuilder.addParameter(builder.build());
+            handler.endControlFlow();
+            handler.add("\n");
         }
 
         final CodeBlock controllerCall;
@@ -167,20 +170,14 @@ public class RequestHandlerGenerator {
         } else {
             controllerCall = this.generateBlockingCall(requestMappingData, parameters, requestName);
         }
-        requestMappingBlock.add(controllerCall);
 
-
-        handler.add(requestMappingBlock.build());
+        handler.add(controllerCall);
 
         for (int i = 0; i < interceptors.size(); i++) {
-            if (i == 0) {
-                handler.add("$<\n})");
-            } else {
-                handler.add("$<\n)");
-            }
-            if (i == interceptors.size() - 1) {
-                handler.add(";");
-            }
+            handler.addStatement("$<})");
+            handler.nextControlFlow("catch (Exception _e)")
+                .addStatement("return $T.failedFuture(_e)", CompletableFuture.class)
+                .endControlFlow();
         }
         return handler.build();
     }
@@ -195,6 +192,9 @@ public class RequestHandlerGenerator {
             b.addStatement("final $T $N;", ParameterizedTypeName.get(ClassName.get(CompletableFuture.class), TypeName.get(mappedParameter.type)), "_future_" + mappedParameter.name);
             b.beginControlFlow("try");
             b.addStatement("$N = $LHttpRequestMapper.apply($L).toCompletableFuture()", "_future_" + mappedParameter.name, mappedParameter.name, requestName);
+            b.nextControlFlow("catch ($T _e)", CompletionException.class);
+            b.addStatement("if (_e.getCause() instanceof $T && _e.getCause() instanceof $T) throw ($T) _e.getCause()", httpServerResponse, RuntimeException.class, RuntimeException.class);
+            b.addStatement("throw $T.of(400, _e.getCause())", httpServerResponseException);
             b.nextControlFlow("catch (Exception _e)");
             b.addStatement("if (_e instanceof $T) return $T.failedFuture(_e)", httpServerResponse, CompletableFuture.class);
             b.addStatement("return $T.failedFuture($T.of(400, _e))", CompletableFuture.class, httpServerResponseException);
@@ -237,7 +237,7 @@ public class RequestHandlerGenerator {
             b.add("$<$<\n});\n");
         }
         b.nextControlFlow("catch (Exception e)");
-        b.addStatement("throw new $T(e)", CompletionException.class);
+        b.addStatement("return $T.failedFuture(e)", CompletableFuture.class);
         b.nextControlFlow("finally");
         b.addStatement("oldCtx.inject()");
         b.endControlFlow();
@@ -258,6 +258,9 @@ public class RequestHandlerGenerator {
             b.addStatement("final $T $N;", ParameterizedTypeName.get(ClassName.get(CompletableFuture.class), TypeName.get(mappedParameter.type)), "_future_" + mappedParameter.name);
             b.beginControlFlow("try");
             b.addStatement("$N = $LHttpRequestMapper.apply($L).toCompletableFuture()", "_future_" + mappedParameter.name, mappedParameter.name, requestName);
+            b.nextControlFlow("catch ($T _e)", CompletionException.class);
+            b.addStatement("if (_e.getCause() instanceof $T && _e.getCause() instanceof $T) throw ($T) _e.getCause()", httpServerResponse, RuntimeException.class, RuntimeException.class);
+            b.addStatement("throw $T.of(400, _e.getCause())", httpServerResponseException);
             b.nextControlFlow("catch (Exception _e)");
             b.addStatement("if (_e instanceof $T) return $T.failedFuture(_e)", httpServerResponse, CompletableFuture.class);
             b.addStatement("return $T.failedFuture($T.of(400, _e))", CompletableFuture.class, httpServerResponseException);
@@ -300,7 +303,7 @@ public class RequestHandlerGenerator {
             b.add("$<$<\n});\n");
         }
         b.nextControlFlow("catch (Exception e)");
-        b.addStatement("throw new $T(e)", CompletionException.class);
+        b.addStatement("return $T.failedFuture(e)", CompletableFuture.class);
         b.nextControlFlow("finally");
         b.addStatement("oldCtx.inject()");
         b.endControlFlow();
@@ -319,9 +322,12 @@ public class RequestHandlerGenerator {
         var b = CodeBlock.builder();
         b.add("return _executor.execute(_ctx, () -> {$>\n");
         for (var mappedParameter : mappedParameters) {
-            b.addStatement("final $T $N;", TypeName.get(mappedParameter.type), mappedParameter.name);
+            b.addStatement("final $T $N", TypeName.get(mappedParameter.type), mappedParameter.name);
             b.beginControlFlow("try");
             b.addStatement("$N = $LHttpRequestMapper.apply($L)", mappedParameter.name, mappedParameter.name, requestName);
+            b.nextControlFlow("catch ($T _e)", CompletionException.class);
+            b.addStatement("if (_e.getCause() instanceof $T && _e.getCause() instanceof $T) throw ($T) _e.getCause()", httpServerResponse, RuntimeException.class, RuntimeException.class);
+            b.addStatement("throw $T.of(400, _e.getCause())", httpServerResponseException);
             b.nextControlFlow("catch (Exception _e)");
             b.addStatement("if (_e instanceof $T) throw _e", httpServerResponse);
             b.addStatement("throw $T.of(400, _e)", httpServerResponseException);

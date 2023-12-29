@@ -7,10 +7,12 @@ import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.common.header.MutableHttpHeaders;
 
 import java.nio.ByteBuffer;
+import java.util.function.Supplier;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class HttpServerResponseException extends RuntimeException implements HttpServerResponse {
+
     private final int code;
     private final String contentType;
     private final ByteBuffer body;
@@ -32,8 +34,20 @@ public class HttpServerResponseException extends RuntimeException implements Htt
         return of(throwable, code, throwable.getMessage());
     }
 
+    public static HttpServerResponseException of(int code, String text, MutableHttpHeaders headers) {
+        return of(null, code, text, headers);
+    }
+
+    public static HttpServerResponseException of(int code, Throwable throwable, MutableHttpHeaders headers) {
+        return of(throwable, code, throwable.getMessage(), headers);
+    }
+
     public static HttpServerResponseException of(@Nullable Throwable cause, int code, String text) {
         return new HttpServerResponseException(cause, text, code, "text/plain; charset=utf-8", UTF_8.encode(text), HttpHeaders.of());
+    }
+
+    public static HttpServerResponseException of(@Nullable Throwable cause, int code, String text, MutableHttpHeaders headers) {
+        return new HttpServerResponseException(cause, text, code, "text/plain; charset=utf-8", UTF_8.encode(text), headers);
     }
 
     @Override
@@ -53,10 +67,8 @@ public class HttpServerResponseException extends RuntimeException implements Htt
 
     @Override
     public String toString() {
-        return "HttpResponseException{" +
-            "message=" + getMessage() +
+        return "HttpResponseException{message=" + getMessage() +
             ", code=" + code +
-            ", contentType='" + contentType + '\'' +
             ", headers=" + headers +
             '}';
     }
