@@ -279,7 +279,45 @@ public class AsyncHttpControllerTest extends AbstractHttpControllerTest {
         assertThat(handler, "POST", "/test")
             .hasStatus(400)
             .hasBody(new byte[0]);
-
     }
 
+    @Test
+    public void testCompletableFutureWithInterceptorWithParameters() {
+        var module = this.compile("""
+            @HttpController
+            @InterceptWith(TestInterceptor1.class)
+            public class Controller {
+                @HttpRoute(method = "GET", path = "/test")
+                @InterceptWith(TestInterceptor2.class)
+                CompletableFuture<HttpServerResponse> test(@Query String queryParameter) {
+                    return CompletableFuture.completedFuture(HttpServerResponse.of(200));
+                }
+            }
+            """, """
+            public class TestInterceptor1 implements HttpServerInterceptor {
+                @Override
+                public CompletionStage<HttpServerResponse> intercept(Context context, HttpServerRequest request, HttpServerInterceptor.InterceptChain chain) throws Exception {
+                    if (request.queryParams().isEmpty()) return CompletableFuture.completedFuture(HttpServerResponse.of(400));
+                    return chain.process(context, request);
+                }
+            }
+            """, """
+            public class TestInterceptor2 implements HttpServerInterceptor {
+                @Override
+                public CompletionStage<HttpServerResponse> intercept(Context context, HttpServerRequest request, HttpServerInterceptor.InterceptChain chain) throws Exception {
+                    if (request.queryParams().isEmpty()) return CompletableFuture.completedFuture(HttpServerResponse.of(400));
+                    return chain.process(context, request);
+                }
+            }
+            """);
+
+        var handler = module.getHandler("get_test", newObject("TestInterceptor1"), newObject("TestInterceptor2"));
+
+        assertThat(handler, "GET", "/test?queryParameter=test")
+            .hasStatus(200)
+            .hasBody(new byte[0]);
+        assertThat(handler, "POST", "/test")
+            .hasStatus(400)
+            .hasBody(new byte[0]);
+    }
 }

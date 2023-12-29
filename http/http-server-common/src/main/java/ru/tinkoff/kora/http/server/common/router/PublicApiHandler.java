@@ -5,6 +5,7 @@ import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.*;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
@@ -88,7 +89,7 @@ public class PublicApiHandler {
             var allMethodMatch = this.allMethodMatchers.match(publicApiRequest.path());
             if (allMethodMatch != null) {
                 var allowed = String.join(", ", allMethodMatch.value());
-                handlerFunction = (ctx, request) -> CompletableFuture.completedFuture(HttpServerResponse.of(405, HttpHeaders.of("allow", allowed)));
+                handlerFunction = (ctx, request) -> CompletableFuture.failedFuture(HttpServerResponseException.of(405, "Method Not Allowed", HttpHeaders.of("allow", allowed)));
                 routeTemplate = allMethodMatch.matchedTemplate();
                 templateParameters = Map.of();
             } else {
