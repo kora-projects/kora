@@ -387,6 +387,9 @@ class KoraAppProcessor(
                 if (tag.isNotEmpty()) {
                     mb.addAnnotation(tag.makeTagAnnotationSpec())
                 }
+                if (component.findAnnotation(CommonClassNames.root) != null) {
+                    mb.addAnnotation(CommonClassNames.root)
+                }
                 mb.addCode(")\n")
                 b.addFunction(mb.build())
             }
@@ -419,6 +422,9 @@ class KoraAppProcessor(
                     }
                     if (component.findAnnotation(CommonClassNames.defaultComponent) != null) {
                         mb.addAnnotation(CommonClassNames.defaultComponent)
+                    }
+                    if (component.findAnnotation(CommonClassNames.root) != null) {
+                        mb.addAnnotation(CommonClassNames.root)
                     }
                     mb.addCode(")\n")
                     b.addFunction(mb.build())
