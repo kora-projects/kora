@@ -612,7 +612,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                     if (!tag.isEmpty()) {
                         pb.addAnnotation(TagUtils.makeAnnotationSpec(tag));
                     }
-                    if(CommonUtils.isNullable(parameter)) {
+                    if (CommonUtils.isNullable(parameter)) {
                         pb.addAnnotation(Nullable.class);
                     }
                     mb.addParameter(pb.build());
@@ -624,6 +624,10 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 var tag = TagUtils.parseTagValue(component);
                 if (!tag.isEmpty()) {
                     mb.addAnnotation(TagUtils.makeAnnotationSpec(tag));
+                }
+                var root = AnnotationUtils.isAnnotationPresent(component, CommonClassNames.root);
+                if (root) {
+                    mb.addAnnotation(CommonClassNames.root);
                 }
                 mb.addCode(");\n");
                 b.addMethod(mb.build());
@@ -669,6 +673,10 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                     }
                     if (AnnotationUtils.findAnnotation(method, CommonClassNames.defaultComponent) != null) {
                         mb.addAnnotation(CommonClassNames.defaultComponent);
+                    }
+                    var root = AnnotationUtils.isAnnotationPresent(method, CommonClassNames.root);
+                    if (root) {
+                        mb.addAnnotation(CommonClassNames.root);
                     }
                     mb.addCode(");\n");
                     b.addMethod(mb.build());
