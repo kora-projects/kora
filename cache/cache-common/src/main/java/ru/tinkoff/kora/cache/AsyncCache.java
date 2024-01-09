@@ -3,6 +3,7 @@ package ru.tinkoff.kora.cache;
 import jakarta.annotation.Nonnull;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -18,13 +19,19 @@ public interface AsyncCache<K, V> extends Cache<K, V> {
     @Nonnull
     default AsyncLoadableCache<K, V> asLoadableAsyncSimple(@Nonnull Function<K, CompletionStage<V>> cacheLoader) {
         final Function<Collection<K>, CompletionStage<Map<K, V>>> func = (keys) -> {
-            var collected = keys.stream().collect(Collectors.toMap(k -> k, cacheLoader));
-            var futures = collected.values().stream()
-                .map(CompletionStage::toCompletableFuture)
-                .toArray(CompletableFuture[]::new);
+            final Map<K, CompletableFuture<V>> collected = new HashMap<>();
 
-            return CompletableFuture.allOf(futures).thenApply(r -> collected.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().toCompletableFuture().join())));
+            for (K key : keys) {
+                var loaded = cacheLoader.apply(key).toCompletableFuture();
+                collected.put(key, loaded);
+            }
+
+            return CompletableFuture.allOf(collected.values().toArray(CompletableFuture[]::new))
+                .thenApply(r -> {
+                    final Map<K, V> result = new HashMap<>();
+                    collected.forEach((k, v) -> result.put(k, v.join()));
+                    return result;
+                });
         };
 
         return new AsyncLoadableCacheImpl<>(this, func);

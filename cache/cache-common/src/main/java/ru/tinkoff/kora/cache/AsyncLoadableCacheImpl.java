@@ -35,7 +35,13 @@ final class AsyncLoadableCacheImpl<K, V> implements AsyncLoadableCache<K, V> {
     @Override
     public CompletionStage<V> getAsync(@Nonnull K key) {
         return cache.computeIfAbsentAsync(key, k -> cacheLoader.apply(Set.of(k))
-            .thenApply(r -> r.values().stream().findFirst().orElse(null)));
+            .thenApply(r -> {
+                if (r.isEmpty()) {
+                    return null;
+                } else {
+                    return r.values().iterator().next();
+                }
+            }));
     }
 
     @Nonnull

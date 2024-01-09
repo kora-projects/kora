@@ -21,7 +21,14 @@ final class LoadableCacheImpl<K, V> implements LoadableCache<K, V> {
     @Nullable
     @Override
     public V get(@Nonnull K key) {
-        return cache.computeIfAbsent(key, k -> cacheLoader.apply(Set.of(k)).values().stream().findFirst().orElse(null));
+        return cache.computeIfAbsent(key, k -> {
+            final Map<K, V> result = cacheLoader.apply(Set.of(k));
+            if(result.isEmpty()) {
+                return null;
+            } else {
+                return result.values().iterator().next();
+            }
+        });
     }
 
     @Nonnull
