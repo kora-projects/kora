@@ -71,9 +71,11 @@ final class AsyncFacadeCacheBuilder<K, V> implements AsyncCache.Builder<K, V> {
         @Nonnull
         @Override
         public CompletionStage<V> putAsync(@Nonnull K key, @Nonnull V value) {
-            var operations = facades.stream()
-                .map(cache -> cache.putAsync(key, value).toCompletableFuture())
-                .toArray(CompletableFuture[]::new);
+            final CompletableFuture<?>[] operations = new CompletableFuture[facades.size()];
+            for (int i = 0; i < facades.size(); i++) {
+                AsyncCache<K, V> cache = facades.get(i);
+                operations[i] = cache.putAsync(key, value).toCompletableFuture();
+            }
 
             return CompletableFuture.allOf(operations).thenApply(r -> value);
         }
@@ -81,9 +83,11 @@ final class AsyncFacadeCacheBuilder<K, V> implements AsyncCache.Builder<K, V> {
         @Nonnull
         @Override
         public CompletionStage<Map<K, V>> putAsync(@Nonnull Map<K, V> keyAndValues) {
-            var operations = facades.stream()
-                .map(cache -> cache.putAsync(keyAndValues).toCompletableFuture())
-                .toArray(CompletableFuture[]::new);
+            final CompletableFuture<?>[] operations = new CompletableFuture[facades.size()];
+            for (int i = 0; i < facades.size(); i++) {
+                AsyncCache<K, V> cache = facades.get(i);
+                operations[i] = cache.putAsync(keyAndValues).toCompletableFuture();
+            }
 
             return CompletableFuture.allOf(operations).thenApply(r -> keyAndValues);
         }
@@ -100,13 +104,11 @@ final class AsyncFacadeCacheBuilder<K, V> implements AsyncCache.Builder<K, V> {
                     }
 
                     return facade.getAsync(key).thenCompose(received -> {
-                        final CompletableFuture<V>[] operations = new CompletableFuture[currentFacade];
+                        final CompletableFuture<?>[] operations = new CompletableFuture[currentFacade];
                         for (int j = 0; j < currentFacade; j++) {
                             operations[j] = facades.get(j).putAsync(key, received).toCompletableFuture();
                         }
-                        return CompletableFuture.allOf(
-                            operations
-                        ).thenApply(r2 -> received);
+                        return CompletableFuture.allOf(operations).thenApply(r2 -> received);
                     });
                 });
             }
@@ -132,9 +134,12 @@ final class AsyncFacadeCacheBuilder<K, V> implements AsyncCache.Builder<K, V> {
                         return CompletableFuture.completedFuture(r);
                     }
 
-                    final Set<K> keysLeft = keys.stream()
-                        .filter(k -> !r.containsKey(k))
-                        .collect(Collectors.toSet());
+                    final Set<K> keysLeft = new HashSet<>();
+                    for (K k : keys) {
+                        if (!r.containsKey(k)) {
+                            keysLeft.add(k);
+                        }
+                    }
 
                     return facade.getAsync(keysLeft).thenCompose(received -> {
                         if (received.isEmpty()) {
@@ -153,9 +158,12 @@ final class AsyncFacadeCacheBuilder<K, V> implements AsyncCache.Builder<K, V> {
                     return CompletableFuture.completedFuture(r);
                 }
 
-                final Set<K> keysLeft = keys.stream()
-                    .filter(k -> !r.containsKey(k))
-                    .collect(Collectors.toSet());
+                final Set<K> keysLeft = new HashSet<>();
+                for (K k : keys) {
+                    if (!r.containsKey(k)) {
+                        keysLeft.add(k);
+                    }
+                }
 
                 return mappingFunction.apply(keysLeft).thenCompose(received -> {
                     var resultValue = new HashMap<>(received);
@@ -171,18 +179,22 @@ final class AsyncFacadeCacheBuilder<K, V> implements AsyncCache.Builder<K, V> {
         @Nonnull
         @Override
         public CompletionStage<Boolean> invalidateAsync(@Nonnull K key) {
-            var operations = facades.stream()
-                .map(cache -> cache.invalidateAsync(key).toCompletableFuture())
-                .toArray(CompletableFuture[]::new);
+            final CompletableFuture<?>[] operations = new CompletableFuture[facades.size()];
+            for (int i = 0; i < facades.size(); i++) {
+                AsyncCache<K, V> cache = facades.get(i);
+                operations[i] = cache.invalidateAsync(key).toCompletableFuture();
+            }
 
             return CompletableFuture.allOf(operations).thenApply(r -> true);
         }
 
         @Override
         public CompletionStage<Boolean> invalidateAsync(@Nonnull Collection<K> keys) {
-            var operations = facades.stream()
-                .map(cache -> cache.invalidateAsync(keys).toCompletableFuture())
-                .toArray(CompletableFuture[]::new);
+            final CompletableFuture<?>[] operations = new CompletableFuture[facades.size()];
+            for (int i = 0; i < facades.size(); i++) {
+                AsyncCache<K, V> cache = facades.get(i);
+                operations[i] = cache.invalidateAsync(keys).toCompletableFuture();
+            }
 
             return CompletableFuture.allOf(operations).thenApply(r -> true);
         }
@@ -190,9 +202,11 @@ final class AsyncFacadeCacheBuilder<K, V> implements AsyncCache.Builder<K, V> {
         @Nonnull
         @Override
         public CompletionStage<Boolean> invalidateAllAsync() {
-            var operations = facades.stream()
-                .map(cache -> cache.invalidateAllAsync().toCompletableFuture())
-                .toArray(CompletableFuture[]::new);
+            final CompletableFuture<?>[] operations = new CompletableFuture[facades.size()];
+            for (int i = 0; i < facades.size(); i++) {
+                AsyncCache<K, V> cache = facades.get(i);
+                operations[i] = cache.invalidateAllAsync().toCompletableFuture();
+            }
 
             return CompletableFuture.allOf(operations).thenApply(r -> true);
         }

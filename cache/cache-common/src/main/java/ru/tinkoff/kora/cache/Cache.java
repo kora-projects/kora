@@ -4,8 +4,10 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -16,7 +18,16 @@ public interface Cache<K, V> {
 
     @Nonnull
     default LoadableCache<K, V> asLoadableSimple(@Nonnull Function<K, V> cacheLoader) {
-        return new LoadableCacheImpl<>(this, (keys) -> keys.stream().collect(Collectors.toMap(k -> k, cacheLoader)));
+        return new LoadableCacheImpl<>(this, (keys) -> {
+            final Map<K, V> result = new HashMap<>();
+
+            for (K key : keys) {
+                var loaded = cacheLoader.apply(key);
+                result.put(key, loaded);
+            }
+
+            return result;
+        });
     }
 
     @Nonnull
