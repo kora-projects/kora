@@ -36,4 +36,13 @@ open class CircuitBreakerTarget {
             emit("OK")
         }
     }
+
+    // Throws here is an alias for kotlin.jvm.Throws
+    // Method should compile normally
+    @Throws(IllegalStateException::class)
+    @CircuitBreaker("customThrows")
+    open fun throws(): String {
+        check(!alwaysFail) { "Failed" }
+        return "OK"
+    }
 }

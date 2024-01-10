@@ -32,6 +32,13 @@ open class AopTarget1(val argument: String?, @Tag(String::class) val tagged: Int
     open fun testMethod2(param: String?) {
     }
 
+    // dummy proxied method, should compile but not be used
+    @Throws(RuntimeException::class)
+    @TestAnnotation1("testMethodWithAliasAnnotation")
+    open fun testMethodWithAliasAnnotation() {
+        throw RuntimeException()
+    }
+
     @KspExperimental
     class Aspect1Factory : KoraAspectFactory {
         override fun create(resolver: Resolver): KoraAspect {

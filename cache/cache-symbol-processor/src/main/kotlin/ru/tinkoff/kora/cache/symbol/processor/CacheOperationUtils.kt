@@ -15,6 +15,8 @@ import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import jakarta.annotation.Nullable
 import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotations
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isCompletionStage
@@ -235,49 +237,34 @@ class CacheOperationUtils {
         }
 
         private fun getCacheableAnnotations(method: KSFunctionDeclaration): List<KSAnnotation> {
-            method.annotations
-                .filter { a -> a.annotationType.resolve().toClassName() == ANNOTATION_CACHEABLES }
-                .map { a -> a.arguments[0] }
-                .map { arg -> arg.value }
-                .toList()
-
-            val annotationAggregate = method.annotations
-                .filter { a -> a.annotationType.resolve().toClassName() == ANNOTATION_CACHEABLES }
-                .firstOrNull()
+            val annotationAggregate = method.findAnnotation(ANNOTATION_CACHEABLES)
             if (annotationAggregate != null) {
                 return emptyList()
             }
 
-            return method.annotations
-                .filter { a -> a.annotationType.resolve().toClassName() == ANNOTATION_CACHEABLE }
+            return method.findAnnotations(ANNOTATION_CACHEABLE)
                 .toList()
         }
 
         private fun getCachePutAnnotations(method: KSFunctionDeclaration): List<KSAnnotation> {
-            val annotationAggregate = method.annotations
-                .filter { a -> a.annotationType.resolve().toClassName() == ANNOTATION_CACHE_PUTS }
-                .firstOrNull()
+            val annotationAggregate = method.findAnnotation(ANNOTATION_CACHE_PUTS)
 
             if (annotationAggregate != null) {
                 return emptyList()
             }
 
-            return method.annotations
-                .filter { a -> a.annotationType.resolve().toClassName() == ANNOTATION_CACHE_PUT }
+            return method.findAnnotations(ANNOTATION_CACHE_PUT)
                 .toList()
         }
 
         private fun getCacheInvalidateAnnotations(method: KSFunctionDeclaration): List<KSAnnotation> {
-            val annotationAggregate = method.annotations
-                .filter { a -> a.annotationType.resolve().toClassName() == ANNOTATION_CACHE_INVALIDATES }
-                .firstOrNull()
+            val annotationAggregate = method.findAnnotation(ANNOTATION_CACHE_INVALIDATES)
 
             if (annotationAggregate != null) {
                 return emptyList()
             }
 
-            return method.annotations
-                .filter { a -> a.annotationType.resolve().toClassName() == ANNOTATION_CACHE_INVALIDATE }
+            return method.findAnnotations(ANNOTATION_CACHE_INVALIDATE)
                 .toList()
         }
 

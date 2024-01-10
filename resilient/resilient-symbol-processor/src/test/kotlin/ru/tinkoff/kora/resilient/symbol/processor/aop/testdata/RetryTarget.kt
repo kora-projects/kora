@@ -44,6 +44,15 @@ open class RetryTarget {
         }
     }
 
+    // Throws here is an alias for kotlin.jvm.Throws
+    // Method should compile normally
+    @Throws(IllegalStateException::class)
+    @Retry("throws")
+    open fun throws(arg: String) {
+        logger.info("Retry Void executed for: {}", arg)
+        check(retryAttempts.getAndDecrement() <= 0) { "Ops" }
+    }
+
     open fun setRetryAttempts(attempts: Int) {
         retryAttempts.set(attempts)
     }

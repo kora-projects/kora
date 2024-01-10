@@ -84,9 +84,14 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
         val constructor = findAopConstructor(classDeclaration) ?: throw ProcessingErrorException("Class has no aop suitable constructor", classDeclaration)
         val typeLevelAspects: ArrayList<KoraAspect> = ArrayList()
         for (am in classDeclaration.annotations) {
+
+            val annotationType = am.annotationType.resolve().declaration
+                .takeIf { it is KSClassDeclaration }
+                ?.qualifiedName?.asString()
+                ?: continue
+
             for (aspect in aspects) {
                 val supportedAnnotationTypes = aspect.getSupportedAnnotationTypes()
-                val annotationType = am.annotationType.resolve().toClassName().canonicalName
                 if (supportedAnnotationTypes.contains(annotationType)) {
                     if (!typeLevelAspects.contains(aspect)) {
                         typeLevelAspects.add(aspect)
@@ -121,10 +126,14 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
             val methodLevelAspects = mutableListOf<KoraAspect>()
             val methodParameterLevelAspects = mutableListOf<KoraAspect>()
             val functionAnnotations = function.annotations.toList()
-            functionAnnotations.forEach { am ->
+            for (am in functionAnnotations) {
+                val annotationType = am.annotationType.resolve().declaration
+                    .takeIf { it is KSClassDeclaration }
+                    ?.qualifiedName?.asString()
+                    ?: continue
+
                 aspects.forEach { aspect ->
                     val supportedAnnotationTypes = aspect.getSupportedAnnotationTypes()
-                    val annotationType = am.annotationType.resolve().toClassName().canonicalName
                     if (supportedAnnotationTypes.contains(annotationType)) {
                         if (!methodLevelAspects.contains(aspect)) {
                             methodLevelAspects.add(aspect)
@@ -134,10 +143,14 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
                 }
             }
             function.parameters.forEach { parameter ->
-                parameter.annotations.forEach { am ->
+                for (am in parameter.annotations) {
+                    val annotationType = am.annotationType.resolve().declaration
+                        .takeIf { it is KSClassDeclaration }
+                        ?.qualifiedName?.asString()
+                        ?: continue
+
                     aspects.forEach { aspect ->
                         val supportedAnnotationTypes = aspect.getSupportedAnnotationTypes()
-                        val annotationType = am.annotationType.resolve().toClassName().canonicalName
                         if (supportedAnnotationTypes.contains(annotationType)) {
                             if (!methodParameterLevelAspects.contains(aspect) && !methodLevelAspects.contains(aspect)) {
                                 methodParameterLevelAspects.add(aspect)

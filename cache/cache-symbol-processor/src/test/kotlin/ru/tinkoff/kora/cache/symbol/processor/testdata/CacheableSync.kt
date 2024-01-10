@@ -26,4 +26,30 @@ open class CacheableSync {
     @CacheInvalidate(value = DummyCache21::class, invalidateAll = true)
     open fun evictAll() {
     }
+
+    // @Throws here is a typealias.
+    // Should compile normally.
+    // Method is not used in tests, only in processing
+    @Throws
+    @CacheInvalidate(value = DummyCache21::class, invalidateAll = true)
+    open fun throws1() {
+    }
+
+    // @Throws here is a typealias.
+    // Should compile normally.
+    // Method is not used in tests, only in processing
+    @Throws
+    @CachePut(value = DummyCache21::class, parameters = ["arg1", "arg2"])
+    open fun throws2(arg2: BigDecimal?, arg3: String?, arg1: String?): String {
+        return value
+    }
+
+    // @Throws here is a typealias.
+    // Should compile normally.
+    // Method is not used in tests, only in processing
+    @Throws
+    @Cacheable(value = DummyCache21::class)
+    open fun throws3(arg1: String?, arg2: BigDecimal?): String {
+        return value
+    }
 }
