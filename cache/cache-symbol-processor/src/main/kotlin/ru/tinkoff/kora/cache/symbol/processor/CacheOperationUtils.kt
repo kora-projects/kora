@@ -24,6 +24,7 @@ import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isPublisher
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.findRepeatableAnnotation
 import ru.tinkoff.kora.ksp.common.MappersData
 import ru.tinkoff.kora.ksp.common.MappingData
 import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
@@ -237,35 +238,30 @@ class CacheOperationUtils {
         }
 
         private fun getCacheableAnnotations(method: KSFunctionDeclaration): List<KSAnnotation> {
-            val annotationAggregate = method.findAnnotation(ANNOTATION_CACHEABLES)
-            if (annotationAggregate != null) {
-                return emptyList()
+            val annotationAggregate = method.findRepeatableAnnotation(ANNOTATION_CACHEABLE, ANNOTATION_CACHEABLES)
+            if (annotationAggregate.isNotEmpty()) {
+                return annotationAggregate
             }
 
-            return method.findAnnotations(ANNOTATION_CACHEABLE)
-                .toList()
+            return method.findAnnotations(ANNOTATION_CACHEABLE).toList()
         }
 
         private fun getCachePutAnnotations(method: KSFunctionDeclaration): List<KSAnnotation> {
-            val annotationAggregate = method.findAnnotation(ANNOTATION_CACHE_PUTS)
-
-            if (annotationAggregate != null) {
-                return emptyList()
+            val annotationAggregate = method.findRepeatableAnnotation(ANNOTATION_CACHE_PUT, ANNOTATION_CACHE_PUTS)
+            if (annotationAggregate.isNotEmpty()) {
+                return annotationAggregate
             }
 
-            return method.findAnnotations(ANNOTATION_CACHE_PUT)
-                .toList()
+            return method.findAnnotations(ANNOTATION_CACHE_PUT).toList()
         }
 
         private fun getCacheInvalidateAnnotations(method: KSFunctionDeclaration): List<KSAnnotation> {
-            val annotationAggregate = method.findAnnotation(ANNOTATION_CACHE_INVALIDATES)
-
-            if (annotationAggregate != null) {
-                return emptyList()
+            val annotationAggregate = method.findRepeatableAnnotation(ANNOTATION_CACHE_INVALIDATE, ANNOTATION_CACHE_INVALIDATES)
+            if (annotationAggregate.isNotEmpty()) {
+                return annotationAggregate
             }
 
-            return method.findAnnotations(ANNOTATION_CACHE_INVALIDATE)
-                .toList()
+            return method.findAnnotations(ANNOTATION_CACHE_INVALIDATE).toList()
         }
 
         @Nullable

@@ -3,6 +3,7 @@ package ru.tinkoff.kora.cache.symbol.processor.testdata
 import ru.tinkoff.kora.cache.annotation.CacheInvalidate
 import ru.tinkoff.kora.cache.annotation.CachePut
 import ru.tinkoff.kora.cache.annotation.Cacheable
+import ru.tinkoff.kora.cache.annotation.Cacheables
 import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCache21
 import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCache22
 import java.math.BigDecimal
@@ -10,8 +11,10 @@ import java.math.BigDecimal
 open class CacheableSyncMany {
     var value = "1"
 
-    @Cacheable(value = DummyCache21::class)
-    @Cacheable(value = DummyCache22::class)
+    @Cacheables(value = [
+        Cacheable(value = DummyCache21::class),
+        Cacheable(value = DummyCache22::class)
+    ])
     open fun getValue(arg1: String?, arg2: BigDecimal?): String {
         return value
     }
