@@ -7,6 +7,9 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
 import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotations
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
@@ -71,10 +74,11 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             method.returnType!!
 
         val constraints = method.getConstraints()
-        val validates = if (method.annotations.any { a -> a.annotationType.resolve().declaration.qualifiedName!!.asString() == VALID_TYPE.canonicalName })
+        val validates = if (method.isAnnotationPresent(VALID_TYPE)) {
             listOf(Validated(returnTypeReference.resolve().makeNullable().asType()))
-        else
+        } else {
             emptyList()
+        }
 
         if (constraints.isEmpty() && validates.isEmpty()) {
             return null
@@ -90,11 +94,10 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             builder.beginControlFlow("if(_result != null)")
         }
 
-        val failFast = method.annotations
-            .filter { a -> a.annotationType.resolve().declaration.qualifiedName!!.asString() == VALIDATE_TYPE.canonicalName }
+        val failFast = method.findAnnotations(VALIDATE_TYPE)
             .flatMap { a ->
                 a.arguments
-                    .filter { arg -> arg.name!!.asString() == "failFast" }
+                    .filter { arg -> arg.name?.asString() == "failFast" }
                     .map { arg -> arg.value ?: false }
                     .map { it as Boolean }
             }
@@ -168,8 +171,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             return null
         }
 
-        val failFast = method.annotations
-            .filter { a -> a.annotationType.resolve().declaration.qualifiedName!!.asString() == VALIDATE_TYPE.canonicalName }
+        val failFast = method.findAnnotations(VALIDATE_TYPE)
             .flatMap { a ->
                 a.arguments
                     .filter { arg -> arg.name!!.asString() == "failFast" }

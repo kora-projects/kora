@@ -35,4 +35,13 @@ open class TimeoutTarget {
             emit("OK")
         }
     }
+
+    // Throws here is an alias for kotlin.jvm.Throws
+    // Method should compile normally
+    @Throws(IllegalStateException::class)
+    @Timeout("custom1")
+    open fun getValueSyncThrows(): String {
+        Thread.sleep(2000)
+        return "OK"
+    }
 }

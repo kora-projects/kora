@@ -67,4 +67,13 @@ open class FallbackTarget {
             emit(FALLBACK)
         }
     }
+
+    // Throws here is an alias for kotlin.jvm.Throws
+    // Method should compile normally
+    @Throws(IllegalStateException::class)
+    @Fallback("custom_Throws", method = "getFallbackVoidSync()")
+    open fun throws() {
+        check(!alwaysFail) { "Failed" }
+        voidState = VoidState.VALUE
+    }
 }

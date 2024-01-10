@@ -4,10 +4,13 @@ import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ksp.toClassName
 import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
@@ -24,7 +27,7 @@ import java.util.concurrent.Future
 class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
 
     companion object {
-        const val ANNOTATION_TYPE: String = "ru.tinkoff.kora.resilient.timeout.annotation.Timeout"
+        private val ANNOTATION_TYPE = ClassName("ru.tinkoff.kora.resilient.timeout.annotation", "Timeout")
         val MEMBER_CALLABLE = MemberName("java.util.concurrent", "Callable")
         val timeoutMember = MemberName("kotlinx.coroutines", "withTimeout")
         val timeoutCancelMember = MemberName("kotlinx.coroutines", "TimeoutCancellationException")
@@ -38,7 +41,7 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
     }
 
     override fun getSupportedAnnotationTypes(): Set<String> {
-        return setOf(ANNOTATION_TYPE)
+        return setOf(ANNOTATION_TYPE.canonicalName)
     }
 
     override fun apply(method: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
@@ -52,8 +55,9 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
             throw ProcessingErrorException("@Timeout can't be applied for types assignable from ${CommonClassNames.flux}", method)
         }
 
-        val annotation = method.annotations.filter { a -> a.annotationType.resolve().toClassName().canonicalName == ANNOTATION_TYPE }.first()
-        val timeoutName = annotation.arguments.asSequence().filter { arg -> arg.name!!.getShortName() == "value" }.map { arg -> arg.value.toString() }.first()
+        val annotation = method.findAnnotation(ANNOTATION_TYPE)!!
+
+        val timeoutName = annotation.findValue<String>("value")!!
 
         val metricType = resolver.getClassDeclarationByName("ru.tinkoff.kora.resilient.timeout.TimeoutMetrics")!!.asType(listOf()).makeNullable()
         val fieldMetric = aspectContext.fieldFactory.constructorParam(metricType, listOf())

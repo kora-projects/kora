@@ -16,6 +16,8 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.common.DefaultComponent
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotations
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 import ru.tinkoff.kora.ksp.common.CommonClassNames
@@ -143,11 +145,8 @@ class CacheSymbolProcessor(
         cacheType: ParameterizedTypeName,
         resolver: Resolver
     ): FunSpec {
-        val configPath = cacheContract.annotations
-            .filter { a -> a.annotationType.resolve().toClassName() == ANNOTATION_CACHE }
-            .flatMap { a -> a.arguments }
-            .filter { arg -> arg.name!!.getShortName() == "value" }
-            .map { arg -> arg.value as String }
+        val configPath = cacheContract.findAnnotations(ANNOTATION_CACHE)
+            .mapNotNull { a -> a.findValue<String>("value") }
             .first()
 
         val cacheContractName = cacheContract.toClassName()
