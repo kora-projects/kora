@@ -24,7 +24,7 @@ public interface {{classname}}ClientResponseMappers {
     @Override
     public CompletionStage<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> apply(HttpClientResponse response) throws java.io.IOException {
       {{#headers}}
-      var {{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}} = response.headers().getFirst("{{baseName}}");
+      var {{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}} = {{#required}}java.util.Objects.requireNonNull({{/required}}response.headers().getFirst("{{baseName}}"){{#required}}){{/required}};
       {{/headers}}
       {{^dataType}}
       return CompletableFuture.completedFuture(new {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{^vendorExtensions.singleResponse}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse{{/vendorExtensions.singleResponse}}(

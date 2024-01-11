@@ -46,8 +46,11 @@ public interface {{classname}}ServerResponseMappers {
     public HttpServerResponse apply(Context ctx, HttpServerRequest request, {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse response) throws java.io.IOException { {{#responses}}{{^vendorExtensions.singleResponse}}
       if (response instanceof {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse rs) { {{/vendorExtensions.singleResponse}}{{#vendorExtensions.singleResponse}}
       var rs = response;{{/vendorExtensions.singleResponse}}
-        var headers = HttpHeaders.of();{{#headers}}
-        headers.set("{{baseName}}", rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}());{{/headers}}
+        var headers = HttpHeaders.of();{{#headers}}{{#required}}
+        headers.set("{{baseName}}", rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}());{{/required}}{{^required}}
+        if (rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}() != null) {
+          headers.set("{{baseName}}", rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}());
+        }{{/required}}{{/headers}}
         {{#isBinary}}
         return HttpServerResponse.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, HttpBody.of(ctx, "{{{vendorExtensions.contentType}}}", rs.content()));{{/isBinary}}{{^isBinary}}{{^dataType}}
         return HttpServerResponse.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers);{{/dataType}}{{#dataType}}

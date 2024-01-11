@@ -34,8 +34,13 @@ paths:
                     headers:
                         x-next:
                             description: A link to the next page of responses
+                            required: true
                             schema:
-                                type: string
+                              type: string
+                        x-optional-next:
+                            description: A link to the next page of responses
+                            schema:
+                              type: string
                     content:
                         application/json:
                             schema:
