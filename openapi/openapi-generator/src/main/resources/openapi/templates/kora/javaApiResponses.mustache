@@ -2,6 +2,7 @@ package {{package}};
 
 {{#imports}}import {{import}};
 {{/imports}}
+import jakarta.annotation.Nullable;
 
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
 public interface {{classname}}Responses {
@@ -12,7 +13,8 @@ public interface {{classname}}Responses {
   */
   public record {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse(
     {{#dataType}}{{#isDefault}}int statusCode,
-    {{/isDefault}}{{{dataType}}} content{{#hasHeaders}},{{/hasHeaders}}{{/dataType}}{{^dataType}}{{#isDefault}}int statusCode{{#hasHeaders}},{{/hasHeaders}}{{/isDefault}}{{/dataType}}{{#headers}}
+    {{/isDefault}}{{{dataType}}} content{{#hasHeaders}},{{/hasHeaders}}{{/dataType}}{{^dataType}}{{#isDefault}}int statusCode{{#hasHeaders}},{{/hasHeaders}}{{/isDefault}}{{/dataType}}{{#headers}}{{^required}}
+    @Nullable{{/required}}
     String {{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}{{^-last}},{{/-last}}{{/headers}}
   ){}
 {{/responses}}{{/vendorExtensions.singleResponse}}{{^vendorExtensions.singleResponse}}
@@ -23,7 +25,8 @@ public interface {{classname}}Responses {
       */
       public record {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse(
         {{#dataType}}{{#isDefault}}int statusCode,
-        {{/isDefault}}{{{dataType}}} content{{#hasHeaders}},{{/hasHeaders}}{{/dataType}}{{^dataType}}{{#isDefault}}int statusCode{{#hasHeaders}},{{/hasHeaders}}{{/isDefault}}{{/dataType}}{{#headers}}
+        {{/isDefault}}{{{dataType}}} content{{#hasHeaders}},{{/hasHeaders}}{{/dataType}}{{^dataType}}{{#isDefault}}int statusCode{{#hasHeaders}},{{/hasHeaders}}{{/isDefault}}{{/dataType}}{{#headers}}{{^required}}
+        @Nullable{{/required}}
         String {{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}{{^-last}},{{/-last}}{{/headers}}
       ) implements {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {}
 

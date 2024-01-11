@@ -39,8 +39,9 @@ interface {{classname}}ServerResponseMappers {
       {{/vendorExtensions.singleResponse}}{{#responses}}{{^vendorExtensions.singleResponse}}
         is {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{^vendorExtensions.singleResponse}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse{{/vendorExtensions.singleResponse}} -> {
 {{/vendorExtensions.singleResponse}}
-          val headers = HttpHeaders.of(){{#headers}}
-          headers.set("{{baseName}}", rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}});{{/headers}}
+          val headers = HttpHeaders.of(){{#headers}}{{#required}}
+          headers.set("{{baseName}}", rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}});{{/required}}{{^required}}
+          rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}?.let { headers.set("{{baseName}}", it) }{{/required}}{{/headers}}
           {{#isBinary}}
           return HttpServerResponse.of({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, HttpBody.of(ctx, "{{{vendorExtensions.contentType}}}", rs.content));
           {{/isBinary}}{{^isBinary}}{{^dataType}}
