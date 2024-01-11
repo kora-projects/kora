@@ -7,6 +7,9 @@ package {{package}};
 
 {{#imports}}import {{import}};
 {{/imports}}
+{{#requestInDelegateParams}}
+import ru.tinkoff.kora.http.server.common.HttpServerRequest;
+{{/requestInDelegateParams}}
 
 import java.util.List;
 import java.util.Map;
@@ -16,7 +19,8 @@ public interface {{classname}}Delegate {
 {{#operations}}
 {{#operation}}
     {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {{operationId}}(
-{{#allParams}}      {{^isFormParam}}
+{{#vendorExtensions.requestInDelegateParams}}      HttpServerRequest _serverRequest{{#hasParams}},
+{{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}{{#allParams}}      {{^isFormParam}}
       {{^required}}@jakarta.annotation.Nullable
       {{/required}}{{{dataType}}} {{paramName}}{{#hasFormParams}},{{/hasFormParams}}{{^hasFormParams}}{{^-last}},{{/-last}}{{/hasFormParams}}
 {{/isFormParam}}{{/allParams}}    {{#hasFormParams}}

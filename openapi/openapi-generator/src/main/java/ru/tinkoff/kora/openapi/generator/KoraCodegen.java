@@ -78,8 +78,8 @@ public class KoraCodegen extends DefaultCodegen {
             }
 
             final List<String> modes = Arrays.stream(Mode.values())
-                    .map(Mode::getMode)
-                    .toList();
+                .map(Mode::getMode)
+                .toList();
             throw new UnsupportedOperationException("Unknown Mode is provided: " + option + ", available modes: " + modes);
         }
 
@@ -110,6 +110,108 @@ public class KoraCodegen extends DefaultCodegen {
         return "kora";
     }
 
+    record CodegenParams(
+        Mode codegenMode,
+        String jsonAnnotation,
+        boolean enableValidation,
+        String primaryAuth,
+        String clientConfigPrefix,
+        String securityConfigPrefix,
+        Map<String, TagData> tags,
+        boolean requestInDelegateParams
+    ) {
+        static List<CliOption> cliOptions() {
+            var cliOptions = new ArrayList<CliOption>();
+            cliOptions.add(CliOption.newString(CODEGEN_MODE, "Generation mode (one of java, reactive or kotlin)"));
+            cliOptions.add(CliOption.newString(SECURITY_CONFIG_PREFIX, "Config prefix for security config parsers"));
+            cliOptions.add(CliOption.newString(CLIENT_CONFIG_PREFIX, "Generated client config prefix"));
+            cliOptions.add(new CliOption("tags", "Json containing http client tags configuration for apis", "string"));
+            cliOptions.add(CliOption.newString(JSON_ANNOTATION, "Json annotation tag to place on body and other json related params"));
+            cliOptions.add(CliOption.newBoolean(ENABLE_VALIDATION, "Generate validation related annotation on models and controllers"));
+            cliOptions.add(CliOption.newBoolean("requestInDelegateParams", "Generate HttpServerRequest parameter in delegate methods"));
+
+            return cliOptions;
+        }
+
+        static CodegenParams parse(Map<String, Object> additionalProperties) {
+            var codegenMode = Mode.JAVA_CLIENT;
+            var jsonAnnotation = "ru.tinkoff.kora.json.common.annotation.Json";
+            var enableServerValidation = false;
+            var primaryAuth = (String) null;
+            var clientConfigPrefix = (String) null;
+            var securityConfigPrefix = (String) null;
+            var tags = new HashMap<String, TagData>();
+            var requestInDelegateParams = false;
+
+            if (additionalProperties.containsKey(CODEGEN_MODE)) {
+                codegenMode = Mode.ofMode(additionalProperties.get(CODEGEN_MODE).toString());
+            }
+            if (additionalProperties.containsKey(JSON_ANNOTATION)) {
+                jsonAnnotation = additionalProperties.get(JSON_ANNOTATION).toString();
+            }
+            if (additionalProperties.containsKey("tags")) {
+                var tagsJson = additionalProperties.get("tags").toString();
+                try {
+                    tags = new ObjectMapper().readerFor(TypeFactory.defaultInstance().constructMapType(Map.class, String.class, TagData.class)).readValue(tagsJson);
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            if (additionalProperties.containsKey(PRIMARY_AUTH)) {
+                primaryAuth = additionalProperties.get(PRIMARY_AUTH).toString();
+            }
+            if (additionalProperties.containsKey(CLIENT_CONFIG_PREFIX)) {
+                clientConfigPrefix = additionalProperties.get(CLIENT_CONFIG_PREFIX).toString();
+            }
+            if (additionalProperties.containsKey(SECURITY_CONFIG_PREFIX)) {
+                securityConfigPrefix = additionalProperties.get(SECURITY_CONFIG_PREFIX).toString();
+            }
+            if (additionalProperties.containsKey(ENABLE_VALIDATION) && codegenMode.isServer()) {
+                enableServerValidation = Boolean.parseBoolean(additionalProperties.get(ENABLE_VALIDATION).toString());
+            }
+            if (additionalProperties.containsKey("requestInDelegateParams") && codegenMode.isServer()) {
+                requestInDelegateParams = Boolean.parseBoolean(additionalProperties.get("requestInDelegateParams").toString());
+            }
+
+            return new CodegenParams(codegenMode, jsonAnnotation, enableServerValidation, primaryAuth, clientConfigPrefix, securityConfigPrefix, tags, requestInDelegateParams);
+        }
+
+        void processAdditionalProperties(Map<String, Object> additionalProperties) {
+            additionalProperties.put("hasSecurityConfigPrefix", securityConfigPrefix != null);
+            additionalProperties.put("requestInDelegateParams", requestInDelegateParams);
+
+            switch (codegenMode) {
+                case JAVA_CLIENT -> {
+                    additionalProperties.put("isClient", true);
+                    additionalProperties.put("isBlocking", true);
+                }
+                case JAVA_REACTIVE_CLIENT, JAVA_ASYNC_CLIENT -> {
+                    additionalProperties.put("isClient", true);
+                    additionalProperties.put("isAsync", this.codegenMode == Mode.JAVA_ASYNC_CLIENT);
+                    additionalProperties.put("isReactive", this.codegenMode == Mode.JAVA_REACTIVE_CLIENT);
+                }
+                case JAVA_SERVER -> {
+                    additionalProperties.put("isClient", false);
+                    additionalProperties.put("isBlocking", true);
+                }
+                case JAVA_REACTIVE_SERVER, JAVA_ASYNC_SERVER -> {
+                    additionalProperties.put("isClient", false);
+                    additionalProperties.put("isAsync", this.codegenMode == Mode.JAVA_ASYNC_SERVER);
+                    additionalProperties.put("isReactive", this.codegenMode == Mode.JAVA_REACTIVE_SERVER);
+                }
+                case KOTLIN_CLIENT, KOTLIN_SUSPEND_CLIENT -> {
+                    additionalProperties.put("isClient", true);
+                    additionalProperties.put("isSuspend", this.codegenMode == Mode.KOTLIN_SUSPEND_CLIENT);
+                }
+                case KOTLIN_SERVER, KOTLIN_SUSPEND_SERVER -> {
+                    additionalProperties.put("isClient", false);
+                    additionalProperties.put("isSuspend", this.codegenMode == Mode.KOTLIN_SUSPEND_SERVER);
+                }
+            }
+        }
+    }
+
+
     public static final String CODEGEN_MODE = "mode";
     public static final String JSON_ANNOTATION = "jsonAnnotation";
     public static final String ENABLE_VALIDATION = "enableServerValidation";
@@ -129,16 +231,11 @@ public class KoraCodegen extends DefaultCodegen {
     protected boolean disableHtmlEscaping = false;
     protected String booleanGetterPrefix = "get";
     protected boolean ignoreAnyOfInEnum = false;
-    private Mode codegenMode = Mode.JAVA_CLIENT;
-    private String jsonAnnotation = "ru.tinkoff.kora.json.common.annotation.Json";
-    private Map<String, TagData> tags = Map.of();
-    private String securityConfigPrefix;
-    private String clientConfigPrefix;
-    private String primaryAuth;
     private String objectType = "java.lang.Object";
     protected List<String> additionalModelTypeAnnotations = new LinkedList<>();
     protected List<String> additionalEnumTypeAnnotations = new LinkedList<>();
-    private boolean enableValidation = false;
+
+    private CodegenParams params;
 
     public KoraCodegen() {
         super();
@@ -147,41 +244,41 @@ public class KoraCodegen extends DefaultCodegen {
         invokerPackage = "org.openapitools.api";
 
         modifyFeatureSet(features -> features
-                .wireFormatFeatures(EnumSet.of(WireFormatFeature.JSON))
-                .securityFeatures(EnumSet.of(SecurityFeature.ApiKey, SecurityFeature.BasicAuth, SecurityFeature.BearerToken, SecurityFeature.OAuth2_AuthorizationCode))
-                .excludeGlobalFeatures(
-                        GlobalFeature.XMLStructureDefinitions,
-                        GlobalFeature.Callbacks,
-                        GlobalFeature.LinkObjects,
-                        GlobalFeature.ParameterStyling
-                )
-                .excludeSchemaSupportFeatures(SchemaSupportFeature.Polymorphism)
-                .includeClientModificationFeatures(ClientModificationFeature.BasePath)
+            .wireFormatFeatures(EnumSet.of(WireFormatFeature.JSON))
+            .securityFeatures(EnumSet.of(SecurityFeature.ApiKey, SecurityFeature.BasicAuth, SecurityFeature.BearerToken, SecurityFeature.OAuth2_AuthorizationCode))
+            .excludeGlobalFeatures(
+                GlobalFeature.XMLStructureDefinitions,
+                GlobalFeature.Callbacks,
+                GlobalFeature.LinkObjects,
+                GlobalFeature.ParameterStyling
+            )
+            .excludeSchemaSupportFeatures(SchemaSupportFeature.Polymorphism)
+            .includeClientModificationFeatures(ClientModificationFeature.BasePath)
         );
 
         supportsInheritance = true;
         hideGenerationTimestamp = true;
 
         setReservedWordsLowerCase(
-                Arrays.asList(
-                        // special words
-                        "object",
-                        // used as internal variables, can collide with parameter names
-                        "error",
-                        "localVarPath", "localVarQueryParams", "localVarCollectionQueryParams",
-                        "localVarHeaderParams", "localVarCookieParams", "localVarFormParams", "localVarPostBody",
-                        "localVarAccepts", "localVarAccept", "localVarContentTypes",
-                        "localVarContentType", "localVarAuthNames", "localReturnType",
-                        //  "ApiClient", "ApiException", "ApiResponse", "Configuration", "StringUtil",
+            Arrays.asList(
+                // special words
+                "object",
+                // used as internal variables, can collide with parameter names
+                "error",
+                "localVarPath", "localVarQueryParams", "localVarCollectionQueryParams",
+                "localVarHeaderParams", "localVarCookieParams", "localVarFormParams", "localVarPostBody",
+                "localVarAccepts", "localVarAccept", "localVarContentTypes",
+                "localVarContentType", "localVarAuthNames", "localReturnType",
+                //  "ApiClient", "ApiException", "ApiResponse", "Configuration", "StringUtil",
 
-                        // language reserved words
-                        "abstract", "continue", "for", "new", "switch", "assert",
-                        "default", "if", "package", "synchronized", "boolean", "do", "goto", "private",
-                        "this", "break", "double", "implements", "protected", "throw", "byte", "else",
-                        "import", "public", "throws", "case", "enum", "instanceof", "return", "transient",
-                        "catch", "extends", "int", "short", "try", "char", "final", "interface", "static",
-                        "void", "class", "finally", "long", "strictfp", "volatile", "const", "float",
-                        "native", "super", "while", "null")
+                // language reserved words
+                "abstract", "continue", "for", "new", "switch", "assert",
+                "default", "if", "package", "synchronized", "boolean", "do", "goto", "private",
+                "this", "break", "double", "implements", "protected", "throw", "byte", "else",
+                "import", "public", "throws", "case", "enum", "instanceof", "return", "transient",
+                "catch", "extends", "int", "short", "try", "char", "final", "interface", "static",
+                "void", "class", "finally", "long", "strictfp", "volatile", "const", "float",
+                "native", "super", "while", "null")
         );
 
 
@@ -214,12 +311,7 @@ public class KoraCodegen extends DefaultCodegen {
         cliOptions.add(CliOption.newBoolean(IGNORE_ANYOF_IN_ENUM, "Ignore anyOf keyword in enum", ignoreAnyOfInEnum));
         cliOptions.add(CliOption.newString(ADDITIONAL_MODEL_TYPE_ANNOTATIONS, "Additional annotations for model type(class level annotations)"));
         cliOptions.add(CliOption.newString(ADDITIONAL_ENUM_TYPE_ANNOTATIONS, "Additional annotations for enum type(class level annotations)"));
-        cliOptions.add(CliOption.newString(CODEGEN_MODE, "Generation mode (one of java, reactive or kotlin)"));
-        cliOptions.add(CliOption.newString(SECURITY_CONFIG_PREFIX, "Config prefix for security config parsers"));
-        cliOptions.add(CliOption.newString(CLIENT_CONFIG_PREFIX, "Generated client config prefix"));
-        cliOptions.add(new CliOption("tags", "Json containing http client tags configuration for apis", "string"));
-        cliOptions.add(CliOption.newString(JSON_ANNOTATION, "Json annotation tag to place on body and other json related params"));
-        cliOptions.add(CliOption.newBoolean(ENABLE_VALIDATION, "Generate validation related annotation on models and controllers"));
+        cliOptions.addAll(CodegenParams.cliOptions());
     }
 
     @Override
@@ -229,41 +321,14 @@ public class KoraCodegen extends DefaultCodegen {
             LOGGER.info("Environment variable JAVA_POST_PROCESS_FILE not defined so the Java code may not be properly formatted. To define it, try 'export JAVA_POST_PROCESS_FILE=\"/usr/local/bin/clang-format -i\"' (Linux/Mac)");
             LOGGER.info("NOTE: To enable file post-processing, 'enablePostProcessFile' must be set to `true` (--enable-post-process-file for CLI).");
         }
-        if (additionalProperties.containsKey(CODEGEN_MODE)) {
-            this.codegenMode = Mode.ofMode(additionalProperties.get(CODEGEN_MODE).toString());
-        } else {
-            this.codegenMode = Mode.JAVA_CLIENT;
-        }
-        if (additionalProperties.containsKey(JSON_ANNOTATION)) {
-            this.jsonAnnotation = additionalProperties.get(JSON_ANNOTATION).toString();
-        }
-        if (this.additionalProperties.containsKey("tags")) {
-            var tagsJson = this.additionalProperties.get("tags").toString();
-            try {
-                this.tags = new ObjectMapper().readerFor(TypeFactory.defaultInstance().constructMapType(Map.class, String.class, TagData.class)).readValue(tagsJson);
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
-            }
-        }
+
         if (additionalProperties.containsKey(OBJECT_TYPE)) {
             this.objectType = additionalProperties.get(OBJECT_TYPE).toString();
         }
-        if (additionalProperties.containsKey(PRIMARY_AUTH)) {
-            this.primaryAuth = additionalProperties.get(PRIMARY_AUTH).toString();
-        }
-        if (additionalProperties.containsKey(CLIENT_CONFIG_PREFIX)) {
-            this.clientConfigPrefix = additionalProperties.get(CLIENT_CONFIG_PREFIX).toString();
-        }
-        if (additionalProperties.containsKey(SECURITY_CONFIG_PREFIX)) {
-            this.securityConfigPrefix = additionalProperties.get(SECURITY_CONFIG_PREFIX).toString();
-            additionalProperties.put("hasSecurityConfigPrefix", true);
-        } else {
-            additionalProperties.put("hasSecurityConfigPrefix", false);
-        }
-        switch (this.codegenMode) {
+        params = CodegenParams.parse(additionalProperties);
+        params.processAdditionalProperties(additionalProperties);
+        switch (params.codegenMode) {
             case JAVA_CLIENT -> {
-                this.additionalProperties.put("isClient", true);
-                this.additionalProperties.put("isBlocking", true);
                 modelTemplateFiles.put("javaModel.mustache", ".java");
                 apiTemplateFiles.put("javaClientApi.mustache", ".java");
                 apiTemplateFiles.put("javaApiResponses.mustache", "Responses.java");
@@ -271,9 +336,6 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("javaClientRequestMappers.mustache", "ClientRequestMappers.java");
             }
             case JAVA_REACTIVE_CLIENT, JAVA_ASYNC_CLIENT -> {
-                this.additionalProperties.put("isClient", true);
-                this.additionalProperties.put("isAsync", this.codegenMode == Mode.JAVA_ASYNC_CLIENT);
-                this.additionalProperties.put("isReactive", this.codegenMode == Mode.JAVA_REACTIVE_CLIENT);
                 modelTemplateFiles.put("javaModel.mustache", ".java");
                 apiTemplateFiles.put("javaClientApi.mustache", ".java");
                 apiTemplateFiles.put("javaApiResponses.mustache", "Responses.java");
@@ -281,8 +343,6 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("javaClientRequestMappers.mustache", "ClientRequestMappers.java");
             }
             case JAVA_SERVER -> {
-                this.additionalProperties.put("isClient", false);
-                this.additionalProperties.put("isBlocking", true);
                 apiTemplateFiles.put("javaServerApi.mustache", "Controller.java");
                 apiTemplateFiles.put("javaServerApiDelegate.mustache", "Delegate.java");
                 apiTemplateFiles.put("javaApiResponses.mustache", "Responses.java");
@@ -291,9 +351,6 @@ public class KoraCodegen extends DefaultCodegen {
                 modelTemplateFiles.put("javaModel.mustache", ".java");
             }
             case JAVA_REACTIVE_SERVER, JAVA_ASYNC_SERVER -> {
-                this.additionalProperties.put("isClient", false);
-                this.additionalProperties.put("isAsync", this.codegenMode == Mode.JAVA_ASYNC_SERVER);
-                this.additionalProperties.put("isReactive", this.codegenMode == Mode.JAVA_REACTIVE_SERVER);
                 apiTemplateFiles.put("reactiveServerApi.mustache", "Controller.java");
                 apiTemplateFiles.put("reactiveServerApiDelegate.mustache", "Delegate.java");
                 apiTemplateFiles.put("javaApiResponses.mustache", "Responses.java");
@@ -302,12 +359,10 @@ public class KoraCodegen extends DefaultCodegen {
                 modelTemplateFiles.put("javaModel.mustache", ".java");
             }
             case KOTLIN_CLIENT, KOTLIN_SUSPEND_CLIENT -> {
-                this.additionalProperties.put("isClient", true);
-                this.additionalProperties.put("isSuspend", this.codegenMode == Mode.KOTLIN_SUSPEND_CLIENT);
                 modelTemplateFiles.put("kotlinModel.mustache", ".kt");
                 apiTemplateFiles.put("kotlinClientApi.mustache", ".kt");
                 apiTemplateFiles.put("kotlinApiResponses.mustache", "Responses.kt");
-                if (this.codegenMode == Mode.KOTLIN_SUSPEND_CLIENT) {
+                if (params.codegenMode == Mode.KOTLIN_SUSPEND_CLIENT) {
                     apiTemplateFiles.put("kotlinClientAsyncResponseMappers.mustache", "ClientResponseMappers.kt");
                 } else {
                     apiTemplateFiles.put("kotlinClientResponseMappers.mustache", "ClientResponseMappers.kt");
@@ -315,8 +370,6 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("kotlinClientRequestMappers.mustache", "ClientRequestMappers.kt");
             }
             case KOTLIN_SERVER, KOTLIN_SUSPEND_SERVER -> {
-                this.additionalProperties.put("isClient", false);
-                this.additionalProperties.put("isSuspend", this.codegenMode == Mode.KOTLIN_SUSPEND_SERVER);
                 modelTemplateFiles.put("kotlinModel.mustache", ".kt");
                 apiTemplateFiles.put("kotlinServerApi.mustache", "Controller.kt");
                 apiTemplateFiles.put("kotlinServerApiDelegate.mustache", "Delegate.kt");
@@ -325,27 +378,22 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("kotlinServerResponseMappers.mustache", "ServerResponseMappers.kt");
             }
         }
-        if (additionalProperties.containsKey(ENABLE_VALIDATION) && this.codegenMode.isServer()) {
-            this.enableValidation = Boolean.parseBoolean(additionalProperties.get(ENABLE_VALIDATION).toString());
-            this.vendorExtensions.put("enableValidation", this.enableValidation);
-        } else {
-            this.enableValidation = false;
-        }
+        this.vendorExtensions.put("enableValidation", params.enableValidation());
 
         embeddedTemplateDir = templateDir = "openapi/templates/kora";
-        if (!this.codegenMode.isJava()) {
+        if (!params.codegenMode.isJava()) {
             languageSpecificPrimitives = new HashSet<>(
-                    Arrays.asList(
-                            "ByteArray",
-                            "String",
-                            "boolean",
-                            "Boolean",
-                            "Double",
-                            "Int",
-                            "Long",
-                            "Float",
-                            "Object"
-                    )
+                Arrays.asList(
+                    "ByteArray",
+                    "String",
+                    "boolean",
+                    "Boolean",
+                    "Double",
+                    "Int",
+                    "Long",
+                    "Float",
+                    "Object"
+                )
             );
             typeMapping.put("file", "ByteArray");
             if (additionalProperties.containsKey(OBJECT_TYPE)) {
@@ -363,20 +411,20 @@ public class KoraCodegen extends DefaultCodegen {
             typeMapping.put("ByteArray", "ByteArray");
         } else {
             languageSpecificPrimitives = new HashSet<>(
-                    Arrays.asList(
-                            "String",
-                            "boolean",
-                            "Boolean",
-                            "double",
-                            "Double",
-                            "int",
-                            "Integer",
-                            "long",
-                            "Long",
-                            "float",
-                            "Float",
-                            "Object",
-                            "byte[]")
+                Arrays.asList(
+                    "String",
+                    "boolean",
+                    "Boolean",
+                    "double",
+                    "Double",
+                    "int",
+                    "Integer",
+                    "long",
+                    "Long",
+                    "float",
+                    "Float",
+                    "Object",
+                    "byte[]")
             );
             typeMapping.put("AnyType", objectType);
             typeMapping.put("object", objectType);
@@ -420,7 +468,7 @@ public class KoraCodegen extends DefaultCodegen {
             this.additionalProperties.put(CodegenConstants.INVOKER_PACKAGE, derivedInvokerPackage);
             this.setInvokerPackage((String) additionalProperties.get(CodegenConstants.INVOKER_PACKAGE));
             LOGGER.info("Invoker Package Name, originally not set, is now derived from model package name: {}",
-                    derivedInvokerPackage);
+                derivedInvokerPackage);
         } else {
             //not set, use default to be passed to template
             additionalProperties.put(CodegenConstants.INVOKER_PACKAGE, invokerPackage);
@@ -459,8 +507,8 @@ public class KoraCodegen extends DefaultCodegen {
         objs = super.updateAllModels(objs);
         Map<String, CodegenModel> allModels = getAllModels(objs);
         for (var model : allModels.values()) {
-            model.vendorExtensions.put("x-enable-validation", this.enableValidation);
-            if (this.enableValidation) {
+            model.vendorExtensions.put("x-enable-validation", params.enableValidation);
+            if (params.enableValidation) {
                 for (var variable : model.allVars) {
                     if (variable.getRef() != null) {
                         var variableModelField = allModels.get(variable.openApiType);
@@ -473,12 +521,12 @@ public class KoraCodegen extends DefaultCodegen {
             }
             if (model.discriminator != null) {
                 var map = model.discriminator.getMappedModels().stream()
-                        .collect(Collectors.toMap(CodegenDiscriminator.MappedModel::getModelName, m -> List.of(m.getMappingName()), (l1, l2) -> {
-                            var l = new ArrayList<String>(l1.size() + l2.size());
-                            l.addAll(l1);
-                            l.addAll(l2);
-                            return l;
-                        }));
+                    .collect(Collectors.toMap(CodegenDiscriminator.MappedModel::getModelName, m -> List.of(m.getMappingName()), (l1, l2) -> {
+                        var l = new ArrayList<String>(l1.size() + l2.size());
+                        l.addAll(l1);
+                        l.addAll(l2);
+                        return l;
+                    }));
                 var uniqueMappedModels = model.discriminator.getMappedModels().stream().map(CodegenDiscriminator.MappedModel::getModelName).collect(Collectors.toSet());
                 model.vendorExtensions.put("x-unique-mapped-models", uniqueMappedModels);
                 model.discriminator.getVendorExtensions().put("x-unique-mapped-models", uniqueMappedModels);
@@ -512,7 +560,7 @@ public class KoraCodegen extends DefaultCodegen {
                             if (i > 0) {
                                 sb.append(" && ");
                             }
-                            if (this.codegenMode.isJava()) {
+                            if (params.codegenMode.isJava()) {
                                 sb.append("!String.valueOf(").append(property.name).append(").equals(\"").append(mapping).append("\")");
                             } else {
                                 sb.append(property.name).append("?.toString() != \"").append(mapping).append("\"");
@@ -521,7 +569,7 @@ public class KoraCodegen extends DefaultCodegen {
                         childModel.vendorExtensions.put("x-discriminator-values-check", sb.append(")").toString());
                         childModel.vendorExtensions.put("x-discriminator-constant", mappings.get(0));
                     }
-                    var separators = this.codegenMode.isJava() ? new String[]{"{\"", "\"}"} : new String[]{"[\"", "\"]"};
+                    var separators = params.codegenMode.isJava() ? new String[]{"{\"", "\"}"} : new String[]{"[\"", "\"]"};
                     var discriminatorValues = mappings.stream().collect(Collectors.joining("\", \"", separators[0], separators[1]));
                     childModel.vendorExtensions.put("x-discriminator-value", discriminatorValues);
 
@@ -533,21 +581,21 @@ public class KoraCodegen extends DefaultCodegen {
                         childModel.vendorExtensions.remove("x-discriminator-constant");
 
                         var mappingValues = mappings.stream()
-                                .map(m -> {
-                                    final String key = Arrays.stream(m.split("[^a-zA-Z0-9]"))
-                                            .map(String::strip)
-                                            .map(String::toUpperCase)
-                                            .collect(Collectors.joining("_"));
+                            .map(m -> {
+                                final String key = Arrays.stream(m.split("[^a-zA-Z0-9]"))
+                                    .map(String::strip)
+                                    .map(String::toUpperCase)
+                                    .collect(Collectors.joining("_"));
 
-                                    return Map.of("discriminatorField", key, "discriminatorValue", "\"" + m + "\"");
-                                })
-                                .collect(Collectors.toList());
+                                return Map.of("discriminatorField", key, "discriminatorValue", "\"" + m + "\"");
+                            })
+                            .collect(Collectors.toList());
 
                         childModel.vendorExtensions.put("x-discriminator-constant-fields", mappingValues);
                     }
                 }
             }
-            if (codegenMode.isJava()) {
+            if (params.codegenMode.isJava()) {
                 for (var requiredVar : model.allVars) {
                     if (!requiredVar.required) {
                         continue;
@@ -1314,8 +1362,8 @@ public class KoraCodegen extends DefaultCodegen {
         var authMethods = (List<AuthMethodGroup>) this.vendorExtensions.computeIfAbsent("authMethods", k -> new ArrayList<AuthMethodGroup>());
         var tags = (Set<String>) this.vendorExtensions.computeIfAbsent("tags", k -> new TreeSet<String>());
         var operations = (Map<String, Object>) objs.get("operations");
-        if (this.clientConfigPrefix != null) {
-            httpClientAnnotationParams.put("configPath", "\"" + this.clientConfigPrefix + "." + operations.get("classname") + "\"");
+        if (params.clientConfigPrefix != null) {
+            httpClientAnnotationParams.put("configPath", "\"" + params.clientConfigPrefix + "." + operations.get("classname") + "\"");
         }
         var operationList = (List<CodegenOperation>) operations.get("operation");
         for (var op : operationList) {
@@ -1327,14 +1375,14 @@ public class KoraCodegen extends DefaultCodegen {
             }
 
             TagData tagData = null;
-            for (var entry : this.tags.entrySet()) {
+            for (var entry : params.tags.entrySet()) {
                 if (op.tags.stream().anyMatch(t -> t.getName().equals(entry.getKey()))) {
                     tagData = entry.getValue();
                     break;
                 }
             }
             if (tagData == null) {
-                tagData = this.tags.get("*");
+                tagData = params.tags.get("*");
             }
             if (tagData != null) {
                 if (tagData.httpClientTag != null) {
@@ -1344,19 +1392,19 @@ public class KoraCodegen extends DefaultCodegen {
                     httpClientAnnotationParams.put("telemetryTag", tagData.telemetryTag);
                 }
             }
-
+            op.vendorExtensions.put("requestInDelegateParams", params.requestInDelegateParams);
             op.vendorExtensions.put("x-java-import", operationImports);
             var multipartForm = op.consumes != null && op.consumes.stream()
-                    .map(m -> m.get("mediaType"))
-                    .anyMatch("multipart/form-data"::equalsIgnoreCase);
+                .map(m -> m.get("mediaType"))
+                .anyMatch("multipart/form-data"::equalsIgnoreCase);
             var urlEncodedForm = op.consumes != null && op.consumes.stream()
-                    .map(m -> m.get("mediaType"))
-                    .anyMatch("application/x-www-form-urlencoded"::equalsIgnoreCase);
+                .map(m -> m.get("mediaType"))
+                .anyMatch("application/x-www-form-urlencoded"::equalsIgnoreCase);
             op.vendorExtensions.put("multipartForm", multipartForm);
             op.vendorExtensions.put("urlEncodedForm", urlEncodedForm);
             for (var response : op.responses) {
                 var hasData = response.hasHeaders || response.isDefault || response.dataType != null;
-                response.vendorExtensions.put("jsonTag", this.jsonAnnotation);
+                response.vendorExtensions.put("jsonTag", params.jsonAnnotation);
                 response.vendorExtensions.put("hasData", hasData);
             }
             if (op.bodyParam != null) {
@@ -1364,14 +1412,14 @@ public class KoraCodegen extends DefaultCodegen {
                     op.bodyParam.vendorExtensions.put("hasMapperTag", false);
                 } else if (Objects.equals("application/json", op.bodyParam.contentType) || op.bodyParam.contentType == null) {
                     op.bodyParam.vendorExtensions.put("hasMapperTag", true);
-                    op.bodyParam.vendorExtensions.put("mapperTag", this.jsonAnnotation);
+                    op.bodyParam.vendorExtensions.put("mapperTag", params.jsonAnnotation);
                 }
                 for (var param : op.allParams) {
                     if (param.isBodyParam && param.isBinary) {
                         op.bodyParam.vendorExtensions.put("hasMapperTag", false);
                     } else if (param.isBodyParam && Objects.equals("application/json", param.contentType) || param.contentType == null) {
                         param.vendorExtensions.put("hasMapperTag", true);
-                        param.vendorExtensions.put("mapperTag", this.jsonAnnotation);
+                        param.vendorExtensions.put("mapperTag", params.jsonAnnotation);
                     }
                 }
             }
@@ -1380,25 +1428,25 @@ public class KoraCodegen extends DefaultCodegen {
                 if (formParam.isModel) {
                     formParam.vendorExtensions.put("requiresMapper", true);
                     var type = allModels.stream()
-                            .filter(m -> m.getModel().name.equals(formParam.dataType))
-                            .findFirst()
-                            .map(m -> m.get("importPath").toString())
-                            .get();
+                        .filter(m -> m.getModel().name.equals(formParam.dataType))
+                        .findFirst()
+                        .map(m -> m.get("importPath").toString())
+                        .get();
                     if (formParam.contentType != null && formParam.contentType.equals("application/json")) {
-                        formParam.vendorExtensions.put("mapperTag", this.jsonAnnotation);
+                        formParam.vendorExtensions.put("mapperTag", params.jsonAnnotation);
                         formParamsWithMappers.add(new HashMap<>(Map.of(
-                                "paramName", formParam.paramName,
-                                "requireTag", true,
-                                "mapperTag", this.jsonAnnotation,
-                                "paramType", type,
-                                "last", false
+                            "paramName", formParam.paramName,
+                            "requireTag", true,
+                            "mapperTag", params.jsonAnnotation,
+                            "paramType", type,
+                            "last", false
                         )));
                     } else {
                         formParamsWithMappers.add(new HashMap<>(Map.of(
-                                "paramName", formParam.paramName,
-                                "requireTag", false,
-                                "paramType", type,
-                                "last", false
+                            "paramName", formParam.paramName,
+                            "requireTag", false,
+                            "paramType", type,
+                            "last", false
                         )));
                     }
                 }
@@ -1411,7 +1459,7 @@ public class KoraCodegen extends DefaultCodegen {
             for (var response : op.responses) {
                 if (response.getContent() != null && response.getContent().containsKey("application/json")) {
                     response.vendorExtensions.put("hasMapperTag", true);
-                    response.vendorExtensions.put("mapperTag", this.jsonAnnotation);
+                    response.vendorExtensions.put("mapperTag", params.jsonAnnotation);
                 }
             }
             int lastIdx = 0;
@@ -1442,7 +1490,7 @@ public class KoraCodegen extends DefaultCodegen {
                 response.vendorExtensions.put("singleResponse", op.responses.size() == 1);
             }
             if (op.hasAuthMethods) {
-                if (this.codegenMode.isServer()) {
+                if (params.codegenMode.isServer()) {
                     var operationAuthMethods = new TreeSet<String>();
                     for (var authMethod : op.authMethods) {
                         tags.add(upperCase(toVarName(authMethod.name)));
@@ -1454,9 +1502,9 @@ public class KoraCodegen extends DefaultCodegen {
                                 authName = upperCase(toVarName(authMethod.name) + "NoScopes");
                             } else {
                                 var scopes = authMethod.scopes.stream()
-                                        .map(it -> this.upperCase(toVarName(it.get("scope").toString())))
-                                        .sorted()
-                                        .collect(Collectors.joining("With"));
+                                    .map(it -> this.upperCase(toVarName(it.get("scope").toString())))
+                                    .sorted()
+                                    .collect(Collectors.joining("With"));
                                 authName = upperCase(toVarName(authMethod.name) + "With" + scopes);
                             }
                         } else {
@@ -1485,20 +1533,20 @@ public class KoraCodegen extends DefaultCodegen {
 
                     op.vendorExtensions.put("authInterceptorTag", authInterceptorTag);
                 } else {
-                    if (op.authMethods.size() == 1 || this.primaryAuth == null) {
+                    if (op.authMethods.size() == 1 || params.primaryAuth == null) {
                         var authName = camelize(toVarName(op.authMethods.get(0).name));
                         tags.add(upperCase(authName));
                         op.vendorExtensions.put("authInterceptorTag", authName);
                     } else {
-                        var authMethod = authMethods.stream().filter(a -> a.name.equals(this.primaryAuth)).findFirst().get();
+                        var authMethod = authMethods.stream().filter(a -> a.name.equals(params.primaryAuth)).findFirst().get();
                         var authName = camelize(toVarName(authMethod.name));
                         tags.add(upperCase(authName));
                         op.vendorExtensions.put("authInterceptorTag", authName);
                     }
                 }
             }
-            if (this.enableValidation) {
-                op.vendorExtensions.put("enableValidation", this.enableValidation);
+            if (params.enableValidation) {
+                op.vendorExtensions.put("enableValidation", params.enableValidation);
                 for (var p : op.allParams) {
                     var validation = false;
                     if (p.isModel) {
@@ -1536,7 +1584,7 @@ public class KoraCodegen extends DefaultCodegen {
                     }
                 }
             }
-            if (codegenMode.isJava()) {
+            if (params.codegenMode.isJava()) {
                 for (var allParam : op.allParams) {
                     if (!allParam.required) {
                         continue;
@@ -1559,11 +1607,11 @@ public class KoraCodegen extends DefaultCodegen {
                 }
             }
         }
-        if (this.codegenMode.isClient()) {
+        if (params.codegenMode.isClient()) {
             var annotationParams = httpClientAnnotationParams.entrySet()
-                    .stream()
-                    .map(e -> e.getKey() + " = " + e.getValue())
-                    .collect(Collectors.joining(", ", "(", ")"));
+                .stream()
+                .map(e -> e.getKey() + " = " + e.getValue())
+                .collect(Collectors.joining(", ", "(", ")"));
             objs.put("annotationParams", annotationParams);
         }
         return objs;
@@ -1615,23 +1663,23 @@ public class KoraCodegen extends DefaultCodegen {
             //       - ENUM_A
             //       - ENUM_B
             Stream.concat(
-                            Stream.of(openAPI.getComponents().getSchemas()),
-                            openAPI.getComponents().getSchemas().values().stream()
-                                    .filter(schema -> schema.getProperties() != null)
-                                    .map(Schema::getProperties))
-                    .forEach(schemas -> schemas.replaceAll(
-                            (name, s) -> Stream.of(s)
-                                    .filter(schema -> schema instanceof ComposedSchema)
-                                    .map(schema -> (ComposedSchema) schema)
-                                    .filter(schema -> Objects.nonNull(schema.getAnyOf()))
-                                    .flatMap(schema -> schema.getAnyOf().stream())
-                                    .filter(schema -> Objects.nonNull(schema.getEnum()))
-                                    .findFirst()
-                                    .orElse((Schema) s)));
+                    Stream.of(openAPI.getComponents().getSchemas()),
+                    openAPI.getComponents().getSchemas().values().stream()
+                        .filter(schema -> schema.getProperties() != null)
+                        .map(Schema::getProperties))
+                .forEach(schemas -> schemas.replaceAll(
+                    (name, s) -> Stream.of(s)
+                        .filter(schema -> schema instanceof ComposedSchema)
+                        .map(schema -> (ComposedSchema) schema)
+                        .filter(schema -> Objects.nonNull(schema.getAnyOf()))
+                        .flatMap(schema -> schema.getAnyOf().stream())
+                        .filter(schema -> Objects.nonNull(schema.getEnum()))
+                        .findFirst()
+                        .orElse((Schema) s)));
         }
         var securitySchemas = openAPI.getComponents().getSecuritySchemes();
         if (!Objects.requireNonNullElse(securitySchemas, Map.of()).isEmpty()) {
-            switch (this.codegenMode) {
+            switch (params.codegenMode) {
                 case JAVA_CLIENT, JAVA_ASYNC_CLIENT, JAVA_REACTIVE_CLIENT -> {
                     var securitySchemaClass = apiFileFolder() + File.separator + "ApiSecurity.java";
                     this.supportingFiles.add(new SupportingFile("javaClientSecuritySchema.mustache", securitySchemaClass));
@@ -1704,7 +1752,7 @@ public class KoraCodegen extends DefaultCodegen {
 
         // number
         if ("Integer".equals(datatype) || "Int".equals(datatype) || "Long".equals(datatype) ||
-                "Float".equals(datatype) || "Double".equals(datatype) || "BigDecimal".equals(datatype)) {
+            "Float".equals(datatype) || "Double".equals(datatype) || "BigDecimal".equals(datatype)) {
             String varName = "NUMBER_" + value;
             varName = varName.replaceAll("-", "MINUS_");
             varName = varName.replaceAll("\\+", "PLUS_");
@@ -1998,15 +2046,15 @@ public class KoraCodegen extends DefaultCodegen {
     @Override
     protected ImmutableMap.Builder<String, Mustache.Lambda> addMustacheLambdas() {
         return super.addMustacheLambdas()
-                .put("trim", (fragment, out) -> {
-                    var text = fragment.execute();
-                    out.write(text.trim());
-                })
-                .put("classname", (fragment, out) -> {
-                    var text = fragment.execute();
-                    out.write(this.upperCase(toVarName(text)));
-                })
-                ;
+            .put("trim", (fragment, out) -> {
+                var text = fragment.execute();
+                out.write(text.trim());
+            })
+            .put("classname", (fragment, out) -> {
+                var text = fragment.execute();
+                out.write(this.upperCase(toVarName(text)));
+            })
+            ;
     }
 
     @Override
