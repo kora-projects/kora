@@ -7,13 +7,16 @@ package {{package}}
 
 {{#imports}}import {{import}}
 {{/imports}}
+{{#requestInDelegateParams}}
+import ru.tinkoff.kora.http.server.common.HttpServerRequest
+{{/requestInDelegateParams}}
 
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
 interface {{classname}}Delegate {
 {{#operations}}
 {{#operation}}
     {{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}(
-{{#allParams}}      {{^isFormParam}}
+{{#vendorExtensions.requestInDelegateParams}}      _serverRequest: HttpServerRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}{{#allParams}}      {{^isFormParam}}
       {{paramName}}: {{{dataType}}}{{^required}}?{{/required}}{{#hasFormParams}},{{/hasFormParams}}{{^hasFormParams}}{{^-last}},{{/-last}}{{/hasFormParams}}
 {{/isFormParam}}{{/allParams}}    {{#hasFormParams}}
       form: {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam

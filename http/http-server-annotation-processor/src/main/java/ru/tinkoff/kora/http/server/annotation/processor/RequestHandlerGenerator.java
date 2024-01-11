@@ -17,11 +17,13 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -127,9 +129,14 @@ public class RequestHandlerGenerator {
         handler.add(requestMappingBlock.build());
 
         for (var parameter : parameters) {
-            if (Set.of(PATH, QUERY, HEADER, COOKIE).contains(parameter.parameterType)) {
-                handler.addStatement("final $T $N", parameter.type, parameter.variableElement.getSimpleName());
-                hasNonBodyParams = true;
+            switch (parameter.parameterType) {
+                case PATH, QUERY, HEADER, COOKIE -> {
+                    handler.addStatement("final $T $N", parameter.type, parameter.variableElement.getSimpleName());
+                    hasNonBodyParams = true;
+                }
+                case REQUEST -> handler.add("var $N = _request;\n", parameter.name());
+                case CONTEXT -> handler.add("var $N = _ctx;\n", parameter.name());
+                default -> {}
             }
         }
 
@@ -143,9 +150,7 @@ public class RequestHandlerGenerator {
                 case QUERY -> this.defineQueryParameter(parameter, methodBuilder);
                 case HEADER -> this.defineHeaderParameter(parameter, methodBuilder);
                 case COOKIE -> this.defineCookieParameter(parameter, methodBuilder);
-                case MAPPED_HTTP_REQUEST -> CodeBlock.of("");
-                case REQUEST -> CodeBlock.of("var $L = _request;\n", parameter.name());
-                case CONTEXT -> CodeBlock.of("var $L = _ctx;\n", parameter.name());
+                case MAPPED_HTTP_REQUEST, REQUEST, CONTEXT -> CodeBlock.of("");
             };
             handler.add(codeBlock);
             handler.add("\n");
