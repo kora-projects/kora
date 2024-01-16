@@ -74,7 +74,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
 
             library("undertow-core", "io.undertow", "undertow-core").version("2.3.10.Final")
             library("async-http-client", "org.asynchttpclient", "async-http-client").version("2.12.3")
-            library("okhttp", "com.squareup.okhttp3", "okhttp").version("4.12.0")
+            library("okhttp", "com.squareup.okhttp3", "okhttp").version("5.0.0-alpha.12")
 
             library("netty-buffer", "io.netty", "netty-buffer").versionRef("netty")
             library("netty-codecs", "io.netty", "netty-codec").versionRef("netty")
