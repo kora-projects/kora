@@ -63,9 +63,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
         val methods: List<MethodData> = this.parseMethods(declaration)
         val builder = declaration.extendsKeepAop(typeName)
             .generated(ClientClassGenerator::class)
-        if (hasAopAnnotations(declaration)) {
-            builder.addModifiers(KModifier.OPEN)
-        }
+
         builder.primaryConstructor(this.buildConstructor(builder, declaration, methods))
         builder.addProperty("rootUrl", String::class.asClassName(), KModifier.PRIVATE, KModifier.FINAL);
 

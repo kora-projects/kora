@@ -35,6 +35,11 @@ class KafkaPublisherSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseS
                 deferred.add(it)
             }
         }
+
+        // generate publisher module with every @AopProxy annotated class
+        // that has @KafkaPublisher annotated interface as grandparent
+        // i.e. capture generated aspects for generated publishers
+        // from previous rounds and make them visible for graph
         for (aopProxy in resolver.getSymbolsWithAnnotation(CommonClassNames.aopProxy.canonicalName)) {
             if (aopProxy is KSClassDeclaration) {
                 val proxySupertype = aopProxy.superTypes.firstOrNull() ?: continue
@@ -43,7 +48,8 @@ class KafkaPublisherSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseS
                 for (publisher in proxySupertypeDecl.superTypes) {
                     val publisherDeclaration = publisher.resolve().declaration as KSClassDeclaration
                     if (CommonAopUtils.hasAopAnnotations(publisherDeclaration)) {
-                        val annotation = publisherDeclaration.findAnnotation(KafkaClassNames.kafkaPublisherAnnotation)!!
+                        val annotation = publisherDeclaration.findAnnotation(KafkaClassNames.kafkaPublisherAnnotation)
+                            ?: continue
                         val publishMethods = publisherDeclaration.getAllFunctions()
                             .filter { it.findOverridee()?.parentDeclaration?.qualifiedName?.asString() != "kotlin.Any" }
                             .toList()

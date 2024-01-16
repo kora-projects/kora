@@ -6,6 +6,7 @@ import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
+import com.squareup.kotlinpoet.ksp.toAnnotationSpec
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
@@ -31,7 +32,7 @@ object CommonAopUtils {
 
         for (annotationMirror in type.annotations) {
             if (isAopAnnotation(annotationMirror)) {
-                b.addAnnotation(annotationMirror.annotationType.resolve().toClassName())
+                b.addAnnotation(annotationMirror.toAnnotationSpec())
             }
         }
         return b
@@ -56,15 +57,14 @@ object CommonAopUtils {
         funBuilder.addModifiers(KModifier.OVERRIDE)
         for (annotation in funDeclaration.annotations) {
             if (isAopAnnotation(annotation)) {
-                funBuilder.addAnnotation(AnnotationSpec.builder(annotation.annotationType.resolve().toClassName()).build())
+                funBuilder.addAnnotation(annotation.toAnnotationSpec())
             }
         }
         val returnType = funDeclaration.returnType!!.resolve()
         if (returnType != resolver.builtIns.unitType) {
             funBuilder.returns(returnType.toTypeName())
         }
-        for (i in funDeclaration.parameters.indices) {
-            val parameter = funDeclaration.parameters[i]
+        for (parameter in funDeclaration.parameters) {
             val parameterType = parameter.type
             val name = parameter.name!!.asString()
             val pb = ParameterSpec.builder(name, parameterType.toTypeName())
@@ -73,7 +73,7 @@ object CommonAopUtils {
             }
             for (annotation in parameter.annotations) {
                 if (isAopAnnotation(annotation)) {
-                    pb.addAnnotation(AnnotationSpec.builder(annotation.annotationType.resolve().toClassName()).build())
+                    pb.addAnnotation(annotation.toAnnotationSpec())
                 }
             }
             funBuilder.addParameter(pb.build())
