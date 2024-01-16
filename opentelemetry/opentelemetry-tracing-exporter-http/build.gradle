@@ -1,11 +1,9 @@
 dependencies {
     api project(':opentelemetry:opentelemetry-tracing')
-    api project(':netty-common')
+    api libs.opentelemetry.exporter.sender.jdk
     api(libs.opentelemetry.exporter.otlp) {
         exclude group: 'io.opentelemetry', module: 'opentelemetry-exporter-sender-okhttp'
     }
-    api libs.grpc.stub
-    api libs.grpc.netty
 
     annotationProcessor project(':config:config-annotation-processor')
 }
