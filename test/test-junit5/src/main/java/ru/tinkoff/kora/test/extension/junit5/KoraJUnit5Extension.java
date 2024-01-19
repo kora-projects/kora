@@ -584,7 +584,20 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     }
 
     private static Optional<Annotation> getAnnotation(AnnotatedElement element, String annotationName) {
-        return Arrays.stream(element.getAnnotations())
+        Stream<Annotation> annotations = Arrays.stream(element.getAnnotations());
+
+        // if kotlin.reflect is in classpath and the given element is a field,
+        // then we should also check property annotations
+        if (MockUtils.haveKotlinReflect()) {
+            if (element instanceof Field field) {
+                var prop = kotlin.reflect.jvm.ReflectJvmMapping.getKotlinProperty(field);
+                if (prop != null) {
+                    annotations = Stream.concat(annotations, prop.getAnnotations().stream());
+                }
+            }
+        }
+
+        return annotations
             .filter(a -> a.annotationType().getCanonicalName().equals(annotationName))
             .findFirst();
     }
