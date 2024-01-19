@@ -27,7 +27,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
 
             library('slf4j-api', 'org.slf4j', 'slf4j-api').versionRef('slf4j')
             library('slf4j-jul', 'org.slf4j', 'jul-to-slf4j').versionRef('slf4j')
-            library('logback-classic', 'ch.qos.logback', 'logback-classic').version("1.4.11")
+            library('logback-classic', 'ch.qos.logback', 'logback-classic').version("1.4.14")
 
             library('micrometer-core', 'io.micrometer', 'micrometer-core').versionRef('micrometer')
             library('micrometer-registry-prometheus', 'io.micrometer', 'micrometer-registry-prometheus').versionRef('micrometer')
