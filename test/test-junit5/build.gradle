@@ -1,6 +1,7 @@
 dependencies {
     compileOnly libs.mockito.core
     compileOnly "io.mockk:mockk:1.13.8"
+    compileOnly libs.kotlin.reflect
 
     api libs.junit.platform.launcher
     api libs.junit.jupiter

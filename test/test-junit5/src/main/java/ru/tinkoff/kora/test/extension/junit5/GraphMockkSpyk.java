@@ -22,7 +22,7 @@ record GraphMockkSpyk(GraphCandidate candidate,
 
     static GraphModification ofAnnotated(GraphCandidate candidate, AnnotatedElement element, String defaultName) {
         var classToMock = getClassToMock(candidate);
-        var annotation = element.getAnnotation(SpyK.class);
+        var annotation = MockUtils.getAnnotation(element, SpyK.class);
         var name = Optional.of(annotation.name())
                 .filter(n -> !n.isBlank())
                 .orElse(defaultName);
@@ -34,7 +34,7 @@ record GraphMockkSpyk(GraphCandidate candidate,
         try {
             field.setAccessible(true);
             var inst = field.get(testClassInstance);
-            var annotation = field.getAnnotation(SpyK.class);
+            var annotation = MockUtils.getAnnotation(field, SpyK.class);
             var name = Optional.of(annotation.name())
                     .filter(n -> !n.isBlank())
                     .orElseGet(field::getName);

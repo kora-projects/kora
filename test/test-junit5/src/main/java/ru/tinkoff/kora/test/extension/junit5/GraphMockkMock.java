@@ -18,7 +18,12 @@ record GraphMockkMock(GraphCandidate candidate,
                       boolean relaxUnitFun) implements GraphModification {
 
     public static GraphModification ofAnnotated(GraphCandidate candidate, AnnotatedElement element, String defaultName) {
-        var annotation = element.getAnnotation(MockK.class);
+        var annotation = MockUtils.getAnnotation(element, MockK.class);
+
+        if (annotation == null) {
+            throw new IllegalArgumentException("Can't @MockK %s because it is not annotated with @MockK");
+        }
+
         var classToMock = getClassToMock(candidate);
         var name = Optional.of(annotation.name())
                 .filter(n -> !n.isBlank())
