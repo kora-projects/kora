@@ -26,16 +26,10 @@ public class CoroutineContextInjectInterceptor {
     }
 
     public static class CoroutineContextInjectInterceptorDelegate extends CoroutineContextServerInterceptor {
-        private final CoroutineContext rootContext;
-
-        public CoroutineContextInjectInterceptorDelegate() {
-            this.rootContext = (CoroutineContext) kotlinx.coroutines.Dispatchers.getUnconfined();
-        }
-
         @Nonnull
         @Override
         public CoroutineContext coroutineContext(@Nonnull ServerCall<?, ?> serverCall, @Nonnull Metadata metadata) {
-            return this.rootContext.plus(Context.Kotlin.asCoroutineContext(Context.current()));
+            return Context.Kotlin.asCoroutineContext(Context.current());
         }
     }
 
