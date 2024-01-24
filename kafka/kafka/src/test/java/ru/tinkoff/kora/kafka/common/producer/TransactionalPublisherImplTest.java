@@ -20,8 +20,8 @@ import ru.tinkoff.kora.test.kafka.KafkaTestContainer;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.List;
 import java.util.Properties;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.apache.kafka.clients.producer.ProducerConfig.TRANSACTIONAL_ID_CONFIG;
@@ -93,11 +93,15 @@ class TransactionalPublisherImplTest {
         );
 
         var key = "key".getBytes(StandardCharsets.UTF_8);
-        var topicPartition = new TopicPartition(testTopic, 1);
+        var topicPartitions = List.of(
+            new TopicPartition(testTopic, 0),
+            new TopicPartition(testTopic, 1),
+            new TopicPartition(testTopic, 2)
+        );
         try (var committed = new KafkaConsumer<>(readCommittedProps, new ByteArrayDeserializer(), new ByteArrayDeserializer());
              var uncommitted = new KafkaConsumer<>(readUncommittedProps, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
-            committed.assign(Set.of(topicPartition));
-            uncommitted.assign(Set.of(topicPartition));
+            committed.assign(topicPartitions);
+            uncommitted.assign(topicPartitions);
             committed.poll(Duration.ofMillis(100));
             uncommitted.poll(Duration.ofMillis(100));
             p.init();
@@ -107,8 +111,8 @@ class TransactionalPublisherImplTest {
                 pub.producer().send(params.producerRecord(testTopic, key, "value1".getBytes(StandardCharsets.UTF_8))).get();
             });
 
-            uncommitted.seekToBeginning(Set.of(topicPartition));
-            committed.seekToBeginning(Set.of(topicPartition));
+            uncommitted.seekToBeginning(topicPartitions);
+            committed.seekToBeginning(topicPartitions);
             assertThat(uncommitted.poll(Duration.ofSeconds(1))).hasSize(3);
             assertThat(committed.poll(Duration.ofSeconds(1))).hasSize(3);
         } finally {
@@ -148,11 +152,15 @@ class TransactionalPublisherImplTest {
         );
 
         var key = "key".getBytes(StandardCharsets.UTF_8);
-        var topicPartition = new TopicPartition(testTopic, 1);
+        var topicPartitions = List.of(
+            new TopicPartition(testTopic, 0),
+            new TopicPartition(testTopic, 1),
+            new TopicPartition(testTopic, 2)
+        );
         try (var committed = new KafkaConsumer<>(readCommittedProps, new ByteArrayDeserializer(), new ByteArrayDeserializer());
              var uncommitted = new KafkaConsumer<>(readUncommittedProps, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
-            committed.assign(Set.of(topicPartition));
-            uncommitted.assign(Set.of(topicPartition));
+            committed.assign(topicPartitions);
+            uncommitted.assign(topicPartitions);
             committed.poll(Duration.ofMillis(100));
             uncommitted.poll(Duration.ofMillis(100));
             p.init();
@@ -163,16 +171,16 @@ class TransactionalPublisherImplTest {
                 pub.producer().send(params.producerRecord(testTopic, key, "value1".getBytes(StandardCharsets.UTF_8))).get();
                 tx.flush();
 
-                committed.seekToBeginning(Set.of(topicPartition));
-                uncommitted.seekToBeginning(Set.of(topicPartition));
+                committed.seekToBeginning(topicPartitions);
+                uncommitted.seekToBeginning(topicPartitions);
                 assertThat(uncommitted.poll(Duration.ofSeconds(1))).hasSize(3);
                 assertThat(committed.poll(Duration.ofSeconds(1))).hasSize(0);
 
                 tx.abort();
             });
 
-            uncommitted.seekToBeginning(Set.of(topicPartition));
-            committed.seekToBeginning(Set.of(topicPartition));
+            uncommitted.seekToBeginning(topicPartitions);
+            committed.seekToBeginning(topicPartitions);
             assertThat(uncommitted.poll(Duration.ofSeconds(1))).hasSize(3);
             assertThat(committed.poll(Duration.ofSeconds(1))).hasSize(0);
 
@@ -181,8 +189,8 @@ class TransactionalPublisherImplTest {
                 tx.producer().send(params.producerRecord(testTopic, key, "value1".getBytes(StandardCharsets.UTF_8))).get();
                 tx.producer().send(params.producerRecord(testTopic, key, "value1".getBytes(StandardCharsets.UTF_8))).get();
             }
-            uncommitted.seekToBeginning(Set.of(topicPartition));
-            committed.seekToBeginning(Set.of(topicPartition));
+            uncommitted.seekToBeginning(topicPartitions);
+            committed.seekToBeginning(topicPartitions);
             assertThat(uncommitted.poll(Duration.ofSeconds(1))).hasSize(6);
             assertThat(committed.poll(Duration.ofSeconds(1))).hasSize(3);
         } finally {

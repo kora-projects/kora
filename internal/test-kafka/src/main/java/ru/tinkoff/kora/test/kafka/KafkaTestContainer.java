@@ -1,49 +1,68 @@
 package ru.tinkoff.kora.test.kafka;
 
+import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.admin.DeleteTopicsOptions;
-import org.junit.jupiter.api.extension.*;
+import org.junit.jupiter.api.extension.AfterEachCallback;
+import org.junit.jupiter.api.extension.BeforeEachCallback;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.TestInstancePostProcessor;
 import org.testcontainers.containers.KafkaContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 
-import jakarta.annotation.Nullable;
-import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
-public class KafkaTestContainer implements ParameterResolver, AfterEachCallback, TestInstancePostProcessor {
+public class KafkaTestContainer implements AfterEachCallback, TestInstancePostProcessor, BeforeEachCallback {
     private static final ExtensionContext.Namespace NAMESPACE = ExtensionContext.Namespace.create(KafkaTestContainer.class);
     private static volatile KafkaContainer container = null;
     private static volatile KafkaParams params = null;
+    private static volatile Exception initException;
 
-    private static synchronized void init() {
+    private static synchronized void init() throws Exception {
         if (params != null) {
             return;
         }
-        params = fromEnv();
-        if (params != null) {
-            awaitForReady(params);
-            return;
+        if (initException != null) {
+            throw initException;
         }
-        if (container == null) {
-            container = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.4.0"))
-                .withKraft()
-                .withExposedPorts(9092, 9093)
-            ;
+        try {
+            var params = fromEnv();
+            if (params != null) {
+                awaitForReady(params);
+                KafkaTestContainer.params = params;
+                return;
+            }
+            if (container == null) {
+                container = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:5.4.3"))
+                    .withExposedPorts(9092, 9093)
+                    .waitingFor(Wait.forListeningPort())
+                ;
+                container.start();
+            }
 
-            container.start();
+            KafkaTestContainer.params = new KafkaParams(container.getBootstrapServers(), "", new HashSet<>());
+        } catch (Exception e) {
+            initException = e;
         }
-
-        params = new KafkaParams(container.getBootstrapServers(), "", new HashSet<>());
     }
 
     private static void awaitForReady(KafkaParams params) {
         var start = System.currentTimeMillis();
-        while (System.currentTimeMillis() - start < 60000) {
+        var lastEx = (Exception) null;
+        while (System.currentTimeMillis() - start < 120_000) {
             try {
-                params.withAdmin(a -> {});
+                params.withAdmin(a -> {
+                    try {
+                        a.listTopics().names().get();
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                });
                 return;
             } catch (Exception e) {
+                lastEx = e;
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException ex) {
@@ -51,10 +70,17 @@ public class KafkaTestContainer implements ParameterResolver, AfterEachCallback,
                 }
             }
         }
+        throw new RuntimeException(lastEx);
     }
 
     public static KafkaParams getParams() {
-        init();
+        try {
+            init();
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         return params;
     }
 
@@ -65,19 +91,6 @@ public class KafkaTestContainer implements ParameterResolver, AfterEachCallback,
             return null;
         }
         return new KafkaParams(bootstrapServers, "", new HashSet<>());
-    }
-
-    @Override
-    public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
-        return parameterContext.getDeclaringExecutable() instanceof Method && parameterContext.getParameter().getType().equals(KafkaParams.class);
-    }
-
-    @Override
-    public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
-        return extensionContext.getStore(NAMESPACE).getOrComputeIfAbsent(KafkaTestContainer.class, p -> {
-            var params = getParams();
-            return params.withTopicPrefix(UUID.randomUUID().toString().replace("-", ""));
-        }, KafkaParams.class);
     }
 
 
@@ -107,5 +120,13 @@ public class KafkaTestContainer implements ParameterResolver, AfterEachCallback,
                 declaredField.set(testInstance, p);
             }
         }
+    }
+
+    @Override
+    public void beforeEach(ExtensionContext extensionContext) throws Exception {
+        extensionContext.getStore(NAMESPACE).getOrComputeIfAbsent(KafkaTestContainer.class, p -> {
+            var params = getParams();
+            return params.withTopicPrefix(UUID.randomUUID().toString().replace("-", ""));
+        }, KafkaParams.class);
     }
 }
