@@ -40,9 +40,10 @@ class KafkaAssignConsumerContainerTest {
             log.setLevel(Level.OFF);
         }
     }
+    KafkaParams params;
 
     @Test
-    void test(KafkaParams params) throws InterruptedException {
+    void test() throws InterruptedException {
         var driverProps = new Properties();
         driverProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, params.bootstrapServers());
         driverProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
