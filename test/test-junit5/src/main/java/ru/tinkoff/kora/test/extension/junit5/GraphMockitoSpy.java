@@ -19,15 +19,9 @@ record GraphMockitoSpy(GraphCandidate candidate,
         return new GraphMockitoSpy(candidate, classToMock, null);
     }
 
-    public static GraphModification ofField(GraphCandidate candidate, Field field, Object testClassInstance) {
+    public static GraphModification ofField(GraphCandidate candidate, Field field, Object fieldValue) {
         var classToMock = getClassToMock(candidate);
-        try {
-            field.setAccessible(true);
-            var inst = field.get(testClassInstance);
-            return new GraphMockitoSpy(candidate, classToMock, inst);
-        } catch (IllegalAccessException e) {
-            throw new IllegalArgumentException("Can't extract @Spy component '%s' from: %s".formatted(candidate.type(), testClassInstance));
-        }
+        return new GraphMockitoSpy(candidate, classToMock, fieldValue);
     }
 
     public boolean isSpyGraph() {

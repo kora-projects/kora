@@ -234,14 +234,8 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                 logger.debug("@KoraAppTest test class setup started...");
             }
 
-            koraTestContext.graph = KoraJUnit5Extension.generateTestGraph(koraTestContext.metadata, context);
+            koraTestContext.graph = generateTestGraph(koraTestContext.metadata, context);
             koraTestContext.graph.initialize();
-        } else if (koraTestContext.metadata.initMode == InitMode.CONSTRUCTOR) {
-            context.getTestMethod().ifPresent(method -> {
-                if (Arrays.stream(method.getParameters()).anyMatch(KoraJUnit5Extension::isCandidate)) {
-                    throw new ExtensionConfigurationException("@KoraAppTest when initializing via constructor can't inject @TestComponents or @Mock as method parameters");
-                }
-            });
         }
 
         if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_METHOD) {
@@ -348,6 +342,14 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     }
 
     private static TestMethodMetadata getMethodMetadata(TestClassMetadata classMetadata, ExtensionContext context) {
+        if (classMetadata.initMode == InitMode.CONSTRUCTOR) {
+            context.getTestMethod().ifPresent(method -> {
+                if (Arrays.stream(method.getParameters()).anyMatch(KoraJUnit5Extension::isCandidate)) {
+                    throw new ExtensionConfigurationException("@KoraAppTest when uses constructor injection, can't inject @TestComponents or @Mock as method parameters");
+                }
+            });
+        }
+
         final Set<GraphModification> parameterMocks = context.getTestMethod()
             .filter(method -> !method.isSynthetic())
             .stream()
@@ -370,14 +372,6 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                         parameterComponents.add(new GraphCandidate(type, tag));
                     }
                 }
-            } else {
-                for (var method : context.getRequiredTestClass().getDeclaredMethods()) {
-                    for (var parameter : method.getParameters()) {
-                        if (isComponent(parameter)) {
-                            throw new ExtensionConfigurationException("@TestComponent can't be applied to method arguments when constructor injection is used, please use field injection");
-                        }
-                    }
-                }
             }
         } else if (classMetadata.lifecycle == TestInstance.Lifecycle.PER_CLASS) {
             for (var method : context.getRequiredTestClass().getDeclaredMethods()) {
@@ -395,6 +389,14 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     }
 
     private static TestClassMetadata getClassMetadata(KoraTestContext koraAppTest, InitMode initMode, ExtensionContext context) {
+        if (initMode == InitMode.CONSTRUCTOR) {
+            if (KoraAppTestGraphModifier.class.isAssignableFrom(context.getRequiredTestClass())) {
+                throw new ExtensionConfigurationException("@KoraAppTest when uses constructor injection, can't use KoraAppTestGraphModifier cause it requires test class instance first, use field injection");
+            } else if (KoraAppTestConfigModifier.class.isAssignableFrom(context.getRequiredTestClass())) {
+                throw new ExtensionConfigurationException("@KoraAppTest when uses constructor injection, can't use KoraAppTestConfigModifier cause it requires test class instance first, use field injection");
+            }
+        }
+
         final Set<GraphCandidate> annotationCandidates = Arrays.stream(koraAppTest.annotation.components())
             .map(GraphCandidate::new)
             .collect(Collectors.toSet());
@@ -424,7 +426,25 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
         final Set<GraphModification> fieldMocks = fieldsForInjection.stream()
             .filter(KoraJUnit5Extension::isMock)
-            .map(f -> mockField(f, context.getTestInstance().orElseThrow()))
+            .map(f -> {
+                Object fieldValue = null;
+                if (isMockitoSpy(f) || isMockKSpyk(f)) {
+                    fieldValue = context.getTestInstance()
+                        .map(inst -> {
+                            try {
+                                f.setAccessible(true);
+                                return f.get(inst);
+                            } catch (IllegalAccessException e) {
+                                final Class<?>[] tags = parseTags(f);
+                                final GraphCandidate candidate = new GraphCandidate(f.getGenericType(), tags);
+                                throw new IllegalArgumentException("Can't extract @Spy component '%s' for field: %s".formatted(candidate.type(), f.getName()));
+                            }
+                        })
+                        .orElse(null);
+                }
+
+                return mockField(f, fieldValue);
+            })
             .collect(Collectors.toSet());
 
         final Set<GraphCandidate> constructorComponents = new HashSet<>();
@@ -602,7 +622,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             .findFirst();
     }
 
-    private static GraphModification mockField(Field field, Object instance) {
+    private static GraphModification mockField(Field field, Object fieldValue) {
         if (KoraAppGraph.class.isAssignableFrom(field.getType())) {
             throw new ExtensionConfigurationException("KoraAppGraph can't be target of @Mock");
         }
@@ -613,11 +633,11 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         if (isMockitoMock(field)) {
             return GraphMockitoMock.ofAnnotated(candidate, field, field.getName());
         } else if (isMockitoSpy(field)) {
-            return GraphMockitoSpy.ofField(candidate, field, instance);
+            return GraphMockitoSpy.ofField(candidate, field, fieldValue);
         } else if (isMockKMock(field)) {
             return GraphMockkMock.ofAnnotated(candidate, field, field.getName());
         } else if (isMockKSpyk(field)) {
-            return GraphMockkSpyk.ofField(candidate, field, instance);
+            return GraphMockkSpyk.ofField(candidate, field, fieldValue);
         } else {
             throw new IllegalArgumentException("Unsupported Mocking behavior for field: " + field.getName());
         }
