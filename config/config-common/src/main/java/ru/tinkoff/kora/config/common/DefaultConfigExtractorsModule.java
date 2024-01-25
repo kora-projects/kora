@@ -6,8 +6,7 @@ import ru.tinkoff.kora.common.util.Either;
 import ru.tinkoff.kora.config.common.extractor.*;
 
 import java.math.BigDecimal;
-import java.time.Duration;
-import java.time.Period;
+import java.time.*;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -88,4 +87,30 @@ public interface DefaultConfigExtractorsModule {
     default ConfigValueExtractor<double[]> doubleArrayConfigValueExtractor(ConfigValueExtractor<Double> doubleExtractor) {
         return new DoubleArrayConfigValueExtractor(doubleExtractor);
     }
+
+    @DefaultComponent
+    default ConfigValueExtractor<LocalDate> localDateConfigValueExtractor() {
+        return new LocalDateConfigValueExtractor();
+    }
+
+    @DefaultComponent
+    default ConfigValueExtractor<LocalTime> localTimeConfigValueExtractor() {
+        return new LocalTimeConfigValueExtractor();
+    }
+
+    @DefaultComponent
+    default ConfigValueExtractor<LocalDateTime> localDateTimeConfigValueExtractor() {
+        return new LocalDateTimeConfigValueExtractor();
+    }
+
+    @DefaultComponent
+    default ConfigValueExtractor<OffsetTime> offsetTimeConfigValueExtractor() {
+        return new OffsetTimeConfigValueExtractor();
+    }
+
+    @DefaultComponent
+    default ConfigValueExtractor<OffsetDateTime> offsetDateTimeConfigValueExtractor() {
+        return new OffsetDateTimeConfigValueExtractor();
+    }
+
 }
