@@ -1,17 +1,16 @@
 package ru.tinkoff.kora.resilient.symbol.processor.aop
 
 import com.google.devtools.ksp.KspExperimental
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import org.mockito.Mockito
-import ru.tinkoff.kora.resilient.retry.Retry
+import org.junit.jupiter.api.assertThrows
 import ru.tinkoff.kora.resilient.retry.RetryExhaustedException
-import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.*
-import kotlin.time.Duration.Companion.nanoseconds
+import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.AppWithConfig
+import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.RetryTarget
+import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.`typealias`.RetryAliasTarget
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @KspExperimental
@@ -21,10 +20,8 @@ class RetryTests : AppRunner() {
         val graph = getGraphForApp(
             AppWithConfig::class,
             listOf(
-                CircuitBreakerTarget::class,
-                FallbackTarget::class,
                 RetryTarget::class,
-                TimeoutTarget::class,
+                RetryAliasTarget::class,
             )
         )
 
@@ -96,6 +93,34 @@ class RetryTests : AppRunner() {
             fail("Should not happen")
         } catch (ex: RetryExhaustedException) {
             assertNotNull(ex.message)
+        }
+    }
+
+
+    @Test
+    fun aliasAnnotationSuccess() {
+        // given
+        val service = getService<RetryAliasTarget>()
+
+        // when
+        service.setRetryAttempts(RETRY_SUCCESS)
+
+        // then
+        assertEquals("1", service.retrySync("1"))
+    }
+
+    @Test
+    fun aliasAnnotationFail() {
+        // given
+        val service = getService<RetryAliasTarget>()
+
+        // when
+        service.setRetryAttempts(RETRY_FAIL)
+
+        // then
+
+        assertThrows<RetryExhaustedException> {
+            service.retrySync("1")
         }
     }
 

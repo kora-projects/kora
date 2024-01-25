@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test
 import org.junit.platform.commons.util.ReflectionUtils
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
+import ru.tinkoff.kora.aop.ksp.aoptarget.AopAliasTarget
 import ru.tinkoff.kora.aop.ksp.aoptarget.AopTarget1
 import ru.tinkoff.kora.aop.ksp.aoptarget.AopTarget2
 import ru.tinkoff.kora.aop.ksp.aoptarget.AopTarget3
@@ -73,5 +74,27 @@ class AopAnnotationProcessorTest {
         val instance: AopTarget3 = cl.getConstructor().newInstance() as AopTarget3
         Assertions.assertEquals(instance.testMethod1(), "string1/testMethod1")
         Assertions.assertEquals(instance.testMethod2(), "string2/testMethod2")
+    }
+
+    @Test
+    fun testAliasesAop() {
+        val classLoader: ClassLoader = symbolProcess(AopAliasTarget::class, AopSymbolProcessorProvider())
+        val cl = classLoader.loadClass("ru.tinkoff.kora.aop.ksp.aoptarget.\$AopAliasTarget__AopProxy")
+        Assertions.assertNotNull(cl)
+        val listener: AopAliasTarget.ProxyListener1 = Mockito.mock(AopAliasTarget.ProxyListener1::class.java)
+        val constructor = cl.getConstructor(String::class.java, Int::class.javaPrimitiveType, AopAliasTarget.ProxyListener1::class.java)
+        val tagAnnotation = constructor.parameters[1].annotations[0] as Tag
+        Assertions.assertArrayEquals(tagAnnotation.value, arrayOf(String::class))
+
+        val instance: AopAliasTarget = constructor.newInstance("test", 1, listener) as AopAliasTarget
+        instance.shouldNotBeProxied1()
+        val m1 = ReflectionUtils.findMethod(AopAliasTarget::class.java, "shouldNotBeProxied2").get()
+        ReflectionUtils.invokeMethod(m1, instance)
+        Mockito.verifyNoInteractions(listener)
+        instance.testMethod1()
+        Mockito.verify(listener).call(ArgumentMatchers.eq("testMethod1"))
+        val m2 = ReflectionUtils.findMethod(AopAliasTarget::class.java, "testMethod2", String::class.java).get()
+        ReflectionUtils.invokeMethod(m2, instance, "arg1")
+        Mockito.verify(listener).call(ArgumentMatchers.eq("testMethod2"))
     }
 }

@@ -8,7 +8,11 @@ import org.junit.jupiter.api.TestInstance
 import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
 import ru.tinkoff.kora.ksp.common.CompilationErrorException
 import ru.tinkoff.kora.ksp.common.symbolProcess
-import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.*
+import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.AppWithConfig
+import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.FallbackIllegalArgumentTarget
+import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.FallbackIllegalSignatureTarget
+import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.FallbackTarget
+import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.`typealias`.FallbackAliasTarget
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @KspExperimental
@@ -18,10 +22,8 @@ class FallbackTests : AppRunner() {
         val graph = getGraphForApp(
             AppWithConfig::class,
             listOf(
-                CircuitBreakerTarget::class,
                 FallbackTarget::class,
-                RetryTarget::class,
-                TimeoutTarget::class,
+                FallbackAliasTarget::class,
             )
         )
 
@@ -71,6 +73,20 @@ class FallbackTests : AppRunner() {
 
         // then
         assertEquals(FallbackTarget.FALLBACK, service.getValueSync())
+    }
+
+    @Test
+    fun aliasAnnotation() {
+        // given
+        val service = getService<FallbackAliasTarget>()
+        service.alwaysFail = false
+
+        // when
+        assertEquals(FallbackAliasTarget.VALUE, service.getValueSync())
+        service.alwaysFail = true
+
+        // then
+        assertEquals(FallbackAliasTarget.FALLBACK, service.getValueSync())
     }
 
     @Test

@@ -4,7 +4,9 @@ import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSTypeReference
 import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.ksp.toClassName
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.resolveToUnderlying
 import kotlin.reflect.KClass
 
 object AnnotationUtils {
@@ -28,21 +30,22 @@ object AnnotationUtils {
 
 
     fun KSAnnotated.isAnnotationPresent(type: ClassName) = this.findAnnotations(type).firstOrNull() != null
-    fun KSAnnotated.isAnnotationPresent(predicate: (ClassName) -> Boolean) = this.annotations.any { predicate(it.annotationType.resolve().toClassName()) }
 
-    fun KSAnnotated.findAnnotation(type: ClassName) = this.findAnnotations(type).firstOrNull()
-
-    fun KSAnnotated.findAnnotations(type: ClassName) = this.annotations
-        .filter { it.shortName.getShortName() == type.simpleName }
-        .filter { it.annotationType.resolve().declaration.qualifiedName?.asString() == type.canonicalName }
-
-    fun KSAnnotated.findAnnotation(type: KClass<out Annotation>): KSAnnotation? {
-        val name = type.qualifiedName!!
-        return this.annotations
-            .filter { it.annotationType.resolve().declaration.qualifiedName!!.asString() == name }
-            .firstOrNull()
+    fun KSAnnotated.isAnnotationPresent(predicate: (ClassName) -> Boolean): Boolean {
+        return this.annotations.any { predicate(it.annotationType.resolveToUnderlying().toClassName()) }
     }
 
+    fun KSAnnotated.findAnnotation(type: ClassName) = this.annotations
+        // try to avoid excessive resolve by finding exact match first (simple name + fqn)
+        .filter { it.shortName.getShortName() == type.simpleName }
+        .filter { it.annotationType.resolve().declaration.qualifiedName?.asString() == type.canonicalName }
+        .ifEmpty { this.findAnnotations(type) } // no exact matches - look for all matches (including typealiases)
+        .firstOrNull()
+
+    fun KSAnnotated.findAnnotations(type: ClassName) = this.annotations
+        .filter { it.annotationType.resolveToUnderlying().declaration.qualifiedName?.asString() == type.canonicalName }
+
+    fun KSAnnotated.findAnnotation(type: KClass<out Annotation>) = findAnnotation(type.asClassName())
 
     // todo list of class names?
     inline fun <reified T> KSAnnotation.findValue(name: String) = this.arguments.asSequence()

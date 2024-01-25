@@ -13,6 +13,7 @@ import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import ru.tinkoff.kora.ksp.common.*
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.resolveToUnderlying
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import kotlin.reflect.KClass
 
@@ -81,13 +82,13 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
     }
 
     fun applyAspects(classDeclaration: KSClassDeclaration): TypeSpec {
-        val constructor = findAopConstructor(classDeclaration) ?: throw ProcessingErrorException("Class has no aop suitable constructor", classDeclaration)
-        val typeLevelAspects: ArrayList<KoraAspect> = ArrayList()
-        for (am in classDeclaration.annotations) {
+        val constructor = findAopConstructor(classDeclaration)
+            ?: throw ProcessingErrorException("Class has no aop suitable constructor", classDeclaration)
 
-            val annotationType = am.annotationType.resolve().declaration
-                .takeIf { it is KSClassDeclaration }
-                ?.qualifiedName?.asString()
+        val typeLevelAspects: ArrayList<KoraAspect> = ArrayList()
+
+        for (am in classDeclaration.annotations) {
+            val annotationType = am.annotationType.resolveToUnderlying().declaration.qualifiedName?.asString()
                 ?: continue
 
             for (aspect in aspects) {
@@ -127,11 +128,8 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
             val methodParameterLevelAspects = mutableListOf<KoraAspect>()
             val functionAnnotations = function.annotations.toList()
             for (am in functionAnnotations) {
-                val annotationType = am.annotationType.resolve().declaration
-                    .takeIf { it is KSClassDeclaration }
-                    ?.qualifiedName?.asString()
+                val annotationType = am.annotationType.resolveToUnderlying().declaration.qualifiedName?.asString()
                     ?: continue
-
                 aspects.forEach { aspect ->
                     val supportedAnnotationTypes = aspect.getSupportedAnnotationTypes()
                     if (supportedAnnotationTypes.contains(annotationType)) {
@@ -144,9 +142,7 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
             }
             function.parameters.forEach { parameter ->
                 for (am in parameter.annotations) {
-                    val annotationType = am.annotationType.resolve().declaration
-                        .takeIf { it is KSClassDeclaration }
-                        ?.qualifiedName?.asString()
+                    val annotationType = am.annotationType.resolveToUnderlying().declaration.qualifiedName?.asString()
                         ?: continue
 
                     aspects.forEach { aspect ->

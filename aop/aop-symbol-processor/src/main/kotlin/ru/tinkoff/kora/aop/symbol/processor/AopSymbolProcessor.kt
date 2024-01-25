@@ -32,7 +32,11 @@ class AopSymbolProcessor(
 
 
         aopProcessor = AopProcessor(aspects, resolver)
-        annotations = aspects.asSequence().map { it.getSupportedAnnotationTypes() }.flatten().mapNotNull { resolver.getClassDeclarationByName(it) }.toList()
+        annotations = aspects.asSequence()
+            .map { it.getSupportedAnnotationTypes() }
+            .flatten()
+            .mapNotNull { resolver.getClassDeclarationByName(it) }
+            .toList()
 
         val noAopAnnotation = annotations.filter { !it.isAnnotationPresent(CommonClassNames.aopAnnotation) }
 
