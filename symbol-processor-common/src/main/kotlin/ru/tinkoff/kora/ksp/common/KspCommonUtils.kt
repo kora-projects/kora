@@ -14,6 +14,7 @@ import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import ru.tinkoff.kora.common.Mapping
 import ru.tinkoff.kora.common.naming.NameConverter
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotations
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import kotlin.reflect.KClass
@@ -21,15 +22,13 @@ import kotlin.reflect.KClass
 object KspCommonUtils {
 
     fun KSAnnotated.findRepeatableAnnotation(annotationName: ClassName, containerName: ClassName): List<KSAnnotation> {
-        val annotations = this.annotations
-            .filter { it.shortName.asString() == annotationName.simpleName && it.annotationType.resolve().declaration.qualifiedName?.asString() == annotationName.canonicalName }
-        val containeredAnnotations = this.annotations
-            .filter { it.shortName.asString() == containerName.simpleName && it.annotationType.resolve().declaration.qualifiedName?.asString() == containerName.canonicalName }
+        val annotations = this.findAnnotations(annotationName)
+        val containeredAnnotations = this.findAnnotations(containerName)
             .flatMap { it.arguments.asSequence().filter { it.name?.asString() == "value" } }
             .flatMap { it.value as ArrayList<*> }
             .map { it as KSAnnotation }
 
-        return sequenceOf(annotations, containeredAnnotations).flatMap { it }.toList()
+        return sequenceOf(annotations, containeredAnnotations).flatten().toList()
     }
 
     fun KSType.fixPlatformType(resolver: Resolver): KSType {
@@ -136,6 +135,16 @@ object KspCommonUtils {
     fun TypeSpec.Builder.addOriginatingKSFile(kDecl: KSDeclaration): TypeSpec.Builder {
         kDecl.containingFile?.let { this.addOriginatingKSFile(it) }
         return this
+    }
+
+    fun KSTypeReference.resolveToUnderlying(): KSType {
+        var candidate = resolve()
+        var declaration = candidate.declaration
+        while (declaration is KSTypeAlias) {
+            candidate = declaration.type.resolve()
+            declaration = candidate.declaration
+        }
+        return candidate
     }
 }
 

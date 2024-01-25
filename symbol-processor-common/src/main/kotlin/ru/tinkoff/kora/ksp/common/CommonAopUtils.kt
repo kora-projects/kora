@@ -12,6 +12,7 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames.aopAnnotation
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.resolveToUnderlying
 
 object CommonAopUtils {
     fun KSClassDeclaration.extendsKeepAop(newName: String): TypeSpec.Builder {
@@ -107,7 +108,7 @@ object CommonAopUtils {
     }
 
     fun isAopAnnotation(annotation: KSAnnotation): Boolean {
-        return annotation.annotationType.resolve().declaration.isAnnotationPresent(aopAnnotation)
+        return annotation.annotationType.resolveToUnderlying().declaration.isAnnotationPresent(aopAnnotation)
     }
 
 }

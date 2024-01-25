@@ -6,7 +6,9 @@ import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import ru.tinkoff.kora.resilient.timeout.TimeoutExhaustedException
-import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.*
+import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.AppWithConfig
+import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.TimeoutTarget
+import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.`typealias`.TimeoutAliasTarget
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @KspExperimental
@@ -16,10 +18,8 @@ class TimeoutTests : AppRunner() {
         val graph = getGraphForApp(
             AppWithConfig::class,
             listOf(
-                CircuitBreakerTarget::class,
-                FallbackTarget::class,
-                RetryTarget::class,
                 TimeoutTarget::class,
+                TimeoutAliasTarget::class,
             )
         )
 
@@ -30,6 +30,13 @@ class TimeoutTests : AppRunner() {
     fun syncTimeout() {
         // given
         val service = getService<TimeoutTarget>()
+        assertThrows(TimeoutExhaustedException::class.java) { service.getValueSync() }
+    }
+
+    @Test
+    fun aliasAnnotation() {
+        // given
+        val service = getService<TimeoutAliasTarget>()
         assertThrows(TimeoutExhaustedException::class.java) { service.getValueSync() }
     }
 

@@ -4,8 +4,11 @@ import com.google.devtools.ksp.KspExperimental
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.assertThrows
 import ru.tinkoff.kora.resilient.circuitbreaker.CallNotPermittedException
-import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.*
+import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.AppWithConfig
+import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.CircuitBreakerTarget
+import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.`typealias`.CircuitBreakerAliasTarget
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @KspExperimental
@@ -16,9 +19,7 @@ class CircuitBreakerTests : AppRunner() {
             AppWithConfig::class,
             listOf(
                 CircuitBreakerTarget::class,
-                FallbackTarget::class,
-                RetryTarget::class,
-                TimeoutTarget::class,
+                CircuitBreakerAliasTarget::class,
             )
         )
 
@@ -44,6 +45,22 @@ class CircuitBreakerTests : AppRunner() {
             fail("Should not happen")
         } catch (ex: CallNotPermittedException) {
             assertNotNull(ex.message)
+        }
+    }
+
+    @Test
+    fun aliasAnnotation() {
+        // given
+        val service = getService<CircuitBreakerAliasTarget>()
+
+        // then
+        assertThrows<IllegalStateException> {
+            service.getValueSync()
+        }
+
+        // then
+        assertThrows<CallNotPermittedException> {
+            service.getValueSync()
         }
     }
 
