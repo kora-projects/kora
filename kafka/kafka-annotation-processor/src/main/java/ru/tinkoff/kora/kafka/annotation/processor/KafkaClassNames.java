@@ -16,6 +16,7 @@ public final class KafkaClassNames {
     public static final ClassName commonClientConfigs = ClassName.get("org.apache.kafka.clients", "CommonClientConfigs");
     public static final ClassName headers = ClassName.get("org.apache.kafka.common.header", "Headers");
     public static final ClassName recordHeaders = ClassName.get("org.apache.kafka.common.header.internals", "RecordHeaders");
+    public static final ClassName recordMetadata = ClassName.get("org.apache.kafka.clients.producer", "RecordMetadata");
     public static final ClassName header = ClassName.get("org.apache.kafka.common.header", "Header");
 
 

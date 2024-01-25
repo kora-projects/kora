@@ -10,6 +10,7 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.tools.Diagnostic;
@@ -74,6 +75,9 @@ public class KafkaPublisherAnnotationProcessor extends AbstractKoraProcessor {
                     var publishMethods = new ArrayList<ExecutableElement>();
                     for (var method : typeElement.getEnclosedElements()) {
                         if (method.getKind() != ElementKind.METHOD) {
+                            continue;
+                        }
+                        if (method.getModifiers().contains(Modifier.DEFAULT)) {
                             continue;
                         }
                         publishMethods.add((ExecutableElement) method);
