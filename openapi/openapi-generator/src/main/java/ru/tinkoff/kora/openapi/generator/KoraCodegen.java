@@ -717,6 +717,16 @@ public class KoraCodegen extends DefaultCodegen {
             var models = (List<Map<String, Object>>) model.get("models");
             var codegenModel = (CodegenModel) models.get(0).get("model");
             var additionalConstructor = codegenModel.getHasVars() && !codegenModel.getVars().isEmpty() && !codegenModel.getAllVars().isEmpty() && codegenModel.getVars().size() != codegenModel.getRequiredVars().size();
+            for (var requiredVar : codegenModel.requiredVars) {
+                // discriminator is somehow present in both optional and required vars, so we should clean it up
+                codegenModel.optionalVars.removeIf(p -> Objects.equals(p.name, requiredVar.name));
+                // discriminator is skipped in sealed interface declaration, so it should not be overridden
+                if (codegenModel.parentModel != null && codegenModel.parentModel.discriminator != null) {
+                    if (Objects.equals(requiredVar.name, codegenModel.parentModel.discriminator.getPropertyName())) {
+                        requiredVar.isOverridden = false;
+                    }
+                }
+            }
             model.put("additionalConstructor", additionalConstructor);
         }
         return objs;

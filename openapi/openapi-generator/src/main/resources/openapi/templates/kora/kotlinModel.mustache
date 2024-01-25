@@ -45,7 +45,7 @@ sealed interface {{classname}} {
 {{#vendorExtensions.x-discriminator-value}}@JsonDiscriminatorValue(value = {{{vendorExtensions.x-discriminator-value}}}){{/vendorExtensions.x-discriminator-value}}
 {{#vendorExtensions.x-enable-validation}}@Valid{{/vendorExtensions.x-enable-validation}}
 {{#hasVars}}data {{/hasVars}}class {{classname}} @JsonReader constructor (
-{{#allVars}}
+{{#requiredVars}}
   @JsonField("{{baseName}}")
   {{#vendorExtensions.x-has-min-max}}@Range(from = {{minimum}}.toDouble(), to = {{maximum}}.toDouble(), boundary = Range.Boundary.{{#exclusiveMinimum}}EXCLUSIVE{{/exclusiveMinimum}}{{^exclusiveMinimum}}INCLUSIVE{{/exclusiveMinimum}}_{{#exclusiveMaximum}}EXCLUSIVE{{/exclusiveMaximum}}{{^exclusiveMaximum}}INCLUSIVE{{/exclusiveMaximum}})
   {{/vendorExtensions.x-has-min-max}}{{#vendorExtensions.x-has-min-max-items}}@Size(min = {{minItems}}, max = {{maxItems}})
@@ -53,9 +53,17 @@ sealed interface {{classname}} {
   {{/vendorExtensions.x-has-min-max-length}}{{#vendorExtensions.x-has-pattern}}@Pattern("{{{pattern}}}")
   {{/vendorExtensions.x-has-pattern}}{{#vendorExtensions.x-has-valid-model}}@Valid
   {{/vendorExtensions.x-has-valid-model}}
-{{^isDiscriminator}}{{#isOverridden}}override {{/isOverridden}}{{/isDiscriminator}}val {{name}}: {{{datatypeWithEnum}}}{{^required}}?{{/required}}{{^-last}},{{/-last}}
-
-{{/allVars}}){{#vendorExtensions.x-discriminator-value}} : {{parent}} {{/vendorExtensions.x-discriminator-value}}{
+{{^isDiscriminator}}{{#isOverridden}}override {{/isOverridden}}{{/isDiscriminator}}val {{name}}: {{{datatypeWithEnum}}}{{^-last}},{{/-last}}{{#-last}}{{#hasOptional}},{{/hasOptional}}{{/-last}}
+{{/requiredVars}}{{#optionalVars}}
+  @JsonField("{{baseName}}")
+  {{#vendorExtensions.x-has-min-max}}@Range(from = {{minimum}}.toDouble(), to = {{maximum}}.toDouble(), boundary = Range.Boundary.{{#exclusiveMinimum}}EXCLUSIVE{{/exclusiveMinimum}}{{^exclusiveMinimum}}INCLUSIVE{{/exclusiveMinimum}}_{{#exclusiveMaximum}}EXCLUSIVE{{/exclusiveMaximum}}{{^exclusiveMaximum}}INCLUSIVE{{/exclusiveMaximum}})
+  {{/vendorExtensions.x-has-min-max}}{{#vendorExtensions.x-has-min-max-items}}@Size(min = {{minItems}}, max = {{maxItems}})
+  {{/vendorExtensions.x-has-min-max-items}}{{#vendorExtensions.x-has-min-max-length}}@Size(min = {{minLength}}, max = {{maxLength}})
+  {{/vendorExtensions.x-has-min-max-length}}{{#vendorExtensions.x-has-pattern}}@Pattern("{{{pattern}}}")
+  {{/vendorExtensions.x-has-pattern}}{{#vendorExtensions.x-has-valid-model}}@Valid
+  {{/vendorExtensions.x-has-valid-model}}
+{{^isDiscriminator}}{{#isOverridden}}override {{/isOverridden}}{{/isDiscriminator}}val {{name}}: {{{datatypeWithEnum}}}? = null{{^-last}},{{/-last}}
+{{/optionalVars}}){{#vendorExtensions.x-discriminator-value}} : {{parent}} {{/vendorExtensions.x-discriminator-value}}{
 {{#vendorExtensions.x-discriminator-constant}}
 
   companion object {
@@ -76,12 +84,6 @@ sealed interface {{classname}} {
   }
 {{/vendorExtensions.x-discriminator-constants}}
 
-{{#additionalConstructor}}
-  constructor(
-{{#requiredVars}}
-    {{name}}: {{{datatypeWithEnum}}}{{^-last}},{{/-last}}
-{{/requiredVars}}  ) : this({{#allVars}}{{#required}}{{name}}{{/required}}{{^required}}null{{/required}}{{^-last}}, {{/-last}}{{/allVars}})
-{{/additionalConstructor}}
 {{#vendorExtensions.x-discriminator-values-check}}
   init {
     if {{{vendorExtensions.x-discriminator-values-check}}} {
