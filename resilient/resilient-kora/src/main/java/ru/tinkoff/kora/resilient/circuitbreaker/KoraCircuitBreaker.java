@@ -122,7 +122,7 @@ record KoraCircuitBreaker(
         return clock.millis();
     }
 
-    void onStateChange(@Nonnull State prevState, @Nonnull State newState) {
+    private void onStateChange(@Nonnull State prevState, @Nonnull State newState) {
         logger.debug("CircuitBreaker '{}' switched from {} to {}", name, prevState, newState);
         metrics.recordState(name, newState);
     }
@@ -149,6 +149,7 @@ record KoraCircuitBreaker(
                 final boolean isAcquired = this.state.compareAndSet(value, value + 1);
                 if (isAcquired) {
                     logger.trace("CircuitBreaker '{}' acquired", name);
+                    return true;
                 } else {
                     return tryAcquire();
                 }
