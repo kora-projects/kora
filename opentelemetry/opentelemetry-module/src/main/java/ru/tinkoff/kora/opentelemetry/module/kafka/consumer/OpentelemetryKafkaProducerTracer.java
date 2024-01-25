@@ -6,14 +6,14 @@ import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.propagation.TextMapSetter;
-import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
+import io.opentelemetry.semconv.SemanticAttributes;
+import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerTracer;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 
-import jakarta.annotation.Nullable;
 import java.nio.charset.StandardCharsets;
 
 public class OpentelemetryKafkaProducerTracer implements KafkaProducerTracer {
@@ -31,8 +31,8 @@ public class OpentelemetryKafkaProducerTracer implements KafkaProducerTracer {
             .setSpanKind(SpanKind.PRODUCER)
             .setParent(otctx.getContext())
             .setAttribute(SemanticAttributes.MESSAGING_SYSTEM, "kafka")
+            .setAttribute(SemanticAttributes.MESSAGING_OPERATION, SemanticAttributes.MessagingOperationValues.PUBLISH)
             .setAttribute(SemanticAttributes.MESSAGING_DESTINATION_NAME, record.topic())
-            .setAttribute(SemanticAttributes.MESSAGING_DESTINATION_KIND, "topic")
             .startSpan();
         W3CTraceContextPropagator.getInstance().inject(otctx.getContext().with(span), record, ProducerRecordTextMapSetter.INSTANCE);
 
@@ -68,7 +68,9 @@ public class OpentelemetryKafkaProducerTracer implements KafkaProducerTracer {
 
         @Override
         public void close(Throwable e) {
+            span.setAttribute(SemanticAttributes.ERROR_TYPE, e.getClass().getName());
             span.setStatus(StatusCode.ERROR);
+            span.recordException(e);
             span.end();
         }
     }
@@ -92,6 +94,7 @@ public class OpentelemetryKafkaProducerTracer implements KafkaProducerTracer {
 
         @Override
         public void rollback(Throwable e) {
+            span.recordException(e);
             span.setStatus(StatusCode.ERROR);
             span.end();
             OpentelemetryContext.set(this.context, this.ctx);

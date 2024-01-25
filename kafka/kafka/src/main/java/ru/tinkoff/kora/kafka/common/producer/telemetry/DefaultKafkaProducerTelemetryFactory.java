@@ -143,15 +143,19 @@ public class DefaultKafkaProducerTelemetryFactory implements KafkaProducerTeleme
 
     private static final class DefaultKafkaProducerRecordTelemetryContext implements KafkaProducerTelemetry.KafkaProducerRecordTelemetryContext {
         private final KafkaProducerRecordSpan span;
+        private final KafkaProducerMetrics metrics;
         private final KafkaProducerLogger logger;
         private final ProducerRecord<?, ?> record;
         private final Context ctx;
+        private final long start;
 
         public DefaultKafkaProducerRecordTelemetryContext(ProducerRecord<?, ?> record, @Nullable KafkaProducerRecordSpan span, @Nullable KafkaProducerLogger logger, @Nullable KafkaProducerMetrics metrics) {
             this.span = span;
             this.logger = logger;
             this.record = record;
+            this.metrics = metrics;
             this.ctx = Context.current().fork();
+            this.start = System.nanoTime();
         }
 
         @Override
@@ -159,11 +163,15 @@ public class DefaultKafkaProducerTelemetryFactory implements KafkaProducerTeleme
             var oldCtx = Context.current();
             try {
                 this.ctx.inject();
-                if (this.logger != null) {
-                    this.logger.sendEnd(record, e);
-                }
+                var duration = (System.nanoTime() - start) / 1_000_000d;
                 if (this.span != null) {
                     this.span.close(e);
+                }
+                if (this.metrics != null) {
+                    this.metrics.sendEnd(record, duration, e);
+                }
+                if (this.logger != null) {
+                    this.logger.sendEnd(record, e);
                 }
             } finally {
                 oldCtx.inject();
@@ -175,11 +183,15 @@ public class DefaultKafkaProducerTelemetryFactory implements KafkaProducerTeleme
             var oldCtx = Context.current();
             try {
                 this.ctx.inject();
-                if (this.logger != null) {
-                    this.logger.sendEnd(metadata);
-                }
+                var duration = (System.nanoTime() - start) / 1_000_000d;
                 if (this.span != null) {
                     this.span.close(metadata);
+                }
+                if (this.metrics != null) {
+                    this.metrics.sendEnd(record, duration);
+                }
+                if (this.logger != null) {
+                    this.logger.sendEnd(metadata);
                 }
             } finally {
                 oldCtx.inject();

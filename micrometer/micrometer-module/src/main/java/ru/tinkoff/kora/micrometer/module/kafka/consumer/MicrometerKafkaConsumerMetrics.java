@@ -3,25 +3,34 @@ package ru.tinkoff.kora.micrometer.module.kafka.consumer;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.opentelemetry.semconv.SemanticAttributes;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerMetrics;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.ArrayList;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * @see <a href="https://github.com/open-telemetry/semantic-conventions/blob/main/docs/messaging/messaging-metrics.md">messaging-metrics</a>
+ */
 public class MicrometerKafkaConsumerMetrics implements KafkaConsumerMetrics, Lifecycle {
     private final MeterRegistry meterRegistry;
     private final ConcurrentHashMap<TopicPartition, DistributionSummary> metrics = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<TopicPartition, LagGauge> lagMetrics = new ConcurrentHashMap<>();
     private final TelemetryConfig.MetricsConfig config;
+    private final Properties driverProperties;
 
-    public MicrometerKafkaConsumerMetrics(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config) {
+    public MicrometerKafkaConsumerMetrics(MeterRegistry meterRegistry, Properties driverProperties, TelemetryConfig.MetricsConfig config) {
         this.meterRegistry = meterRegistry;
         this.config = config;
+        this.driverProperties = driverProperties;
     }
 
     @Override
@@ -32,13 +41,20 @@ public class MicrometerKafkaConsumerMetrics implements KafkaConsumerMetrics, Lif
     }
 
     private DistributionSummary metrics(TopicPartition topicPartition) {
-        // wait for opentelemetry standard https://github.com/open-telemetry/opentelemetry-specification/tree/main/specification/metrics/semantic_conventions
-        var builder = DistributionSummary.builder("messaging.consumer.duration")
+        var builder = DistributionSummary.builder("messaging.receive.duration")
             .serviceLevelObjectives(this.config.slo())
             .baseUnit("milliseconds")
-            .tag("messaging.system", "kafka")
-            .tag("messaging.destination", topicPartition.topic())
-            .tag("messaging.destination_kind", "topic");
+            .tag(SemanticAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
+            .tag(SemanticAttributes.MESSAGING_DESTINATION_NAME.getKey(), topicPartition.topic())
+            ;
+        var clientId = driverProperties.get(ProducerConfig.CLIENT_ID_CONFIG);
+        if (clientId != null) {
+            builder.tag(SemanticAttributes.MESSAGING_CLIENT_ID.getKey(), clientId.toString());
+        }
+        var groupId = driverProperties.get(ConsumerConfig.GROUP_ID_CONFIG);
+        if (groupId != null) {
+            builder.tag(SemanticAttributes.MESSAGING_KAFKA_CONSUMER_GROUP.getKey(), groupId.toString());
+        }
         return builder.register(this.meterRegistry);
     }
 
@@ -81,9 +97,8 @@ public class MicrometerKafkaConsumerMetrics implements KafkaConsumerMetrics, Lif
 
         private LagGauge(TopicPartition partition, MeterRegistry meterRegistry) {
             gauge = Gauge.builder("messaging.kafka.consumer.lag", () -> offsetLag)
-                .tag("messaging.system", "kafka")
-                .tag("messaging.destination", partition.topic())
-                .tag("messaging.destination_kind", "topic")
+                .tag(SemanticAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
+                .tag(SemanticAttributes.MESSAGING_DESTINATION_NAME.getKey(), partition.topic())
                 .register(meterRegistry);
         }
     }

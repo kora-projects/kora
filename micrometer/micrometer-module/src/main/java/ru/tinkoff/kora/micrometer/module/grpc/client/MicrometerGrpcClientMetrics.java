@@ -7,7 +7,7 @@ import io.grpc.Status;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
-import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
+import io.opentelemetry.semconv.SemanticAttributes;
 import ru.tinkoff.grpc.client.telemetry.GrpcClientMetrics;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 

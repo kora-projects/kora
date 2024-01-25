@@ -7,6 +7,7 @@ import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTracerFactor
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.Objects;
+import java.util.Properties;
 
 public final class OpentelemetryKafkaConsumerTracerFactory implements KafkaConsumerTracerFactory {
     private final Tracer tracer;
@@ -17,7 +18,7 @@ public final class OpentelemetryKafkaConsumerTracerFactory implements KafkaConsu
 
     @Nullable
     @Override
-    public KafkaConsumerTracer get(TelemetryConfig.TracingConfig tracing) {
+    public KafkaConsumerTracer get(Properties driverProperties, TelemetryConfig.TracingConfig tracing) {
         if (Objects.requireNonNullElse(tracing.enabled(), true)) {
             return new OpentelemetryKafkaConsumerTracer(this.tracer);
         }

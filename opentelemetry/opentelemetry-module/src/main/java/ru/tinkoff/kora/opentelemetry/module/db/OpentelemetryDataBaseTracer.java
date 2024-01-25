@@ -3,13 +3,12 @@ package ru.tinkoff.kora.opentelemetry.module.db;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
+import io.opentelemetry.semconv.SemanticAttributes;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTracer;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
-
-import jakarta.annotation.Nullable;
 
 public final class OpentelemetryDataBaseTracer implements DataBaseTracer {
     private final Tracer tracer;

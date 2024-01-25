@@ -6,6 +6,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
+import java.util.Properties;
+
 public interface KafkaConsumerTelemetryFactory<K, V> {
     static <K, V> KafkaConsumerTelemetry.KafkaConsumerRecordTelemetryContext<K, V> emptyRecordCtx() {
         return ex -> {};
@@ -43,5 +45,5 @@ public interface KafkaConsumerTelemetryFactory<K, V> {
         };
     }
 
-    KafkaConsumerTelemetry<K, V> get(TelemetryConfig config);
+    KafkaConsumerTelemetry<K, V> get(Properties driverProperties, TelemetryConfig config);
 }
