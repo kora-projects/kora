@@ -29,19 +29,13 @@ record GraphMockkSpyk(GraphCandidate candidate,
         return new GraphMockkSpyk(candidate, classToMock, null, name, annotation.recordPrivateCalls());
     }
 
-    static GraphModification ofField(GraphCandidate candidate, Field field, Object testClassInstance) {
+    static GraphModification ofField(GraphCandidate candidate, Field field, Object fieldValue) {
         var classToMock = getClassToMock(candidate);
-        try {
-            field.setAccessible(true);
-            var inst = field.get(testClassInstance);
-            var annotation = MockUtils.getAnnotation(field, SpyK.class);
-            var name = Optional.of(annotation.name())
-                    .filter(n -> !n.isBlank())
-                    .orElseGet(field::getName);
-            return new GraphMockkSpyk(candidate, classToMock, inst, name, annotation.recordPrivateCalls());
-        } catch (IllegalAccessException e) {
-            throw new IllegalArgumentException("Can't extract @SpyK component '%s' from: %s".formatted(candidate.type(), testClassInstance));
-        }
+        var annotation = MockUtils.getAnnotation(field, SpyK.class);
+        var name = Optional.of(annotation.name())
+            .filter(n -> !n.isBlank())
+            .orElseGet(field::getName);
+        return new GraphMockkSpyk(candidate, classToMock, fieldValue, name, annotation.recordPrivateCalls());
     }
 
     public boolean isSpyGraph() {
