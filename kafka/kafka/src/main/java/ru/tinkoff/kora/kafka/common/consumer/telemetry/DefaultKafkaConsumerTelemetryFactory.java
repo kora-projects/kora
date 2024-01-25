@@ -3,6 +3,8 @@ package ru.tinkoff.kora.kafka.common.consumer.telemetry;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
+import java.util.Properties;
+
 public final class DefaultKafkaConsumerTelemetryFactory<K, V> implements KafkaConsumerTelemetryFactory<K, V> {
     @Nullable
     private final KafkaConsumerLoggerFactory<K, V> logger;
@@ -18,10 +20,10 @@ public final class DefaultKafkaConsumerTelemetryFactory<K, V> implements KafkaCo
     }
 
     @Override
-    public KafkaConsumerTelemetry<K, V> get(TelemetryConfig config) {
-        var logger = this.logger == null ? null : this.logger.get(config.logging());
-        var metrics = this.metrics == null ? null : this.metrics.get(config.metrics());
-        var tracer = this.tracer == null ? null : this.tracer.get(config.tracing());
+    public KafkaConsumerTelemetry<K, V> get(Properties driverProperties, TelemetryConfig config) {
+        var logger = this.logger == null ? null : this.logger.get(driverProperties, config.logging());
+        var metrics = this.metrics == null ? null : this.metrics.get(driverProperties, config.metrics());
+        var tracer = this.tracer == null ? null : this.tracer.get(driverProperties, config.tracing());
 
         if (logger == null && metrics == null && tracer == null) {
             return KafkaConsumerTelemetryFactory.empty();

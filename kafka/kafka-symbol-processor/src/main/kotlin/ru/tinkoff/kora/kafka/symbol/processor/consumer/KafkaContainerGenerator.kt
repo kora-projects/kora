@@ -33,7 +33,7 @@ class KafkaContainerGenerator {
             .addAnnotation(CommonClassNames.root)
             .addAnnotation(tagAnnotation)
             .returns(CommonClassNames.lifecycle)
-        funBuilder.addStatement("val telemetry = telemetryFactory.get(config.telemetry())")
+        funBuilder.addStatement("val telemetry = telemetryFactory.get(config.driverProperties(), config.telemetry())")
         if (handlerType.rawType == KafkaClassNames.recordHandler) {
             funBuilder.addStatement("val wrappedHandler = %T.wrapHandlerRecord(telemetry, %L, handler)", KafkaClassNames.handlerWrapper, consumerParameter == null)
         } else {

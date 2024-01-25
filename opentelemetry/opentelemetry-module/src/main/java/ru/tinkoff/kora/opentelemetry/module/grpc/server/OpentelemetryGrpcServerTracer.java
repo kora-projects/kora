@@ -7,12 +7,11 @@ import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.propagation.TextMapGetter;
-import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
+import io.opentelemetry.semconv.SemanticAttributes;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.grpc.server.telemetry.GrpcServerTracer;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
-
-import jakarta.annotation.Nullable;
 
 import static io.opentelemetry.context.Context.root;
 

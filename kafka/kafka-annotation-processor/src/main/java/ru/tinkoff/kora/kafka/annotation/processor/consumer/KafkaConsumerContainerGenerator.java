@@ -54,7 +54,7 @@ public class KafkaConsumerContainerGenerator {
         methodBuilder.addParameter(keyDeserializer.build());
         methodBuilder.addParameter(valueDeserializer.build());
         methodBuilder.addParameter(ParameterizedTypeName.get(kafkaConsumerTelemetryFactory, handlerMethod.keyType(), handlerMethod.valueType()), "telemetryFactory");
-        methodBuilder.addStatement("var telemetry = telemetryFactory.get(config.telemetry())");
+        methodBuilder.addStatement("var telemetry = telemetryFactory.get(config.driverProperties(), config.telemetry())");
 
         var consumerParameter = parameters.stream().filter(r -> r instanceof ConsumerParameter.Consumer).map(ConsumerParameter.Consumer.class::cast).findFirst();
         if (handlerTypeName.rawType.equals(recordHandler)) {

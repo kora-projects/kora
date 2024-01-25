@@ -21,7 +21,7 @@ public class MicrometerKafkaProducerMetricsFactory implements KafkaProducerMetri
     @Override
     public KafkaProducerMetrics get(TelemetryConfig.MetricsConfig metrics, Producer<?, ?> producer, Properties properties) {
         if (Objects.requireNonNullElse(metrics.enabled(), true)) {
-            return new MicrometerKafkaProducerMetrics(meterRegistry, producer);
+            return new MicrometerKafkaProducerMetrics(meterRegistry, metrics, producer, properties);
         } else {
             return null;
         }

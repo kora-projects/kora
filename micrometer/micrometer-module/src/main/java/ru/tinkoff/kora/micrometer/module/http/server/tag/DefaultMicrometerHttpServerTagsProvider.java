@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.micrometer.module.http.server.tag;
 
 import io.micrometer.core.instrument.Tag;
-import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
+import io.opentelemetry.semconv.SemanticAttributes;
 
 import java.util.List;
 
