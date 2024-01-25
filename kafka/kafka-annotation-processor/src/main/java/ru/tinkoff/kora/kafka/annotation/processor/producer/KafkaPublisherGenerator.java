@@ -12,13 +12,12 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -301,7 +300,8 @@ final class KafkaPublisherGenerator {
         }
         b.addStatement("var _tctx = this.telemetry.record(_record)");
 
-        if (isFuture(publishMethod.getReturnType())) {
+        var returnType = TypeName.get(publishMethod.getReturnType());
+        if (returnType instanceof ParameterizedTypeName ptn && ptn.rawType.equals(ClassName.get(Future.class))) {
             if (publishData.callback() != null) {
                 b.add("return this.delegate.send(_record, (_meta, _ex) -> {$>\n");
                 b.addStatement("_tctx.onCompletion(_meta, _ex)");
@@ -310,6 +310,20 @@ final class KafkaPublisherGenerator {
             } else {
                 b.add("return this.delegate.send(_record, _tctx);");
             }
+        } else if (returnType instanceof ParameterizedTypeName ptn && (ptn.rawType.equals(ClassName.get(CompletionStage.class)) || ptn.rawType.equals(ClassName.get(CompletableFuture.class)))) {
+            b.addStatement("var _future = new $T<$T>()", CompletableFuture.class, KafkaClassNames.recordMetadata);
+            b.add("this.delegate.send(_record, (_meta, _ex) -> {$>\n");
+            b.addStatement("_tctx.onCompletion(_meta, _ex)");
+            if (publishData.callback() != null) {
+                b.addStatement("$N.onCompletion(_meta, _ex)", publishData.callback().getSimpleName());
+            }
+            b.beginControlFlow("if (_ex != null)");
+            b.addStatement("_future.completeExceptionally(_ex)");
+            b.nextControlFlow("else");
+            b.addStatement("_future.complete(_meta)");
+            b.endControlFlow();
+            b.add("$<\n});\n");
+            b.addStatement("return _future");
         } else {
             b.add("try {$>\n");
             if (!MethodUtils.isVoid(publishMethod)) {
@@ -336,19 +350,6 @@ final class KafkaPublisherGenerator {
         }
         methodBuilder.addCode(b.build());
         return methodBuilder.build();
-    }
-
-    private boolean isFuture(TypeMirror type) {
-        if (type.getKind() != TypeKind.DECLARED) {
-            return false;
-        }
-
-        if (!(type instanceof DeclaredType dt)) {
-            return false;
-        }
-
-        final String name = dt.asElement().toString();
-        return name.equals(Future.class.getCanonicalName());
     }
 
     public void generateConfig(TypeElement producer, List<ExecutableElement> publishMethods) throws IOException {

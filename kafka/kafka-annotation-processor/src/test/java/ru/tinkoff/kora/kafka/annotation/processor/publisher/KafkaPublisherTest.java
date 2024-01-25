@@ -46,6 +46,22 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
     }
 
     @Test
+    public void testPublisherWithDefault() throws NoSuchMethodException {
+        this.compile(List.of(new KafkaPublisherAnnotationProcessor()), """
+            @KafkaPublisher("test")
+            public interface TestProducer {
+              void send(ProducerRecord<String, String> record);
+              default void send0(ProducerRecord<String, String> r1, ProducerRecord<String, String> r2) {
+              }
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$TestProducer_Impl");
+        assertThat(clazz).isNotNull();
+        clazz.getConstructor(KafkaProducerTelemetryFactory.class, TelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
+    }
+
+    @Test
     public void testPublisherWithRecordAndCallback() throws NoSuchMethodException {
         this.compile(List.of(new KafkaPublisherAnnotationProcessor()), """
             @KafkaPublisher("test")
@@ -269,6 +285,35 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
     }
 
     @Test
+    public void testReturnStageFuture() throws NoSuchMethodException {
+        this.compile(List.of(new KafkaPublisherAnnotationProcessor()), """
+            @KafkaPublisher("test")
+            public interface TestProducer {
+              @Topic("test.sendTopic")
+              java.util.concurrent.CompletionStage<?> send(String value);
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$TestProducer_Impl");
+        assertThat(clazz).isNotNull();
+        clazz.getConstructor(KafkaProducerTelemetryFactory.class, TelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
+    }
+    @Test
+    public void testReturnCompletableFuture() throws NoSuchMethodException {
+        this.compile(List.of(new KafkaPublisherAnnotationProcessor()), """
+            @KafkaPublisher("test")
+            public interface TestProducer {
+              @Topic("test.sendTopic")
+              java.util.concurrent.CompletableFuture<?> send(String value);
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$TestProducer_Impl");
+        assertThat(clazz).isNotNull();
+        clazz.getConstructor(KafkaProducerTelemetryFactory.class, TelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
+    }
+
+    @Test
     public void testReturnRecordMetadata() throws NoSuchMethodException {
         this.compile(List.of(new KafkaPublisherAnnotationProcessor()), """
             @KafkaPublisher("test")
@@ -290,6 +335,36 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
             public interface TestProducer {
               @Topic("test.sendTopic")
               java.util.concurrent.Future<RecordMetadata> send(String value);
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$TestProducer_Impl");
+        assertThat(clazz).isNotNull();
+        clazz.getConstructor(KafkaProducerTelemetryFactory.class, TelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
+    }
+
+    @Test
+    public void testReturnRecordMetadataStageFuture() throws NoSuchMethodException {
+        this.compile(List.of(new KafkaPublisherAnnotationProcessor()), """
+            @KafkaPublisher("test")
+            public interface TestProducer {
+              @Topic("test.sendTopic")
+              java.util.concurrent.CompletionStage<RecordMetadata> send(String value);
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$TestProducer_Impl");
+        assertThat(clazz).isNotNull();
+        clazz.getConstructor(KafkaProducerTelemetryFactory.class, TelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
+    }
+
+    @Test
+    public void testReturnRecordMetadataCompletableFuture() throws NoSuchMethodException {
+        this.compile(List.of(new KafkaPublisherAnnotationProcessor()), """
+            @KafkaPublisher("test")
+            public interface TestProducer {
+              @Topic("test.sendTopic")
+              java.util.concurrent.CompletableFuture<RecordMetadata> send(String value);
             }
             """);
         this.compileResult.assertSuccess();
