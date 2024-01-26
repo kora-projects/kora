@@ -188,7 +188,7 @@ public class DefaultKafkaProducerTelemetryFactory implements KafkaProducerTeleme
                     this.span.close(metadata);
                 }
                 if (this.metrics != null) {
-                    this.metrics.sendEnd(record, duration);
+                    this.metrics.sendEnd(record, duration, metadata);
                 }
                 if (this.logger != null) {
                     this.logger.sendEnd(metadata);

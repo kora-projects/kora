@@ -8,10 +8,12 @@ import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerMetrics;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -50,20 +52,20 @@ public class MicrometerKafkaProducerMetrics implements KafkaProducerMetrics, Aut
 
     @Override
     public void sendEnd(ProducerRecord<?, ?> record, double duration, Throwable e) {
-        var m = this.metrics.computeIfAbsent(new TopicPartition(record.topic(), record.partition()), this::metrics);
+        var m = this.metrics.computeIfAbsent(new TopicPartition(record.topic(), Objects.requireNonNullElse(record.partition(), -1)), this::metrics);
         m.record(duration);
     }
 
     @Override
-    public void sendEnd(ProducerRecord<?, ?> record, double duration) {
-        var m = this.metrics.computeIfAbsent(new TopicPartition(record.topic(), record.partition()), this::metrics);
+    public void sendEnd(ProducerRecord<?, ?> record, double duration, RecordMetadata metadata) {
+        var m = this.metrics.computeIfAbsent(new TopicPartition(metadata.topic(), metadata.partition()), this::metrics);
         m.record(duration);
     }
 
     @Override
     public void close() throws Exception {
         this.micrometerMetrics.close();
-        for (var i = this.metrics.entrySet().iterator(); i.hasNext();) {
+        for (var i = this.metrics.entrySet().iterator(); i.hasNext(); ) {
             var entry = i.next();
             i.remove();
             try {
