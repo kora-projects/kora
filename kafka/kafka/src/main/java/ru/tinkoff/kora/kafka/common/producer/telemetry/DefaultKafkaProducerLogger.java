@@ -26,7 +26,7 @@ public class DefaultKafkaProducerLogger implements KafkaProducerLogger {
 
     @Override
     public void sendEnd(ProducerRecord<?, ?> record, Throwable e) {
-        logger.warn("Kafka Producer error sending record to topic {} and partition {}", record.topic(), record.topic(), e);
+        logger.warn("Kafka Producer error sending record to topic {} and partition {}", record.topic(), record.partition(), e);
     }
 
     @Override
