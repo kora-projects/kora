@@ -1,46 +1,26 @@
 package ru.tinkoff.kora.opentelemetry.tracing.exporter.grpc;
 
-import io.grpc.netty.NettyChannelBuilder;
-import io.netty.channel.EventLoopGroup;
 import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 import ru.tinkoff.kora.application.graph.LifecycleWrapper;
 import ru.tinkoff.kora.common.DefaultComponent;
-import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.ConfigValue;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
-import ru.tinkoff.kora.netty.common.NettyCommonModule;
 import ru.tinkoff.kora.opentelemetry.tracing.OpentelemetryTracingModule;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-
-public interface OpentelemetryGrpcExporterModule extends NettyCommonModule, OpentelemetryTracingModule {
+public interface OpentelemetryGrpcExporterModule extends OpentelemetryTracingModule {
     @DefaultComponent
-    default LifecycleWrapper<SpanExporter> spanExporter(OpentelemetryGrpcExporterConfig exporterConfig, @Tag(WorkerLoopGroup.class) EventLoopGroup eventLoopGroup) throws URISyntaxException {
+    default LifecycleWrapper<SpanExporter> spanExporter(OpentelemetryGrpcExporterConfig exporterConfig) {
         if (!(exporterConfig instanceof OpentelemetryGrpcExporterConfig.FromConfig config)) {
             return new LifecycleWrapper<>(SpanExporter.composite(), v -> {}, v -> {});
         }
-        var uri = new URI(config.endpoint());
-        final NettyChannelBuilder managedChannelBuilder = NettyChannelBuilder.forTarget(uri.getAuthority());
-        if (uri.getScheme().equals("https")) {
-            managedChannelBuilder.useTransportSecurity();
-        } else {
-            managedChannelBuilder.usePlaintext();
-        }
-
-        var channel = managedChannelBuilder
-            .eventLoopGroup(eventLoopGroup)
-            .channelType(NettyCommonModule.channelType())
-            .build();
 
         var exporter = OtlpGrpcSpanExporter.builder()
             .setEndpoint(config.endpoint())
             .setTimeout(config.exportTimeout())
-            .setChannel(channel)
             .build();
         return new LifecycleWrapper<>(exporter, e -> {}, SpanExporter::close);
     }
