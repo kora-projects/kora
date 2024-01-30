@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.config.common.impl;
 
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.config.common.ConfigValue;
 
@@ -34,5 +35,17 @@ class ConfigResolverTest {
             "reference", "${?object.field}"
         )).resolve();
         assertThat(config.get("reference")).isInstanceOf(ConfigValue.NullValue.class);
+    }
+
+    @Test
+    void testMultipleValues() {
+        var config = fromMap(Map.of(
+            "value", "value",
+            "reference", "value: ${value}, nullableValue1: ${?value}, nullableValue2: ${?value2}, valueWithDefault: ${value:default}, valueWithDefault: ${value2:default} leftover"
+        )).resolve();
+        assertThat(config.get("reference"))
+            .isInstanceOf(ConfigValue.StringValue.class)
+            .extracting("value", InstanceOfAssertFactories.STRING)
+            .isEqualTo("value: value, nullableValue1: value, nullableValue2: , valueWithDefault: value, valueWithDefault: default leftover");
     }
 }
