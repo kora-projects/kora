@@ -142,6 +142,7 @@ public final class ConfigResolver {
                     }
                     prevTokenStart = tokenStart;
                     tokenStart = i + 1;
+                    token = Token.STRING;
                     continue;
                 }
                 if (token == Token.REFERENCE_NULLABLE) {
@@ -161,6 +162,7 @@ public final class ConfigResolver {
                     }
                     prevTokenStart = tokenStart;
                     tokenStart = i + 1;
+                    token = Token.STRING;
                     continue;
                 }
                 if (token == Token.REFERENCE_DEFAULT_VALUE) {
@@ -185,6 +187,7 @@ public final class ConfigResolver {
                     }
                     prevTokenStart = tokenStart;
                     tokenStart = i + 1;
+                    token = Token.STRING;
                     continue;
                 }
             }
@@ -204,6 +207,8 @@ public final class ConfigResolver {
                 sb.append(strValue.value());
             } else if (part instanceof ConfigValue.NumberValue numberValue) {
                 sb.append(numberValue.value());
+            } else if (part instanceof ConfigValue.NullValue) {
+                // optional value ignored
             } else {
                 throw new RuntimeException("Unexpected type: " + part.getClass());// TODO
             }
