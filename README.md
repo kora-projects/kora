@@ -1,16 +1,15 @@
-# Kora framework
+# Kora Framework
 
-Kora is a jvm-based framework for building backend apps. It aims to be the solution for writing highly scalable and performant web applications using idiomatic java and kotlin with minimal amount of a boilerplate code.
+Kora - фреймворк для написания Java / Kotlin приложений с упором на Производительность, Эффективность, Прозрачность.
+Kora стремится предоставить достаточно высокоуровневые декларативные инструменты и абстракции для разработчиков,
+которые на этапе компиляции преобразуются в производительный для железа и понятный для человека код.
 
-Check out the full documentation here: [Documentation](https://tinkoff.github.io/kora/)
+Подробное описание в [документации](https://kora-projects.github.io/kora-docs/ru/)
 
-## Name origin
+---
 
-Kora (Kore) aka Persephone - ancient greek goddess of Spring
+Kora is a framework for writing Java / Kotlin applications with a focus on Performance, Efficiency, Transparency.
+Kora aims to provide sufficiently high-level declarative tools and abstractions for developers,
+which are converted at compile time into hardware-performing and human-readable code.
 
-## Installation
-
-```groovy
-    implementation platform("ru.tinkoff.kora:kora-parent:$koraVersion")
-    annotationProcessor "ru.tinkoff.kora:annotation-processors:$koraVersion"
-```
+Detailed description in [documentation](https://kora-projects.github.io/kora-docs/en/)
