@@ -1,0 +1,230 @@
+plugins {
+    id "org.jetbrains.kotlin.jvm" version "1.9.10" apply false
+    id 'jacoco'
+    id('io.github.gradle-nexus.publish-plugin') version '1.3.0'
+}
+
+if (hasProperty('buildScan')) {
+    buildScan {
+        termsOfServiceUrl = 'https://gradle.com/terms-of-service'
+        termsOfServiceAgree = 'yes'
+    }
+}
+
+nexusPublishing {
+    packageGroup = "ru.tinkoff"
+    repositories {
+        sonatype {
+            stagingProfileId = '1a63f6e54ff32d'
+            username = System.getenv().getOrDefault("REPO_USER", "")
+            password = System.getenv().getOrDefault("REPO_PASSWORD", "")
+        }
+    }
+}
+
+allprojects {
+    group = "ru.tinkoff.kora"
+    version = System.getenv().getOrDefault("KORA_VERSION", "1.0.0-SNAPSHOT")
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    }
+}
+
+// config libraries
+subprojects {
+    if (!project.childProjects.isEmpty() || project.name == 'maven-parent') {
+        return
+    }
+    apply plugin: 'java-library'
+    java {
+        toolchain {
+            languageVersion.set(JavaLanguageVersion.of(17))
+        }
+    }
+
+    tasks.withType(JavaCompile) {
+        options.debug = true
+        options.encoding = 'UTF-8'
+        options.compilerArgs << '-parameters' << '-Xlint:all' << '-Xlint:-serial,-processing' << '-XprintRounds'
+    }
+
+}
+
+// config test libraries
+subprojects {
+    if (project.parent.name != "internal") {
+        return
+    }
+    dependencies {
+        api libs.junit.platform.launcher
+        api libs.junit.jupiter
+    }
+}
+
+def isPublishedLibrary = { Project p ->
+    if (!p.childProjects.isEmpty()) {
+        return false
+    }
+    if (p.parent.name == "internal") {
+        return false
+    }
+    if (p.name == "maven-parent") {
+        return false
+    }
+    return true
+}
+subprojects {
+    def versions = libs.versions
+    configurations {
+        configureEach {
+            resolutionStrategy.force "com.fasterxml.jackson.core:jackson-annotations:${versions.jackson.get()}"
+            resolutionStrategy.force "com.fasterxml.jackson.core:jackson-core:${versions.jackson.get()}"
+            resolutionStrategy.force "com.fasterxml.jackson.core:jackson-databind:${versions.jackson.get()}"
+            resolutionStrategy.force "io.netty:netty-buffer:${versions.netty.get()}"
+            resolutionStrategy.force "io.netty:netty-codec:${versions.netty.get()}"
+            resolutionStrategy.force "io.netty:netty-codec-dns:${versions.netty.get()}"
+            resolutionStrategy.force "io.netty:netty-codec-http2:${versions.netty.get()}"
+            resolutionStrategy.force "io.netty:netty-codec-http:${versions.netty.get()}"
+            resolutionStrategy.force "io.netty:netty-codec-socks:${versions.netty.get()}"
+            resolutionStrategy.force "io.netty:netty-codec-common:${versions.netty.get()}"
+            resolutionStrategy.force "io.netty:netty-handler:${versions.netty.get()}"
+            resolutionStrategy.force "io.netty:netty-handler-proxy:${versions.netty.get()}"
+            resolutionStrategy.force "io.netty:netty-resolver:${versions.netty.get()}"
+            resolutionStrategy.force "io.netty:netty-resolver-dns:${versions.netty.get()}"
+            resolutionStrategy.force "io.netty:netty-resolver-dns-classes-macos:${versions.netty.get()}"
+            resolutionStrategy.force "io.netty:netty-resolver-dns-classes-macos:${versions.netty.get()}"
+            resolutionStrategy.force "io.netty:netty-transport:${versions.netty.get()}"
+            resolutionStrategy.force "io.netty:netty-transport-clasess-epoll:${versions.netty.get()}"
+            resolutionStrategy.force "io.netty:netty-transport-clasess-kqueue:${versions.netty.get()}"
+            resolutionStrategy.force "io.netty:netty-transport-native-epoll:${versions.netty.get()}"
+            resolutionStrategy.force "io.netty:netty-transport-native-kqueue:${versions.netty.get()}"
+            resolutionStrategy.force "io.netty:netty-transport-unix-common:${versions.netty.get()}"
+            resolutionStrategy.force "org.jetbrains.kotlin:kotlin-stdlib:${versions.kotlin.get().get()}"
+            resolutionStrategy.force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${versions.kotlin.get().get()}"
+            resolutionStrategy.force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${versions.kotlin.get().get()}"
+        }
+    }
+}
+
+// config published libraries
+subprojects {
+    if (!isPublishedLibrary(it)) {
+        return
+    }
+
+    apply plugin: 'maven-publish'
+    apply plugin: 'jacoco'
+    apply plugin: 'signing'
+
+    test {
+        jacoco {
+            enabled = false
+        }
+    }
+
+    java {
+        withSourcesJar()
+        withJavadocJar()
+    }
+
+    publishing {
+        publications {
+            maven(MavenPublication) {
+                from components.java
+                pom {
+                    afterEvaluate {
+                        name = project.name
+                        description = "Kora $project.name module"
+                    }
+                    licenses {
+                        license {
+                            name = 'The Apache Software License, Version 2.0'
+                            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        }
+                    }
+                    scm {
+                        url = 'https://github.com/Tinkoff/kora'
+                        connection = 'scm:git:git@github.com/Tinkoff/kora.git'
+                        developerConnection = 'scm:git:git@github.com/Tinkoff/kora.git'
+                    }
+                    url = 'https://github.com/Tinkoff/kora'
+                    developers {
+                        developer {
+                            id = 'a.otts'
+                            name = 'Aleksei Otts'
+                            email = 'eld0727@mail.ru'
+                        }
+                        developer {
+                            id = 'a.duyun'
+                            name = 'Anton Duyun'
+                            email = 'anton.duyun@gmail.com'
+                        }
+                        developer {
+                            id = 'a.kurako'
+                            name = 'Anton Kurako'
+                            email = 'goodforgod.dev@gmail.com'
+                        }
+                        developer {
+                            id = 'a.yakovlev'
+                            name = 'Artem Yakovlev'
+                            email = 'jakart89@gmail.com'
+                        }
+                    }
+
+                    withXml { pom ->
+                        def xpf = javax.xml.xpath.XPathFactory.newInstance()
+                        def xp = xpf.newXPath()
+                        def xpath = xp.compile("//dependency[optional[contains(text(), 'true')]]")
+                        def nl = (org.w3c.dom.NodeList) xpath.evaluate(pom.asElement(), javax.xml.xpath.XPathConstants.NODESET);
+                        for (int i = nl.getLength() - 1; i >= 0; i--) {
+                            nl.item(i).getParentNode().removeChild(nl.item(i))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+    signing {
+        required = false
+        sign publishing.publications.maven
+    }
+
+    test {
+        jvmArgs([
+            '-XX:FlightRecorderOptions=stackdepth=1024',
+            '--enable-preview',
+            '--add-opens', 'jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED',
+            '--add-opens', 'jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED',
+            '--add-opens', 'jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED',
+            '--add-opens', 'jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED',
+            '--add-opens', 'jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED',
+            '--add-opens', 'jdk.compiler/com.sun.tools.javac.jvm=ALL-UNNAMED',
+            '--add-opens', 'jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED',
+            '--add-opens', 'jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED',
+            '--add-opens', 'jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED',
+        ])
+        useJUnitPlatform()
+        testLogging {
+            showStandardStreams(false)
+            events("passed", "skipped", "failed")
+            exceptionFormat("full")
+        }
+        finalizedBy jacocoTestReport // report is always generated after tests run
+    }
+
+    dependencies {
+        api libs.jakarta.annotations
+
+        testImplementation project(":internal:test-logging")
+        testImplementation libs.junit.jupiter
+        testImplementation libs.mockito.core
+        testImplementation libs.assertj
+    }
+
+    task allDeps(type: DependencyReportTask) {}
+}
+
+apply from: "${project.rootDir}/gradle/ci-tests.gradle"

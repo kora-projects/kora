@@ -1,10 +1,11 @@
 dependencies {
+    annotationProcessor project(":config:config-annotation-processor")
+
+    compileOnly libs.reactor.core
+
     api project(":common")
     api project(":database:database-common")
     api libs.cassandra.driver
-    compileOnly libs.reactor.core
 
-    annotationProcessor project(':config:config-annotation-processor')
-
-    testImplementation project(':internal:test-cassandra')
+    testImplementation project(":internal:test-cassandra")
 }

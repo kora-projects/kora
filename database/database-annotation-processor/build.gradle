@@ -1,17 +1,17 @@
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
-    api project(':annotation-processor-common')
-    implementation project(':kora-app-annotation-processor')
+    api project(":annotation-processor-common")
+    implementation project(":kora-app-annotation-processor")
 
     testImplementation libs.mockito.inline
-    testImplementation testFixtures(project(':annotation-processor-common'))
-    testImplementation project(':database:database-common')
-    testImplementation project(':database:database-jdbc')
-    testImplementation project(':database:database-vertx')
+    testImplementation testFixtures(project(":annotation-processor-common"))
+    testImplementation project(":database:database-common")
+    testImplementation project(":database:database-jdbc")
+    testImplementation project(":database:database-vertx")
     testImplementation libs.vertx.pg.client
-    testImplementation project(':database:database-r2dbc')
-    testImplementation project(':database:database-cassandra')
+    testImplementation project(":database:database-r2dbc")
+    testImplementation project(":database:database-cassandra")
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

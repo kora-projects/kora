@@ -1,8 +1,8 @@
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
-    api project(':symbol-processor-common')
-    implementation project(':kora-app-symbol-processor')
+    api project(":symbol-processor-common")
+    implementation project(":kora-app-symbol-processor")
 
     implementation libs.ksp.api
     implementation libs.kotlinpoet
@@ -11,20 +11,20 @@ dependencies {
     testImplementation libs.mockito.inline
     testImplementation libs.mockito.kotlin
 
-    testImplementation testFixtures(project(':symbol-processor-common'))
-    testImplementation testFixtures(project(':annotation-processor-common'))
-    testImplementation project(':config:config-common')
-    testImplementation project(':logging:logging-logback')
-    testImplementation project(':aop:aop-symbol-processor')
-    testImplementation project(':config:config-symbol-processor')
-    testImplementation project(':logging:declarative-logging:declarative-logging-symbol-processor')
+    testImplementation testFixtures(project(":symbol-processor-common"))
+    testImplementation testFixtures(project(":annotation-processor-common"))
+    testImplementation project(":config:config-common")
+    testImplementation project(":logging:logging-logback")
+    testImplementation project(":aop:aop-symbol-processor")
+    testImplementation project(":config:config-symbol-processor")
+    testImplementation project(":logging:declarative-logging:declarative-logging-symbol-processor")
 
-    testImplementation project(':database:database-common')
-    testImplementation project(':database:database-jdbc')
-    testImplementation project(':database:database-vertx')
+    testImplementation project(":database:database-common")
+    testImplementation project(":database:database-jdbc")
+    testImplementation project(":database:database-vertx")
     testImplementation libs.vertx.pg.client
-    testImplementation project(':database:database-r2dbc')
-    testImplementation project(':database:database-cassandra')
+    testImplementation project(":database:database-r2dbc")
+    testImplementation project(":database:database-cassandra")
     testImplementation(libs.kotlin.stdlib.lib)
     testImplementation(libs.kotlin.coroutines.reactor)
     testImplementation(libs.kotlin.coroutines.jdk8)
