@@ -14,6 +14,7 @@ import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerMetrics;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.ArrayList;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -99,6 +100,7 @@ public class MicrometerKafkaConsumerMetrics implements KafkaConsumerMetrics, Lif
             gauge = Gauge.builder("messaging.kafka.consumer.lag", () -> offsetLag)
                 .tag(SemanticAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
                 .tag(SemanticAttributes.MESSAGING_DESTINATION_NAME.getKey(), partition.topic())
+                .tag(SemanticAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION.getKey(), Objects.toString(partition.partition()))
                 .register(meterRegistry);
         }
     }
