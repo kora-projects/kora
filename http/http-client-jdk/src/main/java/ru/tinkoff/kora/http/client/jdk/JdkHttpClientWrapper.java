@@ -30,7 +30,7 @@ public class JdkHttpClientWrapper implements Lifecycle, Wrapped<HttpClient> {
             .version(this.config.httpVersion())
             .executor(this.executor)
             .connectTimeout(this.baseConfig.connectTimeout())
-            .followRedirects(HttpClient.Redirect.NORMAL);
+            .followRedirects(this.config.followRedirects() ? HttpClient.Redirect.NORMAL : HttpClient.Redirect.NEVER);
         var proxyConfig = this.baseConfig.proxy();
         if (this.baseConfig.useEnvProxy()) {
             proxyConfig = HttpClientConfig.HttpClientProxyConfig.fromEnv();

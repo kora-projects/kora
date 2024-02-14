@@ -14,7 +14,7 @@ public class HttpClientResponseException extends HttpClientException {
     private final byte[] bytes;
 
     public HttpClientResponseException(int code, HttpHeaders headers, byte[] bytes) {
-        super("Http response with error code %d:\n%s".formatted(code, new String(bytes, StandardCharsets.UTF_8)));
+        super("HTTP response with status code %d:\n%s".formatted(code, new String(bytes, StandardCharsets.UTF_8)));
         this.code = code;
         this.headers = headers;
         this.bytes = bytes;

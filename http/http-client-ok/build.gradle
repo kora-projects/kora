@@ -1,8 +1,10 @@
 dependencies {
+    annotationProcessor project(":config:config-annotation-processor")
+
     api project(":http:http-client-common")
     api libs.okhttp
 
     testImplementation(testFixtures(project(":http:http-client-common")))
     testImplementation libs.jackson.datatype.jsr310
-    testImplementation('com.github.fge:jackson-coreutils:1.8')
+    testImplementation("com.github.fge:jackson-coreutils:1.8")
 }

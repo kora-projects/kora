@@ -30,7 +30,7 @@ public final class OkHttpRequestBody extends RequestBody {
     }
 
     @Override
-    public void writeTo(@Nonnull BufferedSink bufferedSink) throws IOException {
+    public void writeTo(@Nonnull BufferedSink bufferedSink) {
         try {
             bodyOutput.write(bufferedSink.outputStream());
         } catch (IOException e) {

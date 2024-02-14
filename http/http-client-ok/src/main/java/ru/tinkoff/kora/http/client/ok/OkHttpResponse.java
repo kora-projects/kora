@@ -30,7 +30,7 @@ public final class OkHttpResponse implements HttpClientResponse {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         this.response.close();
     }
 }

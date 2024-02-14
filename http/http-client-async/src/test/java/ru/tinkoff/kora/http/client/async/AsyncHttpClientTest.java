@@ -9,6 +9,6 @@ class AsyncHttpClientTest extends HttpClientTest {
     @Override
     protected HttpClient createClient(HttpClientConfig config) {
         var module = new AsyncHttpClientModule() {};
-        return new AsyncHttpClient(module.nettyAsyncHttpClient(module.nettyClientConfig(null, config)));
+        return new AsyncHttpClient(module.nettyAsyncHttpClient(module.nettyClientConfig(null, new AsyncHttpClientConfig() { }, config)));
     }
 }

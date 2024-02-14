@@ -1,21 +1,27 @@
 package ru.tinkoff.kora.http.client.async;
 
 import io.netty.channel.EventLoopGroup;
-import org.asynchttpclient.AsyncHttpClientConfig;
 import org.asynchttpclient.DefaultAsyncHttpClientConfig;
 import org.asynchttpclient.Dsl;
 import org.asynchttpclient.proxy.ProxyServer;
 import org.asynchttpclient.proxy.ProxyType;
 import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.config.common.Config;
+import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.http.client.common.HttpClientConfig;
 import ru.tinkoff.kora.http.client.common.HttpClientModule;
 import ru.tinkoff.kora.netty.common.NettyCommonModule;
 
 public interface AsyncHttpClientModule extends NettyCommonModule, HttpClientModule {
 
-    default AsyncHttpClientConfig nettyClientConfig(@Tag(WorkerLoopGroup.class) EventLoopGroup eventLoopGroup, HttpClientConfig config) {
+    default AsyncHttpClientConfig asyncHttpClientConfig(Config config, ConfigValueExtractor<AsyncHttpClientConfig> extractor) {
+        return extractor.extract(config.get("httpClient.async"));
+    }
+
+    default org.asynchttpclient.AsyncHttpClientConfig nettyClientConfig(@Tag(WorkerLoopGroup.class) EventLoopGroup eventLoopGroup, AsyncHttpClientConfig asyncConfig, HttpClientConfig config) {
         DefaultAsyncHttpClientConfig.Builder builder = Dsl.config()
             .setEventLoopGroup(eventLoopGroup)
+            .setFollowRedirect(asyncConfig.followRedirects())
             .setConnectTimeout((int) config.connectTimeout().toMillis())
             .setReadTimeout((int) config.readTimeout().toMillis());
 
@@ -41,7 +47,7 @@ public interface AsyncHttpClientModule extends NettyCommonModule, HttpClientModu
         return builder.build();
     }
 
-    default org.asynchttpclient.AsyncHttpClient nettyAsyncHttpClient(AsyncHttpClientConfig config) {
+    default org.asynchttpclient.AsyncHttpClient nettyAsyncHttpClient(org.asynchttpclient.AsyncHttpClientConfig config) {
         return Dsl.asyncHttpClient(config);
     }
 

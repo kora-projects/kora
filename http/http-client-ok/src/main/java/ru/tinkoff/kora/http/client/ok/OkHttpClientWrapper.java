@@ -1,9 +1,13 @@
 package ru.tinkoff.kora.http.client.ok;
 
 import okhttp3.OkHttpClient;
+import okhttp3.Protocol;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.http.client.common.HttpClientConfig;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public final class OkHttpClientWrapper implements Lifecycle, Wrapped<OkHttpClient> {
     private final OkHttpClientConfig config;
@@ -21,6 +25,10 @@ public final class OkHttpClientWrapper implements Lifecycle, Wrapped<OkHttpClien
             .connectTimeout(this.baseConfig.connectTimeout())
             .readTimeout(this.baseConfig.readTimeout())
             .followRedirects(this.config.followRedirects());
+
+        List<Protocol> protocols = getProtocols(this.config.httpVersion());
+        builder.protocols(protocols);
+
         var proxyConfig = this.baseConfig.proxy();
         if (this.baseConfig.useEnvProxy()) {
             proxyConfig = HttpClientConfig.HttpClientProxyConfig.fromEnv();
@@ -34,6 +42,14 @@ public final class OkHttpClientWrapper implements Lifecycle, Wrapped<OkHttpClien
             }
         }
         this.client = builder.build();
+    }
+
+    private List<Protocol> getProtocols(OkHttpClientConfig.HttpVersion httpVersion) {
+        return switch (httpVersion) {
+            case HTTP_1_1 -> List.of(Protocol.HTTP_1_1);
+            case HTTP_2 -> List.of(Protocol.HTTP_2, Protocol.HTTP_1_1);
+            case HTTP_3 -> List.of(Protocol.HTTP_3, Protocol.HTTP_2, Protocol.HTTP_1_1);
+        };
     }
 
     @Override

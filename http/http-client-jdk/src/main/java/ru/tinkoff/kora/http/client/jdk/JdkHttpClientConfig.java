@@ -6,6 +6,11 @@ import java.net.http.HttpClient;
 
 @ConfigValueExtractor
 public interface JdkHttpClientConfig {
+
+    default boolean followRedirects() {
+        return true;
+    }
+
     default int threads() {
         return Runtime.getRuntime().availableProcessors() * 2;
     }

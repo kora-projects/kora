@@ -7,6 +7,7 @@ import ru.tinkoff.kora.http.client.common.HttpClientConfig;
 import ru.tinkoff.kora.http.client.common.HttpClientModule;
 
 public interface OkHttpClientModule extends HttpClientModule {
+
     default OkHttpClient okHttpClient(okhttp3.OkHttpClient client) {
         return new OkHttpClient(client);
     }
