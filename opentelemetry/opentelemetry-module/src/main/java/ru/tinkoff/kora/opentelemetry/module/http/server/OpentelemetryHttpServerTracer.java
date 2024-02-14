@@ -44,10 +44,11 @@ public final class OpentelemetryHttpServerTracer implements HttpServerTracer {
             .spanBuilder(routerRequest.method() + " " + template)
             .setSpanKind(SpanKind.SERVER)
             .setParent(parentCtx)
-            .setAttribute(SemanticAttributes.HTTP_METHOD, routerRequest.method())
-            .setAttribute(SemanticAttributes.HTTP_SCHEME, routerRequest.scheme())
-            .setAttribute(SemanticAttributes.NET_HOST_NAME, routerRequest.hostName())
-            .setAttribute(SemanticAttributes.HTTP_TARGET, template)
+            .setAttribute(SemanticAttributes.HTTP_REQUEST_METHOD, routerRequest.method())
+            .setAttribute(SemanticAttributes.URL_SCHEME, routerRequest.scheme())
+            .setAttribute(SemanticAttributes.SERVER_ADDRESS, routerRequest.hostName())
+            .setAttribute(SemanticAttributes.URL_PATH, routerRequest.path())
+            .setAttribute(SemanticAttributes.HTTP_ROUTE, template)
             .startSpan();
 
         OpentelemetryContext.set(context, OpentelemetryContext.get(context).add(span));
@@ -58,6 +59,9 @@ public final class OpentelemetryHttpServerTracer implements HttpServerTracer {
             }
             if (exception != null) {
                 span.recordException(exception);
+            }
+            if (statusCode >= 0) {
+                span.setAttribute(SemanticAttributes.HTTP_RESPONSE_STATUS_CODE, statusCode);
             }
             span.end();
         };
