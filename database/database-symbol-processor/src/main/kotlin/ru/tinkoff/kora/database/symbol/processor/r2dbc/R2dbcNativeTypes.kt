@@ -11,6 +11,8 @@ object R2dbcNativeTypes {
     val types = listOf(
         R2dbcNativeType.of(Boolean::class.asTypeName()),
         R2dbcNativeType.of(Boolean::class.asTypeName().copy(true)),
+        R2dbcNativeType.of(Short::class.asTypeName()),
+        R2dbcNativeType.of(Short::class.asTypeName().copy(true)),
         R2dbcNativeType.of(Int::class.asTypeName()),
         R2dbcNativeType.of(Int::class.asTypeName().copy(true)),
         R2dbcNativeType.of(Long::class.asTypeName()),

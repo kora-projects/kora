@@ -27,6 +27,8 @@ object VertxNativeTypes {
     private val nativeTypes = listOf(
         nativeType(Boolean::class.asTypeName(), { row, idx -> CodeBlock.of("%L.getBoolean(%L)", row, idx) }),
         nativeType(Boolean::class.asTypeName().copy(true), { row, idx -> CodeBlock.of("%L.getBoolean(%L)", row, idx) }),
+        nativeType(Short::class.asTypeName(), { row, idx -> CodeBlock.of("%L.getShort(%L)", row, idx) }),
+        nativeType(Short::class.asTypeName().copy(true), { row, idx -> CodeBlock.of("%L.getShort(%L)", row, idx) }),
         nativeType(Int::class.asTypeName(), { row, idx -> CodeBlock.of("%L.getInteger(%L)", row, idx) }),
         nativeType(Int::class.asTypeName().copy(true), { row, idx -> CodeBlock.of("%L.getInteger(%L)", row, idx) }),
         nativeType(Long::class.asTypeName(), { row, idx -> CodeBlock.of("%L.getLong(%L)", row, idx) }),

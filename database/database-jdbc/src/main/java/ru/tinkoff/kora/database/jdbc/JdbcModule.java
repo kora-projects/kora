@@ -29,6 +29,16 @@ public interface JdbcModule extends DataBaseModule {
         };
     }
 
+    default JdbcRowMapper<Short> shortJdbcRowMapper() {
+        return rs -> {
+            var value = rs.getShort(1);
+            if (rs.wasNull()) {
+                return null;
+            }
+            return value;
+        };
+    }
+
     default JdbcRowMapper<Integer> integerJdbcRowMapper() {
         return rs -> {
             var value = rs.getInt(1);

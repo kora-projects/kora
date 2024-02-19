@@ -15,6 +15,8 @@ import java.util.*
 data class AllNativeTypesEntity(
     val booleanPrimitive: Boolean,
     val booleanBoxed: Boolean?,
+    val shortPrimitive: Short,
+    val shortBoxed: Short?,
     val integerPrimitive: Int,
     val integerBoxed: Int?,
     val longPrimitive: Long,

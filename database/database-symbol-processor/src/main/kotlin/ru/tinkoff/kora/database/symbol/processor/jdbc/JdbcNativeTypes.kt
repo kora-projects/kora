@@ -23,6 +23,18 @@ object JdbcNativeTypes {
             { stmt, idx -> CodeBlock.of("%N.setNull(%L, %T.BOOLEAN)", stmt, idx, Types::class) }
         ),
         JdbcNativeType.of(
+            Short::class.asTypeName(),
+            { rsName, i -> CodeBlock.of("%N.getShort(%L)", rsName, i) },
+            { stmt, variableName, idx -> CodeBlock.of("%N.setShort(%L, %L)", stmt, idx, variableName) },
+            { stmt, idx -> CodeBlock.of("%N.setNull(%L, %T.SMALLINT)", stmt, idx, Types::class) }
+        ),
+        JdbcNativeType.of(
+            Short::class.asTypeName().copy(true),
+            { rsName, i -> CodeBlock.of("%N.getShort(%L)", rsName, i) },
+            { stmt, variableName, idx -> CodeBlock.of("%N.setShort(%L, %L)", stmt, idx, variableName) },
+            { stmt, idx -> CodeBlock.of("%N.setNull(%L, %T.SMALLINT)", stmt, idx, Types::class) }
+        ),
+        JdbcNativeType.of(
             Int::class.asTypeName(),
             { rsName, i -> CodeBlock.of("%N.getInt(%L)", rsName, i) },
             { stmt, variableName, idx -> CodeBlock.of("%N.setInt(%L, %L)", stmt, idx, variableName) },

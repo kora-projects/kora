@@ -21,6 +21,12 @@ public interface CassandraModule extends DataBaseModule {
             : row.getString(0);
     }
 
+    default CassandraRowMapper<Short> shortCassandraRowMapper() {
+        return row -> row.isNull(0)
+            ? null
+            : row.getShort(1);
+    }
+
     default CassandraRowMapper<Integer> integerCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null

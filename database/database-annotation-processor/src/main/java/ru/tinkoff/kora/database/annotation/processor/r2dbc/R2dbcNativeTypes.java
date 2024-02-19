@@ -14,6 +14,8 @@ import java.util.Set;
 public class R2dbcNativeTypes {
 
     private static final Set<TypeName> nativeTypes = Set.of(
+        TypeName.SHORT,
+        TypeName.SHORT.box(),
         TypeName.INT,
         TypeName.INT.box(),
         TypeName.LONG,

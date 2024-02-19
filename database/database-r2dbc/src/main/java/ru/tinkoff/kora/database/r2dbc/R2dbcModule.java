@@ -33,6 +33,10 @@ public interface R2dbcModule extends DataBaseModule {
         return row -> row.get(0, String.class);
     }
 
+    default R2dbcRowMapper<Short> shortR2dbcRowMapper() {
+        return row -> row.get(0, Short.class);
+    }
+
     default R2dbcRowMapper<Integer> integerR2dbcRowMapper() {
         return row -> row.get(0, Integer.class);
     }

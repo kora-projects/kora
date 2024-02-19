@@ -28,6 +28,10 @@ public interface VertxDatabaseBaseModule extends NettyCommonModule, VertxCommonM
         return row -> row.getString(0);
     }
 
+    default VertxRowMapper<Short> shortVertxRowMapper() {
+        return row -> row.getShort(0);
+    }
+
     default VertxRowMapper<Integer> integerVertxRowMapper() {
         return row -> row.getInteger(0);
     }

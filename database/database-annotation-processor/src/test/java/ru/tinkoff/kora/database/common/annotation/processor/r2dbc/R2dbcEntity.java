@@ -16,6 +16,8 @@ public class R2dbcEntity {
     public record AllNativeTypesEntity(
         boolean booleanPrimitive,
         @Nullable Boolean booleanBoxed,
+        short shortPrimitive,
+        @Nullable Short shortBoxed,
         int integerPrimitive,
         @Nullable Integer integerBoxed,
         long longPrimitive,

@@ -21,6 +21,8 @@ public class VertxNativeTypes {
     private static final Map<TypeName, VertxNativeType> nativeTypes = Map.ofEntries(
         Map.entry(TypeName.BOOLEAN, (row, column) -> CodeBlock.of("$L.getBoolean($L)", row, column)),
         Map.entry(TypeName.BOOLEAN.box(), (row, column) -> CodeBlock.of("$L.getBoolean($L)", row, column)),
+        Map.entry(TypeName.SHORT, (row, column) -> CodeBlock.of("$L.getShort($L)", row, column)),
+        Map.entry(TypeName.SHORT.box(), (row, column) -> CodeBlock.of("$L.getShort($L)", row, column)),
         Map.entry(TypeName.INT, (row, column) -> CodeBlock.of("$L.getInteger($L)", row, column)),
         Map.entry(TypeName.INT.box(), (row, column) -> CodeBlock.of("$L.getInteger($L)", row, column)),
         Map.entry(TypeName.LONG, (row, column) -> CodeBlock.of("$L.getLong($L)", row, column)),

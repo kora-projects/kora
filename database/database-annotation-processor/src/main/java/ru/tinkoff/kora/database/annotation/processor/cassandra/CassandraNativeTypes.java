@@ -21,6 +21,12 @@ public class CassandraNativeTypes {
             (stmt, var, i) -> CodeBlock.of("$L.setBoolean($L, $L)", stmt, i, var)
         );
         var booleanBoxed = booleanPrimitive.boxed();
+        var shortPrimitive = CassandraNativeType.of(
+            TypeName.SHORT,
+            (rsName, i) -> CodeBlock.of("$L.getShort($L)", rsName, i),
+            (stmt, var, i) -> CodeBlock.of("$L.setShort($L, $L)", stmt, i, var)
+        );
+        var shortBoxed = shortPrimitive.boxed();
         var intPrimitive = CassandraNativeType.of(
             TypeName.INT,
             (rsName, i) -> CodeBlock.of("$L.getInt($L)", rsName, i),
@@ -89,6 +95,8 @@ public class CassandraNativeTypes {
         nativeTypes = List.of(
             booleanPrimitive,
             booleanBoxed,
+            shortPrimitive,
+            shortBoxed,
             intPrimitive,
             intBoxed,
             longPrimitive,

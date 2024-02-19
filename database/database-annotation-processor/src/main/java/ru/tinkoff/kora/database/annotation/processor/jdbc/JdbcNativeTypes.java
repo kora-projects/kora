@@ -7,6 +7,7 @@ import com.squareup.javapoet.TypeName;
 import jakarta.annotation.Nullable;
 
 import java.math.BigDecimal;
+import java.sql.Types;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,6 +24,13 @@ public class JdbcNativeTypes {
             (stmtName, i) -> CodeBlock.of("$L.setNull($L, $T.BOOLEAN)", stmtName, i, java.sql.Types.class)
         );
         var booleanBoxed = booleanPrimitive.boxed();
+        var shortPrimitive = JdbcNativeType.of(
+            TypeName.SHORT,
+            (rsName, i) -> CodeBlock.of("$L.getShort($L)", rsName, i),
+            (stmt, var, i) -> CodeBlock.of("$L.setShort($L, $L)", stmt, i, var),
+            (stmtName, i) -> CodeBlock.of("$L.setNull($L, $T.SMALLINT)", stmtName, i, java.sql.Types.class)
+        );
+        var shortBoxed = shortPrimitive.boxed();
         var intPrimitive = JdbcNativeType.of(
             TypeName.INT,
             (rsName, i) -> CodeBlock.of("$L.getInt($L)", rsName, i),
@@ -85,6 +93,8 @@ public class JdbcNativeTypes {
         nativeTypes = List.of(
             booleanPrimitive,
             booleanBoxed,
+            shortPrimitive,
+            shortBoxed,
             intPrimitive,
             intBoxed,
             longPrimitive,
