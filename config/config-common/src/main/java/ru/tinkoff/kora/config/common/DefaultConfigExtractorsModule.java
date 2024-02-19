@@ -6,6 +6,7 @@ import ru.tinkoff.kora.common.util.Either;
 import ru.tinkoff.kora.config.common.extractor.*;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.*;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -44,12 +45,20 @@ public interface DefaultConfigExtractorsModule {
         return new NumberConfigValueExtractor().map(BigDecimal::longValueExact);
     }
 
+    default ConfigValueExtractor<BigInteger> bigIntegerConfigValueExtractor() {
+        return new NumberConfigValueExtractor().map(BigDecimal::toBigInteger);
+    }
+
     default ConfigValueExtractor<Float> floatConfigValueExtractor() {
         return new NumberConfigValueExtractor().map(BigDecimal::floatValue);
     }
 
     default ConfigValueExtractor<Double> doubleConfigValueExtractor() {
         return new NumberConfigValueExtractor().map(BigDecimal::doubleValue);
+    }
+
+    default ConfigValueExtractor<BigDecimal> bigDecimalConfigValueExtractor() {
+        return new NumberConfigValueExtractor();
     }
 
     default ConfigValueExtractor<Boolean> booleanConfigValueExtractor() {

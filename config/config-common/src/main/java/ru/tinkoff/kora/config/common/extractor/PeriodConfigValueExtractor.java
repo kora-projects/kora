@@ -31,7 +31,7 @@ public class PeriodConfigValueExtractor implements ConfigValueExtractor<Period> 
 
         // this would be caught later anyway, but the error message
         // is more helpful if we check it here.
-        if (numberString.length() == 0)
+        if (numberString.isEmpty())
             throw new ConfigValueExtractionException(configValue.origin().config(), "No number in period value " + configValue.origin().path(), null);
 
         if (unitString.length() > 2 && !unitString.endsWith("s"))
