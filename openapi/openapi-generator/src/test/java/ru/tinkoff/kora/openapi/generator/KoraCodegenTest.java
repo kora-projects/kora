@@ -104,6 +104,23 @@ class KoraCodegenTest {
                 "skipFormModel", "false"
             ))
             .addAdditionalProperty("mode", mode)
+            .addAdditionalProperty("interceptors", """
+                {
+                  "*": [
+                    {
+                      "tag": "java.lang.String"
+                    }
+                  ]
+                }
+                """)
+            .addAdditionalProperty("tags", """
+                {
+                    "*": {
+                      "httpClientTag": "java.lang.String",
+                      "telemetryTag": "java.lang.String"
+                    }
+                  }
+                """)
             .addAdditionalProperty("enableServerValidation", name.contains("validation"))
             .addAdditionalProperty("clientConfigPrefix", "test");
         var processors = new Processor[]{new JsonAnnotationProcessor(), new HttpClientAnnotationProcessor(), new HttpControllerProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()};

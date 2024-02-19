@@ -5,34 +5,17 @@
  */
 package {{package}}
 
-import ru.tinkoff.kora.common.Mapping;
-import ru.tinkoff.kora.http.common.annotation.HttpRoute;
-import ru.tinkoff.kora.http.common.annotation.Path;
-import ru.tinkoff.kora.http.common.annotation.Header;
-import ru.tinkoff.kora.http.common.annotation.Query;
+import ru.tinkoff.kora.http.server.common.HttpServerInterceptor;
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.http.server.common.annotation.HttpController;
 
 {{#imports}}import {{import}}
 {{/imports}}
 {{#requestInDelegateParams}}
 import ru.tinkoff.kora.http.server.common.HttpServerRequest
 {{/requestInDelegateParams}}
-{{#hasAuthMethods}}
-import ru.tinkoff.kora.common.Tag;
-import ru.tinkoff.kora.http.common.annotation.InterceptWith;
-import ru.tinkoff.kora.http.server.common.HttpServerInterceptor;
-{{/hasAuthMethods}}{{#vendorExtensions.enableValidation}}{{^hasAuthMethods}}
-import ru.tinkoff.kora.http.common.annotation.InterceptWith;{{/hasAuthMethods}}
-import ru.tinkoff.kora.validation.common.annotation.Validate;
-import ru.tinkoff.kora.validation.common.annotation.Valid;
-import ru.tinkoff.kora.validation.common.annotation.Size;
-import ru.tinkoff.kora.validation.common.annotation.Pattern;
-import ru.tinkoff.kora.validation.common.annotation.Range;
-{{/vendorExtensions.enableValidation}}
 
-@ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
-@HttpController{{#vendorExtensions.enableValidation}}
+@ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
+@ru.tinkoff.kora.http.server.common.annotation.HttpController{{#vendorExtensions.enableValidation}}
 @ru.tinkoff.kora.common.Component{{/vendorExtensions.enableValidation}}
 {{#vendorExtensions.enableValidation}}open {{/vendorExtensions.enableValidation}}class {{classname}}Controller(private val delegate: {{classname}}Delegate) {
 {{#operations}}
@@ -56,7 +39,7 @@ import ru.tinkoff.kora.validation.common.annotation.Range;
      * @see <a href="{{url}}">{{summary}} Documentation</a>
     {{/externalDocs}}
      */
-    @HttpRoute(method = "{{httpMethod}}", path = "{{path}}"){{#implicitHeaders}}
+    @ru.tinkoff.kora.http.common.annotation.HttpRoute(method = "{{httpMethod}}", path = "{{path}}"){{#implicitHeaders}}
     @ApiImplicitParams({
     {{#headerParams}}
      TODO implicit header
@@ -64,11 +47,19 @@ import ru.tinkoff.kora.validation.common.annotation.Range;
     {{/headerParams}}
     })
     {{/implicitHeaders}}{{#hasAuthMethods}}
-    @InterceptWith(tag = Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}::class), value = HttpServerInterceptor::class){{/hasAuthMethods}}{{#vendorExtensions.x-validate}}
-    @InterceptWith(ru.tinkoff.kora.validation.module.http.server.ValidationHttpServerInterceptor::class)
-    @Validate
+    @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = ru.tinkoff.kora.common.Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}::class), value = HttpServerInterceptor::class){{/hasAuthMethods}}{{#vendorExtensions.x-validate}}
+    @ru.tinkoff.kora.http.common.annotation.InterceptWith(ru.tinkoff.kora.validation.module.http.server.ValidationHttpServerInterceptor::class)
+    @ru.tinkoff.kora.validation.common.annotation.Validate
     {{/vendorExtensions.x-validate}}
-    @Mapping({{classname}}ServerResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ResponseMapper::class)
+    {{#koraInterceptors}}
+    {{#interceptorTags}}
+    @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = ru.tinkoff.kora.common.Tag(value = [{{interceptorTags}}]), value = {{interceptorImpl}})
+    {{/interceptorTags}}
+    {{^interceptorTags}}
+    @ru.tinkoff.kora.http.common.annotation.InterceptWith({{interceptorImpl}})
+    {{/interceptorTags}}
+    {{/koraInterceptors}}
+    @ru.tinkoff.kora.common.Mapping({{classname}}ServerResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ResponseMapper::class)
     {{#vendorExtensions.enableValidation}}open {{/vendorExtensions.enableValidation}}{{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest: HttpServerRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}{{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {
       return this.delegate.{{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}
         {{#allParams}}{{#lambda.trim}}

@@ -11,7 +11,7 @@ package {{package}}
 import ru.tinkoff.kora.http.server.common.HttpServerRequest
 {{/requestInDelegateParams}}
 
-@ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
+@ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
 interface {{classname}}Delegate {
 {{#operations}}
 {{#operation}}

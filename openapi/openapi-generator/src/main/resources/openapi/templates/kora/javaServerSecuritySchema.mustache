@@ -8,9 +8,7 @@ package {{apiPackage}};
 import java.util.function.Function;
 
 import ru.tinkoff.kora.common.Context;
-import ru.tinkoff.kora.common.Module;
 import ru.tinkoff.kora.common.DefaultComponent;
-import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.Principal;
 
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
@@ -29,8 +27,8 @@ import ru.tinkoff.kora.http.server.common.auth.*;
 
 
 
-@Module
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
+@ru.tinkoff.kora.common.Module
 public interface ApiSecurity {
 {{#vendorExtensions.tags}}
     static final class {{.}} {}
@@ -41,7 +39,7 @@ public interface ApiSecurity {
         private final HttpServerPrincipalExtractor<{{#isOAuth}}PrincipalWithScopes{{/isOAuth}}{{^isOAuth}}Principal{{/isOAuth}}> {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}};
     {{/methods}}
         public {{name}}HttpServerInterceptor(
-        {{#methods}}  @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class)
+        {{#methods}}  @ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class)
           HttpServerPrincipalExtractor<{{#isOAuth}}PrincipalWithScopes{{/isOAuth}}{{^isOAuth}}Principal{{/isOAuth}}> {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}{{^vendorExtensions.isLast}},
         {{/vendorExtensions.isLast}}{{/methods}}
         ) { {{#methods}}
@@ -106,10 +104,10 @@ public interface ApiSecurity {
         }
     }
 
-    @Tag({{name}}.class)
+    @ru.tinkoff.kora.common.Tag({{name}}.class)
     @DefaultComponent
     default {{name}}HttpServerInterceptor {{name}}HttpServerInterceptor({{#methods}}
-      @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class) HttpServerPrincipalExtractor<{{#isOAuth}}PrincipalWithScopes{{/isOAuth}}{{^isOAuth}}Principal{{/isOAuth}}> {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}{{^vendorExtensions.isLast}},
+      @ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class) HttpServerPrincipalExtractor<{{#isOAuth}}PrincipalWithScopes{{/isOAuth}}{{^isOAuth}}Principal{{/isOAuth}}> {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}{{^vendorExtensions.isLast}},
       {{/vendorExtensions.isLast}}{{/methods}}) {
         return new {{name}}HttpServerInterceptor({{#methods}}{{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}{{^vendorExtensions.isLast}}, {{/vendorExtensions.isLast}}{{/methods}});
     }

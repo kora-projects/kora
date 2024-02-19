@@ -23,7 +23,7 @@
       }
     }
 
-    @Component
+    @ru.tinkoff.kora.common.Component
     class {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}JsonWriter(valueWriter: ru.tinkoff.kora.json.common.JsonWriter<{{{dataType}}}>)
         : ru.tinkoff.kora.json.common.JsonWriter<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> {
       private val delegate = ru.tinkoff.kora.json.common.EnumJsonWriter(
@@ -37,7 +37,7 @@
       }
     }
 
-    @Component
+    @ru.tinkoff.kora.common.Component
     class {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}JsonReader(valueReader: ru.tinkoff.kora.json.common.JsonReader<{{{dataType}}}>)
         : ru.tinkoff.kora.json.common.JsonReader<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> {
       private val delegate = ru.tinkoff.kora.json.common.EnumJsonReader(
@@ -50,7 +50,7 @@
         return this.delegate.read(parser)!!
       }
     }
-    @Component
+    @ru.tinkoff.kora.common.Component
     class {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}NullableJsonWriter(valueWriter: ru.tinkoff.kora.json.common.JsonWriter<{{{dataType}}}>)
         : ru.tinkoff.kora.json.common.JsonWriter<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}?> {
       private val delegate = ru.tinkoff.kora.json.common.EnumJsonWriter(
@@ -64,7 +64,7 @@
       }
     }
 
-    @Component
+    @ru.tinkoff.kora.common.Component
     class {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}NullableJsonReader(valueReader: ru.tinkoff.kora.json.common.JsonReader<{{{dataType}}}>)
         : ru.tinkoff.kora.json.common.JsonReader<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}?> {
       private val delegate = ru.tinkoff.kora.json.common.EnumJsonReader(
@@ -79,7 +79,7 @@
     }
 {{^isClient}}
 
-    @Component
+    @ru.tinkoff.kora.common.Component
     class {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}StringParameterReader : ru.tinkoff.kora.http.server.common.handler.StringParameterReader<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> {
       private val delegate = ru.tinkoff.kora.http.server.common.handler.EnumStringParameterReader(
         {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}.values(),
@@ -93,7 +93,7 @@
 {{/isClient}}
 {{#isClient}}
 
-    @Component
+    @ru.tinkoff.kora.common.Component
     class {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}StringParameterConverter : ru.tinkoff.kora.http.client.common.writer.StringParameterConverter<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> {
       private val delegate = ru.tinkoff.kora.http.client.common.writer.EnumStringParameterConverter(
         {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}.values(),

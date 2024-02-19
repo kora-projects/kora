@@ -1,9 +1,9 @@
 {{#allParams}}      {{^isFormParam}}
-      {{#vendorExtensions.x-validate}}{{#isModel}}@Valid{{/isModel}}
-      {{#vendorExtensions.x-has-min-max}}@Range(from = {{minimum}}, to = {{maximum}}, boundary = Range.Boundary.{{#exclusiveMinimum}}EXCLUSIVE{{/exclusiveMinimum}}{{^exclusiveMinimum}}INCLUSIVE{{/exclusiveMinimum}}_{{#exclusiveMaximum}}EXCLUSIVE{{/exclusiveMaximum}}{{^exclusiveMaximum}}INCLUSIVE{{/exclusiveMaximum}})
-      {{/vendorExtensions.x-has-min-max}}{{#vendorExtensions.x-has-min-max-items}}@Size(min = {{minItems}}, max = {{maxItems}})
-      {{/vendorExtensions.x-has-min-max-items}}{{#vendorExtensions.x-has-min-max-length}}@Size(min = {{minLength}}, max = {{maxLength}})
-      {{/vendorExtensions.x-has-min-max-length}}{{#vendorExtensions.x-has-pattern}}@Pattern("{{{pattern}}}")
+      {{#vendorExtensions.x-validate}}{{#isModel}}@ru.tinkoff.kora.validation.common.annotation.Valid{{/isModel}}
+      {{#vendorExtensions.x-has-min-max}}@ru.tinkoff.kora.validation.common.annotation.Range(from = {{minimum}}, to = {{maximum}}, boundary = ru.tinkoff.kora.validation.common.annotation.Range.Boundary.{{#exclusiveMinimum}}EXCLUSIVE{{/exclusiveMinimum}}{{^exclusiveMinimum}}INCLUSIVE{{/exclusiveMinimum}}_{{#exclusiveMaximum}}EXCLUSIVE{{/exclusiveMaximum}}{{^exclusiveMaximum}}INCLUSIVE{{/exclusiveMaximum}})
+      {{/vendorExtensions.x-has-min-max}}{{#vendorExtensions.x-has-min-max-items}}@ru.tinkoff.kora.validation.common.annotation.Size(min = {{minItems}}, max = {{maxItems}})
+      {{/vendorExtensions.x-has-min-max-items}}{{#vendorExtensions.x-has-min-max-length}}@ru.tinkoff.kora.validation.common.annotation.Size(min = {{minLength}}, max = {{maxLength}})
+      {{/vendorExtensions.x-has-min-max-length}}{{#vendorExtensions.x-has-pattern}}@ru.tinkoff.kora.validation.common.annotation.Pattern("{{{pattern}}}")
       {{/vendorExtensions.x-has-pattern}}{{/vendorExtensions.x-validate}}{{#isQueryParam}}@ru.tinkoff.kora.http.common.annotation.Query("{{baseName}}")
       {{/isQueryParam}}{{#isPathParam}}@ru.tinkoff.kora.http.common.annotation.Path("{{baseName}}")
       {{/isPathParam}}{{#isHeaderParam}}@ru.tinkoff.kora.http.common.annotation.Header("{{baseName}}")

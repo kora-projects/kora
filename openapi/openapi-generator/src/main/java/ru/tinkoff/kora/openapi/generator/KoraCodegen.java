@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.openapi.generator;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.common.base.Strings;
@@ -100,10 +101,15 @@ public class KoraCodegen extends DefaultCodegen {
         public boolean isJava() {
             return this != KOTLIN_CLIENT && this != KOTLIN_SERVER && this != KOTLIN_SUSPEND_CLIENT && this != KOTLIN_SUSPEND_SERVER;
         }
+
+        public boolean isKotlin() {
+            return !isJava();
+        }
     }
 
-    record TagData(@Nullable String httpClientTag, @Nullable String telemetryTag) {
-    }
+    record TagClient(@Nullable String httpClientTag, @Nullable String telemetryTag) {}
+
+    record Interceptor(@Nullable String type, @Nullable Object tag) {}
 
     @Override
     public String getName() {
@@ -117,7 +123,8 @@ public class KoraCodegen extends DefaultCodegen {
         String primaryAuth,
         String clientConfigPrefix,
         String securityConfigPrefix,
-        Map<String, TagData> tags,
+        Map<String, TagClient> clientTags,
+        Map<String, List<Interceptor>> interceptors,
         boolean requestInDelegateParams
     ) {
         static List<CliOption> cliOptions() {
@@ -125,10 +132,11 @@ public class KoraCodegen extends DefaultCodegen {
             cliOptions.add(CliOption.newString(CODEGEN_MODE, "Generation mode (one of java, reactive or kotlin)"));
             cliOptions.add(CliOption.newString(SECURITY_CONFIG_PREFIX, "Config prefix for security config parsers"));
             cliOptions.add(CliOption.newString(CLIENT_CONFIG_PREFIX, "Generated client config prefix"));
-            cliOptions.add(new CliOption("tags", "Json containing http client tags configuration for apis", "string"));
             cliOptions.add(CliOption.newString(JSON_ANNOTATION, "Json annotation tag to place on body and other json related params"));
+            cliOptions.add(CliOption.newString(CLIENT_TAGS, "Json containing http client tags configuration for apis"));
+            cliOptions.add(CliOption.newString(INTERCEPTORS, "Json containing interceptors for HTTP server/client"));
             cliOptions.add(CliOption.newBoolean(ENABLE_VALIDATION, "Generate validation related annotation on models and controllers"));
-            cliOptions.add(CliOption.newBoolean("requestInDelegateParams", "Generate HttpServerRequest parameter in delegate methods"));
+            cliOptions.add(CliOption.newBoolean(REQUEST_DELEGATE_PARAMS, "Generate HttpServerRequest parameter in delegate methods"));
 
             return cliOptions;
         }
@@ -140,7 +148,8 @@ public class KoraCodegen extends DefaultCodegen {
             var primaryAuth = (String) null;
             var clientConfigPrefix = (String) null;
             var securityConfigPrefix = (String) null;
-            var tags = new HashMap<String, TagData>();
+            var clientTags = new HashMap<String, TagClient>();
+            var interceptors = new HashMap<String, List<Interceptor>>();
             var requestInDelegateParams = false;
 
             if (additionalProperties.containsKey(CODEGEN_MODE)) {
@@ -149,10 +158,20 @@ public class KoraCodegen extends DefaultCodegen {
             if (additionalProperties.containsKey(JSON_ANNOTATION)) {
                 jsonAnnotation = additionalProperties.get(JSON_ANNOTATION).toString();
             }
-            if (additionalProperties.containsKey("tags")) {
-                var tagsJson = additionalProperties.get("tags").toString();
+            if (additionalProperties.containsKey(CLIENT_TAGS)) {
+                var clientTagsJson = additionalProperties.get(CLIENT_TAGS).toString();
                 try {
-                    tags = new ObjectMapper().readerFor(TypeFactory.defaultInstance().constructMapType(Map.class, String.class, TagData.class)).readValue(tagsJson);
+                    clientTags = new ObjectMapper().readerFor(TypeFactory.defaultInstance().constructMapType(Map.class, String.class, TagClient.class)).readValue(clientTagsJson);
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            if (additionalProperties.containsKey(INTERCEPTORS)) {
+                var interceptorJson = additionalProperties.get(INTERCEPTORS).toString();
+                try {
+                    interceptors = new ObjectMapper().readerFor(TypeFactory.defaultInstance()
+                            .constructType(new TypeReference<Map<String, List<Interceptor>>>() {}))
+                        .readValue(interceptorJson);
                 } catch (JsonProcessingException e) {
                     throw new RuntimeException(e);
                 }
@@ -169,11 +188,11 @@ public class KoraCodegen extends DefaultCodegen {
             if (additionalProperties.containsKey(ENABLE_VALIDATION) && codegenMode.isServer()) {
                 enableServerValidation = Boolean.parseBoolean(additionalProperties.get(ENABLE_VALIDATION).toString());
             }
-            if (additionalProperties.containsKey("requestInDelegateParams") && codegenMode.isServer()) {
-                requestInDelegateParams = Boolean.parseBoolean(additionalProperties.get("requestInDelegateParams").toString());
+            if (additionalProperties.containsKey(REQUEST_DELEGATE_PARAMS) && codegenMode.isServer()) {
+                requestInDelegateParams = Boolean.parseBoolean(additionalProperties.get(REQUEST_DELEGATE_PARAMS).toString());
             }
 
-            return new CodegenParams(codegenMode, jsonAnnotation, enableServerValidation, primaryAuth, clientConfigPrefix, securityConfigPrefix, tags, requestInDelegateParams);
+            return new CodegenParams(codegenMode, jsonAnnotation, enableServerValidation, primaryAuth, clientConfigPrefix, securityConfigPrefix, clientTags, interceptors, requestInDelegateParams);
         }
 
         void processAdditionalProperties(Map<String, Object> additionalProperties) {
@@ -224,6 +243,9 @@ public class KoraCodegen extends DefaultCodegen {
     public static final String PRIMARY_AUTH = "primaryAuth";
     public static final String CLIENT_CONFIG_PREFIX = "clientConfigPrefix";
     public static final String SECURITY_CONFIG_PREFIX = "securityConfigPrefix";
+    public static final String CLIENT_TAGS = "tags";
+    public static final String REQUEST_DELEGATE_PARAMS = "requestInDelegateParams";
+    public static final String INTERCEPTORS = "interceptors";
 
     protected String invokerPackage = "org.openapitools";
     protected boolean fullJavaUtil;
@@ -1365,10 +1387,11 @@ public class KoraCodegen extends DefaultCodegen {
                 itr.remove();
             }
         }
+
         var httpClientAnnotationParams = new HashMap<String, String>();
 
-        record AuthMethodGroup(String name, List<CodegenSecurity> methods) {
-        }
+        record AuthMethodGroup(String name, List<CodegenSecurity> methods) {}
+
         var authMethods = (List<AuthMethodGroup>) this.vendorExtensions.computeIfAbsent("authMethods", k -> new ArrayList<AuthMethodGroup>());
         var tags = (Set<String>) this.vendorExtensions.computeIfAbsent("tags", k -> new TreeSet<String>());
         var operations = (Map<String, Object>) objs.get("operations");
@@ -1384,24 +1407,90 @@ public class KoraCodegen extends DefaultCodegen {
                 }
             }
 
-            TagData tagData = null;
-            for (var entry : params.tags.entrySet()) {
+            TagClient tagClient = null;
+            for (var entry : params.clientTags.entrySet()) {
                 if (op.tags.stream().anyMatch(t -> t.getName().equals(entry.getKey()))) {
-                    tagData = entry.getValue();
+                    tagClient = entry.getValue();
                     break;
                 }
             }
-            if (tagData == null) {
-                tagData = params.tags.get("*");
+            if (tagClient == null) {
+                tagClient = params.clientTags.get("*");
             }
-            if (tagData != null) {
-                if (tagData.httpClientTag != null) {
-                    httpClientAnnotationParams.put("httpClientTag", tagData.httpClientTag);
+            if (tagClient != null) {
+                String suffix = params.codegenMode.isKotlin() ? "::class" : ".class";
+                if (tagClient.httpClientTag != null) {
+                    String httpTag = tagClient.httpClientTag.endsWith(suffix) ? tagClient.httpClientTag : tagClient.httpClientTag + suffix;
+                    httpTag = (params.codegenMode.isKotlin()) ? "[" + httpTag + "]" : httpTag;
+                    httpClientAnnotationParams.put("httpClientTag", httpTag);
                 }
-                if (tagData.telemetryTag != null) {
-                    httpClientAnnotationParams.put("telemetryTag", tagData.telemetryTag);
+                if (tagClient.telemetryTag != null) {
+                    String telemetryTag = tagClient.telemetryTag.endsWith(suffix) ? tagClient.telemetryTag : tagClient.telemetryTag + suffix;
+                    telemetryTag = (params.codegenMode.isKotlin()) ? "[" + telemetryTag + "]" : telemetryTag;
+                    httpClientAnnotationParams.put("telemetryTag", telemetryTag);
                 }
             }
+
+            List<Interceptor> interceptors = null;
+            for (var entry : params.interceptors.entrySet()) {
+                if (op.tags.stream().anyMatch(t -> t.getName().equals(entry.getKey()))) {
+                    interceptors = entry.getValue();
+                    break;
+                }
+            }
+            if (interceptors == null) {
+                interceptors = params.interceptors.get("*");
+            }
+            if (interceptors != null && !interceptors.isEmpty()) {
+                final String serverDefault = "ru.tinkoff.kora.http.server.common.HttpServerInterceptor";
+                final String clientDefault = "ru.tinkoff.kora.http.client.common.interceptor.HttpClientInterceptor";
+
+                var interceptorTemplates = interceptors.stream()
+                    .filter(i -> i.type != null || i.tag != null)
+                    .map(i -> {
+                        String implValue;
+                        if (i.type() == null) {
+                            implValue = (params.codegenMode.isClient())
+                                ? clientDefault
+                                : serverDefault;
+                        } else {
+                            implValue = i.type();
+                        }
+
+                        String suffix = params.codegenMode.isKotlin() ? "::class" : ".class";
+                        String impl = implValue.endsWith(suffix) ? implValue : implValue + suffix;
+                        List<String> tag;
+                        if(i.tag() == null) {
+                            tag = null;
+                        } else if(i.tag() instanceof String ts) {
+                            tag = List.of(ts);
+                        } else if(i.tag() instanceof List tls) {
+                            tag = tls.stream()
+                                .<String>map(Object::toString)
+                                .toList();
+                        } else {
+                            throw new IllegalArgumentException("Unknown interceptors tag value: " + i.tag());
+                        }
+
+                        if (tag == null || tag.isEmpty()) {
+                            return Map.of("interceptorImpl", impl);
+                        } else {
+                            String interTags = tag.stream()
+                                .map(t -> t.endsWith(suffix) ? t : t + suffix)
+                                .collect(Collectors.joining(", "));
+
+                            return Map.of(
+                                "interceptorImpl", impl,
+                                "interceptorTags", interTags
+                            );
+                        }
+                    }).toList();
+
+                if (!interceptorTemplates.isEmpty()) {
+                    objs.put("koraInterceptors", interceptorTemplates);
+                }
+            }
+
             op.vendorExtensions.put("requestInDelegateParams", params.requestInDelegateParams);
             op.vendorExtensions.put("x-java-import", operationImports);
             var multipartForm = op.consumes != null && op.consumes.stream()

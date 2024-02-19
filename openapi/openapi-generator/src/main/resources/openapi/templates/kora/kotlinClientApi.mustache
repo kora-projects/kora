@@ -7,21 +7,11 @@ package {{package}}
 
 {{#imports}}import {{import}}
 {{/imports}}
-import ru.tinkoff.kora.http.client.common.annotation.HttpClient;
-import ru.tinkoff.kora.http.common.annotation.HttpRoute;
 import ru.tinkoff.kora.http.client.common.annotation.ResponseCodeMapper;
-import ru.tinkoff.kora.common.Mapping;
-import ru.tinkoff.kora.http.common.annotation.Path;
-import ru.tinkoff.kora.http.common.annotation.Header;
-import ru.tinkoff.kora.http.common.annotation.Query;
-{{#hasAuthMethods}}
-import ru.tinkoff.kora.common.Tag;
-import ru.tinkoff.kora.http.common.annotation.InterceptWith;
 import ru.tinkoff.kora.http.client.common.interceptor.HttpClientInterceptor;
-{{/hasAuthMethods}}
 
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
-@HttpClient{{{annotationParams}}}
+@ru.tinkoff.kora.http.client.common.annotation.HttpClient{{{annotationParams}}}
 interface {{classname}} {
 {{#operations}}
 {{#operation}}
@@ -44,7 +34,7 @@ interface {{classname}} {
      * @see <a href="{{url}}">{{summary}} Documentation</a>
     {{/externalDocs}}
      */
-    @HttpRoute(method = "{{httpMethod}}", path = "{{path}}"){{#implicitHeaders}}
+    @ru.tinkoff.kora.http.common.annotation.HttpRoute(method = "{{httpMethod}}", path = "{{path}}"){{#implicitHeaders}}
     @ApiImplicitParams({
     {{#headerParams}}
      TODO implisit header
@@ -52,8 +42,18 @@ interface {{classname}} {
     {{/headerParams}}
     })
     {{/implicitHeaders}}{{#responses}}
-    @ResponseCodeMapper(code = {{#isDefault}}-1{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, mapper = {{classname}}ClientResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper::class){{/responses}}{{#hasAuthMethods}}
-    @InterceptWith(tag = Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}::class), value = HttpClientInterceptor::class){{/hasAuthMethods}}
+    @ResponseCodeMapper(code = {{#isDefault}}-1{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, mapper = {{classname}}ClientResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper::class){{/responses}}
+    {{#hasAuthMethods}}
+    @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = ru.tinkoff.kora.common.Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}::class), value = HttpClientInterceptor::class)
+    {{/hasAuthMethods}}
+    {{#koraInterceptors}}
+    {{#interceptorTags}}
+    @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = ru.tinkoff.kora.common.Tag(value = [{{interceptorTags}}]), value = {{interceptorImpl}})
+    {{/interceptorTags}}
+    {{^interceptorTags}}
+    @ru.tinkoff.kora.http.common.annotation.InterceptWith({{interceptorImpl}})
+    {{/interceptorTags}}
+    {{/koraInterceptors}}
     {{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}({{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse
 
 {{#hasFormParams}}
