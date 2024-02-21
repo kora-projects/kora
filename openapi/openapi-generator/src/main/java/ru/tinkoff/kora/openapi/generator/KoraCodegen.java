@@ -1505,6 +1505,9 @@ public class KoraCodegen extends DefaultCodegen {
                 var hasData = response.hasHeaders || response.isDefault || response.dataType != null;
                 response.vendorExtensions.put("jsonTag", params.jsonAnnotation);
                 response.vendorExtensions.put("hasData", hasData);
+                if (response.isBinary && !"byte[]".equals(response.dataType) && !"ByteBuffer".equals(response.dataType) && !"String".equals(response.dataType)) {
+                    response.vendorExtensions.put("isBinaryUnknownType", true);
+                }
             }
             if (op.bodyParam != null) {
                 if (op.bodyParam.isBinary) {

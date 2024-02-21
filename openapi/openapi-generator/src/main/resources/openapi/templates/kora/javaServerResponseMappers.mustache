@@ -1,5 +1,6 @@
 package {{package}};
 
+import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseEntityMapper;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
@@ -37,7 +38,7 @@ public interface {{classname}}ServerResponseMappers {
       {{/responses}}) {
       {{#responses}}
       {{#dataType}}
-      this.response{{code}}Delegate = new ru.tinkoff.kora.http.server.common.handler.HttpServerResponseEntityMapper<>(response{{code}}Delegate);
+      this.response{{code}}Delegate = new HttpServerResponseEntityMapper<>(response{{code}}Delegate);
       {{/dataType}}
       {{/responses}}
     }
@@ -46,13 +47,23 @@ public interface {{classname}}ServerResponseMappers {
     public HttpServerResponse apply(Context ctx, HttpServerRequest request, {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse response) throws java.io.IOException { {{#responses}}{{^vendorExtensions.singleResponse}}
       if (response instanceof {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse rs) { {{/vendorExtensions.singleResponse}}{{#vendorExtensions.singleResponse}}
       var rs = response;{{/vendorExtensions.singleResponse}}
-        var headers = HttpHeaders.of();{{#headers}}{{#required}}
+        {{#vendorExtensions.isBinaryUnknownType}}
+        var headers = HttpHeaders.of("content-type", "{{{vendorExtensions.contentType}}}");
+        {{/vendorExtensions.isBinaryUnknownType}}
+        {{^vendorExtensions.isBinaryUnknownType}}
+        var headers = HttpHeaders.of();
+        {{/vendorExtensions.isBinaryUnknownType}}{{#headers}}{{#required}}
         headers.set("{{baseName}}", rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}());{{/required}}{{^required}}
         if (rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}() != null) {
           headers.set("{{baseName}}", rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}());
         }{{/required}}{{/headers}}
-        {{#isBinary}}
-        return HttpServerResponse.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, HttpBody.of(ctx, "{{{vendorExtensions.contentType}}}", rs.content()));{{/isBinary}}{{^isBinary}}{{^dataType}}
+        {{#isBinary}}{{#vendorExtensions.isBinaryUnknownType}}
+        var entity = HttpResponseEntity.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, rs.content());
+        return this.response{{code}}Delegate.apply(ctx, request, entity);
+        {{/vendorExtensions.isBinaryUnknownType}}{{^vendorExtensions.isBinaryUnknownType}}
+        return HttpServerResponse.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, HttpBody.of(ctx, "{{{vendorExtensions.contentType}}}", rs.content()));
+        {{/vendorExtensions.isBinaryUnknownType}}{{/isBinary}}
+        {{^isBinary}}{{^dataType}}
         return HttpServerResponse.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers);{{/dataType}}{{#dataType}}
         var entity = HttpResponseEntity.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, rs.content());
         return this.response{{code}}Delegate.apply(ctx, request, entity);{{/dataType}}{{/isBinary}}{{^vendorExtensions.singleResponse}}

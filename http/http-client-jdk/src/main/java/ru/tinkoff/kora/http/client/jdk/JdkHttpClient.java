@@ -33,7 +33,7 @@ public class JdkHttpClient implements HttpClient {
             if (header.getKey().equalsIgnoreCase("content-length")) {
                 continue;
             }
-            if (header.getKey().equalsIgnoreCase("content-type")) {
+            if (header.getKey().equalsIgnoreCase("content-type") && request.body().contentType() != null) {
                 continue;
             }
             for (var value : header.getValue()) {

@@ -121,15 +121,17 @@ public class UndertowExchangeProcessor implements Runnable {
         );
 
         exchange.getResponseHeaders().put(Headers.SERVER, "kora/undertow");
-        this.setHeaders(exchange.getResponseHeaders(), headers);
         var body = httpResponse.body();
         if (body == null) {
+            this.setHeaders(exchange.getResponseHeaders(), headers, null);
             exchange.addExchangeCompleteListener((e, nextListener) -> {
                 response.closeSendResponseSuccess(e.getStatusCode(), httpResponse.headers(), error);
                 nextListener.proceed();
             });
             exchange.endExchange();
             return;
+        } else {
+            this.setHeaders(exchange.getResponseHeaders(), headers, body.contentType());
         }
 
         var contentType = body.contentType();
@@ -175,13 +177,13 @@ public class UndertowExchangeProcessor implements Runnable {
         }
     }
 
-    private void setHeaders(HeaderMap responseHeaders, HttpHeaders headers) {
+    private void setHeaders(HeaderMap responseHeaders, HttpHeaders headers, @Nullable String contentType) {
         for (var header : headers) {
             var key = header.getKey();
             if (key.equals("server")) {
                 continue;
             }
-            if (key.equals("content-type")) {
+            if (key.equals("content-type") && contentType != null) {
                 continue;
             }
             if (key.equals("content-length")) {
@@ -257,9 +259,9 @@ public class UndertowExchangeProcessor implements Runnable {
             return;
         }
         exchange.setStatusCode(rs.code());
-        this.setHeaders(exchange.getRequestHeaders(), rs.headers());
         var body = rs.body();
         if (body == null) {
+            this.setHeaders(exchange.getRequestHeaders(), rs.headers(), null);
             exchange.addExchangeCompleteListener((exchange, nextListener) -> {
                 response.closeSendResponseSuccess(exchange.getStatusCode(), rs.headers(), error);
                 nextListener.proceed();
@@ -267,7 +269,10 @@ public class UndertowExchangeProcessor implements Runnable {
             exchange.setResponseContentLength(0);
             exchange.endExchange();
             return;
+        } else {
+            this.setHeaders(exchange.getResponseHeaders(), rs.headers(), null);
         }
+
         exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
         var full = body.getFullContentIfAvailable();
         if (full != null) {
