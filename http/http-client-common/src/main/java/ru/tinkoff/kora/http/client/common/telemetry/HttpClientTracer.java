@@ -6,7 +6,7 @@ import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 
 public interface HttpClientTracer {
     interface HttpClientSpan {
-        void close(@Nullable Throwable exception);
+        void close(int code, @Nullable Throwable exception);
     }
 
     HttpClientSpan createSpan(Context ctx, HttpClientRequest request);

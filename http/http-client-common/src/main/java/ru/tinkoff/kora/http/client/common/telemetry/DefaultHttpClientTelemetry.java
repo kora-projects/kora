@@ -220,7 +220,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         }
 
         public void onClose(Throwable throwable) {
-            if (span != null) span.close(throwable);
+            if (span != null) span.close(-1, throwable);
             var processingTime = System.nanoTime() - data.startTime();
             if (metrics != null) {
                 metrics.record(-1, processingTime, request.method(), data.host(), data.scheme(), data.target());
@@ -238,7 +238,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         public void onClose(int code, @Nullable HttpHeaders headers, @Nullable String contentType, @Nullable List<ByteBuffer> body) {
             var responseBodyCharset = logger == null || !logger.logResponseBody() ? null : detectCharset(contentType);
             if (span != null) {
-                span.close(null);
+                span.close(code, null);
             }
             var processingTime = System.nanoTime() - data.startTime();
             if (metrics != null) {

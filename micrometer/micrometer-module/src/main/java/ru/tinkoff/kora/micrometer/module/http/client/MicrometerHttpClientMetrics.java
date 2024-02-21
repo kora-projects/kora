@@ -2,6 +2,7 @@ package ru.tinkoff.kora.micrometer.module.http.client;
 
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.opentelemetry.semconv.SemanticAttributes;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientMetrics;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
@@ -28,9 +29,11 @@ public final class MicrometerHttpClientMetrics implements HttpClientMetrics {
             .serviceLevelObjectives(this.config.slo())
             .baseUnit("milliseconds")
             .tag("http.method", key.method)
-            .tag("http.host", key.host)
-            .tag("http.scheme", key.scheme)
-            .tag("http.target", key.target)
+            .tag(SemanticAttributes.HTTP_REQUEST_METHOD.getKey(), key.method)
+            .tag(SemanticAttributes.SERVER_ADDRESS.getKey(), key.host)
+            .tag(SemanticAttributes.URL_SCHEME.getKey(), key.scheme)
+            .tag(SemanticAttributes.HTTP_TARGET.getKey(), key.target)
+            .tag(SemanticAttributes.HTTP_RESPONSE_STATUS_CODE.getKey(), Integer.toString(key.statusCode()))
             .tag("http.status_code", Integer.toString(key.statusCode()));
         return builder.register(meterRegistry);
     }

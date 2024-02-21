@@ -29,7 +29,7 @@ public final class OpentelemetryHttpClientTracer implements HttpClientTracer {
             .setParent(otctx.getContext());
 
         var targetUri = request.uri();
-        if (targetUri.getRawUserInfo() != null) {
+        if (targetUri.getRawUserInfo() != null || targetUri.getRawQuery() != null) {
             try {
                 targetUri = new URI(
                     targetUri.getScheme(),
@@ -37,7 +37,7 @@ public final class OpentelemetryHttpClientTracer implements HttpClientTracer {
                     targetUri.getHost(),
                     targetUri.getPort(),
                     targetUri.getPath(),
-                    targetUri.getQuery(),
+                    null,
                     targetUri.getFragment()
                 );
             } catch (URISyntaxException e) {
@@ -45,10 +45,12 @@ public final class OpentelemetryHttpClientTracer implements HttpClientTracer {
             }
         }
 
-
-        builder.setAttribute(SemanticAttributes.HTTP_METHOD, request.method());
+        builder.setAttribute(SemanticAttributes.HTTP_REQUEST_METHOD, request.method());
         if (targetUri != null) {
-            builder.setAttribute(SemanticAttributes.HTTP_URL, targetUri.toString());
+            builder.setAttribute(SemanticAttributes.SERVER_ADDRESS, targetUri.getHost());
+            builder.setAttribute(SemanticAttributes.SERVER_PORT, (long) targetUri.getPort());
+            builder.setAttribute(SemanticAttributes.URL_SCHEME, targetUri.getScheme());
+            builder.setAttribute(SemanticAttributes.URL_FULL, targetUri.toString());
         }
         var span = builder.startSpan();
 
@@ -56,7 +58,8 @@ public final class OpentelemetryHttpClientTracer implements HttpClientTracer {
         OpentelemetryContext.set(ctx, newCtx);
         W3CTraceContextPropagator.getInstance().inject(newCtx.getContext(), request.headers(), MutableHttpHeaders::set);
 
-        return exception -> {
+        return (code, exception) -> {
+            span.setAttribute(SemanticAttributes.HTTP_RESPONSE_STATUS_CODE, code);
             if (exception != null) {
                 span.setStatus(StatusCode.ERROR);
             }
