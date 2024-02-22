@@ -1,6 +1,9 @@
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
+    annotationProcessor libs.graalvm.processor
+    compileOnly libs.graalvm.annotations
+
     api project(':common')
     api libs.jackson.core
 

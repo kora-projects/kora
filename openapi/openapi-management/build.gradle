@@ -1,5 +1,7 @@
 dependencies {
     annotationProcessor project(':config:config-annotation-processor')
+    annotationProcessor libs.graalvm.processor
+    compileOnly libs.graalvm.annotations
 
     implementation project(":config:config-common")
     implementation project(":http:http-server-common")

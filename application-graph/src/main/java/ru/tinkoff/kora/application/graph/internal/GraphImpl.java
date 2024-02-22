@@ -14,19 +14,33 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.stream.Collectors;
 
 public final class GraphImpl implements RefreshableGraph, Lifecycle {
-    private static final CompletableFuture<Void> empty = CompletableFuture.completedFuture(null);
+
+    private static final CompletableFuture<Void> EMPTY_FUTURE = CompletableFuture.completedFuture(null);
+
     private final Executor executor;
-    private volatile AtomicReferenceArray<Object> objects;
     private final ApplicationGraphDraw draw;
     private final Logger log;
     private final Semaphore semaphore = new Semaphore(1);
     private final Set<Integer> refreshListenerNodes = new HashSet<>();
 
+    private volatile AtomicReferenceArray<Object> objects;
+
     public GraphImpl(ApplicationGraphDraw draw) {
         this.draw = draw;
         this.log = LoggerFactory.getLogger(this.draw.getRoot());
         this.objects = new AtomicReferenceArray<>(this.draw.size());
-        this.executor = Objects.requireNonNullElse(VirtualThreadExecutorHolder.executor, ForkJoinPool.commonPool());
+        var loomExecutor = VirtualThreadExecutorHolder.executor();
+        this.executor = Objects.requireNonNullElse(loomExecutor, ForkJoinPool.commonPool());
+
+        var loomLogger = LoggerFactory.getLogger(VirtualThreadExecutorHolder.class);
+        var status = VirtualThreadExecutorHolder.status();
+        if (status == VirtualThreadExecutorHolder.VirtualThreadStatus.ENABLED) {
+            loomLogger.info("VirtualThreadExecutor enabled");
+        } else if (status == VirtualThreadExecutorHolder.VirtualThreadStatus.DISABLED) {
+            loomLogger.info("VirtualThreadExecutor disabled");
+        } else {
+            loomLogger.info("VirtualThreadExecutor unavailable");
+        }
     }
 
     @Override
@@ -221,7 +235,7 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
         var release = new CompletableFuture<?>[objects.length()];
         for (int i = objects.length() - 1; i >= 0; i--) {
             if (!root.get(i)) {
-                release[i] = empty;
+                release[i] = EMPTY_FUTURE;
                 continue;
             }
             var node = (NodeImpl<?>) this.draw.getNodes().get(i);
@@ -234,23 +248,23 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
         @SuppressWarnings("unchecked")
         var object = (T) objects.get(node.index);
         if (object == null) {
-            return empty;
+            return EMPTY_FUTURE;
         }
         var dependentNodes = new CompletableFuture<?>[node.getDependentNodes().size() + node.getIntercepts().size()];
         for (int i = 0; i < node.getDependentNodes().size(); i++) {
             var n = node.getDependentNodes().get(i);
             if (n.index >= 0) {
-                dependentNodes[i] = Objects.requireNonNullElse(releases[n.index], empty).exceptionally(e -> null);
+                dependentNodes[i] = Objects.requireNonNullElse(releases[n.index], EMPTY_FUTURE).exceptionally(e -> null);
             } else {
-                dependentNodes[i] = empty;
+                dependentNodes[i] = EMPTY_FUTURE;
             }
         }
         for (int i = 0; i < node.getIntercepts().size(); i++) {
             var interceptor = node.getIntercepts().get(i);
             if (interceptor.index >= 0) {
-                dependentNodes[node.getDependentNodes().size() + i] = Objects.requireNonNullElse(releases[interceptor.index], empty).exceptionally(e -> null);
+                dependentNodes[node.getDependentNodes().size() + i] = Objects.requireNonNullElse(releases[interceptor.index], EMPTY_FUTURE).exceptionally(e -> null);
             } else {
-                dependentNodes[node.getDependentNodes().size() + i] = empty;
+                dependentNodes[node.getDependentNodes().size() + i] = EMPTY_FUTURE;
             }
         }
         var dependentReleases = CompletableFuture.allOf(dependentNodes);
@@ -393,7 +407,7 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                     for (var interceptedNode : node.getIntercepts()) {
                         dependencies.decrementAndGet(interceptedNode.index);
                     }
-                    this.inits.set(node.index, empty);
+                    this.inits.set(node.index, EMPTY_FUTURE);
                     this.tmpArray.set(node.index, oldObject);
                     return oldObject;
                 }
@@ -420,7 +434,7 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                 this.rootGraph.log.trace("Created node {} {}", node.index, newObject.getClass());
                 var init = newObject instanceof Lifecycle lifecycle
                     ? this.initializeNode(node, lifecycle)
-                    : empty;
+                    : EMPTY_FUTURE;
 
                 var objectFuture = init.thenApply(v -> newObject);
                 for (var interceptor : node.getInterceptors()) {
@@ -450,17 +464,17 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
             for (int i = 0; i < node.getDependencyNodes().size(); i++) {
                 var dependency = node.getDependencyNodes().get(i);
                 if (dependency.index >= 0) {
-                    dependencyInitializationFutures[i] = Objects.requireNonNullElse(this.inits.get(dependency.index), empty);
+                    dependencyInitializationFutures[i] = Objects.requireNonNullElse(this.inits.get(dependency.index), EMPTY_FUTURE);
                 } else {
-                    dependencyInitializationFutures[i] = empty;
+                    dependencyInitializationFutures[i] = EMPTY_FUTURE;
                 }
             }
             for (int i = 0; i < node.getInterceptors().size(); i++) {
                 var dependency = node.getInterceptors().get(i);
                 if (dependency.index >= 0) {
-                    dependencyInitializationFutures[node.getDependencyNodes().size() + i] = Objects.requireNonNullElse(this.inits.get(dependency.index), empty);
+                    dependencyInitializationFutures[node.getDependencyNodes().size() + i] = Objects.requireNonNullElse(this.inits.get(dependency.index), EMPTY_FUTURE);
                 } else {
-                    dependencyInitializationFutures[node.getDependencyNodes().size() + i] = empty;
+                    dependencyInitializationFutures[node.getDependencyNodes().size() + i] = EMPTY_FUTURE;
                 }
             }
             var dependencyInitialization = CompletableFuture.allOf(dependencyInitializationFutures)
@@ -570,10 +584,10 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                 }
                 inits.add(init.exceptionallyCompose(error -> {
                     if (error instanceof DependencyInitializationFailedException) {
-                        return empty;
+                        return EMPTY_FUTURE;
                     } else if (error instanceof CompletionException ce) {
                         if (ce.getCause() instanceof DependencyInitializationFailedException) {
-                            return empty;
+                            return EMPTY_FUTURE;
                         }
                         return CompletableFuture.failedFuture(ce.getCause());
                     } else {

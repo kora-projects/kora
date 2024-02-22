@@ -1,4 +1,7 @@
 dependencies {
+    annotationProcessor libs.graalvm.processor
+    compileOnly libs.graalvm.annotations
+
     api project(':config:config-common')
     api libs.snakeyaml.engine
 }

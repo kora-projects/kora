@@ -12,7 +12,6 @@ import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 public final class XnioLifecycle implements Lifecycle, Wrapped<XnioWorker> {
 
@@ -31,16 +30,17 @@ public final class XnioLifecycle implements Lifecycle, Wrapped<XnioWorker> {
         logger.debug("XnioWorker starting...");
         var started = System.nanoTime();
 
-        var threads = configValue.get().blockingThreads();
-        var ioThreads = configValue.get().ioThreads();
+        var httpServerConfig = configValue.get();
+
         var f = new CompletableFuture<XnioWorker>();
         var t = new Thread(() -> {
             try {
+                // XnioWorker will be daemon despite flag .setDaemon(false) if the thread it is started from is daemon (virtual thread)
                 var worker = Xnio.getInstance(Undertow.class.getClassLoader())
                     .createWorkerBuilder()
                     .setCoreWorkerPoolSize(1)
-                    .setMaxWorkerPoolSize(threads)
-                    .setWorkerIoThreads(ioThreads)
+                    .setMaxWorkerPoolSize(httpServerConfig.blockingThreads())
+                    .setWorkerIoThreads(httpServerConfig.ioThreads())
                     .setWorkerKeepAlive(60 * 1000)
                     .setDaemon(false)
                     .setWorkerName("kora-undertow")
@@ -59,13 +59,15 @@ public final class XnioLifecycle implements Lifecycle, Wrapped<XnioWorker> {
 
     @Override
     public void release() throws Exception {
-        logger.debug("XnioWorker stopping...");
-        var started = System.nanoTime();
+        if (worker != null) {
+            logger.debug("XnioWorker stopping...");
+            var started = System.nanoTime();
 
-        worker.shutdown();
-        worker.awaitTermination();
+            worker.shutdown();
+            worker.awaitTermination();
 
-        logger.info("XnioWorker stopped in {}", TimeUtils.tookForLogging(started));
+            logger.info("XnioWorker stopped in {}", TimeUtils.tookForLogging(started));
+        }
     }
 
     @Override
