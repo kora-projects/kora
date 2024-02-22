@@ -1,3 +1,6 @@
 dependencies {
+    annotationProcessor libs.graalvm.processor
+    compileOnly libs.graalvm.annotations
+
     api libs.slf4j.api
 }

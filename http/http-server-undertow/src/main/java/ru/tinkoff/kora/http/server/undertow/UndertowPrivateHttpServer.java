@@ -25,27 +25,28 @@ public class UndertowPrivateHttpServer implements PrivateHttpServer {
 
     public UndertowPrivateHttpServer(ValueOf<HttpServerConfig> config, ValueOf<UndertowPrivateApiHandler> privateApiHandler, @Nullable XnioWorker xnioWorker) {
         this.config = config;
-        this.privateApiHandler = privateApiHandler;
         this.xnioWorker = xnioWorker;
+        this.privateApiHandler = privateApiHandler;
     }
 
     @Override
     public void release() {
-        try {
-            Thread.sleep(this.config.get().shutdownWait().toMillis());
-        } catch (InterruptedException e) {
-        }
-        logger.debug("Private HTTP Server (Undertow) stopping...");
-        final long started = System.nanoTime();
         if (this.undertow != null) {
+            logger.debug("Private HTTP Server (Undertow) stopping...");
+            try {
+                Thread.sleep(this.config.get().shutdownWait().toMillis());
+            } catch (InterruptedException e) {
+                // ignore
+            }
+            final long started = System.nanoTime();
             this.undertow.stop();
             this.undertow = null;
+            logger.info("Private HTTP Server (Undertow) stopped in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
         }
-        logger.info("Private HTTP Server (Undertow) stopped in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
     }
 
     @Override
-    public void init() throws InterruptedException {
+    public void init() {
         logger.debug("Private HTTP Server (Undertow) starting...");
         final long started = System.nanoTime();
         this.undertow = this.createServer();

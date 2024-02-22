@@ -19,14 +19,11 @@ import java.util.concurrent.*;
 import java.util.function.Function;
 
 public class PrivateApiHandler {
-    private static final Executor EXECUTOR = Objects.requireNonNullElse(ru.tinkoff.kora.application.graph.internal.loom.VirtualThreadExecutorHolder.executor, ForkJoinPool.commonPool());
-    private static final String PLAIN_TEXT_CONTENT_TYPE = "text/plain; charset=utf-8";
-    private static final String PROBE_FAILURE_MDC_KEY = "probeFailureMessage";
-    private static final HttpServerResponse NOT_FOUND = new SimpleHttpServerResponse(404, HttpHeaders.of(), HttpBody.of(
-        PLAIN_TEXT_CONTENT_TYPE,
-        ByteBuffer.wrap("Private api path not found".getBytes(StandardCharsets.UTF_8))
-    ));
 
+    private static final String PROBE_FAILURE_MDC_KEY = "probeFailureMessage";
+    private static final HttpServerResponse NOT_FOUND = HttpServerResponse.of(404, HttpBody.plaintext("Private API path not found"));
+
+    private final Executor executor;
     private final ValueOf<HttpServerConfig> config;
     private final ValueOf<Optional<PrivateApiMetrics>> meterRegistry;
     private final All<PromiseOf<ReadinessProbe>> readinessProbes;
@@ -40,6 +37,7 @@ public class PrivateApiHandler {
         this.meterRegistry = meterRegistry;
         this.readinessProbes = readinessProbes;
         this.livenessProbes = livenessProbes;
+        this.executor = Objects.requireNonNullElse(ru.tinkoff.kora.application.graph.internal.loom.VirtualThreadExecutorHolder.executor(), ForkJoinPool.commonPool());
     }
 
     public CompletionStage<? extends HttpServerResponse> handle(String path) {
@@ -103,7 +101,7 @@ public class PrivateApiHandler {
         for (int i = 0; i < futures.length; i++) {
             var optional = probes.get(i).get();
             if (optional.isEmpty()) {
-                return CompletableFuture.completedFuture(new SimpleHttpServerResponse(503, HttpHeaders.of(), HttpBody.plaintext("Probe is not ready yet")));
+                return CompletableFuture.completedFuture(HttpServerResponse.of(503, HttpBody.plaintext("Probe is not ready yet")));
             }
             var probe = optional.get();
             try {
@@ -113,7 +111,7 @@ public class PrivateApiHandler {
                     } catch (Exception e) {
                         throw new CompletionException(e);
                     }
-                }, EXECUTOR);
+                }, executor);
                 var future = new CompletableFuture<String>();
                 probeResult.whenComplete((result, error) -> {
                     if (error != null) {
@@ -134,19 +132,19 @@ public class PrivateApiHandler {
             for (var future : futures) {
                 var result = future.getNow(null);
                 if (result != null) {
-                    return new SimpleHttpServerResponse(503, HttpHeaders.of(), HttpBody.plaintext(result.toString()));
+                    return HttpServerResponse.of(503, HttpBody.plaintext(result.toString()));
                 }
             }
-            return new SimpleHttpServerResponse(200, HttpHeaders.of(), HttpBody.plaintext("OK"));
+            return HttpServerResponse.of(200, HttpBody.plaintext("OK"));
         });
-        var timeoutFuture = CompletableFuture.runAsync(() -> {}, CompletableFuture.delayedExecutor(30, TimeUnit.SECONDS, EXECUTOR));
+        var timeoutFuture = CompletableFuture.runAsync(() -> {}, CompletableFuture.delayedExecutor(30, TimeUnit.SECONDS, executor));
 
         return CompletableFuture.anyOf(resultFuture, timeoutFuture).thenApply(v -> {
             if (resultFuture.isDone()) {
                 return resultFuture.getNow(null);
             }
             resultFuture.cancel(true);
-            return new SimpleHttpServerResponse(503, HttpHeaders.of(), HttpBody.plaintext("Probe failed: timeout"));
+            return HttpServerResponse.of(503, HttpBody.plaintext("Probe failed: timeout"));
         });
     }
 }

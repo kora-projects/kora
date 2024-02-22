@@ -1,4 +1,5 @@
 dependencies {
+    api libs.slf4j.api
     api(libs.openapi.generator) {
         exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
         exclude group: 'com.fasterxml.jackson.core', module: 'jackson-databind'
@@ -7,6 +8,7 @@ dependencies {
         exclude group: 'com.fasterxml.jackson.datatype', module: 'jackson-datatype-guava'
         exclude group: 'com.fasterxml.jackson.datatype', module: 'jackson-datatype-joda'
         exclude group: 'com.fasterxml.jackson.dataformat', module: 'jackson-dataformat-yaml'
+        exclude group: 'org.slf4j', module: 'slf4j-api'
     }
     api("com.fasterxml.jackson.datatype:jackson-datatype-guava:${libs.versions.jackson.get()}")
     api("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${libs.versions.jackson.get()}")

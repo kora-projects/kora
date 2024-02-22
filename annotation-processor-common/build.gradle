@@ -7,7 +7,10 @@ dependencies {
     api libs.javapoet
     api project(':common')
 
-    implementation libs.logback.classic
+    implementation libs.slf4j.api
+    implementation(libs.logback.classic) {
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
 
     testFixturesImplementation project(':common')
     testFixturesImplementation libs.reactor.core
