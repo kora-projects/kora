@@ -5,7 +5,16 @@ dependencies {
 
     implementation project(":json:json-common")
     implementation project(":config:config-common")
-    implementation libs.lettuce.core
+    implementation(libs.lettuce.core) {
+        exclude group: 'io.projectreactor', module: 'reactor-core'
+        exclude group: 'io.netty', module: 'netty-common'
+        exclude group: 'io.netty', module: 'netty-handler'
+        exclude group: 'io.netty', module: 'netty-transport'
+    }
+    implementation libs.reactor.core
+    implementation libs.netty.common
+    implementation libs.netty.handlers
+    implementation libs.netty.transports
 
     testImplementation testFixtures(project(":annotation-processor-common"))
     testImplementation project(":annotation-processor-common")

@@ -80,16 +80,21 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             library("undertow-core", "io.undertow", "undertow-core").version("2.3.11.Final")
             library("async-http-client", "org.asynchttpclient", "async-http-client").version("2.12.3")
             library("okhttp", "com.squareup.okhttp3", "okhttp").version("5.0.0-alpha.12")
+            library("okio", "com.squareup.okio", "okio").version("3.7.0")
 
             library("netty-buffer", "io.netty", "netty-buffer").versionRef("netty")
             library("netty-codecs", "io.netty", "netty-codec").versionRef("netty")
-            library("netty-codec-http", "io.netty", "netty-codec-http").versionRef("netty")
-            library("netty-codec-socks", "io.netty", "netty-codec-socks").versionRef("netty")
             library("netty-common", "io.netty", "netty-common").versionRef("netty")
+            library("netty-resolver", "io.netty", "netty-resolver").versionRef("netty")
+            library("netty-resolver-dns", "io.netty", "netty-resolver-dns").versionRef("netty")
+            library("netty-resolver-macos", "io.netty", "netty-resolver-dns-native-macos").versionRef("netty")
+            library("netty-transports", "io.netty", "netty-transport").versionRef("netty")
+            library("netty-transport.epoll", "io.netty", "netty-transport-native-epoll").versionRef("netty")
             library("netty-handlers", "io.netty", "netty-handler").versionRef("netty")
             library("netty-handler-proxy", "io.netty", "netty-handler-proxy").versionRef("netty")
-            library("netty-resolver", "io.netty", "netty-resolver").versionRef("netty")
-            library("netty-transports", "io.netty", "netty-transport").versionRef("netty")
+            library("netty-codec-http", "io.netty", "netty-codec-http").versionRef("netty")
+            library("netty-codec-http2", "io.netty", "netty-codec-http2").versionRef("netty")
+            library("netty-codec-socks", "io.netty", "netty-codec-socks").versionRef("netty")
             bundle('netty', [
                 "netty-buffer", "netty-codecs", "netty-codec-http", "netty-codec-socks", "netty-common", "netty-handlers", "netty-handler-proxy",
                 "netty-resolver", "netty-transports"
@@ -101,7 +106,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
 
             library('r2dbc-spi', 'io.r2dbc', 'r2dbc-spi').version('1.0.0.RELEASE')
             library('r2dbc-pool', 'io.r2dbc', 'r2dbc-pool').version('1.0.1.RELEASE')
-            library('r2dbc-postgres', 'org.postgresql', 'r2dbc-postgresql').version('1.0.2.RELEASE')
+            library('r2dbc-postgres', 'org.postgresql', 'r2dbc-postgresql').version('1.0.4.RELEASE')
 
             library("byte-buddy-core", "net.bytebuddy", "byte-buddy").version("1.14.9")
             library("byte-buddy-agent", "net.bytebuddy", "byte-buddy-agent").version("1.14.9")

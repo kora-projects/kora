@@ -5,7 +5,10 @@ dependencies {
 
     api project(":common")
     api project(":database:database-common")
-    api libs.cassandra.driver
+    api(libs.cassandra.driver) {
+        exclude group: 'io.netty', module: 'netty-handler'
+    }
+    api libs.netty.handlers
 
     testImplementation project(":internal:test-cassandra")
 }
