@@ -5,6 +5,8 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.*;
 import ru.tinkoff.kora.application.graph.internal.loom.VirtualThreadExecutorHolder;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -32,6 +34,8 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
         var loomExecutor = VirtualThreadExecutorHolder.executor();
         this.executor = Objects.requireNonNullElse(loomExecutor, ForkJoinPool.commonPool());
 
+        initAtRuntimeOnce();
+
         var loomLogger = LoggerFactory.getLogger(VirtualThreadExecutorHolder.class);
         var status = VirtualThreadExecutorHolder.status();
         if (status == VirtualThreadExecutorHolder.VirtualThreadStatus.ENABLED) {
@@ -40,6 +44,17 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
             loomLogger.info("VirtualThreadExecutor disabled");
         } else {
             loomLogger.info("VirtualThreadExecutor unavailable");
+        }
+    }
+
+    private static void initAtRuntimeOnce() {
+        try {
+            var lookup = MethodHandles.publicLookup();
+            var classReactorContext = Class.forName("ru.tinkoff.kora.common.util.ReactorContextHook");
+            var methodReactorInit = lookup.findStatic(classReactorContext, "init", MethodType.methodType(void.class));
+            methodReactorInit.invoke();
+        } catch (Throwable e) {
+            // do nothing
         }
     }
 

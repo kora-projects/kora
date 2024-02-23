@@ -37,7 +37,6 @@ public interface NettyCommonModule {
         );
     }
 
-
     @Tag(BossLoopGroup.class)
     default LifecycleWrapper<EventLoopGroup> nettyEventBossLoopGroupLifecycle(@Tag(NettyCommonModule.class) @Nullable ThreadFactory threadFactory) {
         return new LifecycleWrapper<>(

@@ -118,13 +118,9 @@ public final class VirtualThreadExecutorHolder {
         }
 
         try {
-            final Method methodLoomExecutor = Arrays.stream(Executors.class.getDeclaredMethods())
-                .filter(m -> m.getName().equals("newThreadPerTaskExecutor"))
-                .findFirst()
-                .orElseThrow();
-
-            methodLoomExecutor.setAccessible(true);
-            return ((ExecutorService) methodLoomExecutor.invoke(null, loomThreadFactory));
+            var lookup = MethodHandles.publicLookup();
+            var methodLoomExecutor = lookup.findStatic(Executors.class, "newThreadPerTaskExecutor", MethodType.methodType(ExecutorService.class, ThreadFactory.class));
+            return (ExecutorService) methodLoomExecutor.invoke(loomThreadFactory);
         } catch (Throwable t) {
             return null;
         }
