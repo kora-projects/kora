@@ -16,7 +16,9 @@ public class DefaultMicrometerHttpServerTagsProvider implements MicrometerHttpSe
             Tag.of(SemanticAttributes.HTTP_ROUTE.getKey(), key.target()),
             Tag.of(SemanticAttributes.HTTP_REQUEST_METHOD.getKey(), key.method()),
             Tag.of(SemanticAttributes.SERVER_ADDRESS.getKey(), key.host()),
-            Tag.of(SemanticAttributes.URL_SCHEME.getKey(), key.scheme())
+            Tag.of(SemanticAttributes.URL_SCHEME.getKey(), key.scheme()),
+            Tag.of(SemanticAttributes.HTTP_TARGET.getKey(), key.target()),
+            Tag.of(SemanticAttributes.HTTP_METHOD.getKey(), key.method())
         );
     }
 
@@ -27,7 +29,10 @@ public class DefaultMicrometerHttpServerTagsProvider implements MicrometerHttpSe
             Tag.of(SemanticAttributes.HTTP_RESPONSE_STATUS_CODE.getKey(), Integer.toString(key.statusCode())),
             Tag.of(SemanticAttributes.HTTP_ROUTE.getKey(), key.target()),
             Tag.of(SemanticAttributes.SERVER_ADDRESS.getKey(), key.host()),
-            Tag.of(SemanticAttributes.URL_SCHEME.getKey(), key.scheme())
+            Tag.of(SemanticAttributes.URL_SCHEME.getKey(), key.scheme()),
+            Tag.of(SemanticAttributes.HTTP_TARGET.getKey(), key.target()),
+            Tag.of(SemanticAttributes.HTTP_METHOD.getKey(), key.method()),
+            Tag.of(SemanticAttributes.HTTP_STATUS_CODE.getKey(), Integer.toString(key.statusCode()))
         );
     }
 
