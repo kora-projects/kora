@@ -11,7 +11,7 @@ dependencies {
 
     implementation libs.kotlin.reflect
 
-    testFixturesImplementation 'io.github.classgraph:classgraph:4.8.162'
+    testFixturesImplementation libs.classgraph
 
     testFixturesImplementation libs.kotlin.compiler
     testFixturesImplementation libs.kotlin.compiler
