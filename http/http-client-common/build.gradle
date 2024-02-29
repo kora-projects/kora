@@ -12,7 +12,10 @@ dependencies {
 
     testImplementation libs.reactor.core
 
-    testFixturesImplementation libs.logback.classic
+    testFixturesImplementation libs.slf4j.api
+    testFixturesImplementation(libs.logback.classic) {
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
     testFixturesImplementation project(':opentelemetry:opentelemetry-tracing')
     testFixturesImplementation(libs.mockserver.netty) {
         exclude group: 'io.swagger.parser.v3', module: 'swagger-parser'
