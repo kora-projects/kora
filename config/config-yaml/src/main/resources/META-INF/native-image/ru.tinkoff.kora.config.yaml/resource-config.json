@@ -1,0 +1,10 @@
+{
+  "resources": {
+    "includes": [
+      { "pattern": "application.yaml" },
+      { "pattern": "application.yml" },
+      { "pattern": "reference.yaml" },
+      { "pattern": "reference.yml" }
+    ]
+  }
+}

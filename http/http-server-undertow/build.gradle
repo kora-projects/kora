@@ -1,7 +1,4 @@
 dependencies {
-    annotationProcessor libs.graalvm.processor
-    compileOnly libs.graalvm.annotations
-
     api project(':common')
     api project(':http:http-server-common')
     api project(':logging:logging-common')

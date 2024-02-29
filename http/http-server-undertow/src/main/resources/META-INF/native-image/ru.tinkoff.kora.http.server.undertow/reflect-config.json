@@ -1,0 +1,6 @@
+[{
+  "name": "io.undertow.server.DirectByteBufferDeallocator",
+  "allDeclaredConstructors": true,
+  "allDeclaredFields": true,
+  "allDeclaredMethods": true
+}]
