@@ -28,6 +28,4 @@ project.tasks.register("generateKoraVersion") {
     output.write(version.toString())
 }
 
-jar {
-    dependsOn("generateKoraVersion")
-}
+sourcesJar.dependsOn("generateKoraVersion")

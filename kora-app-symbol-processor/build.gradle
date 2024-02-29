@@ -78,5 +78,6 @@ project.tasks.register("buildModules") {
     }
 }
 
-processResources.dependsOn("buildModules", "copyModules")
-compileJava.dependsOn("buildModules", "copyModules")
+processResources.dependsOn("buildModules")
+compileJava.dependsOn("buildModules")
+sourcesJar.dependsOn("buildModules")

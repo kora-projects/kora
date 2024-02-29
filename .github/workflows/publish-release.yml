@@ -1,8 +1,9 @@
 name: Publish release
 
 on:
-  push:
-    tags: [ '**' ]
+  release:
+    branches: [ "master" ]
+    types: [ published ]
 
 jobs:
   publish:
