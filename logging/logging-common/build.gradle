@@ -1,7 +1,5 @@
 dependencies {
     annotationProcessor project(':config:config-annotation-processor')
-    annotationProcessor libs.graalvm.processor
-    compileOnly libs.graalvm.annotations
 
     api project(':common')
     api project(':json:json-common')

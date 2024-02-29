@@ -22,10 +22,6 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             version('kotlinpoet', '1.16.0')
             version('swagger', '2.2.20')
             version('opentelemetry', '1.35.0')
-            version('graalvm-hint', '1.2.0-SNAPSHOT')
-
-            library('graalvm-processor', 'io.goodforgod', 'graalvm-hint-processor').versionRef('graalvm-hint')
-            library('graalvm-annotations', 'io.goodforgod', 'graalvm-hint-annotations').versionRef('graalvm-hint')
 
             library('jsr305', 'com.google.code.findbugs', 'jsr305').version('3.0.2')
             library('jakarta-annotations', 'jakarta.annotation', 'jakarta.annotation-api').version('2.1.1')
