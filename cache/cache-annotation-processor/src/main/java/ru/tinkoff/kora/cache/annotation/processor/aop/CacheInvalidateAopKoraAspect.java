@@ -241,7 +241,7 @@ public class CacheInvalidateAopKoraAspect extends AbstractAopCacheAspect {
         } else {
             // call super
             builder.add("return ").add(superMethod);
-            builder.add(".doOnSuccess(_result -> $L.invalidate(_key1));", operation.executions().get(0).field());
+            builder.add(".doOnSuccess(_result -> $L.invalidate($L));", operation.executions().get(0).field(), operation.executions().get(0).cacheKey().code());
         }
 
         return builder.build();
