@@ -3,6 +3,7 @@ package ru.tinkoff.kora.http.server.common;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.PromiseOf;
 import ru.tinkoff.kora.application.graph.ValueOf;
+import ru.tinkoff.kora.application.graph.internal.loom.VirtualThreadExecutorHolder;
 import ru.tinkoff.kora.common.liveness.LivenessProbe;
 import ru.tinkoff.kora.common.liveness.LivenessProbeFailure;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
@@ -37,7 +38,7 @@ public class PrivateApiHandler {
         this.meterRegistry = meterRegistry;
         this.readinessProbes = readinessProbes;
         this.livenessProbes = livenessProbes;
-        this.executor = Objects.requireNonNullElse(ru.tinkoff.kora.application.graph.internal.loom.VirtualThreadExecutorHolder.executor(), ForkJoinPool.commonPool());
+        this.executor = Objects.requireNonNullElse(VirtualThreadExecutorHolder.executor(), ForkJoinPool.commonPool());
     }
 
     public CompletionStage<? extends HttpServerResponse> handle(String path) {
@@ -127,6 +128,7 @@ public class PrivateApiHandler {
                 futures[i] = CompletableFuture.failedFuture(e);
             }
         }
+
         var resultFuture = CompletableFuture.allOf(futures).handle((r, error) -> {
             assert error == null && r == null;
             for (var future : futures) {
@@ -137,14 +139,14 @@ public class PrivateApiHandler {
             }
             return HttpServerResponse.of(200, HttpBody.plaintext("OK"));
         });
-        var timeoutFuture = CompletableFuture.runAsync(() -> {}, CompletableFuture.delayedExecutor(30, TimeUnit.SECONDS, executor));
 
+        var timeoutFuture = CompletableFuture.runAsync(() -> {}, CompletableFuture.delayedExecutor(30, TimeUnit.SECONDS, executor));
         return CompletableFuture.anyOf(resultFuture, timeoutFuture).thenApply(v -> {
             if (resultFuture.isDone()) {
                 return resultFuture.getNow(null);
             }
             resultFuture.cancel(true);
-            return HttpServerResponse.of(503, HttpBody.plaintext("Probe failed: timeout"));
+            return HttpServerResponse.of(408, HttpBody.plaintext("Probe failed: timeout"));
         });
     }
 }
