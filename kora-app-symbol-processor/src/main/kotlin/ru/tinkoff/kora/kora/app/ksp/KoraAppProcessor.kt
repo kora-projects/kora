@@ -124,7 +124,7 @@ class KoraAppProcessor(
         for (symbol in koraAppElements) {
             symbol.visitClass { declaration ->
                 if (declaration.classKind == ClassKind.INTERFACE) {
-                    log.info("Kora app found: {}", declaration.toClassName().canonicalName)
+                    log.info("@KoraApp found: {}", declaration.toClassName().canonicalName)
                     val key = declaration.qualifiedName!!.asString()
                     processedDeclarations.computeIfAbsent(key) {
                         declaration to parseNone(declaration)
@@ -280,18 +280,30 @@ class KoraAppProcessor(
 
     private fun processComponents(resolver: Resolver): Boolean {
         val componentOfSymbols = resolver.getSymbolsWithAnnotation(CommonClassNames.component.canonicalName).toList()
+
+        val logComponents = mutableListOf<KSClassDeclaration>()
+        val logWaitsProxy = mutableListOf<KSClassDeclaration>()
+
         for (componentSymbol in componentOfSymbols) {
             componentSymbol.visitClass { componentDeclaration ->
                 if (componentDeclaration.classKind == ClassKind.CLASS && !componentDeclaration.modifiers.contains(Modifier.ABSTRACT)) {
                     if (hasAopAnnotations(componentSymbol)) {
-                        kspLogger.info("Component found, waiting for aop proxy: ${componentSymbol.location}", componentSymbol)
+                        logWaitsProxy.add(componentDeclaration)
                     } else {
-                        kspLogger.info("Component found: ${componentDeclaration.toClassName().canonicalName}", componentSymbol)
                         components.add(componentDeclaration)
+                        logComponents.add(componentDeclaration)
                     }
                 }
             }
         }
+
+        if(logWaitsProxy.isNotEmpty()) {
+            kspLogger.info("Component waiting for AOP Proxy found: $logWaitsProxy")
+        }
+        if(logComponents.isNotEmpty()) {
+            kspLogger.info("Component found: $logComponents")
+        }
+
         return componentOfSymbols.isNotEmpty()
     }
 
