@@ -13,8 +13,12 @@ runs:
       with:
         java-version: '17'
         distribution: 'adopt'
+
     - name: Setup Gradle
-      uses: gradle/gradle-build-action@v3
+      uses: gradle/actions/setup-gradle@v3
+      with:
+        cache-read-only: ${{ github.ref != 'refs/heads/master' }}
+        gradle-home-cache-cleanup: ${{ github.ref == 'refs/heads/master' }}
 
     - name: Execute Gradle build
       run: ./gradlew ${{ inputs.test-task-name }} --scan --no-daemon

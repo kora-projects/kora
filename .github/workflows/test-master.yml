@@ -1,18 +1,9 @@
-name: Run tests
+name: Build Master
 
 on:
   push:
     branches:
       - "master"
-  pull_request:
-    branches:
-      - "master"
-
-
-permissions:
-  contents: read
-  checks: write
-  pull-requests: write
 
 
 jobs:
@@ -27,9 +18,3 @@ jobs:
       name: Run ${{ matrix.task }} tests
       with:
         test-task-name: "test-${{ matrix.task }}"
-    - name: Publish ${{ matrix.task }} Test Report
-      if: ${{ always() }}
-      uses: EnricoMi/publish-unit-test-result-action@v2
-      with:
-        files: |
-          **/test-results/**/*.xml
