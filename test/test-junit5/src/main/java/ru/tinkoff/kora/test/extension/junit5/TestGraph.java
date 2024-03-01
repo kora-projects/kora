@@ -27,7 +27,7 @@ final class TestGraph implements AutoCloseable {
     }
 
     void initialize() {
-        logger.debug("@KoraAppTest graph initializing...");
+        logger.debug("@KoraAppTest dependency container initializing...");
         final long started = System.nanoTime();
 
         synchronized (LOCK) {
@@ -36,7 +36,7 @@ final class TestGraph implements AutoCloseable {
                 config.setup(graph);
                 final RefreshableGraph initGraph = graph.init();
                 this.graphInitialized = new TestGraphInitialized(initGraph, graph, new DefaultKoraAppGraph(graph, initGraph));
-                logger.info("@KoraAppTest graph initialization took: {}", Duration.ofNanos(System.nanoTime() - started));
+                logger.info("@KoraAppTest dependency container initialization took: {}", Duration.ofNanos(System.nanoTime() - started));
             } catch (IOException e) {
                 throw new IllegalStateException(e);
             } finally {
@@ -48,7 +48,7 @@ final class TestGraph implements AutoCloseable {
     @Nonnull
     TestGraphInitialized initialized() {
         if (graphInitialized == null) {
-            throw new IllegalStateException("TestGraphInitialized is not initialized!");
+            throw new IllegalStateException("Dependency Container is not initialized!");
         }
         return graphInitialized;
     }
@@ -57,7 +57,7 @@ final class TestGraph implements AutoCloseable {
     public void close() {
         if (graphInitialized != null) {
             final long started = System.nanoTime();
-            logger.debug("@KoraAppTest graph releasing...");
+            logger.debug("@KoraAppTest dependency container closing...");
             try {
                 graphInitialized.refreshableGraph().release();
             } catch (RuntimeException | Error e) {
@@ -66,7 +66,7 @@ final class TestGraph implements AutoCloseable {
                 throw new RuntimeException(e);
             }
             graphInitialized = null;
-            logger.info("@KoraAppTest graph releasing took: {}", Duration.ofNanos(System.nanoTime() - started));
+            logger.info("@KoraAppTest dependency container close took: {}", Duration.ofNanos(System.nanoTime() - started));
         }
     }
 }

@@ -22,7 +22,7 @@ abstract class AbstractPerMethodTests {
     protected TestComponent12 component12;
 
     @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-    public static class TestPerMethodChild extends AbstractPerMethodTests {
+    final static class TestPerMethodChild extends AbstractPerMethodTests {
 
         @Test
         @Order(1)
