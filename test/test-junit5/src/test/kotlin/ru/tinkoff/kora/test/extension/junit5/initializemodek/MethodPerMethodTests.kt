@@ -8,7 +8,7 @@ import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplication
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent1
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent12
 
-@KoraAppTest(value = TestApplication::class, components = [TestComponent12::class])
+@KoraAppTest(value = TestApplication::class)
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 class MethodPerMethodTests {

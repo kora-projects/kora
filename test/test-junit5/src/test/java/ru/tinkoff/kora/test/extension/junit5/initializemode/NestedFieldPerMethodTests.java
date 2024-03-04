@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.test.extension.junit5.initializemode;
 
 import org.junit.jupiter.api.*;
-import ru.tinkoff.kora.test.extension.junit5.KoraAppGraph;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
 import ru.tinkoff.kora.test.extension.junit5.TestComponent;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplication;
@@ -9,11 +8,12 @@ import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent1;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent12;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 @KoraAppTest(value = TestApplication.class)
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class FieldPerMethodTests {
+class NestedFieldPerMethodTests {
 
     static volatile TestComponent1 prevComponent1;
     static volatile TestComponent12 prevComponent12;
@@ -39,5 +39,47 @@ class FieldPerMethodTests {
         assertNotNull(component12);
         assertNotSame(prevComponent1, component1);
         assertNotSame(prevComponent12, component12);
+    }
+
+    @Order(3)
+    @Nested
+    class Nested1 {
+
+        @Test
+        void test3() {
+            assertNotNull(component1);
+            assertNotNull(component12);
+            assertNotSame(prevComponent1, component1);
+            assertNotSame(prevComponent12, component12);
+        }
+
+        @Test
+        void test4() {
+            assertNotNull(component1);
+            assertNotNull(component12);
+            assertNotSame(prevComponent1, component1);
+            assertNotSame(prevComponent12, component12);
+        }
+    }
+
+    @Order(4)
+    @Nested
+    class Nested2 {
+
+        @Test
+        void test5() {
+            assertNotNull(component1);
+            assertNotNull(component12);
+            assertNotSame(prevComponent1, component1);
+            assertNotSame(prevComponent12, component12);
+        }
+
+        @Test
+        void test6() {
+            assertNotNull(component1);
+            assertNotNull(component12);
+            assertNotSame(prevComponent1, component1);
+            assertNotSame(prevComponent12, component12);
+        }
     }
 }

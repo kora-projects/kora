@@ -9,7 +9,7 @@ import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent1
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent12
 import kotlin.concurrent.Volatile
 
-@KoraAppTest(value = TestApplication::class, components = [TestComponent12::class])
+@KoraAppTest(value = TestApplication::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 internal class FieldPerClassTests {
