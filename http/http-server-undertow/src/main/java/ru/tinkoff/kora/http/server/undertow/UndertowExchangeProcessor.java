@@ -351,7 +351,10 @@ public class UndertowExchangeProcessor implements Runnable {
             if ((newState & (0x1 << 24)) != 0) {
                 // stream is already completed, should not happen
                 DirectByteBufferDeallocator.free(byteBuffer);
-            } else if (subscription instanceof SingleSubscription<?> || subscription instanceof LazySingleSubscription<?>) {
+                return;
+            }
+
+            if (subscription instanceof SingleSubscription<?> || subscription instanceof LazySingleSubscription<?>) {
                 this.exchange.setResponseContentLength(byteBuffer.remaining());
                 this.exchange.getResponseSender().send(byteBuffer, new IoCallback() {
                     @Override
@@ -372,32 +375,33 @@ public class UndertowExchangeProcessor implements Runnable {
                         HttpResponseBodySubscriber.this.response.closeBodyError(exchange.getStatusCode(), exception);
                     }
                 });
-            } else {
-                this.exchange.getResponseSender().send(byteBuffer, new IoCallback() {
-                    @Override
-                    public void onComplete(HttpServerExchange exchange, Sender sender) {
-                        var newState = HttpResponseBodySubscriber.this.state.decrementAndGet();
-                        DirectByteBufferDeallocator.free(byteBuffer);
-                        if ((newState & (0x1 << 24)) != 0) {
-                            exchange.addExchangeCompleteListener((ex, nextListener) -> {
-                                HttpResponseBodySubscriber.this.response.closeSendResponseSuccess(ex.getStatusCode(), headers, null);
-                                nextListener.proceed();
-                            });
-                            exchange.endExchange();
-                        } else {
-                            HttpResponseBodySubscriber.this.subscription.request(1);
-                        }
-                    }
-
-                    @Override
-                    public void onException(HttpServerExchange exchange, Sender sender, IOException exception) {
-                        DirectByteBufferDeallocator.free(byteBuffer);
-                        HttpResponseBodySubscriber.this.subscription.cancel();
-                        exchange.getResponseSender().close();
-                        HttpResponseBodySubscriber.this.response.closeConnectionError(exchange.getStatusCode(), error == null ? exception : error);
-                    }
-                });
+                return;
             }
+
+            this.exchange.getResponseSender().send(byteBuffer, new IoCallback() {
+                @Override
+                public void onComplete(HttpServerExchange exchange, Sender sender) {
+                    var newState = HttpResponseBodySubscriber.this.state.decrementAndGet();
+                    DirectByteBufferDeallocator.free(byteBuffer);
+                    if ((newState & (0x1 << 24)) != 0) {
+                        exchange.addExchangeCompleteListener((ex, nextListener) -> {
+                            HttpResponseBodySubscriber.this.response.closeSendResponseSuccess(ex.getStatusCode(), headers, null);
+                            nextListener.proceed();
+                        });
+                        exchange.endExchange();
+                    } else {
+                        HttpResponseBodySubscriber.this.subscription.request(1);
+                    }
+                }
+
+                @Override
+                public void onException(HttpServerExchange exchange, Sender sender, IOException exception) {
+                    DirectByteBufferDeallocator.free(byteBuffer);
+                    HttpResponseBodySubscriber.this.subscription.cancel();
+                    exchange.getResponseSender().close();
+                    HttpResponseBodySubscriber.this.response.closeConnectionError(exchange.getStatusCode(), error == null ? exception : error);
+                }
+            });
         }
 
         @Override
