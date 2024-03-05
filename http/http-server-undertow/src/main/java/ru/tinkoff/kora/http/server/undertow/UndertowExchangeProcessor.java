@@ -33,6 +33,7 @@ import java.util.concurrent.Flow.Subscription;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class UndertowExchangeProcessor implements Runnable {
+
     private static final Logger log = LoggerFactory.getLogger(HttpServer.class);
     private static final Class<?> REACTOR_NON_BLOCKING;
     private static final Class<?> FAST_THREAD_LOCAL;
@@ -79,7 +80,7 @@ public class UndertowExchangeProcessor implements Runnable {
                 try {
                     var httpResponse = response.response().join();
                     if (httpResponse == null) {
-                        this.sendResponse(exchange, response, HttpServerResponse.of(500), new RuntimeException("Illegal state: response future is empty"));
+                        this.sendResponse(exchange, response, HttpServerResponse.of(500), new IllegalStateException("Illegal state: response future is empty"));
                     } else {
                         this.sendResponse(exchange, response, httpResponse, null);
                     }
@@ -98,7 +99,7 @@ public class UndertowExchangeProcessor implements Runnable {
                 } else if (throwable != null) {
                     sendException(response, throwable);
                 } else {
-                    this.sendResponse(exchange, response, HttpServerResponse.of(500), new RuntimeException("Illegal state: response future is empty"));
+                    this.sendResponse(exchange, response, HttpServerResponse.of(500), new IllegalStateException("Illegal state: response future is empty"));
                 }
             });
         } catch (Throwable exception) {
@@ -173,7 +174,7 @@ public class UndertowExchangeProcessor implements Runnable {
                 response.closeSendResponseSuccess(exchange.getStatusCode(), httpResponse.headers(), error);
             }
         } else {
-            sendStreamingBody(response, body, error);
+            sendStreamingBody(response, headers, body, error);
         }
     }
 
@@ -298,7 +299,7 @@ public class UndertowExchangeProcessor implements Runnable {
                 return;
             }
         }
-        sendStreamingBody(response, body, error);
+        sendStreamingBody(response, HttpHeaders.empty(), body, error);
     }
 
     private boolean isInBlockingThread() {
@@ -319,20 +320,22 @@ public class UndertowExchangeProcessor implements Runnable {
         return false;
     }
 
-    private void sendStreamingBody(PublicApiResponse response, HttpBodyOutput body, @Nullable Throwable error) {
-        body.subscribe(new HttpResponseBodySubscriber(exchange, response, error));
+    private void sendStreamingBody(PublicApiResponse response, HttpHeaders headers, HttpBodyOutput body, @Nullable Throwable error) {
+        body.subscribe(new HttpResponseBodySubscriber(exchange, response, headers, error));
     }
 
     private static class HttpResponseBodySubscriber implements Flow.Subscriber<ByteBuffer> {
         private final HttpServerExchange exchange;
         private final PublicApiResponse response;
+        private final HttpHeaders headers;
         private final Throwable error;
         private volatile Subscription subscription;
         private final AtomicInteger state = new AtomicInteger(0);
 
-        private HttpResponseBodySubscriber(HttpServerExchange exchange, PublicApiResponse response, @Nullable Throwable error) {
+        private HttpResponseBodySubscriber(HttpServerExchange exchange, PublicApiResponse response, HttpHeaders headers, @Nullable Throwable error) {
             this.exchange = exchange;
             this.response = response;
+            this.headers = headers;
             this.error = error;
         }
 
@@ -348,18 +351,20 @@ public class UndertowExchangeProcessor implements Runnable {
             if ((newState & (0x1 << 24)) != 0) {
                 // stream is already completed, should not happen
                 DirectByteBufferDeallocator.free(byteBuffer);
-                return;
-            }
-            if (subscription instanceof SingleSubscription<?> || subscription instanceof LazySingleSubscription<?>) {
-                exchange.setResponseContentLength(byteBuffer.remaining());
+            } else if (subscription instanceof SingleSubscription<?> || subscription instanceof LazySingleSubscription<?>) {
+                this.exchange.setResponseContentLength(byteBuffer.remaining());
                 this.exchange.getResponseSender().send(byteBuffer, new IoCallback() {
                     @Override
                     public void onComplete(HttpServerExchange exchange, Sender sender) {
-                        exchange.addExchangeCompleteListener((e, nextListener) -> {
-                            HttpResponseBodySubscriber.this.response.closeSendResponseSuccess(e.getStatusCode(), null, error);
-                            nextListener.proceed();
-                        });
-                        exchange.endExchange();
+                        if (exchange.isComplete()) {
+                            response.closeSendResponseSuccess(exchange.getStatusCode(), headers, error);
+                        } else {
+                            exchange.addExchangeCompleteListener((e, nextListener) -> {
+                                response.closeSendResponseSuccess(e.getStatusCode(), headers, error);
+                                nextListener.proceed();
+                            });
+                            exchange.endExchange();
+                        }
                     }
 
                     @Override
@@ -367,32 +372,32 @@ public class UndertowExchangeProcessor implements Runnable {
                         HttpResponseBodySubscriber.this.response.closeBodyError(exchange.getStatusCode(), exception);
                     }
                 });
-                return;
-            }
-            this.exchange.getResponseSender().send(byteBuffer, new IoCallback() {
-                @Override
-                public void onComplete(HttpServerExchange exchange, Sender sender) {
-                    var newState = HttpResponseBodySubscriber.this.state.decrementAndGet();
-                    DirectByteBufferDeallocator.free(byteBuffer);
-                    if ((newState & (0x1 << 24)) != 0) {
-                        exchange.addExchangeCompleteListener((ex, nextListener) -> {
-                            HttpResponseBodySubscriber.this.response.closeSendResponseSuccess(ex.getStatusCode(), null, null);
-                            nextListener.proceed();
-                        });
-                        exchange.endExchange();
-                    } else {
-                        HttpResponseBodySubscriber.this.subscription.request(1);
+            } else {
+                this.exchange.getResponseSender().send(byteBuffer, new IoCallback() {
+                    @Override
+                    public void onComplete(HttpServerExchange exchange, Sender sender) {
+                        var newState = HttpResponseBodySubscriber.this.state.decrementAndGet();
+                        DirectByteBufferDeallocator.free(byteBuffer);
+                        if ((newState & (0x1 << 24)) != 0) {
+                            exchange.addExchangeCompleteListener((ex, nextListener) -> {
+                                HttpResponseBodySubscriber.this.response.closeSendResponseSuccess(ex.getStatusCode(), headers, null);
+                                nextListener.proceed();
+                            });
+                            exchange.endExchange();
+                        } else {
+                            HttpResponseBodySubscriber.this.subscription.request(1);
+                        }
                     }
-                }
 
-                @Override
-                public void onException(HttpServerExchange exchange, Sender sender, IOException exception) {
-                    DirectByteBufferDeallocator.free(byteBuffer);
-                    HttpResponseBodySubscriber.this.subscription.cancel();
-                    exchange.getResponseSender().close();
-                    HttpResponseBodySubscriber.this.response.closeConnectionError(exchange.getStatusCode(), error == null ? exception : error);
-                }
-            });
+                    @Override
+                    public void onException(HttpServerExchange exchange, Sender sender, IOException exception) {
+                        DirectByteBufferDeallocator.free(byteBuffer);
+                        HttpResponseBodySubscriber.this.subscription.cancel();
+                        exchange.getResponseSender().close();
+                        HttpResponseBodySubscriber.this.response.closeConnectionError(exchange.getStatusCode(), error == null ? exception : error);
+                    }
+                });
+            }
         }
 
         @Override
@@ -414,9 +419,10 @@ public class UndertowExchangeProcessor implements Runnable {
 
         @Override
         public void onComplete() {
-            if (this.subscription instanceof SingleSubscription<?>) {
+            if (this.subscription instanceof SingleSubscription<?> || subscription instanceof LazySingleSubscription<?>) {
                 return;
             }
+
             var newState = this.state.updateAndGet(oldState -> oldState | (0x1 << 24));
             if (newState == (0x1 << 24)) {
                 // no chunks if flight

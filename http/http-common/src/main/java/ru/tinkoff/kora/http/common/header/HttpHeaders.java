@@ -26,6 +26,10 @@ public interface HttpHeaders extends Iterable<Map.Entry<String, List<String>>> {
         return new HttpHeadersImpl(this);
     }
 
+    static HttpHeaders empty() {
+        return HttpHeadersEmpty.INSTANCE;
+    }
+
     static MutableHttpHeaders of() {
         return new HttpHeadersImpl();
     }
