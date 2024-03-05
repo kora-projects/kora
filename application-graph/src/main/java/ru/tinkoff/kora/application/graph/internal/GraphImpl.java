@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.*;
 import ru.tinkoff.kora.application.graph.internal.loom.VirtualThreadExecutorHolder;
 
+import java.io.Closeable;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
@@ -288,6 +289,14 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                     try {
                         executorService.shutdownNow();
                         executorService.awaitTermination(30, TimeUnit.SECONDS);
+                    } catch (Throwable e) {
+                        throw new ReleaseException(e);
+                    }
+                    log.trace("Node {} of class {} released", node.index, object.getClass());
+                } else if(v instanceof AutoCloseable closeable) {
+                    log.trace("Releasing node {} of class {}", node.index, object.getClass());
+                    try {
+                        closeable.close();
                     } catch (Throwable e) {
                         throw new ReleaseException(e);
                     }
