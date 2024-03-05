@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.*;
 import ru.tinkoff.kora.application.graph.internal.loom.VirtualThreadExecutorHolder;
 
-import java.io.Closeable;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
@@ -287,8 +286,7 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                 } else if(v instanceof ExecutorService executorService) {
                     log.trace("Releasing node {} of class {}", node.index, object.getClass());
                     try {
-                        executorService.shutdownNow();
-                        executorService.awaitTermination(30, TimeUnit.SECONDS);
+                        closeExecutorService(executorService);
                     } catch (Throwable e) {
                         throw new ReleaseException(e);
                     }
@@ -303,6 +301,27 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                     log.trace("Node {} of class {} released", node.index, object.getClass());
                 }
             }, this.executor);
+    }
+
+    private static void closeExecutorService(ExecutorService executorService) {
+        boolean terminated = executorService.isTerminated();
+        if (!terminated) {
+            executorService.shutdown();
+            boolean interrupted = false;
+            while (!terminated) {
+                try {
+                    terminated = executorService.awaitTermination(30, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    if (!interrupted) {
+                        executorService.shutdownNow();
+                        interrupted = true;
+                    }
+                }
+            }
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     private static class InitException extends RuntimeException {
