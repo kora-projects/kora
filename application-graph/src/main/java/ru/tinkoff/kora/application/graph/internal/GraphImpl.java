@@ -264,9 +264,12 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                     var intercepted = interceptor.release(o);
                     log.trace("Intercepting release node {} of class {} with node {} of class {} complete", node.index, o.getClass(), interceptorNode.index, interceptor.getClass());
                     return intercepted;
+                } catch (RuntimeException | Error e) {
+                    this.log.trace("Intercepting release node {} of class {} with node {} of class {} error", node.index, o.getClass(), interceptorNode.index, interceptor.getClass(), e);
+                    throw e;
                 } catch (Throwable e) {
                     this.log.trace("Intercepting release node {} of class {} with node {} of class {} error", node.index, o.getClass(), interceptorNode.index, interceptor.getClass(), e);
-                    throw new ReleaseException(e);
+                    throw new IllegalStateException(e);
                 }
             }, this.executor);
         }
@@ -279,24 +282,30 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                     log.trace("Releasing node {} of class {}", node.index, object.getClass());
                     try {
                         lifecycle.release();
-                    } catch (Throwable e) {
-                        throw new ReleaseException(e);
+                    } catch (RuntimeException | Error e) {
+                        throw e;
+                    } catch (Exception e) {
+                        throw new IllegalStateException(e);
                     }
                     log.trace("Node {} of class {} released", node.index, object.getClass());
                 } else if(v instanceof ExecutorService executorService) {
                     log.trace("Releasing node {} of class {}", node.index, object.getClass());
                     try {
                         closeExecutorService(executorService);
-                    } catch (Throwable e) {
-                        throw new ReleaseException(e);
+                    } catch (RuntimeException | Error e) {
+                        throw e;
+                    } catch (Exception e) {
+                        throw new IllegalStateException(e);
                     }
                     log.trace("Node {} of class {} released", node.index, object.getClass());
                 } else if(v instanceof AutoCloseable closeable) {
                     log.trace("Releasing node {} of class {}", node.index, object.getClass());
                     try {
                         closeable.close();
-                    } catch (Throwable e) {
-                        throw new ReleaseException(e);
+                    } catch (RuntimeException | Error e) {
+                        throw e;
+                    } catch (Exception e) {
+                        throw new IllegalStateException(e);
                     }
                     log.trace("Node {} of class {} released", node.index, object.getClass());
                 }
@@ -321,20 +330,6 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
             if (interrupted) {
                 Thread.currentThread().interrupt();
             }
-        }
-    }
-
-    private static class InitException extends RuntimeException {
-
-        public InitException(Throwable cause) {
-            super(cause);
-        }
-    }
-
-    private static class ReleaseException extends RuntimeException {
-
-        public ReleaseException(Throwable cause) {
-            super(cause);
         }
     }
 
@@ -443,9 +438,12 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                             var intercepted = interceptorObject.init(o);
                             this.rootGraph.log.trace("Intercepting init node {} of class {} with node {} of class {} complete", node.index, o.getClass(), interceptor.index, interceptorObject.getClass());
                             return intercepted;
+                        } catch (RuntimeException | Error e) {
+                            this.rootGraph.log.trace("Intercepting init node {} of class {} with node {} of class {} error", node.index, o.getClass(), interceptor.index, interceptorObject.getClass(), e);
+                            throw e;
                         } catch (Throwable e) {
                             this.rootGraph.log.trace("Intercepting init node {} of class {} with node {} of class {} error", node.index, o.getClass(), interceptor.index, interceptorObject.getClass(), e);
-                            throw new InitException(e);
+                            throw new IllegalStateException(e);
                         }
                     }, this.executor);
                 }
@@ -500,7 +498,7 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
 
         private CompletableFuture<Void> initializeNode(NodeImpl<?> node, Lifecycle lifecycle) {
             var index = node.index;
-            this.rootGraph.log.trace("Node Initializing {} of class {} cancelled", index, lifecycle.getClass());
+            this.rootGraph.log.trace("Initializing node {} of class {} cancelled", index, lifecycle.getClass());
             return CompletableFuture.runAsync(() -> {
                 try {
                     lifecycle.init();
@@ -514,9 +512,12 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                 } catch (CompletionException ce) {
                     this.rootGraph.log.trace("Node Initializing {} of class {} error", index, lifecycle.getClass(), ce.getCause());
                     throw ce;
-                } catch (Throwable e) {
+                } catch (RuntimeException | Error e) {
                     this.rootGraph.log.trace("Node Initializing {} of class {} error", index, lifecycle.getClass(), e);
-                    throw new InitException(e);
+                    throw e;
+                } catch (Throwable e) {
+                    this.rootGraph.log.trace("Initializing node {} of class {} error", index, lifecycle.getClass(), e);
+                    throw new IllegalStateException(e);
                 }
             }, this.executor);
         }
