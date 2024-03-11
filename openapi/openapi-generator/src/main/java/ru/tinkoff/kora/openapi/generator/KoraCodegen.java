@@ -1512,14 +1512,14 @@ public class KoraCodegen extends DefaultCodegen {
             if (op.bodyParam != null) {
                 if (op.bodyParam.isBinary) {
                     op.bodyParam.vendorExtensions.put("hasMapperTag", false);
-                } else if (Objects.equals("application/json", op.bodyParam.contentType) || op.bodyParam.contentType == null) {
+                } else if (op.bodyParam.getContent() != null && op.bodyParam.getContent().containsKey("application/json")) {
                     op.bodyParam.vendorExtensions.put("hasMapperTag", true);
                     op.bodyParam.vendorExtensions.put("mapperTag", params.jsonAnnotation);
                 }
                 for (var param : op.allParams) {
                     if (param.isBodyParam && param.isBinary) {
                         op.bodyParam.vendorExtensions.put("hasMapperTag", false);
-                    } else if (param.isBodyParam && Objects.equals("application/json", param.contentType) || param.contentType == null) {
+                    } else if (param.isBodyParam && (param.getContent() != null && param.getContent().containsKey("application/json"))) {
                         param.vendorExtensions.put("hasMapperTag", true);
                         param.vendorExtensions.put("mapperTag", params.jsonAnnotation);
                     }
@@ -1534,7 +1534,7 @@ public class KoraCodegen extends DefaultCodegen {
                         .findFirst()
                         .map(m -> m.get("importPath").toString())
                         .get();
-                    if (formParam.contentType != null && formParam.contentType.equals("application/json")) {
+                    if (formParam.getContent() != null && formParam.getContent().containsKey("application/json")) {
                         formParam.vendorExtensions.put("mapperTag", params.jsonAnnotation);
                         formParamsWithMappers.add(new HashMap<>(Map.of(
                             "paramName", formParam.paramName,
