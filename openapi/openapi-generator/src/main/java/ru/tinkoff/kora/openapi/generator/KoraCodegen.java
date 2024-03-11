@@ -1512,14 +1512,14 @@ public class KoraCodegen extends DefaultCodegen {
             if (op.bodyParam != null) {
                 if (op.bodyParam.isBinary) {
                     op.bodyParam.vendorExtensions.put("hasMapperTag", false);
-                } else if (isContentJson(op.bodyParam.getContent())) {
+                } else if (isContentJson(op.bodyParam)) {
                     op.bodyParam.vendorExtensions.put("hasMapperTag", true);
                     op.bodyParam.vendorExtensions.put("mapperTag", params.jsonAnnotation);
                 }
                 for (var param : op.allParams) {
                     if (param.isBodyParam && param.isBinary) {
                         op.bodyParam.vendorExtensions.put("hasMapperTag", false);
-                    } else if (param.isBodyParam && (isContentJson(param.getContent()))) {
+                    } else if (param.isBodyParam && (isContentJson(param))) {
                         param.vendorExtensions.put("hasMapperTag", true);
                         param.vendorExtensions.put("mapperTag", params.jsonAnnotation);
                     }
@@ -1535,7 +1535,7 @@ public class KoraCodegen extends DefaultCodegen {
                         .map(m -> m.get("importPath").toString())
                         .orElseThrow();
 
-                    if (isContentJson(formParam.getContent())) {
+                    if (isContentJson(formParam)) {
                         formParam.vendorExtensions.put("mapperTag", params.jsonAnnotation);
                         formParamsWithMappers.add(new HashMap<>(Map.of(
                             "paramName", formParam.paramName,
@@ -1718,6 +1718,12 @@ public class KoraCodegen extends DefaultCodegen {
             objs.put("annotationParams", annotationParams);
         }
         return objs;
+    }
+
+    public static boolean isContentJson(CodegenParameter parameter) {
+        return parameter.containerType != null
+            && (parameter.containerType.startsWith("application/json") || parameter.containerType.startsWith("text/json"))
+            || isContentJson(parameter.getContent());
     }
 
     public static boolean isContentJson(@Nullable Map<String, CodegenMediaType> content) {
