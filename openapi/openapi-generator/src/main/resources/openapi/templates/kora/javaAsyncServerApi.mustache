@@ -7,7 +7,11 @@ package {{package}};
 
 {{#imports}}import {{import}};
 {{/imports}}
+{{#isAsync}}
+import java.util.concurrent.CompletionStage;
+{{/isAsync}}{{#isReactive}}
 import reactor.core.publisher.Mono;
+{{/isReactive}}
 
 import java.util.List;
 import java.util.Map;
@@ -66,8 +70,8 @@ public{{^vendorExtensions.enableValidation}} final{{/vendorExtensions.enableVali
     @ru.tinkoff.kora.validation.common.annotation.Validate
     {{/vendorExtensions.x-validate}}
     @ru.tinkoff.kora.common.Mapping({{classname}}ServerResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponseMapper.class)
-    public Mono<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {{operationId}}({{>javaAnnotatedParams}}) {
-      return this.delegate.{{operationId}}(
+    public {{#isAsync}}CompletionStage{{/isAsync}}{{#isReactive}}Mono{{/isReactive}}<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {{operationId}}({{>javaAnnotatedParams}}) {
+      return this.delegate.{{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}
         {{#allParams}}{{#lambda.trim}}
         {{#hasFormParams}}{{^isFormParam}}{{paramName}},{{/isFormParam}}{{/hasFormParams}}
         {{^hasFormParams}}{{paramName}}{{^-last}},{{/-last}}{{/hasFormParams}}{{/lambda.trim}}{{/allParams}}{{#hasFormParams}}
