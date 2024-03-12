@@ -10,7 +10,7 @@ import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent12;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@KoraAppTest(value = TestApplication.class, components = TestComponent12.class)
+@KoraAppTest(value = TestApplication.class)
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 abstract class AbstractPerMethodTests {
 
@@ -22,7 +22,7 @@ abstract class AbstractPerMethodTests {
     protected TestComponent12 component12;
 
     @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-    public static class TestPerMethodChild extends AbstractPerMethodTests {
+    final static class TestPerMethodChild extends AbstractPerMethodTests {
 
         @Test
         @Order(1)

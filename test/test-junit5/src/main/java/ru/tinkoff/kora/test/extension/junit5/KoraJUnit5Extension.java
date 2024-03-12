@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
 import jakarta.annotation.Nonnull;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.*;
 import org.junit.platform.commons.support.AnnotationSupport;
@@ -47,7 +48,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         }
     }
 
-    enum InitMode {
+    enum InitializeOrigin {
         CONSTRUCTOR,
         METHOD
     }
@@ -86,9 +87,10 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         }
     }
 
-    record TestClassMetadata(KoraAppTest annotation,
+    record TestClassMetadata(Class<?> testClass,
+                             KoraAppTest annotation,
                              TestInstance.Lifecycle lifecycle,
-                             InitMode initMode,
+                             InitializeOrigin initializeOrigin,
                              Config config,
                              Set<GraphCandidate> annotationComponents,
                              List<Field> fieldsForInjection,
@@ -190,12 +192,32 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             return;
         }
 
-        var testInstance = context.getTestInstance().orElseThrow(() -> new ExtensionConfigurationException("@KoraAppTest can't get TestInstance for @TestComponent field injection"));
+        var testInstance = context.getTestInstance()
+            .map(inst -> {
+                if(inst.getClass().isAnnotationPresent(Nested.class)) {
+                    return Arrays.stream(inst.getClass().getDeclaredFields())
+                        .filter(f -> f.getType().equals(metadata.testClass()))
+                        .findFirst()
+                        .map(f -> {
+                            try {
+                                f.setAccessible(true);
+                                return f.get(inst);
+                            } catch (IllegalAccessException e) {
+                                throw new IllegalStateException("Failed retrieving parent test class inside @Nested test class: " + inst.getClass());
+                            }
+                        })
+                        .orElseThrow(() -> new IllegalStateException("Failed searching parent test class inside @Nested test class: " + inst.getClass()));
+                }
+
+                return inst;
+            })
+            .orElseThrow(() -> new ExtensionConfigurationException("@KoraAppTest can't get TestInstance for @TestComponent field injection"));
+
         for (var field : metadata.fieldsForInjection) {
             final Class<?>[] tags = parseTags(field);
             final GraphCandidate candidate = new GraphCandidate(field.getGenericType(), tags);
             logger.debug("Looking for test method '{}' field '{}' inject candidate: {}",
-                context.getDisplayName(), field.getName(), candidate);
+                getTestMethodName(context), field.getName(), candidate);
 
             final Object component = getComponentFromGraph(graphInitialized, candidate);
             injectToField(testInstance, field, component);
@@ -219,29 +241,35 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         }
     }
 
-    public static KoraTestContext getInitializedKoraTestContext(InitMode initMode, ExtensionContext context) {
+    public static KoraTestContext getInitializedKoraTestContext(InitializeOrigin initializeOrigin, ExtensionContext context) {
         var started = System.nanoTime();
 
         var koraTestContext = getKoraTestContext(context);
+        final boolean isReady = koraTestContext.metadata != null && koraTestContext.graph != null;
+        if(!isReady) {
+            if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_METHOD) {
+                logger.info("@KoraAppTest test method '{}' setup started...", getTestMethodName(context));
+            } else {
+                logger.info("@KoraAppTest test class '{}' setup started...", getTestClassName(context));
+            }
+        }
+
         if (koraTestContext.metadata == null) {
-            koraTestContext.metadata = getClassMetadata(koraTestContext, initMode, context);
+            koraTestContext.metadata = getClassMetadata(koraTestContext, initializeOrigin, context);
         }
 
         if (koraTestContext.graph == null) {
-            if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_METHOD) {
-                logger.debug("@KoraAppTest test method '{}' setup started...", context.getDisplayName());
-            } else {
-                logger.debug("@KoraAppTest test class setup started...");
-            }
-
             koraTestContext.graph = generateTestGraph(koraTestContext.metadata, context);
             koraTestContext.graph.initialize();
+
         }
 
-        if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_METHOD) {
-            logger.info("@KoraAppTest test method '{}' setup took: {}", context.getDisplayName(), Duration.ofNanos(System.nanoTime() - started));
-        } else {
-            logger.info("@KoraAppTest test class setup took: {}", Duration.ofNanos(System.nanoTime() - started));
+        if(!isReady) {
+            if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_METHOD) {
+                logger.info("@KoraAppTest test method '{}' setup took: {}", getTestMethodName(context), Duration.ofNanos(System.nanoTime() - started));
+            } else {
+                logger.info("@KoraAppTest test class '{}' setup took: {}", getTestClassName(context), Duration.ofNanos(System.nanoTime() - started));
+            }
         }
 
         return koraTestContext;
@@ -254,7 +282,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
     @Override
     public void beforeEach(ExtensionContext context) {
-        var koraTestContext = getInitializedKoraTestContext(InitMode.METHOD, context);
+        var koraTestContext = getInitializedKoraTestContext(InitializeOrigin.METHOD, context);
         prepareMocks(koraTestContext.graph.initialized());
         injectComponentsToFields(koraTestContext.metadata, koraTestContext.graph.initialized(), context);
     }
@@ -263,13 +291,13 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     public void afterEach(ExtensionContext context) {
         var koraTestContext = getKoraTestContext(context);
         if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_METHOD) {
-            logger.debug("@KoraAppTest test method '{}' cleaning started...", context.getDisplayName());
-            var started = System.nanoTime();
             if (koraTestContext.graph != null) {
+                logger.debug("@KoraAppTest test method '{}' cleanup started...", getTestMethodName(context));
+                var started = System.nanoTime();
                 koraTestContext.graph.close();
                 koraTestContext.graph = null;
+                logger.info("@KoraAppTest test method '{}' cleanup took: {}", getTestMethodName(context), Duration.ofNanos(System.nanoTime() - started));
             }
-            logger.info("@KoraAppTest test method '{}' cleanup took: {}", context.getDisplayName(), Duration.ofNanos(System.nanoTime() - started));
         }
     }
 
@@ -277,12 +305,14 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     public void afterAll(ExtensionContext context) {
         var koraTestContext = getKoraTestContext(context);
         if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_CLASS) {
-            logger.debug("@KoraAppTest test class cleaning started...");
-            var started = System.nanoTime();
-            if (koraTestContext.graph != null) {
-                koraTestContext.graph.close();
+            if (!context.getRequiredTestClass().isAnnotationPresent(Nested.class)) {
+                if (koraTestContext.graph != null) {
+                    var started = System.nanoTime();
+                    logger.debug("@KoraAppTest test class '{}' cleanup started...", getTestClassName(context));
+                    koraTestContext.graph.close();
+                    logger.info("@KoraAppTest test class '{}' cleanup took: {}", getTestClassName(context), Duration.ofNanos(System.nanoTime() - started));
+                }
             }
-            logger.info("@KoraAppTest test class cleanup took: {}", Duration.ofNanos(System.nanoTime() - started));
         }
     }
 
@@ -314,12 +344,36 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
     @Override
     public Object resolveParameter(ParameterContext parameterContext, ExtensionContext context) throws ParameterResolutionException {
-        var koraTestContext = getInitializedKoraTestContext(InitMode.CONSTRUCTOR, context);
+        var koraTestContext = getInitializedKoraTestContext(InitializeOrigin.CONSTRUCTOR, context);
         var graphCandidate = getGraphCandidate(parameterContext);
-        logger.debug("Looking for test method '{}' parameter '{}' inject candidate: {}",
-            context.getDisplayName(), parameterContext.getParameter().getName(), graphCandidate);
+
+        if(parameterContext.getDeclaringExecutable() instanceof Constructor<?>) {
+            logger.debug("Looking for test class '{}' constructor parameter '{}' inject candidate: {}",
+                getTestClassName(context), parameterContext.getParameter().getName(), graphCandidate);
+        } else {
+            logger.debug("Looking for test method '{}' parameter '{}' inject candidate: {}",
+                getTestMethodName(context), parameterContext.getParameter().getName(), graphCandidate);
+        }
 
         return getComponentFromGraph(koraTestContext.graph.initialized(), graphCandidate);
+    }
+
+    private static String getTestClassName(ExtensionContext context) {
+        Class<?> testClass = context.getRequiredTestClass();
+        String packageName = testClass.getPackageName();
+        return (packageName.isBlank())
+            ? testClass.getSimpleName()
+            : testClass.getCanonicalName().substring(packageName.length() + 1);
+    }
+
+    private static String getTestMethodName(ExtensionContext context) {
+        final String methodName = context.getTestMethod()
+            .map(m -> m.getName() + Arrays.stream(m.getParameters())
+                .map(p -> p.getType().getSimpleName())
+                .collect(Collectors.joining(", ", "(", ")")))
+            .orElse(context.getDisplayName());
+
+        return getTestClassName(context) + "#" + methodName;
     }
 
     private static List<GraphModification> getGraphModifications(TestMethodMetadata metadata, ExtensionContext context) {
@@ -342,7 +396,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     }
 
     private static TestMethodMetadata getMethodMetadata(TestClassMetadata classMetadata, ExtensionContext context) {
-        if (classMetadata.initMode == InitMode.CONSTRUCTOR) {
+        if (classMetadata.initializeOrigin == InitializeOrigin.CONSTRUCTOR) {
             context.getTestMethod().ifPresent(method -> {
                 if (Arrays.stream(method.getParameters()).anyMatch(KoraJUnit5Extension::isCandidate)) {
                     throw new ExtensionConfigurationException("@KoraAppTest when uses constructor injection, can't inject @TestComponents or @Mock as method parameters");
@@ -364,7 +418,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
         final Set<GraphCandidate> parameterComponents = new HashSet<>();
         if (classMetadata.lifecycle == TestInstance.Lifecycle.PER_METHOD) {
-            if (classMetadata.initMode == InitMode.METHOD) {
+            if (classMetadata.initializeOrigin == InitializeOrigin.METHOD) {
                 for (var parameter : context.getRequiredTestMethod().getParameters()) {
                     if (isComponent(parameter)) {
                         var tag = parseTags(parameter);
@@ -388,11 +442,14 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         return new TestMethodMetadata(classMetadata, parameterComponents, parameterMocks);
     }
 
-    private static TestClassMetadata getClassMetadata(KoraTestContext koraAppTest, InitMode initMode, ExtensionContext context) {
-        if (initMode == InitMode.CONSTRUCTOR) {
-            if (KoraAppTestGraphModifier.class.isAssignableFrom(context.getRequiredTestClass())) {
+    private static TestClassMetadata getClassMetadata(KoraTestContext koraAppTest, InitializeOrigin initializeOrigin, ExtensionContext context) {
+        var testClass = context.getTestClass()
+            .orElseThrow(() -> new ExtensionConfigurationException("@KoraAppTest can't get TestInstance for @TestComponent field injection"));
+
+        if (initializeOrigin == InitializeOrigin.CONSTRUCTOR) {
+            if (KoraAppTestGraphModifier.class.isAssignableFrom(testClass)) {
                 throw new ExtensionConfigurationException("@KoraAppTest when uses constructor injection, can't use KoraAppTestGraphModifier cause it requires test class instance first, use field injection");
-            } else if (KoraAppTestConfigModifier.class.isAssignableFrom(context.getRequiredTestClass())) {
+            } else if (KoraAppTestConfigModifier.class.isAssignableFrom(testClass)) {
                 throw new ExtensionConfigurationException("@KoraAppTest when uses constructor injection, can't use KoraAppTestConfigModifier cause it requires test class instance first, use field injection");
             }
         }
@@ -408,9 +465,6 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                 return ((TestClassMetadata.Config) new TestClassMetadata.FileConfig(configModification));
             })
             .orElse(TestClassMetadata.Config.NONE);
-
-        var testClass = context.getTestClass()
-            .orElseThrow(() -> new ExtensionConfigurationException("@KoraAppTest can't get TestInstance for @TestComponent field injection"));
 
         final List<Field> fieldsForInjection = ReflectionUtils.findFields(testClass,
             f -> !f.isSynthetic() && isCandidate(f),
@@ -449,8 +503,8 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
         final Set<GraphCandidate> constructorComponents = new HashSet<>();
         final Set<GraphModification> constructorMocks = new HashSet<>();
-        if (initMode == InitMode.CONSTRUCTOR) {
-            var constructor = context.getRequiredTestClass().getDeclaredConstructors()[0];
+        if (initializeOrigin == InitializeOrigin.CONSTRUCTOR) {
+            var constructor = testClass.getDeclaredConstructors()[0];
             constructor.setAccessible(true);
             for (Parameter parameter : constructor.getParameters()) {
                 if (isComponent(parameter)) {
@@ -463,7 +517,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             }
         }
 
-        return new TestClassMetadata(koraAppTest.annotation, koraAppTest.lifecycle, initMode, koraAppConfig, annotationCandidates,
+        return new TestClassMetadata(testClass, koraAppTest.annotation, koraAppTest.lifecycle, initializeOrigin, koraAppConfig, annotationCandidates,
             fieldsForInjection, fieldComponents, fieldMocks, constructorComponents, constructorMocks);
     }
 
