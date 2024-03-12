@@ -9,7 +9,7 @@ paths:
     patch:
       requestBody:
         content:
-          application/json:
+          application/json; charset=utf-8:
             schema:
               $ref: '#/components/schemas/Pet'
       responses:
