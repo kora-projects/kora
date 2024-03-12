@@ -235,14 +235,14 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             }
         }
 
-        if(!processedWaitsProxy.isEmpty()) {
+        if (!processedWaitsProxy.isEmpty()) {
             log.info("Components waiting for AOP Proxy found: {}", processedWaitsProxy);
         }
-        if(!processedComponents.isEmpty()) {
+        if (!processedComponents.isEmpty()) {
             var logComponents = processedComponents.stream()
                 .filter(c -> !loggedComponents.contains(c))
                 .toList();
-            if(!logComponents.isEmpty()) {
+            if (!logComponents.isEmpty()) {
                 log.info("Components found: {}", logComponents);
                 loggedComponents.addAll(logComponents);
             }
@@ -263,11 +263,11 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             processedModules.add((TypeElement) moduleElement);
         }
 
-        if(!processedModules.isEmpty()) {
+        if (!processedModules.isEmpty()) {
             var logModules = processedModules.stream()
                 .filter(c -> !loggedApplicationModules.contains(c))
                 .toList();
-            if(!logModules.isEmpty()) {
+            if (!logModules.isEmpty()) {
                 log.info("Application modules found:\n{}", logModules.stream()
                     .map(Object::toString).sorted()
                     .collect(Collectors.joining("\n")).indent(4));
@@ -294,11 +294,11 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             var type = (TypeElement) classElement;
             var interfaces = KoraAppUtils.collectInterfaces(this.types, type);
 
-            if(!interfaces.isEmpty()) {
+            if (!interfaces.isEmpty()) {
                 var logExtModules = interfaces.stream()
                     .filter(c -> !loggedExternalModules.contains(c))
                     .toList();
-                if(!logExtModules.isEmpty()) {
+                if (!logExtModules.isEmpty()) {
                     log.info("External modules found:\n{}", logExtModules.stream()
                         .map(Object::toString).sorted()
                         .collect(Collectors.joining("\n")).indent(4));

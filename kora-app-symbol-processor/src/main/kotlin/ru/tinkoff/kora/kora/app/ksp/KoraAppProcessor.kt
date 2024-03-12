@@ -297,10 +297,10 @@ class KoraAppProcessor(
             }
         }
 
-        if(logWaitsProxy.isNotEmpty()) {
+        if (logWaitsProxy.isNotEmpty()) {
             kspLogger.info("Component waiting for AOP Proxy found: $logWaitsProxy")
         }
-        if(logComponents.isNotEmpty()) {
+        if (logComponents.isNotEmpty()) {
             kspLogger.info("Component found: $logComponents")
         }
 
