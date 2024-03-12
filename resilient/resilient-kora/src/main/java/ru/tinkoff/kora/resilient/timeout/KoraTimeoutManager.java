@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
 
 final class KoraTimeoutManager implements TimeoutManager {
 
@@ -14,12 +13,12 @@ final class KoraTimeoutManager implements TimeoutManager {
 
     private final Map<String, Timeout> timeouterMap = new ConcurrentHashMap<>();
     private final TimeoutMetrics metrics;
-    private final ExecutorService executor;
+    private final TimeoutExecutor timeoutExecutor;
     private final TimeoutConfig config;
 
-    KoraTimeoutManager(TimeoutMetrics metrics, ExecutorService executor, TimeoutConfig config) {
+    KoraTimeoutManager(TimeoutMetrics metrics, TimeoutExecutor timeoutExecutor, TimeoutConfig config) {
         this.metrics = metrics;
-        this.executor = executor;
+        this.timeoutExecutor = timeoutExecutor;
         this.config = config;
     }
 
@@ -29,7 +28,7 @@ final class KoraTimeoutManager implements TimeoutManager {
         return timeouterMap.computeIfAbsent(name, (k) -> {
             var config = this.config.getNamedConfig(name);
             logger.debug("Creating Timeout named '{}' and config {}", name, config);
-            return new KoraTimeout(name, config.duration().toNanos(), metrics, executor);
+            return new KoraTimeout(name, config.duration().toNanos(), metrics, timeoutExecutor.executor());
         });
     }
 }

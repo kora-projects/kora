@@ -277,60 +277,27 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
         var finalIntercept = intercept;
         return dependentReleases
             .thenCompose(v -> finalIntercept)
-            .thenAcceptAsync(v -> {
+            .thenComposeAsync(v -> {
                 if (v instanceof Lifecycle lifecycle) {
                     log.trace("Releasing node {} of class {}", node.index, object.getClass());
                     try {
                         lifecycle.release();
-                    } catch (RuntimeException | Error e) {
-                        throw e;
-                    } catch (Exception e) {
-                        throw new IllegalStateException(e);
-                    }
-                    log.trace("Node {} of class {} released", node.index, object.getClass());
-                } else if(v instanceof ExecutorService executorService) {
-                    log.trace("Releasing node {} of class {}", node.index, object.getClass());
-                    try {
-                        closeExecutorService(executorService);
-                    } catch (RuntimeException | Error e) {
-                        throw e;
-                    } catch (Exception e) {
-                        throw new IllegalStateException(e);
+                    } catch (Error | Exception e) {
+                        return CompletableFuture.failedFuture(e);
                     }
                     log.trace("Node {} of class {} released", node.index, object.getClass());
                 } else if(v instanceof AutoCloseable closeable) {
                     log.trace("Releasing node {} of class {}", node.index, object.getClass());
                     try {
                         closeable.close();
-                    } catch (RuntimeException | Error e) {
-                        throw e;
-                    } catch (Exception e) {
-                        throw new IllegalStateException(e);
+                    } catch (Error | Exception e) {
+                        return CompletableFuture.failedFuture(e);
                     }
                     log.trace("Node {} of class {} released", node.index, object.getClass());
                 }
-            }, this.executor);
-    }
 
-    private static void closeExecutorService(ExecutorService executorService) {
-        boolean terminated = executorService.isTerminated();
-        if (!terminated) {
-            executorService.shutdown();
-            boolean interrupted = false;
-            while (!terminated) {
-                try {
-                    terminated = executorService.awaitTermination(30, TimeUnit.SECONDS);
-                } catch (InterruptedException e) {
-                    if (!interrupted) {
-                        executorService.shutdownNow();
-                        interrupted = true;
-                    }
-                }
-            }
-            if (interrupted) {
-                Thread.currentThread().interrupt();
-            }
-        }
+                return CompletableFuture.completedFuture(null);
+            }, this.executor);
     }
 
     private static class TmpGraph implements Graph {

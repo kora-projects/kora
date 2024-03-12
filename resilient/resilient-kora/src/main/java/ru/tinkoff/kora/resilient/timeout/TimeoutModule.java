@@ -2,12 +2,9 @@ package ru.tinkoff.kora.resilient.timeout;
 
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.DefaultComponent;
-import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
-import ru.tinkoff.kora.resilient.timeout.annotation.Timeout;
 
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public interface TimeoutModule {
@@ -17,18 +14,15 @@ public interface TimeoutModule {
         return extractor.extract(value);
     }
 
-    default TimeoutManager koraTimeoutManager(@Tag(Timeout.class) ExecutorService executorService,
+    default TimeoutManager koraTimeoutManager(TimeoutExecutor timeoutExecutor,
                                               TimeoutConfig config,
                                               @Nullable TimeoutMetrics metrics) {
-        return new KoraTimeoutManager(metrics == null
-            ? new NoopTimeoutMetrics()
-            : metrics,
-            executorService, config);
+        TimeoutMetrics timeoutMetrics = (metrics == null) ? new NoopTimeoutMetrics() : metrics;
+        return new KoraTimeoutManager(timeoutMetrics, timeoutExecutor, config);
     }
 
     @DefaultComponent
-    @Tag(Timeout.class)
-    default ExecutorService koraTimeoutExecutorService() {
-        return Executors.newCachedThreadPool();
+    default TimeoutExecutor koraTimeoutExecutorService() {
+        return new TimeoutExecutor(Executors.newCachedThreadPool());
     }
 }
