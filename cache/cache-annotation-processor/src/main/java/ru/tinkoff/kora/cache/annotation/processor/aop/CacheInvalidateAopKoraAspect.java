@@ -2,13 +2,16 @@ package ru.tinkoff.kora.cache.annotation.processor.aop;
 
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
-import ru.tinkoff.kora.annotation.processor.common.*;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
+import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
+import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.cache.annotation.processor.CacheOperation;
 import ru.tinkoff.kora.cache.annotation.processor.CacheOperationUtils;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
-import java.util.List;
+import javax.lang.model.type.DeclaredType;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
@@ -159,6 +162,8 @@ public class CacheInvalidateAopKoraAspect extends AbstractAopCacheAspect {
                                     CacheOperation operation,
                                     String superCall) {
         final String superMethod = getSuperMethod(method, superCall);
+        var completionType = ((DeclaredType) method.getReturnType()).getTypeArguments().get(0);
+        var isOptional = CommonUtils.isOptional(completionType);
 
         // cache variables
         var builder = CodeBlock.builder();
@@ -168,11 +173,15 @@ public class CacheInvalidateAopKoraAspect extends AbstractAopCacheAspect {
             builder.add("return ").add(superMethod);
             builder.beginControlFlow(".doOnSuccess(_result -> ");
 
-            if(!MethodUtils.isMonoVoid(method)) {
-                builder.beginControlFlow("if(_result != null)");
+            if (!MethodUtils.isMonoVoid(method)) {
+                if (isOptional) {
+                    builder.beginControlFlow("if(_result.isPresent())");
+                } else {
+                    builder.beginControlFlow("if(_result != null)");
+                }
             }
             builder.add(getSyncBlock(method, operation));
-            if(!MethodUtils.isMonoVoid(method)) {
+            if (!MethodUtils.isMonoVoid(method)) {
                 builder.endControlFlow();
             }
 
@@ -251,6 +260,8 @@ public class CacheInvalidateAopKoraAspect extends AbstractAopCacheAspect {
                                        CacheOperation operation,
                                        String superCall) {
         final String superMethod = getSuperMethod(method, superCall);
+        var completionType = ((DeclaredType) method.getReturnType()).getTypeArguments().get(0);
+        var isOptional = CommonUtils.isOptional(completionType);
 
         // cache variables
         var builder = CodeBlock.builder();
@@ -260,9 +271,23 @@ public class CacheInvalidateAopKoraAspect extends AbstractAopCacheAspect {
 
         if (operation.executions().stream().allMatch(e -> e.contract() == CacheOperation.CacheExecution.Contract.SYNC)) {
             builder.beginControlFlow(".doOnSuccess(_result -> ");
+
+            if (!MethodUtils.isMonoVoid(method)) {
+                if (isOptional) {
+                    builder.beginControlFlow("if(_result.isPresent())");
+                } else {
+                    builder.beginControlFlow("if(_result != null)");
+                }
+            }
+
             for (var cache : operation.executions()) {
                 builder.addStatement("$L.invalidateAll()", cache.field());
             }
+
+            if (!MethodUtils.isMonoVoid(method)) {
+                builder.endControlFlow();
+            }
+
             builder.endControlFlow(")");
             return builder.build();
         } else if (operation.executions().size() > 1) {
