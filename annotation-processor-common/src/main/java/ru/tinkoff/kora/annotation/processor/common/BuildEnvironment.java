@@ -4,6 +4,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.ConsoleAppender;
 import ch.qos.logback.core.FileAppender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.tools.StandardLocation;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
@@ -52,21 +54,27 @@ public class BuildEnvironment {
         var kora = ctx.getLogger("ru.tinkoff.kora");
         kora.setAdditive(false);
         kora.detachAndStopAllAppenders();
-        var appender = new FileAppender<ILoggingEvent>();
-        var fileName = DateTimeFormatter.ofPattern("yyyy-MM-dd-hh-mm").format(LocalDateTime.now()) + ".log";
-        appender.setFile(buildDir.resolve("kora").resolve("log").resolve(fileName).toString());
+        var consoleAppender = new ConsoleAppender<ILoggingEvent>();
+        var fileAppender = new FileAppender<ILoggingEvent>();
+        var fileName = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'hh-mm-ss").format(LocalDateTime.now()) + ".log";
+        fileAppender.setFile(buildDir.resolve("kora").resolve("log").resolve(fileName).toString());
 
         var patternLayoutEncoder = new PatternLayoutEncoder();
-        patternLayoutEncoder.setPattern("%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{100} %X %msg%n");
+        patternLayoutEncoder.setPattern("%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n");
+        patternLayoutEncoder.setCharset(StandardCharsets.UTF_8);
         patternLayoutEncoder.setContext(ctx);
         patternLayoutEncoder.start();
-        appender.setEncoder(patternLayoutEncoder);
-        appender.setContext(ctx);
-        appender.start();
-        kora.addAppender(appender);
+        fileAppender.setEncoder(patternLayoutEncoder);
+        fileAppender.setContext(ctx);
+        fileAppender.start();
+        consoleAppender.setEncoder(patternLayoutEncoder);
+        consoleAppender.setContext(ctx);
+        consoleAppender.start();
+        kora.addAppender(fileAppender);
+        kora.addAppender(consoleAppender);
 
         if (log instanceof ch.qos.logback.classic.Logger logger) {
-            logger.setLevel(Level.valueOf(processingEnv.getOptions().getOrDefault("koraLogLevel", "DEBUG")));
+            logger.setLevel(Level.valueOf(processingEnv.getOptions().getOrDefault("koraLogLevel", "INFO")));
         }
     }
 }
