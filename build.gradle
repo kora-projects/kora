@@ -140,15 +140,15 @@ subprojects {
                     licenses {
                         license {
                             name = 'The Apache Software License, Version 2.0'
-                            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                            url = 'https://github.com/kora-projects/kora/blob/master/LICENSE'
                         }
                     }
                     scm {
-                        url = 'https://github.com/Tinkoff/kora'
-                        connection = 'scm:git:git@github.com/Tinkoff/kora.git'
-                        developerConnection = 'scm:git:git@github.com/Tinkoff/kora.git'
+                        url = 'https://github.com/kora-projects/kora'
+                        connection = 'scm:git:git@github.com/kora-projects/kora.git'
+                        developerConnection = 'scm:git:git@github.com/kora-projects/kora.git'
                     }
-                    url = 'https://github.com/Tinkoff/kora'
+                    url = 'https://github.com/kora-projects/kora'
                     developers {
                         developer {
                             id = 'a.otts'

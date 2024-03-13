@@ -55,7 +55,7 @@ jobs:
       - name: Execute Gradle nexus staging release
         uses: gradle/actions/setup-gradle@v3
         with:
-          arguments: closeAndReleaseStagingRepository
+          arguments: closeAndReleaseSonatypeStagingRepository
         env:
           REPO_URL: https://oss.sonatype.org/service/local/
           REPO_USER: ${{ secrets.SONATYPE_USERNAME }}

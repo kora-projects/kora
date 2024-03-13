@@ -18,12 +18,12 @@ jobs:
 
       - name: Retrieve the secret and decode it to a file
         env:
-          GPG_KEY: ${{ secrets.GPG_KEY }}
+          GPG_KEY: ${{ secrets.SONATYPE_GPG_KEY }}
         run: echo "$GPG_KEY" | base64 --decode > /tmp/secring.gpg
 
       - name: Retrieve the gradle.properties
         env:
-          SIGN_OSSRH_GRADLE_PROPERTIES: ${{ secrets.SIGN_OSSRH_GRADLE_PROPERTIES }}
+          SIGN_OSSRH_GRADLE_PROPERTIES: ${{ secrets.SONATYPE_GRADLE_PROPERTIES }}
         run: |
           mkdir -p ~/.gradle
           echo -en "$SIGN_OSSRH_GRADLE_PROPERTIES" > ~/.gradle/gradle.properties
