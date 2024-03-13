@@ -19,35 +19,45 @@ jobs:
 
       - name: Retrieve the secret and decode it to a file
         env:
-          GPG_KEY: ${{ secrets.GPG_KEY }}
+          GPG_KEY: ${{ secrets.SONATYPE_GPG_KEY }}
         run: echo "$GPG_KEY" | base64 --decode > /tmp/secring.gpg
 
       - name: Retrieve the gradle.properties
         env:
-          SIGN_OSSRH_GRADLE_PROPERTIES: ${{ secrets.SIGN_OSSRH_GRADLE_PROPERTIES }}
+          SIGN_OSSRH_GRADLE_PROPERTIES: ${{ secrets.SONATYPE_GRADLE_PROPERTIES }}
         run: |
           mkdir -p ~/.gradle
           echo -en "$SIGN_OSSRH_GRADLE_PROPERTIES" > ~/.gradle/gradle.properties
 
+      - name: Print release version
+        run: echo "Release version - $KORA_VERSION"
+        env:
+          KORA_VERSION: ${{ github.event.release.tag_name }}
+
       - name: Setup Gradle
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Execute Gradle build
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          arguments: assemble
 
       - name: Execute Gradle publish
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/actions/setup-gradle@v3
         with:
-          arguments: publish -Psigning.secretKeyRingFile=/tmp/secring.gpg
+          arguments: publishToSonatype -Psigning.secretKeyRingFile=/tmp/secring.gpg
         env:
           REPO_URL: https://oss.sonatype.org/service/local/staging/deploy/maven2/
           REPO_USER: ${{ secrets.SONATYPE_USERNAME }}
           REPO_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
-          KORA_VERSION: ${{ github.ref_name }}
+          KORA_VERSION: ${{ github.event.release.tag_name }}
 
       - name: Execute Gradle nexus staging release
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/actions/setup-gradle@v3
         with:
-          arguments: closeAndReleaseRepository
+          arguments: closeAndReleaseStagingRepository
         env:
           REPO_URL: https://oss.sonatype.org/service/local/
           REPO_USER: ${{ secrets.SONATYPE_USERNAME }}
           REPO_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
-          KORA_VERSION: ${{ github.ref_name }}
+          KORA_VERSION: ${{ github.event.release.tag_name }}
