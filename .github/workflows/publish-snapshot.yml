@@ -29,10 +29,15 @@ jobs:
           echo -en "$SIGN_OSSRH_GRADLE_PROPERTIES" > ~/.gradle/gradle.properties
 
       - name: Setup Gradle
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Execute Gradle build
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          arguments: assemble
 
       - name: Execute Gradle publish
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/actions/setup-gradle@v3
         with:
           arguments: publish -Psigning.secretKeyRingFile=/tmp/secring.gpg
         env:
