@@ -22,7 +22,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class ConfigParserGenerator {
-    private static final Logger log = LoggerFactory.getLogger(ConfigParserGenerator.class);
     private final Types types;
     private final Elements elements;
     private final ProcessingEnvironment processingEnv;
@@ -34,7 +33,6 @@ public class ConfigParserGenerator {
     }
 
     public Either<Void, List<ProcessingError>> generateForInterface(RoundEnvironment roundEnv, DeclaredType targetType) {
-        log.info("Generating ConfigValueExtractor for {}", targetType);
         var element = (TypeElement) targetType.asElement();
         var f = ConfigUtils.parseFields(this.types, element);
         if (f.isRight()) {
@@ -169,7 +167,6 @@ public class ConfigParserGenerator {
     }
 
     public Either<Void, List<ProcessingError>> generateForRecord(RoundEnvironment roundEnv, DeclaredType targetType) {
-        log.info("Generating ConfigValueExtractor for {}", targetType);
         var element = (TypeElement) targetType.asElement();
         var f = ConfigUtils.parseFields(this.types, element);
         if (f.isRight()) {
@@ -202,7 +199,6 @@ public class ConfigParserGenerator {
     }
 
     public Either<Void, List<ProcessingError>> generateForPojo(RoundEnvironment roundEnv, DeclaredType targetType) {
-        log.info("Generating ConfigValueExtractor for {}", targetType);
         var element = (TypeElement) targetType.asElement();
         var f = ConfigUtils.parseFields(this.types, element);
         if (f.isRight()) {

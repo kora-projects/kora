@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public record Extensions(List<KoraExtension> extensions) {
     private static final Logger log = LoggerFactory.getLogger(Extensions.class);
@@ -21,9 +22,16 @@ public record Extensions(List<KoraExtension> extensions) {
             .map(ServiceLoader.Provider::get)
             .flatMap(f -> f.create(processingEnvironment).stream())
             .toList();
-        for (var extension : extensions) {
-            log.info("Extension found: {}", extension);
+
+        if(!extensions.isEmpty() && log.isInfoEnabled()) {
+            String out = extensions.stream()
+                .map(e -> e.getClass().getCanonicalName())
+                .collect(Collectors.joining("\n"))
+                .indent(4);
+
+            log.info("Extensions found:\n{}", out);
         }
+
         return new Extensions(extensions);
     }
 
@@ -34,6 +42,7 @@ public record Extensions(List<KoraExtension> extensions) {
         for (var extension : this.extensions) {
             var generator = extension.getDependencyGenerator(roundEnvironment, typeMirror, tag);
             if (generator != null) {
+                log.trace("Extension '{}' is suitable generating for type: {}", extension.getClass().getCanonicalName(), typeMirror);
                 extensions.add(generator);
             }
         }

@@ -62,7 +62,6 @@ public class JsonProcessor {
         if (readerElement != null) {
             return;
         }
-        log.info("Generating JsonReader for {}", jsonElementType);
         if (jsonElement.getKind() == ElementKind.ENUM) {
             this.generateEnumReader(jsonElement);
             return;
@@ -114,7 +113,6 @@ public class JsonProcessor {
         if (writerElement != null) {
             return;
         }
-        log.info("Generating JsonWriter for {}", jsonElement);
         if (jsonElement.getKind() == ElementKind.ENUM) {
             this.generateEnumWriter(jsonElement);
             return;

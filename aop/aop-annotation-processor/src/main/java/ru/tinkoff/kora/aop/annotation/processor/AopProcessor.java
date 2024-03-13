@@ -145,7 +145,7 @@ public class AopProcessor {
                 }
             }
         }
-        log.debug("Type level aspects for {}: {}", typeElement, typeLevelAspects);
+        log.trace("Type level aspects for {}: {}", typeElement, typeLevelAspects);
 
         var typeFieldFactory = new TypeFieldFactory(this.types);
         var aopContext = new KoraAspect.AspectContext(typeFieldFactory);
@@ -197,7 +197,7 @@ public class AopProcessor {
             if (methodLevelTypeAspects.isEmpty() && methodLevelAspects.isEmpty() && methodParameterLevelAspects.isEmpty()) {
                 continue;
             }
-            log.debug("Method level aspects for {}#{}: {}", typeElement, typeMethod.getSimpleName(), methodLevelAspects);
+            log.trace("Method level aspects for {}#{}: {}", typeElement, typeMethod.getSimpleName(), methodLevelAspects);
             var aspectsToApply = new ArrayList<>(methodLevelTypeAspects);
             aspectsToApply.addAll(methodLevelAspects);
             aspectsToApply.addAll(methodParameterLevelAspects);

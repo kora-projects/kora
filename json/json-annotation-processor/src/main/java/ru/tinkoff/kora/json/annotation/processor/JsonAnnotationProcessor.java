@@ -1,17 +1,29 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
+import ru.tinkoff.kora.annotation.processor.common.LogUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
+import ru.tinkoff.kora.common.annotation.Generated;
+import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppUtils;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class JsonAnnotationProcessor extends AbstractKoraProcessor {
+
+    private static final Logger log = LoggerFactory.getLogger(JsonAnnotationProcessor.class);
+
     private boolean initialized = false;
     private JsonProcessor processor;
     private TypeElement jsonAnnotation;
@@ -48,46 +60,50 @@ public class JsonAnnotationProcessor extends AbstractKoraProcessor {
         if (roundEnv.processingOver()) {
             return false;
         }
-        for (var e : roundEnv.getElementsAnnotatedWith(this.jsonAnnotation)) {
-            if (e.getKind().isClass() || e.getKind() == ElementKind.INTERFACE) {
-                try {
-                    this.processor.generateReader((TypeElement) e);
-                } catch (ProcessingErrorException ex) {
-                    ex.printError(this.processingEnv);
-                }
-                try {
-                    this.processor.generateWriter((TypeElement) e);
-                } catch (ProcessingErrorException ex) {
-                    ex.printError(this.processingEnv);
-                }
+
+        var jsonElements = roundEnv.getElementsAnnotatedWith(this.jsonAnnotation).stream()
+            .filter(e -> e.getKind().isClass() || e.getKind() == ElementKind.INTERFACE)
+            .toList();
+        LogUtils.logElementsFull(log, Level.DEBUG, "Generating Json Readers & Writers for", jsonElements);
+        for (var e : jsonElements) {
+            try {
+                this.processor.generateReader((TypeElement) e);
+            } catch (ProcessingErrorException ex) {
+                ex.printError(this.processingEnv);
+            }
+            try {
+                this.processor.generateWriter((TypeElement) e);
+            } catch (ProcessingErrorException ex) {
+                ex.printError(this.processingEnv);
             }
         }
-        for (var e : roundEnv.getElementsAnnotatedWith(this.jsonWriterAnnotation)) {
-            if (AnnotationUtils.findAnnotation(e, JsonTypes.json) != null) continue;
-            if (e.getKind().isClass() || e.getKind() == ElementKind.INTERFACE) {
-                try {
-                    this.processor.generateWriter((TypeElement) e);
-                } catch (ProcessingErrorException ex) {
-                    ex.printError(this.processingEnv);
-                }
+
+        var jsonWriterElements = roundEnv.getElementsAnnotatedWith(this.jsonWriterAnnotation).stream()
+            .filter(e -> e.getKind().isClass() || e.getKind() == ElementKind.INTERFACE)
+            .filter(e -> AnnotationUtils.findAnnotation(e, JsonTypes.json) == null)
+            .toList();
+        LogUtils.logElementsFull(log, Level.DEBUG, "Generating JsonWriters for", jsonWriterElements);
+        for (var e : jsonWriterElements) {
+            try {
+                this.processor.generateWriter((TypeElement) e);
+            } catch (ProcessingErrorException ex) {
+                ex.printError(this.processingEnv);
             }
         }
-        for (var e : roundEnv.getElementsAnnotatedWith(this.jsonReaderAnnotation)) {
-            if (AnnotationUtils.findAnnotation(e, JsonTypes.json) != null) continue;
-            if (e.getKind() == ElementKind.CONSTRUCTOR) {
-                var typeElement = (TypeElement) e.getEnclosingElement();
-                if (AnnotationUtils.findAnnotation(typeElement, JsonTypes.json) != null) continue;
-                try {
-                    this.processor.generateReader(typeElement);
-                } catch (ProcessingErrorException ex) {
-                    ex.printError(this.processingEnv);
-                }
-            } else if (e.getKind().isClass()) {
-                try {
-                    this.processor.generateReader((TypeElement) e);
-                } catch (ProcessingErrorException ex) {
-                    ex.printError(this.processingEnv);
-                }
+
+        var jsonReaderElements = roundEnv.getElementsAnnotatedWith(this.jsonReaderAnnotation).stream()
+            .filter(e -> e.getKind().isClass() || e.getKind() == ElementKind.CONSTRUCTOR)
+            .map(e -> (e.getKind() == ElementKind.CONSTRUCTOR)
+                ? e.getEnclosingElement()
+                : e)
+            .filter(e -> AnnotationUtils.findAnnotation(e, JsonTypes.json) == null)
+            .toList();
+        LogUtils.logElementsFull(log, Level.DEBUG, "Generating JsonReaders for", jsonReaderElements);
+        for (var e : jsonReaderElements) {
+            try {
+                this.processor.generateReader((TypeElement) e);
+            } catch (ProcessingErrorException ex) {
+                ex.printError(this.processingEnv);
             }
         }
         return false;

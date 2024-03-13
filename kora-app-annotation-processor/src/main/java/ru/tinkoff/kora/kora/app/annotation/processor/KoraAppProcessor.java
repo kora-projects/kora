@@ -4,6 +4,7 @@ import com.squareup.javapoet.*;
 import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ComponentDependency;
@@ -64,7 +65,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         this.componentElement = this.elements.getTypeElement(CommonClassNames.component.canonicalName());
         this.initialized = true;
         this.ctx = new ProcessingContext(processingEnv);
-        log.info("Starting @KoraApp processor");
+        log.info("@KoraApp processor started");
     }
 
     @Override
@@ -97,7 +98,9 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         var koraAppElements = roundEnv.getElementsAnnotatedWith(this.koraAppElement);
         for (var element : koraAppElements) {
             if (element.getKind() == ElementKind.INTERFACE) {
-                log.info("@KoraApp element found: {}", element);
+                if (log.isInfoEnabled()) {
+                    log.info("@KoraApp element found:\n{}", element.toString().indent(4));
+                }
                 this.annotatedElements.computeIfAbsent((TypeElement) element, k -> parseNone(element));
             } else {
                 this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "@KoraApp can be placed only on interfaces", element);
@@ -105,44 +108,50 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         }
 
         var results = new HashMap<TypeElement, ProcessingState>();
-        if (!roundEnv.processingOver()) for (var annotatedClass : this.annotatedElements.entrySet()) {
-            var processingResult = annotatedClass.getValue();
-            if (processingResult instanceof ProcessingState.Ok) {
-                continue;
-            }
-            try {
-                if (processingResult instanceof ProcessingState.Failed failed) {
-                    processingResult = this.parseNone(annotatedClass.getKey());
-                }
-                if (processingResult instanceof ProcessingState.None none) {
-                    processingResult = this.processNone(none);
-                }
-                if (processingResult instanceof ProcessingState.NewRoundRequired newRound) {
-                    var newState = this.processProcessing(roundEnv, newRound.processing());
-                    results.put(annotatedClass.getKey(), newState);
+        if (!roundEnv.processingOver()) {
+            LogUtils.logElementsFull(log, Level.DEBUG, "Processing elements this Round", this.annotatedElements.keySet());
+
+            for (var annotatedClass : this.annotatedElements.entrySet()) {
+                var processingResult = annotatedClass.getValue();
+                if (processingResult instanceof ProcessingState.Ok) {
                     continue;
                 }
-                if (processingResult instanceof ProcessingState.Processing processing) {
-                    var newState = this.processProcessing(roundEnv, processing);
-                    results.put(annotatedClass.getKey(), newState);
-                }
-            } catch (NewRoundException e) {
-                if (!roundEnv.processingOver() || processingResult instanceof ProcessingState.None) {
-                    results.put(annotatedClass.getKey(), new ProcessingState.NewRoundRequired(e.getSource(), e.getType(), e.getTag(), e.getResolving()));// todo
-                }
-            } catch (ProcessingErrorException e) {
-                log.info("Processing exception", e);
-                results.put(annotatedClass.getKey(), new ProcessingState.Failed(e, processingResult.stack()));
-            } catch (Exception e) {
-                if (e instanceof FilerException || e.getCause() instanceof FilerException) {
-                    this.processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING, e.getMessage());
-                } else {
-                    throw new RuntimeException(e);
+                try {
+                    if (processingResult instanceof ProcessingState.Failed failed) {
+                        processingResult = this.parseNone(annotatedClass.getKey());
+                    }
+                    if (processingResult instanceof ProcessingState.None none) {
+                        processingResult = this.processNone(none);
+                    }
+                    if (processingResult instanceof ProcessingState.NewRoundRequired newRound) {
+                        var newState = this.processProcessing(roundEnv, newRound.processing());
+                        results.put(annotatedClass.getKey(), newState);
+                        continue;
+                    }
+                    if (processingResult instanceof ProcessingState.Processing processing) {
+                        var newState = this.processProcessing(roundEnv, processing);
+                        results.put(annotatedClass.getKey(), newState);
+                    }
+                } catch (NewRoundException e) {
+                    if (!roundEnv.processingOver() || processingResult instanceof ProcessingState.None) {
+                        results.put(annotatedClass.getKey(), new ProcessingState.NewRoundRequired(e.getSource(), e.getType(), e.getTag(), e.getResolving()));// todo
+                    }
+                } catch (ProcessingErrorException e) {
+                    log.info("Processing exception", e);
+                    results.put(annotatedClass.getKey(), new ProcessingState.Failed(e, processingResult.stack()));
+                } catch (Exception e) {
+                    if (e instanceof FilerException || e.getCause() instanceof FilerException) {
+                        this.processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING, e.getMessage());
+                    } else {
+                        throw new IllegalStateException(e);
+                    }
                 }
             }
         }
         this.annotatedElements.putAll(results);
         if (roundEnv.processingOver()) {
+            LogUtils.logElementsFull(log, Level.DEBUG, "Processing elements this Round", this.annotatedElements.keySet());
+
             for (var element : this.annotatedElements.entrySet()) {
                 var processingResult = element.getValue();
                 if (processingResult instanceof ProcessingState.NewRoundRequired newRound) {
@@ -197,17 +206,12 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
     }
 
     private void processGenerated(RoundEnvironment roundEnv) {
-        if (log.isInfoEnabled()) {
-            final String generated = roundEnv.getElementsAnnotatedWith(Generated.class)
-                .stream()
-                .map(Object::toString)
-                .collect(Collectors.joining("\n"))
-                .indent(4);
-
-            if (!generated.isBlank()) {
-                log.info("Generated previous Round:\n{}", generated);
+        if (log.isDebugEnabled()) {
+            var elements = roundEnv.getElementsAnnotatedWith(Generated.class);
+            if (!elements.isEmpty()) {
+                LogUtils.logElementsFull(log, Level.DEBUG, "Generated previous Round", elements);
             } else {
-                log.info("Nothing was generated previous Round.");
+                log.debug("Nothing was generated previous Round.");
             }
         }
     }
@@ -236,14 +240,14 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         }
 
         if (!processedWaitsProxy.isEmpty()) {
-            log.info("Components waiting for AOP Proxy found: {}", processedWaitsProxy);
+            LogUtils.logElementsFull(log, Level.TRACE, "Components waiting for aspects found", processedWaitsProxy);
         }
         if (!processedComponents.isEmpty()) {
             var logComponents = processedComponents.stream()
                 .filter(c -> !loggedComponents.contains(c))
                 .toList();
             if (!logComponents.isEmpty()) {
-                log.info("Components found: {}", logComponents);
+                LogUtils.logElementsFull(log, Level.TRACE, "Components ready for injection found", logComponents);
                 loggedComponents.addAll(logComponents);
             }
         }
@@ -268,9 +272,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 .filter(c -> !loggedApplicationModules.contains(c))
                 .toList();
             if (!logModules.isEmpty()) {
-                log.info("Application modules found:\n{}", logModules.stream()
-                    .map(Object::toString).sorted()
-                    .collect(Collectors.joining("\n")).indent(4));
+                LogUtils.logElementsFull(log, Level.INFO, "Application modules found", logModules);
                 loggedApplicationModules.addAll(logModules);
             }
         }
@@ -299,21 +301,19 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                     .filter(c -> !loggedExternalModules.contains(c))
                     .toList();
                 if (!logExtModules.isEmpty()) {
-                    log.info("External modules found:\n{}", logExtModules.stream()
-                        .map(Object::toString).sorted()
-                        .collect(Collectors.joining("\n")).indent(4));
+                    LogUtils.logElementsFull(log, Level.INFO, "External modules found", logExtModules);
                     loggedExternalModules.addAll(logExtModules);
                 }
             }
 
-            if (log.isDebugEnabled()) {
-                log.debug("Effective modules found:\n{}", Stream.concat(Stream.of(type), this.modules.stream()).flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream())
+            if (log.isTraceEnabled()) {
+                log.trace("Effective modules found:\n{}", Stream.concat(Stream.of(type), this.modules.stream()).flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream())
                     .map(Object::toString).sorted()
                     .collect(Collectors.joining("\n")).indent(4));
             }
             var mixedInModuleComponents = KoraAppUtils.parseComponents(this.ctx, interfaces.stream().map(ModuleDeclaration.MixedInModule::new).toList());
-            if (log.isDebugEnabled()) {
-                log.debug("Effective methods of {}:\n{}", classElement, mixedInModuleComponents.stream().map(Object::toString).sorted().collect(Collectors.joining("\n")).indent(4));
+            if (log.isTraceEnabled()) {
+                log.trace("Effective methods of {}:\n{}", classElement, mixedInModuleComponents.stream().map(Object::toString).sorted().collect(Collectors.joining("\n")).indent(4));
             }
             var submodules = KoraAppUtils.findKoraSubmoduleModules(this.elements, interfaces);
             var discoveredModules = this.modules.stream().flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream());
