@@ -5,7 +5,9 @@ import com.squareup.javapoet.TypeSpec;
 import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
+import ru.tinkoff.kora.annotation.processor.common.LogUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingError;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.common.AopAnnotation;
@@ -47,11 +49,13 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
 
         this.aopProcessor = new AopProcessor( this.types, this.elements, this.aspects );
 
-        var aspects = this.aspects.stream()
-            .map(Object::getClass)
-            .map(Class::getCanonicalName)
-            .collect(Collectors.joining("\n\t", "\t", ""));
-        log.debug("Discovered aspects:\n{}", aspects);
+        if(log.isDebugEnabled()) {
+            var aspects = this.aspects.stream()
+                .map(Object::getClass)
+                .map(Class::getCanonicalName)
+                .collect(Collectors.joining("\n\t", "\t", "")).indent(4);
+            log.debug("Discovered aspects:\n{}", aspects);
+        }
 
         this.annotations = this.aspects.stream()
             .<String>mapMulti((a, sink) -> a.getSupportedAnnotationTypes().forEach(sink))
@@ -100,10 +104,19 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
         if (!this.errors.isEmpty()) {
             return false;
         }
+
         var processedClasses = new ArrayList<TypeElementWithEquals>();
+        if(!this.classesToProcess.isEmpty()) {
+            if (log.isInfoEnabled()) {
+                List<TypeElement> elems = this.classesToProcess.stream()
+                    .map(c -> c.te)
+                    .toList();
+                LogUtils.logElementsFull(log, Level.INFO, "Components with aspects found", elems);
+            }
+        }
+
         for (var ctp : this.classesToProcess) {
             var te = ctp.te();
-            log.info("Processing type {} with aspects", te);
             TypeSpec typeSpec;
             try {
                 typeSpec = this.aopProcessor.applyAspects(te);

@@ -1,10 +1,10 @@
 package ru.tinkoff.kora.database.annotation.processor;
 
 import com.squareup.javapoet.JavaFile;
-import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
-import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.annotation.processor.common.ProcessingError;
-import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
+import ru.tinkoff.kora.annotation.processor.common.*;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -17,6 +17,9 @@ import java.util.List;
 import java.util.Set;
 
 public class RepositoryAnnotationProcessor extends AbstractKoraProcessor {
+
+    private static final Logger log = LoggerFactory.getLogger(RepositoryAnnotationProcessor.class);
+
     private RepositoryBuilder repositoryBuilder;
     private boolean initialized = false;
     private TypeElement repositoryAnnotation;
@@ -43,6 +46,7 @@ public class RepositoryAnnotationProcessor extends AbstractKoraProcessor {
             return false;
         }
         var elements = roundEnv.getElementsAnnotatedWith(this.repositoryAnnotation);
+        LogUtils.logElementsFull(log, Level.DEBUG, "Generating Repository for", elements);
         for (var element : elements) {
             try {
                 this.processClass(element);

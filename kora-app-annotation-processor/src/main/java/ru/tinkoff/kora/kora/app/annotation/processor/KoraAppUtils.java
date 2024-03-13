@@ -16,6 +16,7 @@ import javax.lang.model.util.Types;
 import java.util.*;
 
 public class KoraAppUtils {
+
     static List<ComponentDeclaration> parseComponents(ProcessingContext ctx, Collection<? extends ModuleDeclaration> modules) {
         var result = new ArrayList<ComponentDeclaration>();
         for (var module : modules) {

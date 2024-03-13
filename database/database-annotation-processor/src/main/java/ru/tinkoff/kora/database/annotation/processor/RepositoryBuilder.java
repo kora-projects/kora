@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.List;
 
 public class RepositoryBuilder {
-    private static final Logger log = LoggerFactory.getLogger(RepositoryBuilder.class);
 
     private final Types types;
     private final ProcessingEnvironment env;
@@ -40,7 +39,6 @@ public class RepositoryBuilder {
 
     @Nullable
     public TypeSpec build(TypeElement repositoryElement) throws ProcessingErrorException, IOException {
-        log.info("Generating Repository for {}", repositoryElement);
         var name = NameUtils.generatedType(repositoryElement, "Impl");
         var builder = CommonUtils.extendsKeepAop(repositoryElement, name)
             .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", CodeBlock.of("$S", RepositoryAnnotationProcessor.class.getCanonicalName())).build())

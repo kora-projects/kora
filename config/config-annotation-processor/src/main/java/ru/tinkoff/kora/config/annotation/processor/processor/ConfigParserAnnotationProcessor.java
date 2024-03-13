@@ -1,6 +1,10 @@
 package ru.tinkoff.kora.config.annotation.processor.processor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
+import ru.tinkoff.kora.annotation.processor.common.LogUtils;
 import ru.tinkoff.kora.config.annotation.processor.ConfigClassNames;
 import ru.tinkoff.kora.config.annotation.processor.ConfigParserGenerator;
 
@@ -14,6 +18,9 @@ import java.util.Objects;
 import java.util.Set;
 
 public class ConfigParserAnnotationProcessor extends AbstractKoraProcessor {
+
+    private static final Logger log = LoggerFactory.getLogger(ConfigParserAnnotationProcessor.class);
+
     private TypeElement configValueExtractorAnnotation;
     private TypeElement configSourceAnnotation;
     private ConfigParserGenerator configParserGenerator;
@@ -37,7 +44,9 @@ public class ConfigParserAnnotationProcessor extends AbstractKoraProcessor {
             return false;
         }
 
-        for (var element : roundEnv.getElementsAnnotatedWithAny(this.configValueExtractorAnnotation, this.configSourceAnnotation)) {
+        var elements = roundEnv.getElementsAnnotatedWithAny(this.configValueExtractorAnnotation, this.configSourceAnnotation);
+        LogUtils.logElementsFull(log, Level.DEBUG, "Generating ConfigValueExtractor for", elements);
+        for (var element : elements) {
             if (element.getKind() == ElementKind.INTERFACE) {
                 var result = configParserGenerator.generateForInterface(roundEnv, (DeclaredType) element.asType());
                 if (result.isRight()) {

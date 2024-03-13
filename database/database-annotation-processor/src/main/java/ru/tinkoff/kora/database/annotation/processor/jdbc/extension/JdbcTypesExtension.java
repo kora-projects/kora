@@ -69,7 +69,9 @@ public class JdbcTypesExtension implements KoraExtension {
     @Nullable
     @Override
     public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tags) {
-        if (!tags.isEmpty()) return null;
+        if (!tags.isEmpty()) {
+            return null;
+        }
         if (!(typeMirror instanceof DeclaredType declaredType)) {
             return null;
         }
