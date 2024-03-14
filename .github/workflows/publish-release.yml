@@ -27,7 +27,7 @@ jobs:
           SIGN_OSSRH_GRADLE_PROPERTIES: ${{ secrets.SONATYPE_GRADLE_PROPERTIES }}
         run: |
           mkdir -p ~/.gradle
-          echo -en "$SIGN_OSSRH_GRADLE_PROPERTIES" > ~/.gradle/gradle.properties
+          echo "$SIGN_OSSRH_GRADLE_PROPERTIES" | base64 --decode > ~/.gradle/gradle.properties
 
       - name: Print release version
         run: echo "Release version - $KORA_VERSION"
