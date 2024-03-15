@@ -188,7 +188,7 @@ subprojects {
 
 
     signing {
-        required = true
+        required = false
         sign publishing.publications.maven
     }
 
