@@ -3,11 +3,12 @@ package ru.tinkoff.kora.database.cassandra;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.internal.core.config.typesafe.DefaultProgrammaticDriverConfigLoaderBuilder;
+import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.*;
 
 public class CassandraSessionBuilder {
-    public CqlSession build(CassandraConfig config) {
+    public CqlSession build(CassandraConfig config, DataBaseTelemetry telemetry) {
         var builder = CqlSession.builder();
         var loaderBuilder = new DefaultProgrammaticDriverConfigLoaderBuilder();
         loaderBuilder.withStringList(CONTACT_POINTS, config.basic().contactPoints());
@@ -28,6 +29,7 @@ public class CassandraSessionBuilder {
 
         applyOverridable(loaderBuilder, config.basic(), config.advanced());
         builder.withConfigLoader(loaderBuilder.build());
+        builder.withMetricRegistry(telemetry.getMetricRegistry());
         return builder.build();
     }
 

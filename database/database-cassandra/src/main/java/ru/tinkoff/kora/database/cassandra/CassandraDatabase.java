@@ -36,7 +36,7 @@ public final class CassandraDatabase implements CassandraConnectionFactory, Life
 
     @Override
     public void init() {
-        cqlSession = new CassandraSessionBuilder().build(config);
+        cqlSession = new CassandraSessionBuilder().build(config, telemetry);
     }
 
     @Override

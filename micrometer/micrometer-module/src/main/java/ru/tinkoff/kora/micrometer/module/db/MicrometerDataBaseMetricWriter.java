@@ -3,6 +3,7 @@ package ru.tinkoff.kora.micrometer.module.db;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseMetricWriter;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
@@ -23,10 +24,10 @@ public final class MicrometerDataBaseMetricWriter implements DataBaseMetricWrite
     }
 
     @Override
-    public void recordQuery(long queryBegin, QueryContext queryContext, Throwable exception) {
+    public void recordQuery(long queryBegin, QueryContext queryContext, @Nullable Throwable exception) {
         var duration = System.nanoTime() - queryBegin;
-        var key = new DbKey(queryContext.queryId(), queryContext.operation());
-        var metrics = this.metrics.computeIfAbsent(key, k -> metrics(queryContext));
+        var key = new DbKey(queryContext.queryId(), queryContext.operation(), exception == null ? null : exception.getClass());
+        var metrics = this.metrics.computeIfAbsent(key, this::metrics);
         metrics.duration().record((double) duration / 1_000_000);
     }
 
@@ -37,15 +38,18 @@ public final class MicrometerDataBaseMetricWriter implements DataBaseMetricWrite
 
     private record DbMetrics(DistributionSummary duration) { }
 
-    private record DbKey(String queryId, String operation) { }
+    private record DbKey(String queryId, String operation, @Nullable Class<? extends Throwable> error) { }
 
-    private DbMetrics metrics(QueryContext queryContext) {
+    private DbMetrics metrics(DbKey key) {
         var builder = DistributionSummary.builder("database.client.request.duration")
                 .serviceLevelObjectives(this.config.slo())
                 .baseUnit("milliseconds")
                 .tag("pool", this.poolName)
-                .tag("query.id", queryContext.queryId())
-                .tag("query.operation", queryContext.operation());
+                .tag("query.id", key.queryId())
+                .tag("query.operation", key.operation());
+        if (key.error != null) {
+            builder.tag("error", key.error.getCanonicalName());
+        }
         return new DbMetrics(builder.register(Metrics.globalRegistry));
     }
 }
