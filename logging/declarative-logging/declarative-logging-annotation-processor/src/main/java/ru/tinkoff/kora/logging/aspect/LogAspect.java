@@ -73,9 +73,9 @@ public class LogAspect implements KoraAspect {
         }
         var isVoid = executableElement.getReturnType().getKind() == TypeKind.VOID;
         if (isVoid) {
-            b.add(KoraAspect.callSuper(executableElement, superCall)).add(";");
+            b.addStatement(KoraAspect.callSuper(executableElement, superCall));
         } else {
-            b.add("var $N = $L;\n", RESULT_VAR_NAME, KoraAspect.callSuper(executableElement, superCall));
+            b.addStatement("var $N = $L", RESULT_VAR_NAME, KoraAspect.callSuper(executableElement, superCall));
         }
         if (logOutLevel != null) {
             var logResultLevel = logResultLevel(executableElement, logOutLevel, env);
@@ -89,16 +89,16 @@ public class LogAspect implements KoraAspect {
                     mapperType,
                     List.of(AnnotationSpec.builder(CommonClassNames.nullable).build())
                 );
-                var resultWriterBuilder = CodeBlock.builder().add("gen -> {$>\n")
-                    .add("gen.writeStartObject();\n")
+                var resultWriterBuilder = CodeBlock.builder().beginControlFlow("gen ->")
+                    .addStatement("gen.writeStartObject()")
                     .beginControlFlow("if (this.$N != null)", mapper)
                     .addStatement("gen.writeFieldName($S)", "out")
                     .addStatement("this.$N.write(gen, $N)", mapper, RESULT_VAR_NAME)
                     .nextControlFlow("else")
                     .addStatement("gen.writeStringField($S, String.valueOf($N))", "out", RESULT_VAR_NAME)
                     .endControlFlow()
-                    .add("gen.writeEndObject();")
-                    .add("$<\n}");
+                    .addStatement("gen.writeEndObject()")
+                    .endControlFlow();
                 resultWriter = resultWriterBuilder.build();
             } else {
                 resultWriter = null;
@@ -298,8 +298,8 @@ public class LogAspect implements KoraAspect {
         }
 
         var b = CodeBlock.builder();
-        b.add("var $N = $T.marker($S, gen -> {$>", DATA_IN_VAR_NAME, structuredArgument, "data");
-        b.add("\ngen.writeStartObject();");
+        b.beginControlFlow("var $N = $T.marker($S, gen -> ", DATA_IN_VAR_NAME, structuredArgument, "data");
+        b.addStatement("gen.writeStartObject()");
 
         var params = new HashMap<String, List<VariableElement>>();
         var minLevelIdx = Integer.MAX_VALUE;
@@ -316,7 +316,7 @@ public class LogAspect implements KoraAspect {
                 continue;
             }
             if (i > minLevelIdx) {
-                b.add("\nif ($N.$N()) {$>", loggerField, "is" + CommonUtils.capitalize(level.toLowerCase()) + "Enabled");
+                b.beginControlFlow("if ($N.$N())", loggerField, "is" + CommonUtils.capitalize(level.toLowerCase()) + "Enabled");
             }
             for (var param : paramsForLevel) {
                 var mapping = CommonUtils.parseMapping(param).getMapping(structuredArgumentMapper);
@@ -327,27 +327,26 @@ public class LogAspect implements KoraAspect {
                     mapperType,
                     List.of(AnnotationSpec.builder(CommonClassNames.nullable).build())
                 );
-                b.add("\nif (this.$N != null) {", mapper);
-                b.add("\n  gen.writeFieldName($S);", param.getSimpleName());
-                b.add("\n  this.$N.write(gen, $N);", mapper, param.getSimpleName());
-                b.add("\n} else {");
-                b.add("\ngen.writeStringField($S, String.valueOf($N));", param.getSimpleName(), param.getSimpleName());
-                b.add("\n}");
+                b.beginControlFlow("if (this.$N != null)", mapper);
+                b.add("gen.writeFieldName($S);", param.getSimpleName());
+                b.addStatement("this.$N.write(gen, $N)", mapper, param.getSimpleName());
+                b.nextControlFlow("else");
+                b.addStatement("gen.writeStringField($S, String.valueOf($N))", param.getSimpleName(), param.getSimpleName());
+                b.endControlFlow();
             }
             if (i > minLevelIdx) {
-                b.add("$<\n}");
+                b.endControlFlow();
             }
         }
-        b.add("\ngen.writeEndObject();");
+        b.addStatement("gen.writeEndObject()");
 
-        return new LogInMarker(b.add("$<\n});\n").build(), LEVELS.get(minLevelIdx));
+        return new LogInMarker(b.endControlFlow(")").build(), LEVELS.get(minLevelIdx));
     }
 
     private CodeBlock.Builder ifLogLevelEnabled(CodeBlock.Builder cb, String loggerFieldName, String logLevel, Runnable r) {
         cb.add("if ($N.$N()) {$>\n", loggerFieldName, "is" + CommonUtils.capitalize(logLevel.toLowerCase()) + "Enabled");
         r.run();
-        cb.add("$<\n}");
-
+        cb.add("$<\n}\n");
         return cb;
     }
 }

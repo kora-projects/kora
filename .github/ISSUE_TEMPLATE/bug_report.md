@@ -10,6 +10,9 @@ labels: bug
 **Java or Kotlin version:**
 - Java 17
 
+**Lombok usage:**
+- Yes/No
+
 **Описание проблемы / Describe the bug:**
 
 `@Nullable` annotation doesn't mark field as optional for `@Json` reader
@@ -27,7 +30,7 @@ public record User(@Nullable String name) {}
 
 `@Nullable` annotation must mark field as optional
 
-**Стек вызова или сгенерированный код или скриншоты / Stacktrace or generated code or screenshots:**
+**Стек вызова или сгенерированный код или скриншоты / Stacktrace or generated code or screenshots (*Optional*):**
 
 Stacktrace:
 ```text
