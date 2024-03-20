@@ -4,8 +4,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import ru.tinkoff.kora.resilient.annotation.processor.aop.testdata.*;
+import ru.tinkoff.kora.resilient.retry.RetryExhaustedException;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.TimeUnit;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class RetryFutureTests extends AppRunner {
@@ -56,6 +59,7 @@ class RetryFutureTests extends AppRunner {
             fail("Should not happen");
         } catch (CompletionException e) {
             assertNotNull(e.getMessage());
+            assertInstanceOf(RetryExhaustedException.class, e.getCause());
             assertInstanceOf(IllegalStateException.class, e.getCause().getCause());
         }
     }

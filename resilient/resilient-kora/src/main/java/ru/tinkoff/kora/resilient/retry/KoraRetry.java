@@ -2,10 +2,17 @@ package ru.tinkoff.kora.resilient.retry;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 
 final class KoraRetry implements Retry {
 
@@ -56,6 +63,39 @@ final class KoraRetry implements Retry {
     @Override
     public <T, E extends Throwable> T retry(@Nonnull RetrySupplier<T, E> supplier, @Nonnull RetrySupplier<T, E> fallback) throws E {
         return internalRetry(supplier, fallback);
+    }
+
+    @Override
+    public <T> CompletionStage<T> retry(@NotNull Supplier<CompletionStage<T>> supplier) {
+        var _retryState = asState();
+        var _result = new CompletableFuture<T>();
+        var _callback = new BiConsumer<T, Throwable>() {
+            @Override
+            public void accept(T _r, Throwable _e) {
+                var _ex = (_e instanceof CompletionException) ? _e.getCause() : _e;
+                if (_ex == null) {
+                    _result.complete(_r);
+                    return;
+                }
+
+                var _state = _retryState.onException(_ex);
+                if(_state == Retry.RetryState.RetryStatus.ACCEPTED) {
+                    CompletableFuture.delayedExecutor(_retryState.getDelayNanos(), TimeUnit.NANOSECONDS).execute(() -> {
+                        var _futureRetry = supplier.get();
+                        _futureRetry.whenComplete(this);
+                    });
+                } else if(_state == Retry.RetryState.RetryStatus.REJECTED) {
+                    _retryState.close();
+                    _result.completeExceptionally(_ex);
+                } else {
+                    _retryState.close();
+                    _result.completeExceptionally(new RetryExhaustedException(_retryState.getAttemptsMax(), _ex));
+                }
+            }
+        };
+
+        supplier.get().whenComplete(_callback);
+        return _result;
     }
 
     private <T, E extends Throwable> T internalRetry(RetrySupplier<T, E> consumer, @Nullable RetrySupplier<T, E> fallback) throws E {
