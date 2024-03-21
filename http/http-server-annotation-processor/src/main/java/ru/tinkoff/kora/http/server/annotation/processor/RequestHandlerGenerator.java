@@ -194,7 +194,7 @@ public class RequestHandlerGenerator {
         var mappedParameters = parameters.stream().filter(p -> p.parameterType == MAPPED_HTTP_REQUEST).toList();
         var b = CodeBlock.builder();
         for (var mappedParameter : mappedParameters) {
-            b.addStatement("final $T $N;", ParameterizedTypeName.get(ClassName.get(CompletableFuture.class), TypeName.get(mappedParameter.type)), "_future_" + mappedParameter.name);
+            b.addStatement("final $T $N", ParameterizedTypeName.get(ClassName.get(CompletableFuture.class), TypeName.get(mappedParameter.type)), "_future_" + mappedParameter.name);
             b.beginControlFlow("try");
             b.addStatement("$N = $LHttpRequestMapper.apply($L).toCompletableFuture()", "_future_" + mappedParameter.name, mappedParameter.name, requestName);
             b.nextControlFlow("catch ($T _e)", CompletionException.class);
@@ -213,7 +213,7 @@ public class RequestHandlerGenerator {
             }
             b.add(").thenCompose(_unused_ -> {$>\n");
             for (var mappedParameter : mappedParameters) {
-                b.addStatement("final $T $N;", mappedParameter.type, mappedParameter.name);
+                b.addStatement("final $T $N", mappedParameter.type, mappedParameter.name);
                 b.beginControlFlow("try");
                 b.addStatement("$N = $N.getNow(null)", mappedParameter.name, "_future_" + mappedParameter.name);
                 b.nextControlFlow("catch ($T _e)", CompletionException.class);
@@ -260,7 +260,7 @@ public class RequestHandlerGenerator {
         var mappedParameters = parameters.stream().filter(p -> p.parameterType == MAPPED_HTTP_REQUEST).toList();
         var b = CodeBlock.builder();
         for (var mappedParameter : mappedParameters) {
-            b.addStatement("final $T $N;", ParameterizedTypeName.get(ClassName.get(CompletableFuture.class), TypeName.get(mappedParameter.type)), "_future_" + mappedParameter.name);
+            b.addStatement("final $T $N", ParameterizedTypeName.get(ClassName.get(CompletableFuture.class), TypeName.get(mappedParameter.type)), "_future_" + mappedParameter.name);
             b.beginControlFlow("try");
             b.addStatement("$N = $LHttpRequestMapper.apply($L).toCompletableFuture()", "_future_" + mappedParameter.name, mappedParameter.name, requestName);
             b.nextControlFlow("catch ($T _e)", CompletionException.class);
@@ -279,7 +279,7 @@ public class RequestHandlerGenerator {
             }
             b.add(").thenCompose(_unused_ -> {$>\n");
             for (var mappedParameter : mappedParameters) {
-                b.addStatement("final $T $N;", mappedParameter.type, mappedParameter.name);
+                b.addStatement("final $T $N", mappedParameter.type, mappedParameter.name);
                 b.beginControlFlow("try");
                 b.addStatement("$N = $N.getNow(null)", mappedParameter.name, "_future_" + mappedParameter.name);
                 b.nextControlFlow("catch ($T _e)", CompletionException.class);

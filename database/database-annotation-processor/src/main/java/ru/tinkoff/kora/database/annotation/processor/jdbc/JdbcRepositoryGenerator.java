@@ -166,7 +166,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             if (batchParam != null) {
                 b.addStatement("var _batchResult = _stmt.executeBatch()");
             } else {
-                b.addStatement("_stmt.execute();");
+                b.addStatement("_stmt.execute()");
                 b.addStatement("var updateCount = _stmt.getUpdateCount()");
             }
             b.addStatement("_telemetry.close(null)");

@@ -45,7 +45,7 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
         var fieldManager = aspectContext.fieldFactory().constructorParam(managerType, List.of());
         var circuitType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreaker"));
         var fieldCircuit = aspectContext.fieldFactory().constructorInitialized(circuitType,
-            CodeBlock.of("$L.get($S);", fieldManager, circuitBreakerName));
+            CodeBlock.of("$L.get($S)", fieldManager, circuitBreakerName));
 
         final CodeBlock body;
         if (MethodUtils.isMono(method)) {

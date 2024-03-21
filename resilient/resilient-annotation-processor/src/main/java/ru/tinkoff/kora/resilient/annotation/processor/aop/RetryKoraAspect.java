@@ -49,26 +49,25 @@ public class RetryKoraAspect implements KoraAspect {
             var reactorBuilderType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement(REACTOR_RETRY_BUILDER.canonicalName()));
             var reactorBuilderField = aspectContext.fieldFactory().constructorParam(reactorBuilderType, List.of());
             var retrierType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement(REACTOR_RETRY.canonicalName()));
-            var fieldRetrier = aspectContext.fieldFactory().constructorInitialized(retrierType, CodeBlock.of("$L.get($S);", reactorBuilderField, retryableName));
+            var fieldRetrier = aspectContext.fieldFactory().constructorInitialized(retrierType, CodeBlock.of("$L.get($S)", reactorBuilderField, retryableName));
             body = buildBodyMono(method, superCall, fieldRetrier);
         } else if (MethodUtils.isFlux(method)) {
             var reactorBuilderType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement(REACTOR_RETRY_BUILDER.canonicalName()));
             var reactorBuilderField = aspectContext.fieldFactory().constructorParam(reactorBuilderType, List.of());
             var retrierType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement(REACTOR_RETRY.canonicalName()));
-            var fieldRetrier = aspectContext.fieldFactory().constructorInitialized(retrierType, CodeBlock.of("$L.get($S);", reactorBuilderField, retryableName));
+            var fieldRetrier = aspectContext.fieldFactory().constructorInitialized(retrierType, CodeBlock.of("$L.get($S)", reactorBuilderField, retryableName));
             body = buildBodyFlux(method, superCall, fieldRetrier);
         } else if (MethodUtils.isFuture(method)) {
             var managerType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.retry.RetryManager"));
             var fieldManager = aspectContext.fieldFactory().constructorParam(managerType, List.of());
             var retrierType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.retry.Retry"));
-            var fieldRetrier = aspectContext.fieldFactory().constructorInitialized(retrierType,
-                CodeBlock.of("$L.get($S);", fieldManager, retryableName));
+            var fieldRetrier = aspectContext.fieldFactory().constructorInitialized(retrierType, CodeBlock.of("$L.get($S)", fieldManager, retryableName));
             body = buildBodyFuture(method, superCall, fieldRetrier);
         } else {
             var managerType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.retry.RetryManager"));
             var fieldManager = aspectContext.fieldFactory().constructorParam(managerType, List.of());
             var retrierType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.retry.Retry"));
-            var fieldRetrier = aspectContext.fieldFactory().constructorInitialized(retrierType, CodeBlock.of("$L.get($S);", fieldManager, retryableName));
+            var fieldRetrier = aspectContext.fieldFactory().constructorInitialized(retrierType, CodeBlock.of("$L.get($S)", fieldManager, retryableName));
             body = buildBodySync(method, superCall, fieldRetrier);
         }
 
