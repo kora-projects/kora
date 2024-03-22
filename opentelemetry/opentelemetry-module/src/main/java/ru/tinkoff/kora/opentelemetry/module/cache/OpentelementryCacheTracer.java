@@ -4,13 +4,12 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.cache.telemetry.CacheTelemetryOperation;
 import ru.tinkoff.kora.cache.telemetry.CacheTracer;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
-
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 
 public final class OpentelementryCacheTracer implements CacheTracer {
 
@@ -35,6 +34,9 @@ public final class OpentelementryCacheTracer implements CacheTracer {
 
         @Override
         public void recordFailure(@Nullable Throwable throwable) {
+            if (throwable != null) {
+                span.recordException(throwable);
+            }
             span.setStatus(StatusCode.ERROR);
             span.end();
             OpentelemetryContext.set(currentContext, context);

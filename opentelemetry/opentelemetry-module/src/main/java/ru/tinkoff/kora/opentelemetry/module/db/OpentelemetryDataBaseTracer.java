@@ -55,6 +55,7 @@ public final class OpentelemetryDataBaseTracer implements DataBaseTracer {
         OpentelemetryContext.set(ctx, otctx.add(span));
         return (ex) -> {
             if (ex != null) {
+                span.recordException(ex);
                 span.setStatus(StatusCode.ERROR);
             }
             span.end();
@@ -80,6 +81,7 @@ public final class OpentelemetryDataBaseTracer implements DataBaseTracer {
         OpentelemetryContext.set(ctx, otctx.add(span));
         return (ex) -> {
             if (ex != null) {
+                span.recordException(ex);
                 span.setStatus(StatusCode.ERROR);
             }
             span.end();

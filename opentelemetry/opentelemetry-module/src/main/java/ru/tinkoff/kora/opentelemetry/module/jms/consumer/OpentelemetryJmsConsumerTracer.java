@@ -57,6 +57,7 @@ public class OpentelemetryJmsConsumerTracer implements JmsConsumerTracer {
 
         return (e) -> {
             if (e != null) {
+                span.recordException(e);
                 span.setStatus(StatusCode.ERROR);
             }
             span.end();
