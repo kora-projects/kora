@@ -75,7 +75,7 @@ public class ValidatorGenerator {
             var fieldValidator = ParameterizedTypeName.get(ValidMeta.VALIDATOR_TYPE, subclassTypeName);
             validatorSpecBuilder.addField(fieldValidator, name, Modifier.PRIVATE, Modifier.FINAL);
             constructor.addParameter(fieldValidator, name);
-            constructor.addStatement("this.$N = $N;", name, name);
+            constructor.addStatement("this.$N = $N", name, name);
             if (i > 0) {
                 method.nextControlFlow("else if (value instanceof $T casted)", subclassTypeName);
             } else {

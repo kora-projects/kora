@@ -417,7 +417,7 @@ public class CacheInvalidateAopKoraAspect extends AbstractAopCacheAspect {
         if (operation.executions().stream().allMatch(e -> e.contract() == CacheOperation.CacheExecution.Contract.SYNC)) {
             builder.beginControlFlow(".thenApply(_result -> ");
             for (var cache : operation.executions()) {
-                builder.addStatement("$L.invalidateAll();", cache.field());
+                builder.addStatement("$L.invalidateAll()", cache.field());
             }
             builder.addStatement("return _result").endControlFlow(")");
             return builder.build();

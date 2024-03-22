@@ -60,7 +60,7 @@ public class JsonWriterGenerator {
             if (meta.fields().stream().noneMatch(f -> f.jsonName().equals(discriminatorField))) {
                 var discriminatorFieldValues = JsonUtils.discriminatorValue(meta.typeElement());
                 method.addCode("_gen.writeFieldName($S);\n", discriminatorField);
-                method.addStatement("_gen.writeString($S);", discriminatorFieldValues.get(0));
+                method.addStatement("_gen.writeString($S)", discriminatorFieldValues.get(0));
             }
         }
         for (var field : meta.fields()) {

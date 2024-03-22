@@ -121,7 +121,7 @@ public class DbEntity {
                 if (CommonUtils.isNullable(embedded.parent().element())) {
                     b.add("$<\n}\n");
                 } else {
-                    b.add(";\n");
+                    b.add("\n");
                 }
             }
         }

@@ -47,7 +47,7 @@ public class FallbackKoraAspect implements KoraAspect {
         var fieldManager = aspectContext.fieldFactory().constructorParam(managerType, List.of());
         var fallbackType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.fallback.Fallback"));
         var fieldFallback = aspectContext.fieldFactory().constructorInitialized(
-            fallbackType, CodeBlock.of("$L.get($S);", fieldManager, name));
+            fallbackType, CodeBlock.of("$L.get($S)", fieldManager, name));
 
         final CodeBlock body;
         if (MethodUtils.isMono(method)) {
