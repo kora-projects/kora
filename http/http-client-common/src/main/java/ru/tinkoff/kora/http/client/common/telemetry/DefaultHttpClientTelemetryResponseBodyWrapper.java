@@ -123,7 +123,7 @@ public final class DefaultHttpClientTelemetryResponseBodyWrapper extends AtomicB
         }
     }
 
-    private static class DrainSubscriber implements Flow.Subscriber<ByteBuffer> {
+    private static final class DrainSubscriber implements Flow.Subscriber<ByteBuffer> {
         private final HttpClientResponse response;
         private final DefaultHttpClientTelemetryContextImpl telemetryContext;
 
@@ -152,10 +152,11 @@ public final class DefaultHttpClientTelemetryResponseBodyWrapper extends AtomicB
         }
     }
 
-    private static class WrappedInputStream extends InputStream {
+    private static final class WrappedInputStream extends InputStream {
         private final InputStream is;
         private final DefaultHttpClientTelemetryContextImpl telemetryContext;
         private final HttpClientResponse response;
+        private boolean telemetryClosed;
 
         public WrappedInputStream(DefaultHttpClientTelemetryContextImpl telemetryContext, HttpClientResponse response, InputStream inputStream) {
             this.is = inputStream;
@@ -168,11 +169,13 @@ public final class DefaultHttpClientTelemetryResponseBodyWrapper extends AtomicB
             try {
                 var b = is.read();
                 if (b < 0) {
+                    telemetryClosed = true;
                     telemetryContext.onClose(response.code(), response.headers(), null, null);
                 }
                 return b;
             } catch (IOException e) {
                 try {
+                    telemetryClosed = true;
                     telemetryContext.onClose(e);
                 } catch (Throwable t) {
                     e.addSuppressed(t);
@@ -186,16 +189,26 @@ public final class DefaultHttpClientTelemetryResponseBodyWrapper extends AtomicB
             try {
                 var read = is.read(b, off, len);
                 if (read < 0) {
+                    telemetryClosed = true;
                     telemetryContext.onClose(response.code(), response.headers(), null, null);
                 }
                 return read;
             } catch (IOException e) {
                 try {
+                    telemetryClosed = true;
                     telemetryContext.onClose(e);
                 } catch (Throwable t) {
                     e.addSuppressed(t);
                 }
                 throw e;
+            }
+        }
+
+        @Override
+        public void close() {
+            if (!telemetryClosed) {
+                telemetryClosed = true;
+                telemetryContext.onClose(response.code(), response.headers(), null, null);
             }
         }
     }
