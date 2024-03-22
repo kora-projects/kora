@@ -40,24 +40,13 @@ jobs:
       - name: Execute Gradle build
         uses: gradle/actions/setup-gradle@v3
         with:
-          arguments: assemble
+          arguments: assemble jar
 
-      - name: Execute Gradle publish
+      - name: Execute Gradle Publish to OSS
         uses: gradle/actions/setup-gradle@v3
         with:
-          arguments: publishToSonatype -Psigning.secretKeyRingFile=/tmp/secring.gpg
+          arguments: publishToSonatype closeAndReleaseSonatypeStagingRepository -Psigning.secretKeyRingFile=/tmp/secring.gpg
         env:
-          REPO_URL: https://oss.sonatype.org/service/local/staging/deploy/maven2/
-          REPO_USER: ${{ secrets.SONATYPE_USERNAME }}
-          REPO_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
-          KORA_VERSION: ${{ github.event.release.tag_name }}
-
-      - name: Execute Gradle nexus staging release
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          arguments: closeAndReleaseSonatypeStagingRepository
-        env:
-          REPO_URL: https://oss.sonatype.org/service/local/
           REPO_USER: ${{ secrets.SONATYPE_USERNAME }}
           REPO_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
           KORA_VERSION: ${{ github.event.release.tag_name }}
