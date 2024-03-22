@@ -81,8 +81,12 @@ final class KoraRetry implements Retry {
                 var _state = _retryState.onException(_ex);
                 if(_state == Retry.RetryState.RetryStatus.ACCEPTED) {
                     CompletableFuture.delayedExecutor(_retryState.getDelayNanos(), TimeUnit.NANOSECONDS).execute(() -> {
-                        var _futureRetry = supplier.get();
-                        _futureRetry.whenComplete(this);
+                        try {
+                            var _futureRetry = supplier.get();
+                            _futureRetry.whenComplete(this);
+                        } catch (Exception e) {
+                            CompletableFuture.<T>failedFuture(e).whenComplete(this);
+                        }
                     });
                 } else if(_state == Retry.RetryState.RetryStatus.REJECTED) {
                     _retryState.close();
@@ -94,8 +98,14 @@ final class KoraRetry implements Retry {
             }
         };
 
-        supplier.get().whenComplete(_callback);
-        return _result;
+        try {
+            CompletionStage<T> _superCall = supplier.get();
+            _superCall.whenComplete(_callback);
+            return _result;
+        } catch (Exception e) {
+            CompletableFuture.<T>failedFuture(e).whenComplete(_callback);
+            return _result;
+        }
     }
 
     private <T, E extends Throwable> T internalRetry(RetrySupplier<T, E> consumer, @Nullable RetrySupplier<T, E> fallback) throws E {
