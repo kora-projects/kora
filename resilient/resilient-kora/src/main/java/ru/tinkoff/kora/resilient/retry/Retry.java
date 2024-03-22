@@ -2,6 +2,9 @@ package ru.tinkoff.kora.resilient.retry;
 
 import jakarta.annotation.Nonnull;
 
+import java.util.concurrent.CompletionStage;
+import java.util.function.Supplier;
+
 /**
  * Retry executor implementation
  */
@@ -72,4 +75,11 @@ public interface Retry {
      * @return value is succeeded
      */
     <T, E extends Throwable> T retry(@Nonnull RetrySupplier<T, E> supplier, RetrySupplier<T, E> fallback) throws E;
+
+    /**
+     * @param supplier to use for value extraction
+     * @param <T>      type of value
+     * @return value is succeeded
+     */
+    <T> CompletionStage<T> retry(@Nonnull Supplier<CompletionStage<T>> supplier);
 }

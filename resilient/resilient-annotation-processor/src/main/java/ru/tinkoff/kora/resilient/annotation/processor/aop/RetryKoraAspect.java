@@ -11,9 +11,6 @@ import javax.lang.model.element.ExecutableElement;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.function.Function;
 
 import static com.squareup.javapoet.CodeBlock.joining;
 
@@ -88,35 +85,8 @@ public class RetryKoraAspect implements KoraAspect {
 
     private CodeBlock buildBodyFuture(ExecutableElement method, String superCall, String fieldRetry) {
         var builder = CodeBlock.builder();
-
         var methodCall = buildMethodCall(method, superCall);
-        builder.add("""
-                var _future = $L;
-                var _retryState = $L.asState();
-                for (int _i = 0; _i <= _retryState.getAttemptsMax(); _i++) {
-                    _future = _future.thenApply($T::completedFuture)
-                            .exceptionally(_e -> {
-                                var _ex = (_e instanceof $T)
-                                        ? _e.getCause()
-                                        : _e;
-                                        
-                                var _state = _retryState.onException(_ex);
-                                if(_state == $T.ACCEPTED) {
-                                    return $T.runAsync(_retryState::doDelay).thenCompose(_r -> $L);
-                                } else if(_state == $T.REJECTED) {
-                                    _retryState.close();
-                                    return $T.failedFuture(_ex);
-                                } else {
-                                    _retryState.close();
-                                    return $T.failedFuture(new $T(_retryState.getAttemptsMax(), _ex));
-                                }
-                            })
-                            .thenCompose($T.identity());
-                }
-                return _future;
-                """, methodCall, fieldRetry, CompletableFuture.class, CompletionException.class, RETRY_STATE, CompletableFuture.class,
-            methodCall, RETRY_STATE, CompletableFuture.class, CompletableFuture.class, RETRY_EXCEPTION, Function.class);
-
+        builder.addStatement("return $L.retry(() -> $L)", fieldRetry, methodCall);
         return builder.build();
     }
 
