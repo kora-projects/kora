@@ -67,44 +67,44 @@ final class KoraRetry implements Retry {
 
     @Override
     public <T> CompletionStage<T> retry(@NotNull Supplier<CompletionStage<T>> supplier) {
-        var _retryState = asState();
-        var _result = new CompletableFuture<T>();
-        var _callback = new BiConsumer<T, Throwable>() {
+        var result = new CompletableFuture<T>();
+        var retryState = asState();
+        var retryCallback = new BiConsumer<T, Throwable>() {
             @Override
-            public void accept(T _r, Throwable _e) {
-                var _ex = (_e instanceof CompletionException) ? _e.getCause() : _e;
-                if (_ex == null) {
-                    _result.complete(_r);
+            public void accept(T r, Throwable e) {
+                var ex = (e instanceof CompletionException) ? e.getCause() : e;
+                if (ex == null) {
+                    result.complete(r);
                     return;
                 }
 
-                var _state = _retryState.onException(_ex);
-                if(_state == Retry.RetryState.RetryStatus.ACCEPTED) {
-                    CompletableFuture.delayedExecutor(_retryState.getDelayNanos(), TimeUnit.NANOSECONDS).execute(() -> {
+                var state = retryState.onException(ex);
+                if(state == Retry.RetryState.RetryStatus.ACCEPTED) {
+                    CompletableFuture.delayedExecutor(retryState.getDelayNanos(), TimeUnit.NANOSECONDS).execute(() -> {
                         try {
-                            var _futureRetry = supplier.get();
-                            _futureRetry.whenComplete(this);
-                        } catch (Exception e) {
-                            CompletableFuture.<T>failedFuture(e).whenComplete(this);
+                            var resultRetry = supplier.get();
+                            resultRetry.whenComplete(this);
+                        } catch (Exception se) {
+                            CompletableFuture.<T>failedFuture(se).whenComplete(this);
                         }
                     });
-                } else if(_state == Retry.RetryState.RetryStatus.REJECTED) {
-                    _retryState.close();
-                    _result.completeExceptionally(_ex);
+                } else if(state == Retry.RetryState.RetryStatus.REJECTED) {
+                    retryState.close();
+                    result.completeExceptionally(ex);
                 } else {
-                    _retryState.close();
-                    _result.completeExceptionally(new RetryExhaustedException(_retryState.getAttemptsMax(), _ex));
+                    retryState.close();
+                    result.completeExceptionally(new RetryExhaustedException(retryState.getAttemptsMax(), ex));
                 }
             }
         };
 
         try {
-            CompletionStage<T> _superCall = supplier.get();
-            _superCall.whenComplete(_callback);
-            return _result;
+            CompletionStage<T> superCall = supplier.get();
+            superCall.whenComplete(retryCallback);
+            return result;
         } catch (Exception e) {
-            CompletableFuture.<T>failedFuture(e).whenComplete(_callback);
-            return _result;
+            CompletableFuture.<T>failedFuture(e).whenComplete(retryCallback);
+            return result;
         }
     }
 
