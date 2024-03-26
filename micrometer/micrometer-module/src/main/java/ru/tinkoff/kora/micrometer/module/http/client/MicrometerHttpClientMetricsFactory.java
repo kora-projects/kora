@@ -19,7 +19,10 @@ public final class MicrometerHttpClientMetricsFactory implements HttpClientMetri
     @Nullable
     public HttpClientMetrics get(TelemetryConfig.MetricsConfig metrics, String clientName) {
         if (Objects.requireNonNullElse(metrics.enabled(), true)) {
-            return new MicrometerHttpClientMetrics(this.meterRegistry, metrics);
+            return switch (metrics.spec()) {
+                case V120 -> new Opentelemetry120HttpClientMetrics(meterRegistry, metrics);
+                case V123 -> new Opentelemetry123HttpClientMetrics(meterRegistry, metrics);
+            };
         } else {
             return null;
         }
