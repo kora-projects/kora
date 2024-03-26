@@ -11,7 +11,7 @@ public class MicrometerSchedulingMetrics implements SchedulingMetrics {
 
     public MicrometerSchedulingMetrics(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config, String className, String methodName) {
         var builder = DistributionSummary.builder("scheduling.job.duration")
-            .serviceLevelObjectives(config.slo())
+            .serviceLevelObjectives(config.slo(null))
             .baseUnit("milliseconds")
             .tag("code.function", methodName)
             .tag("code.class", className);

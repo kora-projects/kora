@@ -26,7 +26,7 @@ public final class Opentelemetry120HttpClientMetrics implements HttpClientMetric
 
     private DistributionSummary duration(DurationKey key) {
         var builder = DistributionSummary.builder("http.client.duration")
-            .serviceLevelObjectives(this.config.slo())
+            .serviceLevelObjectives(this.config.slo(null))
             .baseUnit("milliseconds")
             .tag("http.method", key.method)
             .tag(SemanticAttributes.HTTP_REQUEST_METHOD.getKey(), key.method)

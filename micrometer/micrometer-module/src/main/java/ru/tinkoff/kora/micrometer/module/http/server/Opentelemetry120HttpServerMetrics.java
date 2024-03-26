@@ -63,7 +63,7 @@ public final class Opentelemetry120HttpServerMetrics implements HttpServerMetric
 
     private DistributionSummary requestDuration(DurationKey key) {
         var builder = DistributionSummary.builder("http.server.duration")
-            .serviceLevelObjectives(this.config.slo())
+            .serviceLevelObjectives(this.config.slo(null))
             .baseUnit("milliseconds")
             .tags(this.httpServerTagsProvider.getDurationTags(key));
 

@@ -43,7 +43,7 @@ public class Opentelemetry120KafkaConsumerMetrics implements KafkaConsumerMetric
 
     private DistributionSummary metrics(TopicPartition topicPartition) {
         var builder = DistributionSummary.builder("messaging.receive.duration")
-            .serviceLevelObjectives(this.config.slo())
+            .serviceLevelObjectives(this.config.slo(null))
             .baseUnit("milliseconds")
             .tag(SemanticAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
             .tag(SemanticAttributes.MESSAGING_DESTINATION_NAME.getKey(), topicPartition.topic())

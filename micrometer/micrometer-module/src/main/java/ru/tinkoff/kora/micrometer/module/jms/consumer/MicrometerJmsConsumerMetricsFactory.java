@@ -18,7 +18,7 @@ public class MicrometerJmsConsumerMetricsFactory implements JmsConsumerMetricsFa
     @Override
     public JmsConsumerMetrics get(TelemetryConfig.MetricsConfig config, String queueName) {
         var builder = DistributionSummary.builder("messaging.receive.duration")
-            .serviceLevelObjectives(config.slo())
+            .serviceLevelObjectives(config.slo(null))
             .baseUnit("s")
             .tag(SemanticAttributes.MESSAGING_SYSTEM.getKey(), "jms")
             .tag(SemanticAttributes.MESSAGING_DESTINATION_NAME.getKey(), queueName)
