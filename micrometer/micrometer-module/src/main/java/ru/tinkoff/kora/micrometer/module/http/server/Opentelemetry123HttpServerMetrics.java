@@ -13,14 +13,14 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public final class MicrometerHttpServerMetrics implements HttpServerMetrics {
+public final class Opentelemetry123HttpServerMetrics implements HttpServerMetrics {
     private final MeterRegistry meterRegistry;
     private final MicrometerHttpServerTagsProvider httpServerTagsProvider;
     private final ConcurrentHashMap<ActiveRequestsKey, AtomicInteger> requestCounters = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<DurationKey, DistributionSummary> duration = new ConcurrentHashMap<>();
     private final TelemetryConfig.MetricsConfig config;
 
-    public MicrometerHttpServerMetrics(MeterRegistry meterRegistry, MicrometerHttpServerTagsProvider httpServerTagsProvider, @Nullable TelemetryConfig.MetricsConfig config) {
+    public Opentelemetry123HttpServerMetrics(MeterRegistry meterRegistry, MicrometerHttpServerTagsProvider httpServerTagsProvider, @Nullable TelemetryConfig.MetricsConfig config) {
         this.meterRegistry = meterRegistry;
         this.httpServerTagsProvider = httpServerTagsProvider;
         this.config = config;
@@ -37,15 +37,21 @@ public final class MicrometerHttpServerMetrics implements HttpServerMetrics {
     }
 
     @Override
-    public void requestFinished(String method, String target, String host, String scheme, int statusCode, long processingTime) {
-        var counter = requestCounters.computeIfAbsent(new ActiveRequestsKey(method, target, host, scheme), activeRequestsKey -> {
+    public void requestFinished(String method, String route, String host, String scheme, int statusCode, long processingTimeNano) {
+        this.requestFinished(method, route, host, scheme, statusCode, processingTimeNano, null);
+    }
+
+    @Override
+    public void requestFinished(String method, String route, String host, String scheme, int statusCode, long processingTimeNano, Throwable exception) {
+        var counter = requestCounters.computeIfAbsent(new ActiveRequestsKey(method, route, host, scheme), activeRequestsKey -> {
             var c = new AtomicInteger(0);
             this.registerActiveRequestsGauge(activeRequestsKey, c);
             return c;
         });
         counter.decrementAndGet();
-        this.duration.computeIfAbsent(new DurationKey(statusCode, method, target, host, scheme), this::requestDuration)
-            .record(((double) processingTime) / 1_000_000);
+        var key = new DurationKey(statusCode, method, route, host, scheme, exception == null ? null : exception.getClass());
+        this.duration.computeIfAbsent(key, this::requestDuration)
+            .record(((double) processingTimeNano) / 1_000_000_000);
     }
 
     private void registerActiveRequestsGauge(ActiveRequestsKey key, AtomicInteger counter) {
@@ -55,9 +61,9 @@ public final class MicrometerHttpServerMetrics implements HttpServerMetrics {
     }
 
     private DistributionSummary requestDuration(DurationKey key) {
-        var builder = DistributionSummary.builder("http.server.duration")
+        var builder = DistributionSummary.builder("http.server.request.duration")
             .serviceLevelObjectives(this.config.slo())
-            .baseUnit("milliseconds")
+            .baseUnit("s")
             .tags(this.httpServerTagsProvider.getDurationTags(key));
 
         return builder.register(this.meterRegistry);

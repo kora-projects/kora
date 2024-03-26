@@ -22,7 +22,10 @@ public final class MicrometerHttpServerMetricsFactory implements HttpServerMetri
     @Override
     public HttpServerMetrics get(TelemetryConfig.MetricsConfig config) {
         if (Objects.requireNonNullElse(config.enabled(), true)) {
-            return new MicrometerHttpServerMetrics(this.meterRegistry, this.httpServerTagsProvider, config);
+            return switch (config.spec()) {
+                case V120 -> new Opentelemetry120HttpServerMetrics(this.meterRegistry, this.httpServerTagsProvider, config);
+                case V123 -> new Opentelemetry123HttpServerMetrics(this.meterRegistry, this.httpServerTagsProvider, config);
+            };
         } else {
             return null;
         }

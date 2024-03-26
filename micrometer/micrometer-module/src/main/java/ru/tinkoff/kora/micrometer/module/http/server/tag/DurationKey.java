@@ -1,3 +1,5 @@
 package ru.tinkoff.kora.micrometer.module.http.server.tag;
 
-public record DurationKey(int statusCode, String method, String target, String host, String scheme) {}
+import jakarta.annotation.Nullable;
+
+public record DurationKey(int statusCode, String method, String route, String host, String scheme, @Nullable Class<? extends Throwable> errorType) {}
