@@ -22,6 +22,9 @@ public final class MicrometerGrpcClientMetricsFactory implements GrpcClientMetri
         if (config.enabled() != null && !config.enabled()) {
             return null;
         }
-        return new MicrometerGrpcClientMetrics(registry, service, config, uri);
+        return switch (config.spec()) {
+            case V120 -> new Opentelemetry120GrpcClientMetrics(this.registry, service, config, uri);
+            case V123 -> new Opentelemetry123GrpcClientMetrics(this.registry, service, config, uri);
+        };
     }
 }
