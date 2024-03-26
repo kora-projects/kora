@@ -51,15 +51,15 @@ public class Opentelemetry120KafkaProducerMetrics implements KafkaProducerMetric
     }
 
     @Override
-    public void sendEnd(ProducerRecord<?, ?> record, double duration, Throwable e) {
+    public void sendEnd(ProducerRecord<?, ?> record, long durationNanos, Throwable e) {
         var m = this.metrics.computeIfAbsent(new TopicPartition(record.topic(), Objects.requireNonNullElse(record.partition(), -1)), this::metrics);
-        m.record(duration);
+        m.record((double) durationNanos / 1_000_000);
     }
 
     @Override
-    public void sendEnd(ProducerRecord<?, ?> record, double duration, RecordMetadata metadata) {
+    public void sendEnd(ProducerRecord<?, ?> record, long durationNanos, RecordMetadata metadata) {
         var m = this.metrics.computeIfAbsent(new TopicPartition(metadata.topic(), metadata.partition()), this::metrics);
-        m.record(duration);
+        m.record((double) durationNanos / 1_000_000);
     }
 
     @Override

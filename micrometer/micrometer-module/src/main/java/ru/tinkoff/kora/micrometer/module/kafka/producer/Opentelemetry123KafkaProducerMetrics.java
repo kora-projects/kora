@@ -50,17 +50,17 @@ public class Opentelemetry123KafkaProducerMetrics implements KafkaProducerMetric
     }
 
     @Override
-    public void sendEnd(ProducerRecord<?, ?> record, double duration, Throwable e) {
+    public void sendEnd(ProducerRecord<?, ?> record, long durationNanos, Throwable e) {
         var key = new DurationKey(record.topic(), Objects.requireNonNullElse(record.partition(), -1), e.getClass());
         var m = this.metrics.computeIfAbsent(key, this::metrics);
-        m.record(duration);
+        m.record((double) durationNanos / 1_000_000_000 );
     }
 
     @Override
-    public void sendEnd(ProducerRecord<?, ?> record, double duration, RecordMetadata metadata) {
+    public void sendEnd(ProducerRecord<?, ?> record, long durationNanos, RecordMetadata metadata) {
         var key = new DurationKey(record.topic(), Objects.requireNonNullElse(record.partition(), -1), null);
         var m = this.metrics.computeIfAbsent(key, this::metrics);
-        m.record(duration);
+        m.record((double) durationNanos / 1_000_000_000);
     }
 
     @Override
@@ -81,7 +81,7 @@ public class Opentelemetry123KafkaProducerMetrics implements KafkaProducerMetric
     private DistributionSummary metrics(DurationKey key) {
         var builder = DistributionSummary.builder("messaging.publish.duration")
             .serviceLevelObjectives(this.config.slo(null))
-            .baseUnit("milliseconds")
+            .baseUnit("s")
             .tag(SemanticAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
             .tag(SemanticAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION.getKey(), Integer.toString(key.partition()))
             .tag(SemanticAttributes.MESSAGING_DESTINATION_NAME.getKey(), key.topic());
