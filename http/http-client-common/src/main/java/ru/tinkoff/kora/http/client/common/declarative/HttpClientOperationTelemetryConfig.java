@@ -70,7 +70,7 @@ public final class HttpClientOperationTelemetryConfig implements TelemetryConfig
 
         @Override
         public double[] slo() {
-            if (this.operation.slo() != MetricsConfig.DEFAULT_SLO) {
+            if (this.operation.slo() != null) {
                 return this.operation.slo();
             }
             return this.client.slo();

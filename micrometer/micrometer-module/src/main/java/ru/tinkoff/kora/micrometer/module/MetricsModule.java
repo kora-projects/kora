@@ -5,6 +5,7 @@ import io.micrometer.prometheus.PrometheusMeterRegistry;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.annotation.Root;
+import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.micrometer.module.cache.MicrometerCacheMetrics;
 import ru.tinkoff.kora.micrometer.module.cache.caffeine.MicrometerCaffeineCacheMetricCollector;
 import ru.tinkoff.kora.micrometer.module.db.MicrometerDataBaseMetricWriterFactory;
@@ -15,6 +16,7 @@ import ru.tinkoff.kora.micrometer.module.http.server.MicrometerHttpServerMetrics
 import ru.tinkoff.kora.micrometer.module.http.server.MicrometerPrivateApiMetrics;
 import ru.tinkoff.kora.micrometer.module.http.server.tag.DefaultMicrometerHttpServerTagsProvider;
 import ru.tinkoff.kora.micrometer.module.http.server.tag.MicrometerHttpServerTagsProvider;
+import ru.tinkoff.kora.micrometer.module.http.server.tag.Opentelemetry123MicrometerHttpServerTagsProvider;
 import ru.tinkoff.kora.micrometer.module.jms.consumer.MicrometerJmsConsumerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.kafka.consumer.MicrometerKafkaConsumerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.kafka.producer.MicrometerKafkaProducerMetricsFactory;
@@ -33,8 +35,11 @@ public interface MetricsModule {
     }
 
     @DefaultComponent
-    default MicrometerHttpServerTagsProvider micrometerHttpServerTagsProvider() {
-        return new DefaultMicrometerHttpServerTagsProvider();
+    default MicrometerHttpServerTagsProvider micrometerHttpServerTagsProvider(HttpServerConfig config) {
+        return switch (config.telemetry().metrics().spec()) {
+            case V120 -> new DefaultMicrometerHttpServerTagsProvider();
+            case V123 -> new Opentelemetry123MicrometerHttpServerTagsProvider();
+        };
     }
 
     @DefaultComponent

@@ -14,6 +14,6 @@ public class MicrometerJmsConsumerMetrics implements JmsConsumerMetrics {
 
     @Override
     public void onMessageProcessed(Message message, long duration) {
-        this.distributionSummary.record(((double) duration) / 1_000_000);
+        this.distributionSummary.record(((double) duration) / 1_000_000_000);
     }
 }

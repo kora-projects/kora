@@ -163,7 +163,7 @@ public class DefaultKafkaProducerTelemetryFactory implements KafkaProducerTeleme
             var oldCtx = Context.current();
             try {
                 this.ctx.inject();
-                var duration = (System.nanoTime() - start) / 1_000_000d;
+                var duration = (System.nanoTime() - start);
                 if (this.span != null) {
                     this.span.close(e);
                 }
@@ -183,7 +183,7 @@ public class DefaultKafkaProducerTelemetryFactory implements KafkaProducerTeleme
             var oldCtx = Context.current();
             try {
                 this.ctx.inject();
-                var duration = (System.nanoTime() - start) / 1_000_000d;
+                var duration = (System.nanoTime() - start);
                 if (this.span != null) {
                     this.span.close(metadata);
                 }

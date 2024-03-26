@@ -19,7 +19,10 @@ public class MicrometerSchedulingMetricsFactory implements SchedulingMetricsFact
     @Nullable
     public SchedulingMetrics get(TelemetryConfig.MetricsConfig config, Class<?> jobClass, String jobMethod) {
         if (Objects.requireNonNullElse(config.enabled(), true)) {
-            return new MicrometerSchedulingMetrics(this.meterRegistry, config, jobClass.getCanonicalName(), jobMethod);
+            return switch (config.spec()) {
+                case V120 -> new Opentelemetry120SchedulingMetrics(this.meterRegistry, config, jobClass.getCanonicalName(), jobMethod);
+                case V123 -> new Opentelemetry123SchedulingMetrics(this.meterRegistry, config, jobClass.getCanonicalName(), jobMethod);
+            };
         } else {
             return null;
         }

@@ -19,7 +19,10 @@ public final class MicrometerDataBaseMetricWriterFactory implements DataBaseMetr
     @Nullable
     public DataBaseMetricWriter get(TelemetryConfig.MetricsConfig metrics, String poolName) {
         if (Objects.requireNonNullElse(metrics.enabled(), true)) {
-            return new MicrometerDataBaseMetricWriter(this.meterRegistry, metrics, poolName);
+            return switch (metrics.spec()) {
+                case V120 -> new Opentelemetry120DataBaseMetricWriter(this.meterRegistry, metrics, poolName);
+                case V123 -> new Opentelemetry123DataBaseMetricWriter(this.meterRegistry, metrics, poolName);
+            };
         } else {
             return null;
         }
