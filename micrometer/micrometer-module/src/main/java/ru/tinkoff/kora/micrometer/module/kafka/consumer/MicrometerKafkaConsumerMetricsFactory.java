@@ -20,7 +20,10 @@ public final class MicrometerKafkaConsumerMetricsFactory implements KafkaConsume
     @Override
     public KafkaConsumerMetrics get(Properties driverProperties, TelemetryConfig.MetricsConfig metrics) {
         if (Objects.requireNonNullElse(metrics.enabled(), true)) {
-            return new MicrometerKafkaConsumerMetrics(this.meterRegistry, driverProperties, metrics);
+            return switch (metrics.spec()) {
+                case V120 -> new Opentelemetry120KafkaConsumerMetrics(this.meterRegistry, driverProperties, metrics);
+                case V123 -> new Opentelemetry123KafkaConsumerMetrics(this.meterRegistry, driverProperties, metrics);
+            };
         }
         return null;
     }
