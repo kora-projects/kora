@@ -42,7 +42,7 @@ public final class Opentelemetry123DataBaseMetricWriter implements DataBaseMetri
 
     private DbMetrics metrics(DbKey key) {
         var builder = DistributionSummary.builder("db.client.request.duration")
-            .serviceLevelObjectives(this.config.slo())
+            .serviceLevelObjectives(this.config.slo(null))
             .baseUnit("s")
             .tag(SemanticAttributes.POOL_NAME.getKey(), this.poolName)
             .tag(SemanticAttributes.DB_STATEMENT.getKey(), key.queryId())

@@ -61,15 +61,15 @@ public final class Opentelemetry123GrpcClientMetrics implements GrpcClientMetric
         var duration = DistributionSummary.builder("rpc.client.duration")
             .tags(tags)
             .baseUnit("s")
-            .serviceLevelObjectives(this.config.slo())
+            .serviceLevelObjectives(this.config.slo(null))
             .register(this.registry);
         var requestsByRpc = DistributionSummary.builder("rpc.client.requests_per_rpc")
             .tags(tags)
-            .serviceLevelObjectives(this.config.slo())
+            .serviceLevelObjectives(this.config.slo(null))
             .register(this.registry);
         var responsesByRpc = DistributionSummary.builder("rpc.client.responses_per_rpc")
             .tags(tags)
-            .serviceLevelObjectives(this.config.slo())
+            .serviceLevelObjectives(this.config.slo(null))
             .register(this.registry);
 
         return new Metrics(duration, requestsByRpc, responsesByRpc);
