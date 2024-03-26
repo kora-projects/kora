@@ -27,8 +27,17 @@ public interface TelemetryConfig {
     interface MetricsConfig {
         double[] DEFAULT_SLO = new double[]{1, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 30000, 60000, 90000};
 
+        enum OpentelemetrySpec {
+            V120, V123
+        }
+        default OpentelemetrySpec spec() {
+            // todo replace in some major release maybe
+            return OpentelemetrySpec.V120;
+        }
+
         @Nullable
         Boolean enabled();
+
 
         default double[] slo() {
             return DEFAULT_SLO;
