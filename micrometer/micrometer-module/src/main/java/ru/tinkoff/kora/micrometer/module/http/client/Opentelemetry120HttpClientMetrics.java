@@ -8,12 +8,12 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class MicrometerHttpClientMetrics implements HttpClientMetrics {
+public final class Opentelemetry120HttpClientMetrics implements HttpClientMetrics {
     private final MeterRegistry meterRegistry;
     private final ConcurrentHashMap<DurationKey, DistributionSummary> duration = new ConcurrentHashMap<>();
     private final TelemetryConfig.MetricsConfig config;
 
-    public MicrometerHttpClientMetrics(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config) {
+    public Opentelemetry120HttpClientMetrics(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config) {
         this.meterRegistry = meterRegistry;
         this.config = config;
     }
