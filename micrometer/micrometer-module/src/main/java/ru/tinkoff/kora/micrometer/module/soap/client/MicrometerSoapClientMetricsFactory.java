@@ -28,7 +28,10 @@ public class MicrometerSoapClientMetricsFactory implements SoapClientMetricsFact
                 case "https" -> 443;
                 default -> -1;
             };
-            return new MicrometerSoapClientMetrics(this.meterRegistry, config, serviceName, soapMethod, host, port);
+            return switch (config.spec()) {
+                case V120 -> new Opentelemetry120SoapClientMetrics(this.meterRegistry, config, serviceName, soapMethod, host, port);
+                case V123 -> new Opentelemetry123SoapClientMetrics(this.meterRegistry, config, serviceName, soapMethod, host, port);
+            };
         } else {
             return null;
         }
