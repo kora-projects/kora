@@ -7,9 +7,9 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 public interface KafkaProducerMetrics {
     KafkaProducerTxMetrics tx();
 
-    void sendEnd(ProducerRecord<?, ?> record, double duration, Throwable e);
+    void sendEnd(ProducerRecord<?, ?> record, long durationNanos, Throwable e);
 
-    void sendEnd(ProducerRecord<?, ?> record, double duration, RecordMetadata metadata);
+    void sendEnd(ProducerRecord<?, ?> record, long durationNanos, RecordMetadata metadata);
 
     interface KafkaProducerTxMetrics {
         void commit();
