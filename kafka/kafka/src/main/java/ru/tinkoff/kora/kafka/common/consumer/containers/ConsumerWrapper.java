@@ -1,10 +1,7 @@
 package ru.tinkoff.kora.kafka.common.consumer.containers;
 
 import org.apache.kafka.clients.consumer.*;
-import org.apache.kafka.common.Metric;
-import org.apache.kafka.common.MetricName;
-import org.apache.kafka.common.PartitionInfo;
-import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.*;
 import org.apache.kafka.common.serialization.Deserializer;
 
 import java.time.Duration;
@@ -21,6 +18,11 @@ public final class ConsumerWrapper<K, V> implements Consumer<K, V> {
         this.realConsumer = realConsumer;
         this.keyDeserializer = keyDeserializer;
         this.valueDeserializer = valueDeserializer;
+    }
+
+    @Override
+    public Uuid clientInstanceId(Duration timeout) {
+        return realConsumer.clientInstanceId(timeout);
     }
 
     @Override
