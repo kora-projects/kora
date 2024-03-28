@@ -9,8 +9,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MDC {
-    private final ConcurrentHashMap<String, StructuredArgumentWriter> values;
 
+    private final ConcurrentHashMap<String, StructuredArgumentWriter> values;
 
     private static final Context.Key<MDC> MDC = new Context.Key<>() {
         @Override

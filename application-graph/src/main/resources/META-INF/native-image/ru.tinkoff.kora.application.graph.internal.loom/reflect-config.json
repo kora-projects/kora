@@ -1,0 +1,29 @@
+[
+    {
+        "name": "java.lang.Thread",
+        "methods": [
+            {
+                "name": "ofVirtual",
+                "parameterTypes": []
+            }
+        ]
+    },
+    {
+        "name": "java.lang.Thread$Builder$OfVirtual",
+        "methods": [
+            {
+                "name": "factory",
+                "parameterTypes": [ ]
+            }
+        ]
+    },
+    {
+        "name": "java.util.concurrent.Executors",
+        "methods": [
+            {
+                "name": "newVirtualThreadPerTaskExecutor",
+                "parameterTypes": [ ]
+            }
+        ]
+    }
+]
