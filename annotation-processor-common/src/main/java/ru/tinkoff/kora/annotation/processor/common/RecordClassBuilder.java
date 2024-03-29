@@ -128,21 +128,23 @@ public class RecordClassBuilder {
             sb.append("  }\n");
         }
 
-        if (components.stream().anyMatch(f -> f.type() instanceof ArrayTypeName)) {
-            sb.append("    @Override\n");
-            sb.append("    public boolean equals(Object o) {\n");
-            sb.append("      return this == o || o instanceof ").append(name).append(" that\n");
-            for (var component : components) {
-                if (component.type() instanceof ArrayTypeName) {
-                    sb.append("        && java.util.Arrays.equals(this.").append(component.name()).append("(), that.").append(component.name()).append("())\n");
-                } else if(component.type.isPrimitive()) {
-                    sb.append("        && this.").append(component.name()).append("() == that.").append(component.name()).append("()\n");
-                } else {
-                    sb.append("        && java.util.Objects.equals(this.").append(component.name()).append("(), that.").append(component.name()).append("())\n");
+        if(enforceEquals) {
+            if (components.stream().anyMatch(f -> f.type() instanceof ArrayTypeName)) {
+                sb.append("    @Override\n");
+                sb.append("    public boolean equals(Object o) {\n");
+                sb.append("      return this == o || o instanceof ").append(name).append(" that\n");
+                for (var component : components) {
+                    if (component.type() instanceof ArrayTypeName) {
+                        sb.append("        && java.util.Arrays.equals(this.").append(component.name()).append("(), that.").append(component.name()).append("())\n");
+                    } else if (component.type.isPrimitive()) {
+                        sb.append("        && this.").append(component.name()).append("() == that.").append(component.name()).append("()\n");
+                    } else {
+                        sb.append("        && java.util.Objects.equals(this.").append(component.name()).append("(), that.").append(component.name()).append("())\n");
+                    }
                 }
+                sb.append("      ;\n");
+                sb.append("    }\n");
             }
-            sb.append("      ;\n");
-            sb.append("    }\n");
         }
 
         sb.append("}\n");
