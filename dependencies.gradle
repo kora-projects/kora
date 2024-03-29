@@ -127,6 +127,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             library("grpc-protobuf", "io.grpc", "grpc-protobuf").versionRef('grpc-java')
             library("grpc-netty", "io.grpc", "grpc-netty").versionRef('grpc-java')
             library("grpc-stub", "io.grpc", "grpc-stub").versionRef('grpc-java')
+            library("grpc-services", "io.grpc", "grpc-services").versionRef('grpc-java')
             library("grpc-java-gen", "io.grpc", "protoc-gen-grpc-java").versionRef('grpc-java')
 
             library("testcontainers-core", "org.testcontainers", "testcontainers").versionRef("testcontainers")
