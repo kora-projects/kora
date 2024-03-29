@@ -3,6 +3,7 @@ package ru.tinkoff.kora.grpc.server;
 import io.grpc.BindableService;
 import io.grpc.ServerInterceptor;
 import io.grpc.netty.NettyServerBuilder;
+import io.grpc.protobuf.services.ProtoReflectionService;
 import io.netty.channel.EventLoopGroup;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.application.graph.All;
@@ -58,6 +59,10 @@ public interface GrpcServerModule extends NettyCommonModule {
             .intercept(new ContextServerInterceptor())
             .intercept(new TelemetryInterceptor(telemetry));
 
+        if(config.get().reflectionEnabled() && isClassPresent("io.grpc.protobuf.services.ProtoReflectionService")) {
+            builder.addService(ProtoReflectionService.newInstance());
+        }
+
         services.forEach(builder::addService);
         interceptors.forEach(builder::intercept);
 
@@ -94,5 +99,13 @@ public interface GrpcServerModule extends NettyCommonModule {
                 return dynamicServerInterceptors;
             }
         };
+    }
+
+    private static boolean isClassPresent(String className) {
+        try {
+            return GrpcServerModule.class.getClassLoader().loadClass(className) != null;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
     }
 }

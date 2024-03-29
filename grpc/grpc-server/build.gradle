@@ -5,15 +5,16 @@ plugins {
 dependencies {
     annotationProcessor project(':config:config-annotation-processor')
 
+    compileOnly libs.grpc.services
+    compileOnly libs.grpc.kotlin.stub
+    compileOnly libs.kotlin.coroutines.core
+
     api project(':netty-common')
     api project(':logging:logging-common')
     api project(':telemetry:telemetry-common')
 
     api libs.grpc.netty
     api libs.grpc.stub
-
-    compileOnly libs.grpc.kotlin.stub
-    compileOnly libs.kotlin.coroutines.core
 
     testImplementation libs.grpc.java.gen
     testImplementation libs.grpc.protobuf
