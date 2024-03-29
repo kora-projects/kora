@@ -37,6 +37,7 @@ public interface ApiSecurity {
         return new ApiKeyHttpClientInterceptor(paramLocation, "{{keyParamName}}", apiKey);
     }
 {{/isApiKey}}{{#isBasicBasic}}
+    @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
     static record {{#lambda.classname}}{{name}}{{/lambda.classname}}Config(String username, String password){}
 
     default {{#lambda.classname}}{{name}}{{/lambda.classname}}Config {{name}}Config(Config config, ConfigValueExtractor<{{#lambda.classname}}{{name}}{{/lambda.classname}}Config> extractor) {

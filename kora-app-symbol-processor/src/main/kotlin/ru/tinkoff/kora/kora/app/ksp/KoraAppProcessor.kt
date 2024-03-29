@@ -505,6 +505,7 @@ class KoraAppProcessor(
                 holders++
                 val className = graphTypeName.nestedClass("ComponentHolder" + i / COMPONENTS_PER_HOLDER_CLASS)
                 currentClass = TypeSpec.classBuilder(className)
+                    .generated(KoraAppProcessor::class)
                 currentConstructor = FunSpec.constructorBuilder()
                     .addParameter("graphDraw", CommonClassNames.applicationGraphDraw)
                     .addParameter("impl", implClass)

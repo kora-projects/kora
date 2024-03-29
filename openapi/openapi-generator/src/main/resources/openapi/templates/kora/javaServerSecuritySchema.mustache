@@ -27,7 +27,7 @@ import ru.tinkoff.kora.http.server.common.auth.*;
 
 
 
-@ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
+@ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
 @ru.tinkoff.kora.common.Module
 public interface ApiSecurity {
 {{#vendorExtensions.tags}}
@@ -35,6 +35,7 @@ public interface ApiSecurity {
 {{/vendorExtensions.tags}}
 
 {{#vendorExtensions.authMethods}}
+    @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
     static final class {{name}}HttpServerInterceptor implements HttpServerInterceptor { {{#methods}}
         private final HttpServerPrincipalExtractor<{{#isOAuth}}PrincipalWithScopes{{/isOAuth}}{{^isOAuth}}Principal{{/isOAuth}}> {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}};
     {{/methods}}

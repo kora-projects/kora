@@ -18,6 +18,7 @@ import {{package}}.{{classname}}Responses.*
 interface {{classname}}ServerResponseMappers {
 {{#operations}}
 {{#operation}}
+  @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
   class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ResponseMapper(
     {{#responses}}
     {{#dataType}}

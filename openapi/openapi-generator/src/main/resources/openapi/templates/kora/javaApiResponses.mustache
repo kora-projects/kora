@@ -11,6 +11,7 @@ public interface {{classname}}Responses {
   /**
   * {{message}} (status code {{code}})
   */
+  @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
   public record {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse(
     {{#dataType}}{{#isDefault}}int statusCode,
     {{/isDefault}}{{{dataType}}} content{{#hasHeaders}},{{/hasHeaders}}{{/dataType}}{{^dataType}}{{#isDefault}}int statusCode{{#hasHeaders}},{{/hasHeaders}}{{/isDefault}}{{/dataType}}{{#headers}}{{^required}}
@@ -23,6 +24,7 @@ public interface {{classname}}Responses {
       /**
       * {{message}} (status code {{code}})
       */
+      @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
       public record {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse(
         {{#dataType}}{{#isDefault}}int statusCode,
         {{/isDefault}}{{{dataType}}} content{{#hasHeaders}},{{/hasHeaders}}{{/dataType}}{{^dataType}}{{#isDefault}}int statusCode{{#hasHeaders}},{{/hasHeaders}}{{/isDefault}}{{/dataType}}{{#headers}}{{^required}}

@@ -70,6 +70,7 @@ import ru.tinkoff.kora.http.server.common.HttpServerRequest
     }
 
 {{#hasFormParams}}
+    @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
     data class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(
       {{#formParams}}
           val {{paramName}}: {{#isFile}}ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile{{/isFile}}{{^isFile}}{{{dataType}}}{{/isFile}}{{^required}}?{{/required}}{{^-last}},{{/-last}}

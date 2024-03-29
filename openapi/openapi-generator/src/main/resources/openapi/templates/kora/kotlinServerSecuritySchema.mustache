@@ -37,6 +37,7 @@ public interface ApiSecurity {
 {{/vendorExtensions.tags}}
 
 {{#vendorExtensions.authMethods}}
+    @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
     class {{name}}HttpServerInterceptor(
         {{#methods}}  @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class) val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}: HttpServerPrincipalExtractor<{{#isOAuth}}PrincipalWithScopes{{/isOAuth}}{{^isOAuth}}Principal{{/isOAuth}}>{{^vendorExtensions.isLast}},
         {{/vendorExtensions.isLast}}{{/methods}}
