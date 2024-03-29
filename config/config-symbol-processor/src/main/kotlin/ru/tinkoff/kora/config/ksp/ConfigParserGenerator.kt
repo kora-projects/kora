@@ -373,6 +373,7 @@ class ConfigParserGenerator(private val resolver: Resolver) {
     private fun buildConfigInterfaceImplementation(typeDecl: KSClassDeclaration, fields: List<ConfigField>): TypeSpec? {
         val b = TypeSpec.classBuilder(typeDecl.simpleName.asString() + "_Impl")
             .addModifiers(KModifier.DATA)
+            .generated(ConfigParserGenerator::class)
             .addSuperinterface(typeDecl.toTypeName(listOf()))
         val constructor = FunSpec.constructorBuilder()
         for (field in fields) {

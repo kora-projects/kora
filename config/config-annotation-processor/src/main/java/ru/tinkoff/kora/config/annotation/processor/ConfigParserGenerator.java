@@ -81,7 +81,7 @@ public class ConfigParserGenerator {
             var content = sw.toString();
             var i = content.lastIndexOf('}');
             content = content.substring(0, i);
-            content += this.buildConfigInterfaceImplementation(element, fields) + "\n}\n";
+            content += "\n" + this.buildConfigInterfaceImplementation(element, fields) + "\n}\n";
 
             var filerSourceFile = this.processingEnv.getFiler().createSourceFile(fileName, element);
 
@@ -389,38 +389,17 @@ public class ConfigParserGenerator {
     }
 
     private String buildConfigInterfaceImplementation(TypeElement typeElement, List<ConfigUtils.ConfigField> fields) {
-        var b = new StringBuilder("\n  public record ").append(typeElement.getSimpleName()).append("_Impl (\n");
-        for (int i = 0; i < fields.size(); i++) {
-            var field = fields.get(i);
-            if (i > 0) {
-                b.append(",\n");
-            }
-            b.append("    ").append(field.typeName()).append(" ").append(field.name());
+        var recordBuilder = new RecordClassBuilder(typeElement.getSimpleName() + "_Impl", ConfigParserGenerator.class)
+            .addModifier(Modifier.PUBLIC)
+            .enforceEquals();
+
+        for (ConfigUtils.ConfigField field : fields) {
+            boolean requireCheck = !field.isNullable() && !field.typeName().isPrimitive();
+            recordBuilder.addComponent(field.name(), field.typeName(), requireCheck);
         }
-        b.append("\n  ) ").append(" implements ").append(typeElement.asType()).append(" {\n");
-        b.append("    public ").append(typeElement.getSimpleName()).append("_Impl {\n");
-        for (var field : fields) {
-            if (!field.isNullable() && !field.typeName().isPrimitive()) {
-                b.append("      java.util.Objects.requireNonNull(").append(field.name()).append(");\n");
-            }
-        }
-        b.append("    }\n");
-        if (fields.stream().anyMatch(f -> f.typeName() instanceof ArrayTypeName)) {
-            b.append("    @Override\n");
-            b.append("    public boolean equals(Object o) {\n");
-            b.append("      return this == o || o instanceof ").append(typeElement.asType()).append(" that\n");
-            for (var field : fields) {
-                if (field.typeName() instanceof ArrayTypeName) {
-                    b.append("        && java.util.Arrays.equals(this.").append(field.name()).append("(), that.").append(field.name()).append("())\n");
-                } else {
-                    b.append("        && java.util.Objects.equals(this.").append(field.name()).append("(), that.").append(field.name()).append("())\n");
-                }
-            }
-            b.append("      ;\n");
-            b.append("    }\n");
-        }
-        b.append("  }\n");
-        return b.toString();
+
+        recordBuilder.superinterface(TypeName.get(typeElement.asType()));
+        return recordBuilder.render().indent(2);
     }
 
     private static final Map<TypeName, CodeBlock> supportedTypes = Map.ofEntries(
