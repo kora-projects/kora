@@ -91,13 +91,15 @@ public class RecordClassBuilder {
             if (component.defaultValue != null) {
                 var hasNullable = component.annotations.stream().anyMatch(a -> a.type.toString().endsWith(".Nullable"));
                 if (!hasNullable) {
-                    sb.append("  @jakarta.annotation.Nullable\n");
+                    sb.append("  @jakarta.annotation.Nullable ");
                 }
             } else if(component.notNullCheck && !component.type.isPrimitive()) {
-                sb.append("  @jakarta.annotation.Nonnull\n");
+                sb.append("  @jakarta.annotation.Nonnull ");
+            } else {
+                sb.append("  ");
             }
 
-            sb.append("  ").append(component.type.toString()).append(" ").append(component.name);
+            sb.append(component.type.toString()).append(" ").append(component.name);
             if (i < this.components.size() - 1) {
                 sb.append(',');
             }
