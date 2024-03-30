@@ -87,13 +87,16 @@ public class RecordClassBuilder {
             for (var annotation : component.annotations) {
                 sb.append("  ").append(annotation.toString()).append("\n");
             }
+
             if (component.defaultValue != null) {
                 var hasNullable = component.annotations.stream().anyMatch(a -> a.type.toString().endsWith(".Nullable"));
                 if (!hasNullable) {
                     sb.append("  @jakarta.annotation.Nullable\n");
                 }
-
+            } else if(component.notNullCheck && !component.type.isPrimitive()) {
+                sb.append("  @jakarta.annotation.Nonnull\n");
             }
+
             sb.append("  ").append(component.type.toString()).append(" ").append(component.name);
             if (i < this.components.size() - 1) {
                 sb.append(',');
