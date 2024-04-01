@@ -1,4 +1,5 @@
 {{#hasFormParams}}
+    @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
     public record {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(
       {{#formParams}}{{^required}}
         @jakarta.annotation.Nullable{{/required}}{{#isFile}}

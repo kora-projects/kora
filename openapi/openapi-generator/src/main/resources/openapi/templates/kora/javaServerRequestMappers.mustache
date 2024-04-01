@@ -7,12 +7,12 @@ import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import java.util.concurrent.CompletionStage;
 {{/isBlocking}}
 
-@ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
+@ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
 public interface {{classname}}ServerRequestMappers {
 {{#operations}}
 {{#operation}}
 {{#hasFormParams}}
-
+  @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
   final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper implements HttpServerRequestMapper<
   {{#isBlocking}}{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam{{/isBlocking}}{{^isBlocking}}
   CompletionStage<{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam>{{/isBlocking}}> {

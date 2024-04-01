@@ -57,6 +57,7 @@ interface {{classname}} {
     {{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}({{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse
 
 {{#hasFormParams}}
+    @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
     data class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(
       {{#formParams}}
           val {{paramName}}: {{#isFile}}ru.tinkoff.kora.http.common.form.FormMultipart.FormPart{{/isFile}}{{^isFile}}{{{dataType}}}{{/isFile}}{{^required}}?{{/required}}{{^-last}},{{/-last}}

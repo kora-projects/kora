@@ -418,6 +418,9 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 holders++;
                 var className = graphTypeName.nestedClass("ComponentHolder" + i / COMPONENTS_PER_HOLDER_CLASS);
                 currentClass = TypeSpec.classBuilder(className)
+                    .addAnnotation(AnnotationSpec.builder(Generated.class)
+                        .addMember("value", CodeBlock.of("$S", KoraAppProcessor.class.getCanonicalName()))
+                        .build())
                     .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL);
                 currentConstructor = MethodSpec.constructorBuilder()
                     .addModifiers(Modifier.PUBLIC)
@@ -613,7 +616,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 
         for (int i = 0; i < modules.size(); i++) {
             var module = modules.get(i);
-            classBuilder.addField(FieldSpec.builder(TypeName.get(module.asType()), "module" + i, Modifier.PUBLIC)
+            classBuilder.addField(FieldSpec.builder(TypeName.get(module.asType()), "module" + i, Modifier.PUBLIC, Modifier.FINAL)
                 .initializer("new $T(){}", module.asType())
                 .build());
             classBuilder.addOriginatingElement(module);

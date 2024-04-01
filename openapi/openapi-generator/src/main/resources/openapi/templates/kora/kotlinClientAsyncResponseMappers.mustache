@@ -15,6 +15,7 @@ interface {{classname}}ClientResponseMappers {
 {{#operations}}
 {{#operation}}
   {{#responses}}
+  @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
   class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper(
     {{#dataType}}
     {{#vendorExtensions.hasMapperTag}}@param:{{vendorExtensions.mapperTag}}{{/vendorExtensions.hasMapperTag}}

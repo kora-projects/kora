@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.annotation.processor.common;
 
 import com.squareup.javapoet.AnnotationSpec;
+import com.squareup.javapoet.ArrayTypeName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.TypeName;
 
@@ -8,10 +9,7 @@ import javax.annotation.processing.Filer;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class RecordClassBuilder {
 
@@ -21,9 +19,10 @@ public class RecordClassBuilder {
     public final List<RecordComponent> components = new ArrayList<>();
     public final List<TypeName> interfaces = new ArrayList<>();
     public final List<Element> originatingElements = new ArrayList<>();
-    private CodeBlock defaultConstructorBody = CodeBlock.of("");
+    private boolean enforceEquals = false;
+    private CodeBlock defaultConstructorBody;
 
-    public record RecordComponent(String name, TypeName type, List<AnnotationSpec> annotations, CodeBlock defaultValue) {}
+    public record RecordComponent(String name, TypeName type, List<AnnotationSpec> annotations, CodeBlock defaultValue, boolean notNullCheck) {}
 
     public RecordClassBuilder(String name, Class<?> origin) {
         this.name = name;
@@ -35,22 +34,33 @@ public class RecordClassBuilder {
         return this;
     }
 
+    public RecordClassBuilder enforceEquals() {
+        this.enforceEquals = true;
+        return this;
+    }
+
     public RecordClassBuilder addModifier(Modifier modifier) {
         this.modifiers.add(modifier);
         return this;
     }
 
     public RecordClassBuilder addComponent(String name, TypeName type, List<AnnotationSpec> annotations) {
-        this.components.add(new RecordComponent(name, type, annotations, null));
+        this.components.add(new RecordComponent(name, type, annotations, null, false));
         return this;
     }
 
     public RecordClassBuilder addComponent(String name, TypeName type) {
-        this.components.add(new RecordComponent(name, type, List.of(), null));
+        this.components.add(new RecordComponent(name, type, List.of(), null, false));
         return this;
     }
+
     public RecordClassBuilder addComponent(String name, TypeName type, CodeBlock defaultValue) {
-        this.components.add(new RecordComponent(name, type, List.of(), defaultValue));
+        this.components.add(new RecordComponent(name, type, List.of(), defaultValue, false));
+        return this;
+    }
+
+    public RecordClassBuilder addComponent(String name, TypeName type, boolean checkNotNull) {
+        this.components.add(new RecordComponent(name, type, List.of(), null, checkNotNull));
         return this;
     }
 
@@ -66,9 +76,7 @@ public class RecordClassBuilder {
 
     public String render() {
         var sb = new StringBuilder();
-
-        sb.append("import ").append(CommonClassNames.koraGenerated.canonicalName()).append(";\n\n");
-        sb.append("@").append(CommonClassNames.koraGenerated.simpleName()).append("(\"").append(origin.getCanonicalName()).append("\")").append("\n");
+        sb.append("@").append(CommonClassNames.koraGenerated.canonicalName()).append("(\"").append(origin.getCanonicalName()).append("\")").append("\n");
 
         for (var modifier : this.modifiers) {
             sb.append(modifier.toString()).append(' ');
@@ -79,14 +87,19 @@ public class RecordClassBuilder {
             for (var annotation : component.annotations) {
                 sb.append("  ").append(annotation.toString()).append("\n");
             }
+
             if (component.defaultValue != null) {
                 var hasNullable = component.annotations.stream().anyMatch(a -> a.type.toString().endsWith(".Nullable"));
                 if (!hasNullable) {
-                    sb.append("  @jakarta.annotation.Nullable\n");
+                    sb.append("  @jakarta.annotation.Nullable ");
                 }
-
+            } else if(component.notNullCheck && !component.type.isPrimitive()) {
+                sb.append("  @jakarta.annotation.Nonnull ");
+            } else {
+                sb.append("  ");
             }
-            sb.append("  ").append(component.type.toString()).append(" ").append(component.name);
+
+            sb.append(component.type.toString()).append(" ").append(component.name);
             if (i < this.components.size() - 1) {
                 sb.append(',');
             }
@@ -98,23 +111,54 @@ public class RecordClassBuilder {
             for (int i = 0; i < this.interfaces.size(); i++) {
                 var anInterface = this.interfaces.get(i);
                 if (i > 0) {
-                    sb.append(",");
+                    sb.append(", ");
                 }
-                sb.append("\n  ").append(anInterface.toString());
+                sb.append(anInterface.toString());
             }
         }
         sb.append(" {\n");
-        sb.append("  public ").append(this.name).append("{\n");
+        sb.append("  public ").append(this.name).append(" {\n");
         for (var component : components) {
             if (component.defaultValue != null) {
                 sb.append("    if (").append(component.name).append(" == null) ").append(component.name).append(" = ").append(component.defaultValue.toString()).append(";\n");
+            } else if(component.notNullCheck && !component.type.isPrimitive()) {
+                sb.append("    ").append(Objects.class.getCanonicalName()).append(".requireNonNull(").append(component.name).append(");\n");
             }
         }
 
-        sb.append(this.defaultConstructorBody.toString().indent(4));
-        sb.append("\n  }\n");
+        if(this.defaultConstructorBody != null) {
+            sb.append(this.defaultConstructorBody.toString().indent(4));
+            sb.append("\n  }\n");
+        } else {
+            sb.append("  }\n");
+        }
+
+        if(enforceEquals) {
+            if (components.stream().anyMatch(f -> f.type() instanceof ArrayTypeName)) {
+                sb.append("    @Override\n");
+                sb.append("    public boolean equals(Object o) {\n");
+                sb.append("      return this == o || o instanceof ").append(name).append(" that\n");
+                for (var component : components) {
+                    if (component.type() instanceof ArrayTypeName) {
+                        sb.append("        && java.util.Arrays.equals(this.").append(component.name()).append("(), that.").append(component.name()).append("())\n");
+                    } else if (component.type.isPrimitive()) {
+                        sb.append("        && this.").append(component.name()).append("() == that.").append(component.name()).append("()\n");
+                    } else {
+                        sb.append("        && java.util.Objects.equals(this.").append(component.name()).append("(), that.").append(component.name()).append("())\n");
+                    }
+                }
+                sb.append("      ;\n");
+                sb.append("    }\n");
+            }
+        }
+
         sb.append("}\n");
         return sb.toString();
+    }
+
+    @Override
+    public String toString() {
+        return render();
     }
 
     public void writeTo(Filer filer, String packageName) throws IOException {

@@ -14,6 +14,7 @@ public interface {{classname}}ClientResponseMappers {
 {{#operations}}
 {{#operation}}
   {{#responses}}
+  @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
   final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper implements HttpClientResponseMapper<CompletionStage<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>>{
     {{#dataType}}
     private final HttpClientResponseMapper<CompletionStage<{{{dataType}}}>> delegate;

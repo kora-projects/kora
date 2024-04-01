@@ -12,6 +12,7 @@ interface {{classname}}ServerRequestMappers {
 {{#operations}}
 {{#operation}}
 {{#hasFormParams}}
+  @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
   class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper{{#vendorExtensions.requiresFormParamMappers}}({{#vendorExtensions.formParamMappers}}
     private val {{paramName}}Converter: ru.tinkoff.kora.http.server.common.handler.StringParameterReader<{{paramType}}>,
 {{/vendorExtensions.formParamMappers}}
