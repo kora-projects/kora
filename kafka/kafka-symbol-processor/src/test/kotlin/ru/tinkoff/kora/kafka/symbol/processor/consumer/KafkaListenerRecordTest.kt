@@ -155,4 +155,32 @@ class KafkaListenerRecordTest : AbstractKafkaListenerAnnotationProcessorTest() {
             """.trimIndent()
         )
     }
+
+    @Test
+    fun testProcessRecordAndConsumerAndTelemetry() {
+        compile(
+            """
+            class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                fun process(consumer: Consumer<*, *>, event: ConsumerRecord<ByteArray, String>, telemetry: KafkaConsumerTelemetry.KafkaConsumerRecordTelemetryContext<*, *>) {
+                }
+            }
+            
+            """.trimIndent()
+        )
+    }
+
+    @Test
+    fun testProcessRecordAndTelemetry() {
+        compile(
+            """
+            class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                fun process(telemetry: KafkaConsumerTelemetry.KafkaConsumerRecordTelemetryContext<*, *>, event: ConsumerRecord<ByteArray, String>) {
+                }
+            }
+            
+            """.trimIndent()
+        )
+    }
 }

@@ -383,49 +383,46 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
 
                 public InvocationAssertions<K, V> assertNoException(int i) {
                     assertThat(invocation.getArgument(i, Throwable.class)).isNull();
-
                     return this;
                 }
 
                 public InvocationAssertions<K, V> assertKey(int i, K key) {
                     assertThat(invocation.getArgument(i, Object.class)).isNotNull().isEqualTo(key);
-
                     return this;
                 }
 
                 public InvocationAssertions<K, V> assertNoKey(int i) {
                     assertThat(invocation.getArgument(i, Object.class)).isNull();
-
                     return this;
                 }
 
                 public InvocationAssertions<K, V> assertValue(int i, V value) {
                     assertThat(invocation.getArgument(i, Object.class)).isNotNull().isEqualTo(value);
-
                     return this;
                 }
 
                 public InvocationAssertions<K, V> assertHeadersIsNotEmpty(int i) {
                     assertThat(invocation.getArgument(i, Headers.class)).isNotNull().isNotEmpty();
-
                     return this;
                 }
 
                 public InvocationAssertions<K, V> assertHeadersIsEmpty(int i) {
                     assertThat(invocation.getArgument(i, Headers.class)).isNotNull().isEmpty();
-
                     return this;
                 }
 
                 public InvocationAssertions<K, V> assertNoValue(int i) {
                     assertThat(invocation.getArgument(i, Object.class)).isNull();
-
                     return this;
                 }
 
-                public InvocationAssertions<K, V> assertTelemetry(int i) {
+                public InvocationAssertions<K, V> assertRecordsTelemetry(int i) {
                     assertThat(invocation.getArgument(i, KafkaConsumerTelemetry.KafkaConsumerRecordsTelemetryContext.class)).isNotNull();
+                    return this;
+                }
 
+                public InvocationAssertions<K, V> assertRecordTelemetry(int i) {
+                    assertThat(invocation.getArgument(i, KafkaConsumerTelemetry.KafkaConsumerRecordTelemetryContext.class)).isNotNull();
                     return this;
                 }
             }

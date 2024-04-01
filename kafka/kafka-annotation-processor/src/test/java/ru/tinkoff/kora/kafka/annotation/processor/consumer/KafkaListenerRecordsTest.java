@@ -132,7 +132,7 @@ public class KafkaListenerRecordsTest extends AbstractKafkaListenerAnnotationPro
 
         handler.handle(record("test".getBytes(), "test-value"), i -> i
             .assertConsumer(0)
-            .assertTelemetry(2)
+            .assertRecordsTelemetry(2)
             .assertRecords(1)
             .hasSize(1)
             .hasRecord(0, v -> v
@@ -154,7 +154,7 @@ public class KafkaListenerRecordsTest extends AbstractKafkaListenerAnnotationPro
             .recordsHandler(byte[].class, String.class);
 
         handler.handle(record("test".getBytes(), "test-value"), i -> i
-            .assertTelemetry(0)
+            .assertRecordsTelemetry(0)
             .assertRecords(1)
             .hasSize(1)
             .hasRecord(0, v -> v

@@ -76,6 +76,10 @@ public final class KafkaUtils {
         return tm instanceof DeclaredType dt && ClassName.get((TypeElement) dt.asElement()).equals(KafkaClassNames.kafkaConsumerRecordsTelemetry);
     }
 
+    public static boolean isRecordTelemetry(TypeMirror tm) {
+        return tm instanceof DeclaredType dt && ClassName.get((TypeElement) dt.asElement()).equals(KafkaClassNames.kafkaConsumerRecordTelemetry);
+    }
+
     public static boolean isConsumer(TypeMirror tm) {
         return tm instanceof DeclaredType dt && ClassName.get((TypeElement) dt.asElement()).equals(KafkaClassNames.consumer);
     }

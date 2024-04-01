@@ -10,6 +10,7 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.consumer
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.consumerRecord
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.consumerRecords
+import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.kafkaConsumerRecordTelemetry
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.kafkaConsumerRecordsTelemetry
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.recordKeyDeserializationException
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.recordValueDeserializationException
@@ -41,6 +42,8 @@ object KafkaUtils {
     }
 
     fun KSType.isRecordsTelemetry() = declaration.let { it is KSClassDeclaration && it.toClassName() == kafkaConsumerRecordsTelemetry }
+
+    fun KSType.isRecordTelemetry() = declaration.let { it is KSClassDeclaration && it.toClassName() == kafkaConsumerRecordTelemetry }
 
     fun KSType.isConsumer() = declaration.let { it is KSClassDeclaration && it.toClassName() == consumer }
 }

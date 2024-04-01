@@ -104,6 +104,8 @@ public class KafkaConsumerHandlerGenerator {
                 b.add("consumer");
             } else if (parameter instanceof ConsumerParameter.Record) {
                 b.add("record");
+            } else if (parameter instanceof ConsumerParameter.RecordTelemetry) {
+                b.add("tctx");
             } else if (parameter instanceof ConsumerParameter.KeyDeserializationException) {
                 b.add("keyException");
             } else if (parameter instanceof ConsumerParameter.ValueDeserializationException) {

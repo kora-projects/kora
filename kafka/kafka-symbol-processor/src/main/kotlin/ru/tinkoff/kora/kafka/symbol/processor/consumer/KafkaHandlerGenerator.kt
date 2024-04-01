@@ -95,6 +95,7 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
                     when (it) {
                         is ConsumerParameter.Consumer -> "consumer"
                         is ConsumerParameter.Record -> "record"
+                        is ConsumerParameter.RecordTelemetry -> "tctx"
                         is ConsumerParameter.KeyDeserializationException -> "keyException"
                         is ConsumerParameter.ValueDeserializationException -> "valueException"
                         is ConsumerParameter.Exception -> "keyException ?: valueException"

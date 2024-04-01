@@ -233,4 +233,39 @@ public class KafkaListenerRecordTest extends AbstractKafkaListenerAnnotationProc
             .hasValueError()
         );
     }
+
+    @Test
+    public void testProcessRecordAndConsumerAndTelemetry() {
+        var handler = compile("""
+            public class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                public void process(Consumer<?, ?> consumer, ConsumerRecord<byte[], String> event, KafkaConsumerTelemetry.KafkaConsumerRecordTelemetryContext<?, ?> telemetry) {
+                }
+            }
+            """)
+            .handler(byte[].class, String.class);
+
+        handler.handle(record("test".getBytes(), "test-value"), i -> i
+            .assertConsumer(0)
+            .assertRecordTelemetry(2)
+            .assertRecord(1)
+        );
+    }
+
+    @Test
+    public void testProcessRecordAndTelemetry() {
+        var handler = compile("""
+            public class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                public void process(KafkaConsumerTelemetry.KafkaConsumerRecordTelemetryContext<?, ?> telemetry, ConsumerRecord<byte[], String> event) {
+                }
+            }
+            """)
+            .handler(byte[].class, String.class);
+
+        handler.handle(record("test".getBytes(), "test-value"), i -> i
+            .assertRecordTelemetry(0)
+            .assertRecord(1)
+        );
+    }
 }

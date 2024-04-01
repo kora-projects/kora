@@ -8,6 +8,7 @@ import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.isConsumer
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.isConsumerRecord
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.isConsumerRecords
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.isKeyDeserializationException
+import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.isRecordTelemetry
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.isRecordsTelemetry
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.isValueDeserializationException
 
@@ -28,6 +29,8 @@ sealed interface ConsumerParameter {
 
     data class RecordsTelemetry(override val parameter: KSValueParameter, val key: KSType, val value: KSType) : ConsumerParameter
 
+    data class RecordTelemetry(override val parameter: KSValueParameter, val key: KSType, val value: KSType) : ConsumerParameter
+
     data class Unknown(override val parameter: KSValueParameter) : ConsumerParameter
 
     companion object {
@@ -38,6 +41,7 @@ sealed interface ConsumerParameter {
                 type.isConsumerRecords() -> Records(it, type.arguments[0].type!!.resolve(), type.arguments[1].type!!.resolve())
                 type.isConsumer() -> Consumer(it, type.arguments[0].type!!.resolve(), type.arguments[1].type!!.resolve())
                 type.isRecordsTelemetry() -> RecordsTelemetry(it, type.arguments[0].type!!.resolve(), type.arguments[1].type!!.resolve())
+                type.isRecordTelemetry() -> RecordTelemetry(it, type.arguments[0].type!!.resolve(), type.arguments[1].type!!.resolve())
                 type.isKeyDeserializationException() -> KeyDeserializationException(it)
                 type.isValueDeserializationException() -> ValueDeserializationException(it)
                 type.isAnyException() -> Exception(it)
