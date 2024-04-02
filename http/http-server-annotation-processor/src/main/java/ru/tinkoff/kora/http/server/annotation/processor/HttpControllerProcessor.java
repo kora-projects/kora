@@ -23,11 +23,6 @@ public class HttpControllerProcessor extends AbstractKoraProcessor {
     }
 
     @Override
-    public SourceVersion getSupportedSourceVersion() {
-        return SourceVersion.RELEASE_17;
-    }
-
-    @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
         var httpControllerElement = processingEnv.getElementUtils().getTypeElement(httpController.canonicalName());

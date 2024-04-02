@@ -10,15 +10,18 @@ import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.configFunName
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.tagTypeName
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 
 class KafkaConsumerConfigGenerator {
 
     fun generate(functionDeclaration: KSFunctionDeclaration, listenerAnnotation: KSAnnotation): KafkaConfigData {
         val tagName = functionDeclaration.tagTypeName()
-        val tagBuilder = TypeSpec.classBuilder(tagName).build()
-        val configPath = listenerAnnotation.findValueNoDefault<String>("value")!!
+        val tagBuilder = TypeSpec.classBuilder(tagName)
+            .generated(KafkaConsumerConfigGenerator::class)
+            .build()
 
+        val configPath = listenerAnnotation.findValueNoDefault<String>("value")!!
         val funBuilder = FunSpec.builder(functionDeclaration.configFunName())
             .returns(kafkaConsumerConfig)
             .addParameter("config", CommonClassNames.config)

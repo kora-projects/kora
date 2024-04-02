@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.annotation.processor.common;
 
+import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
 import jakarta.annotation.Nullable;
 
@@ -14,6 +15,17 @@ import java.util.Objects;
 import java.util.function.Predicate;
 
 public class AnnotationUtils {
+
+    public static AnnotationSpec generated(String canonicalName) {
+        return AnnotationSpec.builder(CommonClassNames.koraGenerated)
+            .addMember("value", "$S", canonicalName)
+            .build();
+    }
+
+    public static AnnotationSpec generated(Class<?> generator) {
+        return generated(generator.getCanonicalName());
+    }
+
     @Nullable
     public static AnnotationMirror findAnnotation(Element element, Predicate<String> namePredicate) {
         for (var am : element.getAnnotationMirrors()) {
