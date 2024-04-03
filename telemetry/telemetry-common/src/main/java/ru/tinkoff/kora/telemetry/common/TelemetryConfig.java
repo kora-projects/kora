@@ -32,23 +32,18 @@ public interface TelemetryConfig {
             V120, V123
         }
 
-        default OpentelemetrySpec spec() {
-            // todo replace in some major release maybe
-            return OpentelemetrySpec.V120;
-        }
-
         @Nullable
         Boolean enabled();
 
         @Nullable
         double[] slo();
 
-        default double[] slo(Object ignored/* force ignore by config processor */) {
+        default double[] slo(OpentelemetrySpec spec) {
             var slo = this.slo();
             if (slo != null) {
                 return slo;
             }
-            return switch (spec()) {
+            return switch (spec) {
                 case V120 -> DEFAULT_SLO;
                 case V123 -> DEFAULT_SLO_V123;
             };

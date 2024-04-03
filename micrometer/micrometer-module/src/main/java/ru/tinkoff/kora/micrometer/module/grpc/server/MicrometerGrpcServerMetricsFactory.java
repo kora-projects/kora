@@ -9,6 +9,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.semconv.SemanticAttributes;
 import ru.tinkoff.kora.grpc.server.telemetry.GrpcServerMetrics;
 import ru.tinkoff.kora.grpc.server.telemetry.GrpcServerMetricsFactory;
+import ru.tinkoff.kora.micrometer.module.MetricsConfig;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,9 +18,11 @@ import java.util.function.Function;
 public final class MicrometerGrpcServerMetricsFactory implements GrpcServerMetricsFactory {
     private final ConcurrentHashMap<MetricsKey, GrpcServerMetrics> metrics = new ConcurrentHashMap<>();
     private final MeterRegistry meterRegistry;
+    private final MetricsConfig metricsConfig;
 
-    public MicrometerGrpcServerMetricsFactory(MeterRegistry meterRegistry) {
+    public MicrometerGrpcServerMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
         this.meterRegistry = meterRegistry;
+        this.metricsConfig = metricsConfig;
     }
 
     private record MetricsKey(String serviceName, String methodName) {}
@@ -32,7 +35,7 @@ public final class MicrometerGrpcServerMetricsFactory implements GrpcServerMetri
     private GrpcServerMetrics buildMetrics(TelemetryConfig.MetricsConfig config, MetricsKey metricsKey) {
         var duration = (Function<Status, DistributionSummary>) status -> DistributionSummary.builder("rpc.server.duration")
             .serviceLevelObjectives(config.slo(null))
-            .baseUnit(switch (config.spec()) {
+            .baseUnit(switch (metricsConfig.opentelemetrySpec()) {
                 case V120 -> "milliseconds";
                 case V123 -> "s";
             })
@@ -53,7 +56,7 @@ public final class MicrometerGrpcServerMetricsFactory implements GrpcServerMetri
             .tag(SemanticAttributes.RPC_SERVICE.getKey(), metricsKey.serviceName)
             .tag(SemanticAttributes.RPC_METHOD.getKey(), metricsKey.methodName)
             .register(this.meterRegistry);
-        return switch (config.spec()) {
+        return switch (metricsConfig.opentelemetrySpec()) {
             case V120 -> new Opentelemetry120GrpcServerMetrics(duration, requestsPerRpc, responsesPerRpc);
             case V123 -> new Opentelemetry123GrpcServerMetrics(duration, requestsPerRpc, responsesPerRpc);
         };
