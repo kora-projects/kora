@@ -112,8 +112,8 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
                     $L.releaseOnError(_e);
                     throw _e;
                 }
-                """, cbField, superMethod, cbField, cbField, CompletionException.class, RuntimeException.class,
-            CompletionException.class, PERMITTED_EXCEPTION, CompletableFuture.class).build();
+                """, cbField, superMethod, cbField, CompletionException.class, cbField, RuntimeException.class,
+            CompletionException.class, PERMITTED_EXCEPTION, CompletableFuture.class, cbField).build();
     }
 
     private CodeBlock buildBodyMono(ExecutableElement method, String superCall, String cbField) {
