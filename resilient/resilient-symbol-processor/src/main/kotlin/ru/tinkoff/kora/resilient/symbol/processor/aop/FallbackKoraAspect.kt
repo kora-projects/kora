@@ -75,11 +75,11 @@ class FallbackKoraAspect(val resolver: Resolver) : KoraAspect {
             """
             ${prefix}try {
                 %L
-            } catch (e: Throwable) {
-                if(%L.canFallback(e)) {
+            } catch (_e: Throwable) {
+                if(%L.canFallback(_e)) {
                     %L
                 } else {
-                    throw e
+                    throw _e
                 }
             }
             """.trimIndent(), superMethod.toString(), fieldFallback, fallbackCall.call()
@@ -97,11 +97,11 @@ class FallbackKoraAspect(val resolver: Resolver) : KoraAspect {
             """
             return %M {
                 %M(%L)
-            }.%M { e ->
-                if (%L.canFallback(e)) {
+            }.%M { _e ->
+                if (%L.canFallback(_e)) {
                     %M(%L)
                 } else {
-                    throw e
+                    throw _e
                 }
             }
             """.trimIndent(), flowMember, emitMember, superMethod.toString(), catchMember, fieldFallback, emitMember, fallbackCall.call()

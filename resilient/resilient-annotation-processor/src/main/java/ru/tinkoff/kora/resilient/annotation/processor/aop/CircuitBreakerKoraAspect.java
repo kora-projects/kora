@@ -65,11 +65,11 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
         final CodeBlock methodCall = MethodUtils.isVoid(method)
             ? superMethod
-            : CodeBlock.of("var t = $L", superMethod.toString());
+            : CodeBlock.of("var _result = $L", superMethod.toString());
 
         final CodeBlock returnCall = MethodUtils.isVoid(method)
             ? CodeBlock.of("return")
-            : CodeBlock.of("return t", superMethod.toString());
+            : CodeBlock.of("return _result", superMethod.toString());
 
         return CodeBlock.builder().add("""
             try {
@@ -77,11 +77,11 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
                 $L;
                 $L.releaseOnSuccess();
                 $L;
-            } catch ($T e) {
-                throw e;
-            } catch (Exception e) {
-                $L.releaseOnError(e);
-                throw e;
+            } catch ($T _e) {
+                throw _e;
+            } catch (Exception _e) {
+                $L.releaseOnError(_e);
+                throw _e;
             }
             """, cbField, methodCall.toString(), cbField, returnCall.toString(), PERMITTED_EXCEPTION, cbField).build();
     }
@@ -92,21 +92,27 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
         return CodeBlock.builder().add("""
                 try {
                     $L.acquire();
-                    return $L.thenApply(_r -> {
+                    return $L.thenApply(_result -> {
                                 $L.releaseOnSuccess();
-                                return _r;
+                                return _result;
                             })
-                            .exceptionally(e -> {
-                                $L.releaseOnError(e);
-                                if(e instanceof $T ex) {
-                                    throw ex;
+                            .exceptionally(_e -> {
+                                if (_e instanceof $T ce) {
+                                    _e = ce.getCause();
                                 }
-                                throw new $T(e);
+                                $L.releaseOnError(_e);
+                                if(_e instanceof $T _ex) {
+                                    throw _ex;
+                                }
+                                throw new $T(_e);
                             });
-                } catch ($T e) {
-                    return $T.failedFuture(e);
+                } catch ($T _e) {
+                    return $T.failedFuture(_e);
+                } catch (Exception _e) {
+                    $L.releaseOnError(_e);
+                    throw _e;
                 }
-                """, cbField, superMethod, cbField, cbField, RuntimeException.class,
+                """, cbField, superMethod, cbField, cbField, CompletionException.class, RuntimeException.class,
             CompletionException.class, PERMITTED_EXCEPTION, CompletableFuture.class).build();
     }
 

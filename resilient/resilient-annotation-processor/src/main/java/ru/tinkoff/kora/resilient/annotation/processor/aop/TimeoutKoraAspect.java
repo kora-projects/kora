@@ -89,6 +89,9 @@ public class TimeoutKoraAspect implements KoraAspect {
                 return $L.toCompletableFuture()
                     .orTimeout($L.timeout().toMillis(), $T.MILLISECONDS)
                     .exceptionally(e -> {
+                      if (_e instanceof $T ce) {
+                          _e = ce.getCause();
+                      }
                       if(e instanceof $T) {
                         if($L != null) {
                             $L.recordTimeout($S, $L.timeout().toNanos());
@@ -98,7 +101,7 @@ public class TimeoutKoraAspect implements KoraAspect {
                         throw ex;
                       }
                       throw new $T(e);
-                    });""", superMethod.toString(), fieldTimeout, TimeUnit.class, TimeoutException.class,
+                    });""", superMethod.toString(), fieldTimeout, CompletionException.class, TimeUnit.class, TimeoutException.class,
             fieldMetrics, fieldMetrics, timeoutName, fieldTimeout, EXHAUSTED_EXCEPTION, timeoutName, fieldTimeout,
             RuntimeException.class, CompletionException.class).build();
     }
