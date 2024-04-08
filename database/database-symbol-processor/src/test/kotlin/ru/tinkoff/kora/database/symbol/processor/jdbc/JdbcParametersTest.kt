@@ -57,7 +57,7 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             `$TelemetryConfig_ConfigValueExtractor`.TelemetryConfig_Impl(
                 `$TelemetryConfig_LogConfig_ConfigValueExtractor`.LogConfig_Impl(true),
                 `$TelemetryConfig_TracingConfig_ConfigValueExtractor`.TracingConfig_Impl(true),
-                `$TelemetryConfig_MetricsConfig_ConfigValueExtractor`.MetricsConfig_Defaults()
+                `$TelemetryConfig_MetricsConfig_ConfigValueExtractor`.MetricsConfig_Impl(null, null)
             )
         )
         val repository = compileForArgs(
