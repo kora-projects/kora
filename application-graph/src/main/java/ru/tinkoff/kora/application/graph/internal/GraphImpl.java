@@ -286,7 +286,7 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                         return CompletableFuture.failedFuture(e);
                     }
                     log.trace("Node {} of class {} released", node.index, object.getClass());
-                } else if(v instanceof AutoCloseable closeable) {
+                } else if (v instanceof AutoCloseable closeable) {
                     log.trace("Releasing node {} of class {}", node.index, object.getClass());
                     try {
                         closeable.close();
@@ -355,9 +355,33 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
         }
 
         private <T> void createNode(NodeImpl<T> node, AtomicIntegerArray dependencies) {
+            @SuppressWarnings("unchecked")
+            var oldObject = (T) this.rootGraph.objects.get(node.index);
+            var nodeDependencies = dependencies.get(node.index);
+            if (nodeDependencies == 0) {
+                // dependencies were not updated so we keep old object
+                for (var dependentNode : node.getDependentNodes()) {
+                    var r = dependencies.decrementAndGet(dependentNode.index);
+                    if (r < 0) {
+                        throw new IllegalStateException();
+                    }
+                }
+                for (var interceptedNode : node.getIntercepts()) {
+                    var r = dependencies.decrementAndGet(interceptedNode.index);
+                    if (r < 0) {
+                        throw new IllegalStateException();
+                    }
+                }
+                this.inits.set(node.index, empty);
+                this.tmpArray.set(node.index, oldObject);
+                return;
+            }
+            if (nodeDependencies < 0) {
+                this.inits.set(node.index, empty);
+                this.tmpArray.set(node.index, oldObject);
+                return;
+            }
             Callable<T> create = () -> {
-                @SuppressWarnings("unchecked")
-                var oldObject = (T) this.rootGraph.objects.get(node.index);
                 if (dependencies.get(node.index) == 0) {
                     // dependencies were not updated so we keep old object
                     for (var dependentNode : node.getDependentNodes()) {
@@ -367,6 +391,7 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                         dependencies.decrementAndGet(interceptedNode.index);
                     }
                     this.inits.set(node.index, empty);
+                    this.tmpArray.set(node.index, oldObject);
                     return oldObject;
                 }
                 if (this.rootGraph.log.isTraceEnabled()) {
@@ -517,13 +542,13 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                     dependencies.incrementAndGet(i);
                     var node = (NodeImpl<?>) nodes.get(i);
                     visitor.apply(node);
+                } else if (!visitor.processed.get(i)){
+                    dependencies.set(i, -1);
                 }
             }
             for (int i = 0; i < dependencies.length(); i++) {
-                if (dependencies.getPlain(i) > 0) {
-                    var node = (NodeImpl<?>) nodes.get(i);
-                    this.createNode(node, dependencies);
-                }
+                var node = (NodeImpl<?>) nodes.get(i);
+                this.createNode(node, dependencies);
             }
             var startingFrom = Integer.MAX_VALUE;
             for (int i = 0; i < TmpGraph.this.inits.length(); i++) {
