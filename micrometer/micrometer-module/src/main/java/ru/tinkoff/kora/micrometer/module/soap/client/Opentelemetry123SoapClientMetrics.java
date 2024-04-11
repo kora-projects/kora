@@ -19,7 +19,7 @@ public class Opentelemetry123SoapClientMetrics implements SoapClientMetrics {
 
     private static DistributionSummary buildDuration(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config, String service, String method, String host, int port, String rpcResult) {
         var builder = DistributionSummary.builder("rpc.client.duration")
-            .serviceLevelObjectives(config.slo(null))
+            .serviceLevelObjectives(config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
             .baseUnit("s")
             .tag(SemanticAttributes.RPC_SYSTEM.getKey(), "soap")
             .tag(SemanticAttributes.RPC_SERVICE.getKey(), service)

@@ -41,7 +41,7 @@ public final class Opentelemetry120DataBaseMetricWriter implements DataBaseMetri
 
     private DbMetrics metrics(DbKey key) {
         var builder = DistributionSummary.builder("database.client.request.duration")
-            .serviceLevelObjectives(this.config.slo(null))
+            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V120))
             .baseUnit("milliseconds")
             .tag("pool", this.poolName)
             .tag("query.id", key.queryId())

@@ -11,7 +11,7 @@ public class Opentelemetry120SchedulingMetrics implements SchedulingMetrics {
 
     public Opentelemetry120SchedulingMetrics(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config, String className, String methodName) {
         var builder = DistributionSummary.builder("scheduling.job.duration")
-            .serviceLevelObjectives(config.slo(null))
+            .serviceLevelObjectives(config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V120))
             .baseUnit("milliseconds")
             .tag("code.function", methodName)
             .tag("code.class", className);

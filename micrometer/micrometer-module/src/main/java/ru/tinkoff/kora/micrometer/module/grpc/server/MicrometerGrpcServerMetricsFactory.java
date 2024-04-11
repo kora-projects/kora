@@ -34,7 +34,7 @@ public final class MicrometerGrpcServerMetricsFactory implements GrpcServerMetri
 
     private GrpcServerMetrics buildMetrics(TelemetryConfig.MetricsConfig config, MetricsKey metricsKey) {
         var duration = (Function<Status, DistributionSummary>) status -> DistributionSummary.builder("rpc.server.duration")
-            .serviceLevelObjectives(config.slo(null))
+            .serviceLevelObjectives(config.slo(metricsConfig.opentelemetrySpec()))
             .baseUnit(switch (metricsConfig.opentelemetrySpec()) {
                 case V120 -> "milliseconds";
                 case V123 -> "s";

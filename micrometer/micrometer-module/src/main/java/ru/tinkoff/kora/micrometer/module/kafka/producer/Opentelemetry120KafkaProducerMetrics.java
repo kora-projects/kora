@@ -77,7 +77,7 @@ public class Opentelemetry120KafkaProducerMetrics implements KafkaProducerMetric
 
     private DistributionSummary metrics(TopicPartition topicPartition) {
         var builder = DistributionSummary.builder("messaging.publish.duration")
-            .serviceLevelObjectives(this.config.slo(null))
+            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V120))
             .baseUnit("milliseconds")
             .tag(SemanticAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
             .tag(SemanticAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION.getKey(), Integer.toString(topicPartition.partition()))

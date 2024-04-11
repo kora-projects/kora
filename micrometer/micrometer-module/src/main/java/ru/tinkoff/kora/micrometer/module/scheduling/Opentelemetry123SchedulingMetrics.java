@@ -28,7 +28,7 @@ public class Opentelemetry123SchedulingMetrics implements SchedulingMetrics {
 
     private DistributionSummary duration(@Nullable Class<? extends Throwable> error) {
         var builder = DistributionSummary.builder("scheduling.job.duration")
-            .serviceLevelObjectives(this.config.slo(null))
+            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
             .baseUnit("s")
             .tag(SemanticAttributes.CODE_FUNCTION.getKey(), this.methodName)
             .tag("code.class", this.className);
