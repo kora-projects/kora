@@ -42,7 +42,7 @@ public class ConfigParserGenerator {
         var typeBuilder = TypeSpec.classBuilder(typeName)
             .addOriginatingElement(element)
             .addSuperinterface(ParameterizedTypeName.get(ConfigClassNames.configValueExtractor, TypeName.get(targetType)))
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", "$S", ConfigParserGenerator.class.getCanonicalName()).build())
+            .addAnnotation(AnnotationUtils.generated(ConfigParserGenerator.class))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
         var fields = Objects.requireNonNull(f.left());
         var defaultsType = buildDefaultsType(targetType, element, fields);
@@ -176,7 +176,7 @@ public class ConfigParserGenerator {
         var typeBuilder = TypeSpec.classBuilder(typeName)
             .addOriginatingElement(element)
             .addSuperinterface(ParameterizedTypeName.get(ConfigClassNames.configValueExtractor, TypeName.get(targetType)))
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", "$S", ConfigParserGenerator.class.getCanonicalName()).build())
+            .addAnnotation(AnnotationUtils.generated(ConfigParserGenerator.class))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
         var fields = Objects.requireNonNull(f.left());
         var implClassName = ClassName.get(element);
@@ -208,7 +208,7 @@ public class ConfigParserGenerator {
         var typeBuilder = TypeSpec.classBuilder(typeName)
             .addOriginatingElement(element)
             .addSuperinterface(ParameterizedTypeName.get(ConfigClassNames.configValueExtractor, TypeName.get(targetType)))
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", "$S", ConfigParserGenerator.class.getCanonicalName()).build())
+            .addAnnotation(AnnotationUtils.generated(ConfigParserGenerator.class))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
         var fields = Objects.requireNonNull(f.left());
 
@@ -358,6 +358,7 @@ public class ConfigParserGenerator {
         var hasDefaults = false;
         var defaults = TypeSpec.classBuilder(typeElement.getSimpleName().toString() + "_Defaults")
             .addOriginatingElement(typeElement)
+            .addAnnotation(AnnotationUtils.generated(ConfigParserGenerator.class))
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
             .addSuperinterface(type);
         for (var tp : typeElement.getTypeParameters()) {

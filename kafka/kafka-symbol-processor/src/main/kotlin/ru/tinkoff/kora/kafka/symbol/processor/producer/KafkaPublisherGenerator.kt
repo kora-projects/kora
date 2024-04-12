@@ -199,6 +199,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
         val implementationName = classDeclaration.generatedClassName("Impl")
 
         val b = classDeclaration.extendsKeepAop(implementationName)
+            .generated(KafkaPublisherSymbolProcessor::class)
             .addOriginatingKSFile(classDeclaration.containingFile!!)
             .addSuperinterface(KafkaClassNames.generatedPublisher)
             .addProperty(PropertySpec.builder("telemetryFactory", producerTelemetryFactory, KModifier.PRIVATE, KModifier.FINAL).initializer("telemetryFactory").build())
@@ -374,6 +375,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
     fun generateConfig(producer: KSClassDeclaration, publishMethods: List<KSFunctionDeclaration>): ClassName? {
         val packageName = producer.packageName.asString()
         val b = TypeSpec.classBuilder(producer.generatedClassName("TopicConfig"))
+            .generated(KafkaPublisherSymbolProcessor::class)
             .addModifiers(KModifier.DATA)
             .addOriginatingKSFile(producer.containingFile!!)
         val constructor = FunSpec.constructorBuilder()

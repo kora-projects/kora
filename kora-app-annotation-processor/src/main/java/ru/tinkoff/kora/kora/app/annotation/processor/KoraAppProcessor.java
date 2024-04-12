@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
 import ru.tinkoff.kora.annotation.processor.common.*;
+import ru.tinkoff.kora.common.KoraApp;
 import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ComponentDependency;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim;
@@ -74,11 +75,6 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             return Set.of();
         }
         return Set.of(CommonClassNames.koraApp.canonicalName(), CommonClassNames.module.canonicalName(), CommonClassNames.component.canonicalName(), CommonClassNames.koraSubmodule.canonicalName(), CommonClassNames.koraGenerated.canonicalName());
-    }
-
-    @Override
-    public SourceVersion getSupportedSourceVersion() {
-        return SourceVersion.RELEASE_17;
     }
 
     @Override
@@ -384,7 +380,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         var graphTypeName = ClassName.get(packageElement.getQualifiedName().toString(), graphName);
 
         var classBuilder = TypeSpec.classBuilder(graphName)
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", CodeBlock.of("$S", KoraAppProcessor.class.getCanonicalName())).build())
+            .addAnnotation(AnnotationUtils.generated(KoraAppProcessor.class))
             .addOriginatingElement(classElement)
             .addModifiers(Modifier.PUBLIC)
             .addSuperinterface(ParameterizedTypeName.get(ClassName.get(Supplier.class), CommonClassNames.applicationGraphDraw))

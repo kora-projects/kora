@@ -17,7 +17,10 @@ public class KafkaConsumerConfigGenerator {
 
     public KafkaConfigData generate(ExecutableElement executableElement, AnnotationMirror listenerAnnotation) {
         var tagName = prepareConsumerTagName(executableElement);
-        var tagBuilder = TypeSpec.classBuilder(tagName).addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL);
+        var tagBuilder = TypeSpec.classBuilder(tagName)
+            .addAnnotation(AnnotationUtils.generated(KafkaConsumerConfigGenerator.class))
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL);
+
         var configPath = AnnotationUtils.parseAnnotationValueWithoutDefault(listenerAnnotation, "value");
         var tagsBlock = CodeBlock.builder().add("{");
         tagsBlock.add("$L.class", tagName);

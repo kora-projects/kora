@@ -12,6 +12,7 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.overridingKeepAop
 import ru.tinkoff.kora.ksp.common.FieldFactory
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.MappingData
 import ru.tinkoff.kora.ksp.common.TagUtils.addTag
 import ru.tinkoff.kora.ksp.common.parseMappingData
@@ -59,6 +60,7 @@ object DbUtils {
             } else if (hasDefaultConstructor(mapper.mapperType)) {
                 if (companion == null) {
                     companion = TypeSpec.companionObjectBuilder(null)
+                        .generated(RepositorySymbolProcessor::class)
                 }
                 if (mapper.wrapper == null) {
                     val property = PropertySpec.builder(mapper.fieldName, mapper.mapperType.toTypeName(), KModifier.PRIVATE)

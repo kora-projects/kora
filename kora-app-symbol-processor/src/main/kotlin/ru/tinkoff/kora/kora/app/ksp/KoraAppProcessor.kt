@@ -14,6 +14,7 @@ import com.squareup.kotlinpoet.ksp.writeTo
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw
+import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.kora.app.ksp.component.ComponentDependency
 import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim
 import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponent
@@ -352,7 +353,6 @@ class KoraAppProcessor(
             .addModifiers(KModifier.PUBLIC, KModifier.OPEN)
             .addSuperinterface(declaration.toClassName())
 
-
         for ((index, module) in modules.withIndex()) {
             val moduleClass = module.toClassName()
             if (module.containingFile != null) {
@@ -360,7 +360,7 @@ class KoraAppProcessor(
             }
             classBuilder.addProperty(
                 PropertySpec.builder("module$index", moduleClass)
-                    .initializer("object : %T {}", moduleClass)
+                    .initializer("@%T(%S) object : %T {}", Generated::class, KoraAppProcessor::class.qualifiedName, moduleClass)
                     .build()
             )
         }
@@ -406,6 +406,8 @@ class KoraAppProcessor(
                 b.addFunction(mb.build())
             }
             val companion = TypeSpec.companionObjectBuilder()
+                .generated(KoraAppProcessor::class)
+
             for ((moduleCounter, module) in annotatedModules.withIndex()) {
                 val moduleName = "_module$moduleCounter"
                 val type = module.toClassName()
@@ -487,6 +489,7 @@ class KoraAppProcessor(
             classBuilder.addOriginatingKSFile(module.containingFile!!)
         }
         val companion = TypeSpec.companionObjectBuilder()
+            .generated(KoraAppProcessor::class)
             .addProperty("graphDraw", CommonClassNames.applicationGraphDraw)
 
         var currentClass: TypeSpec.Builder? = null

@@ -79,7 +79,9 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         val constructor = buildConstructor(typeBuilder, fields)
         typeBuilder.primaryConstructor(constructor)
         typeBuilder.addFunction(buildExtractMethod(element, targetType.toTypeName(), implClassName, fields))
-        val companion = TypeSpec.companionObjectBuilder();
+        val companion = TypeSpec.companionObjectBuilder()
+            .generated(ConfigParserGenerator::class)
+
         for (field in fields) {
             companion.addProperty(
                 PropertySpec.builder(
@@ -130,7 +132,9 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         val constructor = buildConstructor(typeBuilder, fields)
         typeBuilder.primaryConstructor(constructor)
         typeBuilder.addFunction(buildExtractMethod(element, targetType.toTypeName(), implClassName, fields))
-        val companion = TypeSpec.companionObjectBuilder();
+        val companion = TypeSpec.companionObjectBuilder()
+            .generated(ConfigParserGenerator::class)
+
         for (field in fields) {
             companion.addProperty(
                 PropertySpec.builder(
@@ -180,7 +184,9 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         val constructor = buildConstructor(typeBuilder, fields)
         typeBuilder.primaryConstructor(constructor)
         typeBuilder.addFunction(buildExtractMethod(decl, targetType.toTypeName(), implClassName, fields))
-        val companion = TypeSpec.companionObjectBuilder();
+        val companion = TypeSpec.companionObjectBuilder()
+            .generated(ConfigParserGenerator::class)
+
         for (field in fields) {
             companion.addProperty(
                 PropertySpec.builder(
@@ -222,7 +228,9 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         val constructor = buildConstructor(typeBuilder, fields)
         typeBuilder.primaryConstructor(constructor)
         typeBuilder.addFunction(buildExtractMethod(decl, targetType.toTypeName(), implClassName, fields))
-        val companion = TypeSpec.companionObjectBuilder();
+        val companion = TypeSpec.companionObjectBuilder()
+            .generated(ConfigParserGenerator::class)
+
         for (field in fields) {
             companion.addProperty(
                 PropertySpec.builder(
