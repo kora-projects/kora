@@ -255,8 +255,20 @@ public class UndertowExchangeProcessor implements Runnable {
     private void sendException(PublicApiResponse response, Throwable error) {
         if (!(error instanceof HttpServerResponse rs)) {
             exchange.setStatusCode(500);
-            exchange.getResponseSender().send(Objects.requireNonNullElse(error.getMessage(), "Unknown error"));
-            response.closeSendResponseSuccess(500, null, error);
+            exchange.getResponseSender().send(Objects.requireNonNullElse(error.getMessage(), "Unknown error"), StandardCharsets.UTF_8, new IoCallback() {
+                @Override
+                public void onComplete(HttpServerExchange exchange, Sender sender) {
+                    response.closeSendResponseSuccess(500, null, error);
+                    IoCallback.END_EXCHANGE.onComplete(exchange, sender);
+                }
+
+                @Override
+                public void onException(HttpServerExchange exchange, Sender sender, IOException exception) {
+                    error.addSuppressed(exception);
+                    response.closeConnectionError(500, error);
+                    IoCallback.END_EXCHANGE.onException(exchange, sender, exception);
+                }
+            });
             return;
         }
         exchange.setStatusCode(rs.code());
