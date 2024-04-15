@@ -1,0 +1,20 @@
+
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
+
+dependencies {
+    annotationProcessor project(":config:config-annotation-processor")
+
+    compileOnly project(":bpmn:bpmn-camunda7-rest-undertow")
+    compileOnly project(":bpmn:bpmn-camunda7-engine")
+    compileOnly project(":database:database-jdbc")
+
+    api project(":common")
+    api libs.camunda.webapp.webjar
+    api libs.jakarta.rs.api
+
+    testImplementation libs.jdbc.postgresql
+    testImplementation project(":database:database-jdbc")
+    testImplementation project(":internal:test-logging")
+    testImplementation project(":test:test-junit5")
+    testImplementation project(":internal:test-postgres")
+}
