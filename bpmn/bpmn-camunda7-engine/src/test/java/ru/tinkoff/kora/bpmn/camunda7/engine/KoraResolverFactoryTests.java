@@ -43,6 +43,6 @@ public class KoraResolverFactoryTests {
     @Test
     void getByKey() {
         Resolver resolver = new KoraResolverFactory(List.of(new SimpleCamundaDelegate()), List.of());
-        assertInstanceOf(SimpleDelegate.class, resolver.get("key"));
+        assertInstanceOf(SimpleCamundaDelegate.class, resolver.get("key"));
     }
 }

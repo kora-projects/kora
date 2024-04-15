@@ -44,6 +44,6 @@ public class KoraELResolverTests {
     @Test
     void getByKey() {
         ELResolver resolver = new KoraELResolver(List.of(new SimpleCamundaDelegate()), List.of());
-        assertInstanceOf(SimpleDelegate.class, resolver.getValue(new SimpleContext(), null, "key"));
+        assertInstanceOf(SimpleCamundaDelegate.class, resolver.getValue(new SimpleContext(), null, "key"));
     }
 }
