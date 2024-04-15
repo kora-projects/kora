@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.http.server.undertow;
 
+import io.undertow.server.HttpHandler;
 import io.undertow.Undertow;
 import io.undertow.connector.ByteBufferPool;
 import org.xnio.XnioWorker;
@@ -17,14 +18,15 @@ import java.util.concurrent.ExecutionException;
 
 public interface UndertowModule extends HttpServerModule {
 
-    default UndertowPrivateApiHandler undertowPrivateApiHandler(PrivateApiHandler privateApiHandler) {
+    @Tag(PrivateApiHandler.class)
+    default HttpHandler undertowPrivateApiHandler(PrivateApiHandler privateApiHandler) {
         return new UndertowPrivateApiHandler(privateApiHandler);
     }
 
     @Root
     default UndertowPrivateHttpServer undertowPrivateHttpServer(ValueOf<HttpServerConfig> configValue,
-                                                                ValueOf<UndertowPrivateApiHandler> privateApiHandler,
-                                                                @Tag(Undertow.class) XnioWorker xnioWorker,
+                                                                @Tag(PrivateApiHandler.class) ValueOf<HttpHandler> privateApiHandler,
+                                                               @Tag(Undertow.class) XnioWorker xnioWorker,
                                                                 ByteBufferPool byteBufferPool) {
         return new UndertowPrivateHttpServer(configValue, privateApiHandler, xnioWorker, byteBufferPool);
     }

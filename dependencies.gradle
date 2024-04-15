@@ -152,8 +152,8 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             library('kotlinpoet', 'com.squareup', 'kotlinpoet').versionRef('kotlinpoet')
             library('kotlinpoet-ksp', 'com.squareup', 'kotlinpoet-ksp').versionRef('kotlinpoet')
 
-            library('jakarta.xml.ws.api', 'jakarta.xml.ws', 'jakarta.xml.ws-api').version('3.0.1')
             library('jakarta.jws.api', 'jakarta.jws', 'jakarta.jws-api').version('3.0.0')
+            library('jakarta.xml.ws.api', 'jakarta.xml.ws', 'jakarta.xml.ws-api').version('3.0.1')
             library('jakarta.xml.bind.api', 'jakarta.xml.bind', 'jakarta.xml.bind-api').version('3.0.1')
 
             library('glassfish.jaxb.jakarta', 'org.glassfish.jaxb', 'jaxb-runtime').version('3.0.1')
@@ -171,10 +171,12 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             library('s3client-aws', 'software.amazon.awssdk', 's3').version("2.27.12")
 
             library('camunda-engine', 'org.camunda.bpm', 'camunda-engine').versionRef('camunda')
-            library('camunda-engine-rest', 'org.camunda.bpm', 'camunda-engine-rest').versionRef('camunda')
+            library('camunda-rest', 'org.camunda.bpm', 'camunda-engine-rest').versionRef('camunda')
+            library('camunda-rest-jakarta', 'org.camunda.bpm', 'camunda-engine-rest-jakarta').versionRef('camunda')
             library('fasterxml-uuidgenerator', 'com.fasterxml.uuid', 'java-uuid-generator').version('5.0.0')
-//            library('resteasy-undertow', 'org.jboss.resteasy', 'resteasy-undertow').version('5.0.7.Final')
-//            library('jaxrs', 'org.jboss.spec.javax.ws.rs', 'jboss-jaxrs-api_2.1_spec').version('2.0.2.Final')
+            library('resteasy-undertow', 'org.jboss.resteasy', 'resteasy-undertow').version('5.0.9.Final')
+            library('resteasy-undertow-jakarta', 'org.jboss.resteasy', 'resteasy-undertow').version('6.2.8.Final')
+            library('jaxrs', 'org.jboss.spec.javax.ws.rs', 'jboss-jaxrs-api_2.1_spec').version('2.0.2.Final')
         }
     }
 }

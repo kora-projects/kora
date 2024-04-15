@@ -110,6 +110,8 @@ include(
     'experimental:s3-client-minio',
     'experimental:s3-client-aws',
     'experimental:bpmn-camunda7-engine',
+    'bpmn:bpmn-camunda7-rest',
+    'bpmn:bpmn-camunda7-webapp',
 )
 
 apply from: 'dependencies.gradle'
