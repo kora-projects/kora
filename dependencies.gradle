@@ -22,6 +22,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             version('kotlinpoet', '1.18.1')
             version('swagger', '2.2.22')
             version('opentelemetry', '1.37.0')
+            version('camunda', '7.20.0')
 
             library('jsr305', 'com.google.code.findbugs', 'jsr305').version('3.0.2')
             library('jakarta-annotations', 'jakarta.annotation', 'jakarta.annotation-api').version('2.1.1')
@@ -163,11 +164,17 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
 
             library('openapi-generator', 'org.openapitools', 'openapi-generator').version('7.4.0')
             library('swagger-core', 'io.swagger.core.v3', 'swagger-core').versionRef("swagger")
-            library('swagger-annotations', 'io.swagger.core.v3', 'swagger-annotations').versionRef("swagger")
             library('swagger-models', 'io.swagger.core.v3', 'swagger-models').versionRef("swagger")
+            library('swagger-annotations', 'io.swagger.core.v3', 'swagger-annotations').versionRef("swagger")
 
             library('s3client-minio', 'io.minio', 'minio').version("8.5.12")
             library('s3client-aws', 'software.amazon.awssdk', 's3').version("2.27.12")
+
+            library('camunda-engine', 'org.camunda.bpm', 'camunda-engine').versionRef('camunda')
+            library('camunda-engine-rest', 'org.camunda.bpm', 'camunda-engine-rest').versionRef('camunda')
+            library('fasterxml-uuidgenerator', 'com.fasterxml.uuid', 'java-uuid-generator').version('5.0.0')
+//            library('resteasy-undertow', 'org.jboss.resteasy', 'resteasy-undertow').version('5.0.7.Final')
+//            library('jaxrs', 'org.jboss.spec.javax.ws.rs', 'jboss-jaxrs-api_2.1_spec').version('2.0.2.Final')
         }
     }
 }

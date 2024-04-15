@@ -1,0 +1,19 @@
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
+
+dependencies {
+    annotationProcessor project(":config:config-annotation-processor")
+
+    compileOnly project(":database:database-jdbc")
+
+    implementation project(":config:config-common")
+    implementation "com.fasterxml.uuid:java-uuid-generator:5.0.0"
+
+    api project(":common")
+    api libs.camunda.engine
+
+    testImplementation libs.jdbc.postgresql
+    testImplementation project(":database:database-jdbc")
+    testImplementation project(":internal:test-logging")
+    testImplementation project(":test:test-junit5")
+    testImplementation project(":internal:test-postgres")
+}
