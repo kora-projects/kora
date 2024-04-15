@@ -6,12 +6,11 @@ dependencies {
     implementation project(":config:config-common")
     implementation project(":http:http-server-undertow")
     implementation libs.camunda.engine
-    implementation libs.resteasy.undertow
-    implementation libs.jaxrs
-    implementation 'org.jboss.resteasy:resteasy-cdi:5.0.9.Final'
+    implementation libs.resteasy.undertow.jakarta
 
     api project(":common")
-    api libs.camunda.rest
+    api libs.camunda.rest.jakarta
+    api libs.jakarta.rs.api
 
     testImplementation libs.jdbc.postgresql
     testImplementation project(":database:database-jdbc")

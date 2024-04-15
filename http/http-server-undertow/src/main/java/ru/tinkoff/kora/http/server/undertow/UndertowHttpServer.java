@@ -24,13 +24,18 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
     private static final Logger logger = LoggerFactory.getLogger(UndertowHttpServer.class);
 
     private final AtomicReference<HttpServerState> state = new AtomicReference<>(HttpServerState.INIT);
+    private final String name;
     private final ValueOf<HttpServerConfig> config;
     private final GracefulShutdownHandler gracefulShutdown;
     private final XnioWorker xnioWorker;
     private final ByteBufferPool byteBufferPool;
     private volatile Undertow undertow;
 
-    public UndertowHttpServer(ValueOf<HttpServerConfig> config, ValueOf<HttpHandler> publicApiHandler, @Nullable XnioWorker xnioWorker, ByteBufferPool byteBufferPool) {
+    public UndertowHttpServer(String name,
+                              ValueOf<HttpServerConfig> config,
+                              ValueOf<HttpHandler> publicApiHandler,
+                              @Nullable XnioWorker xnioWorker, ByteBufferPool byteBufferPool) {
+        this.name = name;
         this.config = config;
         this.xnioWorker = xnioWorker;
         this.publicApiHandler = publicApiHandler;
@@ -40,7 +45,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
 
     @Override
     public void release() {
-        logger.debug("Public HTTP Server (Undertow) stopping...");
+        logger.debug("{} HTTP Server (Undertow) stopping...", name);
         this.state.set(HttpServerState.SHUTDOWN);
         try {
             //TODO ожидать после shutdown уже мб?
@@ -51,7 +56,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
         final long started = TimeUtils.started();
         this.gracefulShutdown.shutdown();
         try {
-            logger.debug("Public HTTP Server (Undertow) awaiting graceful shutdown...");
+            logger.debug("{} HTTP Server (Undertow) awaiting graceful shutdown...", name);
             this.gracefulShutdown.awaitShutdown();
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -61,19 +66,19 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
             this.undertow.stop();
             this.undertow = null;
         }
-        logger.info("Public HTTP Server (Undertow) stopped in {}", TimeUtils.tookForLogging(started));
+        logger.info("{} HTTP Server (Undertow) stopped in {}", name, TimeUtils.tookForLogging(started));
     }
 
     @Override
     public void init() {
-        logger.debug("Public HTTP Server (Undertow) starting...");
+        logger.debug("{} HTTP Server (Undertow) starting...", name);
         final long started = TimeUtils.started();
         this.gracefulShutdown.start();
         this.undertow = this.createServer();
         this.undertow.start();
         this.state.set(HttpServerState.RUN);
         var data = StructuredArgument.marker("port", this.port());
-        logger.info(data, "Public HTTP Server (Undertow) started in {}", TimeUtils.tookForLogging(started));
+        logger.info(data, "{} HTTP Server (Undertow) started in {}", name, TimeUtils.tookForLogging(started));
     }
 
     private Undertow createServer() {

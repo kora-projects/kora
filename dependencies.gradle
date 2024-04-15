@@ -22,7 +22,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             version('kotlinpoet', '1.18.1')
             version('swagger', '2.2.22')
             version('opentelemetry', '1.37.0')
-            version('camunda', '7.20.0')
+            version('camunda', '7.21.0')
 
             library('jsr305', 'com.google.code.findbugs', 'jsr305').version('3.0.2')
             library('jakarta-annotations', 'jakarta.annotation', 'jakarta.annotation-api').version('2.1.1')
@@ -171,12 +171,11 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             library('s3client-aws', 'software.amazon.awssdk', 's3').version("2.27.12")
 
             library('camunda-engine', 'org.camunda.bpm', 'camunda-engine').versionRef('camunda')
-            library('camunda-rest', 'org.camunda.bpm', 'camunda-engine-rest').versionRef('camunda')
             library('camunda-rest-jakarta', 'org.camunda.bpm', 'camunda-engine-rest-jakarta').versionRef('camunda')
+            library('camunda-webapp-jakarta', 'org.camunda.bpm.webapp', 'camunda-webapp-jakarta').versionRef('camunda')
             library('fasterxml-uuidgenerator', 'com.fasterxml.uuid', 'java-uuid-generator').version('5.0.0')
-            library('resteasy-undertow', 'org.jboss.resteasy', 'resteasy-undertow').version('5.0.9.Final')
             library('resteasy-undertow-jakarta', 'org.jboss.resteasy', 'resteasy-undertow').version('6.2.8.Final')
-            library('jaxrs', 'org.jboss.spec.javax.ws.rs', 'jboss-jaxrs-api_2.1_spec').version('2.0.2.Final')
+            library('jakarta.rs.api', 'jakarta.ws.rs', 'jakarta.ws.rs-api').version('3.1.0')
         }
     }
 }

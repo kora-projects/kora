@@ -30,7 +30,7 @@ public interface UndertowHttpServerModule extends UndertowModule {
                                                   @Tag(PublicApiHandler.class) ValueOf<HttpHandler> handler,
                                                  @Tag(Undertow.class) XnioWorker worker,
                                                   ByteBufferPool byteBufferPool) {
-        return new UndertowHttpServer(config, handler, worker, byteBufferPool);
+        return new UndertowHttpServer("Public", config, handler, worker, byteBufferPool);
     }
 
     @DefaultComponent
