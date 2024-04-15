@@ -10,7 +10,7 @@ import java.util.*
 
 class HttpResponseAssert(httpResponse: HttpServerResponse) {
     private val code: Int
-    private val contentLength: Int?
+    private val contentLength: Long?
     private val contentType: String?
     private val headers: HttpHeaders
     private val body: ByteArray
@@ -37,7 +37,7 @@ class HttpResponseAssert(httpResponse: HttpServerResponse) {
         return this
     }
 
-    fun verifyContentLength(expected: Int): HttpResponseAssert {
+    fun verifyContentLength(expected: Long): HttpResponseAssert {
         Assertions.assertThat(contentLength)
             .withFailMessage("Expected response body length %d, got %d", contentLength, expected)
             .isEqualTo(expected)

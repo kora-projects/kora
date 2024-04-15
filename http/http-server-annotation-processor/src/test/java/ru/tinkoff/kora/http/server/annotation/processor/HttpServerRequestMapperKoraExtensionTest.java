@@ -14,13 +14,13 @@ public class HttpServerRequestMapperKoraExtensionTest extends AbstractAnnotation
         compile(List.of(new KoraAppProcessor()), """
             import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
             import java.util.concurrent.CompletionStage;
-                        
+
             @KoraApp
             public interface TestApp {
               default HttpServerRequestMapper<CompletionStage<String>> stringMapper() {
                 return rs -> rs.body().asArrayStage().thenApply(b -> new String(b));
               }
-                        
+
               @Root
               default String root(HttpServerRequestMapper<String> extractor) { return ""; }
             }

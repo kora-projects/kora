@@ -23,7 +23,7 @@ public final class EmptyHttpBody implements HttpBodyInput, HttpBodyOutput {
     }
 
     @Override
-    public int contentLength() {
+    public long contentLength() {
         return 0;
     }
 

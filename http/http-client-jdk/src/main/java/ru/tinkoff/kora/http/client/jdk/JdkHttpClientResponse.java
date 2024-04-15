@@ -73,7 +73,7 @@ public class JdkHttpClientResponse implements HttpClientResponse {
         }
 
         @Override
-        public int contentLength() {
+        public long contentLength() {
             var contentLength = this.contentLength;
             if (contentLength == -2) {
                 this.contentLength = contentLength = (int) headers.firstValueAsLong("content-length").orElse(-1);

@@ -13,7 +13,7 @@ dependencies {
     testImplementation libs.reactor.core
 
     testFixturesImplementation libs.reactor.core
-    testFixturesImplementation libs.okhttp
+    testFixturesApi libs.okhttp
     testFixturesImplementation libs.junit.jupiter
     testFixturesImplementation libs.assertj
     testFixturesImplementation libs.mockito.core

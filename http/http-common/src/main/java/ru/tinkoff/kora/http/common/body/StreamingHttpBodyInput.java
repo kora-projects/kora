@@ -36,7 +36,7 @@ public class StreamingHttpBodyInput extends AtomicBoolean implements HttpBodyInp
     }
 
     @Override
-    public int contentLength() {
+    public long contentLength() {
         return this.contentLength;
     }
 

@@ -11,7 +11,7 @@ import java.util.Base64;
 
 public class HttpResponseAssert {
     private final int code;
-    private final int contentLength;
+    private final long contentLength;
     private final String contentType;
     private final HttpHeaders headers;
     private final byte[] body;
@@ -32,7 +32,7 @@ public class HttpResponseAssert {
         return this;
     }
 
-    public HttpResponseAssert hasContentLength(int expected) {
+    public HttpResponseAssert hasContentLength(long expected) {
         Assertions.assertThat(this.contentLength)
             .withFailMessage("Expected response body length %d, got %d", this.contentLength, expected)
             .isEqualTo(expected);

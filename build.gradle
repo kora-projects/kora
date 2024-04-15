@@ -29,6 +29,7 @@ allprojects {
         mavenLocal()
         mavenCentral()
     }
+    JavaVersion.current().isJava9Compatible()
 }
 
 // config libraries

@@ -13,7 +13,9 @@ import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow.Subscriber;
@@ -32,7 +34,7 @@ public final class UndertowRequestHttpBody implements HttpBodyInput {
     }
 
     @Override
-    public int contentLength() {
+    public long contentLength() {
         var contentLengthStr = this.exchange.getRequestHeaders().getFirst(Headers.CONTENT_LENGTH);
         return contentLengthStr == null ? -1 : Integer.parseInt(contentLengthStr);
     }
@@ -47,7 +49,7 @@ public final class UndertowRequestHttpBody implements HttpBodyInput {
     public void subscribe(Subscriber<? super ByteBuffer> s) {
         var exchange = this.exchange;
 
-        Queue<byte[]> prefetched = this.prefetchedData;
+        var prefetched = this.prefetchedData;
         if (prefetched != null && !prefetched.isEmpty()) {
             var subscription = new UndertowRequestHttpBodySubscription(s, exchange, prefetched);
             this.prefetchedData = null;

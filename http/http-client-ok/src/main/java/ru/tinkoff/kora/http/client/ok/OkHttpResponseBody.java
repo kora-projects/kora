@@ -19,7 +19,7 @@ public final class OkHttpResponseBody implements HttpBodyInput {
     }
 
     @Override
-    public int contentLength() {
+    public long contentLength() {
         return (int) body.contentLength();
     }
 

@@ -27,7 +27,7 @@ public interface HttpBodyOutput extends HttpBody, Flow.Publisher<ByteBuffer> {
         return new StreamingHttpBodyOutput("application/octet-stream", length, content);
     }
 
-    int contentLength();
+    long contentLength();
 
     @Nullable
     String contentType();
