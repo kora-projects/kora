@@ -72,7 +72,6 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
         this.connectionFactory = jdbcConnectionFactory;
         this.camundaVersion = camundaVersion;
 
-        setProcessEngineName("KoraProcessEngine");
         setDefaultCharset(StandardCharsets.UTF_8);
 
         setDataSource(dataSource);
