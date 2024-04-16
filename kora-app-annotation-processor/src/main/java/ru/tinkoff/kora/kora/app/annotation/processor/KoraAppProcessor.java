@@ -157,6 +157,8 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 if (processingResult instanceof ProcessingState.Failed failed) {
                     failed.detailedException().printError(this.processingEnv);
                     if (!failed.stack().isEmpty()) {
+                        log.error("Processing exception", failed.detailedException());
+
                         var i = processingResult.stack().descendingIterator();
                         var frames = new ArrayList<ProcessingState.ResolutionFrame.Component>();
                         while (i.hasNext()) {
