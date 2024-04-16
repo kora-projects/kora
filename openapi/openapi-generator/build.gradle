@@ -18,8 +18,8 @@ dependencies {
     api("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${libs.versions.jackson.get()}")
 
     implementation libs.caffeine
-    implementation "commons-codec:commons-codec:1.16.0"
-    implementation "commons-io:commons-io:2.14.0"
+    implementation libs.commons.codec
+    implementation libs.commons.io
 
     testImplementation(project(":json:json-common"))
     testImplementation(project(":json:jackson-module"))
