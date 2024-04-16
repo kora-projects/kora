@@ -218,59 +218,40 @@ public class GraphBuilder {
                 }
 
                 var claimTypeName = TypeName.get(dependencyClaim.type()).annotated(List.of());
-                if (roundEnv.processingOver()) {
-                    var hints = ctx.dependencyModuleHintProvider.findHints(dependencyClaim.type(), dependencyClaim.tags());
-                    var msg = new StringBuilder();
-                    if (dependencyClaim.tags().isEmpty()) {
-                        msg.append(String.format("Required dependency type was not found and can't be auto created: %s.\n" +
-                                "Please check class for @%s annotation or that required module with component is plugged in.",
-                            claimTypeName, CommonClassNames.component.simpleName()));
-                    } else {
-                        var tagMsg = dependencyClaim.tags().stream().collect(Collectors.joining(", ", "@Tag(", ")"));
-                        msg.append(String.format("Required dependency type was not found and can't be auto created: %s with tag %s.\n" +
-                                "Please check class for @%s annotation or that required module with component is plugged in.",
-                            claimTypeName, tagMsg, CommonClassNames.component.simpleName()));
-                    }
-                    for (var hint : hints) {
-                        msg.append("\n  Hint: ").append(hint.message());
-                    }
-                    msg.append("\nDependency chain:");
-                    msg.append("\n  ").append(declaration.declarationString());
-                    var i = stack.descendingIterator();
-                    while (i.hasNext()) {
-                        var iFrame = i.next();
-                        if (iFrame instanceof ProcessingState.ResolutionFrame.Root root) {
-                            msg.append("\n  ").append(processing.rootSet().get(root.rootIndex()).declarationString());
-                            break;
-                        }
-                        var c = (ProcessingState.ResolutionFrame.Component) iFrame;
-                        msg.append("\n  ").append(c.declaration().declarationString());
-                    }
-
-                    throw new UnresolvedDependencyException(
-                        msg.toString(),
-                        declaration.source(),
-                        dependencyClaim.type(),
-                        dependencyClaim.tags()
-                    );
+                var hints = ctx.dependencyModuleHintProvider.findHints(dependencyClaim.type(), dependencyClaim.tags());
+                var msg = new StringBuilder();
+                if (dependencyClaim.tags().isEmpty()) {
+                    msg.append(String.format("Required dependency type was not found and can't be auto created: %s.\n" +
+                            "Please check class for @%s annotation or that required module with component is plugged in.",
+                        claimTypeName, CommonClassNames.component.simpleName()));
                 } else {
-                    final String msg;
-                    if (dependencyClaim.tags().isEmpty()) {
-                        msg = String.format("Couldn't found dependency type this round, will try to look next round for: %s",
-                            claimTypeName);
-                    } else {
-                        var tagMsg = dependencyClaim.tags().stream().collect(Collectors.joining(", ", "@Tag(", ")"));
-                        msg = String.format("Couldn't found dependency type this round, will try to look next round for: %s with tag %s",
-                            claimTypeName, tagMsg);
-                    }
-
-                    throw new UnresolvedDependencyException(
-                        msg,
-                        declaration.source(),
-                        dependencyClaim.type(),
-                        dependencyClaim.tags()
-                    );
+                    var tagMsg = dependencyClaim.tags().stream().collect(Collectors.joining(", ", "@Tag(", ")"));
+                    msg.append(String.format("Required dependency type was not found and can't be auto created: %s with tag %s.\n" +
+                            "Please check class for @%s annotation or that required module with component is plugged in.",
+                        claimTypeName, tagMsg, CommonClassNames.component.simpleName()));
                 }
+                for (var hint : hints) {
+                    msg.append("\n  Hint: ").append(hint.message());
+                }
+                msg.append("\nDependency chain:");
+                msg.append("\n  ").append(declaration.declarationString());
+                var i = stack.descendingIterator();
+                while (i.hasNext()) {
+                    var iFrame = i.next();
+                    if (iFrame instanceof ProcessingState.ResolutionFrame.Root root) {
+                        msg.append("\n  ").append(processing.rootSet().get(root.rootIndex()).declarationString());
+                        break;
+                    }
+                    var c = (ProcessingState.ResolutionFrame.Component) iFrame;
+                    msg.append("\n  ").append(c.declaration().declarationString());
+                }
+
+                throw new UnresolvedDependencyException(
+                    msg.toString(),
+                    declaration.source(),
+                    dependencyClaim.type(),
+                    dependencyClaim.tags()
+                );
             }
             processing.resolvedComponents().add(new ResolvedComponent(
                 processing.resolvedComponents().size(), declaration, declaration.type(), declaration.tags(),
