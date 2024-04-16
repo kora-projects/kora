@@ -149,7 +149,7 @@ public class GraphBuilder {
                     }
                     if (results.size() > 1) {
                         var deps = templates.stream().map(Objects::toString).collect(Collectors.joining("\n")).indent(2);
-                        if(dependencyClaim.tags().isEmpty()) {
+                        if (dependencyClaim.tags().isEmpty()) {
                             throw new ProcessingErrorException("More than one component matches dependency claim " + dependencyClaim.type() + ":\n" + deps, declaration.source());
                         } else {
                             var tagMsg = dependencyClaim.tags().stream().collect(Collectors.joining(", ", "@Tag(", ")"));
@@ -216,17 +216,18 @@ public class GraphBuilder {
                         continue frame;
                     }
                 }
+
+                var claimTypeName = TypeName.get(dependencyClaim.type()).annotated(List.of());
                 var hints = ctx.dependencyModuleHintProvider.findHints(dependencyClaim.type(), dependencyClaim.tags());
                 var msg = new StringBuilder();
-                var claimTypeName = TypeName.get(dependencyClaim.type()).annotated(List.of());
                 if (dependencyClaim.tags().isEmpty()) {
                     msg.append(String.format("Required dependency type was not found and can't be auto created: %s.\n" +
-                                             "Please check class for @%s annotation or that required module with component is plugged in.",
+                            "Please check class for @%s annotation or that required module with component is plugged in.",
                         claimTypeName, CommonClassNames.component.simpleName()));
                 } else {
                     var tagMsg = dependencyClaim.tags().stream().collect(Collectors.joining(", ", "@Tag(", ")"));
                     msg.append(String.format("Required dependency type was not found and can't be auto created: %s with tag %s.\n" +
-                                             "Please check class for @%s annotation or that required module with component is plugged in.",
+                            "Please check class for @%s annotation or that required module with component is plugged in.",
                         claimTypeName, tagMsg, CommonClassNames.component.simpleName()));
                 }
                 for (var hint : hints) {
@@ -244,6 +245,7 @@ public class GraphBuilder {
                     var c = (ProcessingState.ResolutionFrame.Component) iFrame;
                     msg.append("\n  ").append(c.declaration().declarationString());
                 }
+
                 throw new UnresolvedDependencyException(
                     msg.toString(),
                     declaration.source(),

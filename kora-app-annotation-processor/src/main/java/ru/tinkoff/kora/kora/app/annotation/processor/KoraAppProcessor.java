@@ -133,7 +133,6 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                         results.put(annotatedClass.getKey(), new ProcessingState.NewRoundRequired(e.getSource(), e.getType(), e.getTag(), e.getResolving()));// todo
                     }
                 } catch (ProcessingErrorException e) {
-                    log.info("Processing exception", e);
                     results.put(annotatedClass.getKey(), new ProcessingState.Failed(e, processingResult.stack()));
                 } catch (Exception e) {
                     if (e instanceof FilerException || e.getCause() instanceof FilerException) {
@@ -158,6 +157,8 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 if (processingResult instanceof ProcessingState.Failed failed) {
                     failed.detailedException().printError(this.processingEnv);
                     if (!failed.stack().isEmpty()) {
+                        log.error("Processing exception", failed.detailedException());
+
                         var i = processingResult.stack().descendingIterator();
                         var frames = new ArrayList<ProcessingState.ResolutionFrame.Component>();
                         while (i.hasNext()) {
