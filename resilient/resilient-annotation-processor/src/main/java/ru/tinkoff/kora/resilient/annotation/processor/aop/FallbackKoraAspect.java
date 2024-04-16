@@ -10,6 +10,7 @@ import javax.lang.model.element.ExecutableElement;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
 import static com.squareup.javapoet.CodeBlock.joining;
@@ -70,11 +71,11 @@ public class FallbackKoraAspect implements KoraAspect {
             return CodeBlock.builder().add("""
                 try {
                     $L;
-                } catch (Exception e) {
-                    if ($L.canFallback(e)) {
+                } catch (Exception _e) {
+                    if ($L.canFallback(_e)) {
                         $L;
                     } else {
-                        throw e;
+                        throw _e;
                     }
                 }
                 """, superMethod.toString(), fieldFallback, fallbackMethod).build();
@@ -83,11 +84,11 @@ public class FallbackKoraAspect implements KoraAspect {
             return CodeBlock.builder().add("""
                 try {
                     return $L;
-                } catch (Exception e) {
-                    if ($L.canFallback(e)) {
+                } catch (Exception _e) {
+                    if ($L.canFallback(_e)) {
                         return $L;
                     } else {
-                        throw e;
+                        throw _e;
                     }
                 }
                 """, superMethod.toString(), fieldFallback, fallbackMethod).build();
@@ -99,23 +100,23 @@ public class FallbackKoraAspect implements KoraAspect {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
 
         return CodeBlock.builder().add("""
-                return $L.exceptionally(e -> {
-                    if ($L.canFallback(e)) {
-                        return $L.toCompletableFuture().join();
+                return $L.exceptionallyCompose(_e -> {
+                    if (_e instanceof $T ce) {
+                        _e = ce.getCause();
                     }
-                    if(e instanceof $T ex) {
-                        throw ex;
+                    if ($L.canFallback(_e)) {
+                        return $L;
                     }
-                    throw new $T(e);
-                });""", superMethod.toString(), fieldFallback, fallbackMethod,
-            RuntimeException.class, CompletionException.class).build();
+                    return $T.failedFuture(new $T(_e));
+                });""", superMethod.toString(), CompletionException.class, fieldFallback, fallbackMethod,
+            CompletableFuture.class, CompletionException.class).build();
     }
 
     private CodeBlock buildBodyMono(ExecutableElement method, FallbackMeta fallbackCall, String superCall, String fieldFallback) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
         final String fallbackMethod = fallbackCall.call();
         return CodeBlock.builder().add("""
-            return $L.onErrorResume($L::canFallback, e -> $L);
+            return $L.onErrorResume($L::canFallback, _e -> $L);
             """, superMethod.toString(), fieldFallback, fallbackMethod).build();
     }
 
@@ -123,7 +124,7 @@ public class FallbackKoraAspect implements KoraAspect {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
         final String fallbackMethod = fallbackCall.call();
         return CodeBlock.builder().add("""
-            return $L.onErrorResume($L::canFallback, e -> $L);
+            return $L.onErrorResume($L::canFallback, _e -> $L);
             """, superMethod.toString(), fieldFallback, fallbackMethod).build();
     }
 
