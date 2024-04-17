@@ -404,12 +404,12 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                         throw new IllegalStateException();
                     }
                 }
-                this.inits.set(node.index, empty);
+                this.inits.set(node.index, EMPTY_FUTURE);
                 this.tmpArray.set(node.index, oldObject);
                 return;
             }
             if (nodeDependencies < 0) {
-                this.inits.set(node.index, empty);
+                this.inits.set(node.index, EMPTY_FUTURE);
                 this.tmpArray.set(node.index, oldObject);
                 return;
             }
