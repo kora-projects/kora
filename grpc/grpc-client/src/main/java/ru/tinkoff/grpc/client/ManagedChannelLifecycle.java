@@ -5,6 +5,8 @@ import io.grpc.ClientInterceptor;
 import io.grpc.ManagedChannel;
 import io.grpc.ServiceDescriptor;
 import jakarta.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.tinkoff.grpc.client.config.GrpcClientConfig;
 import ru.tinkoff.grpc.client.config.GrpcClientConfigInterceptor;
 import ru.tinkoff.grpc.client.telemetry.GrpcClientTelemetryFactory;
@@ -12,12 +14,16 @@ import ru.tinkoff.grpc.client.telemetry.GrpcClientTelemetryInterceptor;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
+import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Objects;
 
 public final class ManagedChannelLifecycle implements Lifecycle, Wrapped<ManagedChannel> {
+
+    private static final Logger logger = LoggerFactory.getLogger(ManagedChannelLifecycle.class);
+
     private final GrpcClientConfig config;
     private final ServiceDescriptor serviceDefinition;
     private final GrpcClientChannelFactory channelFactory;
@@ -37,6 +43,9 @@ public final class ManagedChannelLifecycle implements Lifecycle, Wrapped<Managed
 
     @Override
     public void init() {
+        logger.debug("GrpcManagedChannel '{}' starting...", this.config.url());
+        var started = System.nanoTime();
+
         var uri = URI.create(this.config.url());
         var host = uri.getHost();
         var port = uri.getPort();
@@ -66,6 +75,8 @@ public final class ManagedChannelLifecycle implements Lifecycle, Wrapped<Managed
         interceptors.addAll(this.interceptors);
         b.intercept(interceptors);
         this.channel = b.build();
+
+        logger.info("GrpcManagedChannel '{}' started in {}", this.config.url(), TimeUtils.tookForLogging(started));
     }
 
     @Override
@@ -73,7 +84,12 @@ public final class ManagedChannelLifecycle implements Lifecycle, Wrapped<Managed
         var channel = this.channel;
         this.channel = null;
         if (channel != null) {
+            logger.debug("GrpcManagedChannel '{}' stopping...", this.config.url());
+            var started = System.nanoTime();
+
             channel.shutdown();
+
+            logger.info("GrpcManagedChannel '{}' stopped in {}", this.config.url(), TimeUtils.tookForLogging(started));
         }
     }
 

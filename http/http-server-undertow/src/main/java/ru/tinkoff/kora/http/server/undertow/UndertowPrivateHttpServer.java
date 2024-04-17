@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xnio.XnioWorker;
 import ru.tinkoff.kora.application.graph.ValueOf;
+import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.PrivateHttpServer;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
@@ -36,22 +37,22 @@ public class UndertowPrivateHttpServer implements PrivateHttpServer {
         } catch (InterruptedException e) {
         }
         logger.debug("Private HTTP Server (Undertow) stopping...");
-        final long started = System.nanoTime();
+        final long started = TimeUtils.started();
         if (this.undertow != null) {
             this.undertow.stop();
             this.undertow = null;
         }
-        logger.info("Private HTTP Server (Undertow) stopped in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        logger.info("Private HTTP Server (Undertow) stopped in {}", TimeUtils.tookForLogging(started));
     }
 
     @Override
     public void init() throws InterruptedException {
         logger.debug("Private HTTP Server (Undertow) starting...");
-        final long started = System.nanoTime();
+        final long started = TimeUtils.started();
         this.undertow = this.createServer();
         this.undertow.start();
         var data = StructuredArgument.marker("port", this.port());
-        logger.info(data, "Private HTTP Server (Undertow) started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        logger.info(data, "Private HTTP Server (Undertow) started in {}", TimeUtils.tookForLogging(started));
     }
 
     private Undertow createServer() {

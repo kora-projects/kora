@@ -2,11 +2,14 @@ package ru.tinkoff.kora.database.jdbc;
 
 import com.zaxxer.hikari.HikariDataSource;
 import jakarta.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
+import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory;
 
@@ -16,6 +19,9 @@ import java.sql.SQLException;
 import java.util.Objects;
 
 public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnectionFactory, ReadinessProbe {
+
+    private static final Logger logger = LoggerFactory.getLogger(JdbcDatabase.class);
+
     private final Context.Key<Connection> connectionKey = new Context.Key<>() {
         @Override
         protected Connection copy(Connection object) {
@@ -55,15 +61,24 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
     @Override
     public void init() throws SQLException {
         if (this.databaseConfig.initializationFailTimeout() != null) {
+            logger.debug("JdbcDatabase pool '{}' starting...", databaseConfig.poolName());
+            var started = System.nanoTime();
+
             try (var connection = this.dataSource.getConnection()) {
                 connection.isValid((int) this.databaseConfig.initializationFailTimeout().toMillis());
             }
+            logger.info("JdbcDatabase pool '{}' started in {}", databaseConfig.poolName(), TimeUtils.tookForLogging(started));
         }
     }
 
     @Override
     public void release() {
+        logger.debug("JdbcDatabase pool '{}' stopping...", databaseConfig.poolName());
+        var started = System.nanoTime();
+
         this.dataSource.close();
+
+        logger.info("JdbcDatabase pool '{}' stopped in {}", databaseConfig.poolName(), TimeUtils.tookForLogging(started));
     }
 
     @Override

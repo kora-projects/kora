@@ -6,11 +6,14 @@ import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Transaction;
 import jakarta.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
+import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory;
 import ru.tinkoff.kora.vertx.common.VertxUtil;
@@ -22,6 +25,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 public class VertxDatabase implements Lifecycle, Wrapped<Pool>, VertxConnectionFactory, ReadinessProbe {
+
+    private static final Logger logger = LoggerFactory.getLogger(VertxDatabase.class);
+
     private final Context.Key<SqlConnection> connectionKey = new Context.Key<>() {
         @Override
         protected SqlConnection copy(SqlConnection object) {
@@ -163,13 +169,23 @@ public class VertxDatabase implements Lifecycle, Wrapped<Pool>, VertxConnectionF
     @Override
     public void init() throws Exception {
         if (this.config.initializationFailTimeout() != null) {
+            logger.debug("VertxDatabase pool '{}' starting...", config.poolName());
+            var started = System.nanoTime();
+
             this.pool.query("SELECT 1").execute().toCompletionStage().toCompletableFuture().get(this.config.initializationFailTimeout().toMillis(), TimeUnit.MILLISECONDS);
+
+            logger.info("VertxDatabase pool '{}' started in {}", config.poolName(), TimeUtils.tookForLogging(started));
         }
     }
 
     @Override
     public void release() {
+        logger.debug("VertxDatabase pool '{}' stopping...", config.poolName());
+        var started = System.nanoTime();
+
         this.pool.close().toCompletionStage().toCompletableFuture().join();
+
+        logger.info("VertxDatabase pool '{}' stopped in {}", config.poolName(), TimeUtils.tookForLogging(started));
     }
 
     @Override

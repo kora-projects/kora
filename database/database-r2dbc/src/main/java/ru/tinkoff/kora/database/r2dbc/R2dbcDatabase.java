@@ -12,6 +12,7 @@ import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
+import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory;
 
@@ -202,15 +203,24 @@ public class R2dbcDatabase implements R2dbcConnectionFactory, Lifecycle, Readine
 
     @Override
     public void init() {
+        logger.debug("R2dbcDatabase pool '{}' starting...", config.poolName());
+        var started = System.nanoTime();
         try {
             this.connectionFactory.warmup().block();
         } catch (Exception ignore) {
         }
+
+        logger.info("R2dbcDatabase pool '{}' started in {}", config.poolName(), TimeUtils.tookForLogging(started));
     }
 
     @Override
     public void release() {
+        logger.debug("R2dbcDatabase pool '{}' stopping...", config.poolName());
+        var started = System.nanoTime();
+
         this.connectionFactory.dispose();
+
+        logger.info("R2dbcDatabase pool '{}' stopped in {}", config.poolName(), TimeUtils.tookForLogging(started));
     }
 
     @Nullable

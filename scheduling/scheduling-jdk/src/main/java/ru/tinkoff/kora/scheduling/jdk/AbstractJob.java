@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.scheduling.common.telemetry.SchedulingTelemetry;
 
 import java.time.Duration;
@@ -31,12 +32,12 @@ public abstract class AbstractJob implements Lifecycle {
     public final void init() {
         if (this.started.compareAndSet(false, true)) {
             logger.debug("Scheduled Job '{}#{}' starting...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
-            final long started = System.nanoTime();
+            final long started = TimeUtils.started();
 
             this.scheduledFuture = this.schedule(this.service, this::runJob);
 
             logger.info("Started Scheduled Job '{}#{}' started in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(),
-                Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+                TimeUtils.tookForLogging(started));
         }
     }
 
@@ -60,13 +61,13 @@ public abstract class AbstractJob implements Lifecycle {
     public final void release() {
         if (this.started.compareAndSet(true, false)) {
             logger.debug("Scheduled Job '{}#{}' stopping...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
-            final long started = System.nanoTime();
+            final long started = TimeUtils.started();
 
             var f = this.scheduledFuture;
             this.scheduledFuture = null;
             f.cancel(true);
 
-            logger.info("Scheduled Job '{}#{}' stopped in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(), Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+            logger.info("Scheduled Job '{}#{}' stopped in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(), TimeUtils.tookForLogging(started));
         }
     }
 }

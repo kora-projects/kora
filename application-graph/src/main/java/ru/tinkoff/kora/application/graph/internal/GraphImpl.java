@@ -6,6 +6,7 @@ import ru.tinkoff.kora.application.graph.*;
 import ru.tinkoff.kora.application.graph.internal.loom.VirtualThreadExecutorHolder;
 
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicIntegerArray;
@@ -82,16 +83,16 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
         root.set(fromNode.index);
         this.semaphore.acquireUninterruptibly();
 
-        log.debug("Refreshing Graph from node {} of class {}", fromNode.index, this.objects.get(fromNode.index).getClass());
-        final long started = System.nanoTime();
+        log.debug("Dependency container refreshing from node {} of class {}...", fromNode.index, this.objects.get(fromNode.index).getClass());
+        final long started = started();
         try {
             this.initializeSubgraph(root).toCompletableFuture().join();
-            log.debug("Refreshing Graph completed in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+            log.debug("Dependency container refreshed in {}", tookForLogging(started));
         } catch (Throwable e) {
             if (e instanceof CancellationException) {
-                log.debug("Refreshing Graph cancelled");
+                log.debug("Dependency container refresh cancelled");
             } else {
-                log.debug("Refreshing Graph error", e);
+                log.debug("Dependency container refresh error", e);
             }
             if (e instanceof CompletionException ce) {
                 if (ce.getCause() instanceof RuntimeException re) {
@@ -115,20 +116,20 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
         root.set(0, this.objects.length());
         this.semaphore.acquireUninterruptibly();
 
-        log.debug("Graph Initializing...");
-        final long started = System.nanoTime();
+        log.debug("Dependency container initializing...");
+        final long started = started();
         var f = this.initializeSubgraph(root).whenComplete((unused, throwable) -> {
             this.semaphore.release();
             if (throwable == null) {
-                log.debug("Graph Initializing completed in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+                log.debug("Dependency container initialized in {}", tookForLogging(started));
                 return;
             }
             if (throwable instanceof CancellationException) {
-                log.debug("Graph Initializing cancelled");
+                log.debug("Dependency container initialization cancelled");
             } else if (throwable instanceof CompletionException ce) {
-                log.debug("Graph Initializing error", ce.getCause());
+                log.debug("Dependency container initialization failed", ce.getCause());
             } else {
-                log.debug("Graph Initializing error", throwable);
+                log.debug("Dependency container initialization failed", throwable);
             }
         });
         try {
@@ -149,18 +150,18 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
         var root = new BitSet(this.objects.length());
         root.set(0, this.objects.length());
         this.semaphore.acquireUninterruptibly();
-        log.debug("Graph Releasing...");
-        final long started = System.nanoTime();
+        log.debug("Dependency container releasing...");
+        final long started = started();
         var f = this.releaseNodes(this.objects, root).whenComplete((unused, throwable) -> {
             this.semaphore.release();
             if (throwable == null) {
-                log.debug("Graph Releasing completed in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+                log.debug("Dependency container released in {}", tookForLogging(started));
                 return;
             }
             if (throwable instanceof CancellationException) {
-                log.debug("Graph Releasing cancelled");
+                log.debug("Dependency container releasing cancelled");
             } else {
-                log.debug("Graph Releasing error", throwable);
+                log.debug("Dependency container releasing failed", throwable);
             }
         });
         try {
@@ -188,7 +189,7 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                 for (var newPromise : tmpGraph.newPromises) {
                     newPromise.graph = GraphImpl.this;
                 }
-                log.trace("Graph refreshed, calling interceptors...");
+                log.trace("Dependency container refreshed, calling interceptors...");
                 for (var refreshListenerNode : this.refreshListenerNodes) {
                     if (this.objects.get(refreshListenerNode) instanceof RefreshListener refreshListener) {
                         try {
@@ -198,7 +199,7 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                         }
                     }
                 }
-                log.trace("Graph refreshed, ");
+                log.trace("Dependency container refreshed, ");
                 return this.releaseNodes(oldObjects, tmpGraph.initialized)
                     .exceptionally(e -> {
                         this.log.warn("Error on releasing original objects after refresh", e);
@@ -603,5 +604,13 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
         public void refresh() {
             this.rootGraph.refresh(this.node);
         }
+    }
+
+    private static long started() {
+        return System.nanoTime();
+    }
+
+    private static String tookForLogging(long started) {
+        return Duration.ofNanos(System.nanoTime() - started).truncatedTo(ChronoUnit.MILLIS).toString().substring(2).toLowerCase();
     }
 }

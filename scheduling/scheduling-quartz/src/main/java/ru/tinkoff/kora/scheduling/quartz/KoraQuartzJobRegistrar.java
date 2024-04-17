@@ -4,6 +4,7 @@ import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
+import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.time.Duration;
 import java.util.List;
@@ -45,7 +46,7 @@ public class KoraQuartzJobRegistrar implements Lifecycle {
             this.scheduler.scheduleJob(job, koraQuartzJob.getTrigger());
         }
 
-        logger.info("Quartz Jobs {} started in {}", quartzJobsNames, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        logger.info("Quartz Jobs {} started in {}", quartzJobsNames, TimeUtils.tookForLogging(started));
     }
 
     private boolean triggersEqual(Trigger oldTrigger, Trigger newTrigger) {

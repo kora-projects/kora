@@ -2,14 +2,20 @@ package ru.tinkoff.kora.http.client.ok;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
+import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.http.client.common.HttpClientConfig;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public final class OkHttpClientWrapper implements Lifecycle, Wrapped<OkHttpClient> {
+
+    private static final Logger logger = LoggerFactory.getLogger(OkHttpClientWrapper.class);
+
     private final OkHttpClientConfig config;
     private final HttpClientConfig baseConfig;
     private volatile OkHttpClient client;
@@ -21,6 +27,9 @@ public final class OkHttpClientWrapper implements Lifecycle, Wrapped<OkHttpClien
 
     @Override
     public void init() {
+        logger.debug("OkHttpClient starting...");
+        var started = System.nanoTime();
+
         var builder = new OkHttpClient.Builder()
             .connectTimeout(this.baseConfig.connectTimeout())
             .readTimeout(this.baseConfig.readTimeout())
@@ -42,6 +51,8 @@ public final class OkHttpClientWrapper implements Lifecycle, Wrapped<OkHttpClien
             }
         }
         this.client = builder.build();
+
+        logger.info("OkHttpClient started in {}", TimeUtils.tookForLogging(started));
     }
 
     private List<Protocol> getProtocols(OkHttpClientConfig.HttpVersion httpVersion) {
@@ -57,8 +68,13 @@ public final class OkHttpClientWrapper implements Lifecycle, Wrapped<OkHttpClien
         var client = this.client;
         this.client = null;
         if (client != null) {
+            logger.debug("OkHttpClient stopping...");
+            var started = System.nanoTime();
+
             var pool = client.connectionPool();
             pool.evictAll();
+
+            logger.info("OkHttpClient stopped in {}", TimeUtils.tookForLogging(started));
         }
     }
 

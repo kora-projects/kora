@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.RefreshableGraph;
+import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.test.extension.junit5.KoraJUnit5Extension.TestClassMetadata;
 
 import java.io.IOException;
@@ -28,7 +29,7 @@ final class TestGraph implements AutoCloseable {
 
     void initialize() {
         logger.debug("@KoraAppTest dependency container initializing...");
-        final long started = System.nanoTime();
+        final long started = TimeUtils.started();
 
         synchronized (LOCK) {
             var config = meta.config();
@@ -36,7 +37,7 @@ final class TestGraph implements AutoCloseable {
                 config.setup(graph);
                 final RefreshableGraph initGraph = graph.init();
                 this.graphInitialized = new TestGraphInitialized(initGraph, graph, new DefaultKoraAppGraph(graph, initGraph));
-                logger.info("@KoraAppTest dependency container initialization took: {}", Duration.ofNanos(System.nanoTime() - started));
+                logger.info("@KoraAppTest dependency container initialized in {}", TimeUtils.tookForLogging(started));
             } catch (IOException e) {
                 throw new IllegalStateException(e);
             } finally {
@@ -56,8 +57,8 @@ final class TestGraph implements AutoCloseable {
     @Override
     public void close() {
         if (graphInitialized != null) {
-            final long started = System.nanoTime();
-            logger.debug("@KoraAppTest dependency container closing...");
+            final long started = TimeUtils.started();
+            logger.debug("@KoraAppTest dependency container releasing...");
             try {
                 graphInitialized.refreshableGraph().release();
             } catch (RuntimeException | Error e) {
@@ -66,7 +67,7 @@ final class TestGraph implements AutoCloseable {
                 throw new RuntimeException(e);
             }
             graphInitialized = null;
-            logger.info("@KoraAppTest dependency container close took: {}", Duration.ofNanos(System.nanoTime() - started));
+            logger.info("@KoraAppTest dependency container released in {}", TimeUtils.tookForLogging(started));
         }
     }
 }

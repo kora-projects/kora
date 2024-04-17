@@ -1,11 +1,14 @@
 package ru.tinkoff.kora.http.server.undertow;
 
 import io.undertow.Undertow;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xnio.Xnio;
 import org.xnio.XnioWorker;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.application.graph.Wrapped;
+import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 
 import java.util.concurrent.CompletableFuture;
@@ -13,9 +16,21 @@ import java.util.concurrent.ExecutionException;
 
 public final class XnioLifecycle implements Lifecycle, Wrapped<XnioWorker> {
 
-    private final XnioWorker worker;
+    private static final Logger logger = LoggerFactory.getLogger(XnioLifecycle.class);
 
-    public XnioLifecycle(ValueOf<HttpServerConfig> configValue) throws ExecutionException, InterruptedException {
+    private final ValueOf<HttpServerConfig> configValue;
+
+    private volatile XnioWorker worker;
+
+    public XnioLifecycle(ValueOf<HttpServerConfig> configValue) {
+        this.configValue = configValue;
+    }
+
+    @Override
+    public void init() throws Exception {
+        logger.debug("XnioWorker starting...");
+        var started = System.nanoTime();
+
         var threads = configValue.get().blockingThreads();
         var ioThreads = configValue.get().ioThreads();
         var f = new CompletableFuture<XnioWorker>();
@@ -38,17 +53,19 @@ public final class XnioLifecycle implements Lifecycle, Wrapped<XnioWorker> {
         t.setDaemon(false);
         t.start();
         this.worker = f.get();
-    }
 
-    @Override
-    public void init() throws Exception {
-
+        logger.info("XnioWorker started in {}", TimeUtils.tookForLogging(started));
     }
 
     @Override
     public void release() throws Exception {
+        logger.debug("XnioWorker stopping...");
+        var started = System.nanoTime();
+
         worker.shutdown();
         worker.awaitTermination();
+
+        logger.info("XnioWorker stopped in {}", TimeUtils.tookForLogging(started));
     }
 
     @Override

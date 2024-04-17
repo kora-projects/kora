@@ -1,7 +1,10 @@
 package ru.tinkoff.kora.http.client.jdk;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
+import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.http.client.common.HttpClientConfig;
 
 import java.net.Authenticator;
@@ -12,6 +15,9 @@ import java.util.concurrent.Executors;
 
 
 public class JdkHttpClientWrapper implements Lifecycle, Wrapped<HttpClient> {
+
+    private static final Logger logger = LoggerFactory.getLogger(JdkHttpClientWrapper.class);
+
     private final JdkHttpClientConfig config;
     private final HttpClientConfig baseConfig;
     private volatile HttpClient client;
@@ -24,6 +30,9 @@ public class JdkHttpClientWrapper implements Lifecycle, Wrapped<HttpClient> {
 
     @Override
     public void init() {
+        logger.debug("JdkHttpClient starting...");
+        var started = System.nanoTime();
+
         var executorThreads = this.config.threads();
         this.executor = Executors.newFixedThreadPool(executorThreads);
         var builder = HttpClient.newBuilder()
@@ -50,14 +59,20 @@ public class JdkHttpClientWrapper implements Lifecycle, Wrapped<HttpClient> {
             }
         }
         this.client = builder.build();
+        logger.info("JdkHttpClient started in {}", TimeUtils.tookForLogging(started));
     }
 
     @Override
     public void release() {
+        logger.debug("JdkHttpClient stopping...");
+        var started = System.nanoTime();
+
         this.client = null;
         var e = this.executor;
         this.executor = null;
         e.shutdown();
+
+        logger.info("JdkHttpClient stopped in {}", TimeUtils.tookForLogging(started));
     }
 
     @Override
