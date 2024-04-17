@@ -47,8 +47,6 @@ subprojects {
 
     tasks.withType(JavaCompile) {
         options.encoding("UTF-8")
-        options.incremental(true)
-        options.fork = true
         options.debug = true
         options.compilerArgs << '-parameters' << '-Xlint:all' << '-Xlint:-serial,-processing' << '-XprintRounds'
     }
@@ -128,9 +126,7 @@ subprojects {
 
     javadoc {
         options.encoding = "UTF-8"
-        if (JavaVersion.current().isJava9Compatible()) {
-            options.addBooleanOption("html5", true)
-        }
+        options.addBooleanOption("html5", true)
     }
 
     java {
