@@ -1,0 +1,12 @@
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
+
+dependencies {
+    implementation project(":annotation-processor-common")
+
+    implementation libs.javapoet
+
+    testImplementation project(":s3:s3-client-aws")
+    testImplementation project(":internal:test-logging")
+    testImplementation project(":config:config-common")
+    testImplementation testFixtures(project(":annotation-processor-common"))
+}

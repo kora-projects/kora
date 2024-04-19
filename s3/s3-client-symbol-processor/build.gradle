@@ -1,0 +1,36 @@
+plugins {
+    id "java-test-fixtures"
+}
+
+apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
+
+dependencies {
+    implementation project(":symbol-processor-common")
+
+    implementation libs.ksp.api
+    implementation libs.kotlin.reflect
+    implementation libs.kotlinpoet
+    implementation libs.kotlinpoet.ksp
+
+    testImplementation project(":s3:s3-client-aws")
+    testImplementation project(":internal:test-logging")
+    testImplementation project(":config:config-common")
+    testImplementation testFixtures(project(":symbol-processor-common"))
+    testImplementation(libs.kotlin.stdlib.lib)
+    testImplementation(libs.kotlin.coroutines.reactor)
+}
+
+kotlin {
+    sourceSets {
+        testGenerated {
+            kotlin.srcDir("build/generated/ksp/sources/kotlin")
+        }
+    }
+    sourceSets.main {
+        kotlin.srcDir("build/generated/ksp/main/kotlin")
+    }
+    sourceSets.test {
+        kotlin.srcDir("build/generated/ksp/test/kotlin")
+    }
+}
