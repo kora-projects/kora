@@ -16,14 +16,14 @@ public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<Jdb
     @Override
     public JdbcDatabase init(JdbcDatabase value) {
         final long started = TimeUtils.started();
-        logger.debug("FlyWay migration starting...");
+        logger.debug("FlyWay migration applying...");
 
         Flyway.configure()
             .dataSource(value.value())
             .load()
             .migrate();
 
-        logger.info("FlyWay migration started in {}", TimeUtils.tookForLogging(started));
+        logger.info("FlyWay migration applied in {}", TimeUtils.tookForLogging(started));
         return value;
     }
 

@@ -84,10 +84,12 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
         this.semaphore.acquireUninterruptibly();
 
         log.debug("Dependency container refreshing from node {} of class {}...", fromNode.index, this.objects.get(fromNode.index).getClass());
-        final long started = started();
+        final long started = log.isDebugEnabled() ? started() : 0;
         try {
             this.initializeSubgraph(root).toCompletableFuture().join();
-            log.debug("Dependency container refreshed in {}", tookForLogging(started));
+            if(log.isDebugEnabled()) {
+                log.debug("Dependency container refreshed in {}", tookForLogging(started));
+            }
         } catch (Throwable e) {
             if (e instanceof CancellationException) {
                 log.debug("Dependency container refresh cancelled");
