@@ -1,0 +1,14 @@
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
+
+dependencies {
+    annotationProcessor project(':config:config-annotation-processor')
+    compileOnly project(":http:http-client-common")
+
+    api project(":s3:s3-client-common")
+    api "software.amazon.awssdk:s3:2.25.31"
+
+    implementation project(":config:config-common")
+
+    testImplementation project(":internal:test-logging")
+    testImplementation libs.testcontainers.junit.jupiter
+}
