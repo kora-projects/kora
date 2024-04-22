@@ -24,7 +24,7 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
     }
 
     @Override
-    public int contentLength() {
+    public long contentLength() {
         return response.body().contentLength();
     }
 

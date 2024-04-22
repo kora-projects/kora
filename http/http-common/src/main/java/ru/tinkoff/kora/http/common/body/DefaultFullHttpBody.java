@@ -25,7 +25,7 @@ public final class DefaultFullHttpBody implements HttpBodyInput, HttpBodyOutput 
     }
 
     @Override
-    public int contentLength() {
+    public long contentLength() {
         return data.remaining();
     }
 

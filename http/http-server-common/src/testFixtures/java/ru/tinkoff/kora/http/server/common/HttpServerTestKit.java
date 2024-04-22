@@ -34,6 +34,7 @@ import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.common.header.MutableHttpHeaders;
 import ru.tinkoff.kora.http.server.common.$HttpServerConfig_ConfigValueExtractor.HttpServerConfig_Impl;
+import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
 import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
@@ -81,7 +82,7 @@ public abstract class HttpServerTestKit {
     OkHttpClient b = new OkHttpClient.Builder()
         .build();
 
-    private final OkHttpClient client = new OkHttpClient.Builder()
+    protected final OkHttpClient client = new OkHttpClient.Builder()
         .connectionPool(new ConnectionPool(0, 1, TimeUnit.MICROSECONDS))
         .build();
 
@@ -330,7 +331,7 @@ public abstract class HttpServerTestKit {
                     }
 
                     @Override
-                    public int contentLength() {
+                    public long contentLength() {
                         return -1;
                     }
 
@@ -383,7 +384,7 @@ public abstract class HttpServerTestKit {
                     }
 
                     @Override
-                    public int contentLength() {
+                    public long contentLength() {
                         return -1;
                     }
 
@@ -431,6 +432,49 @@ public abstract class HttpServerTestKit {
                 assertThat(response.body().string()).isEqualTo("hello worldhello worldhello worldhello worldhello worldhello worldhello worldhello worldhello worldhello world");
             }
             verifyResponse("GET", "/", 200, HttpResultCode.SUCCESS, "localhost", "http", ArgumentMatchers::isNull, anyLong());
+        }
+
+        @Test
+        void testHeadRequest() throws Exception {
+            startServer(handler("HEAD", "/test", (ctx, request) -> BlockingRequestExecutor.defaultExecute(
+                ctx,
+                r -> new Thread(r).start(),
+                () -> HttpServerResponse.of(200, HttpHeaders.of(), new HttpBodyOutput() {
+                    @Override
+                    public long contentLength() {
+                        return 100;
+                    }
+
+                    @Override
+                    public String contentType() {
+                        return null;
+                    }
+
+                    @Override
+                    public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
+                        FlowUtils.<ByteBuffer>empty(ctx).subscribe(subscriber);
+                    }
+
+                    @Override
+                    public void write(OutputStream os) throws IOException {
+
+                    }
+
+                    @Override
+                    public void close() throws IOException {
+
+                    }
+                }))));
+
+            var request = request("/test")
+                .head()
+                .build();
+
+            try (var response = client.newCall(request).execute()) {
+                assertThat(response.code()).isEqualTo(200);
+                assertThat(response.body().bytes()).isEmpty();
+                assertThat(response.header("content-length")).isEqualTo("100");
+            }
         }
 
         //todo request body tests
@@ -1109,15 +1153,15 @@ public abstract class HttpServerTestKit {
         };
     }
 
-    Request.Builder privateApiRequest(String path) {
+    protected Request.Builder privateApiRequest(String path) {
         return request(this.privateHttpServer.port(), path);
     }
 
-    Request.Builder request(String path) {
+    protected Request.Builder request(String path) {
         return request(this.httpServer.port(), path);
     }
 
-    Request.Builder request(int port, String path) {
+    protected Request.Builder request(int port, String path) {
         return new Request.Builder()
             .url("http://localhost:%d%s".formatted(port, path));
     }

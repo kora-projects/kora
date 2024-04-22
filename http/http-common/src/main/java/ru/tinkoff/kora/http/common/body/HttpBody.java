@@ -8,7 +8,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 public interface HttpBody extends Closeable {
-    int contentLength();
+    long contentLength();
 
     @Nullable
     String contentType();

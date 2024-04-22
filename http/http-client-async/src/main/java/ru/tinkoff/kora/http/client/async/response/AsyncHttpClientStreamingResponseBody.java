@@ -25,7 +25,7 @@ public final class AsyncHttpClientStreamingResponseBody extends AtomicBoolean im
     }
 
     @Override
-    public int contentLength() {
+    public long contentLength() {
         var cl = this.contentLength;
         if (cl >= -1) {
             return cl;

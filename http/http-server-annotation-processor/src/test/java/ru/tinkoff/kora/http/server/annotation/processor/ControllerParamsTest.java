@@ -201,7 +201,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
 
                 @HttpRoute(method = GET, path = "/queryListEnum")
                 public void queryStringList(@Query List<TestEnum> value) { }
-                
+
                 @HttpRoute(method = GET, path = "/queryNullableListEnum")
                 public void queryNullableStringList(@Query @Nullable List<TestEnum> value) { }
             }
@@ -239,7 +239,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
 
                 @HttpRoute(method = GET, path = "/headerListEnum")
                 public void queryStringList(@Header List<TestEnum> value) { }
-                
+
                 @HttpRoute(method = GET, path = "/headerNullableListEnum")
                 public void queryNullableStringList(@Header @Nullable List<TestEnum> value) { }
             }

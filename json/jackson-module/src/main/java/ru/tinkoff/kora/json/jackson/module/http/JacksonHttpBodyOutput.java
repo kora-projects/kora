@@ -22,7 +22,7 @@ public final class JacksonHttpBodyOutput<T> implements HttpBodyOutput {
     }
 
     @Override
-    public int contentLength() {
+    public long contentLength() {
         return -1;
     }
 

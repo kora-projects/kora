@@ -113,7 +113,7 @@ public abstract class AbstractHttpControllerTest extends AbstractAnnotationProce
 
 
     protected static byte[] read(HttpBodyOutput body) {
-        var baos = new ByteArrayOutputStream(Math.max(body.contentLength(), 32));
+        var baos = new ByteArrayOutputStream(Math.toIntExact(Math.max(body.contentLength(), 32)));
         try {
             body.write(baos);
         } catch (IOException e) {

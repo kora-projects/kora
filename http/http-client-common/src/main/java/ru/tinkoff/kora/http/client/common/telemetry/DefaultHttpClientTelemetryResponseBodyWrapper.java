@@ -22,7 +22,7 @@ public final class DefaultHttpClientTelemetryResponseBodyWrapper extends AtomicB
     }
 
     @Override
-    public int contentLength() {
+    public long contentLength() {
         return response.body().contentLength();
     }
 

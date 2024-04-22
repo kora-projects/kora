@@ -324,7 +324,7 @@ class MultipartReaderTest {
                 }
 
                 @Override
-                public int contentLength() {
+                public long contentLength() {
                     return -1;
                 }
 
