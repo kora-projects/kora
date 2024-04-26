@@ -111,6 +111,7 @@ include(
     'experimental:s3-client-aws',
     'experimental:camunda-engine-bpmn',
     'experimental:camunda-rest-undertow',
+    'camunda:camunda8-worker',
 )
 
 apply from: 'dependencies.gradle'
