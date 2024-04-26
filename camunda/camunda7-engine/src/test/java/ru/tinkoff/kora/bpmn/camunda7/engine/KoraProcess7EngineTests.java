@@ -29,12 +29,12 @@ public class KoraProcess7EngineTests implements Camunda7EngineModule {
             var config = new $Camunda7EngineConfig_ConfigValueExtractor.Camunda7EngineConfig_Impl(
                 true,
                 "camunda-license.txt",
-                $Camunda7EngineConfig_CamundaJobExecutorConfig_ConfigValueExtractor.DEFAULTS,
-                $Camunda7EngineConfig_CamundaMetricsConfig_ConfigValueExtractor.DEFAULTS,
-                $Camunda7EngineConfig_CamundaTelemetryConfig_ConfigValueExtractor.DEFAULTS,
-                new $Camunda7EngineConfig_CamundaFilterConfig_ConfigValueExtractor.FilterConfig_Impl("All tasks"),
-                new $Camunda7EngineConfig_CamundaDeploymentConfig_ConfigValueExtractor.DeploymentConfig_Impl(null, "MyDep", false, List.of("bpm")),
-                new $Camunda7EngineConfig_CamundaAdminUser_ConfigValueExtractor.AdminConfig_Impl("admin", "admin", null, null, null)
+                $Camunda7EngineConfig_JobExecutorConfig_ConfigValueExtractor.DEFAULTS,
+                $Camunda7EngineConfig_MetricsConfig_ConfigValueExtractor.DEFAULTS,
+                $Camunda7EngineConfig_TelemetryConfig_ConfigValueExtractor.DEFAULTS,
+                new $Camunda7EngineConfig_FilterConfig_ConfigValueExtractor.FilterConfig_Impl("All tasks"),
+                new $Camunda7EngineConfig_DeploymentConfig_ConfigValueExtractor.DeploymentConfig_Impl(null, "MyDep", false, List.of("bpm")),
+                new $Camunda7EngineConfig_AdminConfig_ConfigValueExtractor.AdminConfig_Impl("admin", "admin", null, null, null)
             );
 
             JobExecutor jobExecutor = camundaKoraJobExecutor(config);
@@ -79,12 +79,12 @@ public class KoraProcess7EngineTests implements Camunda7EngineModule {
             var config = new $Camunda7EngineConfig_ConfigValueExtractor.Camunda7EngineConfig_Impl(
                 false,
                 "camunda-license.txt",
-                $Camunda7EngineConfig_CamundaJobExecutorConfig_ConfigValueExtractor.DEFAULTS,
-                $Camunda7EngineConfig_CamundaMetricsConfig_ConfigValueExtractor.DEFAULTS,
-                $Camunda7EngineConfig_CamundaTelemetryConfig_ConfigValueExtractor.DEFAULTS,
-                new $Camunda7EngineConfig_CamundaFilterConfig_ConfigValueExtractor.FilterConfig_Impl("All tasks"),
-                new $Camunda7EngineConfig_CamundaDeploymentConfig_ConfigValueExtractor.DeploymentConfig_Impl(null, "MyDep", false, List.of("bpm")),
-                new $Camunda7EngineConfig_CamundaAdminUser_ConfigValueExtractor.AdminConfig_Impl("admin", "admin", null, null, null)
+                $Camunda7EngineConfig_JobExecutorConfig_ConfigValueExtractor.DEFAULTS,
+                $Camunda7EngineConfig_MetricsConfig_ConfigValueExtractor.DEFAULTS,
+                $Camunda7EngineConfig_TelemetryConfig_ConfigValueExtractor.DEFAULTS,
+                new $Camunda7EngineConfig_FilterConfig_ConfigValueExtractor.FilterConfig_Impl("All tasks"),
+                new $Camunda7EngineConfig_DeploymentConfig_ConfigValueExtractor.DeploymentConfig_Impl(null, "MyDep", false, List.of("bpm")),
+                new $Camunda7EngineConfig_AdminConfig_ConfigValueExtractor.AdminConfig_Impl("admin", "admin", null, null, null)
             );
 
             JobExecutor jobExecutor = camundaKoraJobExecutor(config);

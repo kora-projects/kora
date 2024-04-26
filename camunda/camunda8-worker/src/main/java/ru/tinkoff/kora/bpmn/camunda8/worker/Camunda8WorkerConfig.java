@@ -71,7 +71,7 @@ public interface Camunda8WorkerConfig {
     );
 
     JobConfig DEFAULT_JOB_CONFIG = new $Camunda8WorkerConfig_JobConfig_ConfigValueExtractor.JobConfig_Impl(
-        "unknown", DEFAULT_BACKOFF_CONFIG, List.of(), Duration.ofMinutes(15), 32, Duration.ofSeconds(15), Duration.ofMillis(100), false, false, Duration.ofSeconds(15)
+        "unknown", DEFAULT_BACKOFF_CONFIG, List.of(), Duration.ofMinutes(15), 32, Duration.ofSeconds(15), Duration.ofMillis(100), true, false, Duration.ofSeconds(15)
     );
 
     default JobConfig getJobConfig(@Nonnull String name) {
