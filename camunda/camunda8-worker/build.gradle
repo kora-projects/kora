@@ -1,0 +1,16 @@
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
+
+dependencies {
+    annotationProcessor project(":config:config-annotation-processor")
+
+    implementation project(":config:config-common")
+
+    api project(":json:json-common")
+    api project(":grpc:grpc-client")
+    api project(":common")
+    api libs.camunda8.client
+    api libs.camunda8.model
+
+    testImplementation project(":internal:test-logging")
+    testImplementation project(":test:test-junit5")
+}
