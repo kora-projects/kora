@@ -5,6 +5,5 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 public interface Camunda8WorkerTelemetryFactory {
 
-    @Nullable
     Camunda8WorkerTelemetry get(TelemetryConfig config);
 }
