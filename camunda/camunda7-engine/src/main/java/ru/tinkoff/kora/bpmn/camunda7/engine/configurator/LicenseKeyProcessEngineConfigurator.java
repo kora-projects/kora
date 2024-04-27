@@ -5,8 +5,8 @@ import org.camunda.bpm.engine.ManagementService;
 import org.camunda.bpm.engine.ProcessEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.tinkoff.kora.bpmn.camunda7.engine.Camunda7Version;
 import ru.tinkoff.kora.bpmn.camunda7.engine.Camunda7EngineConfig;
+import ru.tinkoff.kora.bpmn.camunda7.engine.Camunda7Version;
 
 import java.net.URL;
 import java.nio.charset.StandardCharsets;

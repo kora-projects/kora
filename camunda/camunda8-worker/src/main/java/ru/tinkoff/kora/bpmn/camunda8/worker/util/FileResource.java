@@ -21,4 +21,9 @@ record FileResource(String name, String path) implements Resource {
     public int hashCode() {
         return Objects.hash(name, path);
     }
+
+    @Override
+    public String toString() {
+        return name;
+    }
 }

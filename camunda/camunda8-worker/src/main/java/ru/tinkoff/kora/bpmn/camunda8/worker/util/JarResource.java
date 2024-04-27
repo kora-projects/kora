@@ -22,4 +22,9 @@ record JarResource(String name, String path, Supplier<InputStream> inputStream) 
     public int hashCode() {
         return Objects.hash(name, path);
     }
+
+    @Override
+    public String toString() {
+        return name;
+    }
 }

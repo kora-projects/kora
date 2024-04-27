@@ -10,20 +10,23 @@ import ru.tinkoff.kora.bpmn.camunda8.worker.util.ClasspathResourceUtils;
 import ru.tinkoff.kora.bpmn.camunda8.worker.util.Resource;
 
 import java.lang.invoke.MethodHandles;
+import java.time.Duration;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public final class Camunda8ResourceDeployment implements Lifecycle {
+public final class ZeebeResourceDeployment implements Lifecycle {
 
     private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private final ZeebeClient client;
     private final Camunda8ClientConfig.DeploymentConfig deploymentConfig;
 
-    public Camunda8ResourceDeployment(ZeebeClient client,
-                                      Camunda8ClientConfig.DeploymentConfig deploymentConfig) {
+    public ZeebeResourceDeployment(ZeebeClient client,
+                                   Camunda8ClientConfig.DeploymentConfig deploymentConfig) {
         this.client = client;
         this.deploymentConfig = deploymentConfig;
     }
@@ -32,7 +35,22 @@ public final class Camunda8ResourceDeployment implements Lifecycle {
     public void init() throws Exception {
         final List<String> locations = deploymentConfig.resources();
         if (!locations.isEmpty()) {
-            final List<Resource> resources = ClasspathResourceUtils.findResources(locations);
+            logger.debug("Camunda8 resources deploying...");
+            final long started = System.nanoTime();
+
+            final Set<String> normalizedLocations = locations.stream()
+                .map(location -> {
+                    if (location.startsWith("classpath:")) {
+                        return location;
+                    } else {
+                        logger.warn("Only locations with `classpath:` prefix are supported, skipping unsupported resource location: {}", location);
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+            final List<Resource> resources = ClasspathResourceUtils.findResources(normalizedLocations);
             if (!resources.isEmpty()) {
                 var deployResourceCommand = client.newDeployResourceCommand();
 
@@ -45,13 +63,16 @@ public final class Camunda8ResourceDeployment implements Lifecycle {
 
                 if (finalCommand != null) {
                     final DeploymentEvent deploymentEvent = finalCommand.send().get(deploymentConfig.timeout().toMillis(), TimeUnit.MILLISECONDS);
-                    final String decisions = Stream.concat(deploymentEvent.getDecisionRequirements().stream()
+                    final List<String> deployments = Stream.concat(deploymentEvent.getDecisionRequirements().stream()
                                 .map(req -> String.format("Decision:<%s:%d>", req.getDmnDecisionRequirementsId(), req.getVersion())),
                             deploymentEvent.getProcesses().stream()
                                 .map(process -> String.format("Process:<%s:%d>", process.getBpmnProcessId(), process.getVersion())))
-                        .collect(Collectors.joining(","));
-                    logger.info("Resources from locations '{}' deployed: {}", locations, decisions);
+                        .toList();
+
+                    logger.info("Camunda8 resources {} deployed in {}", deployments, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
                 }
+            } else {
+                logger.debug("Camunda8 no resources found for deployment in {}", locations);
             }
         }
     }
