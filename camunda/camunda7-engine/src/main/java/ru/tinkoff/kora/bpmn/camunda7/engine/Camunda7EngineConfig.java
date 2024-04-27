@@ -8,13 +8,12 @@ import java.util.List;
 @ConfigValueExtractor
 public interface Camunda7EngineConfig {
 
-    default boolean twoStage() {
+    default boolean initializeParallel() {
         return true;
     }
 
-    default String licensePath() {
-        return "camunda-license.txt";
-    }
+    @Nullable
+    String licensePath();
 
     JobExecutorConfig jobExecutor();
 

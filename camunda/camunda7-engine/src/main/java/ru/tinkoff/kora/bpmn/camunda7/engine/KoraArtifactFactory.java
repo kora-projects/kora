@@ -16,9 +16,14 @@ public final class KoraArtifactFactory implements ArtifactFactory {
     private final ArtifactFactory defaultArtifactFactory = new DefaultArtifactFactory();
     private final Map<String, Object> componentByKey;
 
-    public KoraArtifactFactory(List<JavaDelegate> delegates) {
+    public KoraArtifactFactory(List<KoraDelegate> koraDelegates,
+                               List<JavaDelegate> javaDelegates) {
         this.componentByKey = new HashMap<>();
-        for (JavaDelegate delegate : delegates) {
+        for (JavaDelegate delegate : javaDelegates) {
+            this.componentByKey.put(delegate.getClass().getCanonicalName(), delegate);
+        }
+
+        for (JavaDelegate delegate : koraDelegates) {
             this.componentByKey.put(delegate.getClass().getCanonicalName(), delegate);
         }
     }
