@@ -51,7 +51,7 @@ public class SampleJobHandler {
         }
 
         @Override
-        public String name() {
+        public String type() {
             return "job2";
         }
 
@@ -79,7 +79,7 @@ public class SampleJobHandler {
         }
 
         @Override
-        public String name() {
+        public String type() {
             return "job3";
         }
 
@@ -113,7 +113,7 @@ public class SampleJobHandler {
         }
 
         @Override
-        public String name() {
+        public String type() {
             return "job4";
         }
 
@@ -140,7 +140,7 @@ public class SampleJobHandler {
         }
 
         @Override
-        public String name() {
+        public String type() {
             return "job5";
         }
 
@@ -166,14 +166,14 @@ public class SampleJobHandler {
         }
 
         @Override
-        public String name() {
+        public String type() {
             return "job6";
         }
 
         @Override
         public FinalCommandStep<?> handle(JobClient client, ActivatedJob job) {
             try {
-                handler.process6(new ActiveJobContext(name(), job));
+                handler.process6(new ActiveJobContext(type(), job));
                 return client.newCompleteCommand(job);
             } catch (JobWorkerException e) {
                 throw e;

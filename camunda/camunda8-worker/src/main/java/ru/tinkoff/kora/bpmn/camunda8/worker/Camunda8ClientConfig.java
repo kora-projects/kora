@@ -15,7 +15,7 @@ public interface Camunda8ClientConfig {
         return 1;
     }
 
-    default boolean useTls() {
+    default boolean tls() {
         return true;
     }
 

@@ -4,5 +4,5 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 public interface Camunda8WorkerTelemetryFactory {
 
-    Camunda8WorkerTelemetry get(TelemetryConfig config);
+    Camunda8WorkerTelemetry get(String workerType, TelemetryConfig config);
 }

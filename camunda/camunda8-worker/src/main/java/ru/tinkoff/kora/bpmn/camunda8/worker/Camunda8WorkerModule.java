@@ -69,7 +69,7 @@ public interface Camunda8WorkerModule extends JsonCommonModule, GrpcClientModule
         if (!defaultJobConfig.tenantIds().isEmpty()) {
             zeebeClientConfiguration.defaultJobWorkerTenantIds(defaultJobConfig.tenantIds());
         }
-        if (!clientConfig.useTls()) {
+        if (!clientConfig.tls()) {
             zeebeClientConfiguration.usePlaintext();
         }
         if (clientConfig.rest() != null) {

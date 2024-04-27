@@ -28,7 +28,7 @@ public final class StatementsProcessEngineConfigurator implements ProcessEngineC
     }
 
     @Override
-    public void setup(ProcessEngine engine) throws Exception {
+    public void setup(ProcessEngine engine) {
         if (engineConfig.initializeParallel()) {
             logger.debug("Camunda7 Configurator processing required mapped statements...");
             final long started = System.nanoTime();
@@ -38,6 +38,7 @@ public final class StatementsProcessEngineConfigurator implements ProcessEngineC
 
             final AtomicInteger statements = new AtomicInteger(0);
             src.getMappedStatements().forEach(ms -> {
+                //TODO check if validateIncompleteStatements=false can be applied
                 if (!dest.hasStatement(ms.getId())) {
                     dest.addMappedStatement(ms);
                     statements.incrementAndGet();
