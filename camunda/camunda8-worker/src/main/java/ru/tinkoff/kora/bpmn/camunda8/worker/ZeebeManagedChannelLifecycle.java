@@ -5,21 +5,25 @@ import io.grpc.ClientInterceptor;
 import io.grpc.ManagedChannel;
 import io.grpc.ServiceDescriptor;
 import jakarta.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.tinkoff.grpc.client.GrpcClientChannelFactory;
 import ru.tinkoff.grpc.client.config.GrpcClientConfig;
-import ru.tinkoff.grpc.client.config.GrpcClientConfigInterceptor;
 import ru.tinkoff.grpc.client.telemetry.GrpcClientTelemetryFactory;
 import ru.tinkoff.grpc.client.telemetry.GrpcClientTelemetryInterceptor;
-import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
 
 import java.net.URI;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 public final class ZeebeManagedChannelLifecycle implements Lifecycle, Wrapped<ManagedChannel> {
+
+    private static final Logger logger = LoggerFactory.getLogger(ZeebeManagedChannelLifecycle.class);
+
     private final GrpcClientConfig config;
     private final ServiceDescriptor serviceDefinition;
     private final GrpcClientChannelFactory channelFactory;
@@ -45,6 +49,9 @@ public final class ZeebeManagedChannelLifecycle implements Lifecycle, Wrapped<Ma
 
     @Override
     public void init() {
+        logger.debug("Camunda8 ZeebeManagedChannel starting...");
+        final long started = System.nanoTime();
+
         var uri = URI.create(this.config.url());
         var host = uri.getHost();
         var port = uri.getPort();
@@ -73,13 +80,20 @@ public final class ZeebeManagedChannelLifecycle implements Lifecycle, Wrapped<Ma
         interceptors.addAll(this.interceptors);
         builder.intercept(interceptors);
         this.channel = builder.build();
+
+        logger.info("Camunda8 ZeebeManagedChannel started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
     }
 
     @Override
     public void release() {
         if (channel != null) {
+            logger.debug("Camunda8 ZeebeManagedChannel closing...");
+            final long started = System.nanoTime();
+
             channel.shutdown();
             this.channel = null;
+
+            logger.info("Camunda8 ZeebeManagedChannel started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
         }
     }
 

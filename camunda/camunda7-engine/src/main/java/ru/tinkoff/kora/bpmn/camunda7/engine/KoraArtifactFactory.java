@@ -3,13 +3,10 @@ package ru.tinkoff.kora.bpmn.camunda7.engine;
 import org.camunda.bpm.engine.ArtifactFactory;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
 import org.camunda.bpm.engine.impl.DefaultArtifactFactory;
-import ru.tinkoff.kora.application.graph.All;
-import ru.tinkoff.kora.application.graph.ValueOf;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 public final class KoraArtifactFactory implements ArtifactFactory {
 

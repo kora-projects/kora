@@ -4,8 +4,6 @@ import org.camunda.bpm.engine.impl.interceptor.Command;
 import org.camunda.bpm.engine.impl.interceptor.CommandInterceptor;
 import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory;
 
-import java.sql.SQLException;
-
 public final class KoraTransactionInterceptor extends CommandInterceptor {
 
     private final JdbcConnectionFactory jdbcConnectionFactory;

@@ -5,19 +5,14 @@ import io.camunda.zeebe.client.api.command.ThrowErrorCommandStep1.ThrowErrorComm
 import io.camunda.zeebe.client.api.response.ActivatedJob;
 import io.camunda.zeebe.client.api.worker.JobClient;
 import io.camunda.zeebe.client.api.worker.JobHandler;
-import io.camunda.zeebe.client.impl.Loggers;
-import org.slf4j.Logger;
 import ru.tinkoff.kora.bpmn.camunda8.worker.telemetry.Camunda8WorkerTelemetry;
 
 final class WrappedJobHandler implements JobHandler {
 
-    private static final Logger LOG = Loggers.JOB_WORKER_LOGGER;
-
     private final Camunda8WorkerTelemetry telemetry;
     private final KoraJobWorker jobHandler;
 
-    public WrappedJobHandler(Camunda8WorkerTelemetry telemetry,
-                             KoraJobWorker jobHandler) {
+    public WrappedJobHandler(Camunda8WorkerTelemetry telemetry, KoraJobWorker jobHandler) {
         this.telemetry = telemetry;
         this.jobHandler = jobHandler;
     }

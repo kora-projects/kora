@@ -6,10 +6,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
-import ru.tinkoff.kora.bpmn.camunda7.engine.configurator.ProcessEngineConfigurator;
 
 import java.time.Duration;
-import java.util.List;
 
 public final class KoraProcessEngine implements Lifecycle, Wrapped<ProcessEngine> {
 

@@ -6,23 +6,28 @@ import io.camunda.zeebe.client.api.worker.JobHandler;
 import io.camunda.zeebe.client.api.worker.JobWorker;
 import io.camunda.zeebe.client.api.worker.JobWorkerMetrics;
 import jakarta.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.bpmn.camunda8.worker.Camunda8WorkerConfig.JobConfig;
 import ru.tinkoff.kora.bpmn.camunda8.worker.telemetry.Camunda8WorkerTelemetry;
 import ru.tinkoff.kora.bpmn.camunda8.worker.telemetry.Camunda8WorkerTelemetryFactory;
 import ru.tinkoff.kora.bpmn.camunda8.worker.telemetry.ZeebeClientWorkerMetricsFactory;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public final class KoraJobHandlerLifecycle implements Lifecycle {
 
+    private static final Logger logger = LoggerFactory.getLogger(KoraJobHandlerLifecycle.class);
+
     private final ZeebeClient client;
     private final List<KoraJobWorker> jobWorkers;
     private final Camunda8ClientConfig clientConfig;
     private final Camunda8WorkerConfig workerConfig;
-    private final Camunda8BackoffFactory camundaBackoffFactory;
+    private final ZeebeBackoffFactory zeebeBackoffFactory;
     private final Camunda8WorkerTelemetryFactory telemetryFactory;
     private final ZeebeClientWorkerMetricsFactory zeebeMetricsFactory;
 
@@ -32,48 +37,64 @@ public final class KoraJobHandlerLifecycle implements Lifecycle {
                                    List<KoraJobWorker> jobWorkers,
                                    Camunda8ClientConfig clientConfig,
                                    Camunda8WorkerConfig workerConfig,
-                                   Camunda8BackoffFactory camundaBackoffFactory,
+                                   ZeebeBackoffFactory zeebeBackoffFactory,
                                    Camunda8WorkerTelemetryFactory telemetryFactory,
                                    @Nullable ZeebeClientWorkerMetricsFactory zeebeMetricsFactory) {
         this.client = client;
         this.jobWorkers = jobWorkers;
         this.clientConfig = clientConfig;
         this.workerConfig = workerConfig;
-        this.camundaBackoffFactory = camundaBackoffFactory;
+        this.zeebeBackoffFactory = zeebeBackoffFactory;
         this.telemetryFactory = telemetryFactory;
         this.zeebeMetricsFactory = zeebeMetricsFactory;
     }
 
     @Override
     public void init() {
-        CompletableFuture[] jobOpeners = jobWorkers.stream()
-            .map(koraJobWorker -> CompletableFuture.runAsync(() -> {
-                JobConfig jobConfig = workerConfig.getJobConfig(koraJobWorker.name());
-                if (jobConfig.enabled()) {
-                    JobWorker jobWorker = createJobWorker(koraJobWorker, jobConfig);
-                    workers.add(jobWorker);
-                }
-            }))
-            .toArray(CompletableFuture[]::new);
+        if (!jobWorkers.isEmpty()) {
+            logger.debug("Camunda8 JobWorkers starting...");
+            final long started = System.nanoTime();
 
-        CompletableFuture.allOf(jobOpeners).join();
+            CompletableFuture[] jobOpeners = jobWorkers.stream()
+                .map(koraJobWorker -> CompletableFuture.runAsync(() -> {
+                    JobConfig jobConfig = workerConfig.getJobConfig(koraJobWorker.name());
+                    if (jobConfig.enabled()) {
+                        JobWorker jobWorker = createJobWorker(koraJobWorker, jobConfig);
+                        workers.add(jobWorker);
+                    }
+                }))
+                .toArray(CompletableFuture[]::new);
+
+            CompletableFuture.allOf(jobOpeners).join();
+
+            final List<String> workerNames = jobWorkers.stream().map(KoraJobWorker::name).toList();
+            logger.info("Camunda8 JobWorkers {} started in {}", workerNames, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        }
     }
 
     @Override
     public void release() {
-        for (JobWorker worker : workers) {
-            try {
-                worker.close();
-            } catch (Exception e) {
-                // ignore
+        if (!workers.isEmpty()) {
+            logger.debug("Camunda8 JobWorkers stopping...");
+            final long started = System.nanoTime();
+
+            for (JobWorker worker : workers) {
+                try {
+                    worker.close();
+                } catch (Exception e) {
+                    // ignore
+                }
             }
+
+            final List<String> workerNames = jobWorkers.stream().map(KoraJobWorker::name).toList();
+            logger.info("Camunda8 JobWorkers {} stopped in {}", workerNames, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
         }
     }
 
     public JobWorker createJobWorker(KoraJobWorker worker, JobConfig jobConfig) {
         final Camunda8WorkerTelemetry telemetry = telemetryFactory.get(clientConfig.telemetry());
         final JobHandler jobHandler = new WrappedJobHandler(telemetry, worker);
-        final BackoffSupplier backoffSupplier = camundaBackoffFactory.build(jobConfig.backoff());
+        final BackoffSupplier backoffSupplier = zeebeBackoffFactory.build(jobConfig.backoff());
 
         final JobWorkerMetrics jobWorkerMetrics = zeebeMetricsFactory == null
             ? null
@@ -97,8 +118,6 @@ public final class KoraJobHandlerLifecycle implements Lifecycle {
             builder.tenantIds(jobConfig.tenantIds());
         }
 
-        JobWorker jobWorker = builder.open();
-//        LOGGER.info(". Starting Zeebe worker: {}", jobConfig);
-        return jobWorker;
+        return builder.open();
     }
 }

@@ -6,7 +6,6 @@ import io.camunda.zeebe.client.ZeebeClientConfiguration;
 import io.camunda.zeebe.client.api.JsonMapper;
 import io.camunda.zeebe.client.api.worker.BackoffSupplier;
 import io.camunda.zeebe.client.impl.ZeebeClientBuilderImpl;
-import io.camunda.zeebe.client.impl.ZeebeClientImpl;
 import io.grpc.ClientInterceptor;
 import io.grpc.ManagedChannel;
 import jakarta.annotation.Nullable;
@@ -14,7 +13,6 @@ import ru.tinkoff.grpc.client.GrpcClientChannelFactory;
 import ru.tinkoff.grpc.client.GrpcClientModule;
 import ru.tinkoff.grpc.client.telemetry.GrpcClientTelemetryFactory;
 import ru.tinkoff.kora.application.graph.All;
-import ru.tinkoff.kora.application.graph.LifecycleWrapper;
 import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.bpmn.camunda8.worker.telemetry.*;
 import ru.tinkoff.kora.common.DefaultComponent;
@@ -26,9 +24,7 @@ import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.json.common.JsonCommonModule;
 
 import java.net.URI;
-import java.time.Duration;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public interface Camunda8WorkerModule extends JsonCommonModule, GrpcClientModule {
 
@@ -86,7 +82,7 @@ public interface Camunda8WorkerModule extends JsonCommonModule, GrpcClientModule
     }
 
     @DefaultComponent
-    default Camunda8BackoffFactory camunda8BackoffFactory() {
+    default ZeebeBackoffFactory camunda8BackoffFactory() {
         return (config) -> BackoffSupplier.newBackoffBuilder()
             .maxDelay(config.maxDelay().toMillis())
             .minDelay(config.minDelay().toMillis())
@@ -112,21 +108,7 @@ public interface Camunda8WorkerModule extends JsonCommonModule, GrpcClientModule
     default Wrapped<ZeebeClient> camunda8ZeebeClient(Camunda8ClientConfig clientConfig,
                                                      ZeebeClientConfiguration clientConfiguration,
                                                      @Tag(ZeebeClient.class) ManagedChannel managedChannel) {
-        return new LifecycleWrapper<>(new ZeebeClientImpl(clientConfiguration, managedChannel),
-            (client) -> {
-                final Duration initTimeout = clientConfig.initializationFailTimeout();
-                if (initTimeout != null) {
-                    try {
-                        var topology = client.newTopologyRequest().send().join(initTimeout.toMillis(), TimeUnit.MILLISECONDS);
-//                        var topology = client.newTopologyRequest().send().join();
-                        if (topology.getBrokers().isEmpty()) {
-                            throw new IllegalStateException("ZeebeClient is unavailable for gRPC URL: " + clientConfiguration.getGrpcAddress());
-                        }
-                    } catch (Exception e) {
-                        throw new IllegalStateException("ZeebeClient initialization failed after timeout " + initTimeout + " for gRPC URL: " + clientConfiguration.getGrpcAddress());
-                    }
-                }
-            }, ZeebeClient::close);
+        return new KoraZeebeClient(clientConfig, clientConfiguration, managedChannel);
     }
 
     default ReadinessProbe camunda8ZeebeClientReadinessProbe(ZeebeClient zeebeClient) {
@@ -134,9 +116,9 @@ public interface Camunda8WorkerModule extends JsonCommonModule, GrpcClientModule
     }
 
     @Root
-    default Camunda8ResourceDeployment camunda8ResourceDeployment(ZeebeClient zeebeClient,
-                                                                  Camunda8ClientConfig clientConfig) {
-        return new Camunda8ResourceDeployment(zeebeClient, clientConfig.deployment());
+    default ZeebeResourceDeployment camunda8ResourceDeployment(ZeebeClient zeebeClient,
+                                                               Camunda8ClientConfig clientConfig) {
+        return new ZeebeResourceDeployment(zeebeClient, clientConfig.deployment());
     }
 
     @Root
@@ -144,7 +126,7 @@ public interface Camunda8WorkerModule extends JsonCommonModule, GrpcClientModule
                                                                     All<KoraJobWorker> jobWorkers,
                                                                     Camunda8ClientConfig clientConfig,
                                                                     Camunda8WorkerConfig workerConfig,
-                                                                    Camunda8BackoffFactory camundaBackoffFactory,
+                                                                    ZeebeBackoffFactory camundaBackoffFactory,
                                                                     Camunda8WorkerTelemetryFactory telemetryFactory,
                                                                     @Nullable ZeebeClientWorkerMetricsFactory zeebeMetricsFactory) {
         return new KoraJobHandlerLifecycle(client, jobWorkers, clientConfig, workerConfig, camundaBackoffFactory, telemetryFactory, zeebeMetricsFactory);
