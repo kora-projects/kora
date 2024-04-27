@@ -21,7 +21,7 @@ public class KoraArtifactFactoryTests {
 
     @Test
     void getByCanonicalName() {
-        ArtifactFactory artifactFactory = new KoraArtifactFactory(List.of(new SimpleDelegate()));
+        ArtifactFactory artifactFactory = new KoraArtifactFactory(List.of(), List.of(new SimpleDelegate()));
         assertInstanceOf(SimpleDelegate.class, artifactFactory.getArtifact(SimpleDelegate.class));
     }
 }

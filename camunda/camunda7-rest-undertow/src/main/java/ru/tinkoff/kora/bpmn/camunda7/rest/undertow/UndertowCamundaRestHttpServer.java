@@ -4,13 +4,13 @@ import io.undertow.server.HttpHandler;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.bpmn.camunda7.rest.Camunda7RestConfig;
-import ru.tinkoff.kora.bpmn.camunda7.rest.Camunda7RestHttpServer;
+import ru.tinkoff.kora.bpmn.camunda7.rest.CamundaRestHttpServer;
 import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetryConfig;
 import ru.tinkoff.kora.http.server.undertow.UndertowHttpServer;
 
-final class UndertowCamunda7RestHttpServer implements Camunda7RestHttpServer {
+final class UndertowCamundaRestHttpServer implements CamundaRestHttpServer {
 
     private final ValueOf<HttpHandler> camundaHttpHandler;
     private final ValueOf<Camunda7RestConfig> camundaRestConfig;
@@ -18,9 +18,9 @@ final class UndertowCamunda7RestHttpServer implements Camunda7RestHttpServer {
 
     private volatile UndertowHttpServer undertowHttpServer;
 
-    public UndertowCamunda7RestHttpServer(ValueOf<HttpHandler> camundaHttpHandler,
-                                          ValueOf<Camunda7RestConfig> camundaRestConfig,
-                                          ValueOf<HttpServerConfig> httpServerConfig) {
+    public UndertowCamundaRestHttpServer(ValueOf<HttpHandler> camundaHttpHandler,
+                                         ValueOf<Camunda7RestConfig> camundaRestConfig,
+                                         ValueOf<HttpServerConfig> httpServerConfig) {
         this.camundaHttpHandler = camundaHttpHandler;
         this.camundaRestConfig = camundaRestConfig;
         this.httpServerConfig = httpServerConfig;
@@ -53,6 +53,7 @@ final class UndertowCamunda7RestHttpServer implements Camunda7RestHttpServer {
         };
 
         this.undertowHttpServer = new UndertowHttpServer("CamundaRest", camundaHttpServerConfig, camundaHttpHandler, null);
+        this.undertowHttpServer.init();
     }
 
     @Override

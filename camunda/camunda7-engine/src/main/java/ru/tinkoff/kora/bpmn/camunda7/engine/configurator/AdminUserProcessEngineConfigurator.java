@@ -13,6 +13,8 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.bpmn.camunda7.engine.Camunda7EngineConfig;
 import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory;
 
+import java.time.Duration;
+
 import static org.camunda.bpm.engine.authorization.Authorization.ANY;
 import static org.camunda.bpm.engine.authorization.Authorization.AUTH_TYPE_GRANT;
 import static org.camunda.bpm.engine.authorization.Groups.CAMUNDA_ADMIN;
@@ -34,6 +36,9 @@ public final class AdminUserProcessEngineConfigurator implements ProcessEngineCo
     @Override
     public void setup(ProcessEngine engine) {
         if (adminConfig != null) {
+            logger.debug("Camunda7 Configurator Admin user creating...");
+            final long started = System.nanoTime();
+
             IdentityService identityService = engine.getIdentityService();
             AuthorizationService authorizationService = engine.getAuthorizationService();
             connectionFactory.inTx(connection -> {
@@ -46,9 +51,9 @@ public final class AdminUserProcessEngineConfigurator implements ProcessEngineCo
 
                     createAdminGroupAuthorizations(authorizationService);
                     identityService.createMembership(adminConfig.id(), CAMUNDA_ADMIN);
-                    logger.info("Admin user created: {}", adminConfig.id());
+                    logger.info("Camunda7 Configurator Admin user created in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
                 } else {
-                    logger.info("Admin user already exist: {}", adminConfig.id());
+                    logger.debug("Camunda7 Configurator Admin user already exist");
                 }
             });
         }
@@ -74,7 +79,7 @@ public final class AdminUserProcessEngineConfigurator implements ProcessEngineCo
 
     private void createAdminGroup(IdentityService identityService) {
         Group camundaAdminGroup = identityService.newGroup(CAMUNDA_ADMIN);
-        camundaAdminGroup.setName("Camunda Administrators");
+        camundaAdminGroup.setName("Camunda7 Administrators");
         camundaAdminGroup.setType(GROUP_TYPE_SYSTEM);
         identityService.saveGroup(camundaAdminGroup);
     }

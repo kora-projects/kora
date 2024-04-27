@@ -37,31 +37,31 @@ public class KoraProcess7EngineTests implements Camunda7EngineModule {
                 new $Camunda7EngineConfig_AdminConfig_ConfigValueExtractor.AdminConfig_Impl("admin", "admin", null, null, null)
             );
 
-            JobExecutor jobExecutor = camundaKoraJobExecutor(config);
-            KoraProcessEngineConfiguration koraProcessEngineConfiguration = camundaKoraProcessEngineConfiguration(
+            JobExecutor jobExecutor = camunda7KoraJobExecutor(config);
+            KoraProcessEngineConfiguration koraProcessEngineConfiguration = camunda7KoraProcessEngineConfiguration(
                 jobExecutor,
-                camundaKoraTelemetryRegistry(null),
-                camundaIdGenerator(),
-                camundaKoraExpressionManager(camundaKoraELResolver(All.of(), All.of())),
-                camundaKoraArtifactFactory(All.of()),
+                camunda7KoraTelemetryRegistry(null),
+                camunda7IdGenerator(),
+                camunda7KoraExpressionManager(camunda7KoraELResolver(All.of(), All.of())),
+                camunda7KoraArtifactFactory(All.of()),
                 All.of(),
                 jdbc,
                 jdbc.value(),
                 config,
-                camundaKoraComponentResolverFactory(All.of(), All.of()),
-                camundaPackageVersion()
+                camunda7KoraComponentResolverFactory(All.of(), All.of()),
+                camunda7PackageVersion()
             );
 
-            KoraProcessEngine koraProcessEngine = camundaKoraProcessEngine(koraProcessEngineConfiguration);
+            KoraProcessEngine koraProcessEngine = camunda7KoraProcessEngine(koraProcessEngineConfiguration);
             try {
                 koraProcessEngine.init();
 
-                KoraProcessEngineConfigurator trigger = camundaKoraProcessEngineConfigurator(koraProcessEngine.value(), All.of(
-                    camundaKoraProcessEngineTwoStageCamundaConfigurator(koraProcessEngineConfiguration, config, jobExecutor),
-                    camundaKoraAdminUserConfigurator(config, jdbc),
-                    camundaKoraLicenseKeyConfigurator(config, camundaPackageVersion()),
-                    camundaKoraFilterAllTaskConfigurator(config),
-                    camundaKoraResourceDeploymentConfigurator(config)
+                KoraProcessEngineConfigurator trigger = camunda7KoraProcessEngineConfigurator(koraProcessEngine.value(), All.of(
+                    camunda7KoraProcessEngineTwoStageCamundaConfigurator(koraProcessEngineConfiguration, config, jobExecutor),
+                    camunda7KoraAdminUserConfigurator(config, jdbc),
+                    camunda7KoraLicenseKeyConfigurator(config, camunda7PackageVersion()),
+                    camunda7KoraFilterAllTaskConfigurator(config),
+                    camunda7KoraResourceDeploymentConfigurator(config)
                 ));
 
                 trigger.init();
@@ -87,30 +87,30 @@ public class KoraProcess7EngineTests implements Camunda7EngineModule {
                 new $Camunda7EngineConfig_AdminConfig_ConfigValueExtractor.AdminConfig_Impl("admin", "admin", null, null, null)
             );
 
-            JobExecutor jobExecutor = camundaKoraJobExecutor(config);
-            KoraProcessEngineConfiguration koraProcessEngineConfiguration = camundaKoraProcessEngineConfiguration(
+            JobExecutor jobExecutor = camunda7KoraJobExecutor(config);
+            KoraProcessEngineConfiguration koraProcessEngineConfiguration = camunda7KoraProcessEngineConfiguration(
                 jobExecutor,
-                camundaKoraTelemetryRegistry(null),
-                camundaIdGenerator(),
-                camundaKoraExpressionManager(camundaKoraELResolver(All.of(), All.of())),
-                camundaKoraArtifactFactory(All.of()),
+                camunda7KoraTelemetryRegistry(null),
+                camunda7IdGenerator(),
+                camunda7KoraExpressionManager(camunda7KoraELResolver(All.of(), All.of())),
+                camunda7KoraArtifactFactory(All.of()),
                 All.of(),
                 jdbc,
                 jdbc.value(),
                 config,
-                camundaKoraComponentResolverFactory(All.of(), All.of()),
-                camundaPackageVersion()
+                camunda7KoraComponentResolverFactory(All.of(), All.of()),
+                camunda7PackageVersion()
             );
 
-            KoraProcessEngine koraProcessEngine = camundaKoraProcessEngine(koraProcessEngineConfiguration);
+            KoraProcessEngine koraProcessEngine = camunda7KoraProcessEngine(koraProcessEngineConfiguration);
             try {
                 koraProcessEngine.init();
 
-                KoraProcessEngineConfigurator trigger = camundaKoraProcessEngineConfigurator(koraProcessEngine.value(), All.of(
-                    camundaKoraAdminUserConfigurator(config, jdbc),
-                    camundaKoraLicenseKeyConfigurator(config, camundaPackageVersion()),
-                    camundaKoraFilterAllTaskConfigurator(config),
-                    camundaKoraResourceDeploymentConfigurator(config)
+                KoraProcessEngineConfigurator trigger = camunda7KoraProcessEngineConfigurator(koraProcessEngine.value(), All.of(
+                    camunda7KoraAdminUserConfigurator(config, jdbc),
+                    camunda7KoraLicenseKeyConfigurator(config, camunda7PackageVersion()),
+                    camunda7KoraFilterAllTaskConfigurator(config),
+                    camunda7KoraResourceDeploymentConfigurator(config)
                 ));
 
                 trigger.init();

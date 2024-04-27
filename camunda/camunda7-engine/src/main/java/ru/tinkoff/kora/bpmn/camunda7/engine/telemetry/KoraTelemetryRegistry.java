@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.bpmn.camunda7.engine;
+package ru.tinkoff.kora.bpmn.camunda7.engine.telemetry;
 
 import jakarta.annotation.Nullable;
 import org.camunda.bpm.engine.impl.telemetry.TelemetryRegistry;
@@ -15,7 +15,7 @@ public final class KoraTelemetryRegistry extends TelemetryRegistry {
     public KoraTelemetryRegistry(@Nullable ApplicationServerImpl applicationServer) {
         setCamundaIntegration(INTEGRATION_NAME);
         if (applicationServer != null) {
-            logger.info("Camunda ApplicationServer: vendor={}, version={}", applicationServer.getVendor(), applicationServer.getVersion());
+            logger.debug("Camunda7 ApplicationServer: vendor={}, version={}", applicationServer.getVendor(), applicationServer.getVersion());
             setApplicationServer(applicationServer.getVersion());
         } else {
             logger.debug("Unable to identify the ApplicationServer for the Camunda Telemetry Registry");

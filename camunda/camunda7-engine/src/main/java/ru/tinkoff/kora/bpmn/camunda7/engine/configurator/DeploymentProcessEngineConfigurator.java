@@ -11,6 +11,7 @@ import ru.tinkoff.kora.bpmn.camunda7.engine.util.Resource;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -30,7 +31,7 @@ public final class DeploymentProcessEngineConfigurator implements ProcessEngineC
     public void setup(ProcessEngine engine) {
         try {
             var deployment = engineConfig.deployment();
-            if (deployment != null) {
+            if (deployment != null && !deployment.resources().isEmpty()) {
                 deployProcessModels(deployment, engine.getRepositoryService());
             }
         } catch (IOException e) {
@@ -40,20 +41,13 @@ public final class DeploymentProcessEngineConfigurator implements ProcessEngineC
 
     private void deployProcessModels(Camunda7EngineConfig.DeploymentConfig deploymentConfig, RepositoryService repositoryService) throws IOException {
         final List<String> locations = deploymentConfig.resources();
-        logger.info("Searching for models in the resources at configured locations: {}", locations);
-
-        DeploymentBuilder builder = repositoryService.createDeployment()
-            .name(deploymentConfig.name())
-            .enableDuplicateFiltering(deploymentConfig.deployChangedOnly());
-
-        if (deploymentConfig.tenantId() != null) {
-            builder = builder.tenantId(deploymentConfig.tenantId());
-        }
+        logger.debug("Camunda7 Configurator deploying {} resources...", locations);
+        final long started = System.nanoTime();
 
         final Set<String> normalizedLocations = locations.stream()
             .map(location -> {
                 if (location.startsWith("classpath:")) {
-                    return location.substring(10);
+                    return location;
                 } else {
                     logger.warn("Only locations with `classpath:` prefix are supported, skipping unsupported resource location: {}", location);
                     return null;
@@ -62,16 +56,28 @@ public final class DeploymentProcessEngineConfigurator implements ProcessEngineC
             .filter(Objects::nonNull)
             .collect(Collectors.toSet());
 
-        boolean deploy = false;
         final List<Resource> resources = ClasspathResourceUtils.findResources(normalizedLocations);
-        for (var resource : resources) {
-            builder.addInputStream(resource.name(), resource.asInputStream());
-            logger.info("Deploying resource: {}", resource.name());
-            deploy = true;
-        }
+        if (resources.isEmpty()) {
+            logger.debug("Camunda7 Configurator found 0 resources");
+        } else {
+            DeploymentBuilder builder = repositoryService.createDeployment()
+                .name(deploymentConfig.name())
+                .enableDuplicateFiltering(deploymentConfig.deployChangedOnly());
 
-        if (deploy) {
-            builder.deploy();
+            if (deploymentConfig.tenantId() != null) {
+                builder = builder.tenantId(deploymentConfig.tenantId());
+            }
+
+            boolean deploy = false;
+            for (var resource : resources) {
+                builder.addInputStream(resource.name(), resource.asInputStream());
+                deploy = true;
+            }
+
+            if (deploy) {
+                builder.deploy();
+                logger.info("Camunda7 Configurator deployed {} resources in {}", resources, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+            }
         }
     }
 }

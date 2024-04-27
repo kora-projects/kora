@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.bpmn.camunda7.engine.configurator;
 
+import jakarta.annotation.Nullable;
 import org.camunda.bpm.engine.ManagementService;
 import org.camunda.bpm.engine.ProcessEngine;
 import org.slf4j.Logger;
@@ -9,6 +10,7 @@ import ru.tinkoff.kora.bpmn.camunda7.engine.Camunda7EngineConfig;
 
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Scanner;
 
 public final class LicenseKeyProcessEngineConfigurator implements ProcessEngineConfigurator {
@@ -18,37 +20,42 @@ public final class LicenseKeyProcessEngineConfigurator implements ProcessEngineC
     private static final String HEADER_FOOTER_REGEX = "(?i)[-\\s]*(BEGIN|END)\\s*(OPTIMIZE|CAMUNDA|CAMUNDA\\s*BPM)\\s*LICENSE\\s*KEY[-\\s]*";
     private final Camunda7Version camundaVersion;
 
-    private final String licensePath;
+    private final Camunda7EngineConfig config;
 
     public LicenseKeyProcessEngineConfigurator(Camunda7EngineConfig camundaEngineConfig, Camunda7Version camundaVersion) {
         this.camundaVersion = camundaVersion;
-        this.licensePath = camundaEngineConfig.licensePath();
+        this.config = camundaEngineConfig;
     }
 
     @Override
     public void setup(ProcessEngine engine) {
-        ManagementService managementService = engine.getManagementService();
-        if (!camundaVersion.isEnterprise()) {
-            logger.debug("License is not required for Camunda Community Edition, it will be ignored.");
-            return;
-        }
+        if (config.licensePath() != null) {
+            logger.debug("Camunda7 Configurator licence key registering...");
+            final long started = System.nanoTime();
 
-        // Check if there is already a license key in the database
-        if (managementService.getLicenseKey() != null) {
-            logger.info("A license key is already registered and will be used. Please use the Camunda Cockpit to update it.");
-            return;
-        }
+            ManagementService managementService = engine.getManagementService();
+            if (!camundaVersion.isEnterprise()) {
+                logger.debug("Camunda7 Configurator license key is not required for Camunda Community Edition, ignoring...");
+                return;
+            }
 
-        String licenseKey = readLicenseKeyFromUrl(licensePath);
-        if (licenseKey != null) {
-            managementService.setLicenseKey(licenseKey);
-            logger.info("Registered new license key");
-        } else {
-            logger.warn("Could not locate the referenced license key. The license can be registered in the Camunda Cockpit.");
+            if (managementService.getLicenseKey() != null) {
+                logger.debug("Camunda7 Configurator license Key is already registered...");
+                return;
+            }
+
+            String licenseKey = readLicenseKeyFromUrl(config.licensePath());
+            if (licenseKey != null) {
+                managementService.setLicenseKey(licenseKey);
+                logger.info("Camunda7 Configurator licence key registered in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+            } else {
+                logger.warn("Camunda7 Configurator can't find license key, register license in the Camunda Cockpit manually");
+            }
         }
     }
 
-    private String readLicenseKeyFromUrl(String licensePath) {
+    @Nullable
+    private static String readLicenseKeyFromUrl(String licensePath) {
         try {
             URL licenseUrl = LicenseKeyProcessEngineConfigurator.class.getClassLoader().getResource(licensePath);
             if (licenseUrl == null) {
@@ -65,7 +72,7 @@ public final class LicenseKeyProcessEngineConfigurator implements ProcessEngineC
                 return null;
             }
         } catch (Exception e) {
-            logger.warn("Ignoring license file {}. Details: {}", licensePath, e.getMessage());
+            logger.warn("Failed reading license key file {} due to {}", licensePath, e.getMessage());
             return null;
         }
     }

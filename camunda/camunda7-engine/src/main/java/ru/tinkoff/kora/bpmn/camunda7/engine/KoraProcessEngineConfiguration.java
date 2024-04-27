@@ -272,7 +272,7 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
 
     @Override
     protected InputStream getMyBatisXmlConfigurationSteam() {
-        if (engineConfig.twoStage()) {
+        if (engineConfig.initializeParallel()) {
             return getMyBatisXmlConfigurationSteamStageOne();
         } else {
             BufferedReader reader = new BufferedReader(new InputStreamReader(super.getMyBatisXmlConfigurationSteam()));

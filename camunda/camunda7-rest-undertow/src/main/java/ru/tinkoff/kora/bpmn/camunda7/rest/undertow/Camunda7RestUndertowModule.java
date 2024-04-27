@@ -2,12 +2,13 @@ package ru.tinkoff.kora.bpmn.camunda7.rest.undertow;
 
 import io.undertow.server.HttpHandler;
 import jakarta.ws.rs.core.Application;
+import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.GraphInterceptor;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.bpmn.camunda7.rest.Camunda7Rest;
 import ru.tinkoff.kora.bpmn.camunda7.rest.Camunda7RestConfig;
-import ru.tinkoff.kora.bpmn.camunda7.rest.Camunda7RestHttpServer;
 import ru.tinkoff.kora.bpmn.camunda7.rest.Camunda7RestModule;
+import ru.tinkoff.kora.bpmn.camunda7.rest.CamundaRestHttpServer;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
@@ -18,15 +19,15 @@ import java.util.Objects;
 public interface Camunda7RestUndertowModule extends Camunda7RestModule {
 
     @Tag(Camunda7Rest.class)
-    default HttpHandler camundaRestHttpHandler(@Tag(Camunda7Rest.class) Application application,
-                                               Camunda7RestConfig camundaRestConfig) {
-        return new UndertowCamunda7RestHttpHandler(application, camundaRestConfig);
+    default HttpHandler camunda7RestHttpHandler(@Tag(Camunda7Rest.class) All<Application> applications,
+                                                Camunda7RestConfig camundaRestConfig) {
+        return new UndertowCamundaRestHttpHandler(applications, camundaRestConfig);
     }
 
     @Tag(PublicApiHandler.class)
-    default GraphInterceptor<HttpHandler> camundaRestPublicHttpServerHandlerInterceptor(@Tag(Camunda7Rest.class) HttpHandler camundaHttpHandler,
-                                                                                        Camunda7RestConfig camundaRestConfig,
-                                                                                        HttpServerConfig httpServerConfig) {
+    default GraphInterceptor<HttpHandler> camunda7RestPublicHttpServerHandlerInterceptor(@Tag(Camunda7Rest.class) HttpHandler camundaHttpHandler,
+                                                                                         Camunda7RestConfig camundaRestConfig,
+                                                                                         HttpServerConfig httpServerConfig) {
         return new GraphInterceptor<>() {
 
             @Override
@@ -54,14 +55,14 @@ public interface Camunda7RestUndertowModule extends Camunda7RestModule {
     }
 
     @Root
-    default Camunda7RestHttpServer camundaRestHttpServer(@Tag(Camunda7Rest.class) ValueOf<HttpHandler> camundaHttpHandler,
+    default CamundaRestHttpServer camunda7RestHttpServer(@Tag(Camunda7Rest.class) ValueOf<HttpHandler> camundaHttpHandler,
                                                          ValueOf<Camunda7RestConfig> camundaRestConfig,
                                                          ValueOf<HttpServerConfig> httpServerConfig) {
         if (camundaRestConfig.get().port() == null || Objects.equals(httpServerConfig.get().publicApiHttpPort(), camundaRestConfig.get().port())) {
             // camunda rest is started on public http server
-            return new FakeCamunda7RestHttpServer(httpServerConfig.get().publicApiHttpPort());
+            return new FakeCamundaRestHttpServer(httpServerConfig.get().publicApiHttpPort());
         } else {
-            return new UndertowCamunda7RestHttpServer(camundaHttpHandler, camundaRestConfig, httpServerConfig);
+            return new UndertowCamundaRestHttpServer(camundaHttpHandler, camundaRestConfig, httpServerConfig);
         }
     }
 }

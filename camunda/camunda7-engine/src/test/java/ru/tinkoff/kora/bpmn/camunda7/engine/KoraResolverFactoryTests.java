@@ -20,7 +20,7 @@ public class KoraResolverFactoryTests {
         }
     }
 
-    private static class SimpleCamunda7Delegate implements Camunda7Delegate {
+    private static class SimpleKoraDelegate implements KoraDelegate {
         @NotNull
         @Override
         public String key() {
@@ -47,7 +47,7 @@ public class KoraResolverFactoryTests {
 
     @Test
     void getByKey() {
-        Resolver resolver = new KoraResolverFactory(List.of(new SimpleCamunda7Delegate()), List.of());
-        assertInstanceOf(SimpleCamunda7Delegate.class, resolver.get("key"));
+        Resolver resolver = new KoraResolverFactory(List.of(new SimpleKoraDelegate()), List.of());
+        assertInstanceOf(SimpleKoraDelegate.class, resolver.get("key"));
     }
 }

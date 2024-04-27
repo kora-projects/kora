@@ -14,14 +14,16 @@ public final class KoraResolverFactory implements ResolverFactory, Resolver {
 
     private final Map<String, Object> componentByKey;
 
-    public KoraResolverFactory(List<Camunda7Delegate> camundaDelegates,
-                               List<JavaDelegate> delegates) {
+    public KoraResolverFactory(List<KoraDelegate> koraDelegates,
+                               List<JavaDelegate> javaDelegates) {
         this.componentByKey = new HashMap<>();
-        for (Camunda7Delegate component : camundaDelegates) {
-            this.componentByKey.put(component.key(), component);
+        for (JavaDelegate delegate : javaDelegates) {
+            this.componentByKey.put(delegate.getClass().getSimpleName(), delegate);
+            this.componentByKey.put(delegate.getClass().getCanonicalName(), delegate);
         }
 
-        for (JavaDelegate delegate : delegates) {
+        for (KoraDelegate delegate : koraDelegates) {
+            this.componentByKey.put(delegate.key(), delegate);
             this.componentByKey.put(delegate.getClass().getSimpleName(), delegate);
             this.componentByKey.put(delegate.getClass().getCanonicalName(), delegate);
         }

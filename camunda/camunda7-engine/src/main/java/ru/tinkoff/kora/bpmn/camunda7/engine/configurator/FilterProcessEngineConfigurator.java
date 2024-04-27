@@ -7,6 +7,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.bpmn.camunda7.engine.Camunda7EngineConfig;
 
+import java.time.Duration;
+
 public final class FilterProcessEngineConfigurator implements ProcessEngineConfigurator {
 
     private static final Logger logger = LoggerFactory.getLogger(FilterProcessEngineConfigurator.class);
@@ -20,13 +22,18 @@ public final class FilterProcessEngineConfigurator implements ProcessEngineConfi
     @Override
     public void setup(ProcessEngine engine) {
         if (engineConfig.filter() != null && !engineConfig.filter().create().isBlank()) {
+            logger.debug("Camunda7 Configurator filter creating...");
+            final long started = System.nanoTime();
+
             final String filterName = engineConfig.filter().create();
             FilterService filterService = engine.getFilterService();
             Filter filter = filterService.createFilterQuery().filterName(filterName).singleResult();
             if (filter == null) {
                 filter = filterService.newTaskFilter(filterName);
                 filterService.saveFilter(filter);
-                logger.info("Created new task filter: {}", filterName);
+                logger.info("Camunda7 Configurator filter created in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+            } else {
+                logger.debug("Camunda7 Configurator filter already exist");
             }
         }
     }

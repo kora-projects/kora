@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.bpmn.camunda7.engine.Camunda7EngineConfig;
 import ru.tinkoff.kora.bpmn.camunda7.engine.KoraProcessEngineConfiguration;
 
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class StatementsProcessEngineConfigurator implements ProcessEngineConfigurator {
@@ -28,7 +29,10 @@ public final class StatementsProcessEngineConfigurator implements ProcessEngineC
 
     @Override
     public void setup(ProcessEngine engine) throws Exception {
-        if (engineConfig.twoStage()) {
+        if (engineConfig.initializeParallel()) {
+            logger.debug("Camunda7 Configurator processing required mapped statements...");
+            final long started = System.nanoTime();
+
             Configuration src = processEngineConfiguration.createConfigurationStageTwo();
             Configuration dest = processEngineConfiguration.getSqlSessionFactory().getConfiguration();
 
@@ -39,11 +43,12 @@ public final class StatementsProcessEngineConfigurator implements ProcessEngineC
                     statements.incrementAndGet();
                 }
             });
-            logger.debug("Copied {} mapped statements. New total is {} mapped statements.", statements.get(), dest.getMappedStatements().size());
-
             if (jobExecutor.isAutoActivate()) {
                 jobExecutor.start();
             }
+
+            logger.info("Camunda7 Configurator processed {} new mapped statements with total {} mapped statements in {}",
+                statements.get(), dest.getMappedStatements().size(), Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
         }
     }
 }
