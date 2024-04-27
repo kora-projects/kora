@@ -19,7 +19,7 @@ final class WrappedJobHandler implements JobHandler {
 
     @Override
     public void handle(JobClient client, ActivatedJob job) {
-        final JobContext jobContext = new ActiveJobContext(jobHandler.name(), job);
+        final JobContext jobContext = new ActiveJobContext(jobHandler.type(), job);
         var telemetryContext = telemetry.get(jobContext);
 
         try {

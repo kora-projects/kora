@@ -5,13 +5,16 @@ import ru.tinkoff.kora.bpmn.camunda8.worker.JobContext;
 
 public final class DefaultCamunda8WorkerTelemetry implements Camunda8WorkerTelemetry {
 
+    private final String workerType;
     @Nullable
     private final Camunda8WorkerLogger logger;
     @Nullable
     private final Camunda8WorkerMetrics metrics;
 
-    public DefaultCamunda8WorkerTelemetry(@Nullable Camunda8WorkerLogger logger,
+    public DefaultCamunda8WorkerTelemetry(String workerType,
+                                          @Nullable Camunda8WorkerLogger logger,
                                           @Nullable Camunda8WorkerMetrics metrics) {
+        this.workerType = workerType;
         this.logger = logger;
         this.metrics = metrics;
     }

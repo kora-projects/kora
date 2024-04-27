@@ -9,7 +9,7 @@ import java.util.List;
 
 public interface KoraJobWorker {
 
-    String name();
+    String type();
 
     default List<String> fetchVariables() {
         return Collections.emptyList();

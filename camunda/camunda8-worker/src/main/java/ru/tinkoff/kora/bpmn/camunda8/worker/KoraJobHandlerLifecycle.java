@@ -57,7 +57,7 @@ public final class KoraJobHandlerLifecycle implements Lifecycle {
 
             CompletableFuture[] jobOpeners = jobWorkers.stream()
                 .map(koraJobWorker -> CompletableFuture.runAsync(() -> {
-                    JobConfig jobConfig = workerConfig.getJobConfig(koraJobWorker.name());
+                    JobConfig jobConfig = workerConfig.getJobConfig(koraJobWorker.type());
                     if (jobConfig.enabled()) {
                         JobWorker jobWorker = createJobWorker(koraJobWorker, jobConfig);
                         workers.add(jobWorker);
@@ -67,7 +67,7 @@ public final class KoraJobHandlerLifecycle implements Lifecycle {
 
             CompletableFuture.allOf(jobOpeners).join();
 
-            final List<String> workerNames = jobWorkers.stream().map(KoraJobWorker::name).toList();
+            final List<String> workerNames = jobWorkers.stream().map(KoraJobWorker::type).toList();
             logger.info("Camunda8 JobWorkers {} started in {}", workerNames, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
         }
     }
@@ -86,24 +86,24 @@ public final class KoraJobHandlerLifecycle implements Lifecycle {
                 }
             }
 
-            final List<String> workerNames = jobWorkers.stream().map(KoraJobWorker::name).toList();
+            final List<String> workerNames = jobWorkers.stream().map(KoraJobWorker::type).toList();
             logger.info("Camunda8 JobWorkers {} stopped in {}", workerNames, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
         }
     }
 
     public JobWorker createJobWorker(KoraJobWorker worker, JobConfig jobConfig) {
-        final Camunda8WorkerTelemetry telemetry = telemetryFactory.get(clientConfig.telemetry());
+        final Camunda8WorkerTelemetry telemetry = telemetryFactory.get(worker.type(), clientConfig.telemetry());
         final JobHandler jobHandler = new WrappedJobHandler(telemetry, worker);
         final BackoffSupplier backoffSupplier = zeebeBackoffFactory.build(jobConfig.backoff());
 
         final JobWorkerMetrics jobWorkerMetrics = zeebeMetricsFactory == null
             ? null
-            : zeebeMetricsFactory.get(jobConfig.type(), clientConfig.telemetry().metrics());
+            : zeebeMetricsFactory.get(worker.type(), clientConfig.telemetry().metrics());
 
         var builder = client.newWorker()
-            .jobType(jobConfig.type())
+            .jobType(worker.type())
             .handler(jobHandler)
-            .name(worker.name())
+            .name(jobConfig.name())
             .metrics(jobWorkerMetrics)
             .fetchVariables(worker.fetchVariables())
             .backoffSupplier(backoffSupplier)

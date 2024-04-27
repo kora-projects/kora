@@ -36,7 +36,9 @@ public interface Camunda8WorkerConfig {
     @ConfigValueExtractor
     interface JobConfig {
 
-        String type();
+        default String name() {
+            return "default";
+        }
 
         @Nullable
         BackoffConfig backoff();
@@ -71,7 +73,7 @@ public interface Camunda8WorkerConfig {
     );
 
     JobConfig DEFAULT_JOB_CONFIG = new $Camunda8WorkerConfig_JobConfig_ConfigValueExtractor.JobConfig_Impl(
-        "unknown", DEFAULT_BACKOFF_CONFIG, List.of(), Duration.ofMinutes(15), 32, Duration.ofSeconds(15), Duration.ofMillis(100), true, false, Duration.ofSeconds(15)
+        "default", DEFAULT_BACKOFF_CONFIG, List.of(), Duration.ofMinutes(15), 32, Duration.ofSeconds(15), Duration.ofMillis(100), true, false, Duration.ofSeconds(15)
     );
 
     default JobConfig getJobConfig(@Nonnull String name) {
@@ -97,7 +99,7 @@ public interface Camunda8WorkerConfig {
 
         final BackoffConfig backoff = merge(targetConfig.backoff(), defaultConfig.backoff());
         return new $Camunda8WorkerConfig_JobConfig_ConfigValueExtractor.JobConfig_Impl(
-            targetConfig.type() == null ? defaultConfig.type() : targetConfig.type(),
+            targetConfig.name() == null ? defaultConfig.name() : targetConfig.name(),
             backoff,
             targetConfig.tenantIds() == null ? defaultConfig.tenantIds() : targetConfig.tenantIds(),
             targetConfig.timeout() == null ? defaultConfig.timeout() : targetConfig.timeout(),
