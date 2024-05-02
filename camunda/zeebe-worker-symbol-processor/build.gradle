@@ -1,0 +1,36 @@
+plugins {
+    id "java-test-fixtures"
+}
+
+apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
+
+dependencies {
+    implementation project(':kora-app-symbol-processor')
+
+    implementation libs.ksp.api
+    implementation libs.kotlin.reflect
+    implementation libs.kotlinpoet
+    implementation libs.kotlinpoet.ksp
+
+    testImplementation project(":internal:test-logging")
+    testImplementation testFixtures(project(":symbol-processor-common"))
+    testImplementation(libs.kotlin.stdlib.lib)
+    testImplementation(libs.kotlin.coroutines.reactor)
+    testImplementation project(":camunda:zeebe-worker")
+}
+
+kotlin {
+    sourceSets {
+        testGenerated {
+            kotlin.srcDir("build/generated/ksp/sources/kotlin")
+        }
+    }
+    sourceSets.main {
+        kotlin.srcDir("build/generated/ksp/main/kotlin")
+    }
+    sourceSets.test {
+        kotlin.srcDir("build/generated/ksp/test/kotlin")
+    }
+}
+
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
