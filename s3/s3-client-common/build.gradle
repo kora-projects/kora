@@ -1,4 +1,7 @@
 dependencies {
+    compileOnly libs.jetbrains.annotations
+    implementation project(":config:config-common")
+
     api project(":common")
 
     testImplementation project(":internal:test-logging")

@@ -17,11 +17,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-public final class KoraSdkHttpClient implements SdkHttpClient, SdkAsyncHttpClient {
+public final class KoraAwsSdkHttpClient implements SdkHttpClient, SdkAsyncHttpClient {
 
     private final HttpClient httpClient;
 
-    public KoraSdkHttpClient(HttpClient httpClient) {
+    public KoraAwsSdkHttpClient(HttpClient httpClient) {
         this.httpClient = httpClient;
     }
 
