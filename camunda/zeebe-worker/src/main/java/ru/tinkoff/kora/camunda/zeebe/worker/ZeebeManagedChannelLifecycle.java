@@ -49,7 +49,7 @@ final class ZeebeManagedChannelLifecycle implements Lifecycle, Wrapped<ManagedCh
 
     @Override
     public void init() {
-        logger.debug("Zeebe ZeebeManagedChannel starting...");
+        logger.debug("Zeebe GrpcManagedChannel starting...");
         final long started = System.nanoTime();
 
         var uri = URI.create(this.config.url());
@@ -81,19 +81,19 @@ final class ZeebeManagedChannelLifecycle implements Lifecycle, Wrapped<ManagedCh
         builder.intercept(interceptors);
         this.channel = builder.build();
 
-        logger.info("Zeebe ZeebeManagedChannel started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        logger.info("Zeebe GrpcManagedChannel started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
     }
 
     @Override
     public void release() {
         if (channel != null) {
-            logger.debug("Zeebe ZeebeManagedChannel closing...");
+            logger.debug("Zeebe GrpcManagedChannel closing...");
             final long started = System.nanoTime();
 
             channel.shutdown();
             this.channel = null;
 
-            logger.info("Zeebe ZeebeManagedChannel started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+            logger.info("Zeebe GrpcManagedChannel started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
         }
     }
 
