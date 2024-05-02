@@ -22,8 +22,9 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             version('kotlinpoet', '1.18.1')
             version('swagger', '2.2.22')
             version('opentelemetry', '1.37.0')
+            version('undertow', '2.3.13.Final')
             version('camunda7', '7.21.0')
-            version('camunda8', '8.5.0')
+            version('zeebe', '8.5.0')
 
             library('jsr305', 'com.google.code.findbugs', 'jsr305').version('3.0.2')
             library('jakarta-annotations', 'jakarta.annotation', 'jakarta.annotation-api').version('2.1.1')
@@ -76,7 +77,8 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
 
             library("jms-api", "javax.jms", "javax.jms-api").version("2.0.1")
 
-            library("undertow-core", "io.undertow", "undertow-core").version("2.3.13.Final")
+            library("undertow-core", "io.undertow", "undertow-core").versionRef("undertow")
+            library("undertow-servlet", "io.undertow", "undertow-servlet").versionRef("undertow")
             library("async-http-client", "org.asynchttpclient", "async-http-client").version("2.12.3")
             library("okhttp", "com.squareup.okhttp3", "okhttp").version("5.0.0-alpha.14")
             library("okio", "com.squareup.okio", "okio").version("3.9.0")
@@ -179,8 +181,8 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             library('resteasy-undertow-jakarta', 'org.jboss.resteasy', 'resteasy-undertow').version('6.2.8.Final')
             library('jakarta-rs-api', 'jakarta.ws.rs', 'jakarta.ws.rs-api').version('3.1.0')
 
-            library('camunda8-model', 'io.camunda', 'zeebe-bpmn-model').versionRef('camunda8')
-            library('camunda8-client', 'io.camunda', 'zeebe-client-java').versionRef('camunda8')
+            library('zeebe-model', 'io.camunda', 'zeebe-bpmn-model').versionRef('zeebe')
+            library('zeebe-client', 'io.camunda', 'zeebe-client-java').versionRef('zeebe')
         }
     }
 }
