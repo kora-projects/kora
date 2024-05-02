@@ -4,7 +4,6 @@ dependencies {
     annotationProcessor project(":config:config-annotation-processor")
 
     implementation project(":config:config-common")
-    implementation project(":http:http-server-undertow")
     implementation libs.camunda7.engine
     implementation libs.resteasy.undertow.jakarta
 
