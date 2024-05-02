@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.jms.telemetry.JmsConsumerTelemetry;
 import ru.tinkoff.kora.jms.telemetry.JmsConsumerTelemetryFactory;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
@@ -20,6 +21,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class JmsMessageListenerContainer implements Lifecycle {
+
+    private static final Logger logger = LoggerFactory.getLogger(JmsMessageListenerContainer.class);
+
     private static final ConcurrentHashMap<String, AtomicInteger> threadCounters = new ConcurrentHashMap<>();
     private final ConnectionFactory connectionFactory;
     private final JmsListenerContainerConfig config;
@@ -43,10 +47,16 @@ public class JmsMessageListenerContainer implements Lifecycle {
             if (this.config.threads() == 0) {
                 return;
             }
+
+            logger.debug("JmsMessageListener starting...");
+            var started = System.nanoTime();
+
             this.executorService = Executors.newFixedThreadPool(this.config.threads());
             for (int i = 0; i < this.config.threads(); i++) {
                 this.executorService.submit(this::connectLoop);
             }
+
+            logger.info("JmsMessageListener started in {}", TimeUtils.tookForLogging(started));
         }
     }
 
@@ -56,12 +66,18 @@ public class JmsMessageListenerContainer implements Lifecycle {
             if (this.config.threads() == 0) {
                 return;
             }
+
+            logger.debug("JmsMessageListener stopping...");
+            var started = System.nanoTime();
+
             this.executorService.shutdownNow();
             try {
                 this.executorService.awaitTermination(10, TimeUnit.SECONDS);
                 this.executorService = null;
             } catch (InterruptedException ignore) {
             }
+
+            logger.info("JmsMessageListener stopped in {}", TimeUtils.tookForLogging(started));
         }
     }
 

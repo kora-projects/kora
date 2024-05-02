@@ -12,6 +12,7 @@ import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Graph;
 import ru.tinkoff.kora.application.graph.Node;
 import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
@@ -242,7 +243,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     }
 
     public static KoraTestContext getInitializedKoraTestContext(InitializeOrigin initializeOrigin, ExtensionContext context) {
-        var started = System.nanoTime();
+        var started = TimeUtils.started();
 
         var koraTestContext = getKoraTestContext(context);
         final boolean isReady = koraTestContext.metadata != null && koraTestContext.graph != null;
@@ -266,9 +267,9 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
         if(!isReady) {
             if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_METHOD) {
-                logger.info("@KoraAppTest test method '{}' setup took: {}", getTestMethodName(context), Duration.ofNanos(System.nanoTime() - started));
+                logger.info("@KoraAppTest test method '{}' setup took: {}", getTestMethodName(context), TimeUtils.tookForLogging(started));
             } else {
-                logger.info("@KoraAppTest test class '{}' setup took: {}", getTestClassName(context), Duration.ofNanos(System.nanoTime() - started));
+                logger.info("@KoraAppTest test class '{}' setup took: {}", getTestClassName(context), TimeUtils.tookForLogging(started));
             }
         }
 
@@ -293,10 +294,10 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_METHOD) {
             if (koraTestContext.graph != null) {
                 logger.debug("@KoraAppTest test method '{}' cleanup started...", getTestMethodName(context));
-                var started = System.nanoTime();
+                var started = TimeUtils.started();
                 koraTestContext.graph.close();
                 koraTestContext.graph = null;
-                logger.info("@KoraAppTest test method '{}' cleanup took: {}", getTestMethodName(context), Duration.ofNanos(System.nanoTime() - started));
+                logger.info("@KoraAppTest test method '{}' cleanup took: {}", getTestMethodName(context), TimeUtils.tookForLogging(started));
             }
         }
     }
@@ -307,10 +308,10 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_CLASS) {
             if (!context.getRequiredTestClass().isAnnotationPresent(Nested.class)) {
                 if (koraTestContext.graph != null) {
-                    var started = System.nanoTime();
+                    var started = TimeUtils.started();
                     logger.debug("@KoraAppTest test class '{}' cleanup started...", getTestClassName(context));
                     koraTestContext.graph.close();
-                    logger.info("@KoraAppTest test class '{}' cleanup took: {}", getTestClassName(context), Duration.ofNanos(System.nanoTime() - started));
+                    logger.info("@KoraAppTest test class '{}' cleanup took: {}", getTestClassName(context), TimeUtils.tookForLogging(started));
                 }
             }
         }

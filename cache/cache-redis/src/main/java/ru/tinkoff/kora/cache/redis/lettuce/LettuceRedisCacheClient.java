@@ -11,6 +11,7 @@ import jakarta.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.cache.redis.RedisCacheClient;
+import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.time.Duration;
 import java.util.Map;
@@ -89,7 +90,7 @@ final class LettuceRedisCacheClient implements RedisCacheClient {
     @Override
     public void init() {
         logger.debug("Redis Client (Lettuce) starting...");
-        final long started = System.nanoTime();
+        final long started = TimeUtils.started();
 
         if (redisClient instanceof io.lettuce.core.RedisClient rc) {
             var redisConnection = rc.connect(new ByteArrayCodec());
@@ -111,14 +112,14 @@ final class LettuceRedisCacheClient implements RedisCacheClient {
             throw new UnsupportedOperationException("Unknown Redis Client: " + redisClient.getClass());
         }
 
-        logger.info("Redis Client (Lettuce) started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        logger.info("Redis Client (Lettuce) started in {}", TimeUtils.tookForLogging(started));
     }
 
     @Override
     public void release() {
         logger.debug("Redis Client (Lettuce) stopping...");
-        final long started = System.nanoTime();
+        final long started = TimeUtils.started();
         connection.close();
-        logger.info("Redis Client (Lettuce) stopped in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        logger.info("Redis Client (Lettuce) stopped in {}", TimeUtils.tookForLogging(started));
     }
 }

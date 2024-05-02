@@ -6,7 +6,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-public class JmsUtils {
+public final class JmsUtils {
+
+    private JmsUtils() { }
 
     public static String REPLY_TO = "JMSReplyTo";
 

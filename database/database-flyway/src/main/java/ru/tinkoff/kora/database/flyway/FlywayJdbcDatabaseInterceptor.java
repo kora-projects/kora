@@ -4,6 +4,7 @@ import org.flywaydb.core.Flyway;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.GraphInterceptor;
+import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.database.jdbc.JdbcDatabase;
 
 import java.time.Duration;
@@ -14,15 +15,15 @@ public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<Jdb
 
     @Override
     public JdbcDatabase init(JdbcDatabase value) {
-        final long started = System.nanoTime();
-        logger.info("FlyWay migration starting...");
+        final long started = TimeUtils.started();
+        logger.debug("FlyWay migration applying...");
 
         Flyway.configure()
             .dataSource(value.value())
             .load()
             .migrate();
 
-        logger.info("FlyWay migration finished in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        logger.info("FlyWay migration applied in {}", TimeUtils.tookForLogging(started));
         return value;
     }
 

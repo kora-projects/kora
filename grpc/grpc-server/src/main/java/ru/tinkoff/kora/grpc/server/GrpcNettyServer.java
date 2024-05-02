@@ -8,6 +8,7 @@ import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
+import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -29,24 +30,24 @@ public class GrpcNettyServer implements Lifecycle, ReadinessProbe {
     @Override
     public void init() throws IOException {
         logger.debug("Starting gRPC Server...");
-        final long started = System.nanoTime();
+        final long started = TimeUtils.started();
 
         var builder = nettyServerBuilder.get();
         this.server = builder.build();
         this.server.start();
         this.state.set(GrpcServerState.RUN);
-        logger.info("gRPC Server started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        logger.info("gRPC Server started in {}", TimeUtils.tookForLogging(started));
     }
 
     @Override
     public void release() {
         logger.debug("gRPC Server stopping...");
-        final long started = System.nanoTime();
+        final long started = TimeUtils.started();
 
         state.set(GrpcServerState.SHUTDOWN);
         server.shutdown();
 
-        logger.info("gRPC Server stopped in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        logger.info("gRPC Server stopped in {}", TimeUtils.tookForLogging(started));
     }
 
     @Override

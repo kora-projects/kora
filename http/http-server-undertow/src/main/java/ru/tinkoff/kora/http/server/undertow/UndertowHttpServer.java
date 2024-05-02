@@ -9,6 +9,7 @@ import org.xnio.XnioWorker;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
+import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.http.server.common.HttpServer;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
@@ -43,7 +44,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
         } catch (InterruptedException e) {
         }
         logger.debug("Public HTTP Server (Undertow) stopping...");
-        final long started = System.nanoTime();
+        final long started = TimeUtils.started();
         this.gracefulShutdown.shutdown();
         try {
             logger.debug("Public HTTP Server (Undertow) awaiting graceful shutdown...");
@@ -56,19 +57,19 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
             this.undertow.stop();
             this.undertow = null;
         }
-        logger.info("Public HTTP Server (Undertow) stopped in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        logger.info("Public HTTP Server (Undertow) stopped in {}", TimeUtils.tookForLogging(started));
     }
 
     @Override
     public void init() {
         logger.debug("Public HTTP Server (Undertow) starting...");
-        final long started = System.nanoTime();
+        final long started = TimeUtils.started();
         this.gracefulShutdown.start();
         this.undertow = this.createServer();
         this.undertow.start();
         this.state.set(HttpServerState.RUN);
         var data = StructuredArgument.marker("port", this.port());
-        logger.info(data, "Public HTTP Server (Undertow) started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        logger.info(data, "Public HTTP Server (Undertow) started in {}", TimeUtils.tookForLogging(started));
     }
 
     private Undertow createServer() {

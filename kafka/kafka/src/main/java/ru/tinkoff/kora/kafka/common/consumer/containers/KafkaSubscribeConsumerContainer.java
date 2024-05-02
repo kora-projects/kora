@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.kafka.common.KafkaUtils.NamedThreadFactory;
 import ru.tinkoff.kora.kafka.common.consumer.KafkaListenerConfig;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.BaseKafkaRecordsHandler;
@@ -69,8 +70,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
     public void launchPollLoop(Consumer<K, V> consumer, long started) {
         try (consumer) {
             consumers.add(consumer);
-            logger.info("Kafka Consumer '{}' started in {}",
-                consumerPrefix, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+            logger.info("Kafka Consumer '{}' started in {}", consumerPrefix, TimeUtils.tookForLogging(started));
 
             boolean isFirstPoll = true;
             while (isActive.get()) {
@@ -80,7 +80,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
                     var records = consumer.poll(config.pollTimeout());
                     if (isFirstPoll) {
                         logger.info("Kafka Consumer '{}' first poll in {}",
-                            consumerPrefix, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+                            consumerPrefix, TimeUtils.tookForLogging(started));
                         isFirstPoll = false;
                     }
 
@@ -128,7 +128,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
     public void init() {
         if (config.threads() > 0 && this.isActive.compareAndSet(false, true)) {
             logger.debug("Kafka Consumer '{}' starting...", consumerPrefix);
-            final long started = System.nanoTime();
+            final long started = TimeUtils.started();
 
             executorService = Executors.newFixedThreadPool(config.threads(), new NamedThreadFactory(consumerPrefix));
             for (int i = 0; i < config.threads(); i++) {
@@ -141,7 +141,6 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
                     }
                 });
             }
-            logger.info("Started Kafka Consumer '{}' took {}", consumerPrefix, Duration.ofNanos(System.nanoTime() - started));
         }
     }
 
@@ -149,7 +148,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
     public void release() {
         if (isActive.compareAndSet(true, false)) {
             logger.debug("Kafka Consumer '{}' stopping...", consumerPrefix);
-            final long started = System.nanoTime();
+            final long started = TimeUtils.started();
 
             for (var consumer : consumers) {
                 consumer.wakeup();
@@ -159,7 +158,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
                 executorService.shutdownNow();
             }
 
-            logger.info("Kafka Consumer '{}' stopped in {}", consumerPrefix, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+            logger.info("Kafka Consumer '{}' stopped in {}", consumerPrefix, TimeUtils.tookForLogging(started));
         }
     }
 
