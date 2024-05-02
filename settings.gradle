@@ -111,9 +111,11 @@ include(
     'experimental:s3-client-aws',
     'experimental:bpmn-camunda7-engine',
     'bpmn:bpmn-camunda7-rest-undertow',
-    'camunda:camunda7-engine',
-    'camunda:camunda7-rest-undertow',
-    'camunda:camunda8-worker',
+    'camunda:camunda-engine',
+    'camunda:camunda-rest-undertow',
+    'camunda:zeebe-worker',
+    'camunda:zeebe-worker-annotation-processor',
+    'camunda:zeebe-worker-symbol-processor',
 )
 
 apply from: 'dependencies.gradle'
