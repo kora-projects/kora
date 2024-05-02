@@ -64,7 +64,7 @@ final class UndertowCamundaRestHttpHandler implements HttpHandler, Lifecycle, Wr
 
     @Override
     public void init() throws Exception {
-        logger.debug("Camunda7 Rest Handler (Undertow) configuring...");
+        logger.debug("Camunda Rest Handler (Undertow) configuring...");
         final long started = System.nanoTime();
 
         final ResteasyDeployment deployment = new ResteasyDeploymentImpl();
@@ -87,11 +87,16 @@ final class UndertowCamundaRestHttpHandler implements HttpHandler, Lifecycle, Wr
         root.addPrefixPath(camundaRestConfig.path(), deploymentManager.start());
         this.realhttpHandler = root;
 
-        logger.info("Camunda7 Rest Handler (Undertow) configured in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        logger.info("Camunda Rest Handler (Undertow) configured in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
     }
 
     @Override
     public void release() throws Exception {
+        logger.debug("Camunda Rest Handler (Undertow) stopping...");
+        final long started = System.nanoTime();
+
         deploymentManager.stop();
+
+        logger.info("Camunda Rest Handler (Undertow) stopped in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
     }
 }

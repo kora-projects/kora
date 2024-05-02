@@ -102,9 +102,9 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
     @Override
     public ReadinessProbeFailure probe() {
         return switch (this.state.get()) {
-            case INIT -> new ReadinessProbeFailure("Public HTTP Server (Undertow) init");
+            case INIT -> new ReadinessProbeFailure(name + " HTTP Server (Undertow) init");
             case RUN -> null;
-            case SHUTDOWN -> new ReadinessProbeFailure("Public HTTP Server (Undertow) shutdown");
+            case SHUTDOWN -> new ReadinessProbeFailure(name + "HTTP Server (Undertow) shutdown");
         };
     }
 
