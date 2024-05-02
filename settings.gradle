@@ -113,9 +113,9 @@ include(
     'bpmn:bpmn-camunda7-rest-undertow',
     'camunda:camunda-engine',
     'camunda:camunda-rest-undertow',
-    'camunda:zeebe-worker',
-    'camunda:zeebe-worker-annotation-processor',
-    'camunda:zeebe-worker-symbol-processor',
+    'camunda:camunda-zeebe-worker',
+    'camunda:camunda-zeebe-worker-annotation-processor',
+    'camunda:camunda-zeebe-worker-symbol-processor',
 )
 
 apply from: 'dependencies.gradle'

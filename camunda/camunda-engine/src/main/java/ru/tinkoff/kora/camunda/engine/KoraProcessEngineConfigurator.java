@@ -25,7 +25,7 @@ public final class KoraProcessEngineConfigurator implements Lifecycle {
 
     @Override
     public void init() {
-        logger.debug("Camunda7 Engine configuring...");
+        logger.debug("Camunda Engine configuring...");
         final long started = System.nanoTime();
 
         var setups = camundaConfigurators.stream()
@@ -39,7 +39,7 @@ public final class KoraProcessEngineConfigurator implements Lifecycle {
             .toArray(CompletableFuture[]::new);
 
         CompletableFuture.allOf(setups).join();
-        logger.info("Camunda7 Engine configured in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        logger.info("Camunda Engine configured in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
     }
 
     @Override

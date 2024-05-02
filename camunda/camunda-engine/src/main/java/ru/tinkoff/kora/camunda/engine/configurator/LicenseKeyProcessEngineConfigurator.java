@@ -30,26 +30,26 @@ public final class LicenseKeyProcessEngineConfigurator implements ProcessEngineC
     @Override
     public void setup(ProcessEngine engine) {
         if (config.licensePath() != null) {
-            logger.debug("Camunda7 Configurator licence key registering...");
+            logger.debug("Camunda Configurator licence key registering...");
             final long started = System.nanoTime();
 
             ManagementService managementService = engine.getManagementService();
             if (!camundaVersion.isEnterprise()) {
-                logger.debug("Camunda7 Configurator license key is not required for Camunda Community Edition, ignoring...");
+                logger.debug("Camunda Configurator license key is not required for Camunda Community Edition, ignoring...");
                 return;
             }
 
             if (managementService.getLicenseKey() != null) {
-                logger.debug("Camunda7 Configurator license Key is already registered...");
+                logger.debug("Camunda Configurator license Key is already registered...");
                 return;
             }
 
             String licenseKey = readLicenseKeyFromUrl(config.licensePath());
             if (licenseKey != null) {
                 managementService.setLicenseKey(licenseKey);
-                logger.info("Camunda7 Configurator licence key registered in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+                logger.info("Camunda Configurator licence key registered in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
             } else {
-                logger.warn("Camunda7 Configurator can't find license key, register license in the Camunda Cockpit manually");
+                logger.warn("Camunda Configurator can't find license key, register license in the Camunda Cockpit manually");
             }
         }
     }

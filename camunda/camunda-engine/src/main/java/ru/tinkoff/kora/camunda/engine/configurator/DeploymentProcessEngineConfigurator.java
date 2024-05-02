@@ -41,7 +41,7 @@ public final class DeploymentProcessEngineConfigurator implements ProcessEngineC
 
     private void deployProcessModels(CamundaEngineConfig.DeploymentConfig deploymentConfig, RepositoryService repositoryService) throws IOException {
         final List<String> locations = deploymentConfig.resources();
-        logger.debug("Camunda7 Configurator deploying {} resources...", locations);
+        logger.debug("Camunda Configurator deploying {} resources...", locations);
         final long started = System.nanoTime();
 
         final Set<String> normalizedLocations = locations.stream()
@@ -58,7 +58,7 @@ public final class DeploymentProcessEngineConfigurator implements ProcessEngineC
 
         final List<Resource> resources = ClasspathResourceUtils.findResources(normalizedLocations);
         if (resources.isEmpty()) {
-            logger.debug("Camunda7 Configurator found 0 resources");
+            logger.debug("Camunda Configurator found 0 resources");
         } else {
             DeploymentBuilder builder = repositoryService.createDeployment()
                 .name(deploymentConfig.name())
@@ -76,7 +76,7 @@ public final class DeploymentProcessEngineConfigurator implements ProcessEngineC
 
             if (deploy) {
                 builder.deploy();
-                logger.info("Camunda7 Configurator deployed {} resources in {}", resources, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+                logger.info("Camunda Configurator deployed {} resources in {}", resources, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
             }
         }
     }
