@@ -9,7 +9,10 @@ dependencies {
     implementation libs.fasterxml.uuidgenerator
 
     api project(":common")
-    api libs.camunda7.engine
+    api(libs.camunda7.engine) {
+        exclude group: 'org.springframework', module: 'spring-beans'
+        exclude group: 'org.apache.tomcat', module: 'catalina'
+    }
 
     testImplementation libs.jdbc.postgresql
     testImplementation project(":database:database-jdbc")

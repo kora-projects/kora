@@ -8,8 +8,8 @@ dependencies {
     api project(":json:json-common")
     api project(":grpc:grpc-client")
     api project(":common")
-    api libs.camunda8.client
-    api libs.camunda8.model
+    api libs.zeebe.client
+    api libs.zeebe.model
 
     testImplementation project(":internal:test-logging")
     testImplementation project(":test:test-junit5")

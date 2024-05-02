@@ -3,13 +3,19 @@ apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 dependencies {
     annotationProcessor project(":config:config-annotation-processor")
 
+    compileOnly(libs.camunda7.engine) {
+        exclude group: 'org.springframework', module: 'spring-beans'
+        exclude group: 'org.apache.tomcat', module: 'catalina'
+    }
+
     implementation project(":config:config-common")
-    implementation libs.camunda7.engine
     implementation libs.resteasy.undertow.jakarta
 
     api project(":common")
     api libs.camunda7.rest.jakarta
     api libs.jakarta.rs.api
+    api libs.undertow.core
+    api libs.undertow.servlet
 
     testImplementation libs.jdbc.postgresql
     testImplementation project(":database:database-jdbc")

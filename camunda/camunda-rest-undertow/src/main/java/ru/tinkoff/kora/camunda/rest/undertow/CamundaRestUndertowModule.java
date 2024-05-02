@@ -14,15 +14,15 @@ import ru.tinkoff.kora.common.annotation.Root;
 public interface CamundaRestUndertowModule extends CamundaRestModule {
 
     @Tag(CamundaRest.class)
-    default HttpHandler camundaRestHttpHandler(@Tag(CamundaRest.class) All<Application> applications,
-                                               CamundaRestConfig camundaRestConfig) {
+    default HttpHandler camundaRestUndertowHttpHandler(@Tag(CamundaRest.class) All<Application> applications,
+                                                       CamundaRestConfig camundaRestConfig) {
         return new UndertowCamundaRestHttpHandler(applications, camundaRestConfig);
     }
 
     @Tag(CamundaRest.class)
     @Root
-    default Lifecycle camundaRestHttpServer(@Tag(CamundaRest.class) ValueOf<HttpHandler> camundaHttpHandler,
-                                            ValueOf<CamundaRestConfig> camundaRestConfig) {
+    default Lifecycle camundaRestUndertowHttpServer(@Tag(CamundaRest.class) ValueOf<HttpHandler> camundaHttpHandler,
+                                                    ValueOf<CamundaRestConfig> camundaRestConfig) {
         return new UndertowCamundaHttpServer(camundaRestConfig, camundaHttpHandler);
     }
 }
