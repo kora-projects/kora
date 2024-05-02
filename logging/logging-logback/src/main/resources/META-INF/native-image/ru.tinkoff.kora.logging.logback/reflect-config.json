@@ -5,6 +5,36 @@
   "allDeclaredMethods": true
 },
 {
+    "name": "ch.qos.logback.classic.Level",
+    "allDeclaredConstructors": true,
+    "allDeclaredFields": true,
+    "allDeclaredMethods": true
+},
+{
+    "name": "ch.qos.logback.core.util.Duration",
+    "allDeclaredConstructors": true,
+    "allDeclaredFields": true,
+    "allDeclaredMethods": true
+},
+{
+    "name": "ch.qos.logback.classic.PatternLayout",
+    "allDeclaredConstructors": true,
+    "allDeclaredFields": true,
+    "allDeclaredMethods": true
+},
+{
+    "name": "org.slf4j.LoggerFactory",
+    "allDeclaredConstructors": true,
+    "allDeclaredFields": true,
+    "allDeclaredMethods": true
+},
+{
+    "name": "ch.qos.logback.core.model.processor",
+    "allDeclaredConstructors": true,
+    "allDeclaredFields": true,
+    "allDeclaredMethods": true
+},
+{
   "name": "ch.qos.logback.core.encoder.LayoutWrappingEncoder",
   "allDeclaredConstructors": true,
   "allDeclaredFields": true,

@@ -4,6 +4,7 @@ import jakarta.annotation.Nullable;
 import kotlin.coroutines.CoroutineContext;
 import kotlinx.coroutines.ThreadContextElementKt;
 import ru.tinkoff.kora.common.util.CoroutineContextElement;
+import ru.tinkoff.kora.common.util.ReactorContextHook;
 
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -124,5 +125,13 @@ public class Context {
 
     private static int capacity(int numMappings) {
         return (int) Math.ceil(numMappings / 0.75D);
+    }
+
+    static {
+        try {
+            ReactorContextHook.init();
+        } catch (NoClassDefFoundError ignore) {
+            // ignore
+        }
     }
 }
