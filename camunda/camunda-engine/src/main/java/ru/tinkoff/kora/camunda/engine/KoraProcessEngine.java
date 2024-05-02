@@ -23,24 +23,24 @@ public final class KoraProcessEngine implements Lifecycle, Wrapped<ProcessEngine
 
     @Override
     public void init() {
-        logger.debug("Camunda7 Engine starting...");
+        logger.debug("Camunda Engine starting...");
         final long started = System.nanoTime();
 
         this.processEngine = processEngineConfiguration.buildProcessEngine();
         ProcessEngines.registerProcessEngine(processEngine);
 
-        logger.info("Camunda7 Engine started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        logger.info("Camunda Engine started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
     }
 
     @Override
     public void release() {
-        logger.debug("Camunda7 Engine stopping...");
+        logger.debug("Camunda Engine stopping...");
         final long started = System.nanoTime();
 
         ProcessEngines.unregister(processEngine);
         processEngine.close();
 
-        logger.info("Camunda7 Engine stopped in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        logger.info("Camunda Engine stopped in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
     }
 
     @Override

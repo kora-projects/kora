@@ -19,7 +19,7 @@ public final class JobExecutorReadinessProbe implements ReadinessProbe {
         if (jobExecutor.isAutoActivate()) {
             return null;
         } else {
-            return new ReadinessProbeFailure("Camunda7 Engine JobExecutor is not active");
+            return new ReadinessProbeFailure("Camunda Engine JobExecutor is not active");
         }
     }
 }

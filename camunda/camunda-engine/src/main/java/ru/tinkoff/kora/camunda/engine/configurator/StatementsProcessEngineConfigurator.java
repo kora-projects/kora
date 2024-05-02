@@ -30,7 +30,7 @@ public final class StatementsProcessEngineConfigurator implements ProcessEngineC
     @Override
     public void setup(ProcessEngine engine) {
         if (engineConfig.initializeParallel()) {
-            logger.debug("Camunda7 Configurator processing required mapped statements...");
+            logger.debug("Camunda Configurator processing required mapped statements...");
             final long started = System.nanoTime();
 
             Configuration src = processEngineConfiguration.createConfigurationStageTwo();
@@ -48,7 +48,7 @@ public final class StatementsProcessEngineConfigurator implements ProcessEngineC
                 jobExecutor.start();
             }
 
-            logger.info("Camunda7 Configurator processed {} new mapped statements with total {} mapped statements in {}",
+            logger.info("Camunda Configurator processed {} new mapped statements with total {} mapped statements in {}",
                 statements.get(), dest.getMappedStatements().size(), Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
         }
     }

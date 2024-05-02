@@ -6,7 +6,7 @@ dependencies {
 
     testImplementation testFixtures(project(":annotation-processor-common"))
     testImplementation project(":internal:test-logging")
-    testImplementation project(":camunda:zeebe-worker")
+    testImplementation project(":camunda:camunda-zeebe-worker")
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

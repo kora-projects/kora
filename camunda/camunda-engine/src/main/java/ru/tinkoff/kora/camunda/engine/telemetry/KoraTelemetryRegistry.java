@@ -15,7 +15,7 @@ public final class KoraTelemetryRegistry extends TelemetryRegistry {
     public KoraTelemetryRegistry(@Nullable ApplicationServerImpl applicationServer) {
         setCamundaIntegration(INTEGRATION_NAME);
         if (applicationServer != null) {
-            logger.debug("Camunda7 ApplicationServer: vendor={}, version={}", applicationServer.getVendor(), applicationServer.getVersion());
+            logger.debug("Camunda ApplicationServer: vendor={}, version={}", applicationServer.getVendor(), applicationServer.getVersion());
             setApplicationServer(applicationServer.getVersion());
         } else {
             logger.debug("Unable to identify the ApplicationServer for the Camunda Telemetry Registry");

@@ -36,7 +36,7 @@ public final class AdminUserProcessEngineConfigurator implements ProcessEngineCo
     @Override
     public void setup(ProcessEngine engine) {
         if (adminConfig != null) {
-            logger.debug("Camunda7 Configurator Admin user creating...");
+            logger.debug("Camunda Configurator Admin user creating...");
             final long started = System.nanoTime();
 
             IdentityService identityService = engine.getIdentityService();
@@ -51,9 +51,9 @@ public final class AdminUserProcessEngineConfigurator implements ProcessEngineCo
 
                     createAdminGroupAuthorizations(authorizationService);
                     identityService.createMembership(adminConfig.id(), CAMUNDA_ADMIN);
-                    logger.info("Camunda7 Configurator Admin user created in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+                    logger.info("Camunda Configurator Admin user created in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
                 } else {
-                    logger.debug("Camunda7 Configurator Admin user already exist");
+                    logger.debug("Camunda Configurator Admin user already exist");
                 }
             });
         }
@@ -79,7 +79,7 @@ public final class AdminUserProcessEngineConfigurator implements ProcessEngineCo
 
     private void createAdminGroup(IdentityService identityService) {
         Group camundaAdminGroup = identityService.newGroup(CAMUNDA_ADMIN);
-        camundaAdminGroup.setName("Camunda7 Administrators");
+        camundaAdminGroup.setName("Camunda Administrators");
         camundaAdminGroup.setType(GROUP_TYPE_SYSTEM);
         identityService.saveGroup(camundaAdminGroup);
     }

@@ -22,7 +22,7 @@ public final class FilterProcessEngineConfigurator implements ProcessEngineConfi
     @Override
     public void setup(ProcessEngine engine) {
         if (engineConfig.filter() != null && !engineConfig.filter().create().isBlank()) {
-            logger.debug("Camunda7 Configurator filter creating...");
+            logger.debug("Camunda Configurator filter creating...");
             final long started = System.nanoTime();
 
             final String filterName = engineConfig.filter().create();
@@ -31,9 +31,9 @@ public final class FilterProcessEngineConfigurator implements ProcessEngineConfi
             if (filter == null) {
                 filter = filterService.newTaskFilter(filterName);
                 filterService.saveFilter(filter);
-                logger.info("Camunda7 Configurator filter created in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+                logger.info("Camunda Configurator filter created in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
             } else {
-                logger.debug("Camunda7 Configurator filter already exist");
+                logger.debug("Camunda Configurator filter already exist");
             }
         }
     }
