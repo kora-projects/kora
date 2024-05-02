@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.camunda.rest;
 
-import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
-import ru.tinkoff.kora.http.server.common.HttpServerConfig;
+
+import java.time.Duration;
 
 @ConfigValueExtractor
 public interface CamundaRestConfig {
@@ -15,9 +15,11 @@ public interface CamundaRestConfig {
         return "/engine-rest";
     }
 
-    /**
-     * @return Camunda Rest HttpServer port (by default same as {@link HttpServerConfig#publicApiHttpPort()}
-     */
-    @Nullable
-    Integer port();
+    default Integer port() {
+        return 8090;
+    }
+
+    default Duration shutdownWait() {
+        return Duration.ofMillis(100);
+    }
 }
