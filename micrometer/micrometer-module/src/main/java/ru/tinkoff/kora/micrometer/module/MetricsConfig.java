@@ -5,5 +5,7 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 @ConfigValueExtractor
 public interface MetricsConfig {
-    TelemetryConfig.MetricsConfig.OpentelemetrySpec opentelemetrySpec();
+    default TelemetryConfig.MetricsConfig.OpentelemetrySpec opentelemetrySpec() {
+        return TelemetryConfig.MetricsConfig.OpentelemetrySpec.V120;
+    }
 }
