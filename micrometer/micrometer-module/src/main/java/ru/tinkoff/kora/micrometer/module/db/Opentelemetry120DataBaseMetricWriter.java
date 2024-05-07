@@ -2,7 +2,6 @@ package ru.tinkoff.kora.micrometer.module.db;
 
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Metrics;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseMetricWriter;
@@ -10,14 +9,14 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class MicrometerDataBaseMetricWriter implements DataBaseMetricWriter {
+public final class Opentelemetry120DataBaseMetricWriter implements DataBaseMetricWriter {
 
     private final String poolName;
     private final ConcurrentHashMap<DbKey, DbMetrics> metrics = new ConcurrentHashMap<>();
     private final MeterRegistry meterRegistry;
     private final TelemetryConfig.MetricsConfig config;
 
-    public MicrometerDataBaseMetricWriter(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config, String poolName) {
+    public Opentelemetry120DataBaseMetricWriter(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config, String poolName) {
         this.poolName = poolName;
         this.meterRegistry = meterRegistry;
         this.config = config;
@@ -36,20 +35,20 @@ public final class MicrometerDataBaseMetricWriter implements DataBaseMetricWrite
         return this.meterRegistry;
     }
 
-    private record DbMetrics(DistributionSummary duration) { }
+    private record DbMetrics(DistributionSummary duration) {}
 
-    private record DbKey(String queryId, String operation, @Nullable Class<? extends Throwable> error) { }
+    private record DbKey(String queryId, String operation, @Nullable Class<? extends Throwable> error) {}
 
     private DbMetrics metrics(DbKey key) {
         var builder = DistributionSummary.builder("database.client.request.duration")
-                .serviceLevelObjectives(this.config.slo())
-                .baseUnit("milliseconds")
-                .tag("pool", this.poolName)
-                .tag("query.id", key.queryId())
-                .tag("query.operation", key.operation());
+            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V120))
+            .baseUnit("milliseconds")
+            .tag("pool", this.poolName)
+            .tag("query.id", key.queryId())
+            .tag("query.operation", key.operation());
         if (key.error != null) {
             builder.tag("error", key.error.getCanonicalName());
         }
-        return new DbMetrics(builder.register(Metrics.globalRegistry));
+        return new DbMetrics(builder.register(this.meterRegistry));
     }
 }

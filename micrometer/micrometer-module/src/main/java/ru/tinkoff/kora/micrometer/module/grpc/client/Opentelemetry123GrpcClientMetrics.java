@@ -8,43 +8,45 @@ import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.opentelemetry.semconv.SemanticAttributes;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.grpc.client.telemetry.GrpcClientMetrics;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
-public final class MicrometerGrpcClientMetrics implements GrpcClientMetrics {
+public final class Opentelemetry123GrpcClientMetrics implements GrpcClientMetrics {
     private final ConcurrentHashMap<MetricsKey, Metrics> metrics = new ConcurrentHashMap<>();
     private final MeterRegistry registry;
     private final ServiceDescriptor service;
     private final TelemetryConfig.MetricsConfig config;
     private final URI uri;
 
-    private static final AtomicIntegerFieldUpdater<MicrometerGrpcClientMetrics> REQUESTS_PER_PRC = AtomicIntegerFieldUpdater.newUpdater(MicrometerGrpcClientMetrics.class, "requestsPerRpc");
+    private static final AtomicIntegerFieldUpdater<Opentelemetry123GrpcClientMetrics> REQUESTS_PER_PRC = AtomicIntegerFieldUpdater.newUpdater(Opentelemetry123GrpcClientMetrics.class, "requestsPerRpc");
     private volatile int requestsPerRpc = 0;
-    private static final AtomicIntegerFieldUpdater<MicrometerGrpcClientMetrics> RESPONSES_PER_RPC = AtomicIntegerFieldUpdater.newUpdater(MicrometerGrpcClientMetrics.class, "responsesPerRpc");
+    private static final AtomicIntegerFieldUpdater<Opentelemetry123GrpcClientMetrics> RESPONSES_PER_RPC = AtomicIntegerFieldUpdater.newUpdater(Opentelemetry123GrpcClientMetrics.class, "responsesPerRpc");
     private volatile int responsesPerRpc = 0;
 
-    public MicrometerGrpcClientMetrics(MeterRegistry registry, ServiceDescriptor service, TelemetryConfig.MetricsConfig config, URI uri) {
+    public Opentelemetry123GrpcClientMetrics(MeterRegistry registry, ServiceDescriptor service, TelemetryConfig.MetricsConfig config, URI uri) {
         this.registry = registry;
         this.service = service;
         this.config = config;
         this.uri = uri;
     }
 
-    record MetricsKey(String serviceName, String fullMetricsKey) {}
+    record MetricsKey(String serviceName, String bareMethodName, @Nullable Status status, @Nullable Class<? extends Throwable> errorType) {}
 
     record Metrics(DistributionSummary duration, DistributionSummary requestsByRpc, DistributionSummary responsesByRpc) {}
 
     @Override
     public <RespT, ReqT> void recordEnd(MethodDescriptor<ReqT, RespT> method, long startTime, Exception e) {
-        var key = new MetricsKey(this.service.getName(), method.getFullMethodName());
-        var metrics = this.metrics.computeIfAbsent(key, k -> this.buildMetrics(method));
-        var processingTime = ((double) (System.nanoTime() - startTime) / 1_000_000);
+        var key = new MetricsKey(this.service.getName(), method.getBareMethodName(), null, e.getClass());
+        var metrics = this.metrics.computeIfAbsent(key, this::buildMetrics);
+        var processingTime = ((double) (System.nanoTime() - startTime) / 1_000_000_000);
 
         metrics.duration.record(processingTime);
     }
@@ -52,48 +54,53 @@ public final class MicrometerGrpcClientMetrics implements GrpcClientMetrics {
     /**
      * @see <a href="https://opentelemetry.io/docs/specs/semconv/rpc/rpc-metrics/#rpc-client">rpc-client</a>
      */
-    private <RespT, ReqT> Metrics buildMetrics(MethodDescriptor<ReqT, RespT> method) {
-        var rpcMethod = method.getBareMethodName();
-        var tags = tags(method, rpcMethod);
+    private Metrics buildMetrics(MetricsKey method) {
+        var tags = tags(method);
 
 
         var duration = DistributionSummary.builder("rpc.client.duration")
             .tags(tags)
-            .serviceLevelObjectives(this.config.slo())
+            .baseUnit("s")
+            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
             .register(this.registry);
         var requestsByRpc = DistributionSummary.builder("rpc.client.requests_per_rpc")
             .tags(tags)
-            .serviceLevelObjectives(this.config.slo())
+            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
             .register(this.registry);
         var responsesByRpc = DistributionSummary.builder("rpc.client.responses_per_rpc")
             .tags(tags)
-            .serviceLevelObjectives(this.config.slo())
+            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
             .register(this.registry);
 
         return new Metrics(duration, requestsByRpc, responsesByRpc);
     }
 
-    private <RespT, ReqT> List<Tag> tags(MethodDescriptor<ReqT, RespT> method, String rpcMethod) {
-        var rpcService = Objects.requireNonNullElse(method.getServiceName(), "GrpcService");
+    private List<Tag> tags(MetricsKey key) {
+        var rpcService = Objects.requireNonNullElse(key.serviceName(), "GrpcService");
         var serverAddress = this.uri.getHost();
         var serverPort = this.uri.getPort();
         if (serverPort == -1) {
             serverPort = 80;
         }
-
-        return List.of(
-            Tag.of(SemanticAttributes.RPC_METHOD.getKey(), rpcMethod),
-            Tag.of(SemanticAttributes.RPC_SERVICE.getKey(), rpcService),
-            Tag.of(SemanticAttributes.RPC_SYSTEM.getKey(), "grpc"),
-            Tag.of("server.address", serverAddress),
-            Tag.of("server.port", String.valueOf(serverPort))
-        );
+        var list = new ArrayList<Tag>(7);
+        list.add(Tag.of(SemanticAttributes.RPC_METHOD.getKey(), key.bareMethodName()));
+        list.add(Tag.of(SemanticAttributes.RPC_SERVICE.getKey(), rpcService));
+        list.add(Tag.of(SemanticAttributes.RPC_SYSTEM.getKey(), SemanticAttributes.RpcSystemValues.GRPC));
+        list.add(Tag.of(SemanticAttributes.SERVER_ADDRESS.getKey(), serverAddress));
+        list.add(Tag.of(SemanticAttributes.SERVER_PORT.getKey(), String.valueOf(serverPort)));
+        if (key.status != null) {
+            list.add(Tag.of(SemanticAttributes.RPC_GRPC_STATUS_CODE.getKey(), String.valueOf(key.status.getCode().value())));
+        }
+        if (key.errorType != null) {
+            list.add(Tag.of(SemanticAttributes.ERROR_TYPE.getKey(), key.errorType.getCanonicalName()));
+        }
+        return list;
     }
 
     @Override
     public <RespT, ReqT> void recordEnd(MethodDescriptor<ReqT, RespT> method, long startTime, Status status, Metadata trailers) {
-        var key = new MetricsKey(this.service.getName(), method.getFullMethodName());
-        var metrics = this.metrics.computeIfAbsent(key, k -> this.buildMetrics(method));
+        var key = new MetricsKey(this.service.getName(), method.getBareMethodName(), status, null);
+        var metrics = this.metrics.computeIfAbsent(key, this::buildMetrics);
         var processingTime = ((double) (System.nanoTime() - startTime) / 1_000_000);
 
         metrics.duration.record(processingTime);

@@ -6,12 +6,12 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.scheduling.common.telemetry.SchedulingMetrics;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
-public class MicrometerSchedulingMetrics implements SchedulingMetrics {
+public class Opentelemetry120SchedulingMetrics implements SchedulingMetrics {
     private final DistributionSummary successDuration;
 
-    public MicrometerSchedulingMetrics(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config, String className, String methodName) {
+    public Opentelemetry120SchedulingMetrics(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config, String className, String methodName) {
         var builder = DistributionSummary.builder("scheduling.job.duration")
-            .serviceLevelObjectives(config.slo())
+            .serviceLevelObjectives(config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V120))
             .baseUnit("milliseconds")
             .tag("code.function", methodName)
             .tag("code.class", className);
@@ -21,6 +21,5 @@ public class MicrometerSchedulingMetrics implements SchedulingMetrics {
     @Override
     public void record(long processingTimeNanos, @Nullable Throwable e) {
         this.successDuration.record(processingTimeNanos / 1_000_000d);
-        this.successDuration.close();
     }
 }

@@ -21,14 +21,14 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * @see <a href="https://github.com/open-telemetry/semantic-conventions/blob/main/docs/messaging/messaging-metrics.md">messaging-metrics</a>
  */
-public class MicrometerKafkaConsumerMetrics implements KafkaConsumerMetrics, Lifecycle {
+public class Opentelemetry120KafkaConsumerMetrics implements KafkaConsumerMetrics, Lifecycle {
     private final MeterRegistry meterRegistry;
     private final ConcurrentHashMap<TopicPartition, DistributionSummary> metrics = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<TopicPartition, LagGauge> lagMetrics = new ConcurrentHashMap<>();
     private final TelemetryConfig.MetricsConfig config;
     private final Properties driverProperties;
 
-    public MicrometerKafkaConsumerMetrics(MeterRegistry meterRegistry, Properties driverProperties, TelemetryConfig.MetricsConfig config) {
+    public Opentelemetry120KafkaConsumerMetrics(MeterRegistry meterRegistry, Properties driverProperties, TelemetryConfig.MetricsConfig config) {
         this.meterRegistry = meterRegistry;
         this.config = config;
         this.driverProperties = driverProperties;
@@ -43,7 +43,7 @@ public class MicrometerKafkaConsumerMetrics implements KafkaConsumerMetrics, Lif
 
     private DistributionSummary metrics(TopicPartition topicPartition) {
         var builder = DistributionSummary.builder("messaging.receive.duration")
-            .serviceLevelObjectives(this.config.slo())
+            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V120))
             .baseUnit("milliseconds")
             .tag(SemanticAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
             .tag(SemanticAttributes.MESSAGING_DESTINATION_NAME.getKey(), topicPartition.topic())

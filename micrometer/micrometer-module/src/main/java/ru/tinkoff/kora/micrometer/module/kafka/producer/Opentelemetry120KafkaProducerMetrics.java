@@ -20,14 +20,14 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * @see <a href="https://github.com/open-telemetry/semantic-conventions/blob/main/docs/messaging/messaging-metrics.md">messaging-metrics</a>
  */
-public class MicrometerKafkaProducerMetrics implements KafkaProducerMetrics, AutoCloseable {
+public class Opentelemetry120KafkaProducerMetrics implements KafkaProducerMetrics, AutoCloseable {
     private final KafkaClientMetrics micrometerMetrics;
     private final Properties properties;
     private final TelemetryConfig.MetricsConfig config;
     private final MeterRegistry meterRegistry;
     private final ConcurrentHashMap<TopicPartition, DistributionSummary> metrics = new ConcurrentHashMap<>();
 
-    public MicrometerKafkaProducerMetrics(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config, Producer<?, ?> producer, Properties properties) {
+    public Opentelemetry120KafkaProducerMetrics(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config, Producer<?, ?> producer, Properties properties) {
         this.micrometerMetrics = new KafkaClientMetrics(producer);
         this.micrometerMetrics.bindTo(meterRegistry);
         this.properties = properties;
@@ -51,15 +51,15 @@ public class MicrometerKafkaProducerMetrics implements KafkaProducerMetrics, Aut
     }
 
     @Override
-    public void sendEnd(ProducerRecord<?, ?> record, double duration, Throwable e) {
+    public void sendEnd(ProducerRecord<?, ?> record, long durationNanos, Throwable e) {
         var m = this.metrics.computeIfAbsent(new TopicPartition(record.topic(), Objects.requireNonNullElse(record.partition(), -1)), this::metrics);
-        m.record(duration);
+        m.record((double) durationNanos / 1_000_000);
     }
 
     @Override
-    public void sendEnd(ProducerRecord<?, ?> record, double duration, RecordMetadata metadata) {
+    public void sendEnd(ProducerRecord<?, ?> record, long durationNanos, RecordMetadata metadata) {
         var m = this.metrics.computeIfAbsent(new TopicPartition(metadata.topic(), metadata.partition()), this::metrics);
-        m.record(duration);
+        m.record((double) durationNanos / 1_000_000);
     }
 
     @Override
@@ -77,7 +77,7 @@ public class MicrometerKafkaProducerMetrics implements KafkaProducerMetrics, Aut
 
     private DistributionSummary metrics(TopicPartition topicPartition) {
         var builder = DistributionSummary.builder("messaging.publish.duration")
-            .serviceLevelObjectives(this.config.slo())
+            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V120))
             .baseUnit("milliseconds")
             .tag(SemanticAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
             .tag(SemanticAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION.getKey(), Integer.toString(topicPartition.partition()))

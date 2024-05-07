@@ -72,10 +72,18 @@ public final class JobTelemetryConfig implements TelemetryConfig {
 
         @Override
         public double[] slo() {
-            if (this.job != null && this.job.slo() != MetricsConfig.DEFAULT_SLO) {
+            if (this.job != null && this.job.slo() != null) {
                 return this.job.slo();
             }
             return this.client.slo();
+        }
+
+        @Override
+        public double[] slo(OpentelemetrySpec spec) {
+            if (this.job != null && this.job.slo(spec) != null) {
+                return this.job.slo(spec);
+            }
+            return this.client.slo(spec);
         }
     }
 
