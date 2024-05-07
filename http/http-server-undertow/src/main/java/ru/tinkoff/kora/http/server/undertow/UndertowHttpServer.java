@@ -31,19 +31,21 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
 
     public UndertowHttpServer(ValueOf<HttpServerConfig> config, ValueOf<UndertowPublicApiHandler> publicApiHandler, @Nullable XnioWorker xnioWorker) {
         this.config = config;
-        this.publicApiHandler = publicApiHandler;
         this.xnioWorker = xnioWorker;
+        this.publicApiHandler = publicApiHandler;
         this.gracefulShutdown = new GracefulShutdownHandler(exchange -> this.publicApiHandler.get().handleRequest(exchange));
     }
 
     @Override
     public void release() {
+        logger.debug("Public HTTP Server (Undertow) stopping...");
         this.state.set(HttpServerState.SHUTDOWN);
         try {
+            //TODO ожидать после shutdown уже мб?
             Thread.sleep(this.config.get().shutdownWait().toMillis());
         } catch (InterruptedException e) {
+            // ignore
         }
-        logger.debug("Public HTTP Server (Undertow) stopping...");
         final long started = TimeUtils.started();
         this.gracefulShutdown.shutdown();
         try {

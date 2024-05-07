@@ -38,13 +38,13 @@ public final class ConsoleTextRecordEncoder implements Encoder<ILoggingEvent> {
         var baos = new ByteArrayOutputStream(256);
         var w = new OutputStreamWriter(baos, StandardCharsets.UTF_8);
 
-        w
-            .append(this.formatter.format(event.getTimeStamp())).append(" ")
+        w.append(this.formatter.format(event.getTimeStamp())).append(" ")
             .append("[").append(event.getThreadName()).append("] ")
             .append(event.getLevel().levelStr).append(" ")
             .append(this.abbreviator.abbreviate(event.getLoggerName()))
             .append(" ")
             .flush();
+
         if (event instanceof KoraLoggingEvent koraEvent) {
             var mdc = koraEvent.koraMdc();
             for (var e : mdc.entrySet()) {
@@ -56,6 +56,7 @@ public final class ConsoleTextRecordEncoder implements Encoder<ILoggingEvent> {
             }
             w.flush();
         }
+
         for (var e : event.getMDCPropertyMap().entrySet()) {
             var key = e.getKey();
             var value = e.getValue();
@@ -64,30 +65,39 @@ public final class ConsoleTextRecordEncoder implements Encoder<ILoggingEvent> {
         }
 
         w.append(event.getFormattedMessage()).flush();
-        if (event.getMarkerList() != null) for (var marker : event.getMarkerList()) {
-            if (marker instanceof StructuredArgument structuredArgument) {
-                w.append("\n")
-                    .append("\t").append(structuredArgument.fieldName()).append("=")
-                    .flush();
-                this.writeJson(baos, structuredArgument);
+        if (event.getMarkerList() != null) {
+            for (var marker : event.getMarkerList()) {
+                if (marker instanceof StructuredArgument structuredArgument) {
+                    w.append("\n")
+                        .append("\t").append(structuredArgument.fieldName()).append("=")
+                        .flush();
+                    this.writeJson(baos, structuredArgument);
+                }
             }
         }
-        if (event.getArgumentArray() != null) for (var arg : event.getArgumentArray()) {
-            if (arg instanceof StructuredArgument structuredArgument) {
-                w.append("\n")
-                    .append("\t").append(structuredArgument.fieldName()).append("=")
-                    .flush();
-                this.writeJson(baos, structuredArgument);
+
+        if (event.getArgumentArray() != null) {
+            for (var arg : event.getArgumentArray()) {
+                if (arg instanceof StructuredArgument structuredArgument) {
+                    w.append("\n")
+                        .append("\t").append(structuredArgument.fieldName()).append("=")
+                        .flush();
+                    this.writeJson(baos, structuredArgument);
+                }
             }
         }
-        if (event.getKeyValuePairs() != null) for (var keyValue : event.getKeyValuePairs()) {
-            if (keyValue.value instanceof StructuredArgumentWriter structuredArgument) {
-                w.append("\n")
-                    .append("\t").append(keyValue.key).append("=")
-                    .flush();
-                this.writeJson(baos, structuredArgument);
+
+        if (event.getKeyValuePairs() != null) {
+            for (var keyValue : event.getKeyValuePairs()) {
+                if (keyValue.value instanceof StructuredArgumentWriter structuredArgument) {
+                    w.append("\n")
+                        .append("\t").append(keyValue.key).append("=")
+                        .flush();
+                    this.writeJson(baos, structuredArgument);
+                }
             }
         }
+
         w.append("\n");
         if (event.getThrowableProxy() != null) {
             w.append(ThrowableProxyUtil.asString(event.getThrowableProxy()));
@@ -104,6 +114,7 @@ public final class ConsoleTextRecordEncoder implements Encoder<ILoggingEvent> {
             try {
                 b.write("<error>".getBytes(StandardCharsets.UTF_8));
             } catch (IOException ex) {
+                // ignore
             }
         }
     }

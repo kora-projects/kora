@@ -118,7 +118,6 @@ public class Context {
         }
     }
 
-
     @SuppressWarnings("unchecked")
     private static <T> T copy(Key<T> key, Object value) {
         return key.copy((T) value);
@@ -132,6 +131,7 @@ public class Context {
         try {
             ReactorContextHook.init();
         } catch (NoClassDefFoundError ignore) {
+            // ignore
         }
     }
 }

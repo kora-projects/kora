@@ -12,8 +12,11 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
-public class ReactorContextHook {
+public final class ReactorContextHook {
+
     private static final AtomicBoolean initialized = new AtomicBoolean(false);
+
+    private ReactorContextHook() { }
 
     public static void init() {
         if (initialized.compareAndSet(false, true)) {
