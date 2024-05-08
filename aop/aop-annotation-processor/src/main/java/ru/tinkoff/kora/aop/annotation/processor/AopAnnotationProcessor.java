@@ -42,14 +42,24 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
+        var aopAnnotation = processingEnv.getElementUtils().getTypeElement("ru.tinkoff.kora.common.AopAnnotation");
+        if (aopAnnotation == null) {
+            this.annotations = new TypeElement[0];
+            this.aspects = List.of();
+            return;
+        }
         this.aspects = ServiceLoader.load(KoraAspectFactory.class, this.getClass().getClassLoader()).stream()
             .map(ServiceLoader.Provider::get)
             .<KoraAspect>mapMulti((factory, sink) -> factory.create(processingEnv).ifPresent(sink))
             .toList();
+        if (this.aspects.isEmpty()) {
+            this.annotations = new TypeElement[0];
+            return;
+        }
 
-        this.aopProcessor = new AopProcessor( this.types, this.elements, this.aspects );
+        this.aopProcessor = new AopProcessor(this.types, this.elements, this.aspects);
 
-        if(log.isDebugEnabled()) {
+        if (log.isDebugEnabled()) {
             var aspects = this.aspects.stream()
                 .map(Object::getClass)
                 .map(Class::getCanonicalName)
@@ -106,7 +116,7 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
         }
 
         var processedClasses = new ArrayList<TypeElementWithEquals>();
-        if(!this.classesToProcess.isEmpty()) {
+        if (!this.classesToProcess.isEmpty()) {
             if (log.isInfoEnabled()) {
                 List<TypeElement> elems = this.classesToProcess.stream()
                     .map(c -> c.te)
