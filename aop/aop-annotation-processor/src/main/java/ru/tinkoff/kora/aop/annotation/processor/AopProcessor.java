@@ -5,13 +5,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.common.Component;
-import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Generated;
 
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.*;
@@ -22,14 +20,11 @@ public class AopProcessor {
     private final List<KoraAspect> aspects;
     private final Types types;
     private final Elements elements;
-    private final TypeMirror tagAnnotationTypeMirror;
 
     public AopProcessor(Types types, Elements elements, List<KoraAspect> aspects) {
         this.aspects = aspects;
         this.types = types;
         this.elements = elements;
-        this.tagAnnotationTypeMirror = this.elements.getTypeElement(Tag.class.getCanonicalName())
-            .asType();
     }
 
     private static class TypeFieldFactory implements KoraAspect.FieldFactory {
