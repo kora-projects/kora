@@ -9,7 +9,6 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class ByteBufferPublisherInputStream extends InputStream implements Flow.Subscriber<ByteBuffer> {
     private final BlockingQueue<Signal> queue = new ArrayBlockingQueue<>(4);
@@ -97,8 +96,6 @@ public class ByteBufferPublisherInputStream extends InputStream implements Flow.
             s.request(1);
         }
     }
-
-    private final AtomicLong size = new AtomicLong(0);
 
     @Override
     public void onNext(ByteBuffer byteBuffer) {

@@ -232,6 +232,44 @@ public class BlockingApiTest extends AbstractHttpClientTest {
     }
 
     @Test
+    public void testCodeMapperNoType() {
+        compileClient(List.of(newGeneratedObject("TestMapper"), newGeneratedObject("TestMapper")), """
+            @HttpClient
+            public interface TestClient {
+              @ResponseCodeMapper(code = 200)
+              @ResponseCodeMapper(code = 500)
+              @HttpRoute(method = "GET", path = "/test")
+              TestResponse test();
+            }
+            """, """
+            public class TestMapper implements HttpClientResponseMapper<TestResponse> {
+              public TestResponse apply(HttpClientResponse rs) {
+                  return rs.code() == 200 ? new TestResponse.Rs200() : new TestResponse.Rs500();
+              }
+            }
+            """, """
+            public sealed interface TestResponse {
+              record Rs200() implements TestResponse {}
+              record Rs500() implements TestResponse {}
+            }
+            """);
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(500));
+        var result = client.invoke("test");
+        assertThat(result).isEqualTo(newObject("TestResponse$Rs500"));
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(200));
+        result = client.invoke("test");
+        assertThat(result).isEqualTo(newObject("TestResponse$Rs200"));
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(201));
+        assertThatThrownBy(() -> client.invoke("test")).isInstanceOf(HttpClientResponseException.class);
+    }
+
+    @Test
     public void testBlockingRequestBody() throws Exception {
         var mapper = Mockito.mock(HttpClientRequestMapper.class);
         var client = compileClient(List.of(mapper), """
