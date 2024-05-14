@@ -612,9 +612,10 @@ public class ClientClassGenerator {
                         var responseMapperField = b.addModifiers(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL).build();
                         tb.addField(responseMapperField);
                     } else {
-                        var responseMapperType = CommonUtils.isMono(method.getReturnType()) || CommonUtils.isFuture(method.getReturnType())
-                            ? codeMapper.futureResponseMapperType(method.getReturnType())
-                            : codeMapper.responseMapperType(method.getReturnType());
+                        var returnType = method.getReturnType();
+                        var responseMapperType = CommonUtils.isMono(returnType) || CommonUtils.isFuture(returnType)
+                            ? codeMapper.futureResponseMapperType(((DeclaredType) returnType).getTypeArguments().get(0))
+                            : codeMapper.responseMapperType(returnType);
                         var responseMapperParameter = ParameterSpec.builder(responseMapperType, responseMapperName);
                         var responseMapperTags = methodData.responseMapper() != null
                             ? methodData.responseMapper().toTagAnnotation()
@@ -673,7 +674,10 @@ public class ClientClassGenerator {
     }
 
     private boolean isMapperAssignable(TypeMirror resultType, @Nullable TypeMirror mappingType, @Nullable DeclaredType mappingMapper) {
-        assert mappingType != null || mappingMapper != null;
+        if (mappingType == null && mappingMapper == null) {
+            return true;
+        }
+
         if (mappingType != null) {
             return types.isAssignable(mappingType, resultType);
         }
@@ -786,7 +790,7 @@ public class ClientClassGenerator {
             if (returnType.getKind() == TypeKind.VOID) {
                 returnType = elements.getTypeElement("java.lang.Void").asType();
             }
-            return new ResponseCodeMapperData(code, returnType, null);
+            return new ResponseCodeMapperData(code, null, null);
         }
         return new ResponseCodeMapperData(code, type, mapper);
     }

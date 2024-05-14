@@ -234,6 +234,44 @@ class BlockingApiTest : AbstractHttpClientTest() {
     }
 
     @Test
+    fun testCodeMapperNoType() {
+        compile(listOf(newGenerated("TestMapper"), newGenerated("TestMapper")), """
+            @HttpClient
+            interface TestClient {
+              @ResponseCodeMapper(code = 200)
+              @ResponseCodeMapper(code = 500)
+              @HttpRoute(method = "GET", path = "/test")
+              fun test(): TestResponse
+            }
+            
+            """.trimIndent(), """
+            open class TestMapper : HttpClientResponseMapper<TestResponse> {
+              override fun apply(rs: HttpClientResponse) = if (rs.code() == 200) TestResponse.Rs200() else TestResponse.Rs500()
+            }
+            """.trimIndent(), """
+            sealed interface TestResponse {
+              class Rs200(): TestResponse { override fun toString() = "Rs200" }
+              class Rs500(): TestResponse { override fun toString() = "Rs500" }
+            }
+            
+            """.trimIndent())
+
+        reset(httpClient)
+        onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(500) }
+        var result = client.invoke<Any>("test")
+        Assertions.assertThat(result).hasToString("Rs500")
+
+        reset(httpClient)
+        onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(200) }
+        result = client.invoke<Any>("test")
+        Assertions.assertThat(result).hasToString("Rs200")
+
+        reset(httpClient)
+        onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(201) }
+        Assertions.assertThatThrownBy { client.invoke<Any>("test") }.isInstanceOf(HttpClientResponseException::class.java)
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     fun testBlockingRequestBody() {
         val mapper = Mockito.mock(HttpClientRequestMapper::class.java) as HttpClientRequestMapper<String>
