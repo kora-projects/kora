@@ -76,6 +76,14 @@ public class CassandraSessionBuilder {
 
         if (config.request() != null && config.request().warnIfSetKeyspace() != null) builder.withBoolean(REQUEST_WARN_IF_SET_KEYSPACE, config.request().warnIfSetKeyspace());
 
+        if (config.metrics() != null && config.metrics().idGenerator() != null) {
+            var idGenerator = config.metrics().idGenerator();
+            builder.withString(METRICS_ID_GENERATOR_CLASS, idGenerator.name());
+            if (idGenerator.prefix() != null) {
+                builder.withString(METRICS_ID_GENERATOR_PREFIX, idGenerator.prefix());
+            }
+        }
+
         if (config.metrics() != null && config.metrics().session() != null) {
             applyMetricsSessionConfig(builder, config.metrics().session());
         }

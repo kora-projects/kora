@@ -15,7 +15,6 @@ public interface CassandraConfig {
 
     Basic basic();
 
-    @Nullable
     Advanced advanced();
 
     @Nullable
@@ -290,11 +289,23 @@ public interface CassandraConfig {
 
         @ConfigValueExtractor
         interface MetricsConfig {
+            IdGenerator idGenerator();
+
             @Nullable
             NodeConfig node();
 
             @Nullable
             SessionConfig session();
+
+            @ConfigValueExtractor
+            interface IdGenerator {
+                default String name() {
+                    return "TaggingMetricIdGenerator";
+                }
+
+                @Nullable
+                String prefix();
+            }
 
             @ConfigValueExtractor
             interface NodeConfig {
