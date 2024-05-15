@@ -8,6 +8,7 @@ dependencies {
     api(libs.cassandra.driver) {
         exclude group: 'io.netty', module: 'netty-handler'
     }
+    api libs.cassandra.metrics
     api libs.netty.handlers
 
     testImplementation project(":internal:test-cassandra")

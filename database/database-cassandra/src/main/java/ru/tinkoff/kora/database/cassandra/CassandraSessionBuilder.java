@@ -3,6 +3,7 @@ package ru.tinkoff.kora.database.cassandra;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.internal.core.config.typesafe.DefaultProgrammaticDriverConfigLoaderBuilder;
+import com.datastax.oss.driver.internal.metrics.micrometer.MicrometerMetricsFactory;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.*;
@@ -29,7 +30,10 @@ public class CassandraSessionBuilder {
 
         applyOverridable(loaderBuilder, config.basic(), config.advanced());
         builder.withConfigLoader(loaderBuilder.build());
-        builder.withMetricRegistry(telemetry.getMetricRegistry());
+        if (telemetry.getMetricRegistry() != null) {
+            loaderBuilder.withString(METRICS_FACTORY_CLASS, MicrometerMetricsFactory.class.getCanonicalName());
+            builder.withMetricRegistry(telemetry.getMetricRegistry());
+        }
         return builder.build();
     }
 
