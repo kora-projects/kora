@@ -44,7 +44,14 @@ class CassandraDatabaseTest {
                 null,
                 null
             ),
-            null,
+            new $CassandraConfig_Advanced_ConfigValueExtractor.Advanced_Impl(
+                null, null, null, null, null, null, null, null, null,
+                new $CassandraConfig_Advanced_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(
+                    new $CassandraConfig_Advanced_MetricsConfig_IdGenerator_ConfigValueExtractor.IdGenerator_Defaults(),
+                    null, null
+                ),
+                null, null, null, null, null, null, null, null, null
+            ),
             params.username() == null ? null : new $CassandraConfig_CassandraCredentials_ConfigValueExtractor.CassandraCredentials_Impl(
                 params.username(),
                 params.password()

@@ -119,7 +119,6 @@ public interface CassandraConfig {
         @Nullable
         AdvancedRequestConfig request();
 
-        @Nullable
         MetricsConfig metrics();
 
         @Nullable
