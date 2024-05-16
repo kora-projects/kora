@@ -1,47 +1,61 @@
 package ru.tinkoff.kora.s3.client.annotation.processor;
 
 import com.squareup.javapoet.*;
-import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
-import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
-import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
-import ru.tinkoff.kora.annotation.processor.common.TagUtils;
-import ru.tinkoff.kora.common.DefaultComponent;
+import ru.tinkoff.kora.annotation.processor.common.*;
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.s3.client.annotation.processor.S3Operation.ImplType;
+import ru.tinkoff.kora.s3.client.annotation.processor.S3Operation.OperationType;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
-import javax.tools.Diagnostic;
+import javax.lang.model.type.TypeMirror;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Objects;
-import java.util.Set;
-import java.util.regex.Pattern;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 
 public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
 
-    private static final Pattern NAME_PATTERN = Pattern.compile("^[a-zA-Z][0-9a-zA-Z_]*");
+    private static final ClassName ANNOTATION_CLIENT = ClassName.get("ru.tinkoff.kora.s3.client.annotation", "S3", "Client");
 
-    private static final ClassName ANNOTATION_CACHE = ClassName.get("ru.tinkoff.kora.cache.annotation", "Cache");
+    private static final ClassName ANNOTATION_OP_GET = ClassName.get("ru.tinkoff.kora.s3.client.annotation", "S3", "Get");
+    private static final ClassName ANNOTATION_OP_LIST = ClassName.get("ru.tinkoff.kora.s3.client.annotation", "S3", "List");
+    private static final ClassName ANNOTATION_OP_PUT = ClassName.get("ru.tinkoff.kora.s3.client.annotation", "S3", "Put");
+    private static final ClassName ANNOTATION_OP_DELETE = ClassName.get("ru.tinkoff.kora.s3.client.annotation", "S3", "Delete");
 
-    private static final ClassName CAFFEINE_TELEMETRY = ClassName.get("ru.tinkoff.kora.cache.caffeine", "CaffeineCacheTelemetry");
-    private static final ClassName CAFFEINE_CACHE = ClassName.get("ru.tinkoff.kora.cache.caffeine", "CaffeineCache");
-    private static final ClassName CAFFEINE_CACHE_FACTORY = ClassName.get("ru.tinkoff.kora.cache.caffeine", "CaffeineCacheFactory");
-    private static final ClassName CAFFEINE_CACHE_CONFIG = ClassName.get("ru.tinkoff.kora.cache.caffeine", "CaffeineCacheConfig");
-    private static final ClassName CAFFEINE_CACHE_IMPL = ClassName.get("ru.tinkoff.kora.cache.caffeine", "AbstractCaffeineCache");
+    private static final ClassName CLASS_CLIENT_CONFIG = ClassName.get("ru.tinkoff.kora.s3.client", "S3ClientConfig");
+    private static final ClassName CLASS_CLIENT_SIMPLE_SYNC = ClassName.get("ru.tinkoff.kora.s3.client", "S3SimpleClient");
+    private static final ClassName CLASS_CLIENT_SIMPLE_ASYNC = ClassName.get("ru.tinkoff.kora.s3.client", "S3SimpleAsyncClient");
+    private static final ClassName CLASS_CLIENT_AWS_SYNC = ClassName.get("software.amazon.awssdk.services.s3", "S3Client");
+    private static final ClassName CLASS_CLIENT_AWS_ASYNC = ClassName.get("software.amazon.awssdk.services.s3", "S3AsyncClient");
 
-    private static final ClassName REDIS_TELEMETRY = ClassName.get("ru.tinkoff.kora.cache.redis", "RedisCacheTelemetry");
-    private static final ClassName REDIS_CACHE = ClassName.get("ru.tinkoff.kora.cache.redis", "RedisCache");
-    private static final ClassName REDIS_CACHE_IMPL = ClassName.get("ru.tinkoff.kora.cache.redis", "AbstractRedisCache");
-    private static final ClassName REDIS_CACHE_CONFIG = ClassName.get("ru.tinkoff.kora.cache.redis", "RedisCacheConfig");
-    private static final ClassName REDIS_CACHE_CLIENT = ClassName.get("ru.tinkoff.kora.cache.redis", "RedisCacheClient");
-    private static final ClassName REDIS_CACHE_MAPPER_KEY = ClassName.get("ru.tinkoff.kora.cache.redis", "RedisCacheKeyMapper");
-    private static final ClassName REDIS_CACHE_MAPPER_VALUE = ClassName.get("ru.tinkoff.kora.cache.redis", "RedisCacheValueMapper");
+    private static final ClassName CLASS_S3_BODY = ClassName.get("ru.tinkoff.kora.s3.client.model", "S3Body");
+    private static final ClassName CLASS_S3_BODY_BYTES = ClassName.get("ru.tinkoff.kora.s3.client.model", "ByteS3Body");
+    private static final ClassName CLASS_S3_OBJECT = ClassName.get("ru.tinkoff.kora.s3.client.model", "S3Object");
+    private static final ClassName CLASS_S3_OBJECT_META = ClassName.get("ru.tinkoff.kora.s3.client.model", "S3ObjectMeta");
+    private static final TypeName CLASS_S3_OBJECT_MANY = ParameterizedTypeName.get(ClassName.get(List.class), CLASS_S3_OBJECT);
+    private static final TypeName CLASS_S3_OBJECT_META_MANY = ParameterizedTypeName.get(ClassName.get(List.class), CLASS_S3_OBJECT_META);
+    private static final ClassName CLASS_S3_OBJECT_LIST = ClassName.get("ru.tinkoff.kora.s3.client.model", "S3ObjectList");
+    private static final ClassName CLASS_S3_OBJECT_META_LIST = ClassName.get("ru.tinkoff.kora.s3.client.model", "S3ObjectMetaList");
+
+    private static final ClassName CLASS_AWS_IS_SYNC_BODY = ClassName.get("software.amazon.awssdk.core.sync", "RequestBody");
+    private static final ClassName CLASS_AWS_IS_ASYNC_BODY = ClassName.get("software.amazon.awssdk.core.async", "AsyncRequestBody");
+    private static final ClassName CLASS_AWS_IS_ASYNC_TRANSFORMER = ClassName.get("software.amazon.awssdk.core.async", "AsyncResponseTransformer");
+    private static final ClassName CLASS_AWS_GET_REQUEST = ClassName.get("software.amazon.awssdk.services.s3.model", "GetObjectRequest");
+    private static final ClassName CLASS_AWS_GET_RESPONSE = ClassName.get("software.amazon.awssdk.services.s3.model", "GetObjectResponse");
+    private static final TypeName CLASS_AWS_GET_IS_RESPONSE = ParameterizedTypeName.get(ClassName.get("software.amazon.awssdk.core", "ResponseInputStream"), CLASS_AWS_GET_RESPONSE);
+    private static final ClassName CLASS_AWS_DELETE_REQUEST = ClassName.get("software.amazon.awssdk.services.s3.model", "DeleteObjectRequest");
+    private static final ClassName CLASS_AWS_DELETE_RESPONSE = ClassName.get("software.amazon.awssdk.services.s3.model", "DeleteObjectResponse");
+    private static final ClassName CLASS_AWS_DELETES_REQUEST = ClassName.get("software.amazon.awssdk.services.s3.model", "DeleteObjectsRequest");
+    private static final ClassName CLASS_AWS_DELETES_RESPONSE = ClassName.get("software.amazon.awssdk.services.s3.model", "DeleteObjectsResponse");
+    private static final ClassName CLASS_AWS_LIST_REQUEST = ClassName.get("software.amazon.awssdk.services.s3.model", "ListObjectsV2Request");
+    private static final ClassName CLASS_AWS_LIST_RESPONSE = ClassName.get("software.amazon.awssdk.services.s3.model", "ListObjectsV2Response");
+    private static final ClassName CLASS_AWS_PUT_REQUEST = ClassName.get("software.amazon.awssdk.services.s3.model", "PutObjectRequest");
+    private static final ClassName CLASS_AWS_PUT_RESPONSE = ClassName.get("software.amazon.awssdk.services.s3.model", "PutObjectResponse");
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -50,305 +64,692 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(ANNOTATION_CACHE.canonicalName());
+        return Set.of(ANNOTATION_CLIENT.canonicalName());
     }
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        var cacheAnnotation = processingEnv.getElementUtils().getTypeElement(ANNOTATION_CACHE.canonicalName());
-        if (cacheAnnotation == null) {
+        var annotation = processingEnv.getElementUtils().getTypeElement(ANNOTATION_CLIENT.canonicalName());
+        if (annotation == null) {
             return false;
         }
-        for (var element : roundEnv.getElementsAnnotatedWith(cacheAnnotation)) {
+
+        for (var element : roundEnv.getElementsAnnotatedWith(annotation)) {
             if (!element.getKind().isInterface()) {
-                messager.printMessage(Diagnostic.Kind.ERROR, "@Cache annotation is intended to be used on interfaces, but was: " + element.getKind().name(), element);
-                continue;
-            }
-            var cacheContract = (TypeElement) element;
-            var cacheContractType = getCacheSuperType(cacheContract);
-            if (cacheContractType == null) {
-                continue;
+                throw new ProcessingErrorException("@S3.Client annotation is intended to be used on interfaces, but was: " + element.getKind().name(), element);
             }
 
-            var packageName = getPackage(cacheContract);
-            var cacheContractClassName = ClassName.get(cacheContract);
+            var s3client = (TypeElement) element;
+            var packageName = getPackage(s3client);
 
-            var configPath = getCacheTypeConfigPath(cacheContract);
-            if (!NAME_PATTERN.matcher(configPath).find()) {
-                messager.printMessage(Diagnostic.Kind.ERROR, "Cache config path doesn't match pattern: " + NAME_PATTERN, cacheContract);
-                continue;
-            }
+            var implSpecBuilder = TypeSpec.classBuilder(NameUtils.generatedType(s3client, "Impl"))
+                .addModifiers(Modifier.FINAL, Modifier.PUBLIC)
+                .addAnnotation(AnnotationUtils.generated(S3ClientAnnotationProcessor.class))
+                .addAnnotation(Component.class)
+                .addSuperinterface(s3client.asType());
 
-            var cacheImplBase = getCacheImplBase(cacheContract, cacheContractType);
-            var implSpec = TypeSpec.classBuilder(getCacheImpl(cacheContract))
-                .addModifiers(Modifier.FINAL)
-                .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
-                    .addMember("value", CodeBlock.of("$S", S3ClientAnnotationProcessor.class.getCanonicalName())).build())
-                .addMethod(getCacheConstructor(configPath, cacheContractType))
-                .superclass(cacheImplBase)
-                .addSuperinterface(cacheContract.asType())
-                .build();
+            final Set<Signature> impls = new HashSet<>();
+            var constructorBuilder = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
+            var constructorCode = CodeBlock.builder();
+            constructorBuilder.addParameter(CLASS_CLIENT_CONFIG, "clientConfig");
+            implSpecBuilder.addField(CLASS_CLIENT_CONFIG, "_clientConfig", Modifier.PRIVATE, Modifier.FINAL);
+            constructorCode.addStatement("this._clientConfig = clientConfig");
 
-            try {
-                var implFile = JavaFile.builder(cacheContractClassName.packageName(), implSpec).build();
-                implFile.writeTo(processingEnv.getFiler());
+            for (Element enclosedElement : s3client.getEnclosedElements()) {
+                if (enclosedElement instanceof ExecutableElement method) {
+                    var operationType = getOperationType(method);
+                    if (operationType.isEmpty() && !method.getModifiers().contains(Modifier.DEFAULT)) {
+                        throw new ProcessingErrorException("@S3.Client method without operation annotation can't be non default", method);
+                    } else if (operationType.isPresent()) {
+                        S3Operation operation = getOperation(method, operationType.get());
+                        MethodSpec methodSpec = MethodSpec.overriding(method)
+                            .addCode(operation.code())
+                            .build();
 
-                var moduleSpecBuilder = TypeSpec.interfaceBuilder(ClassName.get(packageName, "$%sModule".formatted(cacheContractClassName.simpleName())))
-                    .addModifiers(Modifier.PUBLIC)
-                    .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
-                        .addMember("value", CodeBlock.of("$S", S3ClientAnnotationProcessor.class.getCanonicalName())).build())
-                    .addAnnotation(CommonClassNames.module)
-                    .addMethod(getCacheMethodImpl(cacheContract, cacheContractType))
-                    .addMethod(getCacheMethodConfig(cacheContract, cacheContractType));
+                        implSpecBuilder.addMethod(methodSpec);
+                        final Signature signature = new Signature(operation.impl(), operation.mode());
+                        if (!impls.contains(signature)) {
+                            if (operation.impl() == ImplType.SIMPLE) {
+                                if (operation.mode() == S3Operation.Mode.SYNC) {
+                                    constructorBuilder.addParameter(CLASS_CLIENT_SIMPLE_SYNC, "simpleSyncClient");
+                                    implSpecBuilder.addField(CLASS_CLIENT_SIMPLE_SYNC, "_simpleSyncClient", Modifier.PRIVATE, Modifier.FINAL);
+                                    constructorCode.addStatement("this._simpleSyncClient = simpleSyncClient");
+                                } else {
+                                    constructorBuilder.addParameter(CLASS_CLIENT_SIMPLE_ASYNC, "simpleAsyncClient");
+                                    implSpecBuilder.addField(CLASS_CLIENT_SIMPLE_ASYNC, "_simpleAsyncClient", Modifier.PRIVATE, Modifier.FINAL);
+                                    constructorCode.addStatement("this._simpleAsyncClient = simpleAsyncClient");
+                                }
+                            } else if (operation.impl() == ImplType.AWS) {
+                                if (operation.mode() == S3Operation.Mode.SYNC) {
+                                    constructorBuilder.addParameter(CLASS_CLIENT_AWS_SYNC, "awsSyncClient");
+                                    implSpecBuilder.addField(CLASS_CLIENT_AWS_SYNC, "_awsSyncClient", Modifier.PRIVATE, Modifier.FINAL);
+                                    constructorCode.addStatement("this._awsSyncClient = awsSyncClient");
+                                } else {
+                                    constructorBuilder.addParameter(CLASS_CLIENT_AWS_ASYNC, "awsAsyncClient");
+                                    implSpecBuilder.addField(CLASS_CLIENT_AWS_ASYNC, "_awsAsyncClient", Modifier.PRIVATE, Modifier.FINAL);
+                                    constructorCode.addStatement("this._awsAsyncClient = awsAsyncClient");
 
-                if (cacheContractType.rawType.equals(REDIS_CACHE)) {
-                    var superTypes = processingEnv.getTypeUtils().directSupertypes(cacheContract.asType());
-                    var superType = superTypes.get(superTypes.size() - 1);
-                    var keyType = ((DeclaredType) superType).getTypeArguments().get(0);
-                    if (keyType instanceof DeclaredType dt && dt.asElement().getKind() == ElementKind.RECORD) {
-                        moduleSpecBuilder.addMethod(getCacheRedisKeyMapperForRecord(dt));
+                                    constructorBuilder.addParameter(ParameterSpec.builder(ExecutorService.class, "awsAsyncExecutor")
+                                        .addAnnotation(TagUtils.makeAnnotationSpecForTypes(CLASS_CLIENT_AWS_SYNC))
+                                        .build());
+                                    implSpecBuilder.addField(ExecutorService.class, "_awsAsyncExecutor", Modifier.PRIVATE, Modifier.FINAL);
+                                    constructorCode.addStatement("this._awsAsyncExecutor = awsAsyncExecutor");
+                                }
+//                        } else if (operation.impl() == ImplType.MINIO && !impls.contains(ImplType.MINIO)) {
+//
+                            } else {
+                                throw new UnsupportedOperationException("Unknown implementation");
+                            }
+
+                            impls.add(signature);
+                        }
                     }
                 }
+            }
 
-                var moduleSpec = moduleSpecBuilder.build();
+            constructorBuilder.addCode(constructorCode.build());
+            implSpecBuilder.addMethod(constructorBuilder.build());
 
-                final JavaFile moduleFile = JavaFile.builder(cacheContractClassName.packageName(), moduleSpec).build();
-                moduleFile.writeTo(processingEnv.getFiler());
+            try {
+                TypeSpec spec = implSpecBuilder.build();
+                var implFile = JavaFile.builder(packageName, spec).build();
+                implFile.writeTo(processingEnv.getFiler());
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new IllegalStateException(e);
             }
         }
 
         return false;
     }
 
-    @Nullable
-    private ParameterizedTypeName getCacheSuperType(TypeElement candidate) {
-        var interfaces = candidate.getInterfaces();
-        if (interfaces.size() != 1) {
-            messager.printMessage(Diagnostic.Kind.ERROR, "@Cache annotated interface should implement one one interface and it should be one of: %s, %s".formatted(
-                REDIS_CACHE.canonicalName(), CAFFEINE_CACHE.canonicalName()
-            ));
-            return null;
+    record Signature(S3Operation.ImplType impl, S3Operation.Mode mode) {}
+
+    record OperationMeta(OperationType type, AnnotationMirror annotation) {}
+
+    private Optional<OperationMeta> getOperationType(ExecutableElement method) {
+        Optional<OperationMeta> value = Optional.empty();
+
+        for (AnnotationMirror annotationMirror : method.getAnnotationMirrors()) {
+            OperationType type = null;
+            if (ClassName.get(annotationMirror.getAnnotationType()).equals(ANNOTATION_OP_GET)) {
+                type = OperationType.GET;
+            } else if (ClassName.get(annotationMirror.getAnnotationType()).equals(ANNOTATION_OP_LIST)) {
+                type = OperationType.LIST;
+            } else if (ClassName.get(annotationMirror.getAnnotationType()).equals(ANNOTATION_OP_PUT)) {
+                type = OperationType.PUT;
+            } else if (ClassName.get(annotationMirror.getAnnotationType()).equals(ANNOTATION_OP_DELETE)) {
+                type = OperationType.DELETE;
+            }
+
+            if (value.isEmpty() && type != null) {
+                value = Optional.of(new OperationMeta(type, annotationMirror));
+            } else {
+                throw new ProcessingErrorException("@S3.Client method must be annotated with single operation annotation", method);
+            }
         }
-        var superinterface = (DeclaredType) interfaces.get(0);
-        var superinterfaceElement = (TypeElement) superinterface.asElement();
-        if (superinterfaceElement.getQualifiedName().contentEquals(CAFFEINE_CACHE.canonicalName())) {
-            return (ParameterizedTypeName) TypeName.get(superinterface);
-        }
-        if (superinterfaceElement.getQualifiedName().contentEquals(REDIS_CACHE.canonicalName())) {
-            return (ParameterizedTypeName) TypeName.get(superinterface);
-        }
-        messager.printMessage(Diagnostic.Kind.ERROR, "@Cache is expected to be known super type %s or %s, but was %s".formatted(
-            REDIS_CACHE.canonicalName(), CAFFEINE_CACHE.canonicalName(), superinterface
-        ));
-        return null;
+
+        return value;
     }
 
-    private TypeName getCacheImplBase(TypeElement cacheContract, ParameterizedTypeName cacheType) {
-        if (cacheType.rawType.equals(CAFFEINE_CACHE)) {
-            return ParameterizedTypeName.get(CAFFEINE_CACHE_IMPL, cacheType.typeArguments.get(0), cacheType.typeArguments.get(1));
-        } else if (cacheType.rawType.equals(REDIS_CACHE)) {
-            return ParameterizedTypeName.get(REDIS_CACHE_IMPL, cacheType.typeArguments.get(0), cacheType.typeArguments.get(1));
+    private S3Operation getOperation(ExecutableElement method, OperationMeta operationMeta) {
+        final S3Operation.Mode mode = MethodUtils.isFuture(method)
+            ? S3Operation.Mode.ASYNC
+            : S3Operation.Mode.SYNC;
+
+        if (OperationType.GET == operationMeta.type) {
+            return operationGET(method, operationMeta, mode);
+        } else if (OperationType.LIST == operationMeta.type) {
+            return operationLIST(method, operationMeta, mode);
+        } else if (OperationType.PUT == operationMeta.type) {
+            return operationPUT(method, operationMeta, mode);
+        } else if (OperationType.DELETE == operationMeta.type) {
+            return operationDELETE(method, operationMeta, mode);
         } else {
-            throw new UnsupportedOperationException("Unknown type: " + cacheContract.getQualifiedName());
+            throw new UnsupportedOperationException("Unsupported S3 operation type");
         }
     }
 
-    private static String getCacheTypeConfigPath(TypeElement cacheContract) {
-        var cacheAnnotation = Objects.requireNonNull(AnnotationUtils.findAnnotation(cacheContract, ANNOTATION_CACHE));
-        return Objects.requireNonNull(AnnotationUtils.<String>parseAnnotationValueWithoutDefault(cacheAnnotation, "value"));
-    }
-
-    private MethodSpec getCacheMethodConfig(TypeElement cacheContract, ParameterizedTypeName cacheType) {
-        final String configPath = getCacheTypeConfigPath(cacheContract);
-        final ClassName cacheContractName = ClassName.get(cacheContract);
-        final String methodName = "%s_Config".formatted(cacheContractName.simpleName());
-        final TypeName returnType;
-        if (cacheType.rawType.equals(CAFFEINE_CACHE)) {
-            returnType = CAFFEINE_CACHE_CONFIG;
-        } else if (cacheType.rawType.equals(REDIS_CACHE)) {
-            returnType = REDIS_CACHE_CONFIG;
+    private S3Operation operationGET(ExecutableElement method, OperationMeta operationMeta, S3Operation.Mode mode) {
+        final String keyMapping = AnnotationUtils.parseAnnotationValueWithoutDefault(operationMeta.annotation, "value");
+        final Key key;
+        final VariableElement firstParameter = method.getParameters().stream().findFirst().orElse(null);
+        if (keyMapping != null && !keyMapping.isBlank()) {
+            key = parseKey(method, keyMapping);
+            if (key.params().isEmpty() && !method.getParameters().isEmpty()) {
+                throw new ProcessingErrorException("@S3.Get operation key template must use method arguments or they should be removed", method);
+            }
+        } else if (method.getParameters().size() > 1) {
+            throw new ProcessingErrorException("@S3.Get operation can't have multiple method parameters for keys without key template", method);
+        } else if (method.getParameters().isEmpty()) {
+            throw new ProcessingErrorException("@S3.Get operation must have key parameter", method);
         } else {
-            throw new IllegalArgumentException("Unknown cache type: " + cacheType.rawType);
+            key = new Key(CodeBlock.of("var _key = String.valueOf($L)", firstParameter.toString()), List.of(firstParameter));
         }
-        var extractorType = ParameterizedTypeName.get(CommonClassNames.configValueExtractor, returnType);
 
-        return MethodSpec.methodBuilder(methodName)
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.tag)
-                .addMember("value", "$T.class", cacheContractName)
-                .build())
-            .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
-            .addParameter(CommonClassNames.config, "config")
-            .addParameter(extractorType, "extractor")
-            .addStatement("return extractor.extract(config.get($S))", configPath)
-            .returns(returnType)
-            .build();
+        final TypeName returnType = (mode == S3Operation.Mode.SYNC)
+            ? ClassName.get(method.getReturnType())
+            : ClassName.get(MethodUtils.getGenericType(method.getReturnType()).orElseThrow());
+
+        if (CLASS_S3_OBJECT.equals(returnType) || CLASS_S3_OBJECT_META.equals(returnType)) {
+            if (firstParameter != null && CommonUtils.isCollection(firstParameter.asType())) {
+                throw new ProcessingErrorException("@S3.Get operation expected single result, but parameter is collection of keys", method);
+            }
+
+            var bodyBuilder = CodeBlock.builder();
+            if (mode == S3Operation.Mode.SYNC) {
+                bodyBuilder.add("return _simpleSyncClient");
+            } else {
+                bodyBuilder.add("return _simpleAsyncClient");
+            }
+
+            if (CLASS_S3_OBJECT.equals(returnType)) {
+                bodyBuilder.add(".get(_clientConfig.bucket(), _key)");
+            } else {
+                bodyBuilder.add(".getMeta(_clientConfig.bucket(), _key)");
+            }
+
+            if (mode == S3Operation.Mode.ASYNC && CompletableFuture.class.getCanonicalName().equals(((DeclaredType) method.getReturnType()).asElement().toString())) {
+                bodyBuilder.add(".toCompletableFuture()");
+            }
+            bodyBuilder.add(";\n");
+
+            CodeBlock code = CodeBlock.builder()
+                .addStatement(key.code())
+                .add(bodyBuilder.build())
+                .build();
+
+            return new S3Operation(method, operationMeta.annotation, OperationType.GET, ImplType.SIMPLE, mode, code);
+        } else if (CLASS_S3_OBJECT_MANY.equals(returnType) || CLASS_S3_OBJECT_META_MANY.equals(returnType)) {
+            if (firstParameter != null && !CommonUtils.isCollection(firstParameter.asType())) {
+                throw new ProcessingErrorException("@S3.Get operation expected many results, but parameter isn't collection of keys", method);
+            } else if (keyMapping != null && !keyMapping.isBlank()) {
+                throw new ProcessingErrorException("@S3.Get operation expected many results, key template can't be specified for collection of keys", method);
+            }
+
+            String clientField = mode == S3Operation.Mode.SYNC
+                ? "_simpleSyncClient"
+                : "_simpleAsyncClient";
+
+            var methodCode = CLASS_S3_OBJECT_MANY.equals(returnType)
+                ? CodeBlock.builder().addStatement("return $L.get(_clientConfig.bucket(), $L)",
+                clientField, firstParameter.getSimpleName().toString())
+                : CodeBlock.builder().addStatement("return $L.getMeta(_clientConfig.bucket(), $L)",
+                clientField, firstParameter.getSimpleName().toString());
+
+            return new S3Operation(method, operationMeta.annotation, OperationType.GET, ImplType.SIMPLE, mode, methodCode.build());
+        } else if (CLASS_AWS_GET_RESPONSE.equals(returnType) || CLASS_AWS_GET_IS_RESPONSE.equals(returnType)) {
+            if (firstParameter != null && CommonUtils.isCollection(firstParameter.asType())) {
+                throw new ProcessingErrorException("@S3.Get operation expected single result, but parameter is collection of keys", method);
+            }
+
+            String clientField = mode == S3Operation.Mode.SYNC
+                ? "_awsSyncClient"
+                : "_awsAsyncClient";
+
+            var codeBuilder = CodeBlock.builder()
+                .addStatement(key.code())
+                .add("\n")
+                .addStatement(CodeBlock.of("""
+                    var _request = $T.builder()
+                        .bucket(_clientConfig.bucket())
+                        .key(_key)
+                        .build()""", CLASS_AWS_GET_REQUEST))
+                .add("\n");
+
+            if (mode == S3Operation.Mode.SYNC) {
+                if (CLASS_AWS_GET_RESPONSE.equals(returnType)) {
+                    codeBuilder.addStatement("return $L.getObject(_request).response()", clientField).build();
+                } else {
+                    codeBuilder.addStatement("return $L.getObject(_request)", clientField).build();
+                }
+            } else {
+                if (CLASS_AWS_GET_RESPONSE.equals(returnType)) {
+                    codeBuilder
+                        .addStatement("return $L.getObject(_request, $T.toBlockingInputStream()).thenApply(_r -> _r.response())",
+                            clientField, CLASS_AWS_IS_ASYNC_TRANSFORMER)
+                        .build();
+                } else {
+                    codeBuilder
+                        .addStatement("return $L.getObject(_request, $T.toBlockingInputStream())",
+                            clientField, CLASS_AWS_IS_ASYNC_TRANSFORMER)
+                        .build();
+                }
+            }
+
+            return new S3Operation(method, operationMeta.annotation, OperationType.GET, ImplType.AWS, mode, codeBuilder.build());
+        } else {
+            throw new ProcessingErrorException("@S3.Get operation unsupported signature", method);
+        }
     }
 
-    private MethodSpec getCacheRedisKeyMapperForRecord(DeclaredType keyType) {
-        var methodNameBuilder = new ArrayList<String>();
-        var nextType = keyType.asElement();
-        while (nextType.getKind() != ElementKind.PACKAGE) {
-            methodNameBuilder.add(nextType.getSimpleName().toString());
-            nextType = nextType.getEnclosingElement();
+    private S3Operation operationLIST(ExecutableElement method, OperationMeta operationMeta, S3Operation.Mode mode) {
+        final String keyMapping = AnnotationUtils.parseAnnotationValueWithoutDefault(operationMeta.annotation, "value");
+        final Key key;
+        final VariableElement firstParameter = method.getParameters().stream().findFirst().orElse(null);
+        if (keyMapping != null && !keyMapping.isBlank()) {
+            key = parseKey(method, keyMapping);
+            if (key.params().isEmpty() && !method.getParameters().isEmpty()) {
+                throw new ProcessingErrorException("@S3.List operation prefix template must use method arguments or they should be removed", method);
+            }
+        } else if (method.getParameters().size() > 1) {
+            throw new ProcessingErrorException("@S3.List operation can't have multiple method parameters for keys without key template", method);
+        } else if (method.getParameters().isEmpty()) {
+            throw new ProcessingErrorException("@S3.List operation must have key parameter", method);
+        } else if (CommonUtils.isCollection(firstParameter.asType())) {
+            throw new ProcessingErrorException("@S3.List operation expected single result, but parameter is collection of keys", method);
+        } else {
+            key = new Key(CodeBlock.of("var _key = String.valueOf($L)", firstParameter.toString()), List.of(firstParameter));
         }
 
-        Collections.reverse(methodNameBuilder);
-        final String prefix = String.join("_", methodNameBuilder);
-        final String methodName = "%s_RedisKeyMapper".formatted(prefix);
+        final Integer limit = AnnotationUtils.parseAnnotationValue(elements, operationMeta.annotation(), "limit");
+        final TypeName returnType = (mode == S3Operation.Mode.SYNC)
+            ? ClassName.get(method.getReturnType())
+            : ClassName.get(MethodUtils.getGenericType(method.getReturnType()).orElseThrow());
 
-        var methodBuilder = MethodSpec.methodBuilder(methodName)
-            .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
-            .addAnnotation(DefaultComponent.class);
+        if (CLASS_S3_OBJECT_LIST.equals(returnType) || CLASS_S3_OBJECT_META_LIST.equals(returnType)) {
+            var bodyBuilder = CodeBlock.builder();
+            if (mode == S3Operation.Mode.SYNC) {
+                bodyBuilder.add("return _simpleSyncClient");
+            } else {
+                bodyBuilder.add("return _simpleAsyncClient");
+            }
 
-        var recordFields = keyType.asElement().getEnclosedElements().stream()
-            .filter(e -> e.getKind() == ElementKind.RECORD_COMPONENT)
+            if (CLASS_S3_OBJECT_LIST.equals(returnType)) {
+                bodyBuilder.add(".list(_clientConfig.bucket(), _key, $L)", limit);
+            } else {
+                bodyBuilder.add(".listMeta(_clientConfig.bucket(), _key, $L)", limit);
+            }
+
+            if (mode == S3Operation.Mode.ASYNC && CompletableFuture.class.getCanonicalName().equals(((DeclaredType) method.getReturnType()).asElement().toString())) {
+                bodyBuilder.add(".toCompletableFuture()");
+            }
+            bodyBuilder.add(";\n");
+
+            CodeBlock code = CodeBlock.builder()
+                .addStatement(key.code())
+                .add(bodyBuilder.build())
+                .build();
+
+            return new S3Operation(method, operationMeta.annotation, OperationType.LIST, ImplType.SIMPLE, mode, code);
+        } else if (CLASS_AWS_LIST_RESPONSE.equals(returnType)) {
+            String clientField = mode == S3Operation.Mode.SYNC
+                ? "_awsSyncClient"
+                : "_awsAsyncClient";
+
+            CodeBlock code = CodeBlock.builder()
+                .addStatement(key.code())
+                .add("\n")
+                .addStatement(CodeBlock.of("""
+                    var _request = $L.builder()
+                        .bucket(_clientConfig.bucket())
+                        .prefix(_key)
+                        .maxKeys($L)
+                        .continuationToken($T.randomUUID().toString())
+                        .build()""", CLASS_AWS_LIST_REQUEST, limit, UUID.class))
+                .add("\n")
+                .addStatement("return $L.listObjectsV2(_request)", clientField)
+                .build();
+
+            return new S3Operation(method, operationMeta.annotation, OperationType.LIST, ImplType.AWS, mode, code);
+        } else {
+            throw new ProcessingErrorException("@S3.List operation unsupported signature", method);
+        }
+    }
+
+    private S3Operation operationPUT(ExecutableElement method, OperationMeta operationMeta, S3Operation.Mode mode) {
+        final String keyMapping = AnnotationUtils.parseAnnotationValueWithoutDefault(operationMeta.annotation, "value");
+        final Key key;
+
+        var keyParameters = method.getParameters().stream()
+            .filter(p -> {
+                TypeName bodyType = ClassName.get(p.asType());
+                return !CLASS_S3_BODY.equals(bodyType)
+                    && !ClassName.get(InputStream.class).equals(bodyType)
+                    && !ClassName.get(ByteBuffer.class).equals(bodyType)
+                    && !ArrayTypeName.get(byte[].class).equals(bodyType);
+            })
             .toList();
 
-        var keyBuilder = CodeBlock.builder();
-        var compositeKeyBuilder = CodeBlock.builder();
-        var copyBuilder = CodeBlock.builder();
-        copyBuilder.addStatement("var offset = 0");
-        for (int i = 0; i < recordFields.size(); i++) {
-            var recordField = recordFields.get(i);
-            var mapperName = "keyMapper" + (i + 1);
-            methodBuilder.addParameter(ParameterizedTypeName.get(REDIS_CACHE_MAPPER_KEY, TypeName.get(recordField.asType())), mapperName);
+        final VariableElement firstParameter = keyParameters.stream().findFirst().orElse(null);
+        if (keyMapping != null && !keyMapping.isBlank()) {
+            key = parseKey(method, keyMapping);
+            if (key.params().isEmpty() && !keyParameters.isEmpty()) {
+                throw new ProcessingErrorException("@S3.Put operation key template must use method arguments or they should be removed", method);
+            }
+        } else if (CommonUtils.isCollection(firstParameter.asType())) {
+            throw new ProcessingErrorException("@S3.Put operation expected single result, but parameter is collection of keys", method);
+        } else {
+            key = new Key(CodeBlock.of("var _key = String.valueOf($L)", firstParameter.toString()), List.of(firstParameter));
+        }
 
-            var keyName = "_key" + (i + 1);
-            keyBuilder.addStatement("var $L = $L.apply($T.requireNonNull(key.$L(), $S))",
-                    keyName, mapperName, Objects.class, recordField.getSimpleName().toString(),
-                    "Cache key '%s' field '%s' must be non null".formatted(keyType.asElement().toString(), recordField.getSimpleName().toString()));
+        final TypeMirror returnTypeMirror = (mode == S3Operation.Mode.SYNC)
+            ? method.getReturnType()
+            : MethodUtils.getGenericType(method.getReturnType()).orElseThrow();
+        final TypeName returnType = ClassName.get(returnTypeMirror);
 
-            if (i == 0) {
-                compositeKeyBuilder.add("var _compositeKey = new byte[");
-                for (int j = 0; j < recordFields.size(); j++) {
-                    var compKeyName = "_key" + (j + 1);
-                    if (j != 0) {
-                        compositeKeyBuilder.add(" + $T.DELIMITER.length + $L.length", REDIS_CACHE_MAPPER_KEY, compKeyName);
+        final VariableElement bodyParam = method.getParameters().stream()
+            .filter(p -> key.params().stream().noneMatch(kp -> p == kp))
+            .findFirst()
+            .orElseThrow(() -> new ProcessingErrorException("@S3.Put operation body parameter not found", method));
+
+        TypeName bodyType = ClassName.get(bodyParam.asType());
+
+        boolean isStringResult = String.class.getCanonicalName().equals(returnTypeMirror.toString());
+        if (CommonUtils.isVoid(returnTypeMirror) || isStringResult) {
+            CodeBlock bodyCode;
+            if (CLASS_S3_BODY.equals(bodyType)) {
+                bodyCode = CodeBlock.of("var _body = $L", bodyParam.getSimpleName().toString());
+            } else {
+                final String methodCall;
+                if (ClassName.get(InputStream.class).equals(bodyType)) {
+                    methodCall = "ofInputStreamUnbound";
+                } else if (ClassName.get(ByteBuffer.class).equals(bodyType)) {
+                    methodCall = "ofBuffer";
+                } else if (ArrayTypeName.get(byte[].class).equals(bodyType)) {
+                    methodCall = "ofBytes";
+                } else {
+                    throw new ProcessingErrorException("@S3.Put operation body must be S3Body/bytes/ByteBuffer/InputStream", method);
+                }
+
+                final String type = AnnotationUtils.parseAnnotationValueWithoutDefault(operationMeta.annotation(), "type");
+                final String encoding = AnnotationUtils.parseAnnotationValueWithoutDefault(operationMeta.annotation(), "encoding");
+                if (type != null && encoding != null) {
+                    bodyCode = CodeBlock.of("var _body = $T.$L($L, $S, $S)",
+                        CLASS_S3_BODY, methodCall, bodyParam.getSimpleName().toString(), methodCall, type, encoding);
+                } else if (type != null) {
+                    bodyCode = CodeBlock.of("var _body = $T.$L($L, $S)",
+                        CLASS_S3_BODY, methodCall, bodyParam.getSimpleName().toString(), methodCall, type);
+                } else if (encoding != null) {
+                    bodyCode = CodeBlock.of("var _body = $T.$L($L, null, $S)",
+                        CLASS_S3_BODY, methodCall, bodyParam.getSimpleName().toString(), methodCall, encoding);
+                } else {
+                    bodyCode = CodeBlock.of("var _body = $T.$L($L)",
+                        CLASS_S3_BODY, methodCall, bodyParam.getSimpleName().toString());
+                }
+            }
+
+            var methodBuilder = CodeBlock.builder();
+            if (mode == S3Operation.Mode.SYNC) {
+                if (isStringResult) {
+                    methodBuilder.add("return _simpleSyncClient");
+                } else {
+                    methodBuilder.add("_simpleSyncClient");
+                }
+            } else {
+                methodBuilder.add("return _simpleAsyncClient");
+            }
+
+            methodBuilder.add(".put(_clientConfig.bucket(), _key, _body)");
+            if (mode == S3Operation.Mode.ASYNC && !isStringResult) {
+                methodBuilder.add(".thenAccept(_v -> {})");
+            }
+
+            if (mode == S3Operation.Mode.ASYNC && CompletableFuture.class.getCanonicalName().equals(((DeclaredType) method.getReturnType()).asElement().toString())) {
+                methodBuilder.add(".toCompletableFuture()");
+            }
+            methodBuilder.add(";\n");
+
+            CodeBlock code = CodeBlock.builder()
+                .addStatement(key.code())
+                .add("\n")
+                .addStatement(bodyCode)
+                .add("\n")
+                .add(methodBuilder.build())
+                .build();
+
+            return new S3Operation(method, operationMeta.annotation, OperationType.LIST, ImplType.SIMPLE, mode, code);
+        } else if (CLASS_AWS_PUT_RESPONSE.equals(returnType)) {
+            CodeBlock bodyCode;
+            var requestBuilder = CodeBlock.builder();
+            final String type = AnnotationUtils.parseAnnotationValueWithoutDefault(operationMeta.annotation(), "type");
+            final String encoding = AnnotationUtils.parseAnnotationValueWithoutDefault(operationMeta.annotation(), "encoding");
+            final String bodyParamName = bodyParam.getSimpleName().toString();
+
+            if (CLASS_S3_BODY.equals(bodyType)) {
+                if (mode == S3Operation.Mode.SYNC) {
+                    bodyCode = CodeBlock.builder()
+                        .add("final $T _requestBody;\n", CLASS_AWS_IS_SYNC_BODY)
+                        .unindent()
+                        .unindent()
+                        .beginControlFlow("if ($L instanceof $T _bb)", bodyParamName, CLASS_S3_BODY_BYTES)
+                        .add("_requestBody = $T.fromBytes(_bb.bytes());\n", CLASS_AWS_IS_SYNC_BODY)
+                        .nextControlFlow("else if ($L.size() > 0)", bodyParamName)
+                        .add("_requestBody = $T.fromContentProvider(() -> $L.asInputStream(), $L.size(), $L.type());\n", CLASS_AWS_IS_SYNC_BODY, bodyParamName, bodyParamName, bodyParamName)
+                        .nextControlFlow("else")
+                        .add("_requestBody = $T.fromContentProvider(() -> $L.asInputStream(), $L.type());\n", CLASS_AWS_IS_SYNC_BODY, bodyParamName, bodyParamName)
+                        .endControlFlow()
+                        .indent()
+                        .indent()
+                        .build();
+                } else {
+                    bodyCode = CodeBlock.of("""
+                            var _requestBody = (body instanceof $T bb)
+                                ? $T.fromBytes(bb.bytes())
+                                : $T.fromInputStream($L.asInputStream(), $L.size() > 0 ? $L.size() : null, _awsAsyncExecutor)""",
+                        CLASS_S3_BODY_BYTES, CLASS_AWS_IS_ASYNC_BODY, CLASS_AWS_IS_ASYNC_BODY, bodyParamName, bodyParamName, bodyParamName);
+                }
+
+                requestBuilder.addStatement("_requestBuilder.contentLength($L.size() > 0 ? $L.size() : null)", bodyParamName, bodyParamName);
+                if (type != null) {
+                    requestBuilder.addStatement("_requestBuilder.contentType($S)", type);
+                } else {
+                    requestBuilder.addStatement("_requestBuilder.contentType($L.type())", bodyParamName);
+                }
+                if (encoding != null) {
+                    requestBuilder.addStatement("_requestBuilder.contentEncoding($S)", encoding);
+                } else {
+                    requestBuilder.addStatement("_requestBuilder.contentEncoding($L.encoding())", bodyParamName);
+                }
+            } else {
+                var awsBodyClass = mode == S3Operation.Mode.SYNC
+                    ? CLASS_AWS_IS_SYNC_BODY
+                    : CLASS_AWS_IS_ASYNC_BODY;
+
+                if (ClassName.get(InputStream.class).equals(bodyType)) {
+                    if (mode == S3Operation.Mode.SYNC) {
+                        if (type == null) {
+                            bodyCode = CodeBlock.of("var _requestBody = $T.fromContentProvider(() -> $L, null)",
+                                awsBodyClass, bodyParamName);
+                        } else {
+                            bodyCode = CodeBlock.of("var _requestBody = $T.fromContentProvider(() -> $L, $S)",
+                                awsBodyClass, bodyParamName, type);
+                        }
                     } else {
-                        compositeKeyBuilder.add("$L.length", compKeyName);
+                        bodyCode = CodeBlock.of("$T.fromInputStream($L, null, awsExecutorService)",
+                            awsBodyClass, bodyParamName);
+                    }
+                } else if (ClassName.get(ByteBuffer.class).equals(bodyType)) {
+                    bodyCode = CodeBlock.of("var _requestBody = $T.fromByteBuffer($L)",
+                        awsBodyClass, bodyParamName);
+                    requestBuilder.addStatement("_requestBuilder.contentLength($L.remaining())", bodyParamName);
+                } else if (ArrayTypeName.get(byte[].class).equals(bodyType)) {
+                    bodyCode = CodeBlock.of("var _requestBody = $T.fromBytes($L)",
+                        awsBodyClass, bodyParamName);
+                    requestBuilder.addStatement("_requestBuilder.contentLength($L.length)", bodyParamName);
+                } else {
+                    throw new ProcessingErrorException("@S3.Put operation body must be S3Body/bytes/ByteBuffer/InputStream", method);
+                }
+
+                if (type != null) {
+                    requestBuilder.addStatement("_requestBuilder.contentType($S)", type);
+                }
+                if (encoding != null) {
+                    requestBuilder.addStatement("_requestBuilder.contentEncoding($S)", encoding);
+                }
+            }
+
+            String clientField = mode == S3Operation.Mode.SYNC
+                ? "_awsSyncClient"
+                : "_awsAsyncClient";
+
+            CodeBlock code = CodeBlock.builder()
+                .addStatement(key.code())
+                .add("\n")
+                .addStatement(bodyCode)
+                .add("\n")
+                .addStatement("""
+                    var _requestBuilder = $T.builder()
+                        .bucket(_clientConfig.bucket())
+                        .key(_key)""", CLASS_AWS_PUT_REQUEST)
+                .add(requestBuilder.build())
+                .addStatement("var _request = _requestBuilder.build()")
+                .add("\n")
+                .addStatement("return $L.putObject(_request, _requestBody)", clientField)
+                .build();
+
+            return new S3Operation(method, operationMeta.annotation, OperationType.LIST, ImplType.AWS, mode, code);
+        } else {
+            throw new ProcessingErrorException("@S3.Put operation unsupported signature", method);
+        }
+    }
+
+    private S3Operation operationDELETE(ExecutableElement method, OperationMeta operationMeta, S3Operation.Mode mode) {
+        final String keyMapping = AnnotationUtils.parseAnnotationValueWithoutDefault(operationMeta.annotation, "value");
+        final Key key;
+        final VariableElement firstParameter = method.getParameters().stream().findFirst().orElse(null);
+        if (keyMapping != null && !keyMapping.isBlank()) {
+            key = parseKey(method, keyMapping);
+            if (key.params().isEmpty() && !method.getParameters().isEmpty()) {
+                throw new ProcessingErrorException("@S3.Delete operation key template must use method arguments or they should be removed", method);
+            }
+        } else if (method.getParameters().size() > 1) {
+            throw new ProcessingErrorException("@S3.Delete operation can't have multiple method parameters for keys without key template", method);
+        } else if (method.getParameters().isEmpty()) {
+            throw new ProcessingErrorException("@S3.Delete operation must have key parameter", method);
+        } else {
+            key = new Key(CodeBlock.of("var _key = String.valueOf($L)", firstParameter.toString()), List.of(firstParameter));
+        }
+
+        final TypeMirror returnTypeMirror = (mode == S3Operation.Mode.SYNC)
+            ? method.getReturnType()
+            : MethodUtils.getGenericType(method.getReturnType()).orElseThrow();
+        final TypeName returnType = ClassName.get(returnTypeMirror);
+
+        final boolean isListOfString = CommonUtils.isList(returnTypeMirror)
+            && MethodUtils.getGenericType(returnTypeMirror).stream()
+            .anyMatch(t -> String.class.getCanonicalName().equals(t.toString()));
+
+        if (CommonUtils.isVoid(returnTypeMirror) || isListOfString) {
+            String clientField = mode == S3Operation.Mode.SYNC
+                ? "_simpleSyncClient"
+                : "_simpleAsyncClient";
+
+            var builder = CodeBlock.builder();
+            if (key.params().size() == 1 && isListOfString) {
+                builder.addStatement("return $L.delete(_clientConfig.bucket(), $L)", clientField, key.params().get(0).getSimpleName().toString());
+            } else {
+                builder.addStatement(key.code());
+                if (mode == S3Operation.Mode.ASYNC) {
+                    builder.add("return ");
+                }
+                builder.add("$L.delete(_clientConfig.bucket(), _key)", clientField);
+                if (mode == S3Operation.Mode.ASYNC) {
+                    builder.add(".thenAccept(_v -> {})");
+                    if (CompletableFuture.class.getCanonicalName().equals(((DeclaredType) method.getReturnType()).asElement().toString())) {
+                        builder.add(".toCompletableFuture()");
                     }
                 }
-                copyBuilder.addStatement("$T.arraycopy($L, 0, _compositeKey, 0, $L.length)", System.class, keyName, keyName);
-                copyBuilder.addStatement("offset += $L.length", keyName);
-            } else {
-                copyBuilder.addStatement("$T.arraycopy($T.DELIMITER, 0, _compositeKey, offset, $T.DELIMITER.length)", System.class, REDIS_CACHE_MAPPER_KEY, REDIS_CACHE_MAPPER_KEY);
-                copyBuilder.addStatement("offset += $T.DELIMITER.length", REDIS_CACHE_MAPPER_KEY);
-                copyBuilder.addStatement("$T.arraycopy($L, 0, _compositeKey, offset, $L.length)", System.class, keyName, keyName);
-                if (i != recordFields.size() - 1) {
-                    copyBuilder.addStatement("offset += $L.length", keyName);
-                }
+
+                builder.add(";\n");
             }
-        }
 
-        compositeKeyBuilder.addStatement("]");
-        copyBuilder.addStatement("return _compositeKey");
+            return new S3Operation(method, operationMeta.annotation, OperationType.DELETE, ImplType.SIMPLE, mode, builder.build());
+        } else if (CLASS_AWS_DELETE_RESPONSE.equals(returnType)) {
+            if (firstParameter != null && CommonUtils.isCollection(firstParameter.asType())) {
+                throw new ProcessingErrorException("@S3.Delete operation expected single result, but parameter is collection of keys", method);
+            }
 
-        return methodBuilder
-            .addCode(CodeBlock.builder()
-                .beginControlFlow("return key -> ")
-                .add(keyBuilder.build())
-                .add(compositeKeyBuilder.build())
-                .add(copyBuilder.build())
-                .endControlFlow()
-                .add(";")
-                .build()
-            )
-            .returns(ParameterizedTypeName.get(REDIS_CACHE_MAPPER_KEY, TypeName.get(keyType)))
-            .build();
-    }
+            String clientField = mode == S3Operation.Mode.SYNC
+                ? "_awsSyncClient"
+                : "_awsAsyncClient";
 
-    private static ClassName getCacheImpl(TypeElement cacheContract) {
-        final ClassName cacheImplName = ClassName.get(cacheContract);
-        return ClassName.get(cacheImplName.packageName(), "$%sImpl".formatted(cacheImplName.simpleName()));
-    }
-
-    private MethodSpec getCacheMethodImpl(TypeElement cacheContract, ParameterizedTypeName cacheType) {
-        var cacheImplName = getCacheImpl(cacheContract);
-        var methodName = "%s_Impl".formatted(cacheImplName.simpleName());
-        if (cacheType.rawType.equals(CAFFEINE_CACHE)) {
-            return MethodSpec.methodBuilder(methodName)
-                .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(CAFFEINE_CACHE_CONFIG, "config")
-                    .addAnnotation(AnnotationSpec.builder(CommonClassNames.tag)
-                        .addMember("value", "$T.class", cacheContract)
-                        .build())
-                    .build())
-                .addParameter(CAFFEINE_CACHE_FACTORY, "factory")
-                .addParameter(CAFFEINE_TELEMETRY, "telemetry")
-                .addStatement("return new $T(config, factory, telemetry)", cacheImplName)
-                .returns(TypeName.get(cacheContract.asType()))
+            CodeBlock code = CodeBlock.builder()
+                .addStatement(key.code())
+                .add("\n")
+                .addStatement(CodeBlock.of("""
+                    var _request = $T.builder()
+                        .bucket(_clientConfig.bucket())
+                        .key(_key)
+                        .build()""", CLASS_AWS_DELETE_REQUEST))
+                .add("\n")
+                .addStatement("return $L.deleteObject(_request)", clientField)
                 .build();
-        }
-        if (cacheType.rawType.equals(REDIS_CACHE)) {
-            var keyType = cacheType.typeArguments.get(0);
-            var valueType = cacheType.typeArguments.get(1);
-            var keyMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_KEY, keyType);
-            var valueMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_VALUE, valueType);
 
-            final DeclaredType cacheDeclaredType = cacheContract.getInterfaces().stream()
-                .filter(i -> ClassName.get(i).equals(cacheType))
-                .map(i -> (DeclaredType) i)
+            return new S3Operation(method, operationMeta.annotation, OperationType.DELETE, ImplType.AWS, mode, code);
+        } else if (CLASS_AWS_DELETES_RESPONSE.equals(returnType)) {
+            if (firstParameter == null || !CommonUtils.isCollection(firstParameter.asType())) {
+                throw new ProcessingErrorException("@S3.Delete operation multiple keys, but parameter is not collection of keys", method);
+            }
+
+            String clientField = mode == S3Operation.Mode.SYNC
+                ? "_awsSyncClient"
+                : "_awsAsyncClient";
+
+            CodeBlock code = CodeBlock.builder()
+                .addStatement(CodeBlock.of("""
+                        var _request = $T.builder()
+                            .bucket(_clientConfig.bucket())
+                            .delete($T.builder()
+                                .objects(cb -> {
+                                    for (var _key : $L) {
+                                        cb.key(_key);
+                                    }
+                                }).build())
+                            .build()""", CLASS_AWS_DELETES_REQUEST, ClassName.get("software.amazon.awssdk.services.s3.model", "Delete"),
+                    firstParameter.getSimpleName().toString()))
+                .add("\n")
+                .addStatement("return $L.deleteObjects(_request)", clientField)
+                .build();
+
+            return new S3Operation(method, operationMeta.annotation, OperationType.DELETE, ImplType.AWS, mode, code);
+        } else {
+            throw new ProcessingErrorException("@S3.Delete operation unsupported signature", method);
+        }
+    }
+
+    record Key(CodeBlock code, List<VariableElement> params) {}
+
+    private Key parseKey(ExecutableElement method, String keyTemplate) {
+        int indexStart = keyTemplate.indexOf("{");
+        if (indexStart == -1) {
+            return new Key(CodeBlock.of("var _key = $S", keyTemplate), Collections.emptyList());
+        }
+
+        List<VariableElement> params = new ArrayList<>();
+        CodeBlock.Builder builder = CodeBlock.builder();
+        builder.add("var _key = ");
+        int indexEnd = 0;
+        while (indexStart != -1) {
+            if (indexStart != 0 && indexStart != (indexEnd + 1)) {
+                builder.add("$S + ", keyTemplate.substring(indexEnd + 1, indexStart));
+            }
+            indexEnd = keyTemplate.indexOf("}", indexStart);
+
+            final String paramName = keyTemplate.substring(indexStart + 1, indexEnd);
+            final VariableElement parameter = method.getParameters().stream()
+                .filter(p -> {
+                    TypeName bodyType = ClassName.get(p.asType());
+                    return !ClassName.get(InputStream.class).equals(bodyType)
+                        && !ClassName.get(ByteBuffer.class).equals(bodyType)
+                        && !ArrayTypeName.get(byte[].class).equals(bodyType);
+                })
+                .filter(p -> p.getSimpleName().contentEquals(paramName))
                 .findFirst()
-                .orElseThrow();
+                .orElseThrow(() -> new ProcessingErrorException("@S3 operation key part named '%s' expected, but was not found".formatted(paramName), method));
 
-            var valueParamBuilder = ParameterSpec.builder(valueMapperType, "valueMapper");
-            final Set<String> valueTags = TagUtils.parseTagValue(cacheDeclaredType.getTypeArguments().get(1));
-            if (!valueTags.isEmpty()) {
-                valueParamBuilder.addAnnotation(TagUtils.makeAnnotationSpec(valueTags));
+            if (CommonUtils.isCollection(parameter.asType()) || CommonUtils.isMap(parameter.asType())) {
+                throw new ProcessingErrorException("@S3 operation key part '%s' can't be Collection or Map".formatted(paramName), method);
             }
 
-            var keyParamBuilder = ParameterSpec.builder(keyMapperType, "keyMapper");
-            final Set<String> keyTags = TagUtils.parseTagValue(cacheDeclaredType.getTypeArguments().get(0));
-            if (!keyTags.isEmpty()) {
-                keyParamBuilder.addAnnotation(TagUtils.makeAnnotationSpec(keyTags));
+            params.add(parameter);
+            builder.add("$L", paramName);
+            indexStart = keyTemplate.indexOf("{", indexEnd);
+            if (indexStart != -1) {
+                builder.add(" + ");
             }
-
-            return MethodSpec.methodBuilder(methodName)
-                .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(REDIS_CACHE_CONFIG, "config")
-                    .addAnnotation(AnnotationSpec.builder(CommonClassNames.tag)
-                        .addMember("value", "$T.class", cacheContract)
-                        .build())
-                    .build())
-                .addParameter(REDIS_CACHE_CLIENT, "redisClient")
-                .addParameter(REDIS_TELEMETRY, "telemetry")
-                .addParameter(keyParamBuilder.build())
-                .addParameter(valueParamBuilder.build())
-                .addStatement("return new $T(config, redisClient, telemetry, keyMapper, valueMapper)", cacheImplName)
-                .returns(TypeName.get(cacheContract.asType()))
-                .build();
-        }
-        throw new IllegalArgumentException("Unknown cache type: " + cacheType.rawType);
-    }
-
-    private MethodSpec getCacheConstructor(String configPath, ParameterizedTypeName cacheContract) {
-        if (cacheContract.rawType.equals(CAFFEINE_CACHE)) {
-            return MethodSpec.constructorBuilder()
-                .addParameter(CAFFEINE_CACHE_CONFIG, "config")
-                .addParameter(CAFFEINE_CACHE_FACTORY, "factory")
-                .addParameter(CAFFEINE_TELEMETRY, "telemetry")
-                .addStatement("super($S, config, factory, telemetry)", configPath)
-                .build();
         }
 
-        if (cacheContract.rawType.equals(REDIS_CACHE)) {
-            var keyType = cacheContract.typeArguments.get(0);
-            var valueType = cacheContract.typeArguments.get(1);
-            var keyMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_KEY, keyType);
-            var valueMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_VALUE, valueType);
-            return MethodSpec.constructorBuilder()
-                .addParameter(REDIS_CACHE_CONFIG, "config")
-                .addParameter(REDIS_CACHE_CLIENT, "redisClient")
-                .addParameter(REDIS_TELEMETRY, "telemetry")
-                .addParameter(keyMapperType, "keyMapper")
-                .addParameter(valueMapperType, "valueMapper")
-                .addStatement("super($S, config, redisClient, telemetry, keyMapper, valueMapper)", configPath)
-                .build();
-        }
-
-        throw new IllegalArgumentException("Unknown cache type: " + cacheContract.rawType);
+        return new Key(builder.build(), params);
     }
 
     private String getPackage(Element element) {

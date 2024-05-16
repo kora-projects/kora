@@ -16,13 +16,5 @@ public interface S3Config {
     default String region() {
         return "us-east-1";
     }
-
-    default Duration requestTimeout() {
-        return Duration.ofSeconds(45);
-    }
-
-    default Duration connectionTimeout() {
-        return Duration.ofSeconds(15);
-    }
 }
 

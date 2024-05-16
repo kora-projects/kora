@@ -103,9 +103,10 @@ include(
     'test:test-junit5',
     'mapstruct:mapstruct-java-extension',
     'mapstruct:mapstruct-ksp-extension',
-    's3:s3-client-common',
     's3:s3-client-annotation-processor',
     's3:s3-client-symbol-processor',
+    's3:s3-client-common',
+    's3:s3-client-minio',
     's3:s3-client-aws',
 )
 

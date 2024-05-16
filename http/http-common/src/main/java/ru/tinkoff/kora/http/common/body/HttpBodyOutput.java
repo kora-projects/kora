@@ -22,16 +22,20 @@ public interface HttpBodyOutput extends HttpBody, Flow.Publisher<ByteBuffer> {
         return new StreamingHttpBodyOutput(contentType, length, content);
     }
 
+    static HttpBodyOutput of(String contentType, InputStream inputStream) {
+        return new StreamingHttpBodyOutput(contentType, -1, HttpRequest.BodyPublishers.ofInputStream(() -> inputStream));
+    }
+
+    static HttpBodyOutput of(String contentType, int length, InputStream inputStream) {
+        return new StreamingHttpBodyOutput(contentType, length, HttpRequest.BodyPublishers.ofInputStream(() -> inputStream));
+    }
+
     static HttpBodyOutput octetStream(Flow.Publisher<? extends ByteBuffer> content) {
         return new StreamingHttpBodyOutput("application/octet-stream", -1, content);
     }
 
     static HttpBodyOutput octetStream(InputStream inputStream) {
         return new StreamingHttpBodyOutput("application/octet-stream", -1, HttpRequest.BodyPublishers.ofInputStream(() -> inputStream));
-    }
-
-    static HttpBodyOutput octetStream(HttpRequest.BodyPublisher publisher) {
-        return new StreamingHttpBodyOutput("application/octet-stream", ((int) publisher.contentLength()), publisher);
     }
 
     static HttpBodyOutput octetStream(long length, Flow.Publisher<? extends ByteBuffer> content) {
