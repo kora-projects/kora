@@ -23,7 +23,6 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             version('swagger', '2.2.25')
             version('opentelemetry', '1.37.0')
             version('undertow', '2.3.18.Final')
-            version('camunda7', '7.21.0')
             version('zeebe', '8.5.0')
 
             library('jsr305', 'com.google.code.findbugs', 'jsr305').version('3.0.2')

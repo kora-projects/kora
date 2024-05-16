@@ -13,7 +13,7 @@ public class ClasspathResourceUtilsTests {
 
     @Test
     void fileByName() {
-        List<Resource> resources = ClasspathResourceUtils.findResources("camunda-license.txt");
+        List<Resource> resources = ClasspathResourceUtils.findResources("some-file.txt");
         assertEquals(1, resources.size());
         for (Resource resource : resources) {
             assertNotNull(resource.name());
