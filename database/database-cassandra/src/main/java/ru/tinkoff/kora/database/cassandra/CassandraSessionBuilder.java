@@ -3,6 +3,7 @@ package ru.tinkoff.kora.database.cassandra;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.internal.core.config.typesafe.DefaultProgrammaticDriverConfigLoaderBuilder;
+import com.datastax.oss.driver.internal.metrics.micrometer.MicrometerMetricsFactory;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.*;
@@ -29,7 +30,10 @@ public class CassandraSessionBuilder {
 
         applyOverridable(loaderBuilder, config.basic(), config.advanced());
         builder.withConfigLoader(loaderBuilder.build());
-        builder.withMetricRegistry(telemetry.getMetricRegistry());
+        if (telemetry.getMetricRegistry() != null) {
+            loaderBuilder.withString(METRICS_FACTORY_CLASS, MicrometerMetricsFactory.class.getCanonicalName());
+            builder.withMetricRegistry(telemetry.getMetricRegistry());
+        }
         return builder.build();
     }
 
@@ -71,6 +75,14 @@ public class CassandraSessionBuilder {
         }
 
         if (config.request() != null && config.request().warnIfSetKeyspace() != null) builder.withBoolean(REQUEST_WARN_IF_SET_KEYSPACE, config.request().warnIfSetKeyspace());
+
+        if (config.metrics() != null && config.metrics().idGenerator() != null) {
+            var idGenerator = config.metrics().idGenerator();
+            builder.withString(METRICS_ID_GENERATOR_CLASS, idGenerator.name());
+            if (idGenerator.prefix() != null) {
+                builder.withString(METRICS_ID_GENERATOR_PREFIX, idGenerator.prefix());
+            }
+        }
 
         if (config.metrics() != null && config.metrics().session() != null) {
             applyMetricsSessionConfig(builder, config.metrics().session());

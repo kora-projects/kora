@@ -46,6 +46,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             library('snakeyaml-engine', 'org.snakeyaml', 'snakeyaml-engine').version("2.7")
 
             library('cassandra-driver', 'com.datastax.oss', 'java-driver-core').versionRef('cassandra')
+            library('cassandra-metrics', 'com.datastax.oss', 'java-driver-metrics-micrometer').versionRef('cassandra')
 
             library('reactive-streams', 'org.reactivestreams', 'reactive-streams').version("1.0.4")
             library('reactor-core', 'io.projectreactor', 'reactor-core').versionRef('reactor')
