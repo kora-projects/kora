@@ -4,15 +4,7 @@ import java.util.List;
 
 public interface S3ObjectMetaList {
 
-    String name();
-
     String prefix();
 
-    String delimiter();
-
-    Integer maxKeys();
-
-    List<String> commonPrefixes();
-
-    List<S3ObjectMeta> objectMetas();
+    List<S3ObjectMeta> metas();
 }

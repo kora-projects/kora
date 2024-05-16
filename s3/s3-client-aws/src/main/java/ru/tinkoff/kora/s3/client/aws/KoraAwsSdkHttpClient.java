@@ -46,7 +46,7 @@ public final class KoraAwsSdkHttpClient implements SdkHttpClient, SdkAsyncHttpCl
 
             @Override
             public void abort() {
-
+                // do nothing
             }
         };
     }
@@ -97,6 +97,6 @@ public final class KoraAwsSdkHttpClient implements SdkHttpClient, SdkAsyncHttpCl
 
     @Override
     public void close() {
-
+        // do nothing
     }
 }

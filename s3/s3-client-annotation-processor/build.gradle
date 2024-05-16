@@ -6,6 +6,7 @@ dependencies {
     implementation libs.javapoet
 
     testImplementation project(":s3:s3-client-aws")
+    testImplementation project(":s3:s3-client-minio")
     testImplementation project(":internal:test-logging")
     testImplementation project(":config:config-common")
     testImplementation testFixtures(project(":annotation-processor-common"))

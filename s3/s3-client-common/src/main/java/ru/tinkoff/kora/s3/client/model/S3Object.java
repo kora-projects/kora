@@ -1,6 +1,14 @@
 package ru.tinkoff.kora.s3.client.model;
 
-public interface S3Object extends S3ObjectMeta {
+import java.time.Instant;
+
+public interface S3Object {
+
+    String key();
+
+    Instant modified();
+
+    long size();
 
     S3Body body();
 }
