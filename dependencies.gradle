@@ -24,7 +24,6 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             version('opentelemetry', '1.37.0')
             version('undertow', '2.3.13.Final')
             version('camunda7', '7.21.0')
-            version('zeebe', '8.5.0')
 
             library('jsr305', 'com.google.code.findbugs', 'jsr305').version('3.0.2')
             library('jakarta-annotations', 'jakarta.annotation', 'jakarta.annotation-api').version('2.1.1')
@@ -180,9 +179,6 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             library('fasterxml-uuidgenerator', 'com.fasterxml.uuid', 'java-uuid-generator').version('5.0.0')
             library('resteasy-undertow-jakarta', 'org.jboss.resteasy', 'resteasy-undertow').version('6.2.8.Final')
             library('jakarta-rs-api', 'jakarta.ws.rs', 'jakarta.ws.rs-api').version('3.1.0')
-
-            library('zeebe-model', 'io.camunda', 'zeebe-bpmn-model').versionRef('zeebe')
-            library('zeebe-client', 'io.camunda', 'zeebe-client-java').versionRef('zeebe')
         }
     }
 }
