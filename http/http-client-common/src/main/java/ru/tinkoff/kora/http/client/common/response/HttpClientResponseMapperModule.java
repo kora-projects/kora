@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.http.client.common.response;
 
+import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.common.HttpResponseEntity;
 import ru.tinkoff.kora.http.common.body.HttpBody;
 
@@ -7,6 +8,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 
@@ -43,7 +45,7 @@ public interface HttpClientResponseMapperModule {
     default <T> HttpClientResponseMapper<CompletionStage<HttpResponseEntity<T>>> entityResponseCompletionStageHttpClientResponseMapper(HttpClientResponseMapper<T> mapper) {
         return response -> response.body().asArrayStage().thenApply(body -> {
             try {
-                var temp = new HttpClientResponse.Default(response.code(), response.headers(), HttpBody.of(body), () -> { });
+                var temp = new HttpClientResponse.Default(response.code(), response.headers(), HttpBody.of(body), () -> {});
                 return HttpResponseEntity.of(temp.code(), temp.headers().toMutable(), mapper.apply(temp));
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
@@ -53,5 +55,16 @@ public interface HttpClientResponseMapperModule {
 
     default HttpClientResponseMapper<Flow.Publisher<ByteBuffer>> byteBufferFluxHttpClientResponseMapper() {
         return HttpClientResponse::body;
+    }
+
+    default HttpClientResponseMapper<Void> voidHttpClientResponseMapper() {
+        return response -> null;
+    }
+
+    default HttpClientResponseMapper<CompletionStage<Void>> voidFutureHttpClientResponseMapper() {
+        return response -> {
+            response.body().subscribe(FlowUtils.drain());
+            return CompletableFuture.completedFuture(null);
+        };
     }
 }
