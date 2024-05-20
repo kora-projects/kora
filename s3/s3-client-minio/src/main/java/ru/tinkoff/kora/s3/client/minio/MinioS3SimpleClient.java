@@ -5,18 +5,18 @@ import io.minio.errors.ErrorResponseException;
 import io.minio.messages.DeleteError;
 import io.minio.messages.DeleteObject;
 import io.minio.messages.Item;
+import ru.tinkoff.kora.s3.client.S3DeleteException;
 import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.s3.client.S3NotFoundException;
 import ru.tinkoff.kora.s3.client.S3SimpleClient;
-import ru.tinkoff.kora.s3.client.minio.model.MinioS3Object;
-import ru.tinkoff.kora.s3.client.minio.model.MinioS3ObjectList;
-import ru.tinkoff.kora.s3.client.minio.model.MinioS3ObjectMeta;
-import ru.tinkoff.kora.s3.client.minio.model.MinioS3ObjectMetaList;
 import ru.tinkoff.kora.s3.client.model.*;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 public class MinioS3SimpleClient implements S3SimpleClient {
@@ -131,7 +131,6 @@ public class MinioS3SimpleClient implements S3SimpleClient {
             var response = minioClient.listObjects(ListObjectsArgs.builder()
                 .bucket(bucket)
                 .prefix(prefix)
-                .continuationToken(UUID.randomUUID().toString())
                 .maxKeys(limit)
                 .build());
 
@@ -177,7 +176,7 @@ public class MinioS3SimpleClient implements S3SimpleClient {
         var requestBuilder = PutObjectArgs.builder()
             .bucket(bucket)
             .object(key)
-            .contentType(body.type());
+            .contentType(body.type() == null ? "application/octet-stream" : body.type());
 
         if (body.size() > 0 && body.encoding() != null) {
             requestBuilder.headers(Map.of(
@@ -220,7 +219,7 @@ public class MinioS3SimpleClient implements S3SimpleClient {
     }
 
     @Override
-    public List<String> delete(String bucket, Collection<String> keys) {
+    public void delete(String bucket, Collection<String> keys) {
         try {
             var response = minioClient.removeObjects(RemoveObjectsArgs.builder()
                 .bucket(bucket)
@@ -229,17 +228,17 @@ public class MinioS3SimpleClient implements S3SimpleClient {
                     .toList())
                 .build());
 
-            final List<DeleteError> errors = new ArrayList<>(keys.size());
+            final List<S3DeleteException.Error> errors = new ArrayList<>(keys.size());
             for (Result<DeleteError> result : response) {
-                DeleteError deleteError = result.get();
-                errors.add(deleteError);
+                DeleteError er = result.get();
+                errors.add(new S3DeleteException.Error(er.objectName(), er.bucketName(), er.code(), er.message()));
             }
 
-            if (errors.isEmpty()) {
-                return new ArrayList<>(keys);
-            } else {
-                throw new S3MinioDeleteException(errors);
+            if (!errors.isEmpty()) {
+                throw new S3DeleteException(errors);
             }
+        } catch (S3Exception e) {
+            throw e;
         } catch (Exception e) {
             throw new S3Exception(e);
         }

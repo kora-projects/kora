@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.s3.client.aws.model;
+package ru.tinkoff.kora.s3.client.aws;
 
 import ru.tinkoff.kora.s3.client.model.S3ObjectMeta;
 import software.amazon.awssdk.services.s3.model.GetObjectAttributesResponse;
@@ -8,7 +8,7 @@ import software.amazon.awssdk.services.s3.model.S3Object;
 import java.time.Instant;
 import java.util.Objects;
 
-public class AwsS3ObjectMeta implements S3ObjectMeta {
+final class AwsS3ObjectMeta implements S3ObjectMeta {
 
     private final String key;
     private final Instant modified;

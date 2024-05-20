@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.s3.client.minio.model;
+package ru.tinkoff.kora.s3.client.minio;
 
 import io.minio.StatObjectResponse;
 import io.minio.messages.Item;
@@ -7,7 +7,7 @@ import ru.tinkoff.kora.s3.client.model.S3ObjectMeta;
 import java.time.Instant;
 import java.util.Objects;
 
-public class MinioS3ObjectMeta implements S3ObjectMeta {
+final class MinioS3ObjectMeta implements S3ObjectMeta {
 
     private final String key;
     private final Instant modified;

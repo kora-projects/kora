@@ -44,5 +44,5 @@ public interface S3SimpleAsyncClient {
 
     CompletionStage<Void> delete(String bucket, String key);
 
-    CompletionStage<List<String>> delete(String bucket, Collection<String> keys);
+    CompletionStage<Void> delete(String bucket, Collection<String> keys) throws S3DeleteException;
 }

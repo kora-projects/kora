@@ -1,16 +1,17 @@
-package ru.tinkoff.kora.s3.client.minio.model;
+package ru.tinkoff.kora.s3.client.minio;
 
 import io.minio.GetObjectResponse;
 import okhttp3.Headers;
 import ru.tinkoff.kora.s3.client.model.S3Body;
 import ru.tinkoff.kora.s3.client.model.S3Object;
+import ru.tinkoff.kora.s3.client.model.S3ObjectMeta;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Instant;
 import java.util.Objects;
 
-public class MinioS3Object implements S3Object {
+final class MinioS3Object implements S3Object, S3ObjectMeta {
 
     private final S3Body body;
     private final String key;

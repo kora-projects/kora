@@ -28,6 +28,24 @@ class S3SimpleAsyncClientTests extends AbstractAnnotationProcessorTest {
             """;
     }
 
+    @Test
+    public void clientConfig() {
+        this.compile(List.of(new S3ClientAnnotationProcessor()), """
+            @S3.Client("my")
+            public interface Client {
+                        
+                @S3.Get
+                CompletionStage<S3ObjectMeta> get(String key);
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$Client_Impl");
+        assertThat(clazz).isNotNull();
+
+        var config = this.compileResult.loadClass("$Client_ClientConfigModule");
+        assertThat(config).isNotNull();
+    }
+
     // Get
     @Test
     public void clientGetMeta() {
@@ -90,6 +108,21 @@ class S3SimpleAsyncClientTests extends AbstractAnnotationProcessorTest {
     }
 
     @Test
+    public void clientGetManyMetasFuture() {
+        this.compile(List.of(new S3ClientAnnotationProcessor()), """
+            @S3.Client("my")
+            public interface Client {
+                        
+                @S3.Get
+                CompletableFuture<List<S3ObjectMeta>> get(Collection<String> keys);
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$Client_Impl");
+        assertThat(clazz).isNotNull();
+    }
+
+    @Test
     public void clientGetManyObjects() {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
@@ -97,6 +130,21 @@ class S3SimpleAsyncClientTests extends AbstractAnnotationProcessorTest {
                         
                 @S3.Get
                 CompletionStage<List<S3Object>> get(List<String> keys);
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$Client_Impl");
+        assertThat(clazz).isNotNull();
+    }
+
+    @Test
+    public void clientGetManyObjectsFuture() {
+        this.compile(List.of(new S3ClientAnnotationProcessor()), """
+            @S3.Client("my")
+            public interface Client {
+                        
+                @S3.Get
+                CompletableFuture<List<S3Object>> get(List<String> keys);
             }
             """);
         this.compileResult.assertSuccess();

@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.s3.client.aws;
 
+import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.config.common.Config;
@@ -14,11 +15,12 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.interceptor.ExecutionInterceptor;
 import software.amazon.awssdk.http.SdkHttpClient;
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
 
-import java.util.List;
+import java.net.URI;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -31,8 +33,9 @@ public interface AwsS3ClientModule extends S3ClientModule {
     }
 
     @DefaultComponent
-    default KoraAwsSdkHttpClient awsKoraSdkHttpClient(@Tag(S3Client.class) HttpClient client) {
-        return new KoraAwsSdkHttpClient(client);
+    default KoraAwsSdkHttpClient awsKoraSdkHttpClient(@Tag(S3Client.class) HttpClient client,
+                                                      AwsS3ClientConfig clientConfig) {
+        return new KoraAwsSdkHttpClient(client, clientConfig);
     }
 
     @Tag(S3Client.class)
@@ -42,7 +45,7 @@ public interface AwsS3ClientModule extends S3ClientModule {
     }
 
     default AwsS3ClientConfig awsS3ClientConfig(Config config, ConfigValueExtractor<AwsS3ClientConfig> extractor) {
-        var value = config.get("s3.client.aws");
+        var value = config.get("s3client.aws");
         return extractor.extract(value);
     }
 
@@ -66,11 +69,14 @@ public interface AwsS3ClientModule extends S3ClientModule {
     default S3Client awsS3Client(SdkHttpClient httpClient,
                                  AwsCredentialsProvider credentialsProvider,
                                  S3Configuration s3Configuration,
-                                 List<ExecutionInterceptor> interceptors) {
+                                 S3Config s3Config,
+                                 All<ExecutionInterceptor> interceptors) {
         return S3Client.builder()
             .credentialsProvider(credentialsProvider)
             .httpClient(httpClient)
+            .endpointOverride(URI.create(s3Config.url()))
             .serviceConfiguration(s3Configuration)
+            .region(Region.of(s3Config.region()))
             .overrideConfiguration(b -> interceptors.forEach(b::addExecutionInterceptor))
             .build();
     }
@@ -78,11 +84,14 @@ public interface AwsS3ClientModule extends S3ClientModule {
     default S3AsyncClient awsS3AsyncClient(SdkAsyncHttpClient asyncHttpClient,
                                            AwsCredentialsProvider credentialsProvider,
                                            S3Configuration s3Configuration,
-                                           List<ExecutionInterceptor> interceptors) {
+                                           S3Config s3Config,
+                                           All<ExecutionInterceptor> interceptors) {
         return S3AsyncClient.builder()
             .credentialsProvider(credentialsProvider)
             .httpClient(asyncHttpClient)
+            .endpointOverride(URI.create(s3Config.url()))
             .serviceConfiguration(s3Configuration)
+            .region(Region.of(s3Config.region()))
             .overrideConfiguration(b -> interceptors.forEach(b::addExecutionInterceptor))
             .build();
     }

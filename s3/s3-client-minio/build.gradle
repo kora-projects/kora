@@ -1,7 +1,7 @@
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 
 dependencies {
-    annotationProcessor project(':config:config-annotation-processor')
+    annotationProcessor project(":config:config-annotation-processor")
     compileOnly project(":http:http-client-common")
 
     api project(":s3:s3-client-common")

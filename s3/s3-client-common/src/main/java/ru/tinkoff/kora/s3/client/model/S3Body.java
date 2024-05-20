@@ -7,6 +7,14 @@ import java.nio.ByteBuffer;
 
 public interface S3Body {
 
+    default byte[] asBytes() {
+        try (var stream = asInputStream()) {
+            return stream.readAllBytes();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
     InputStream asInputStream();
 
     long size();
