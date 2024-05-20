@@ -26,7 +26,7 @@ public interface HttpBodyOutput extends HttpBody, Flow.Publisher<ByteBuffer> {
         return new StreamingHttpBodyOutput(contentType, -1, HttpRequest.BodyPublishers.ofInputStream(() -> inputStream));
     }
 
-    static HttpBodyOutput of(String contentType, int length, InputStream inputStream) {
+    static HttpBodyOutput of(String contentType, long length, InputStream inputStream) {
         return new StreamingHttpBodyOutput(contentType, length, HttpRequest.BodyPublishers.ofInputStream(() -> inputStream));
     }
 
