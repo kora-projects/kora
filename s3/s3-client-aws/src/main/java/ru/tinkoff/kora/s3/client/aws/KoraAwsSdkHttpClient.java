@@ -82,8 +82,7 @@ public final class KoraAwsSdkHttpClient implements SdkHttpClient, SdkAsyncHttpCl
             if(contentLength == null) {
                 builder.body(HttpBodyOutput.of(contentType, provider.newStream()));
             } else {
-                //TODO int->long
-                builder.body(HttpBodyOutput.of(contentType, Integer.parseInt(contentLength), provider.newStream()));
+                builder.body(HttpBodyOutput.of(contentType, Long.parseLong(contentLength), provider.newStream()));
             }
         });
 
@@ -102,8 +101,7 @@ public final class KoraAwsSdkHttpClient implements SdkHttpClient, SdkAsyncHttpCl
         if(contentLength == null) {
             builder.body(HttpBodyOutput.of(contentType, bodyFlow));
         } else {
-            //TODO int->long
-            builder.body(HttpBodyOutput.of(contentType, Integer.parseInt(contentLength), bodyFlow));
+            builder.body(HttpBodyOutput.of(contentType, Long.parseLong(contentLength), bodyFlow));
         }
 
         return builder
