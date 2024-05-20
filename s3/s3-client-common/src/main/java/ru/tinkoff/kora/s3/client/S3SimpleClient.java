@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.s3.client;
 
-import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.s3.client.model.*;
 
 import java.util.Collection;
@@ -44,5 +43,5 @@ public interface S3SimpleClient {
 
     void delete(String bucket, String key);
 
-    List<String> delete(String bucket, Collection<String> keys);
+    void delete(String bucket, Collection<String> keys) throws S3DeleteException;
 }

@@ -2,8 +2,14 @@ package ru.tinkoff.kora.s3.client.aws;
 
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
+import java.time.Duration;
+
 @ConfigValueExtractor
 public interface AwsS3ClientConfig {
+
+    default Duration requestTimeout() {
+        return Duration.ofSeconds(15);
+    }
 
     default boolean checksumValidationEnabled() {
         return false;
@@ -18,7 +24,7 @@ public interface AwsS3ClientConfig {
     }
 
     default boolean pathStyleAccessEnabled() {
-        return false;
+        return true;
     }
 
     default boolean accelerateModeEnabled() {

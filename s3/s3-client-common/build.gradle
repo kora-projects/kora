@@ -1,4 +1,5 @@
 dependencies {
+    annotationProcessor project(":config:config-annotation-processor")
     compileOnly libs.jetbrains.annotations
     implementation project(":config:config-common")
 

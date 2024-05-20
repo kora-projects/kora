@@ -1,10 +1,10 @@
-package ru.tinkoff.kora.s3.client.minio.model;
+package ru.tinkoff.kora.s3.client.minio;
 
 import ru.tinkoff.kora.s3.client.model.S3Body;
 
 import java.io.InputStream;
 
-public class MinioS3Body implements S3Body {
+final class MinioS3Body implements S3Body {
 
     private final String encoding;
     private final String type;

@@ -1,13 +1,12 @@
-package ru.tinkoff.kora.s3.client.aws.model;
+package ru.tinkoff.kora.s3.client.aws;
 
 import ru.tinkoff.kora.s3.client.model.S3ObjectMeta;
 import ru.tinkoff.kora.s3.client.model.S3ObjectMetaList;
-import software.amazon.awssdk.services.s3.model.CommonPrefix;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 
 import java.util.List;
 
-public class AwsS3ObjectMetaList implements S3ObjectMetaList {
+final class AwsS3ObjectMetaList implements S3ObjectMetaList {
 
     private final ListObjectsV2Response response;
     private final List<S3ObjectMeta> metas;

@@ -2,16 +2,15 @@ package ru.tinkoff.kora.s3.client.minio;
 
 import io.minio.MinioAsyncClient;
 import io.minio.MinioClient;
-import io.minio.S3Base;
 import io.minio.credentials.Provider;
 import io.minio.credentials.StaticProvider;
-import io.minio.http.HttpUtils;
 import jakarta.annotation.Nullable;
 import okhttp3.OkHttpClient;
 import ru.tinkoff.kora.common.DefaultComponent;
-import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.s3.client.S3ClientModule;
 import ru.tinkoff.kora.s3.client.S3Config;
+import ru.tinkoff.kora.s3.client.S3SimpleAsyncClient;
+import ru.tinkoff.kora.s3.client.S3SimpleClient;
 
 public interface MinioS3ClientModule extends S3ClientModule {
 
@@ -48,5 +47,13 @@ public interface MinioS3ClientModule extends S3ClientModule {
         }
 
         return builder.build();
+    }
+
+    default S3SimpleClient MinioS3SimpleClient(MinioClient minioClient) {
+        return new MinioS3SimpleClient(minioClient);
+    }
+
+    default S3SimpleAsyncClient MinioS3SimpleAsyncClient(MinioAsyncClient minioAsyncClient) {
+        return new MinioS3SimpleAsyncClient(minioAsyncClient);
     }
 }

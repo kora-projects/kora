@@ -1,12 +1,9 @@
 package ru.tinkoff.kora.s3.client.aws;
 
+import ru.tinkoff.kora.s3.client.S3DeleteException;
 import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.s3.client.S3NotFoundException;
 import ru.tinkoff.kora.s3.client.S3SimpleAsyncClient;
-import ru.tinkoff.kora.s3.client.aws.model.AwsS3Object;
-import ru.tinkoff.kora.s3.client.aws.model.AwsS3ObjectList;
-import ru.tinkoff.kora.s3.client.aws.model.AwsS3ObjectMeta;
-import ru.tinkoff.kora.s3.client.aws.model.AwsS3ObjectMetaList;
 import ru.tinkoff.kora.s3.client.model.S3Object;
 import ru.tinkoff.kora.s3.client.model.*;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
@@ -14,7 +11,10 @@ import software.amazon.awssdk.core.async.AsyncResponseTransformer;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.*;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
@@ -47,6 +47,7 @@ public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
         var request = GetObjectAttributesRequest.builder()
             .bucket(bucket)
             .key(key)
+            .objectAttributes(ObjectAttributes.OBJECT_SIZE)
             .build();
 
         return asyncClient.getObjectAttributes(request)
@@ -86,7 +87,6 @@ public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
             .bucket(bucket)
             .prefix(prefix)
             .maxKeys(limit)
-            .continuationToken(UUID.randomUUID().toString())
             .build();
 
         return asyncClient.listObjectsV2(request)
@@ -114,7 +114,6 @@ public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
             .bucket(bucket)
             .prefix(prefix)
             .maxKeys(limit)
-            .continuationToken(UUID.randomUUID().toString())
             .build();
 
         return asyncClient.listObjectsV2(request)
@@ -189,27 +188,29 @@ public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
     }
 
     @Override
-    public CompletionStage<List<String>> delete(String bucket, Collection<String> keys) {
+    public CompletionStage<Void> delete(String bucket, Collection<String> keys) {
         var request = DeleteObjectsRequest.builder()
             .bucket(bucket)
             .delete(Delete.builder()
-                .objects(cb -> {
-                    for (String key : keys) {
-                        cb.key(key);
-                    }
-                })
+                .objects(keys.stream()
+                    .map(k -> ObjectIdentifier.builder()
+                        .key(k)
+                        .build())
+                    .toList())
                 .build())
             .build();
 
         return asyncClient.deleteObjects(request)
-            .<List<String>>thenApply(response -> {
-                if (response.hasDeleted()) {
-                    return response.deleted().stream()
-                        .map(DeletedObject::key)
+            .<Void>thenApply(response -> {
+                if (response.hasErrors()) {
+                    var errors = response.errors().stream()
+                        .map(e -> new S3DeleteException.Error(e.key(), bucket, e.code(), e.message()))
                         .toList();
-                } else {
-                    return Collections.emptyList();
+
+                    throw new S3DeleteException(errors);
                 }
+
+                return null;
             })
             .exceptionallyCompose(AwsS3SimpleAsyncClient::handleException);
     }

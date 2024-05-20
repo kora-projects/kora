@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.s3.client.aws.model;
+package ru.tinkoff.kora.s3.client.aws;
 
 import ru.tinkoff.kora.s3.client.model.S3Body;
 import ru.tinkoff.kora.s3.client.model.S3Object;
@@ -9,7 +9,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import java.time.Instant;
 import java.util.Objects;
 
-public class AwsS3Object implements S3Object {
+final class AwsS3Object implements S3Object, S3ObjectMeta {
 
     private final S3Body body;
     private final S3ObjectMeta meta;

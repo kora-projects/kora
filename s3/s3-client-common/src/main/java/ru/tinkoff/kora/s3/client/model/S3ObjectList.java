@@ -6,10 +6,5 @@ public interface S3ObjectList extends S3ObjectMetaList {
 
     List<S3Object> objects();
 
-    @Override
-    default List<S3ObjectMeta> metas() {
-        return objects().stream()
-            .map(o -> ((S3ObjectMeta) o))
-            .toList();
-    }
+    List<S3ObjectMeta> metas();
 }

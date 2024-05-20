@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.s3.client.aws.model;
+package ru.tinkoff.kora.s3.client.aws;
 
 import ru.tinkoff.kora.s3.client.model.S3Body;
 

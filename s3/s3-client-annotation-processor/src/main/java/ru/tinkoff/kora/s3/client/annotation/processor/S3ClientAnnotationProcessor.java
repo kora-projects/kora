@@ -3,6 +3,7 @@ package ru.tinkoff.kora.s3.client.annotation.processor;
 import com.squareup.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.common.Module;
 import ru.tinkoff.kora.s3.client.annotation.processor.S3Operation.ImplType;
 import ru.tinkoff.kora.s3.client.annotation.processor.S3Operation.OperationType;
 
@@ -82,84 +83,114 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
             var s3client = (TypeElement) element;
             var packageName = getPackage(s3client);
 
-            var implSpecBuilder = TypeSpec.classBuilder(NameUtils.generatedType(s3client, "Impl"))
-                .addModifiers(Modifier.FINAL, Modifier.PUBLIC)
-                .addAnnotation(AnnotationUtils.generated(S3ClientAnnotationProcessor.class))
-                .addAnnotation(Component.class)
-                .addSuperinterface(s3client.asType());
-
-            final Set<Signature> impls = new HashSet<>();
-            var constructorBuilder = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
-            var constructorCode = CodeBlock.builder();
-            constructorBuilder.addParameter(CLASS_CLIENT_CONFIG, "clientConfig");
-            implSpecBuilder.addField(CLASS_CLIENT_CONFIG, "_clientConfig", Modifier.PRIVATE, Modifier.FINAL);
-            constructorCode.addStatement("this._clientConfig = clientConfig");
-
-            for (Element enclosedElement : s3client.getEnclosedElements()) {
-                if (enclosedElement instanceof ExecutableElement method) {
-                    var operationType = getOperationType(method);
-                    if (operationType.isEmpty() && !method.getModifiers().contains(Modifier.DEFAULT)) {
-                        throw new ProcessingErrorException("@S3.Client method without operation annotation can't be non default", method);
-                    } else if (operationType.isPresent()) {
-                        S3Operation operation = getOperation(method, operationType.get());
-                        MethodSpec methodSpec = MethodSpec.overriding(method)
-                            .addCode(operation.code())
-                            .build();
-
-                        implSpecBuilder.addMethod(methodSpec);
-                        final Signature signature = new Signature(operation.impl(), operation.mode());
-                        if (!impls.contains(signature)) {
-                            if (operation.impl() == ImplType.SIMPLE) {
-                                if (operation.mode() == S3Operation.Mode.SYNC) {
-                                    constructorBuilder.addParameter(CLASS_CLIENT_SIMPLE_SYNC, "simpleSyncClient");
-                                    implSpecBuilder.addField(CLASS_CLIENT_SIMPLE_SYNC, "_simpleSyncClient", Modifier.PRIVATE, Modifier.FINAL);
-                                    constructorCode.addStatement("this._simpleSyncClient = simpleSyncClient");
-                                } else {
-                                    constructorBuilder.addParameter(CLASS_CLIENT_SIMPLE_ASYNC, "simpleAsyncClient");
-                                    implSpecBuilder.addField(CLASS_CLIENT_SIMPLE_ASYNC, "_simpleAsyncClient", Modifier.PRIVATE, Modifier.FINAL);
-                                    constructorCode.addStatement("this._simpleAsyncClient = simpleAsyncClient");
-                                }
-                            } else if (operation.impl() == ImplType.AWS) {
-                                if (operation.mode() == S3Operation.Mode.SYNC) {
-                                    constructorBuilder.addParameter(CLASS_CLIENT_AWS_SYNC, "awsSyncClient");
-                                    implSpecBuilder.addField(CLASS_CLIENT_AWS_SYNC, "_awsSyncClient", Modifier.PRIVATE, Modifier.FINAL);
-                                    constructorCode.addStatement("this._awsSyncClient = awsSyncClient");
-                                } else {
-                                    constructorBuilder.addParameter(CLASS_CLIENT_AWS_ASYNC, "awsAsyncClient");
-                                    implSpecBuilder.addField(CLASS_CLIENT_AWS_ASYNC, "_awsAsyncClient", Modifier.PRIVATE, Modifier.FINAL);
-                                    constructorCode.addStatement("this._awsAsyncClient = awsAsyncClient");
-
-                                    constructorBuilder.addParameter(ParameterSpec.builder(ExecutorService.class, "awsAsyncExecutor")
-                                        .addAnnotation(TagUtils.makeAnnotationSpecForTypes(CLASS_CLIENT_AWS_SYNC))
-                                        .build());
-                                    implSpecBuilder.addField(ExecutorService.class, "_awsAsyncExecutor", Modifier.PRIVATE, Modifier.FINAL);
-                                    constructorCode.addStatement("this._awsAsyncExecutor = awsAsyncExecutor");
-                                }
-//                        } else if (operation.impl() == ImplType.MINIO && !impls.contains(ImplType.MINIO)) {
-//
-                            } else {
-                                throw new UnsupportedOperationException("Unknown implementation");
-                            }
-
-                            impls.add(signature);
-                        }
-                    }
-                }
-            }
-
-            constructorBuilder.addCode(constructorCode.build());
-            implSpecBuilder.addMethod(constructorBuilder.build());
-
             try {
-                TypeSpec spec = implSpecBuilder.build();
+                TypeSpec spec = generateClient(s3client);
                 var implFile = JavaFile.builder(packageName, spec).build();
                 implFile.writeTo(processingEnv.getFiler());
+
+                TypeSpec configSpec = generateClientConfig(s3client);
+                var configFile = JavaFile.builder(packageName, configSpec).build();
+                configFile.writeTo(processingEnv.getFiler());
             } catch (IOException e) {
                 throw new IllegalStateException(e);
             }
         }
 
         return false;
+    }
+
+    private TypeSpec generateClient(TypeElement s3client) {
+        var implSpecBuilder = TypeSpec.classBuilder(NameUtils.generatedType(s3client, "Impl"))
+            .addModifiers(Modifier.FINAL, Modifier.PUBLIC)
+            .addAnnotation(AnnotationUtils.generated(S3ClientAnnotationProcessor.class))
+            .addAnnotation(Component.class)
+            .addSuperinterface(s3client.asType());
+
+        final Set<Signature> impls = new HashSet<>();
+        var constructorBuilder = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
+        var constructorCode = CodeBlock.builder();
+        implSpecBuilder.addField(CLASS_CLIENT_CONFIG, "_clientConfig", Modifier.PRIVATE, Modifier.FINAL);
+        constructorCode.addStatement("this._clientConfig = clientConfig");
+        constructorBuilder.addParameter(ParameterSpec.builder(CLASS_CLIENT_CONFIG, "clientConfig")
+            .addAnnotation(TagUtils.makeAnnotationSpecForTypes(TypeName.get(s3client.asType())))
+            .build());
+
+        for (Element enclosedElement : s3client.getEnclosedElements()) {
+            if (enclosedElement instanceof ExecutableElement method) {
+                var operationType = getOperationType(method);
+                if (operationType.isEmpty() && !method.getModifiers().contains(Modifier.DEFAULT)) {
+                    throw new ProcessingErrorException("@S3.Client method without operation annotation can't be non default", method);
+                } else if (operationType.isPresent()) {
+                    S3Operation operation = getOperation(method, operationType.get());
+                    MethodSpec methodSpec = MethodSpec.overriding(method)
+                        .addCode(operation.code())
+                        .build();
+
+                    implSpecBuilder.addMethod(methodSpec);
+                    final Signature signature = new Signature(operation.impl(), operation.mode());
+                    if (!impls.contains(signature)) {
+                        if (operation.impl() == ImplType.SIMPLE) {
+                            if (operation.mode() == S3Operation.Mode.SYNC) {
+                                constructorBuilder.addParameter(CLASS_CLIENT_SIMPLE_SYNC, "simpleSyncClient");
+                                implSpecBuilder.addField(CLASS_CLIENT_SIMPLE_SYNC, "_simpleSyncClient", Modifier.PRIVATE, Modifier.FINAL);
+                                constructorCode.addStatement("this._simpleSyncClient = simpleSyncClient");
+                            } else {
+                                constructorBuilder.addParameter(CLASS_CLIENT_SIMPLE_ASYNC, "simpleAsyncClient");
+                                implSpecBuilder.addField(CLASS_CLIENT_SIMPLE_ASYNC, "_simpleAsyncClient", Modifier.PRIVATE, Modifier.FINAL);
+                                constructorCode.addStatement("this._simpleAsyncClient = simpleAsyncClient");
+                            }
+                        } else if (operation.impl() == ImplType.AWS) {
+                            if (operation.mode() == S3Operation.Mode.SYNC) {
+                                constructorBuilder.addParameter(CLASS_CLIENT_AWS_SYNC, "awsSyncClient");
+                                implSpecBuilder.addField(CLASS_CLIENT_AWS_SYNC, "_awsSyncClient", Modifier.PRIVATE, Modifier.FINAL);
+                                constructorCode.addStatement("this._awsSyncClient = awsSyncClient");
+                            } else {
+                                constructorBuilder.addParameter(CLASS_CLIENT_AWS_ASYNC, "awsAsyncClient");
+                                implSpecBuilder.addField(CLASS_CLIENT_AWS_ASYNC, "_awsAsyncClient", Modifier.PRIVATE, Modifier.FINAL);
+                                constructorCode.addStatement("this._awsAsyncClient = awsAsyncClient");
+
+                                constructorBuilder.addParameter(ParameterSpec.builder(ExecutorService.class, "awsAsyncExecutor")
+                                    .addAnnotation(TagUtils.makeAnnotationSpecForTypes(CLASS_CLIENT_AWS_SYNC))
+                                    .build());
+                                implSpecBuilder.addField(ExecutorService.class, "_awsAsyncExecutor", Modifier.PRIVATE, Modifier.FINAL);
+                                constructorCode.addStatement("this._awsAsyncExecutor = awsAsyncExecutor");
+                            }
+                        } else {
+                            throw new UnsupportedOperationException("Unknown implementation");
+                        }
+
+                        impls.add(signature);
+                    }
+                }
+            }
+        }
+
+        constructorBuilder.addCode(constructorCode.build());
+        implSpecBuilder.addMethod(constructorBuilder.build());
+
+        return implSpecBuilder.build();
+    }
+
+    private TypeSpec generateClientConfig(TypeElement s3client) {
+        var clientAnnotation = AnnotationUtils.findAnnotation(s3client, ANNOTATION_CLIENT);
+        final String clientConfigPath = AnnotationUtils.parseAnnotationValueWithoutDefault(clientAnnotation, "value");
+
+        var extractorClass = ParameterizedTypeName.get(CommonClassNames.configValueExtractor, CLASS_CLIENT_CONFIG);
+        return TypeSpec.interfaceBuilder(NameUtils.generatedType(s3client, "ClientConfigModule"))
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(AnnotationUtils.generated(S3ClientAnnotationProcessor.class))
+            .addAnnotation(AnnotationSpec.builder(Module.class).build())
+            .addOriginatingElement(s3client)
+            .addMethod(MethodSpec.methodBuilder("clientConfig")
+                .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                .addAnnotation(TagUtils.makeAnnotationSpecForTypes(TypeName.get(s3client.asType())))
+                .addParameter(ParameterSpec.builder(CommonClassNames.config, "config").build())
+                .addParameter(ParameterSpec.builder(extractorClass, "extractor").build())
+                .addStatement("var value = config.get($S)", clientConfigPath)
+                .addStatement("return $T.ofNullable(extractor.extract(value)).orElseThrow(() -> $T.missingValueAfterParse(value))", Optional.class, CommonClassNames.configValueExtractionException)
+                .returns(CLASS_CLIENT_CONFIG)
+                .build())
+            .build();
     }
 
     record Signature(S3Operation.ImplType impl, S3Operation.Mode mode) {}
@@ -270,13 +301,21 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                 ? "_simpleSyncClient"
                 : "_simpleAsyncClient";
 
-            var methodCode = CLASS_S3_OBJECT_MANY.equals(returnType)
-                ? CodeBlock.builder().addStatement("return $L.get(_clientConfig.bucket(), $L)",
-                clientField, firstParameter.getSimpleName().toString())
-                : CodeBlock.builder().addStatement("return $L.getMeta(_clientConfig.bucket(), $L)",
-                clientField, firstParameter.getSimpleName().toString());
+            var bodyBuilder = CodeBlock.builder();
+            if (CLASS_S3_OBJECT_MANY.equals(returnType)) {
+                bodyBuilder.add("return $L.get(_clientConfig.bucket(), $L)",
+                    clientField, firstParameter.getSimpleName().toString());
+            } else {
+                bodyBuilder.add("return $L.getMeta(_clientConfig.bucket(), $L)",
+                    clientField, firstParameter.getSimpleName().toString());
+            }
 
-            return new S3Operation(method, operationMeta.annotation, OperationType.GET, ImplType.SIMPLE, mode, methodCode.build());
+            if (mode == S3Operation.Mode.ASYNC && CompletableFuture.class.getCanonicalName().equals(((DeclaredType) method.getReturnType()).asElement().toString())) {
+                bodyBuilder.add(".toCompletableFuture()");
+            }
+            bodyBuilder.add(";\n");
+
+            return new S3Operation(method, operationMeta.annotation, OperationType.GET, ImplType.SIMPLE, mode, bodyBuilder.build());
         } else if (CLASS_AWS_GET_RESPONSE.equals(returnType) || CLASS_AWS_GET_IS_RESPONSE.equals(returnType)) {
             if (firstParameter != null && CommonUtils.isCollection(firstParameter.asType())) {
                 throw new ProcessingErrorException("@S3.Get operation expected single result, but parameter is collection of keys", method);
@@ -384,8 +423,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                         .bucket(_clientConfig.bucket())
                         .prefix(_key)
                         .maxKeys($L)
-                        .continuationToken($T.randomUUID().toString())
-                        .build()""", CLASS_AWS_LIST_REQUEST, limit, UUID.class))
+                        .build()""", CLASS_AWS_LIST_REQUEST, limit))
                 .add("\n")
                 .addStatement("return $L.listObjectsV2(_request)", clientField)
                 .build();
@@ -625,33 +663,32 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
             : MethodUtils.getGenericType(method.getReturnType()).orElseThrow();
         final TypeName returnType = ClassName.get(returnTypeMirror);
 
-        final boolean isListOfString = CommonUtils.isList(returnTypeMirror)
-            && MethodUtils.getGenericType(returnTypeMirror).stream()
-            .anyMatch(t -> String.class.getCanonicalName().equals(t.toString()));
-
-        if (CommonUtils.isVoid(returnTypeMirror) || isListOfString) {
+        if (CommonUtils.isVoid(returnTypeMirror)) {
             String clientField = mode == S3Operation.Mode.SYNC
                 ? "_simpleSyncClient"
                 : "_simpleAsyncClient";
 
             var builder = CodeBlock.builder();
-            if (key.params().size() == 1 && isListOfString) {
-                builder.addStatement("return $L.delete(_clientConfig.bucket(), $L)", clientField, key.params().get(0).getSimpleName().toString());
+
+            final String keyArgName;
+            if (CommonUtils.isCollection(firstParameter.asType())) {
+                keyArgName = firstParameter.getSimpleName().toString();
             } else {
                 builder.addStatement(key.code());
-                if (mode == S3Operation.Mode.ASYNC) {
-                    builder.add("return ");
-                }
-                builder.add("$L.delete(_clientConfig.bucket(), _key)", clientField);
-                if (mode == S3Operation.Mode.ASYNC) {
-                    builder.add(".thenAccept(_v -> {})");
-                    if (CompletableFuture.class.getCanonicalName().equals(((DeclaredType) method.getReturnType()).asElement().toString())) {
-                        builder.add(".toCompletableFuture()");
-                    }
-                }
-
-                builder.add(";\n");
+                keyArgName = "_key";
             }
+
+            if (mode == S3Operation.Mode.ASYNC) {
+                builder.add("return ");
+            }
+            builder.add("$L.delete(_clientConfig.bucket(), $L)", clientField, keyArgName);
+            if (mode == S3Operation.Mode.ASYNC) {
+                builder.add(".thenAccept(_v -> {})");
+                if (CompletableFuture.class.getCanonicalName().equals(((DeclaredType) method.getReturnType()).asElement().toString())) {
+                    builder.add(".toCompletableFuture()");
+                }
+            }
+            builder.add(";\n");
 
             return new S3Operation(method, operationMeta.annotation, OperationType.DELETE, ImplType.SIMPLE, mode, builder.build());
         } else if (CLASS_AWS_DELETE_RESPONSE.equals(returnType)) {
@@ -690,13 +727,16 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                         var _request = $T.builder()
                             .bucket(_clientConfig.bucket())
                             .delete($T.builder()
-                                .objects(cb -> {
-                                    for (var _key : $L) {
-                                        cb.key(_key);
-                                    }
-                                }).build())
-                            .build()""", CLASS_AWS_DELETES_REQUEST, ClassName.get("software.amazon.awssdk.services.s3.model", "Delete"),
-                    firstParameter.getSimpleName().toString()))
+                                .objects($L.stream()
+                                    .map(k -> $T.builder()
+                                        .key(k)
+                                        .build())
+                                    .toList())
+                                .build())
+                            .build()""", CLASS_AWS_DELETES_REQUEST,
+                    ClassName.get("software.amazon.awssdk.services.s3.model", "Delete"),
+                    firstParameter.getSimpleName().toString(),
+                    ClassName.get("software.amazon.awssdk.services.s3.model", "ObjectIdentifier")))
                 .add("\n")
                 .addStatement("return $L.deleteObjects(_request)", clientField)
                 .build();
@@ -721,7 +761,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
         int indexEnd = 0;
         while (indexStart != -1) {
             if (indexStart != 0 && indexStart != (indexEnd + 1)) {
-                builder.add("$S + ", keyTemplate.substring(indexEnd + 1, indexStart));
+                builder.add("$S + ", keyTemplate.substring(indexEnd, indexStart));
             }
             indexEnd = keyTemplate.indexOf("}", indexStart);
 

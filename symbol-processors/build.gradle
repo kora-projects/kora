@@ -17,4 +17,5 @@ dependencies {
     api project(':mapstruct:mapstruct-ksp-extension')
     api project(':logging:declarative-logging:declarative-logging-symbol-processor')
     api project(':grpc:grpc-client-symbol-processor')
+    api project(':s3:s3-client-symbol-processor')
 }

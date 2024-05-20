@@ -5,13 +5,10 @@ import io.minio.errors.ErrorResponseException;
 import io.minio.messages.DeleteError;
 import io.minio.messages.DeleteObject;
 import io.minio.messages.Item;
+import ru.tinkoff.kora.s3.client.S3DeleteException;
 import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.s3.client.S3NotFoundException;
 import ru.tinkoff.kora.s3.client.S3SimpleAsyncClient;
-import ru.tinkoff.kora.s3.client.minio.model.MinioS3Object;
-import ru.tinkoff.kora.s3.client.minio.model.MinioS3ObjectList;
-import ru.tinkoff.kora.s3.client.minio.model.MinioS3ObjectMeta;
-import ru.tinkoff.kora.s3.client.minio.model.MinioS3ObjectMetaList;
 import ru.tinkoff.kora.s3.client.model.*;
 
 import java.io.ByteArrayInputStream;
@@ -115,7 +112,6 @@ public class MinioS3SimpleAsyncClient implements S3SimpleAsyncClient {
         var response = minioClient.listObjects(ListObjectsArgs.builder()
             .bucket(bucket)
             .prefix(prefix)
-            .continuationToken(UUID.randomUUID().toString())
             .maxKeys(limit)
             .build());
 
@@ -167,7 +163,7 @@ public class MinioS3SimpleAsyncClient implements S3SimpleAsyncClient {
         var requestBuilder = PutObjectArgs.builder()
             .bucket(bucket)
             .object(key)
-            .contentType(body.type());
+            .contentType(body.type() == null ? "application/octet-stream" : body.type());
 
         if (body.size() > 0 && body.encoding() != null) {
             requestBuilder.headers(Map.of(
@@ -217,7 +213,7 @@ public class MinioS3SimpleAsyncClient implements S3SimpleAsyncClient {
     }
 
     @Override
-    public CompletableFuture<List<String>> delete(String bucket, Collection<String> keys) {
+    public CompletableFuture<Void> delete(String bucket, Collection<String> keys) {
         var response = minioClient.removeObjects(RemoveObjectsArgs.builder()
             .bucket(bucket)
             .objects(keys.stream()
@@ -227,17 +223,19 @@ public class MinioS3SimpleAsyncClient implements S3SimpleAsyncClient {
 
         return CompletableFuture.supplyAsync(() -> {
             try {
-                final List<DeleteError> errors = new ArrayList<>(keys.size());
+                final List<S3DeleteException.Error> errors = new ArrayList<>(keys.size());
                 for (Result<DeleteError> result : response) {
-                    DeleteError deleteError = result.get();
-                    errors.add(deleteError);
+                    DeleteError er = result.get();
+                    errors.add(new S3DeleteException.Error(er.objectName(), er.bucketName(), er.code(), er.message()));
                 }
 
-                if (errors.isEmpty()) {
-                    return new ArrayList<>(keys);
-                } else {
-                    throw new S3MinioDeleteException(errors);
+                if (!errors.isEmpty()) {
+                    throw new S3DeleteException(errors);
                 }
+
+                return null;
+            } catch (S3Exception e) {
+                throw e;
             } catch (Exception e) {
                 throw new S3Exception(e);
             }

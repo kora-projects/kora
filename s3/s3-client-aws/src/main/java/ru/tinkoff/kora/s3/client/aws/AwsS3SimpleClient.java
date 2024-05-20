@@ -1,18 +1,17 @@
 package ru.tinkoff.kora.s3.client.aws;
 
+import ru.tinkoff.kora.s3.client.S3DeleteException;
 import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.s3.client.S3NotFoundException;
 import ru.tinkoff.kora.s3.client.S3SimpleClient;
-import ru.tinkoff.kora.s3.client.aws.model.AwsS3Object;
-import ru.tinkoff.kora.s3.client.aws.model.AwsS3ObjectList;
-import ru.tinkoff.kora.s3.client.aws.model.AwsS3ObjectMeta;
-import ru.tinkoff.kora.s3.client.aws.model.AwsS3ObjectMetaList;
 import ru.tinkoff.kora.s3.client.model.S3Object;
 import ru.tinkoff.kora.s3.client.model.*;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.model.*;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class AwsS3SimpleClient implements S3SimpleClient {
@@ -45,6 +44,7 @@ public class AwsS3SimpleClient implements S3SimpleClient {
         var request = GetObjectAttributesRequest.builder()
             .bucket(bucket)
             .key(key)
+            .objectAttributes(ObjectAttributes.OBJECT_SIZE)
             .build();
 
         try {
@@ -121,7 +121,6 @@ public class AwsS3SimpleClient implements S3SimpleClient {
             .bucket(bucket)
             .prefix(prefix)
             .maxKeys(limit)
-            .continuationToken(UUID.randomUUID().toString())
             .build();
 
         try {
@@ -219,27 +218,29 @@ public class AwsS3SimpleClient implements S3SimpleClient {
     }
 
     @Override
-    public List<String> delete(String bucket, Collection<String> keys) {
+    public void delete(String bucket, Collection<String> keys) {
         var request = DeleteObjectsRequest.builder()
             .bucket(bucket)
             .delete(Delete.builder()
-                .objects(cb -> {
-                    for (String key : keys) {
-                        cb.key(key);
-                    }
-                })
+                .objects(keys.stream()
+                    .map(k -> ObjectIdentifier.builder()
+                        .key(k)
+                        .build())
+                    .toList())
                 .build())
             .build();
 
         try {
             var response = client.deleteObjects(request);
-            if (response.hasDeleted()) {
-                return response.deleted().stream()
-                    .map(DeletedObject::key)
+            if (response.hasErrors()) {
+                var errors = response.errors().stream()
+                    .map(e -> new S3DeleteException.Error(e.key(), bucket, e.code(), e.message()))
                     .toList();
-            } else {
-                return Collections.emptyList();
+
+                throw new S3DeleteException(errors);
             }
+        } catch (S3Exception e) {
+            throw e;
         } catch (Exception e) {
             throw new S3Exception(e);
         }
