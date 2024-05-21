@@ -38,7 +38,6 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
         this.name = name;
         this.config = config;
         this.xnioWorker = xnioWorker;
-        this.publicApiHandler = publicApiHandler;
         this.byteBufferPool = byteBufferPool;
         this.gracefulShutdown = new GracefulShutdownHandler(exchange -> publicApiHandler.get().handleRequest(exchange));
     }

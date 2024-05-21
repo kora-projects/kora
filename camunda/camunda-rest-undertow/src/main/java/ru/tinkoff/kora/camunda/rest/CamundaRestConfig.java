@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.camunda.rest;
 
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.time.Duration;
 
@@ -21,5 +22,22 @@ public interface CamundaRestConfig {
 
     default Duration shutdownWait() {
         return Duration.ofMillis(100);
+    }
+
+    CamundaRestTelemetryConfig telemetry();
+
+    @ConfigValueExtractor
+    interface CamundaRestTelemetryConfig extends TelemetryConfig {
+
+        @Override
+        CamundaRestLogConfig logging();
+    }
+
+    @ConfigValueExtractor
+    interface CamundaRestLogConfig extends TelemetryConfig.LogConfig {
+
+        default boolean stacktrace() {
+            return true;
+        }
     }
 }

@@ -80,7 +80,6 @@ final class UndertowCamundaRestHttpHandler implements HttpHandler, Lifecycle, Wr
         di.setClassLoader(classLoader);
         di.setContextPath(camundaRestConfig.path());
         di.setDeploymentName("ResteasyCamundaKora");
-
         deploymentManager = container.addDeployment(di);
         deploymentManager.deploy();
 

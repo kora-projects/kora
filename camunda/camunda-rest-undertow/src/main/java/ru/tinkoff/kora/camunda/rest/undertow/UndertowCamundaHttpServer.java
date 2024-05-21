@@ -8,6 +8,8 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.camunda.rest.CamundaRestConfig;
+import ru.tinkoff.kora.camunda.rest.telemetry.CamundaRestTelemetry;
+import ru.tinkoff.kora.camunda.rest.telemetry.CamundaRestTelemetryFactory;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
 
@@ -21,15 +23,32 @@ final class UndertowCamundaHttpServer implements Lifecycle, ReadinessProbe {
     private final AtomicReference<HttpServerState> state = new AtomicReference<>(HttpServerState.INIT);
     private final String name;
     private final ValueOf<CamundaRestConfig> config;
+    private final CamundaRestTelemetry telemetry;
     private final GracefulShutdownHandler gracefulShutdown;
 
     private volatile Undertow undertow;
 
     public UndertowCamundaHttpServer(ValueOf<CamundaRestConfig> config,
-                                     ValueOf<HttpHandler> publicApiHandler) {
+                                     ValueOf<HttpHandler> publicApiHandler,
+                                     CamundaRestTelemetryFactory telemetryFactory) {
         this.name = "Camunda";
         this.config = config;
-        this.gracefulShutdown = new GracefulShutdownHandler(exchange -> publicApiHandler.get().handleRequest(exchange));
+        this.telemetry = telemetryFactory.get(config.get().telemetry());
+        this.gracefulShutdown = new GracefulShutdownHandler(ex -> {
+            var telemetryContext = telemetry.get(ex.getRequestMethod().toString(), ex.getRelativePath(), ex.getRequestHeaders());
+
+            ex.addExchangeCompleteListener((ext, listener) -> {
+                telemetryContext.close(ext.getStatusCode(), null);
+                listener.proceed();
+            });
+
+            try {
+                publicApiHandler.get().handleRequest(ex);
+            } catch (Exception e) {
+                telemetryContext.close(ex.getStatusCode(), e);
+                throw e;
+            }
+        });
     }
 
     @Override
