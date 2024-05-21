@@ -11,4 +11,6 @@ dependencies {
     compileOnly project(':scheduling:scheduling-common')
     compileOnly project(':cache:cache-common')
     compileOnly project(':experimental:s3-client-common')
+    compileOnly project(':camunda:camunda-rest-undertow')
+    compileOnly project(':camunda:camunda-engine')
 }

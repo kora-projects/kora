@@ -2,6 +2,7 @@ package ru.tinkoff.kora.camunda.engine;
 
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.List;
 
@@ -17,9 +18,7 @@ public interface CamundaEngineConfig {
 
     JobExecutorConfig jobExecutor();
 
-    MetricsConfig metrics();
-
-    TelemetryConfig telemetry();
+    CamundaTelemetryConfig telemetry();
 
     @Nullable
     FilterConfig filter();
@@ -60,7 +59,7 @@ public interface CamundaEngineConfig {
         String tenantId();
 
         default String name() {
-            return "KoraAutoDeployment";
+            return "KoraEngineAutoDeployment";
         }
 
         default boolean deployChangedOnly() {
@@ -91,25 +90,24 @@ public interface CamundaEngineConfig {
     }
 
     @ConfigValueExtractor
-    interface MetricsConfig {
+    interface CamundaTelemetryConfig extends TelemetryConfig {
 
-        default boolean metricsEnabled() {
+        @Override
+        CamundaEngineLogConfig logging();
+
+        default boolean engineTelemetryEnabled() {
             return true;
         }
 
-        default boolean taskMetricsEnabled() {
+        default boolean engineTelemetryReporterEnabled() {
             return true;
         }
     }
 
     @ConfigValueExtractor
-    interface TelemetryConfig {
+    interface CamundaEngineLogConfig extends TelemetryConfig.LogConfig {
 
-        default boolean telemetryEnabled() {
-            return true;
-        }
-
-        default boolean telemetryReporterEnabled() {
+        default boolean stacktrace() {
             return true;
         }
     }

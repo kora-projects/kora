@@ -15,18 +15,21 @@ public class KoraELResolver extends ELResolver {
 
     private final Map<String, Object> componentByKey;
 
-    public KoraELResolver(List<KoraDelegate> koraDelegates,
+    public KoraELResolver(KoraDelegateWrapperFactory wrapperFactory,
+                          List<KoraDelegate> koraDelegates,
                           List<JavaDelegate> javaDelegates) {
         this.componentByKey = new HashMap<>();
         for (JavaDelegate delegate : javaDelegates) {
-            this.componentByKey.put(delegate.getClass().getSimpleName(), delegate);
-            this.componentByKey.put(delegate.getClass().getCanonicalName(), delegate);
+            JavaDelegate wrapped = wrapperFactory.wrap(delegate);
+            this.componentByKey.put(delegate.getClass().getSimpleName(), wrapped);
+            this.componentByKey.put(delegate.getClass().getCanonicalName(), wrapped);
         }
 
         for (KoraDelegate delegate : koraDelegates) {
-            this.componentByKey.put(delegate.key(), delegate);
-            this.componentByKey.put(delegate.getClass().getSimpleName(), delegate);
-            this.componentByKey.put(delegate.getClass().getCanonicalName(), delegate);
+            JavaDelegate wrapped = wrapperFactory.wrap(delegate);
+            this.componentByKey.put(delegate.key(), wrapped);
+            this.componentByKey.put(delegate.getClass().getSimpleName(), wrapped);
+            this.componentByKey.put(delegate.getClass().getCanonicalName(), wrapped);
         }
     }
 

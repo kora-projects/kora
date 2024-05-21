@@ -4,7 +4,6 @@ import org.camunda.bpm.engine.impl.jobexecutor.JobExecutor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import ru.tinkoff.kora.application.graph.All;
-import ru.tinkoff.kora.camunda.engine.*;
 import ru.tinkoff.kora.database.common.telemetry.DefaultDataBaseTelemetryFactory;
 import ru.tinkoff.kora.database.jdbc.$JdbcDatabaseConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.database.jdbc.JdbcDatabase;
@@ -28,25 +27,31 @@ public class KoraProcessEngineTests implements CamundaEngineModule {
                 true,
                 "camunda-license.txt",
                 $CamundaEngineConfig_JobExecutorConfig_ConfigValueExtractor.DEFAULTS,
-                $CamundaEngineConfig_MetricsConfig_ConfigValueExtractor.DEFAULTS,
-                $CamundaEngineConfig_TelemetryConfig_ConfigValueExtractor.DEFAULTS,
+                new $CamundaEngineConfig_CamundaTelemetryConfig_ConfigValueExtractor.CamundaTelemetryConfig_Impl(
+                    $CamundaEngineConfig_CamundaEngineLogConfig_ConfigValueExtractor.DEFAULTS,
+                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
+                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO),
+                    true,
+                    true
+                ),
                 new $CamundaEngineConfig_FilterConfig_ConfigValueExtractor.FilterConfig_Impl("All tasks"),
                 new $CamundaEngineConfig_DeploymentConfig_ConfigValueExtractor.DeploymentConfig_Impl(null, "MyDep", false, List.of("bpm")),
                 new $CamundaEngineConfig_AdminConfig_ConfigValueExtractor.AdminConfig_Impl("admin", "admin", null, null, null)
             );
 
+            KoraDelegateWrapperFactory koraDelegateWrapperFactory = koraJavaDelegateTelemetryWrapper(null, null);
             JobExecutor jobExecutor = camundaEngineKoraJobExecutor(config);
             KoraProcessEngineConfiguration koraProcessEngineConfiguration = camundaEngineKoraProcessEngineConfiguration(
                 jobExecutor,
                 camundaEngineKoraTelemetryRegistry(null),
                 camundaEngineIdGenerator(),
-                camundaEngineKoraExpressionManager(camundaEngineKoraELResolver(All.of(), All.of())),
-                camundaEngineKoraArtifactFactory(All.of(), All.of()),
+                camundaEngineKoraExpressionManager(camundaEngineKoraELResolver(koraDelegateWrapperFactory, All.of(), All.of())),
+                camundaEngineKoraArtifactFactory(koraDelegateWrapperFactory, All.of(), All.of()),
                 All.of(),
                 jdbc,
                 jdbc.value(),
                 config,
-                camundaEngineKoraComponentResolverFactory(All.of(), All.of()),
+                camundaEngineKoraComponentResolverFactory(koraDelegateWrapperFactory, All.of(), All.of()),
                 camundaEnginePackageVersion()
             );
 
@@ -78,25 +83,31 @@ public class KoraProcessEngineTests implements CamundaEngineModule {
                 false,
                 "camunda-license.txt",
                 $CamundaEngineConfig_JobExecutorConfig_ConfigValueExtractor.DEFAULTS,
-                $CamundaEngineConfig_MetricsConfig_ConfigValueExtractor.DEFAULTS,
-                $CamundaEngineConfig_TelemetryConfig_ConfigValueExtractor.DEFAULTS,
+                new $CamundaEngineConfig_CamundaTelemetryConfig_ConfigValueExtractor.CamundaTelemetryConfig_Impl(
+                    $CamundaEngineConfig_CamundaEngineLogConfig_ConfigValueExtractor.DEFAULTS,
+                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
+                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO),
+                    true,
+                    true
+                ),
                 new $CamundaEngineConfig_FilterConfig_ConfigValueExtractor.FilterConfig_Impl("All tasks"),
                 new $CamundaEngineConfig_DeploymentConfig_ConfigValueExtractor.DeploymentConfig_Impl(null, "MyDep", false, List.of("bpm")),
                 new $CamundaEngineConfig_AdminConfig_ConfigValueExtractor.AdminConfig_Impl("admin", "admin", null, null, null)
             );
 
+            KoraDelegateWrapperFactory koraDelegateWrapperFactory = koraJavaDelegateTelemetryWrapper(null, null);
             JobExecutor jobExecutor = camundaEngineKoraJobExecutor(config);
             KoraProcessEngineConfiguration koraProcessEngineConfiguration = camundaEngineKoraProcessEngineConfiguration(
                 jobExecutor,
                 camundaEngineKoraTelemetryRegistry(null),
                 camundaEngineIdGenerator(),
-                camundaEngineKoraExpressionManager(camundaEngineKoraELResolver(All.of(), All.of())),
-                camundaEngineKoraArtifactFactory(All.of(), All.of()),
+                camundaEngineKoraExpressionManager(camundaEngineKoraELResolver(koraDelegateWrapperFactory, All.of(), All.of())),
+                camundaEngineKoraArtifactFactory(koraDelegateWrapperFactory, All.of(), All.of()),
                 All.of(),
                 jdbc,
                 jdbc.value(),
                 config,
-                camundaEngineKoraComponentResolverFactory(All.of(), All.of()),
+                camundaEngineKoraComponentResolverFactory(koraDelegateWrapperFactory, All.of(), All.of()),
                 camundaEnginePackageVersion()
             );
 

@@ -31,10 +31,7 @@ import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory;
 import javax.sql.DataSource;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 
 import static java.util.Collections.emptyList;
 import static org.camunda.bpm.engine.impl.history.HistoryLevel.HISTORY_LEVEL_FULL;
@@ -127,19 +124,19 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
     }
 
     protected void configureMetricsAndTelemetry() {
-        setMetricsEnabled(engineConfig.metrics().metricsEnabled());
-        setTaskMetricsEnabled(engineConfig.metrics().taskMetricsEnabled());
+        setMetricsEnabled(Objects.requireNonNullElse(engineConfig.telemetry().metrics().enabled(), true));
+        setTaskMetricsEnabled(Objects.requireNonNullElse(engineConfig.telemetry().metrics().enabled(), true));
 
-        if (engineConfig.telemetry().telemetryEnabled()) {
-            setTelemetryRegistry(telemetryRegistry);
-            setInitializeTelemetry(engineConfig.telemetry().telemetryEnabled());
-            setTelemetryReporterActivate(engineConfig.telemetry().telemetryReporterEnabled());
-
-            if (camundaVersion.version() == null) {
-                logger.warn("Disabling TelemetryReporter because required information 'Camunda Version' is not available.");
-                setTelemetryReporterActivate(false);
-            }
-        }
+//        if (engineConfig.telemetry().engineTelemetryEnabled()) {
+//            setTelemetryRegistry(telemetryRegistry);
+//            setInitializeTelemetry(engineConfig.telemetry().engineTelemetryEnabled());
+//            setTelemetryReporterActivate(engineConfig.telemetry().engineTelemetryReporterEnabled());
+//
+//            if (camundaVersion.version() == null) {
+//                logger.warn("Disabling TelemetryReporter because required information 'Camunda Version' is not available.");
+//                setTelemetryReporterActivate(false);
+//            }
+//        }
     }
 
     protected void configureDefaultValues() {

@@ -13,7 +13,7 @@ import org.camunda.bpm.engine.impl.telemetry.dto.ApplicationServerImpl;
 import org.camunda.bpm.impl.juel.jakarta.el.ELResolver;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.camunda.engine.configurator.*;
-import ru.tinkoff.kora.camunda.engine.telemetry.KoraTelemetryRegistry;
+import ru.tinkoff.kora.camunda.engine.telemetry.*;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Root;
@@ -50,7 +50,7 @@ public interface CamundaEngineModule {
 
     @DefaultComponent
     default TelemetryRegistry camundaEngineKoraTelemetryRegistry(@Nullable ApplicationServerImpl applicationServer) {
-        return new KoraTelemetryRegistry(applicationServer);
+        return new KoraEngineTelemetryRegistry(applicationServer);
     }
 
     @DefaultComponent
@@ -63,9 +63,40 @@ public interface CamundaEngineModule {
     }
 
     @DefaultComponent
-    default ELResolver camundaEngineKoraELResolver(All<KoraDelegate> koraDelegates,
+    default CamundaEngineLoggerFactory camundaEngineLoggerFactory() {
+        return new DefaultCamundaEngineLoggerFactory();
+    }
+
+    @DefaultComponent
+    default CamundaEngineTelemetryFactory camundaEngineTelemetryFactory(@Nullable CamundaEngineLoggerFactory logger,
+                                                                        @Nullable CamundaEngineMetricsFactory metrics,
+                                                                        @Nullable CamundaEngineTracerFactory tracer) {
+        return new DefaultCamundaEngineTelemetryFactory(logger, metrics, tracer);
+    }
+
+    @DefaultComponent
+    default KoraDelegateWrapperFactory koraJavaDelegateTelemetryWrapper(CamundaEngineTelemetryFactory telemetryFactory,
+                                                                        CamundaEngineConfig camundaEngineConfig) {
+        return delegate -> {
+            var telemetry = telemetryFactory.get(camundaEngineConfig.telemetry());
+            return execution -> {
+                var telemetryContext = telemetry.get(delegate.getClass().getCanonicalName(), execution);
+                try {
+                    delegate.execute(execution);
+                    telemetryContext.close();
+                } catch (Exception e) {
+                    telemetryContext.close(e);
+                    throw e;
+                }
+            };
+        };
+    }
+
+    @DefaultComponent
+    default ELResolver camundaEngineKoraELResolver(KoraDelegateWrapperFactory wrapperFactory,
+                                                   All<KoraDelegate> koraDelegates,
                                                    All<JavaDelegate> javaDelegates) {
-        return new KoraELResolver(koraDelegates, javaDelegates);
+        return new KoraELResolver(wrapperFactory, koraDelegates, javaDelegates);
     }
 
     @DefaultComponent
@@ -74,9 +105,10 @@ public interface CamundaEngineModule {
     }
 
     @DefaultComponent
-    default ArtifactFactory camundaEngineKoraArtifactFactory(All<KoraDelegate> koraDelegates,
+    default ArtifactFactory camundaEngineKoraArtifactFactory(KoraDelegateWrapperFactory wrapperFactory,
+                                                             All<KoraDelegate> koraDelegates,
                                                              All<JavaDelegate> javaDelegates) {
-        return new KoraArtifactFactory(koraDelegates, javaDelegates);
+        return new KoraArtifactFactory(wrapperFactory, koraDelegates, javaDelegates);
     }
 
     @DefaultComponent
@@ -87,9 +119,10 @@ public interface CamundaEngineModule {
     }
 
     @DefaultComponent
-    default KoraResolverFactory camundaEngineKoraComponentResolverFactory(All<KoraDelegate> koraDelegates,
+    default KoraResolverFactory camundaEngineKoraComponentResolverFactory(KoraDelegateWrapperFactory wrapperFactory,
+                                                                          All<KoraDelegate> koraDelegates,
                                                                           All<JavaDelegate> javaDelegates) {
-        return new KoraResolverFactory(koraDelegates, javaDelegates);
+        return new KoraResolverFactory(wrapperFactory, koraDelegates, javaDelegates);
     }
 
     @DefaultComponent

@@ -6,13 +6,13 @@ import org.camunda.bpm.engine.impl.telemetry.dto.ApplicationServerImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public final class KoraTelemetryRegistry extends TelemetryRegistry {
+public final class KoraEngineTelemetryRegistry extends TelemetryRegistry {
 
     private static final String INTEGRATION_NAME = "kora-camunda";
 
-    private static final Logger logger = LoggerFactory.getLogger(KoraTelemetryRegistry.class);
+    private static final Logger logger = LoggerFactory.getLogger(KoraEngineTelemetryRegistry.class);
 
-    public KoraTelemetryRegistry(@Nullable ApplicationServerImpl applicationServer) {
+    public KoraEngineTelemetryRegistry(@Nullable ApplicationServerImpl applicationServer) {
         setCamundaIntegration(INTEGRATION_NAME);
         if (applicationServer != null) {
             logger.debug("Camunda ApplicationServer: vendor={}, version={}", applicationServer.getVendor(), applicationServer.getVersion());

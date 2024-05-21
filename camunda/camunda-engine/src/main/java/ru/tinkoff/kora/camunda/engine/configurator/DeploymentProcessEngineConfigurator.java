@@ -47,7 +47,7 @@ public final class DeploymentProcessEngineConfigurator implements ProcessEngineC
         final Set<String> normalizedLocations = locations.stream()
             .map(location -> {
                 if (location.startsWith("classpath:")) {
-                    return location;
+                    return location.substring(10);
                 } else {
                     logger.warn("Only locations with `classpath:` prefix are supported, skipping unsupported resource location: {}", location);
                     return null;
