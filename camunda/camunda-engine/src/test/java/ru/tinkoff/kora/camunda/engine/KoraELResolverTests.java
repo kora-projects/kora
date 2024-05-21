@@ -36,19 +36,19 @@ public class KoraELResolverTests {
 
     @Test
     void getByCanonicalName() {
-        ELResolver resolver = new KoraELResolver(List.of(), List.of(new SimpleDelegate()));
+        ELResolver resolver = new KoraELResolver(delegate -> delegate, List.of(), List.of(new SimpleDelegate()));
         assertInstanceOf(SimpleDelegate.class, resolver.getValue(new SimpleContext(), null, SimpleDelegate.class.getCanonicalName()));
     }
 
     @Test
     void getBySimpleName() {
-        ELResolver resolver = new KoraELResolver(List.of(), List.of(new SimpleDelegate()));
+        ELResolver resolver = new KoraELResolver(delegate -> delegate, List.of(), List.of(new SimpleDelegate()));
         assertInstanceOf(SimpleDelegate.class, resolver.getValue(new SimpleContext(), null, SimpleDelegate.class.getSimpleName()));
     }
 
     @Test
     void getByKey() {
-        ELResolver resolver = new KoraELResolver(List.of(new SimpleKoraDelegate()), List.of());
+        ELResolver resolver = new KoraELResolver(delegate -> delegate, List.of(new SimpleKoraDelegate()), List.of());
         assertInstanceOf(SimpleKoraDelegate.class, resolver.getValue(new SimpleContext(), null, "key"));
     }
 }

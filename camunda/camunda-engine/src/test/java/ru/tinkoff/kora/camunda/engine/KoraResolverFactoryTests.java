@@ -35,19 +35,19 @@ public class KoraResolverFactoryTests {
 
     @Test
     void getByCanonicalName() {
-        Resolver resolver = new KoraResolverFactory(List.of(), List.of(new SimpleDelegate()));
+        Resolver resolver = new KoraResolverFactory(delegate -> delegate, List.of(), List.of(new SimpleDelegate()));
         assertInstanceOf(SimpleDelegate.class, resolver.get(SimpleDelegate.class.getCanonicalName()));
     }
 
     @Test
     void getBySimpleName() {
-        Resolver resolver = new KoraResolverFactory(List.of(), List.of(new SimpleDelegate()));
+        Resolver resolver = new KoraResolverFactory(delegate -> delegate, List.of(), List.of(new SimpleDelegate()));
         assertInstanceOf(SimpleDelegate.class, resolver.get(SimpleDelegate.class.getSimpleName()));
     }
 
     @Test
     void getByKey() {
-        Resolver resolver = new KoraResolverFactory(List.of(new SimpleKoraDelegate()), List.of());
+        Resolver resolver = new KoraResolverFactory(delegate -> delegate, List.of(new SimpleKoraDelegate()), List.of());
         assertInstanceOf(SimpleKoraDelegate.class, resolver.get("key"));
     }
 }
