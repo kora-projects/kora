@@ -15,8 +15,8 @@ import ru.tinkoff.kora.micrometer.module.camunda.engine.bpmn.MicrometerCamundaEn
 import ru.tinkoff.kora.micrometer.module.camunda.rest.MicrometerCamundaRestMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.camunda.camunda8.MicrometerCamunda8WorkerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.camunda.camunda8.MicrometerZeebeClientWorkerMetricsFactory;
+import ru.tinkoff.kora.micrometer.module.camunda.zeebe.job.MicrometerZeebeClientWorkerJobMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.camunda.zeebe.worker.MicrometerZeebeWorkerMetricsFactory;
-import ru.tinkoff.kora.micrometer.module.camunda.zeebe.worker.MicrometerZeebeClientWorkerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.db.MicrometerDataBaseMetricWriterFactory;
 import ru.tinkoff.kora.micrometer.module.grpc.client.MicrometerGrpcClientMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.grpc.server.MicrometerGrpcServerMetricsFactory;
@@ -165,12 +165,12 @@ public interface MetricsModule {
     }
 
     @DefaultComponent
-    default MicrometerZeebeWorkerMetricsFactory micrometerZeebeWorkerMetricsFactory(MeterRegistry meterRegistry) {
-        return new MicrometerZeebeWorkerMetricsFactory(meterRegistry);
+    default MicrometerZeebeWorkerMetricsFactory micrometerZeebeWorkerMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
+        return new MicrometerZeebeWorkerMetricsFactory(meterRegistry, metricsConfig);
     }
 
     @DefaultComponent
-    default MicrometerZeebeClientWorkerMetricsFactory micrometerZeebeClientWorkerMetricsFactory(MeterRegistry meterRegistry) {
-        return new MicrometerZeebeClientWorkerMetricsFactory(meterRegistry);
+    default MicrometerZeebeClientWorkerJobMetricsFactory micrometerZeebeClientWorkerJobMetricsFactory(MeterRegistry meterRegistry) {
+        return new MicrometerZeebeClientWorkerJobMetricsFactory(meterRegistry);
     }
 }

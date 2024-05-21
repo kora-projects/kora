@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.micrometer.module.camunda.zeebe.worker;
+package ru.tinkoff.kora.micrometer.module.camunda.zeebe.job;
 
 import io.camunda.zeebe.client.api.worker.JobWorkerMetrics;
 import io.micrometer.core.instrument.Counter;
@@ -7,12 +7,12 @@ import io.micrometer.core.instrument.Tag;
 
 import java.util.List;
 
-public final class MicrometerZeebeClientWorkerMetrics implements JobWorkerMetrics {
+public final class MicrometerZeebeClientWorkerJobMetrics implements JobWorkerMetrics {
 
     private final Counter activated;
     private final Counter handled;
 
-    public MicrometerZeebeClientWorkerMetrics(MeterRegistry registry, String jobType) {
+    public MicrometerZeebeClientWorkerJobMetrics(MeterRegistry registry, String jobType) {
         this.activated = registry.counter("zeebe.client.worker.job",
             List.of(
                 Tag.of("action", "activated"),

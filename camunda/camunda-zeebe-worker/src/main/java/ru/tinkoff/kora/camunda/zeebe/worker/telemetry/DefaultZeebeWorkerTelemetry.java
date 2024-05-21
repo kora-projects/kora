@@ -6,17 +6,18 @@ import ru.tinkoff.kora.camunda.zeebe.worker.JobContext;
 public final class DefaultZeebeWorkerTelemetry implements ZeebeWorkerTelemetry {
 
     private final String workerType;
-    @Nullable
     private final ZeebeWorkerLogger logger;
-    @Nullable
     private final ZeebeWorkerMetrics metrics;
+    private final ZeebeWorkerTracer tracer;
 
     public DefaultZeebeWorkerTelemetry(String workerType,
                                        @Nullable ZeebeWorkerLogger logger,
-                                       @Nullable ZeebeWorkerMetrics metrics) {
+                                       @Nullable ZeebeWorkerMetrics metrics,
+                                       @Nullable ZeebeWorkerTracer tracer) {
         this.workerType = workerType;
         this.logger = logger;
         this.metrics = metrics;
+        this.tracer = tracer;
     }
 
     @Override
@@ -26,32 +27,43 @@ public final class DefaultZeebeWorkerTelemetry implements ZeebeWorkerTelemetry {
             logger.logStarted(jobContext);
         }
 
-        return new DefaultZeebeWorkerTelemetryContext(startTime, jobContext, logger, metrics);
-    }
-
-    private record DefaultZeebeWorkerTelemetryContext(long startedInNanos,
-                                                      JobContext jobContext,
-                                                      @Nullable ZeebeWorkerLogger logger,
-                                                      @Nullable ZeebeWorkerMetrics metrics) implements ZeebeWorkerTelemetryContext {
-
-        @Override
-        public void close() {
-            if (logger != null) {
-                logger.logComplete(jobContext);
-            }
-            if (metrics != null) {
-                metrics.recordComplete(jobContext, startedInNanos);
-            }
+        final ZeebeWorkerTracer.ZeebeWorkerSpan span;
+        if (tracer != null) {
+            span = tracer.createSpan(workerType, jobContext);
+        } else {
+            span = null;
         }
 
-        @Override
-        public void close(ErrorType errorType, Throwable throwable) {
-            if (logger != null) {
-                logger.logFailed(jobContext, errorType, throwable);
+        return new ZeebeWorkerTelemetryContext() {
+            @Override
+            public void close() {
+                if (logger != null) {
+                    logger.logComplete(jobContext);
+                }
+                if (metrics != null) {
+                    var end = System.nanoTime();
+                    var processingTime = end - startTime;
+                    metrics.recordComplete(jobContext, processingTime);
+                }
+                if (span != null) {
+                    span.close();
+                }
             }
-            if (metrics != null) {
-                metrics.recordFailed(jobContext, startedInNanos, errorType, throwable);
+
+            @Override
+            public void close(ErrorType errorType, Throwable throwable) {
+                if (logger != null) {
+                    logger.logFailed(jobContext, errorType, throwable);
+                }
+                if (metrics != null) {
+                    var end = System.nanoTime();
+                    var processingTime = end - startTime;
+                    metrics.recordFailed(jobContext, processingTime, errorType, throwable);
+                }
+                if (span != null) {
+                    span.close(errorType, throwable);
+                }
             }
-        }
+        };
     }
 }

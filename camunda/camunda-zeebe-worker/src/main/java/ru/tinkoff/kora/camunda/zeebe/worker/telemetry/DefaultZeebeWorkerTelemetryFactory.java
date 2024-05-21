@@ -8,26 +8,28 @@ public final class DefaultZeebeWorkerTelemetryFactory implements ZeebeWorkerTele
 
     private static final ZeebeWorkerTelemetry EMPTY = new NoopZeebeWorkerTelemetry();
 
-    @Nullable
     private final ZeebeWorkerLoggerFactory loggerFactory;
-    @Nullable
     private final ZeebeWorkerMetricsFactory metricsFactory;
+    private final ZeebeWorkerTracerFactory tracerFactory;
 
     public DefaultZeebeWorkerTelemetryFactory(@Nullable ZeebeWorkerLoggerFactory loggerFactory,
-                                              @Nullable ZeebeWorkerMetricsFactory metricsFactory) {
+                                              @Nullable ZeebeWorkerMetricsFactory metricsFactory,
+                                              @Nullable ZeebeWorkerTracerFactory tracerFactory) {
         this.loggerFactory = loggerFactory;
         this.metricsFactory = metricsFactory;
+        this.tracerFactory = tracerFactory;
     }
 
     @Override
     public ZeebeWorkerTelemetry get(String workerType, TelemetryConfig config) {
         var logger = this.loggerFactory == null ? null : this.loggerFactory.get(config.logging());
         var metrics = this.metricsFactory == null ? null : this.metricsFactory.get(config.metrics());
-        if (metrics == null && (logger == null || Boolean.FALSE.equals(config.logging().enabled()))) {
+        var tracer = this.tracerFactory == null ? null : this.tracerFactory.get(config.tracing());
+        if (metrics == null && tracer == null && logger == null) {
             return EMPTY;
         }
 
-        return new DefaultZeebeWorkerTelemetry(workerType, logger, metrics);
+        return new DefaultZeebeWorkerTelemetry(workerType, logger, metrics, tracer);
     }
 
     private static final class NoopZeebeWorkerTelemetry implements ZeebeWorkerTelemetry {

@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class MicrometerZeebeWorkerMetrics implements ZeebeWorkerMetrics {
+public final class Micrometer123ZeebeWorkerMetrics implements ZeebeWorkerMetrics {
 
     private static final String CODE_UNKNOWN = "UNKNOWN";
 
@@ -36,7 +36,7 @@ public final class MicrometerZeebeWorkerMetrics implements ZeebeWorkerMetrics {
     private final MeterRegistry registry;
     private final TelemetryConfig.MetricsConfig config;
 
-    public MicrometerZeebeWorkerMetrics(MeterRegistry registry, TelemetryConfig.MetricsConfig config) {
+    public Micrometer123ZeebeWorkerMetrics(MeterRegistry registry, TelemetryConfig.MetricsConfig config) {
         this.registry = registry;
         this.config = config;
     }
@@ -46,7 +46,7 @@ public final class MicrometerZeebeWorkerMetrics implements ZeebeWorkerMetrics {
         final MetricsKey key = new MetricsKey(jobContext.jobName(), jobContext.jobType());
         final Metrics metrics = this.keyToMetrics.computeIfAbsent(key, k -> buildMetrics(jobContext));
 
-        var processingTime = ((double) (System.nanoTime() - startTimeInNanos) / 1_000_000);
+        var processingTime = ((double) (System.nanoTime() - startTimeInNanos) / 1_000_000_000);
         metrics.complete.record(processingTime);
     }
 
@@ -55,7 +55,7 @@ public final class MicrometerZeebeWorkerMetrics implements ZeebeWorkerMetrics {
         final MetricsKey key = new MetricsKey(jobContext.jobName(), jobContext.jobType());
         final Metrics metrics = this.keyToMetrics.computeIfAbsent(key, k -> buildMetrics(jobContext));
 
-        var processingTime = ((double) (System.nanoTime() - startTimeInNanos) / 1_000_000);
+        var processingTime = ((double) (System.nanoTime() - startTimeInNanos) / 1_000_000_000);
 
         if (ZeebeWorkerTelemetry.ErrorType.USER.equals(errorType)) {
             metrics.failedUser.record(processingTime);
@@ -65,7 +65,7 @@ public final class MicrometerZeebeWorkerMetrics implements ZeebeWorkerMetrics {
 
         final String errorCode = (throwable instanceof JobWorkerException je) ? je.getCode() : CODE_UNKNOWN;
         final Counter errorCodeCounter = metrics.codeToCounter.computeIfAbsent(errorCode, k ->
-            Counter.builder("zeebe.worker.job")
+            Counter.builder("zeebe.worker.handler")
                 .tags(List.of(
                     Tag.of("job.name", jobContext.jobName()),
                     Tag.of("job.type", jobContext.jobType()),
@@ -78,33 +78,36 @@ public final class MicrometerZeebeWorkerMetrics implements ZeebeWorkerMetrics {
     }
 
     private Metrics buildMetrics(JobContext jobContext) {
-        var durationSuccess = DistributionSummary.builder("zeebe.worker.job")
+        var durationSuccess = DistributionSummary.builder("zeebe.worker.handler.duration")
             .tags(List.of(
                 Tag.of("job.name", jobContext.jobName()),
                 Tag.of("job.type", jobContext.jobType()),
                 Tag.of("status", STATUS_COMPLETE)
             ))
-            .serviceLevelObjectives(this.config.slo())
+            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
+            .baseUnit("s")
             .register(this.registry);
 
-        var durationFailedUser = DistributionSummary.builder("zeebe.worker.job")
+        var durationFailedUser = DistributionSummary.builder("zeebe.worker.handler.duration")
             .tags(List.of(
                 Tag.of("job.name", jobContext.jobName()),
                 Tag.of("job.type", jobContext.jobType()),
                 Tag.of("status", STATUS_FAILED),
                 Tag.of("error", ERROR_USER)
             ))
-            .serviceLevelObjectives(this.config.slo())
+            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
+            .baseUnit("s")
             .register(this.registry);
 
-        var durationFailedSystem = DistributionSummary.builder("zeebe.worker.job")
+        var durationFailedSystem = DistributionSummary.builder("zeebe.worker.handler.duration")
             .tags(List.of(
                 Tag.of("job.name", jobContext.jobName()),
                 Tag.of("job.type", jobContext.jobType()),
                 Tag.of("status", STATUS_FAILED),
                 Tag.of("error", ERROR_SYSTEM)
             ))
-            .serviceLevelObjectives(this.config.slo())
+            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
+            .baseUnit("s")
             .register(this.registry);
 
         return new Metrics(durationSuccess, durationFailedUser, durationFailedSystem, new ConcurrentHashMap<>());

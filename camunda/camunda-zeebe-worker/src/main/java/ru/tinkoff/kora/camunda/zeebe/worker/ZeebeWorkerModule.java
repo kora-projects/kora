@@ -92,9 +92,15 @@ public interface ZeebeWorkerModule extends JsonCommonModule, GrpcClientModule {
     }
 
     @DefaultComponent
+    default ZeebeWorkerLoggerFactory zeebeWorkerLoggerFactory() {
+        return new DefaultZeebeWorkerLoggerFactory();
+    }
+
+    @DefaultComponent
     default ZeebeWorkerTelemetryFactory zeebeWorkerTelemetryFactory(@Nullable ZeebeWorkerLoggerFactory loggerFactory,
-                                                                    @Nullable ZeebeWorkerMetricsFactory metricsFactory) {
-        return new DefaultZeebeWorkerTelemetryFactory(loggerFactory, metricsFactory);
+                                                                    @Nullable ZeebeWorkerMetricsFactory metricsFactory,
+                                                                    @Nullable ZeebeWorkerTracerFactory tracerFactory) {
+        return new DefaultZeebeWorkerTelemetryFactory(loggerFactory, metricsFactory, tracerFactory);
     }
 
     @Tag(ZeebeClient.class)
