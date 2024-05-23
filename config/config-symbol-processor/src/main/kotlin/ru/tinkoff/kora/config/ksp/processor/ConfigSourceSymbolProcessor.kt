@@ -50,7 +50,7 @@ class ConfigSourceSymbolProcessor(
                         ConfigClassNames.configValueExtractor.parameterizedBy(config.toClassName())
                     )
                     .addStatement("val configValue = config.get(%S)", path)
-                    .addStatement("return extractor.extract(configValue) ?: throw %T.missingValueAfterParse(configValue)", CommonClassNames.configParseException)
+                    .addStatement("return extractor.extract(configValue) ?: throw %T.missingValueAfterParse(configValue)", CommonClassNames.configValueExtractionException)
                 val type = typeBuilder.addFunction(function.build())
                     .addAnnotation(CommonClassNames.module)
                     .generated(ConfigSourceSymbolProcessor::class)

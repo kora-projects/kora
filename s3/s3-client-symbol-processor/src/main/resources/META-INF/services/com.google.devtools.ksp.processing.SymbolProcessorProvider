@@ -1,1 +1,1 @@
-ru.tinkoff.kora.s3.client.annotation.processor.S3ClientSymbolProcessorProvider
+ru.tinkoff.kora.s3.client.symbol.processor.S3ClientSymbolProcessorProvider

@@ -565,10 +565,10 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                         .build();
                 } else {
                     bodyCode = CodeBlock.of("""
-                            var _requestBody = (body instanceof $T bb)
+                            var _requestBody = ($L instanceof $T bb)
                                 ? $T.fromBytes(bb.bytes())
                                 : $T.fromInputStream($L.asInputStream(), $L.size() > 0 ? $L.size() : null, _awsAsyncExecutor)""",
-                        CLASS_S3_BODY_BYTES, CLASS_AWS_IS_ASYNC_BODY, CLASS_AWS_IS_ASYNC_BODY, bodyParamName, bodyParamName, bodyParamName);
+                        bodyParamName, CLASS_S3_BODY_BYTES, CLASS_AWS_IS_ASYNC_BODY, CLASS_AWS_IS_ASYNC_BODY, bodyParamName, bodyParamName, bodyParamName);
                 }
 
                 requestBuilder.addStatement("_requestBuilder.contentLength($L.size() > 0 ? $L.size() : null)", bodyParamName, bodyParamName);

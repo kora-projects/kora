@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.s3.client.annotation.processor
+package ru.tinkoff.kora.s3.client.symbol.processor
 
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
