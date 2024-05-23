@@ -270,6 +270,23 @@ public class BlockingApiTest extends AbstractHttpClientTest {
     }
 
     @Test
+    public void testCodeMapperNoTypeVoid() {
+        compileClient(List.of((HttpClientResponseMapper<Void>) rs -> null), """
+            @HttpClient
+            public interface TestClient {
+              @ResponseCodeMapper(code = 202)
+              @HttpRoute(method = "GET", path = "/test")
+              void test();
+            }
+            """);
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(202));
+        var result = client.invoke("test");
+        assertThat(result).isEqualTo(null);
+    }
+
+    @Test
     public void testBlockingRequestBody() throws Exception {
         var mapper = Mockito.mock(HttpClientRequestMapper.class);
         var client = compileClient(List.of(mapper), """

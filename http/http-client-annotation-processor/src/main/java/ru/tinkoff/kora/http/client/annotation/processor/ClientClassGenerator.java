@@ -299,7 +299,10 @@ public class ClientClassGenerator {
         var b = CodeBlock.builder();
         if (methodData.responseMapper != null && methodData.codeMappers().isEmpty()) {
             var responseMapperName = methodData.element.getSimpleName() + "ResponseMapper";
-            b.addStatement("return this.$N.apply(_response)", responseMapperName);
+            if (resultType.getKind() != TypeKind.VOID) {
+                b.add("return ");
+            }
+            b.addStatement("this.$N.apply(_response)", responseMapperName);
         } else if (methodData.codeMappers().isEmpty()) {
             b.addStatement("var _code = _response.code()");
             b.beginControlFlow("if (_code >= 200 && _code < 300)");
@@ -316,7 +319,10 @@ public class ClientClassGenerator {
             b.endControlFlow();
         } else {
             b.addStatement("var _code = _response.code()");
-            b.add("return switch (_code) {\n");
+            if (resultType.getKind() != TypeKind.VOID) {
+                b.add("return ");
+            }
+            b.add("switch (_code) {\n");
             ResponseCodeMapperData defaultMapper = null;
             for (var codeMapper : methodData.codeMappers()) {
                 if (codeMapper.code() == -1) {
@@ -707,10 +713,10 @@ public class ClientClassGenerator {
             }
             if (this.type() != null) {
                 var publisherParam = TypeName.get(this.type());
-                return ParameterizedTypeName.get(httpClientResponseMapper, publisherParam);
+                return ParameterizedTypeName.get(httpClientResponseMapper, publisherParam.box());
             } else {
                 var publisherParam = TypeName.get(returnType);
-                return ParameterizedTypeName.get(httpClientResponseMapper, publisherParam);
+                return ParameterizedTypeName.get(httpClientResponseMapper, publisherParam.box());
             }
         }
 
