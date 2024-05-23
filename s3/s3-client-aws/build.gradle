@@ -2,14 +2,16 @@ apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 
 dependencies {
     annotationProcessor project(":config:config-annotation-processor")
+
     compileOnly project(":http:http-client-common")
+    compileOnly libs.jetbrains.annotations
 
     api project(":s3:s3-client-common")
-    api("software.amazon.awssdk:s3:2.25.55") {
+    api(libs.s3client.aws) {
         exclude group: "software.amazon.awssdk", module: "apache-client"
         exclude group: "software.amazon.awssdk", module: "netty-nio-client"
     }
-    implementation "io.projectreactor.addons:reactor-adapter:3.5.1"
+    implementation libs.reactor.adapter
 
     implementation project(":config:config-common")
 

@@ -51,6 +51,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             library('reactor-core', 'io.projectreactor', 'reactor-core').versionRef('reactor')
             library('reactor-test', 'io.projectreactor', 'reactor-test').versionRef('reactor')
             library('reactor-pool', 'io.projectreactor.addons', 'reactor-pool').version('1.0.5')
+            library('reactor-adapter', 'io.projectreactor.addons', 'reactor-adapter').version('3.5.1')
 
             library('kotlin-stdlib-common', 'org.jetbrains.kotlin', 'kotlin-stdlib-common').versionRef('kotlin_')
             library('kotlin-stdlib-lib', 'org.jetbrains.kotlin', 'kotlin-stdlib').versionRef('kotlin_')
@@ -165,6 +166,10 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             library('swagger-core', 'io.swagger.core.v3', 'swagger-core').versionRef("swagger")
             library('swagger-annotations', 'io.swagger.core.v3', 'swagger-annotations').versionRef("swagger")
             library('swagger-models', 'io.swagger.core.v3', 'swagger-models').versionRef("swagger")
+
+
+            library('s3client-minio', 'io.minio', 'minio').version("8.5.10")
+            library('s3client-aws', 'software.amazon.awssdk', 's3').version("2.25.55")
         }
     }
 }
