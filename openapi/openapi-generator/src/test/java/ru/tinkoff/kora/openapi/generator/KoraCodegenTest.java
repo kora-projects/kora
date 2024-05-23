@@ -59,6 +59,7 @@ class KoraCodegenTest {
             KoraCodegen.Mode.KOTLIN_SUSPEND_SERVER.getMode(),
         };
         var files = new String[]{
+            "/example/petstoreV3_enum.yaml",
             "/example/petstoreV3_form.yaml",
             "/example/petstoreV3_request_parameters.yaml",
             "/example/petstoreV3_validation.yaml",
