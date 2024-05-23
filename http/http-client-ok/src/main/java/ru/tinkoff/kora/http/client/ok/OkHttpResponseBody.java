@@ -20,7 +20,7 @@ public final class OkHttpResponseBody implements HttpBodyInput {
 
     @Override
     public long contentLength() {
-        return (int) body.contentLength();
+        return body.contentLength();
     }
 
     @Nullable

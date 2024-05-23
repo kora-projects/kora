@@ -30,6 +30,11 @@ public final class OkHttpRequestBody extends RequestBody {
     }
 
     @Override
+    public long contentLength() {
+        return bodyOutput.contentLength();
+    }
+
+    @Override
     public void writeTo(@Nonnull BufferedSink bufferedSink) {
         try {
             bodyOutput.write(bufferedSink.outputStream());
