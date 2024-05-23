@@ -91,6 +91,18 @@ public interface S3Body {
         return new InputStreamS3Body(inputStream, size, type, encoding);
     }
 
+    static S3Body ofPublisher(Flow.Publisher<ByteBuffer> publisher) {
+        return ofPublisher(publisher, -1, "application/octet-stream", null);
+    }
+
+    static S3Body ofPublisher(Flow.Publisher<ByteBuffer> publisher, String type) {
+        return ofPublisher(publisher, -1, type, null);
+    }
+
+    static S3Body ofPublisher(Flow.Publisher<ByteBuffer> publisher, String type, String encoding) {
+        return new PublisherS3Body(publisher, -1, type, encoding);
+    }
+
     static S3Body ofPublisher(Flow.Publisher<ByteBuffer> publisher, long size) {
         return ofPublisher(publisher, size, "application/octet-stream", null);
     }
