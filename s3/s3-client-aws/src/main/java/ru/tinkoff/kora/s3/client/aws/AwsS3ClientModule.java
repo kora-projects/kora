@@ -98,9 +98,10 @@ public interface AwsS3ClientModule extends S3ClientModule {
     }
 
     default S3SimpleClient awsS3SimpleClient(S3Client s3Client,
+                                             S3SimpleAsyncClient simpleAsyncClient,
                                              S3ClientTelemetryFactory telemetryFactory,
                                              S3Config config) {
-        return new AwsS3SimpleClient(s3Client, telemetryFactory.get(config.telemetry(), S3SimpleClient.class.getCanonicalName()));
+        return new AwsS3SimpleClient(s3Client, simpleAsyncClient, telemetryFactory.get(config.telemetry(), S3SimpleClient.class.getCanonicalName()));
     }
 
     default S3SimpleAsyncClient awsS3SimpleAsyncClient(S3AsyncClient s3AsyncClient,

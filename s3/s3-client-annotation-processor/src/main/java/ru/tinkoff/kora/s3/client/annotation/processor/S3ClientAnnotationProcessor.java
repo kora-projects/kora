@@ -515,23 +515,21 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
             var methodBuilder = CodeBlock.builder();
             if (mode == S3Operation.Mode.SYNC) {
                 if (isStringResult) {
-                    methodBuilder.add("return _simpleSyncClient");
+                    methodBuilder.add("return _simpleSyncClient.put(_clientConfig.bucket(), _key, _body)");
                 } else {
-                    methodBuilder.add("_simpleSyncClient");
+                    methodBuilder.add("_simpleSyncClient.put(_clientConfig.bucket(), _key, _body)");
                 }
+                methodBuilder.add(";\n");
             } else {
-                methodBuilder.add("return _simpleAsyncClient");
+                methodBuilder.add("return _simpleAsyncClient.put(_clientConfig.bucket(), _key, _body)");
+                if (!isStringResult) {
+                    methodBuilder.add(".thenAccept(_v -> {})");
+                }
+                if (CompletableFuture.class.getCanonicalName().equals(((DeclaredType) method.getReturnType()).asElement().toString())) {
+                    methodBuilder.add(".toCompletableFuture()");
+                }
+                methodBuilder.add(";\n");
             }
-
-            methodBuilder.add(".put(_clientConfig.bucket(), _key, _body)");
-            if (mode == S3Operation.Mode.ASYNC && !isStringResult) {
-                methodBuilder.add(".thenAccept(_v -> {})");
-            }
-
-            if (mode == S3Operation.Mode.ASYNC && CompletableFuture.class.getCanonicalName().equals(((DeclaredType) method.getReturnType()).asElement().toString())) {
-                methodBuilder.add(".toCompletableFuture()");
-            }
-            methodBuilder.add(";\n");
 
             CodeBlock code = CodeBlock.builder()
                 .addStatement(key.code())
