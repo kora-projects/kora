@@ -413,7 +413,7 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
                                 var _key = $L;
                                 $L.put(_key, _result.get());
                             }
-                        });
+                        }));
                         """, execution.cacheKey().code(), execution.field());
                 } else {
                     builder.add("""
@@ -422,7 +422,7 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
                                 var _key = $L;
                                 $L.put(_key, _result);
                             }
-                        });
+                        }));
                         """, execution.cacheKey().code(), execution.field());
                 }
             }
