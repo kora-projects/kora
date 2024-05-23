@@ -1,11 +1,13 @@
 package ru.tinkoff.kora.s3.client.aws;
 
+import reactor.adapter.JdkFlowAdapter;
 import ru.tinkoff.kora.s3.client.S3DeleteException;
 import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.s3.client.S3NotFoundException;
 import ru.tinkoff.kora.s3.client.S3SimpleAsyncClient;
 import ru.tinkoff.kora.s3.client.model.S3Object;
 import ru.tinkoff.kora.s3.client.model.*;
+import ru.tinkoff.kora.s3.client.telemetry.S3ClientTelemetry;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.core.async.AsyncResponseTransformer;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -24,10 +26,12 @@ public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
 
     private final S3AsyncClient asyncClient;
     private final ExecutorService awsExecutor;
+    private final S3ClientTelemetry telemetry;
 
-    public AwsS3SimpleAsyncClient(S3AsyncClient asyncClient, ExecutorService awsExecutor) {
+    public AwsS3SimpleAsyncClient(S3AsyncClient asyncClient, ExecutorService awsExecutor, S3ClientTelemetry telemetry) {
         this.asyncClient = asyncClient;
         this.awsExecutor = awsExecutor;
+        this.telemetry = telemetry;
     }
 
     @Override
@@ -37,7 +41,11 @@ public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
             .key(key)
             .build();
 
-        return asyncClient.getObject(request, AsyncResponseTransformer.toBlockingInputStream())
+        var ctx = ru.tinkoff.kora.common.Context.current();
+        var telemetryContext = telemetry.get("GET", bucket);
+        ctx.set(AwsS3ClientTelemetryInterceptor.CONTEXT_KEY, telemetryContext);
+
+        return asyncClient.getObject(request, AsyncResponseTransformer.toPublisher())
             .thenApply(r -> ((S3Object) new AwsS3Object(request.key(), r)))
             .exceptionallyCompose(AwsS3SimpleAsyncClient::handleException);
     }
@@ -49,6 +57,10 @@ public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
             .key(key)
             .objectAttributes(ObjectAttributes.OBJECT_SIZE)
             .build();
+
+        var ctx = ru.tinkoff.kora.common.Context.current();
+        var telemetryContext = telemetry.get("GET_META", bucket);
+        ctx.set(AwsS3ClientTelemetryInterceptor.CONTEXT_KEY, telemetryContext);
 
         return asyncClient.getObjectAttributes(request)
             .thenApply(r -> ((S3ObjectMeta) new AwsS3ObjectMeta(key, r)))
@@ -83,16 +95,10 @@ public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
 
     @Override
     public CompletionStage<S3ObjectList> list(String bucket, String prefix, int limit) {
-        var request = ListObjectsV2Request.builder()
-            .bucket(bucket)
-            .prefix(prefix)
-            .maxKeys(limit)
-            .build();
-
-        return asyncClient.listObjectsV2(request)
-            .thenCompose(response -> {
-                var futures = response.contents().stream()
-                    .map(c -> get(bucket, c.key()).toCompletableFuture())
+        return listMeta(bucket, prefix, limit)
+            .thenCompose(metaList -> {
+                var futures = metaList.metas().stream()
+                    .map(meta -> get(bucket, meta.key()).toCompletableFuture())
                     .toArray(CompletableFuture[]::new);
 
                 return CompletableFuture.allOf(futures)
@@ -102,7 +108,7 @@ public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
                             objects.add(((S3Object) future.join()));
                         }
 
-                        return ((S3ObjectList) new AwsS3ObjectList(response, objects));
+                        return ((S3ObjectList) new AwsS3ObjectList(metaList, objects));
                     });
             })
             .exceptionallyCompose(AwsS3SimpleAsyncClient::handleException);
@@ -115,6 +121,10 @@ public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
             .prefix(prefix)
             .maxKeys(limit)
             .build();
+
+        var ctx = ru.tinkoff.kora.common.Context.current();
+        var telemetryContext = telemetry.get("LIST_META", bucket);
+        ctx.set(AwsS3ClientTelemetryInterceptor.CONTEXT_KEY, telemetryContext);
 
         return asyncClient.listObjectsV2(request)
             .thenApply(response -> ((S3ObjectMetaList) new AwsS3ObjectMetaList(response)))
@@ -160,8 +170,17 @@ public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
         }
 
         var request = requestBuilder.build();
+
+        var ctx = ru.tinkoff.kora.common.Context.current();
+        var telemetryContext = telemetry.get("PUT", bucket);
+        ctx.set(AwsS3ClientTelemetryInterceptor.CONTEXT_KEY, telemetryContext);
+
         if (body instanceof ByteS3Body bb) {
             return asyncClient.putObject(request, AsyncRequestBody.fromBytes(bb.bytes()))
+                .thenApply(PutObjectResponse::versionId)
+                .exceptionallyCompose(AwsS3SimpleAsyncClient::handleException);
+        } else if (body instanceof PublisherS3Body) {
+            return asyncClient.putObject(request, AsyncRequestBody.fromPublisher(JdkFlowAdapter.flowPublisherToFlux(body.asPublisher())))
                 .thenApply(PutObjectResponse::versionId)
                 .exceptionallyCompose(AwsS3SimpleAsyncClient::handleException);
         } else if (body.size() > 0) {
@@ -182,6 +201,10 @@ public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
             .key(key)
             .build();
 
+        var ctx = ru.tinkoff.kora.common.Context.current();
+        var telemetryContext = telemetry.get("DELETE", bucket);
+        ctx.set(AwsS3ClientTelemetryInterceptor.CONTEXT_KEY, telemetryContext);
+
         return asyncClient.deleteObject(request)
             .thenAccept(r -> {})
             .exceptionallyCompose(AwsS3SimpleAsyncClient::handleException);
@@ -199,6 +222,10 @@ public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
                     .toList())
                 .build())
             .build();
+
+        var ctx = ru.tinkoff.kora.common.Context.current();
+        var telemetryContext = telemetry.get("DELETE_MANY", bucket);
+        ctx.set(AwsS3ClientTelemetryInterceptor.CONTEXT_KEY, telemetryContext);
 
         return asyncClient.deleteObjects(request)
             .<Void>thenApply(response -> {

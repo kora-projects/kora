@@ -1,11 +1,13 @@
 package ru.tinkoff.kora.s3.client.aws;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.s3.client.S3DeleteException;
 import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.s3.client.S3NotFoundException;
 import ru.tinkoff.kora.s3.client.S3SimpleClient;
 import ru.tinkoff.kora.s3.client.model.S3Object;
 import ru.tinkoff.kora.s3.client.model.*;
+import ru.tinkoff.kora.s3.client.telemetry.S3ClientTelemetry;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.model.*;
 
@@ -17,9 +19,11 @@ import java.util.concurrent.CompletableFuture;
 public class AwsS3SimpleClient implements S3SimpleClient {
 
     private final software.amazon.awssdk.services.s3.S3Client client;
+    private final S3ClientTelemetry telemetry;
 
-    public AwsS3SimpleClient(software.amazon.awssdk.services.s3.S3Client client) {
+    public AwsS3SimpleClient(software.amazon.awssdk.services.s3.S3Client client, S3ClientTelemetry telemetry) {
         this.client = client;
+        this.telemetry = telemetry;
     }
 
     @Override
@@ -30,6 +34,10 @@ public class AwsS3SimpleClient implements S3SimpleClient {
             .build();
 
         try {
+            var ctx = ru.tinkoff.kora.common.Context.current();
+            var telemetryContext = telemetry.get("GET", bucket);
+            ctx.set(AwsS3ClientTelemetryInterceptor.CONTEXT_KEY, telemetryContext);
+
             var response = client.getObject(request);
             return new AwsS3Object(request.key(), response);
         } catch (NoSuchKeyException e) {
@@ -48,6 +56,10 @@ public class AwsS3SimpleClient implements S3SimpleClient {
             .build();
 
         try {
+            var ctx = ru.tinkoff.kora.common.Context.current();
+            var telemetryContext = telemetry.get("GET_META", bucket);
+            ctx.set(AwsS3ClientTelemetryInterceptor.CONTEXT_KEY, telemetryContext);
+
             var response = client.getObjectAttributes(request);
             return new AwsS3ObjectMeta(key, response);
         } catch (NoSuchKeyException e) {
@@ -90,7 +102,7 @@ public class AwsS3SimpleClient implements S3SimpleClient {
     }
 
     @Override
-    public S3ObjectList list(String bucket, String prefix, int limit) {
+    public S3ObjectList list(String bucket, @Nullable String prefix, int limit) {
         try {
             var metaList = listMeta(bucket, prefix, limit);
 
@@ -116,14 +128,18 @@ public class AwsS3SimpleClient implements S3SimpleClient {
     }
 
     @Override
-    public S3ObjectMetaList listMeta(String bucket, String prefix, int limit) {
+    public S3ObjectMetaList listMeta(String bucket, @Nullable String prefix, int limit) {
         var request = ListObjectsV2Request.builder()
             .bucket(bucket)
-            .prefix(prefix)
             .maxKeys(limit)
+            .prefix(prefix)
             .build();
 
         try {
+            var ctx = ru.tinkoff.kora.common.Context.current();
+            var telemetryContext = telemetry.get("LIST_META", bucket);
+            ctx.set(AwsS3ClientTelemetryInterceptor.CONTEXT_KEY, telemetryContext);
+
             var response = client.listObjectsV2(request);
             return new AwsS3ObjectMetaList(response);
         } catch (NoSuchKeyException | NoSuchBucketException e) {
@@ -169,6 +185,10 @@ public class AwsS3SimpleClient implements S3SimpleClient {
 
         var request = requestBuilder.build();
         try {
+            var ctx = ru.tinkoff.kora.common.Context.current();
+            var telemetryContext = telemetry.get("PUT", bucket);
+            ctx.set(AwsS3ClientTelemetryInterceptor.CONTEXT_KEY, telemetryContext);
+
             if (body instanceof ByteS3Body bb) {
                 return client.putObject(request, RequestBody.fromBytes(bb.bytes())).versionId();
             } else if (body.size() > 0) {
@@ -211,6 +231,10 @@ public class AwsS3SimpleClient implements S3SimpleClient {
             .build();
 
         try {
+            var ctx = ru.tinkoff.kora.common.Context.current();
+            var telemetryContext = telemetry.get("DELETE", bucket);
+            ctx.set(AwsS3ClientTelemetryInterceptor.CONTEXT_KEY, telemetryContext);
+
             client.deleteObject(request);
         } catch (Exception e) {
             throw new S3Exception(e);
@@ -231,6 +255,10 @@ public class AwsS3SimpleClient implements S3SimpleClient {
             .build();
 
         try {
+            var ctx = ru.tinkoff.kora.common.Context.current();
+            var telemetryContext = telemetry.get("DELETE_MANY", bucket);
+            ctx.set(AwsS3ClientTelemetryInterceptor.CONTEXT_KEY, telemetryContext);
+
             var response = client.deleteObjects(request);
             if (response.hasErrors()) {
                 var errors = response.errors().stream()

@@ -45,6 +45,21 @@ class S3AwsClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.List
+                ListObjectsV2Response list();
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$Client_Impl");
+        assertThat(clazz).isNotNull();
+    }
+
+    @Test
+    public void clientListAwsWithPrefix() {
+        this.compile(List.of(new S3ClientAnnotationProcessor()), """
+            @S3.Client("my")
+            public interface Client {
+                        
+                @S3.List
                 ListObjectsV2Response list(String prefix);
             }
             """);
@@ -103,7 +118,7 @@ class S3AwsClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-            
+                        
                 @S3.Put
                 PutObjectResponse put(String key, S3Body body);
             }

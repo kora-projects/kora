@@ -1,9 +1,11 @@
 package ru.tinkoff.kora.s3.client.aws;
 
+import reactor.adapter.JdkFlowAdapter;
 import ru.tinkoff.kora.s3.client.model.S3Body;
 import ru.tinkoff.kora.s3.client.model.S3Object;
 import ru.tinkoff.kora.s3.client.model.S3ObjectMeta;
 import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.core.async.ResponsePublisher;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 import java.time.Instant;
@@ -17,7 +19,14 @@ final class AwsS3Object implements S3Object, S3ObjectMeta {
     public AwsS3Object(String key, ResponseInputStream<GetObjectResponse> response) {
         GetObjectResponse res = response.response();
         long size = res.contentLength() == null ? -1 : res.contentLength();
-        this.body = new AwsS3Body(response, size, res.contentType(), res.contentEncoding());
+        this.body = new AwsS3BodySync(res.contentEncoding(), res.contentType(), size, response);
+        this.meta = new AwsS3ObjectMeta(key, res);
+    }
+
+    public AwsS3Object(String key, ResponsePublisher<GetObjectResponse> response) {
+        GetObjectResponse res = response.response();
+        long size = res.contentLength() == null ? -1 : res.contentLength();
+        this.body = new AwsS3BodyAsync(res.contentEncoding(), res.contentType(), size, JdkFlowAdapter.publisherToFlowPublisher(response));
         this.meta = new AwsS3ObjectMeta(key, res);
     }
 

@@ -373,7 +373,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
         } else if (method.getParameters().size() > 1) {
             throw new ProcessingErrorException("@S3.List operation can't have multiple method parameters for keys without key template", method);
         } else if (method.getParameters().isEmpty()) {
-            throw new ProcessingErrorException("@S3.List operation must have key parameter", method);
+            key = null;
         } else if (CommonUtils.isCollection(firstParameter.asType())) {
             throw new ProcessingErrorException("@S3.List operation expected single result, but parameter is collection of keys", method);
         } else {
@@ -393,10 +393,11 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                 bodyBuilder.add("return _simpleAsyncClient");
             }
 
+            String keyField = (key == null) ? "(String) null" : "_key";
             if (CLASS_S3_OBJECT_LIST.equals(returnType)) {
-                bodyBuilder.add(".list(_clientConfig.bucket(), _key, $L)", limit);
+                bodyBuilder.add(".list(_clientConfig.bucket(), $L, $L)", keyField, limit);
             } else {
-                bodyBuilder.add(".listMeta(_clientConfig.bucket(), _key, $L)", limit);
+                bodyBuilder.add(".listMeta(_clientConfig.bucket(), $L, $L)", keyField, limit);
             }
 
             if (mode == S3Operation.Mode.ASYNC && CompletableFuture.class.getCanonicalName().equals(((DeclaredType) method.getReturnType()).asElement().toString())) {
@@ -404,31 +405,36 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
             }
             bodyBuilder.add(";\n");
 
-            CodeBlock code = CodeBlock.builder()
-                .addStatement(key.code())
-                .add(bodyBuilder.build())
-                .build();
+            var codeBuilder = CodeBlock.builder();
+            if (key != null) {
+                codeBuilder.addStatement(key.code());
+            }
+            codeBuilder.add(bodyBuilder.build());
 
-            return new S3Operation(method, operationMeta.annotation, OperationType.LIST, ImplType.SIMPLE, mode, code);
+            return new S3Operation(method, operationMeta.annotation, OperationType.LIST, ImplType.SIMPLE, mode, codeBuilder.build());
         } else if (CLASS_AWS_LIST_RESPONSE.equals(returnType)) {
             String clientField = mode == S3Operation.Mode.SYNC
                 ? "_awsSyncClient"
                 : "_awsAsyncClient";
 
-            CodeBlock code = CodeBlock.builder()
-                .addStatement(key.code())
-                .add("\n")
+            var codeBuilder = CodeBlock.builder();
+            if (key != null) {
+                codeBuilder.addStatement(key.code()).add("\n");
+            }
+
+            String keyField = (key == null) ? "null" : "_key";
+            codeBuilder
                 .addStatement(CodeBlock.of("""
                     var _request = $L.builder()
                         .bucket(_clientConfig.bucket())
-                        .prefix(_key)
+                        .prefix($L)
                         .maxKeys($L)
-                        .build()""", CLASS_AWS_LIST_REQUEST, limit))
+                        .build()""", CLASS_AWS_LIST_REQUEST, keyField, limit))
                 .add("\n")
                 .addStatement("return $L.listObjectsV2(_request)", clientField)
                 .build();
 
-            return new S3Operation(method, operationMeta.annotation, OperationType.LIST, ImplType.AWS, mode, code);
+            return new S3Operation(method, operationMeta.annotation, OperationType.LIST, ImplType.AWS, mode, codeBuilder.build());
         } else {
             throw new ProcessingErrorException("@S3.List operation unsupported signature", method);
         }
@@ -671,7 +677,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
             var builder = CodeBlock.builder();
 
             final String keyArgName;
-            if (CommonUtils.isCollection(firstParameter.asType())) {
+            if (firstParameter != null && CommonUtils.isCollection(firstParameter.asType())) {
                 keyArgName = firstParameter.getSimpleName().toString();
             } else {
                 builder.addStatement(key.code());
