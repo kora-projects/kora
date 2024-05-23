@@ -120,7 +120,7 @@ public class AwsS3SimpleClient implements S3SimpleClient {
                 objects.add(((AwsS3Object) future.join()));
             }
 
-            return new AwsS3ObjectList(metaList, objects);
+            return new AwsS3ObjectList(((AwsS3ObjectMetaList) metaList).response(), objects);
         } catch (NoSuchKeyException | NoSuchBucketException e) {
             throw new S3NotFoundException(e);
         } catch (S3Exception e) {

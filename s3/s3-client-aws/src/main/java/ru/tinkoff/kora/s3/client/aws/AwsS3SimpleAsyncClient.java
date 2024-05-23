@@ -108,7 +108,7 @@ public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
                             objects.add(((S3Object) future.join()));
                         }
 
-                        return ((S3ObjectList) new AwsS3ObjectList(metaList, objects));
+                        return ((S3ObjectList) new AwsS3ObjectList(((AwsS3ObjectMetaList) metaList).response(), objects));
                     });
             })
             .exceptionallyCompose(AwsS3SimpleAsyncClient::handleException);

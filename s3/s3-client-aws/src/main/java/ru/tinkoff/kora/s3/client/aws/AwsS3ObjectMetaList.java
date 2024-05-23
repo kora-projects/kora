@@ -1,12 +1,14 @@
 package ru.tinkoff.kora.s3.client.aws;
 
+import org.jetbrains.annotations.ApiStatus.Internal;
 import ru.tinkoff.kora.s3.client.model.S3ObjectMeta;
 import ru.tinkoff.kora.s3.client.model.S3ObjectMetaList;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 
 import java.util.List;
 
-final class AwsS3ObjectMetaList implements S3ObjectMetaList {
+@Internal
+public final class AwsS3ObjectMetaList implements S3ObjectMetaList {
 
     private final ListObjectsV2Response response;
     private final List<S3ObjectMeta> metas;
@@ -26,6 +28,10 @@ final class AwsS3ObjectMetaList implements S3ObjectMetaList {
     @Override
     public List<S3ObjectMeta> metas() {
         return metas;
+    }
+
+    public ListObjectsV2Response response() {
+        return response;
     }
 
     @Override
