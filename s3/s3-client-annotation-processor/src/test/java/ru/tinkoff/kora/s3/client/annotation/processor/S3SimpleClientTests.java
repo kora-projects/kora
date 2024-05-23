@@ -149,7 +149,7 @@ class S3SimpleClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.List
-                S3ObjectMetaList list(String prefix);
+                S3ObjectMetaList list();
             }
             """);
         this.compileResult.assertSuccess();
@@ -164,6 +164,36 @@ class S3SimpleClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.List
+                S3ObjectList list();
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$Client_Impl");
+        assertThat(clazz).isNotNull();
+    }
+
+    @Test
+    public void clientListMetaWithPrefix() {
+        this.compile(List.of(new S3ClientAnnotationProcessor()), """
+            @S3.Client("my")
+            public interface Client {
+                        
+                @S3.List
+                S3ObjectMetaList list(String prefix);
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$Client_Impl");
+        assertThat(clazz).isNotNull();
+    }
+
+    @Test
+    public void clientListObjectsWithPrefix() {
+        this.compile(List.of(new S3ClientAnnotationProcessor()), """
+            @S3.Client("my")
+            public interface Client {
+                        
+                @S3.List
                 S3ObjectList list(String prefix);
             }
             """);
@@ -173,7 +203,7 @@ class S3SimpleClientTests extends AbstractAnnotationProcessorTest {
     }
 
     @Test
-    public void clientListLimit() {
+    public void clientListLimitWithPrefix() {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
@@ -327,21 +357,6 @@ class S3SimpleClientTests extends AbstractAnnotationProcessorTest {
         assertThat(clazz).isNotNull();
     }
 
-    @Test
-    public void clientDeletesReturnKeys() {
-        this.compile(List.of(new S3ClientAnnotationProcessor()), """
-            @S3.Client("my")
-            public interface Client {
-                        
-                @S3.Delete
-                List<String> delete(List<String> key);
-            }
-            """);
-        this.compileResult.assertSuccess();
-        var clazz = this.compileResult.loadClass("$Client_Impl");
-        assertThat(clazz).isNotNull();
-    }
-
     // Put
     @Test
     public void clientPutBody() {
@@ -393,7 +408,7 @@ class S3SimpleClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-            
+                        
                 @S3.Put
                 void put(String key, ByteBuffer body);
             }
@@ -408,7 +423,7 @@ class S3SimpleClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-            
+                        
                 @S3.Put
                 void put(String key, InputStream body);
             }
@@ -423,7 +438,7 @@ class S3SimpleClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-            
+                        
                 @S3.Put(type = "type")
                 void put(String key, S3Body body);
             }
@@ -438,7 +453,7 @@ class S3SimpleClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-            
+                        
                 @S3.Put(encoding = "encoding")
                 void put(String key, S3Body body);
             }
@@ -453,7 +468,7 @@ class S3SimpleClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-            
+                        
                 @S3.Put(type = "type", encoding = "encoding")
                 void put(String key, S3Body body);
             }

@@ -2,7 +2,9 @@ dependencies {
     annotationProcessor project(":config:config-annotation-processor")
     compileOnly libs.jetbrains.annotations
     implementation project(":config:config-common")
+    implementation project(':logging:logging-common')
 
+    api project(':telemetry:telemetry-common')
     api project(":common")
 
     testImplementation project(":internal:test-logging")

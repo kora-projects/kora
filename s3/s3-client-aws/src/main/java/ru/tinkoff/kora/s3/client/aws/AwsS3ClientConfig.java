@@ -8,7 +8,7 @@ import java.time.Duration;
 public interface AwsS3ClientConfig {
 
     default Duration requestTimeout() {
-        return Duration.ofSeconds(15);
+        return Duration.ofSeconds(45);
     }
 
     default boolean checksumValidationEnabled() {

@@ -5,6 +5,7 @@ import io.minio.errors.ErrorResponseException;
 import io.minio.messages.DeleteError;
 import io.minio.messages.DeleteObject;
 import io.minio.messages.Item;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.s3.client.S3DeleteException;
 import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.s3.client.S3NotFoundException;
@@ -126,7 +127,7 @@ public class MinioS3SimpleClient implements S3SimpleClient {
     }
 
     @Override
-    public S3ObjectMetaList listMeta(String bucket, String prefix, int limit) {
+    public S3ObjectMetaList listMeta(String bucket, @Nullable String prefix, int limit) {
         try {
             var response = minioClient.listObjects(ListObjectsArgs.builder()
                 .bucket(bucket)

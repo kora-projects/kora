@@ -10,6 +10,7 @@ import ru.tinkoff.kora.s3.client.S3ClientModule;
 import ru.tinkoff.kora.s3.client.S3Config;
 import ru.tinkoff.kora.s3.client.S3SimpleAsyncClient;
 import ru.tinkoff.kora.s3.client.S3SimpleClient;
+import ru.tinkoff.kora.s3.client.telemetry.S3ClientTelemetryFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.interceptor.ExecutionInterceptor;
@@ -96,11 +97,16 @@ public interface AwsS3ClientModule extends S3ClientModule {
             .build();
     }
 
-    default S3SimpleClient awsS3SimpleClient(S3Client s3Client) {
-        return new AwsS3SimpleClient(s3Client);
+    default S3SimpleClient awsS3SimpleClient(S3Client s3Client,
+                                             S3ClientTelemetryFactory telemetryFactory,
+                                             S3Config config) {
+        return new AwsS3SimpleClient(s3Client, telemetryFactory.get(config.telemetry(), S3SimpleClient.class.getCanonicalName()));
     }
 
-    default S3SimpleAsyncClient awsS3SimpleAsyncClient(S3AsyncClient s3AsyncClient, @Tag(S3Client.class) ExecutorService awsExecutor) {
-        return new AwsS3SimpleAsyncClient(s3AsyncClient, awsExecutor);
+    default S3SimpleAsyncClient awsS3SimpleAsyncClient(S3AsyncClient s3AsyncClient,
+                                                       @Tag(S3Client.class) ExecutorService awsExecutor,
+                                                       S3ClientTelemetryFactory telemetryFactory,
+                                                       S3Config config) {
+        return new AwsS3SimpleAsyncClient(s3AsyncClient, awsExecutor, telemetryFactory.get(config.telemetry(), S3SimpleAsyncClient.class.getCanonicalName()));
     }
 }

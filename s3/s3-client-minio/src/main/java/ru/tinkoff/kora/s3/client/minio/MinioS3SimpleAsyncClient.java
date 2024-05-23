@@ -119,7 +119,8 @@ public class MinioS3SimpleAsyncClient implements S3SimpleAsyncClient {
                 try {
                     final List<S3ObjectMeta> metas = new ArrayList<>();
                     for (Result<Item> result : response) {
-                        metas.add(new MinioS3ObjectMeta(result.get()));
+                        Item item = result.get();
+                        metas.add(new MinioS3ObjectMeta(item));
                     }
 
                     return new MinioS3ObjectMetaList(prefix, metas);

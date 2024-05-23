@@ -79,7 +79,7 @@ public final class KoraAwsSdkHttpClient implements SdkHttpClient, SdkAsyncHttpCl
         httpExecuteRequest.contentStreamProvider().ifPresent(provider -> {
             String contentType = sdkHttpRequest.firstMatchingHeader("Content-Type").orElse("application/octet-stream");
             String contentLength = sdkHttpRequest.firstMatchingHeader("Content-Length").orElse(null);
-            if(contentLength == null) {
+            if (contentLength == null) {
                 builder.body(HttpBodyOutput.of(contentType, provider.newStream()));
             } else {
                 builder.body(HttpBodyOutput.of(contentType, Long.parseLong(contentLength), provider.newStream()));
@@ -98,7 +98,7 @@ public final class KoraAwsSdkHttpClient implements SdkHttpClient, SdkAsyncHttpCl
         Flow.Publisher<ByteBuffer> bodyFlow = JdkFlowAdapter.publisherToFlowPublisher(asyncExecuteRequest.requestContentPublisher());
         String contentType = sdkHttpRequest.firstMatchingHeader("Content-Type").orElse("application/octet-stream");
         String contentLength = sdkHttpRequest.firstMatchingHeader("Content-Length").orElse(null);
-        if(contentLength == null) {
+        if (contentLength == null) {
             builder.body(HttpBodyOutput.of(contentType, bodyFlow));
         } else {
             builder.body(HttpBodyOutput.of(contentType, Long.parseLong(contentLength), bodyFlow));
@@ -130,7 +130,7 @@ public final class KoraAwsSdkHttpClient implements SdkHttpClient, SdkAsyncHttpCl
             });
 
             headers.forEach((k, v) -> {
-                if(!"host".equalsIgnoreCase(k) && !"expect".equalsIgnoreCase(k)) {
+                if (!"host".equalsIgnoreCase(k) && !"expect".equalsIgnoreCase(k)) {
                     builder.header(k, v);
                 }
             });

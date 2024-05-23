@@ -3,15 +3,18 @@ package ru.tinkoff.kora.s3.client.aws;
 import ru.tinkoff.kora.s3.client.model.S3Body;
 
 import java.io.InputStream;
+import java.net.http.HttpRequest;
+import java.nio.ByteBuffer;
+import java.util.concurrent.Flow;
 
-final class AwsS3Body implements S3Body {
+final class AwsS3BodySync implements S3Body {
 
     private final String encoding;
     private final String type;
     private final long size;
     private final InputStream inputStream;
 
-    AwsS3Body(InputStream inputStream, long size, String encoding, String type) {
+    public AwsS3BodySync(String encoding, String type, long size, InputStream inputStream) {
         this.encoding = encoding;
         this.type = type;
         this.size = size;
@@ -20,7 +23,12 @@ final class AwsS3Body implements S3Body {
 
     @Override
     public InputStream asInputStream() {
-        return inputStream;
+        return this.inputStream;
+    }
+
+    @Override
+    public Flow.Publisher<ByteBuffer> asPublisher() {
+        return HttpRequest.BodyPublishers.ofInputStream(() -> inputStream);
     }
 
     @Override

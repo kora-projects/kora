@@ -1,34 +1,33 @@
-package ru.tinkoff.kora.s3.client.minio;
+package ru.tinkoff.kora.s3.client.aws;
 
 import ru.tinkoff.kora.s3.client.model.S3Body;
 
 import java.io.InputStream;
-import java.net.http.HttpRequest;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Flow;
 
-final class MinioS3Body implements S3Body {
+final class AwsS3BodyAsync implements S3Body {
 
     private final String encoding;
     private final String type;
     private final long size;
-    private final InputStream inputStream;
+    private final Flow.Publisher<ByteBuffer> publisher;
 
-    public MinioS3Body(InputStream inputStream, long size, String encoding, String type) {
+    public AwsS3BodyAsync(String encoding, String type, long size, Flow.Publisher<ByteBuffer> publisher) {
         this.encoding = encoding;
         this.type = type;
         this.size = size;
-        this.inputStream = inputStream;
+        this.publisher = publisher;
     }
 
     @Override
     public InputStream asInputStream() {
-        return inputStream;
+        return S3Body.ofPublisher(publisher, size, type, encoding).asInputStream();
     }
 
     @Override
     public Flow.Publisher<ByteBuffer> asPublisher() {
-        return HttpRequest.BodyPublishers.ofInputStream(() -> inputStream);
+        return publisher;
     }
 
     @Override
@@ -48,7 +47,7 @@ final class MinioS3Body implements S3Body {
 
     @Override
     public String toString() {
-        return "MinioS3Body{type=" + type +
+        return "AwsS3Body{type=" + type +
             ", encoding=" + encoding +
             ", size=" + size +
             '}';
