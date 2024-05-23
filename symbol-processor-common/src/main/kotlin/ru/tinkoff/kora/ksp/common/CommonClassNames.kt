@@ -55,7 +55,7 @@ object CommonClassNames {
     val generated = ClassName("ru.tinkoff.kora.common.annotation", "Generated")
 
     val config = ClassName("ru.tinkoff.kora.config.common", "Config")
-    val configParseException = ClassName("ru.tinkoff.kora.config.common.extractor", "ConfigValueExtractionException")
+    val configValueExtractionException = ClassName("ru.tinkoff.kora.config.common.extractor", "ConfigValueExtractionException")
     val configValue = ClassName("ru.tinkoff.kora.config.common", "ConfigValue")
     val configValueExtractor = ClassName("ru.tinkoff.kora.config.common.extractor", "ConfigValueExtractor")
     val configValueExtractorAnnotation = ClassName("ru.tinkoff.kora.config.common.annotation", "ConfigValueExtractor");
