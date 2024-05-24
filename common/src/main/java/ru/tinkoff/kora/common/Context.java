@@ -132,6 +132,12 @@ public class Context {
             ReactorContextHook.init();
         } catch (NoClassDefFoundError ignore) {
             // ignore
+        } catch (Throwable e) {
+            if(e instanceof NoSuchMethodError) {
+                // ignore for GraalVM
+            } else {
+                throw e;
+            }
         }
     }
 }
