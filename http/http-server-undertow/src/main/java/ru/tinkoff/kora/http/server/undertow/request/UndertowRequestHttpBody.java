@@ -36,7 +36,7 @@ public final class UndertowRequestHttpBody implements HttpBodyInput {
     @Override
     public long contentLength() {
         var contentLengthStr = this.exchange.getRequestHeaders().getFirst(Headers.CONTENT_LENGTH);
-        return contentLengthStr == null ? -1 : Integer.parseInt(contentLengthStr);
+        return contentLengthStr == null ? -1 : Long.parseLong(contentLengthStr);
     }
 
     @Nullable

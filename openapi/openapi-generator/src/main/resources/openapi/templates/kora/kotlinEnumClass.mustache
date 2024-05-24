@@ -19,7 +19,7 @@
       private val values = values()
 
       @JvmStatic
-      fun fromValue(value: {{{dataType}}}): {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{classname}}{{/datatypeWithEnum}} {
+      fun fromValue(value: {{{dataType}}}): {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{classname}}{{/datatypeWithEnum}}{{#isNullable}}?{{/isNullable}} {
         return values.firstOrNull { it.getValue() == value }{{^isNullable}} ?: throw IllegalArgumentException("Unexpected value '$value'"){{/isNullable}}
       }
     }

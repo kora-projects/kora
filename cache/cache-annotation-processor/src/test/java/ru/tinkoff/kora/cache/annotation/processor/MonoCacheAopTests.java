@@ -5,24 +5,29 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
-import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache21;
+import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache22;
 import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.mono.CacheableMono;
-import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule;
+import ru.tinkoff.kora.cache.redis.RedisCacheKeyMapper;
+import ru.tinkoff.kora.cache.redis.RedisCacheModule;
 
 import java.lang.reflect.Constructor;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class MonoCacheAopTests implements CaffeineCacheModule {
+class MonoCacheAopTests implements RedisCacheModule {
 
-    private static final String CACHED_IMPL = "ru.tinkoff.kora.cache.annotation.processor.testcache.$DummyCache21Impl";
+    private static final String CACHED_IMPL = "ru.tinkoff.kora.cache.annotation.processor.testcache.$DummyCache22Impl";
     private static final String CACHED_SERVICE = "ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.mono.$CacheableMono__AopProxy";
 
-    private DummyCache21 cache = null;
+    private DummyCache22 cache = null;
     private CacheableMono service = null;
 
     private CacheableMono getService() {
@@ -31,7 +36,7 @@ class MonoCacheAopTests implements CaffeineCacheModule {
         }
 
         try {
-            var classLoader = TestUtils.annotationProcess(List.of(DummyCache21.class, CacheableMono.class),
+            var classLoader = TestUtils.annotationProcess(List.of(DummyCache22.class, CacheableMono.class),
                 new AopAnnotationProcessor(), new CacheAnnotationProcessor());
 
             var cacheClass = classLoader.loadClass(CACHED_IMPL);
@@ -41,8 +46,18 @@ class MonoCacheAopTests implements CaffeineCacheModule {
 
             final Constructor<?> cacheConstructor = cacheClass.getDeclaredConstructors()[0];
             cacheConstructor.setAccessible(true);
-            cache = (DummyCache21) cacheConstructor.newInstance(CacheRunner.getCaffeineConfig(),
-                caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+            final Map<ByteBuffer, ByteBuffer> cacheBuf = new HashMap<>();
+            cache = (DummyCache22) cacheConstructor.newInstance(CacheRunner.getRedisConfig(),
+                CacheRunner.lettuceClient(cacheBuf), redisCacheTelemetry(null, null),
+                (RedisCacheKeyMapper<DummyCache22.Key>) key -> {
+                    var _key1 = key.k1().getBytes(StandardCharsets.UTF_8);
+                    var _key2 = key.k2().toString().getBytes(StandardCharsets.UTF_8);
+                    return ByteBuffer.allocate(_key1.length + RedisCacheKeyMapper.DELIMITER.length + _key2.length)
+                        .put(_key1)
+                        .put(RedisCacheKeyMapper.DELIMITER)
+                        .put(_key2)
+                        .array();
+                }, stringRedisValueMapper());
 
             var serviceClass = classLoader.loadClass(CACHED_SERVICE);
             if (serviceClass == null) {
@@ -157,8 +172,8 @@ class MonoCacheAopTests implements CaffeineCacheModule {
         service.evictValue("1", BigDecimal.ZERO).block(Duration.ofMinutes(1));
 
         // then
-        assertNull(cache.get(new DummyCache21.Key("1", BigDecimal.ZERO)));
-        assertEquals(cached2, cache.get(new DummyCache21.Key("2", BigDecimal.ZERO)));
+        assertNull(cache.get(new DummyCache22.Key("1", BigDecimal.ZERO)));
+        assertEquals(cached2, cache.get(new DummyCache22.Key("2", BigDecimal.ZERO)));
 
         final String fromCache = service.getValue("1", BigDecimal.ZERO).block(Duration.ofMinutes(1));
         assertNotEquals(cached, fromCache);
@@ -183,8 +198,8 @@ class MonoCacheAopTests implements CaffeineCacheModule {
         service.evictAll().block(Duration.ofMinutes(1));
 
         // then
-        assertNull(cache.get(new DummyCache21.Key("1", BigDecimal.ZERO)));
-        assertNull(cache.get(new DummyCache21.Key("2", BigDecimal.ZERO)));
+        assertNull(cache.get(new DummyCache22.Key("1", BigDecimal.ZERO)));
+        assertNull(cache.get(new DummyCache22.Key("2", BigDecimal.ZERO)));
 
         final String fromCache = service.getValue("1", BigDecimal.ZERO).block(Duration.ofMinutes(1));
         assertNotEquals(cached, fromCache);

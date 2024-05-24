@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Flow;
@@ -55,7 +56,7 @@ public class JdkHttpClientResponse implements HttpClientResponse {
         private final Flow.Publisher<List<ByteBuffer>> publisher;
         private final java.net.http.HttpHeaders headers;
         private volatile HttpResponseInputStream is;
-        private volatile int contentLength = -2;
+        private volatile long contentLength = -2;
         private volatile String contentType;
 
         public BodyPublisher(HttpResponse<Flow.Publisher<List<ByteBuffer>>> response) {
@@ -76,7 +77,7 @@ public class JdkHttpClientResponse implements HttpClientResponse {
         public long contentLength() {
             var contentLength = this.contentLength;
             if (contentLength == -2) {
-                this.contentLength = contentLength = (int) headers.firstValueAsLong("content-length").orElse(-1);
+                this.contentLength = contentLength = headers.firstValueAsLong("content-length").orElse(-1);
             }
             return contentLength;
         }
@@ -85,7 +86,7 @@ public class JdkHttpClientResponse implements HttpClientResponse {
         @Override
         public String contentType() {
             var contentType = this.contentType;
-            if (contentType == EMPTY) {
+            if (Objects.equals(contentType, EMPTY)) {
                 this.contentType = contentType = headers.firstValue("content-length").orElse(null);
             }
             return contentType;

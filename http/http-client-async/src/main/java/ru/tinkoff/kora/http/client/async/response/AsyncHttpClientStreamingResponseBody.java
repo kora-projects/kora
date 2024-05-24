@@ -15,7 +15,7 @@ public final class AsyncHttpClientStreamingResponseBody extends AtomicBoolean im
     private static final String UNKNOWN_CONTENT_TYPE = "<UNKNOWN-CONTENT-TYPE\r\n>";
     private final HttpHeaders headers;
     private String contentType;
-    private int contentLength = -2;
+    private long contentLength = -2;
 
     private final Flow.Publisher<ByteBuffer> bodyStream;
 
@@ -32,7 +32,7 @@ public final class AsyncHttpClientStreamingResponseBody extends AtomicBoolean im
         }
         var value = headers.get(HttpHeaderNames.CONTENT_LENGTH);
         if (value != null) {
-            return this.contentLength = Integer.parseInt(value);
+            return this.contentLength = Long.parseLong(value);
         } else {
             return this.contentLength = -1;
         }

@@ -11,10 +11,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class StreamingHttpBodyOutput extends AtomicBoolean implements HttpBodyOutput {
     @Nullable
     private final String contentType;
-    private final int contentLength;
+    private final long contentLength;
     private final Publisher<? extends ByteBuffer> content;
 
-    public StreamingHttpBodyOutput(@Nullable String contentType, int contentLength, Publisher<? extends ByteBuffer> content) {
+    public StreamingHttpBodyOutput(@Nullable String contentType, long contentLength, Publisher<? extends ByteBuffer> content) {
         this.contentType = contentType;
         this.contentLength = contentLength;
         this.content = content;

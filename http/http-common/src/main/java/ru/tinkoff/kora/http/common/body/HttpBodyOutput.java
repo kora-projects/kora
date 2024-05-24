@@ -15,7 +15,7 @@ public interface HttpBodyOutput extends HttpBody, Flow.Publisher<ByteBuffer> {
         return new StreamingHttpBodyOutput(contentType, -1, content);
     }
 
-    static HttpBodyOutput of(String contentType, int length, Flow.Publisher<? extends ByteBuffer> content) {
+    static HttpBodyOutput of(String contentType, long length, Flow.Publisher<? extends ByteBuffer> content) {
         return new StreamingHttpBodyOutput(contentType, length, content);
     }
 
@@ -23,7 +23,7 @@ public interface HttpBodyOutput extends HttpBody, Flow.Publisher<ByteBuffer> {
         return new StreamingHttpBodyOutput("application/octet-stream", -1, content);
     }
 
-    static HttpBodyOutput octetStream(int length, Flow.Publisher<? extends ByteBuffer> content) {
+    static HttpBodyOutput octetStream(long length, Flow.Publisher<? extends ByteBuffer> content) {
         return new StreamingHttpBodyOutput("application/octet-stream", length, content);
     }
 
