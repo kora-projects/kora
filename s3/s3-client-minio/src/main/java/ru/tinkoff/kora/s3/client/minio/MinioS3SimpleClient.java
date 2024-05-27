@@ -173,7 +173,7 @@ public class MinioS3SimpleClient implements S3SimpleClient {
     }
 
     @Override
-    public String put(String bucket, String key, S3Body body) {
+    public S3ObjectUpload put(String bucket, String key, S3Body body) {
         var requestBuilder = PutObjectArgs.builder()
             .bucket(bucket)
             .object(key)
@@ -196,11 +196,14 @@ public class MinioS3SimpleClient implements S3SimpleClient {
 
         try {
             if (body instanceof ByteS3Body bb) {
-                return minioClient.putObject(requestBuilder.stream(new BufferedInputStream(new ByteArrayInputStream(bb.bytes())), bb.size(), -1).build()).versionId();
+                final ObjectWriteResponse response = minioClient.putObject(requestBuilder.stream(new BufferedInputStream(new ByteArrayInputStream(bb.bytes())), bb.size(), -1).build());
+                return new MinioS3ObjectUpload(response.versionId());
             } else if (body.size() > 0) {
-                return minioClient.putObject(requestBuilder.stream(body.asInputStream(), body.size(), DEFAULT_PART_SIZE).build()).versionId();
+                final ObjectWriteResponse response = minioClient.putObject(requestBuilder.stream(body.asInputStream(), body.size(), DEFAULT_PART_SIZE).build());
+                return new MinioS3ObjectUpload(response.versionId());
             } else {
-                return minioClient.putObject(requestBuilder.stream(body.asInputStream(), -1, DEFAULT_PART_SIZE).build()).versionId();
+                final ObjectWriteResponse response = minioClient.putObject(requestBuilder.stream(body.asInputStream(), -1, DEFAULT_PART_SIZE).build());
+                return new MinioS3ObjectUpload(response.versionId());
             }
         } catch (Exception e) {
             throw new S3Exception(e);

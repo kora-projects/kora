@@ -13,10 +13,10 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 
 public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
@@ -29,19 +29,25 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
     private static final ClassName ANNOTATION_OP_DELETE = ClassName.get("ru.tinkoff.kora.s3.client.annotation", "S3", "Delete");
 
     private static final ClassName CLASS_CLIENT_CONFIG = ClassName.get("ru.tinkoff.kora.s3.client", "S3ClientConfig");
+    private static final ClassName CLASS_AWS_CONFIG = ClassName.get("ru.tinkoff.kora.s3.client.aws", "AwsS3ClientConfig");
     private static final ClassName CLASS_CLIENT_SIMPLE_SYNC = ClassName.get("ru.tinkoff.kora.s3.client", "S3SimpleClient");
     private static final ClassName CLASS_CLIENT_SIMPLE_ASYNC = ClassName.get("ru.tinkoff.kora.s3.client", "S3SimpleAsyncClient");
     private static final ClassName CLASS_CLIENT_AWS_SYNC = ClassName.get("software.amazon.awssdk.services.s3", "S3Client");
     private static final ClassName CLASS_CLIENT_AWS_ASYNC = ClassName.get("software.amazon.awssdk.services.s3", "S3AsyncClient");
 
+    private static final ClassName CLASS_S3_EXCEPTION = ClassName.get("ru.tinkoff.kora.s3.client", "S3Exception");
     private static final ClassName CLASS_S3_BODY = ClassName.get("ru.tinkoff.kora.s3.client.model", "S3Body");
+    private static final ClassName CLASS_S3_UPLOAD = ClassName.get("ru.tinkoff.kora.s3.client.model", "S3ObjectUpload");
     private static final ClassName CLASS_S3_BODY_BYTES = ClassName.get("ru.tinkoff.kora.s3.client.model", "ByteS3Body");
+    private static final ClassName CLASS_S3_BODY_PUBLISHER = ClassName.get("ru.tinkoff.kora.s3.client.model", "PublisherS3Body");
     private static final ClassName CLASS_S3_OBJECT = ClassName.get("ru.tinkoff.kora.s3.client.model", "S3Object");
     private static final ClassName CLASS_S3_OBJECT_META = ClassName.get("ru.tinkoff.kora.s3.client.model", "S3ObjectMeta");
     private static final TypeName CLASS_S3_OBJECT_MANY = ParameterizedTypeName.get(ClassName.get(List.class), CLASS_S3_OBJECT);
     private static final TypeName CLASS_S3_OBJECT_META_MANY = ParameterizedTypeName.get(ClassName.get(List.class), CLASS_S3_OBJECT_META);
     private static final ClassName CLASS_S3_OBJECT_LIST = ClassName.get("ru.tinkoff.kora.s3.client.model", "S3ObjectList");
     private static final ClassName CLASS_S3_OBJECT_META_LIST = ClassName.get("ru.tinkoff.kora.s3.client.model", "S3ObjectMetaList");
+
+    private static final ClassName CLASS_JDK_FLOW_ADAPTER = ClassName.get("reactor.adapter", "JdkFlowAdapter");
 
     private static final ClassName CLASS_AWS_IS_SYNC_BODY = ClassName.get("software.amazon.awssdk.core.sync", "RequestBody");
     private static final ClassName CLASS_AWS_IS_ASYNC_BODY = ClassName.get("software.amazon.awssdk.core.async", "AsyncRequestBody");
@@ -127,39 +133,55 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                         .build();
 
                     implSpecBuilder.addMethod(methodSpec);
-                    final Signature signature = new Signature(operation.impl(), operation.mode());
-                    if (!impls.contains(signature)) {
-                        if (operation.impl() == ImplType.SIMPLE) {
-                            if (operation.mode() == S3Operation.Mode.SYNC) {
-                                constructorBuilder.addParameter(CLASS_CLIENT_SIMPLE_SYNC, "simpleSyncClient");
-                                implSpecBuilder.addField(CLASS_CLIENT_SIMPLE_SYNC, "_simpleSyncClient", Modifier.PRIVATE, Modifier.FINAL);
-                                constructorCode.addStatement("this._simpleSyncClient = simpleSyncClient");
-                            } else {
-                                constructorBuilder.addParameter(CLASS_CLIENT_SIMPLE_ASYNC, "simpleAsyncClient");
-                                implSpecBuilder.addField(CLASS_CLIENT_SIMPLE_ASYNC, "_simpleAsyncClient", Modifier.PRIVATE, Modifier.FINAL);
-                                constructorCode.addStatement("this._simpleAsyncClient = simpleAsyncClient");
-                            }
-                        } else if (operation.impl() == ImplType.AWS) {
-                            if (operation.mode() == S3Operation.Mode.SYNC) {
-                                constructorBuilder.addParameter(CLASS_CLIENT_AWS_SYNC, "awsSyncClient");
-                                implSpecBuilder.addField(CLASS_CLIENT_AWS_SYNC, "_awsSyncClient", Modifier.PRIVATE, Modifier.FINAL);
-                                constructorCode.addStatement("this._awsSyncClient = awsSyncClient");
-                            } else {
-                                constructorBuilder.addParameter(CLASS_CLIENT_AWS_ASYNC, "awsAsyncClient");
-                                implSpecBuilder.addField(CLASS_CLIENT_AWS_ASYNC, "_awsAsyncClient", Modifier.PRIVATE, Modifier.FINAL);
-                                constructorCode.addStatement("this._awsAsyncClient = awsAsyncClient");
 
-                                constructorBuilder.addParameter(ParameterSpec.builder(ExecutorService.class, "awsAsyncExecutor")
-                                    .addAnnotation(TagUtils.makeAnnotationSpecForTypes(CLASS_CLIENT_AWS_SYNC))
-                                    .build());
-                                implSpecBuilder.addField(ExecutorService.class, "_awsAsyncExecutor", Modifier.PRIVATE, Modifier.FINAL);
-                                constructorCode.addStatement("this._awsAsyncExecutor = awsAsyncExecutor");
+                    final List<Signature> signatures;
+                    if (operation.impl() == ImplType.AWS && operation.mode() == S3Operation.Mode.SYNC && operation.type() == OperationType.PUT) {
+                        signatures = List.of(
+                            new Signature(operation.impl(), S3Operation.Mode.SYNC),
+                            new Signature(operation.impl(), S3Operation.Mode.ASYNC)
+                        );
+                    } else {
+                        signatures = List.of(new Signature(operation.impl(), operation.mode()));
+                    }
+
+                    for (Signature signature : signatures) {
+                        if (!impls.contains(signature)) {
+                            if (signature.impl() == ImplType.SIMPLE) {
+                                if (signature.mode() == S3Operation.Mode.SYNC) {
+                                    constructorBuilder.addParameter(CLASS_CLIENT_SIMPLE_SYNC, "simpleSyncClient");
+                                    implSpecBuilder.addField(CLASS_CLIENT_SIMPLE_SYNC, "_simpleSyncClient", Modifier.PRIVATE, Modifier.FINAL);
+                                    constructorCode.addStatement("this._simpleSyncClient = simpleSyncClient");
+                                } else {
+                                    constructorBuilder.addParameter(CLASS_CLIENT_SIMPLE_ASYNC, "simpleAsyncClient");
+                                    implSpecBuilder.addField(CLASS_CLIENT_SIMPLE_ASYNC, "_simpleAsyncClient", Modifier.PRIVATE, Modifier.FINAL);
+                                    constructorCode.addStatement("this._simpleAsyncClient = simpleAsyncClient");
+                                }
+                            } else if (signature.impl() == ImplType.AWS) {
+                                if (signature.mode() == S3Operation.Mode.SYNC) {
+                                    constructorBuilder.addParameter(CLASS_CLIENT_AWS_SYNC, "awsSyncClient");
+                                    implSpecBuilder.addField(CLASS_CLIENT_AWS_SYNC, "_awsSyncClient", Modifier.PRIVATE, Modifier.FINAL);
+                                    constructorCode.addStatement("this._awsSyncClient = awsSyncClient");
+                                } else {
+                                    constructorBuilder.addParameter(CLASS_CLIENT_AWS_ASYNC, "awsAsyncClient");
+                                    implSpecBuilder.addField(CLASS_CLIENT_AWS_ASYNC, "_awsAsyncClient", Modifier.PRIVATE, Modifier.FINAL);
+                                    constructorCode.addStatement("this._awsAsyncClient = awsAsyncClient");
+
+                                    constructorBuilder.addParameter(CLASS_AWS_CONFIG, "awsClientConfig");
+                                    implSpecBuilder.addField(CLASS_AWS_CONFIG, "_awsClientConfig", Modifier.PRIVATE, Modifier.FINAL);
+                                    constructorCode.addStatement("this._awsClientConfig = awsClientConfig");
+
+                                    constructorBuilder.addParameter(ParameterSpec.builder(ExecutorService.class, "awsAsyncExecutor")
+                                        .addAnnotation(TagUtils.makeAnnotationSpecForTypes(CLASS_CLIENT_AWS_SYNC))
+                                        .build());
+                                    implSpecBuilder.addField(ExecutorService.class, "_awsAsyncExecutor", Modifier.PRIVATE, Modifier.FINAL);
+                                    constructorCode.addStatement("this._awsAsyncExecutor = awsAsyncExecutor");
+                                }
+                            } else {
+                                throw new UnsupportedOperationException("Unknown implementation");
                             }
-                        } else {
-                            throw new UnsupportedOperationException("Unknown implementation");
+
+                            impls.add(signature);
                         }
-
-                        impls.add(signature);
                     }
                 }
             }
@@ -448,7 +470,6 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
             .filter(p -> {
                 TypeName bodyType = ClassName.get(p.asType());
                 return !CLASS_S3_BODY.equals(bodyType)
-                    && !ClassName.get(InputStream.class).equals(bodyType)
                     && !ClassName.get(ByteBuffer.class).equals(bodyType)
                     && !ArrayTypeName.get(byte[].class).equals(bodyType);
             })
@@ -478,21 +499,20 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
 
         TypeName bodyType = ClassName.get(bodyParam.asType());
 
-        boolean isStringResult = String.class.getCanonicalName().equals(returnTypeMirror.toString());
-        if (CommonUtils.isVoid(returnTypeMirror) || isStringResult) {
+        boolean isUploadResponse = CLASS_S3_UPLOAD.equals(bodyType);
+        boolean isAwsResponse = CLASS_AWS_PUT_RESPONSE.equals(returnType);
+        if (CommonUtils.isVoid(returnTypeMirror) || isUploadResponse) {
             CodeBlock bodyCode;
             if (CLASS_S3_BODY.equals(bodyType)) {
                 bodyCode = CodeBlock.of("var _body = $L", bodyParam.getSimpleName().toString());
             } else {
                 final String methodCall;
-                if (ClassName.get(InputStream.class).equals(bodyType)) {
-                    methodCall = "ofInputStreamUnbound";
-                } else if (ClassName.get(ByteBuffer.class).equals(bodyType)) {
+                if (ClassName.get(ByteBuffer.class).equals(bodyType)) {
                     methodCall = "ofBuffer";
                 } else if (ArrayTypeName.get(byte[].class).equals(bodyType)) {
                     methodCall = "ofBytes";
                 } else {
-                    throw new ProcessingErrorException("@S3.Put operation body must be S3Body/bytes/ByteBuffer/InputStream", method);
+                    throw new ProcessingErrorException("@S3.Put operation body must be S3Body/bytes/ByteBuffer", method);
                 }
 
                 final String type = AnnotationUtils.parseAnnotationValueWithoutDefault(operationMeta.annotation(), "type");
@@ -514,7 +534,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
 
             var methodBuilder = CodeBlock.builder();
             if (mode == S3Operation.Mode.SYNC) {
-                if (isStringResult) {
+                if (isUploadResponse) {
                     methodBuilder.add("return _simpleSyncClient.put(_clientConfig.bucket(), _key, _body)");
                 } else {
                     methodBuilder.add("_simpleSyncClient.put(_clientConfig.bucket(), _key, _body)");
@@ -522,7 +542,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                 methodBuilder.add(";\n");
             } else {
                 methodBuilder.add("return _simpleAsyncClient.put(_clientConfig.bucket(), _key, _body)");
-                if (!isStringResult) {
+                if (!isUploadResponse) {
                     methodBuilder.add(".thenAccept(_v -> {})");
                 }
                 if (CompletableFuture.class.getCanonicalName().equals(((DeclaredType) method.getReturnType()).asElement().toString())) {
@@ -539,8 +559,8 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                 .add(methodBuilder.build())
                 .build();
 
-            return new S3Operation(method, operationMeta.annotation, OperationType.LIST, ImplType.SIMPLE, mode, code);
-        } else if (CLASS_AWS_PUT_RESPONSE.equals(returnType)) {
+            return new S3Operation(method, operationMeta.annotation, OperationType.PUT, ImplType.SIMPLE, mode, code);
+        } else if (isAwsResponse) {
             CodeBlock bodyCode;
             var requestBuilder = CodeBlock.builder();
             final String type = AnnotationUtils.parseAnnotationValueWithoutDefault(operationMeta.annotation(), "type");
@@ -551,17 +571,11 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                 if (mode == S3Operation.Mode.SYNC) {
                     bodyCode = CodeBlock.builder()
                         .add("final $T _requestBody;\n", CLASS_AWS_IS_SYNC_BODY)
-                        .unindent()
-                        .unindent()
                         .beginControlFlow("if ($L instanceof $T _bb)", bodyParamName, CLASS_S3_BODY_BYTES)
                         .add("_requestBody = $T.fromBytes(_bb.bytes());\n", CLASS_AWS_IS_SYNC_BODY)
-                        .nextControlFlow("else if ($L.size() > 0)", bodyParamName)
-                        .add("_requestBody = $T.fromContentProvider(() -> $L.asInputStream(), $L.size(), $L.type());\n", CLASS_AWS_IS_SYNC_BODY, bodyParamName, bodyParamName, bodyParamName)
                         .nextControlFlow("else")
-                        .add("_requestBody = $T.fromContentProvider(() -> $L.asInputStream(), $L.type());\n", CLASS_AWS_IS_SYNC_BODY, bodyParamName, bodyParamName)
+                        .add("_requestBody = $T.fromContentProvider(() -> $L.asInputStream(), $L.size(), $L.type());\n", CLASS_AWS_IS_SYNC_BODY, bodyParamName, bodyParamName, bodyParamName)
                         .endControlFlow()
-                        .indent()
-                        .indent()
                         .build();
                 } else {
                     bodyCode = CodeBlock.of("""
@@ -587,20 +601,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                     ? CLASS_AWS_IS_SYNC_BODY
                     : CLASS_AWS_IS_ASYNC_BODY;
 
-                if (ClassName.get(InputStream.class).equals(bodyType)) {
-                    if (mode == S3Operation.Mode.SYNC) {
-                        if (type == null) {
-                            bodyCode = CodeBlock.of("var _requestBody = $T.fromContentProvider(() -> $L, null)",
-                                awsBodyClass, bodyParamName);
-                        } else {
-                            bodyCode = CodeBlock.of("var _requestBody = $T.fromContentProvider(() -> $L, $S)",
-                                awsBodyClass, bodyParamName, type);
-                        }
-                    } else {
-                        bodyCode = CodeBlock.of("$T.fromInputStream($L, null, awsExecutorService)",
-                            awsBodyClass, bodyParamName);
-                    }
-                } else if (ClassName.get(ByteBuffer.class).equals(bodyType)) {
+                if (ClassName.get(ByteBuffer.class).equals(bodyType)) {
                     bodyCode = CodeBlock.of("var _requestBody = $T.fromByteBuffer($L)",
                         awsBodyClass, bodyParamName);
                     requestBuilder.addStatement("_requestBuilder.contentLength($L.remaining())", bodyParamName);
@@ -609,7 +610,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                         awsBodyClass, bodyParamName);
                     requestBuilder.addStatement("_requestBuilder.contentLength($L.length)", bodyParamName);
                 } else {
-                    throw new ProcessingErrorException("@S3.Put operation body must be S3Body/bytes/ByteBuffer/InputStream", method);
+                    throw new ProcessingErrorException("@S3.Put operation body must be S3Body/bytes/ByteBuffer", method);
                 }
 
                 if (type != null) {
@@ -624,22 +625,55 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                 ? "_awsSyncClient"
                 : "_awsAsyncClient";
 
-            CodeBlock code = CodeBlock.builder()
+            var methodBuilder = CodeBlock.builder()
                 .addStatement(key.code())
-                .add("\n")
-                .addStatement(bodyCode)
                 .add("\n")
                 .addStatement("""
                     var _requestBuilder = $T.builder()
                         .bucket(_clientConfig.bucket())
                         .key(_key)""", CLASS_AWS_PUT_REQUEST)
                 .add(requestBuilder.build())
+                .add("\n")
                 .addStatement("var _request = _requestBuilder.build()")
+                .add("\n");
+
+            if (CLASS_S3_BODY.equals(bodyType)) {
+                methodBuilder
+                    .add("""
+                            if ($L instanceof $T || $L.size() < 0 || $L.size() > _awsClientConfig.upload().bufferSize()) {
+                                try {
+                                    if ($L instanceof $T pb) {
+                                        return _awsAsyncClient.putObject(_request, $T.fromPublisher($T.flowPublisherToFlux(pb.asPublisher()))).join();
+                                    } else {
+                                        final Long _bodySize = $L.size() > 0 ? $L.size() : null;
+                                        return _awsAsyncClient.putObject(_request, $T.fromInputStream($L.asInputStream(), _bodySize, _awsAsyncExecutor)).join();
+                                    }
+                                } catch (Exception e) {
+                                    Throwable throwable = e;
+                                    if(throwable instanceof $T) {
+                                        throwable = throwable.getCause();
+                                    }
+                                    if (throwable.getCause() instanceof $T re) {
+                                        throw re;
+                                    } else {
+                                        throw new $T(throwable);
+                                    }
+                                }
+                            }
+                            """, bodyParamName, CLASS_S3_BODY_PUBLISHER, bodyParamName, bodyParamName,
+                        bodyParamName, CLASS_S3_BODY_PUBLISHER, CLASS_AWS_IS_ASYNC_BODY, CLASS_JDK_FLOW_ADAPTER,
+                        bodyParamName, bodyParamName, CLASS_AWS_IS_ASYNC_BODY, bodyParamName,
+                        CompletionException.class, CLASS_S3_EXCEPTION, CLASS_S3_EXCEPTION);
+            }
+
+            methodBuilder
+                .add("\n")
+                .add(bodyCode)
                 .add("\n")
                 .addStatement("return $L.putObject(_request, _requestBody)", clientField)
                 .build();
 
-            return new S3Operation(method, operationMeta.annotation, OperationType.LIST, ImplType.AWS, mode, code);
+            return new S3Operation(method, operationMeta.annotation, OperationType.PUT, ImplType.AWS, mode, methodBuilder.build());
         } else {
             throw new ProcessingErrorException("@S3.Put operation unsupported signature", method);
         }
@@ -773,8 +807,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
             final VariableElement parameter = method.getParameters().stream()
                 .filter(p -> {
                     TypeName bodyType = ClassName.get(p.asType());
-                    return !ClassName.get(InputStream.class).equals(bodyType)
-                        && !ClassName.get(ByteBuffer.class).equals(bodyType)
+                    return !ClassName.get(ByteBuffer.class).equals(bodyType)
                         && !ArrayTypeName.get(byte[].class).equals(bodyType);
                 })
                 .filter(p -> p.getSimpleName().contentEquals(paramName))

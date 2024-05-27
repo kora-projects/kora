@@ -11,7 +11,7 @@ dependencies {
         exclude group: "software.amazon.awssdk", module: "apache-client"
         exclude group: "software.amazon.awssdk", module: "netty-nio-client"
     }
-    implementation libs.reactor.adapter
+    api libs.reactor.adapter
 
     implementation project(":config:config-common")
 

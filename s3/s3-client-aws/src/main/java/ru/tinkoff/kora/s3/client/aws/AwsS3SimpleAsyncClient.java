@@ -11,7 +11,9 @@ import ru.tinkoff.kora.s3.client.telemetry.S3ClientTelemetry;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.core.async.AsyncResponseTransformer;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.internal.multipart.MultipartS3AsyncClient;
 import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.services.s3.multipart.MultipartConfiguration;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,13 +27,26 @@ import java.util.concurrent.ExecutorService;
 public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
 
     private final S3AsyncClient asyncClient;
+    private final S3AsyncClient multipartAsyncClient;
     private final ExecutorService awsExecutor;
+    private final AwsS3ClientConfig awsS3ClientConfig;
     private final S3ClientTelemetry telemetry;
 
-    public AwsS3SimpleAsyncClient(S3AsyncClient asyncClient, ExecutorService awsExecutor, S3ClientTelemetry telemetry) {
+    public AwsS3SimpleAsyncClient(S3AsyncClient asyncClient,
+                                  ExecutorService awsExecutor,
+                                  S3ClientTelemetry telemetry,
+                                  AwsS3ClientConfig awsS3ClientConfig) {
         this.asyncClient = asyncClient;
         this.awsExecutor = awsExecutor;
         this.telemetry = telemetry;
+
+        this.awsS3ClientConfig = awsS3ClientConfig;
+        this.multipartAsyncClient = MultipartS3AsyncClient.create(asyncClient,
+            MultipartConfiguration.builder()
+                .thresholdInBytes(awsS3ClientConfig.upload().bufferSize())
+                .apiCallBufferSizeInBytes(awsS3ClientConfig.upload().bufferSize())
+                .minimumPartSizeInBytes(awsS3ClientConfig.upload().partSize())
+                .build());
     }
 
     @Override
@@ -158,7 +173,7 @@ public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
     }
 
     @Override
-    public CompletionStage<String> put(String bucket, String key, S3Body body) {
+    public CompletionStage<S3ObjectUpload> put(String bucket, String key, S3Body body) {
         var requestBuilder = PutObjectRequest.builder()
             .bucket(bucket)
             .key(key)
@@ -177,19 +192,20 @@ public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
 
         if (body instanceof ByteS3Body bb) {
             return asyncClient.putObject(request, AsyncRequestBody.fromBytes(bb.bytes()))
-                .thenApply(PutObjectResponse::versionId)
+                .thenApply(r -> ((S3ObjectUpload) new AwsS3ObjectUpload(r)))
                 .exceptionallyCompose(AwsS3SimpleAsyncClient::handleException);
         } else if (body instanceof PublisherS3Body) {
             return asyncClient.putObject(request, AsyncRequestBody.fromPublisher(JdkFlowAdapter.flowPublisherToFlux(body.asPublisher())))
-                .thenApply(PutObjectResponse::versionId)
+                .thenApply(r -> ((S3ObjectUpload) new AwsS3ObjectUpload(r)))
                 .exceptionallyCompose(AwsS3SimpleAsyncClient::handleException);
-        } else if (body.size() > 0) {
+        } else if (body.size() > 0 && body.size() <= awsS3ClientConfig.upload().bufferSize()) {
             return asyncClient.putObject(request, AsyncRequestBody.fromInputStream(body.asInputStream(), body.size(), awsExecutor))
-                .thenApply(PutObjectResponse::versionId)
+                .thenApply(r -> ((S3ObjectUpload) new AwsS3ObjectUpload(r)))
                 .exceptionallyCompose(AwsS3SimpleAsyncClient::handleException);
         } else {
-            return asyncClient.putObject(request, AsyncRequestBody.fromInputStream(body.asInputStream(), null, awsExecutor))
-                .thenApply(PutObjectResponse::versionId)
+            final Long bodySize = body.size() > 0 ? body.size() : null;
+            return multipartAsyncClient.putObject(request, AsyncRequestBody.fromInputStream(body.asInputStream(), bodySize, awsExecutor))
+                .thenApply(r -> ((S3ObjectUpload) new AwsS3ObjectUpload(r)))
                 .exceptionallyCompose(AwsS3SimpleAsyncClient::handleException);
         }
     }

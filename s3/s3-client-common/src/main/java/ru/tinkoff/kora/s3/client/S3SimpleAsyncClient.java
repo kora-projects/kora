@@ -62,7 +62,7 @@ public interface S3SimpleAsyncClient {
                                                      Collection<String> prefixes,
                                                      @Range(from = 1, to = 1000) int limitPerPrefix);
 
-    CompletionStage<String> put(String bucket, String key, S3Body body);
+    CompletionStage<S3ObjectUpload> put(String bucket, String key, S3Body body);
 
     CompletionStage<Void> delete(String bucket, String key);
 
