@@ -34,4 +34,18 @@ public interface AwsS3ClientConfig {
     default boolean useArnRegionEnabled() {
         return false;
     }
+
+    UploadConfig upload();
+
+    @ConfigValueExtractor
+    interface UploadConfig {
+
+        default long bufferSize() {
+            return 1024 * 1024 * 50; // 50 Mb
+        }
+
+        default long partSize() {
+            return 1024 * 1024 * 25; // 25 Mb
+        }
+    }
 }

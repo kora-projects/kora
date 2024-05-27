@@ -11,6 +11,13 @@ public record ByteS3Body(byte[] bytes,
                          String type,
                          String encoding) implements S3Body {
 
+    public ByteS3Body(byte[] bytes, long size, String type, String encoding) {
+        this.bytes = bytes;
+        this.size = size;
+        this.type = (type == null || type.isBlank()) ? "application/octet-stream" : type;
+        this.encoding = encoding;
+    }
+
     @Override
     public byte[] asBytes() {
         return bytes;

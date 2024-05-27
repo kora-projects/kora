@@ -61,7 +61,7 @@ public interface S3SimpleClient {
                                     Collection<String> prefixes,
                                     @Range(from = 1, to = 1000) int limitPerPrefix) throws S3NotFoundException;
 
-    String put(String bucket, String key, S3Body body);
+    S3ObjectUpload put(String bucket, String key, S3Body body);
 
     void delete(String bucket, String key);
 

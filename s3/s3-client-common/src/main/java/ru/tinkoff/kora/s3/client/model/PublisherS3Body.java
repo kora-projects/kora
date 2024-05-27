@@ -9,6 +9,13 @@ public record PublisherS3Body(Flow.Publisher<ByteBuffer> publisher,
                               String type,
                               String encoding) implements S3Body {
 
+    public PublisherS3Body(Flow.Publisher<ByteBuffer> publisher, long size, String type, String encoding) {
+        this.publisher = publisher;
+        this.size = size;
+        this.type = (type == null || type.isBlank()) ? "application/octet-stream" : type;
+        this.encoding = encoding;
+    }
+
     @Override
     public InputStream asInputStream() {
         try (var pub = new ByteBufferPublisher(publisher)) {

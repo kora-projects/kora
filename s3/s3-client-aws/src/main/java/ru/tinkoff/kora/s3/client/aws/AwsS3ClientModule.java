@@ -10,6 +10,7 @@ import ru.tinkoff.kora.s3.client.S3ClientModule;
 import ru.tinkoff.kora.s3.client.S3Config;
 import ru.tinkoff.kora.s3.client.S3SimpleAsyncClient;
 import ru.tinkoff.kora.s3.client.S3SimpleClient;
+import ru.tinkoff.kora.s3.client.telemetry.S3ClientTelemetry;
 import ru.tinkoff.kora.s3.client.telemetry.S3ClientTelemetryFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -100,14 +101,18 @@ public interface AwsS3ClientModule extends S3ClientModule {
     default S3SimpleClient awsS3SimpleClient(S3Client s3Client,
                                              S3SimpleAsyncClient simpleAsyncClient,
                                              S3ClientTelemetryFactory telemetryFactory,
-                                             S3Config config) {
-        return new AwsS3SimpleClient(s3Client, simpleAsyncClient, telemetryFactory.get(config.telemetry(), S3SimpleClient.class.getCanonicalName()));
+                                             S3Config config,
+                                             AwsS3ClientConfig awsS3ClientConfig) {
+        S3ClientTelemetry telemetry = telemetryFactory.get(config.telemetry(), S3SimpleClient.class.getCanonicalName());
+        return new AwsS3SimpleClient(s3Client, simpleAsyncClient, telemetry, awsS3ClientConfig);
     }
 
     default S3SimpleAsyncClient awsS3SimpleAsyncClient(S3AsyncClient s3AsyncClient,
                                                        @Tag(S3Client.class) ExecutorService awsExecutor,
                                                        S3ClientTelemetryFactory telemetryFactory,
-                                                       S3Config config) {
-        return new AwsS3SimpleAsyncClient(s3AsyncClient, awsExecutor, telemetryFactory.get(config.telemetry(), S3SimpleAsyncClient.class.getCanonicalName()));
+                                                       S3Config config,
+                                                       AwsS3ClientConfig awsS3ClientConfig) {
+        S3ClientTelemetry telemetry = telemetryFactory.get(config.telemetry(), S3SimpleAsyncClient.class.getCanonicalName());
+        return new AwsS3SimpleAsyncClient(s3AsyncClient, awsExecutor, telemetry, awsS3ClientConfig);
     }
 }
