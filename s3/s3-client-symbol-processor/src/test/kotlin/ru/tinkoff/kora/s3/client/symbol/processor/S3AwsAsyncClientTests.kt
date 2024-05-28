@@ -170,7 +170,7 @@ class S3AwsAsyncClientTests : AbstractSymbolProcessorTest() {
             interface Client {
                         
                 @S3.Put
-                suspend fun put(key: String, body: S3Body): PutObjectResponse
+                suspend fun put(key: String, value: S3Body): PutObjectResponse
             }
             """.trimIndent()
         )
@@ -187,7 +187,7 @@ class S3AwsAsyncClientTests : AbstractSymbolProcessorTest() {
             interface Client {
                         
                 @S3.Put
-                suspend fun put(key: String, body: S3Body): PutObjectResponse
+                suspend fun put(key: String, value: S3Body): PutObjectResponse
             }
             """.trimIndent()
         )

@@ -130,6 +130,51 @@ class S3SimpleClientTests extends AbstractAnnotationProcessorTest {
     }
 
     @Test
+    public void clientGetKeyPrefix() {
+        this.compile(List.of(new S3ClientAnnotationProcessor()), """
+            @S3.Client("my")
+            public interface Client {
+                        
+                @S3.Get("pre-{key1}")
+                S3ObjectMeta get(String key1);
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$Client_Impl");
+        assertThat(clazz).isNotNull();
+    }
+
+    @Test
+    public void clientGetKeySuffix() {
+        this.compile(List.of(new S3ClientAnnotationProcessor()), """
+            @S3.Client("my")
+            public interface Client {
+                        
+                @S3.Get("{key1}-suffix")
+                S3ObjectMeta get(String key1);
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$Client_Impl");
+        assertThat(clazz).isNotNull();
+    }
+
+    @Test
+    public void clientGetKeyPrefixSuffix() {
+        this.compile(List.of(new S3ClientAnnotationProcessor()), """
+            @S3.Client("my")
+            public interface Client {
+                        
+                @S3.Get("pre-{key1}-suffix")
+                S3ObjectMeta get(String key1);
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$Client_Impl");
+        assertThat(clazz).isNotNull();
+    }
+
+    @Test
     public void clientGetKeyUnused() {
         assertThatThrownBy(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
@@ -374,13 +419,13 @@ class S3SimpleClientTests extends AbstractAnnotationProcessorTest {
     }
 
     @Test
-    public void clientPutBodyReturnVersionId() {
+    public void clientPutBodyReturnUpload() {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
                         
                 @S3.Put
-                String put(String key, S3Body body);
+                S3ObjectUpload put(String key, S3Body body);
             }
             """);
         this.compileResult.assertSuccess();
@@ -411,21 +456,6 @@ class S3SimpleClientTests extends AbstractAnnotationProcessorTest {
                         
                 @S3.Put
                 void put(String key, ByteBuffer body);
-            }
-            """);
-        this.compileResult.assertSuccess();
-        var clazz = this.compileResult.loadClass("$Client_Impl");
-        assertThat(clazz).isNotNull();
-    }
-
-    @Test
-    public void clientPutInputStream() {
-        this.compile(List.of(new S3ClientAnnotationProcessor()), """
-            @S3.Client("my")
-            public interface Client {
-                        
-                @S3.Put
-                void put(String key, InputStream body);
             }
             """);
         this.compileResult.assertSuccess();

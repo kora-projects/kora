@@ -129,7 +129,7 @@ class S3AwsClientTests : AbstractSymbolProcessorTest() {
             interface Client {
                         
                 @S3.Put
-                fun put(key: String, body: S3Body): PutObjectResponse
+                fun put(key: String, value: S3Body): PutObjectResponse
             }
             """.trimIndent()
         )
