@@ -165,7 +165,6 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             library('swagger-annotations', 'io.swagger.core.v3', 'swagger-annotations').versionRef("swagger")
             library('swagger-models', 'io.swagger.core.v3', 'swagger-models').versionRef("swagger")
 
-
             library('s3client-minio', 'io.minio', 'minio').version("8.5.10")
             library('s3client-aws', 'software.amazon.awssdk', 's3').version("2.25.55")
         }

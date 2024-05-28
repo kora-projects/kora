@@ -6,6 +6,9 @@ import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Flow;
 
+/**
+ * S3 Object value representation
+ */
 public interface S3Body {
 
     default byte[] asBytes() {
