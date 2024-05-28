@@ -16,7 +16,9 @@ import software.amazon.awssdk.http.SdkHttpResponse;
 
 public final class AwsS3ClientTelemetryInterceptor implements ExecutionInterceptor {
 
-    public static final Key<S3ClientTelemetryContext> CONTEXT_KEY = new KeyImmutable<>() {};
+    public static final Key<Operation> OPERATION_KEY = new KeyImmutable<>() {};
+
+    public record Operation(String name, String bucket) {}
 
     private static final ExecutionAttribute<S3ClientTelemetryContext> CONTEXT = new ExecutionAttribute<>("kora-s3-telemetry-context");
 
@@ -27,22 +29,27 @@ public final class AwsS3ClientTelemetryInterceptor implements ExecutionIntercept
     }
 
     @Override
-    public void beforeExecution(Context.BeforeExecution context, ExecutionAttributes executionAttributes) {
+    public void beforeExecution(Context.BeforeExecution execContext, ExecutionAttributes executionAttributes) {
         var ctx = ru.tinkoff.kora.common.Context.current();
-        var telemetryContext = ctx.get(CONTEXT_KEY);
-        if (telemetryContext == null) {
+        var operation = ctx.get(OPERATION_KEY);
+
+        final S3ClientTelemetryContext telemetryContext;
+        if (operation != null) {
+            telemetryContext = telemetry.get(operation.name(), operation.bucket());
+        } else {
             telemetryContext = telemetry.get(null, null);
         }
+
         executionAttributes.putAttribute(CONTEXT, telemetryContext);
     }
 
     @Override
-    public void afterMarshalling(Context.AfterMarshalling context, ExecutionAttributes executionAttributes) {
+    public void afterMarshalling(Context.AfterMarshalling execContext, ExecutionAttributes executionAttributes) {
         var telemetryContext = executionAttributes.getAttribute(CONTEXT);
         if (telemetryContext != null) {
-            SdkHttpRequest request = context.httpRequest();
-            Long contentLength = context.requestBody().flatMap(RequestBody::optionalContentLength)
-                .or(() -> context.asyncRequestBody().flatMap(AsyncRequestBody::contentLength))
+            SdkHttpRequest request = execContext.httpRequest();
+            Long contentLength = execContext.requestBody().flatMap(RequestBody::optionalContentLength)
+                .or(() -> execContext.asyncRequestBody().flatMap(AsyncRequestBody::contentLength))
                 .orElse(null);
 
             telemetryContext.prepared(request.method().name(), request.encodedPath(), request.getUri(), request.host(), request.port(), contentLength);
@@ -50,24 +57,24 @@ public final class AwsS3ClientTelemetryInterceptor implements ExecutionIntercept
     }
 
     @Override
-    public void afterExecution(Context.AfterExecution context, ExecutionAttributes executionAttributes) {
+    public void afterExecution(Context.AfterExecution execContext, ExecutionAttributes executionAttributes) {
         var telemetryContext = executionAttributes.getAttribute(CONTEXT);
         if (telemetryContext != null) {
-            var httpResponse = context.response().sdkHttpResponse();
+            var httpResponse = execContext.response().sdkHttpResponse();
             telemetryContext.close(httpResponse.statusCode());
         }
     }
 
     @Override
-    public void onExecutionFailure(Context.FailedExecution context, ExecutionAttributes executionAttributes) {
+    public void onExecutionFailure(Context.FailedExecution execContext, ExecutionAttributes executionAttributes) {
         var telemetryContext = executionAttributes.getAttribute(CONTEXT);
         if (telemetryContext != null) {
-            var statusCode = context.response()
+            var statusCode = execContext.response()
                 .map(SdkResponse::sdkHttpResponse)
                 .map(SdkHttpResponse::statusCode)
                 .orElse(-1);
 
-            telemetryContext.close(statusCode, context.exception());
+            telemetryContext.close(statusCode, execContext.exception());
         }
     }
 }

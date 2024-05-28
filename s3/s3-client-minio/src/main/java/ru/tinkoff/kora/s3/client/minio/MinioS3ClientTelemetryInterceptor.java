@@ -13,7 +13,9 @@ import java.io.IOException;
 
 public final class MinioS3ClientTelemetryInterceptor implements Interceptor {
 
-    public static final Context.Key<S3ClientTelemetryContext> CONTEXT_KEY = new Context.KeyImmutable<>() {};
+    public static final Context.Key<Operation> OPERATION_KEY = new Context.KeyImmutable<>() {};
+
+    public record Operation(String name, String bucket) {}
 
     private final S3ClientTelemetry telemetry;
 
@@ -25,8 +27,12 @@ public final class MinioS3ClientTelemetryInterceptor implements Interceptor {
     @Override
     public Response intercept(@NotNull Chain chain) throws IOException {
         var ctx = Context.current();
-        var telemetryContext = ctx.get(CONTEXT_KEY);
-        if (telemetryContext == null) {
+        var operation = ctx.get(OPERATION_KEY);
+
+        final S3ClientTelemetryContext telemetryContext;
+        if (operation != null) {
+            telemetryContext = telemetry.get(operation.name(), operation.bucket());
+        } else {
             telemetryContext = telemetry.get(null, null);
         }
 

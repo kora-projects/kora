@@ -501,7 +501,7 @@ class S3SimpleAsyncClientTests : AbstractSymbolProcessorTest() {
             interface Client {
                         
                 @S3.Put
-                suspend fun put(key: String, body: S3Body)
+                suspend fun put(key: String, value: S3Body)
             }
             """.trimIndent()
         )
@@ -511,14 +511,14 @@ class S3SimpleAsyncClientTests : AbstractSymbolProcessorTest() {
     }
 
     @Test
-    fun clientPutBodyReturnVersionId() {
+    fun clientPutBodyReturnUpload() {
         this.compile0(
             """
             @S3.Client("my")
             interface Client {
                         
                 @S3.Put
-                suspend fun put(key: String, body: S3Body): String
+                suspend fun put(key: String, value: S3Body): S3ObjectUpload
             }
             """.trimIndent()
         )
@@ -535,7 +535,7 @@ class S3SimpleAsyncClientTests : AbstractSymbolProcessorTest() {
             interface Client {
                         
                 @S3.Put
-                suspend fun put(key: String, body: ByteArray)
+                suspend fun put(key: String, value: ByteArray)
             }
             """.trimIndent()
         )
@@ -552,24 +552,7 @@ class S3SimpleAsyncClientTests : AbstractSymbolProcessorTest() {
             interface Client {
                         
                 @S3.Put
-                suspend fun put(key: String, body: ByteBuffer)
-            }
-            """.trimIndent()
-        )
-        compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
-        assertThat(clazz).isNotNull()
-    }
-
-    @Test
-    fun clientPutInputStream() {
-        this.compile0(
-            """
-            @S3.Client("my")
-            interface Client {
-                        
-                @S3.Put
-                suspend fun put(key: String, body: InputStream)
+                suspend fun put(key: String, value: ByteBuffer)
             }
             """.trimIndent()
         )
@@ -586,7 +569,7 @@ class S3SimpleAsyncClientTests : AbstractSymbolProcessorTest() {
             interface Client {
                         
                 @S3.Put(type = "type")
-                suspend fun put(key: String, body: S3Body)
+                suspend fun put(key: String, value: S3Body)
             }
             """.trimIndent()
         )
@@ -603,7 +586,7 @@ class S3SimpleAsyncClientTests : AbstractSymbolProcessorTest() {
             interface Client {
                         
                 @S3.Put(encoding = "encoding")
-                suspend fun put(key: String, body: S3Body)
+                suspend fun put(key: String, value: S3Body)
             }
             """.trimIndent()
         )
@@ -620,7 +603,7 @@ class S3SimpleAsyncClientTests : AbstractSymbolProcessorTest() {
             interface Client {
                         
                 @S3.Put(type = "type", encoding = "encoding")
-                suspend fun put(key: String, body: S3Body)
+                suspend fun put(key: String, value: S3Body)
             }
             """.trimIndent()
         )
@@ -637,7 +620,7 @@ class S3SimpleAsyncClientTests : AbstractSymbolProcessorTest() {
             interface Client {
                         
                 @S3.Put("{key1}-{key2}")
-                suspend fun put(key1: String, key2: Long, body: S3Body)
+                suspend fun put(key1: String, key2: Long, value: S3Body)
             }
             """.trimIndent()
         )
@@ -654,7 +637,7 @@ class S3SimpleAsyncClientTests : AbstractSymbolProcessorTest() {
             interface Client {
                         
                 @S3.Put("{key1}-{key12345}")
-                suspend fun put(key1: String, body: S3Body)
+                suspend fun put(key1: String, value: S3Body)
             }
             """.trimIndent()
         )
@@ -669,7 +652,7 @@ class S3SimpleAsyncClientTests : AbstractSymbolProcessorTest() {
             interface Client {
                         
                 @S3.Put("const-key")
-                suspend fun put(body: S3Body)
+                suspend fun put(value: S3Body)
             }
             """.trimIndent()
         )
@@ -686,7 +669,7 @@ class S3SimpleAsyncClientTests : AbstractSymbolProcessorTest() {
             interface Client {
                         
                 @S3.Put("const-key")
-                suspend fun put(key: String, body: S3Body)
+                suspend fun put(key: String, value: S3Body)
             }
             """.trimIndent()
         )

@@ -412,7 +412,7 @@ class S3SimpleClientTests : AbstractSymbolProcessorTest() {
             interface Client {
                         
                 @S3.Put
-                fun put(key: String, body: S3Body)
+                fun put(key: String, value: S3Body)
             }
             """.trimIndent()
         )
@@ -422,14 +422,14 @@ class S3SimpleClientTests : AbstractSymbolProcessorTest() {
     }
 
     @Test
-    fun clientPutBodyReturnVersionId() {
+    fun clientPutBodyReturnUpload() {
         this.compile0(
             """
             @S3.Client("my")
             interface Client {
                         
                 @S3.Put
-                fun put(key: String, body: S3Body): String
+                fun put(key: String, value: S3Body): S3ObjectUpload
             }
             """.trimIndent()
         )
@@ -446,7 +446,7 @@ class S3SimpleClientTests : AbstractSymbolProcessorTest() {
             interface Client {
                         
                 @S3.Put
-                fun put(key: String, body: ByteArray)
+                fun put(key: String, value: ByteArray)
             }
             """.trimIndent()
         )
@@ -463,24 +463,7 @@ class S3SimpleClientTests : AbstractSymbolProcessorTest() {
             interface Client {
                         
                 @S3.Put
-                fun put(key: String, body: ByteBuffer)
-            }
-            """.trimIndent()
-        )
-        compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
-        assertThat(clazz).isNotNull()
-    }
-
-    @Test
-    fun clientPutInputStream() {
-        this.compile0(
-            """
-            @S3.Client("my")
-            interface Client {
-                        
-                @S3.Put
-                fun put(key: String, body: InputStream)
+                fun put(key: String, value: ByteBuffer)
             }
             """.trimIndent()
         )
@@ -497,7 +480,7 @@ class S3SimpleClientTests : AbstractSymbolProcessorTest() {
             interface Client {
                         
                 @S3.Put(type = "type")
-                fun put(key: String, body: S3Body)
+                fun put(key: String, value: S3Body)
             }
             """.trimIndent()
         )
@@ -514,7 +497,7 @@ class S3SimpleClientTests : AbstractSymbolProcessorTest() {
             interface Client {
                         
                 @S3.Put(encoding = "encoding")
-                fun put(key: String, body: S3Body)
+                fun put(key: String, value: S3Body)
             }
             """.trimIndent()
         )
@@ -531,7 +514,7 @@ class S3SimpleClientTests : AbstractSymbolProcessorTest() {
             interface Client {
                         
                 @S3.Put(type = "type", encoding = "encoding")
-                fun put(key: String, body: S3Body)
+                fun put(key: String, value: S3Body)
             }
             """.trimIndent()
         )
@@ -548,7 +531,7 @@ class S3SimpleClientTests : AbstractSymbolProcessorTest() {
             interface Client {
                         
                 @S3.Put("{key1}-{key2}")
-                fun put(key1: String, key2: Long, body: S3Body)
+                fun put(key1: String, key2: Long, value: S3Body)
             }
             """.trimIndent()
         )
@@ -565,7 +548,7 @@ class S3SimpleClientTests : AbstractSymbolProcessorTest() {
             interface Client {
                         
                 @S3.Put("{key1}-{key12345}")
-                fun put(key1: String, body: S3Body)
+                fun put(key1: String, value: S3Body)
             }
             """.trimIndent()
         )
@@ -580,7 +563,7 @@ class S3SimpleClientTests : AbstractSymbolProcessorTest() {
             interface Client {
                         
                 @S3.Put("const-key")
-                fun put(body: S3Body)
+                fun put(value: S3Body)
             }
             """.trimIndent()
         )
@@ -597,7 +580,7 @@ class S3SimpleClientTests : AbstractSymbolProcessorTest() {
                 interface Client {
                             
                     @S3.Put("const-key")
-                    fun put(key: String, body: S3Body)
+                    fun put(key: String, value: S3Body)
                 }
                 """.trimIndent()
         )

@@ -11,8 +11,10 @@ public class S3DeleteException extends S3Exception {
 
     public S3DeleteException(List<Error> errors) {
         super(new IllegalStateException(errors.stream()
-            .map(Error::message)
-            .collect(Collectors.joining(", ", "Errors occurred while deleting objects: ", ""))));
+                .map(Error::message)
+                .collect(Collectors.joining(", ", "Errors occurred while deleting objects: ", ""))),
+            errors.get(0).code(),
+            errors.get(0).message());
         this.errors = errors;
     }
 

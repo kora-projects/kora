@@ -484,13 +484,13 @@ class S3SimpleAsyncClientTests extends AbstractAnnotationProcessorTest {
     }
 
     @Test
-    public void clientPutBodyReturnVersionId() {
+    public void clientPutBodyReturnUpload() {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
                         
                 @S3.Put
-                CompletionStage<String> put(String key, S3Body body);
+                CompletionStage<S3ObjectUpload> put(String key, S3Body body);
             }
             """);
         this.compileResult.assertSuccess();
@@ -521,21 +521,6 @@ class S3SimpleAsyncClientTests extends AbstractAnnotationProcessorTest {
                         
                 @S3.Put
                 CompletionStage<Void> put(String key, ByteBuffer body);
-            }
-            """);
-        this.compileResult.assertSuccess();
-        var clazz = this.compileResult.loadClass("$Client_Impl");
-        assertThat(clazz).isNotNull();
-    }
-
-    @Test
-    public void clientPutInputStream() {
-        this.compile(List.of(new S3ClientAnnotationProcessor()), """
-            @S3.Client("my")
-            public interface Client {
-                        
-                @S3.Put
-                CompletionStage<Void> put(String key, InputStream body);
             }
             """);
         this.compileResult.assertSuccess();

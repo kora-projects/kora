@@ -14,6 +14,7 @@ import ru.tinkoff.kora.s3.client.telemetry.S3ClientTelemetry;
 import ru.tinkoff.kora.s3.client.telemetry.S3ClientTelemetryFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.awscore.AwsClient;
 import software.amazon.awssdk.core.interceptor.ExecutionInterceptor;
 import software.amazon.awssdk.http.SdkHttpClient;
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
@@ -21,6 +22,9 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
+import software.amazon.awssdk.services.s3.internal.multipart.MultipartS3AsyncClient;
+import software.amazon.awssdk.services.s3.model.MultipartUpload;
+import software.amazon.awssdk.services.s3.multipart.MultipartConfiguration;
 
 import java.net.URI;
 import java.util.concurrent.ExecutorService;
@@ -28,19 +32,19 @@ import java.util.concurrent.Executors;
 
 public interface AwsS3ClientModule extends S3ClientModule {
 
-    @Tag(S3Client.class)
+    @Tag(AwsClient.class)
     @DefaultComponent
     default HttpClient awsS3httpClient(HttpClient client) {
         return client;
     }
 
     @DefaultComponent
-    default KoraAwsSdkHttpClient awsKoraSdkHttpClient(@Tag(S3Client.class) HttpClient client,
+    default KoraAwsSdkHttpClient awsKoraSdkHttpClient(@Tag(AwsClient.class) HttpClient client,
                                                       AwsS3ClientConfig clientConfig) {
         return new KoraAwsSdkHttpClient(client, clientConfig);
     }
 
-    @Tag(S3Client.class)
+    @Tag(AwsClient.class)
     @DefaultComponent
     default ExecutorService awsAsyncExecutorService() {
         return Executors.newFixedThreadPool(Math.max(Runtime.getRuntime().availableProcessors(), 2) * 2);
@@ -72,6 +76,7 @@ public interface AwsS3ClientModule extends S3ClientModule {
                                  AwsCredentialsProvider credentialsProvider,
                                  S3Configuration s3Configuration,
                                  S3Config s3Config,
+                                 S3ClientTelemetryFactory telemetryFactory,
                                  All<ExecutionInterceptor> interceptors) {
         return S3Client.builder()
             .credentialsProvider(credentialsProvider)
@@ -79,6 +84,7 @@ public interface AwsS3ClientModule extends S3ClientModule {
             .endpointOverride(URI.create(s3Config.url()))
             .serviceConfiguration(s3Configuration)
             .region(Region.of(s3Config.region()))
+            .overrideConfiguration(b -> b.addExecutionInterceptor(new AwsS3ClientTelemetryInterceptor(telemetryFactory.get(s3Config.telemetry(), S3Client.class.getCanonicalName()))))
             .overrideConfiguration(b -> interceptors.forEach(b::addExecutionInterceptor))
             .build();
     }
@@ -87,6 +93,7 @@ public interface AwsS3ClientModule extends S3ClientModule {
                                            AwsCredentialsProvider credentialsProvider,
                                            S3Configuration s3Configuration,
                                            S3Config s3Config,
+                                           S3ClientTelemetryFactory telemetryFactory,
                                            All<ExecutionInterceptor> interceptors) {
         return S3AsyncClient.builder()
             .credentialsProvider(credentialsProvider)
@@ -94,6 +101,7 @@ public interface AwsS3ClientModule extends S3ClientModule {
             .endpointOverride(URI.create(s3Config.url()))
             .serviceConfiguration(s3Configuration)
             .region(Region.of(s3Config.region()))
+            .overrideConfiguration(b -> b.addExecutionInterceptor(new AwsS3ClientTelemetryInterceptor(telemetryFactory.get(s3Config.telemetry(), S3AsyncClient.class.getCanonicalName()))))
             .overrideConfiguration(b -> interceptors.forEach(b::addExecutionInterceptor))
             .build();
     }
@@ -108,11 +116,23 @@ public interface AwsS3ClientModule extends S3ClientModule {
     }
 
     default S3SimpleAsyncClient awsS3SimpleAsyncClient(S3AsyncClient s3AsyncClient,
-                                                       @Tag(S3Client.class) ExecutorService awsExecutor,
+                                                       @Tag(AwsClient.class) ExecutorService awsExecutor,
                                                        S3ClientTelemetryFactory telemetryFactory,
                                                        S3Config config,
                                                        AwsS3ClientConfig awsS3ClientConfig) {
         S3ClientTelemetry telemetry = telemetryFactory.get(config.telemetry(), S3SimpleAsyncClient.class.getCanonicalName());
         return new AwsS3SimpleAsyncClient(s3AsyncClient, awsExecutor, telemetry, awsS3ClientConfig);
+    }
+
+    @Tag(MultipartUpload.class)
+    default MultipartS3AsyncClient multipartS3AsyncClient(S3AsyncClient asyncClient,
+                                                          AwsS3ClientConfig awsS3ClientConfig) {
+        MultipartConfiguration config = MultipartConfiguration.builder()
+            .thresholdInBytes(awsS3ClientConfig.upload().bufferSize())
+            .apiCallBufferSizeInBytes(awsS3ClientConfig.upload().bufferSize())
+            .minimumPartSizeInBytes(awsS3ClientConfig.upload().partSize())
+            .build();
+
+        return MultipartS3AsyncClient.create(asyncClient, config);
     }
 }

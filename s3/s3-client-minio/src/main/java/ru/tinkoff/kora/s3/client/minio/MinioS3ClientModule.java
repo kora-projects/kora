@@ -15,6 +15,7 @@ import ru.tinkoff.kora.s3.client.S3ClientModule;
 import ru.tinkoff.kora.s3.client.S3Config;
 import ru.tinkoff.kora.s3.client.S3SimpleAsyncClient;
 import ru.tinkoff.kora.s3.client.S3SimpleClient;
+import ru.tinkoff.kora.s3.client.telemetry.S3ClientTelemetry;
 import ru.tinkoff.kora.s3.client.telemetry.S3ClientTelemetryFactory;
 
 import java.util.concurrent.TimeUnit;
@@ -66,16 +67,22 @@ public interface MinioS3ClientModule extends S3ClientModule {
             .region(s3Config.region())
             .credentialsProvider(provider)
             .httpClient(okHttpClient.newBuilder()
-                .addInterceptor(new MinioS3ClientTelemetryInterceptor(telemetryFactory.get(s3Config.telemetry(), MinioClient.class.getCanonicalName())))
+                .addInterceptor(new MinioS3ClientTelemetryInterceptor(telemetryFactory.get(s3Config.telemetry(), MinioAsyncClient.class.getCanonicalName())))
                 .build())
             .build();
     }
 
-    default S3SimpleClient MinioS3SimpleClient(MinioClient minioClient) {
-        return new MinioS3SimpleClient(minioClient);
+    default S3SimpleClient MinioS3SimpleClient(MinioClient minioClient,
+                                               S3Config s3Config,
+                                               S3ClientTelemetryFactory telemetryFactory) {
+        S3ClientTelemetry telemetry = telemetryFactory.get(s3Config.telemetry(), MinioClient.class.getCanonicalName());
+        return new MinioS3SimpleClient(minioClient, telemetry);
     }
 
-    default S3SimpleAsyncClient MinioS3SimpleAsyncClient(MinioAsyncClient minioAsyncClient) {
-        return new MinioS3SimpleAsyncClient(minioAsyncClient);
+    default S3SimpleAsyncClient MinioS3SimpleAsyncClient(MinioAsyncClient minioAsyncClient,
+                                                         S3Config s3Config,
+                                                         S3ClientTelemetryFactory telemetryFactory) {
+        S3ClientTelemetry telemetry = telemetryFactory.get(s3Config.telemetry(), MinioAsyncClient.class.getCanonicalName());
+        return new MinioS3SimpleAsyncClient(minioAsyncClient, telemetry);
     }
 }
