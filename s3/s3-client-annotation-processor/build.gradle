@@ -10,4 +10,5 @@ dependencies {
     testImplementation project(":internal:test-logging")
     testImplementation project(":config:config-common")
     testImplementation testFixtures(project(":annotation-processor-common"))
+    testImplementation libs.reactor.core
 }

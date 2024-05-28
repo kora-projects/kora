@@ -6,12 +6,12 @@ dependencies {
     compileOnly project(":http:http-client-common")
     compileOnly libs.jetbrains.annotations
 
+    api libs.reactor.core
     api project(":s3:s3-client-common")
     api(libs.s3client.aws) {
         exclude group: "software.amazon.awssdk", module: "apache-client"
         exclude group: "software.amazon.awssdk", module: "netty-nio-client"
     }
-    api libs.reactor.adapter
 
     implementation project(":config:config-common")
 
