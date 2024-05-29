@@ -59,7 +59,7 @@ public class TimeoutTarget {
     }
 
     @Timeout("custom2")
-    public CompletionStage<String> getValueFuture() {
+    public CompletionStage<String> getValueStage() {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 Thread.sleep(300);
@@ -71,12 +71,24 @@ public class TimeoutTarget {
     }
 
     @Timeout("custom3")
+    public CompletableFuture<String> getValueFuture() {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                Thread.sleep(300);
+                return "OK";
+            } catch (InterruptedException e) {
+                throw new IllegalStateException(e);
+            }
+        });
+    }
+
+    @Timeout("custom4")
     public Mono<String> getValueMono() {
         return Mono.fromCallable(() -> "OK")
             .delayElement(Duration.ofMillis(300));
     }
 
-    @Timeout("custom4")
+    @Timeout("custom5")
     public Flux<String> getValueFlux() {
         return Flux.from(Mono.fromCallable(() -> "OK"))
             .delayElements(Duration.ofMillis(300));

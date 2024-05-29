@@ -18,16 +18,30 @@ class FallbackFutureTests extends AppRunner {
     }
 
     @Test
+    void stageFallback() {
+        // given
+        var service = getService();
+        service.alwaysFail = false;
+
+        // when
+        assertEquals(FallbackTarget.VALUE, service.getValueStage().toCompletableFuture().join());
+        service.alwaysFail = true;
+
+        // then
+        assertEquals(FallbackTarget.FALLBACK, service.getValueStage().toCompletableFuture().join());
+    }
+
+    @Test
     void futureFallback() {
         // given
         var service = getService();
         service.alwaysFail = false;
 
         // when
-        assertEquals(FallbackTarget.VALUE, service.getValueFuture().toCompletableFuture().join());
+        assertEquals(FallbackTarget.VALUE, service.getValueFuture().join());
         service.alwaysFail = true;
 
         // then
-        assertEquals(FallbackTarget.FALLBACK, service.getValueFuture().toCompletableFuture().join());
+        assertEquals(FallbackTarget.FALLBACK, service.getValueFuture().join());
     }
 }

@@ -8,9 +8,11 @@ import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.type.DeclaredType;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 import static com.squareup.javapoet.CodeBlock.joining;
 
@@ -86,7 +88,12 @@ public class RetryKoraAspect implements KoraAspect {
     private CodeBlock buildBodyFuture(ExecutableElement method, String superCall, String fieldRetry) {
         var builder = CodeBlock.builder();
         var methodCall = buildMethodCall(method, superCall);
-        builder.addStatement("return $L.retry(() -> $L)", fieldRetry, methodCall);
+
+        builder.add("return $L.retry(() -> $L)", fieldRetry, methodCall);
+        if (CompletableFuture.class.getCanonicalName().equals(((DeclaredType) method.getReturnType()).asElement().toString())) {
+            builder.add(".toCompletableFuture()");
+        }
+        builder.add(";\n");
         return builder.build();
     }
 

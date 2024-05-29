@@ -64,17 +64,28 @@ public class FallbackTarget {
     }
 
     @Fallback(value = "custom_fallback2", method = "getFallbackFuture()")
-    public CompletionStage<String> getValueFuture() {
+    public CompletionStage<String> getValueStage() {
         if (alwaysFail)
             return CompletableFuture.failedFuture(new IllegalStateException("Failed"));
 
         return CompletableFuture.completedFuture(VALUE);
     }
 
-    protected CompletionStage<String> getFallbackFuture() {
+    protected CompletableFuture<String> getFallbackStage() {
         return CompletableFuture.completedFuture(FALLBACK);
     }
 
+    @Fallback(value = "custom_fallback2", method = "getFallbackFuture()")
+    public CompletableFuture<String> getValueFuture() {
+        if (alwaysFail)
+            return CompletableFuture.failedFuture(new IllegalStateException("Failed"));
+
+        return CompletableFuture.completedFuture(VALUE);
+    }
+
+    protected CompletableFuture<String> getFallbackFuture() {
+        return CompletableFuture.completedFuture(FALLBACK);
+    }
 
     @Fallback(value = "custom_fallback3", method = "getFallbackMono()")
     public Mono<String> getValueMono() {

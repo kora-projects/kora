@@ -6,9 +6,7 @@ import org.junit.jupiter.api.TestInstance;
 import ru.tinkoff.kora.resilient.annotation.processor.aop.testdata.*;
 import ru.tinkoff.kora.resilient.retry.RetryExhaustedException;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.TimeUnit;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class RetryFutureTests extends AppRunner {
@@ -34,6 +32,37 @@ class RetryFutureTests extends AppRunner {
     }
 
     @Test
+    void stageRetrySuccess() {
+        // given
+        var service = retryableTarget;
+
+        // then
+        service.setRetryAttempts(RETRY_SUCCESS);
+
+        // then
+        assertEquals("1", service.retryStage("1").toCompletableFuture().join());
+    }
+
+    @Test
+    void stageRetryFail() {
+        // given
+        var service = retryableTarget;
+
+        // then
+        service.setRetryAttempts(RETRY_FAIL);
+
+        // then
+        try {
+            service.retryStage("1").toCompletableFuture().join();
+            fail("Should not happen");
+        } catch (CompletionException e) {
+            assertNotNull(e.getMessage());
+            assertInstanceOf(RetryExhaustedException.class, e.getCause());
+            assertInstanceOf(IllegalStateException.class, e.getCause().getCause());
+        }
+    }
+
+    @Test
     void futureRetrySuccess() {
         // given
         var service = retryableTarget;
@@ -42,7 +71,7 @@ class RetryFutureTests extends AppRunner {
         service.setRetryAttempts(RETRY_SUCCESS);
 
         // then
-        assertEquals("1", service.retryFuture("1").toCompletableFuture().join());
+        assertEquals("1", service.retryFuture("1").join());
     }
 
     @Test
@@ -55,7 +84,7 @@ class RetryFutureTests extends AppRunner {
 
         // then
         try {
-            service.retryFuture("1").toCompletableFuture().join();
+            service.retryFuture("1").join();
             fail("Should not happen");
         } catch (CompletionException e) {
             assertNotNull(e.getMessage());
