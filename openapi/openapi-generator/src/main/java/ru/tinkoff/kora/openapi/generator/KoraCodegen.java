@@ -43,6 +43,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.openapitools.codegen.utils.ModelUtils.getSchemaItems;
 import static org.openapitools.codegen.utils.StringUtils.*;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
@@ -1193,7 +1194,7 @@ public class KoraCodegen extends DefaultCodegen {
         var schema = ModelUtils.unaliasSchema(this.openAPI, p, importMapping);
         var target = ModelUtils.isGenerateAliasAsModel() ? p : schema;
         if (ModelUtils.isArraySchema(target)) {
-            var items = getSchemaItems((ArraySchema) schema);
+            var items = getSchemaItems(schema);
             return getSchemaType(target) + "<" + getTypeDeclaration(items) + ">";
         } else if (ModelUtils.isMapSchema(target)) {
             // Note: ModelUtils.isMapSchema(p) returns true when p is a composed schema that also defines
@@ -1293,7 +1294,7 @@ public class KoraCodegen extends DefaultCodegen {
                     : "java.util.List.<%s>of(";
             }
 
-            Schema<?> itemOriginal = getSchemaItems((ArraySchema) schema);
+            Schema<?> itemOriginal = getSchemaItems(schema);
             Schema itemSchema = ModelUtils.getReferencedSchema(this.openAPI, itemOriginal);
             String typeDeclaration = getTypeDeclaration(ModelUtils.unaliasSchema(this.openAPI, itemOriginal));
             Object java8obj = additionalProperties.get("java8");
