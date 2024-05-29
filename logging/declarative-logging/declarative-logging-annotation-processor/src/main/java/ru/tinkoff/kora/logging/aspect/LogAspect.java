@@ -328,7 +328,7 @@ public class LogAspect implements KoraAspect {
                     List.of(AnnotationSpec.builder(CommonClassNames.nullable).build())
                 );
                 b.beginControlFlow("if (this.$N != null)", mapper);
-                b.add("gen.writeFieldName($S);", param.getSimpleName());
+                b.addStatement("gen.writeFieldName($S)", param.getSimpleName());
                 b.addStatement("this.$N.write(gen, $N)", mapper, param.getSimpleName());
                 b.nextControlFlow("else");
                 b.addStatement("gen.writeStringField($S, String.valueOf($N))", param.getSimpleName(), param.getSimpleName());

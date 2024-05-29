@@ -38,9 +38,11 @@ public final class ConsoleTextRecordEncoder implements Encoder<ILoggingEvent> {
         var baos = new ByteArrayOutputStream(256);
         var w = new OutputStreamWriter(baos, StandardCharsets.UTF_8);
 
+        String levelSuffix = event.getLevel().levelStr.length() == 4 ? "  " : " ";
         w.append(this.formatter.format(event.getTimeStamp())).append(" ")
+            .append(event.getLevel().levelStr)
+            .append(levelSuffix)
             .append("[").append(event.getThreadName()).append("] ")
-            .append(event.getLevel().levelStr).append(" ")
             .append(this.abbreviator.abbreviate(event.getLoggerName()))
             .append(" ")
             .flush();
