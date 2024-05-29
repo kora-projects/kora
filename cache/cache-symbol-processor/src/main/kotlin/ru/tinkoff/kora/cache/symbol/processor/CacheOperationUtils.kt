@@ -211,7 +211,14 @@ class CacheOperationUtils {
                     } else {
                         if (parameters.size > 9) {
                             throw ProcessingErrorException(
-                                "@${annotations.first().shortName.asString()} doesn't support more than 9 parameters for Cache Key",
+                                "@${annotation.shortName.asString()} doesn't support more than 9 method arguments for Cache Key",
+                                method
+                            )
+                        }
+
+                        if(parameters.isEmpty() && (type == CacheOperation.Type.GET || type == CacheOperation.Type.EVICT)) {
+                            throw ProcessingErrorException(
+                                "@${annotation.shortName.asString()} requires minimum 1 Cache Key method argument, but got 0",
                                 method
                             )
                         }

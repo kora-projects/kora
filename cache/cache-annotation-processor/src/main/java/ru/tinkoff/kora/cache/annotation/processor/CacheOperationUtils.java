@@ -177,8 +177,14 @@ public final class CacheOperationUtils {
                     cacheKey = new CacheOperation.CacheKey(cacheKeyMirror, CodeBlock.of("new $T($L)", cacheKeyMirror, String.join(", ", parameters)));
                 } else {
                     if (parameters.size() > 9) {
-                        throw new ProcessingErrorException("@%s doesn't support more than 9 parameters for Cache Key"
-                            .formatted(cacheAnnotations.get(0).getAnnotationType().asElement().getSimpleName()), method);
+                        throw new ProcessingErrorException("@%s doesn't support more than 9 method arguments for Cache Key"
+                            .formatted(annotation.getAnnotationType().asElement().getSimpleName()), method);
+                    }
+
+                    if(parameters.isEmpty() && (type == CacheOperation.Type.GET || type == CacheOperation.Type.EVICT)) {
+                        throw new ProcessingErrorException(
+                            "@%s requires minimum 1 Cache Key method argument, but got 0".formatted(annotation.getAnnotationType().asElement().getSimpleName().toString()),
+                            method);
                     }
 
                     var mapperType = getKeyMapper(cacheKeyMirror, parameterResult, env);
