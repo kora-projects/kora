@@ -79,6 +79,8 @@ class DefaultHttpClientTelemetryTest {
     @Test
     void testLogging() throws IOException {
         var logger = Mockito.mock(HttpClientLogger.class);
+        Mockito.when(logger.logRequest()).thenReturn(true);
+        Mockito.when(logger.logResponse()).thenReturn(true);
         Mockito.when(logger.logResponseBody()).thenReturn(true);
         var telemetry = new DefaultHttpClientTelemetry(null, null, logger);
         var rq = Mockito.mock(HttpClientRequest.class);
@@ -98,12 +100,14 @@ class DefaultHttpClientTelemetryTest {
                 Assertions.assertThat(wrappedRs).isSameAs(rs);
             }
         }
-        Mockito.verify(logger).logResponse(anyString(), anyString(), anyLong(), any(), eq(HttpResultCode.SUCCESS), any(), any(), eq("test"));
+        Mockito.verify(logger).logResponse(anyString(), anyString(), anyString(), any(URI.class), anyLong(), anyInt(), eq(HttpResultCode.SUCCESS), any(), any(), eq("test"));
     }
 
     @Test
     void testLoggingWithStreamingBody() throws IOException {
         var logger = Mockito.mock(HttpClientLogger.class);
+        Mockito.when(logger.logRequest()).thenReturn(true);
+        Mockito.when(logger.logResponse()).thenReturn(true);
         Mockito.when(logger.logResponseBody()).thenReturn(true);
         var telemetry = new DefaultHttpClientTelemetry(null, null, logger);
         var rq = Mockito.mock(HttpClientRequest.class);
@@ -123,6 +127,6 @@ class DefaultHttpClientTelemetryTest {
                 Assertions.assertThat(wrappedRs).isNotSameAs(rs);
             }
         }
-        Mockito.verify(logger).logResponse(anyString(), anyString(), anyLong(), any(), eq(HttpResultCode.SUCCESS), any(), any(), eq("test"));
+        Mockito.verify(logger).logResponse(anyString(), anyString(), anyString(), any(URI.class), anyLong(), anyInt(), eq(HttpResultCode.SUCCESS), any(), any(), eq("test"));
     }
 }

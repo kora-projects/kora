@@ -74,8 +74,8 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
             return null;
         }
 
-        final boolean isLogRequestEnabled = logger != null && logger.logRequest();
-        final String operation = isLogRequestEnabled
+        final boolean isOperationRequired = logger != null && (logger.logRequest() || logger.logResponse());
+        final String operation = isOperationRequired
             ? DefaultHttpClientTelemetry.operation(request.method(), request.uriTemplate(), request.uri())
             : null;
         var data = new TelemetryContextData(request, operation);
@@ -87,7 +87,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         var createSpanResult = tracing == null ? null : tracing.createSpan(ctx, request);
         var headers = request.headers();
 
-        if (isLogRequestEnabled) {
+        if (logger != null && logger.logRequest()) {
             if (!logger.logRequestHeaders()) {
                 logger.logRequest(authority, request.method(), operation, resolvedUri, null, null);
             } else if (!logger.logRequestBody()) {
