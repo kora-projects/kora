@@ -39,12 +39,13 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
             || logger != null && (logger.logRequest() || logger.logRequestBody() || logger.logResponse() || logger.logResponseBody());
     }
 
-    record TelemetryContextData(long startTime, String method, String operation, String host, String scheme, String authority, String target) {
-        public TelemetryContextData(HttpClientRequest request) {
+    record TelemetryContextData(long startTime, String method, String operation, URI resolvedUri, String host, String scheme, String authority, String target) {
+        public TelemetryContextData(HttpClientRequest request, String operation) {
             this(
                 System.nanoTime(),
                 request.method(),
-                DefaultHttpClientTelemetry.operation(request.method(), request.uriTemplate(), request.uri()),
+                operation,
+                request.uri(),
                 request.uri().getHost(),
                 request.uri().getScheme(),
                 request.uri().getAuthority(),
@@ -72,17 +73,21 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         if (!this.isEnabled()) {
             return null;
         }
-        var data = new TelemetryContextData(request);
+
+        final boolean isLogRequestEnabled = logger != null && logger.logRequest();
+        final String operation = isLogRequestEnabled
+            ? DefaultHttpClientTelemetry.operation(request.method(), request.uriTemplate(), request.uri())
+            : null;
+        var data = new TelemetryContextData(request, operation);
 
         var method = request.method();
-        var operation = data.operation();
         var authority = data.authority();
-        var resolvedUri = request.uri().toString();
+        var resolvedUri = data.resolvedUri();
 
         var createSpanResult = tracing == null ? null : tracing.createSpan(ctx, request);
         var headers = request.headers();
 
-        if (logger != null && logger.logRequest()) {
+        if (isLogRequestEnabled) {
             if (!logger.logRequestHeaders()) {
                 logger.logRequest(authority, request.method(), operation, resolvedUri, null, null);
             } else if (!logger.logRequestBody()) {
@@ -228,7 +233,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
             if (logger != null && logger.logResponse()) {
                 try {
                     this.ctx.inject();
-                    logger.logResponse(data.authority(), data.operation(), processingTime, null, HttpResultCode.CONNECTION_ERROR, throwable, null, null);
+                    logger.logResponse(data.authority(), data.method(), data.operation(), data.resolvedUri(), processingTime, null, HttpResultCode.CONNECTION_ERROR, throwable, null, null);
                 } finally {
                     ctx.inject();
                 }
@@ -251,7 +256,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
                 var ctx = Context.current();
                 try {
                     this.ctx.inject();
-                    logger.logResponse(data.authority(), data.operation(), processingTime, code, resultCode, null, headersStr, bodyString);
+                    logger.logResponse(data.authority(), data.method(), data.operation(), data.resolvedUri(), processingTime, code, resultCode, null, headersStr, bodyString);
                 } finally {
                     ctx.inject();
                 }

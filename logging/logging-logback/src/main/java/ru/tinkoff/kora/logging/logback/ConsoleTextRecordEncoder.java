@@ -44,7 +44,7 @@ public final class ConsoleTextRecordEncoder implements Encoder<ILoggingEvent> {
             .append(levelSuffix)
             .append("[").append(event.getThreadName()).append("] ")
             .append(this.abbreviator.abbreviate(event.getLoggerName()))
-            .append(" ")
+            .append(" - ")
             .flush();
 
         if (event instanceof KoraLoggingEvent koraEvent) {

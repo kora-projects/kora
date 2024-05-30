@@ -6,6 +6,7 @@ import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
+import java.net.URI;
 import java.util.concurrent.CancellationException;
 
 public class Sl4fjHttpClientLogger implements HttpClientLogger {
@@ -51,7 +52,7 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
     public void logRequest(String authority,
                            String method,
                            String operation,
-                           String resolvedUri,
+                           URI resolvedUri,
                            @Nullable HttpHeaders headers,
                            @Nullable String body) {
         var marker = StructuredArgument.marker("httpRequest", gen -> {
@@ -64,18 +65,20 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
         if (this.requestLog.isTraceEnabled() && headers != null && headers.size() > 0 && body != null) {
             var headersString = this.requestHeaderString(headers);
             var bodyStr = this.requestBodyString(body);
-            this.requestLog.trace(marker, "Requesting {}\n{}\n{}", operation, headersString, bodyStr);
+            this.requestLog.trace(marker, "HttpClient requesting {} {}\n{}\n{}", method, resolvedUri.getPath(), headersString, bodyStr);
         } else if (this.requestLog.isDebugEnabled() && headers != null && headers.size() > 0) {
             var headersString = this.requestHeaderString(headers);
-            this.requestLog.debug(marker, "Requesting {}\n{}", operation, headersString);
+            this.requestLog.debug(marker, "HttpClient requesting {} {}\n{}", method, resolvedUri.getPath(), headersString);
         } else {
-            this.requestLog.info(marker, "Requesting {}", operation);
+            this.requestLog.info(marker, "HttpClient requesting {}", operation);
         }
     }
 
     @Override
     public void logResponse(String authority,
+                            String method,
                             String operation,
+                            URI resolvedUri,
                             long processingTime,
                             @Nullable Integer statusCode,
                             HttpResultCode resultCode,
@@ -105,14 +108,14 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
         if (responseLog.isTraceEnabled() && headers != null && headers.size() > 0 && body != null) {
             var headersString = this.responseHeaderString(headers);
             var bodyStr = this.responseBodyString(body);
-            responseLog.trace(marker, "Received {} from {}\n{}\n{}", statusCode, operation, headersString, bodyStr);
+            responseLog.trace(marker, "HttpClient received {} from {} {}\n{}\n{}", statusCode, method, resolvedUri.getPath(), headersString, bodyStr);
         } else if (responseLog.isDebugEnabled() && headers != null && headers.size() > 0) {
             var headersString = this.responseHeaderString(headers);
-            responseLog.debug(marker, "Received {} from {}\n{}", statusCode, operation, headersString);
+            responseLog.debug(marker, "HttpClient received {} from {} {}\n{}", statusCode, method, resolvedUri.getPath(), headersString);
         } else if (statusCode != null) {
-            responseLog.info(marker, "Received {} from {}", statusCode, operation);
+            responseLog.info(marker, "HttpClient received {} from {}", statusCode, operation);
         } else {
-            responseLog.info(marker, "Received no HttpResponse from {}", operation);
+            responseLog.info(marker, "HttpClient received No HttpResponse from {}", operation);
         }
     }
 
