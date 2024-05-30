@@ -1015,8 +1015,8 @@ public abstract class HttpServerTestKit {
 
     private void verifyResponse(String method, String route, int code, HttpResultCode resultCode, String host, String scheme, Supplier<? extends Throwable> throwable, LongSupplier duration, VerificationMode mode) {
         verify(metrics, mode).requestStarted(eq(method), eq(route), eq(host), eq(scheme));
-        verify(logger, mode).logStart(method, eq(method + " " + route), any(), any());
-        verify(logger, mode).logEnd(method, eq(method + " " + route), any(), eq(code), eq(resultCode), duration.getAsLong(), any(), throwable.get());
+        verify(logger, mode).logStart(eq(method), eq(method + " " + route), anyString(), any());
+        verify(logger, mode).logEnd(eq(method), eq(method + " " + route), anyString(), eq(code), eq(resultCode), duration.getAsLong(), any(), throwable.get());
         verify(metrics, mode).requestFinished(eq(method), eq(route), eq(host), eq(scheme), eq(code), Mockito.anyLong(), throwable.get());
     }
 
