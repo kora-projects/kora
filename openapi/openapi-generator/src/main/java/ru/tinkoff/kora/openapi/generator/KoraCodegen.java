@@ -47,7 +47,7 @@ import static org.openapitools.codegen.utils.StringUtils.*;
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class KoraCodegen extends DefaultCodegen {
 
-    private final Logger LOGGER = LoggerFactory.getLogger(KoraCodegen.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(KoraCodegen.class);
 
     public enum Mode {
         JAVA_CLIENT("java-client"),
@@ -131,6 +131,7 @@ public class KoraCodegen extends DefaultCodegen {
             var cliOptions = new ArrayList<CliOption>();
             cliOptions.add(CliOption.newString(CODEGEN_MODE, "Generation mode (one of java, reactive or kotlin)"));
             cliOptions.add(CliOption.newString(SECURITY_CONFIG_PREFIX, "Config prefix for security config parsers"));
+            cliOptions.add(CliOption.newString(PRIMARY_AUTH, "Specify primary HTTP client securityScheme if multiple are available for method"));
             cliOptions.add(CliOption.newString(CLIENT_CONFIG_PREFIX, "Generated client config prefix"));
             cliOptions.add(CliOption.newString(JSON_ANNOTATION, "Json annotation tag to place on body and other json related params"));
             cliOptions.add(CliOption.newString(CLIENT_TAGS, "Json containing http client tags configuration for apis"));
@@ -1637,11 +1638,23 @@ public class KoraCodegen extends DefaultCodegen {
                     op.vendorExtensions.put("authInterceptorTag", authInterceptorTag);
                 } else {
                     if (op.authMethods.size() == 1 || params.primaryAuth == null) {
+                        if(op.authMethods.size() > 1) {
+                            Set<String> secSchemes = op.authMethods.stream()
+                                .map(s -> s.name)
+                                .collect(Collectors.toSet());
+
+                            LOGGER.warn("Found multiple securitySchemes {} for {} {} it is recommended to specify preferred securityScheme property using `primaryAuth` property, or the first random will be used",
+                                secSchemes, op.httpMethod, op.path);
+                        }
+
                         var authName = camelize(toVarName(op.authMethods.get(0).name));
                         tags.add(upperCase(authName));
                         op.vendorExtensions.put("authInterceptorTag", authName);
                     } else {
-                        var authMethod = authMethods.stream().filter(a -> a.name.equals(params.primaryAuth)).findFirst().get();
+                        var authMethod = op.authMethods.stream()
+                            .filter(a -> a.name.equals(params.primaryAuth))
+                            .findFirst()
+                            .orElseThrow(() -> new IllegalArgumentException("Can't find HTTP client securitySchema named: " + params.primaryAuth));
                         var authName = camelize(toVarName(authMethod.name));
                         tags.add(upperCase(authName));
                         op.vendorExtensions.put("authInterceptorTag", authName);
