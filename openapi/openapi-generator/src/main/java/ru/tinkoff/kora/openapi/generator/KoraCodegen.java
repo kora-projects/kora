@@ -1654,7 +1654,7 @@ public class KoraCodegen extends DefaultCodegen {
                         var authMethod = op.authMethods.stream()
                             .filter(a -> a.name.equals(params.primaryAuth))
                             .findFirst()
-                            .orElseThrow(() -> new IllegalArgumentException("Can't find HTTP client securitySchema named: " + params.primaryAuth));
+                            .orElseThrow(() -> new IllegalArgumentException("Can't find OpenAPI securitySchema named: " + params.primaryAuth));
                         var authName = camelize(toVarName(authMethod.name));
                         tags.add(upperCase(authName));
                         op.vendorExtensions.put("authInterceptorTag", authName);
