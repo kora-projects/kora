@@ -1643,7 +1643,7 @@ public class KoraCodegen extends DefaultCodegen {
                                 .map(s -> s.name)
                                 .collect(Collectors.toSet());
 
-                            LOGGER.warn("Found multiple securitySchemes {} for {} {} it is recommended to specify preferred securityScheme property using `primaryAuth` property, or the first random will be used",
+                            LOGGER.warn("Found multiple securitySchemes {} for {} {} it is recommended to specify preferred securityScheme using `primaryAuth` property, or the first random will be used",
                                 secSchemes, op.httpMethod, op.path);
                         }
 
