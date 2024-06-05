@@ -29,33 +29,3 @@ jobs:
       with:
         files: |
           **/test-results/**/*.xml
-
-  notify:
-    runs-on: ubuntu-latest
-    needs: run-tests
-    steps:
-    - id: kora_changelog
-      run: |
-        KORA_CHANGELOG_TAG=1.1.2
-        KORA_CHANGELOG_TAG=${KORA_CHANGELOG_TAG//.}
-        echo "KORA_CHANGELOG_TAG=${KORA_CHANGELOG_TAG}" >> $GITHUB_OUTPUT
-
-    - name: Wait package available at Maven Central (80m)
-      shell: bash
-      run: sleep 80m
-
-    - name: Notify new release to Telegram
-#        KORA_CHANGELOG_TAG=${{ github.event.release.tag_name }}
-#        KORA_VERSION: ${{ github.event.release.tag_name }}
-      uses: appleboy/telegram-action@master
-      env:
-        KORA_VERSION: 1.1.2
-        KORA_CHANGELOG_TAG: ${{ steps.kora_changelog.outputs.KORA_CHANGELOG_TAG }}
-      with:
-        to: ${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}
-        token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        format: markdown
-        message: |
-          Вышла новая версия Kora: ${{ env.KORA_VERSION }}
-
-          Больше подробностей [тут](https://kora-projects.github.io/kora-docs/ru/changelog/changelog/#${{ env.KORA_CHANGELOG_TAG }})
