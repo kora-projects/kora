@@ -33,7 +33,7 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-    - name: Prepare release ENV
+    - name: Prepare release info
       id: kora_changelog
       run: |
 #        KORA_CHANGELOG_TAG=${{ github.event.release.tag_name }}
