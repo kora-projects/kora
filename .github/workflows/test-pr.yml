@@ -30,6 +30,9 @@ jobs:
         files: |
           **/test-results/**/*.xml
 
+  notify:
+    runs-on: ubuntu-latest
+    steps:
     - name: Prepare release ENV
       id: kora_changelog
       run: |
