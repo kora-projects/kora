@@ -29,6 +29,7 @@ jobs:
       with:
         files: |
           **/test-results/**/*.xml
+
     - name: Prepare release ENV
       id: kora_changelog
       run: |
@@ -36,6 +37,7 @@ jobs:
         KORA_CHANGELOG_TAG=1.1.2
         KORA_CHANGELOG_TAG=${KORA_CHANGELOG_TAG//.}
         echo "KORA_CHANGELOG_TAG=${KORA_CHANGELOG_TAG}" >> $GITHUB_OUTPUT
+
     - name: Notify new release to Telegram
       uses: appleboy/telegram-action@master
       env:
