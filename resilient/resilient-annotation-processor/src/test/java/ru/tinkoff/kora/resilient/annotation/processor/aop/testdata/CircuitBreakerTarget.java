@@ -45,7 +45,7 @@ public class CircuitBreakerTarget {
     }
 
     @CircuitBreaker("custom2")
-    public CompletionStage<String> getValueFuture() {
+    public CompletionStage<String> getValueStage() {
         if (alwaysFail)
             return CompletableFuture.failedFuture(new IllegalStateException("Failed"));
 
@@ -53,6 +53,14 @@ public class CircuitBreakerTarget {
     }
 
     @CircuitBreaker("custom3")
+    public CompletableFuture<String> getValueFuture() {
+        if (alwaysFail)
+            return CompletableFuture.failedFuture(new IllegalStateException("Failed"));
+
+        return CompletableFuture.completedFuture("OK");
+    }
+
+    @CircuitBreaker("custom4")
     public Mono<String> getValueMono() {
         if (alwaysFail)
             return Mono.error(new IllegalStateException("Failed"));
@@ -60,7 +68,7 @@ public class CircuitBreakerTarget {
         return Mono.just("OK");
     }
 
-    @CircuitBreaker("custom4")
+    @CircuitBreaker("custom5")
     public Flux<String> getValueFlux() {
         if (alwaysFail)
             return Flux.error(new IllegalStateException("Failed"));

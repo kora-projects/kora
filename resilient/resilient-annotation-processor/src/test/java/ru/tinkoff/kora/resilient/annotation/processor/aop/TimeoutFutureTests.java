@@ -21,12 +21,22 @@ class TimeoutFutureTests extends AppRunner {
     }
 
     @Test
+    void stageTimeout() {
+        // given
+        var service = getService();
+
+        // then
+        var e = assertThrows(CompletionException.class, () -> service.getValueStage().toCompletableFuture().join());
+        assertInstanceOf(TimeoutExhaustedException.class, e.getCause());
+    }
+
+    @Test
     void futureTimeout() {
         // given
         var service = getService();
 
         // then
-        var e = assertThrows(CompletionException.class, () -> service.getValueFuture().toCompletableFuture().join());
+        var e = assertThrows(CompletionException.class, () -> service.getValueFuture().join());
         assertInstanceOf(TimeoutExhaustedException.class, e.getCause());
     }
 }

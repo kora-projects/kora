@@ -47,7 +47,7 @@ public class RetryTarget {
     }
 
     @Retry("custom2")
-    public CompletionStage<String> retryFuture(String arg) {
+    public CompletionStage<String> retryStage(String arg) {
         return CompletableFuture.supplyAsync(() -> {
             logger.info("Retry Future executed for: {}", arg);
             if (retryAttempts.getAndDecrement() > 0) {
@@ -59,6 +59,18 @@ public class RetryTarget {
     }
 
     @Retry("custom3")
+    public CompletableFuture<String> retryFuture(String arg) {
+        return CompletableFuture.supplyAsync(() -> {
+            logger.info("Retry Future executed for: {}", arg);
+            if (retryAttempts.getAndDecrement() > 0) {
+                throw new IllegalStateException("Ops");
+            }
+
+            return arg;
+        });
+    }
+
+    @Retry("custom4")
     public Mono<String> retryMono(String arg) {
         return Mono.fromCallable(() -> {
             logger.info("Retry Mono executed for: {}", arg);
@@ -70,7 +82,7 @@ public class RetryTarget {
         });
     }
 
-    @Retry("custom4")
+    @Retry("custom5")
     public Flux<String> retryFlux(String arg) {
         return Flux.from(Mono.fromCallable(() -> {
             logger.info("Retry Flux executed for: {}", arg);

@@ -21,13 +21,13 @@ class CircuitBreakerFutureTests extends AppRunner {
     }
 
     @Test
-    void futureCircuitBreaker() {
+    void stageCircuitBreaker() {
         // given
         final CircuitBreakerTarget service = getService();
 
         // when
         try {
-            service.getValueFuture().toCompletableFuture().join();
+            service.getValueStage().toCompletableFuture().join();
             fail("Should not happen");
         } catch (CompletionException e) {
             assertInstanceOf(IllegalStateException.class, e.getCause());
@@ -35,7 +35,29 @@ class CircuitBreakerFutureTests extends AppRunner {
 
         // then
         try {
-            service.getValueFuture().toCompletableFuture().join();
+            service.getValueStage().toCompletableFuture().join();
+            fail("Should not happen");
+        } catch (CompletionException e) {
+            assertInstanceOf(CallNotPermittedException.class, e.getCause());
+        }
+    }
+
+    @Test
+    void futureCircuitBreaker() {
+        // given
+        final CircuitBreakerTarget service = getService();
+
+        // when
+        try {
+            service.getValueFuture().join();
+            fail("Should not happen");
+        } catch (CompletionException e) {
+            assertInstanceOf(IllegalStateException.class, e.getCause());
+        }
+
+        // then
+        try {
+            service.getValueFuture().join();
             fail("Should not happen");
         } catch (CompletionException e) {
             assertInstanceOf(CallNotPermittedException.class, e.getCause());
