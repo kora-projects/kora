@@ -39,8 +39,8 @@ jobs:
       run: |
 #        KORA_CHANGELOG_TAG=${{ github.event.release.tag_name }}
         KORA_CHANGELOG_TAG=1.1.2
-        KORA_CHANGELOG_TAG=${KORA_CHANGELOG_TAG//.}
-        echo "KORA_CHANGELOG_TAG=${KORA_CHANGELOG_TAG}" >> $GITHUB_OUTPUT
+#        KORA_CHANGELOG_TAG=${KORA_CHANGELOG_TAG//.}
+#        echo "KORA_CHANGELOG_TAG=${KORA_CHANGELOG_TAG}" >> $GITHUB_OUTPUT
 
 #    - name: Notify new release to Telegram
 #      uses: appleboy/telegram-action@master
