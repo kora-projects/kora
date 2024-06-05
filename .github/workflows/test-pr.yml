@@ -50,7 +50,8 @@ jobs:
       with:
         to: ${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}
         token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        format: markdown
         message: |
-          Вышла новая версия Kora: ${KORA_VERSION}
+          Вышла новая версия Kora: ${{ env.KORA_VERSION }}
 
-          Больше подробностей [тут](https://kora-projects.github.io/kora-docs/ru/changelog/changelog/#${KORA_CHANGELOG_TAG})
+          Больше подробностей [тут](https://kora-projects.github.io/kora-docs/ru/changelog/changelog/#${{ env.KORA_CHANGELOG_TAG }})
