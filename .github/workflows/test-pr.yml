@@ -40,9 +40,9 @@ jobs:
         KORA_CHANGELOG_TAG=${KORA_CHANGELOG_TAG//.}
         echo "KORA_CHANGELOG_TAG=${KORA_CHANGELOG_TAG}" >> $GITHUB_OUTPUT
 
-    - name: Wait package available at Maven Central
+    - name: Wait package available at Maven Central (80m)
       shell: bash
-      run: sleep 180s
+      run: sleep 80m
 
     - name: Notify new release to Telegram
 #        KORA_CHANGELOG_TAG=${{ github.event.release.tag_name }}
