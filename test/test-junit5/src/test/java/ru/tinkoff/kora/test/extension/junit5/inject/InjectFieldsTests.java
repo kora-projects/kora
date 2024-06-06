@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @KoraAppTest(TestApplication.class)
-public class InjectParameterTests {
+public class InjectFieldsTests {
 
     @TestComponent
     private TestComponent1 component1;
