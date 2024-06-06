@@ -3,18 +3,17 @@ package ru.tinkoff.kora.camunda.engine.transaction;
 import org.camunda.bpm.engine.impl.cfg.TransactionContext;
 import org.camunda.bpm.engine.impl.cfg.TransactionContextFactory;
 import org.camunda.bpm.engine.impl.interceptor.CommandContext;
-import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory;
 
 public final class KoraTransactionContextFactory implements TransactionContextFactory {
 
-    private final JdbcConnectionFactory jdbcConnectionFactory;
+    private final CamundaTransactionManager transactionManager;
 
-    public KoraTransactionContextFactory(JdbcConnectionFactory jdbcConnectionFactory) {
-        this.jdbcConnectionFactory = jdbcConnectionFactory;
+    public KoraTransactionContextFactory(CamundaTransactionManager transactionManager) {
+        this.transactionManager = transactionManager;
     }
 
     @Override
     public TransactionContext openTransactionContext(CommandContext commandContext) {
-        return new KoraTransactionContext(commandContext, jdbcConnectionFactory);
+        return new KoraTransactionContext(commandContext, transactionManager);
     }
 }

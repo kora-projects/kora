@@ -15,8 +15,8 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.camunda.rest.CamundaRestConfig;
+import ru.tinkoff.kora.common.util.TimeUtils;
 
-import java.time.Duration;
 import java.util.*;
 
 final class UndertowCamundaRestHttpHandler implements HttpHandler, Lifecycle, Wrapped<HttpHandler> {
@@ -65,7 +65,7 @@ final class UndertowCamundaRestHttpHandler implements HttpHandler, Lifecycle, Wr
     @Override
     public void init() throws Exception {
         logger.debug("Camunda Rest Handler (Undertow) configuring...");
-        final long started = System.nanoTime();
+        final long started = TimeUtils.started();
 
         final ResteasyDeployment deployment = new ResteasyDeploymentImpl();
         deployment.setApplication(application);
@@ -86,16 +86,16 @@ final class UndertowCamundaRestHttpHandler implements HttpHandler, Lifecycle, Wr
         root.addPrefixPath(camundaRestConfig.path(), deploymentManager.start());
         this.realhttpHandler = root;
 
-        logger.info("Camunda Rest Handler (Undertow) configured in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        logger.info("Camunda Rest Handler (Undertow) configured in {}", TimeUtils.tookForLogging(started));
     }
 
     @Override
     public void release() throws Exception {
         logger.debug("Camunda Rest Handler (Undertow) stopping...");
-        final long started = System.nanoTime();
+        final long started = TimeUtils.started();
 
         deploymentManager.stop();
 
-        logger.info("Camunda Rest Handler (Undertow) stopped in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        logger.info("Camunda Rest Handler (Undertow) stopped in {}", TimeUtils.tookForLogging(started));
     }
 }

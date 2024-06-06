@@ -14,13 +14,13 @@ import org.camunda.bpm.impl.juel.jakarta.el.ELResolver;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.camunda.engine.configurator.*;
 import ru.tinkoff.kora.camunda.engine.telemetry.*;
+import ru.tinkoff.kora.camunda.engine.transaction.CamundaTransactionManager;
+import ru.tinkoff.kora.camunda.engine.transaction.JdbcCamundaTransactionManager;
 import ru.tinkoff.kora.common.DefaultComponent;
-import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
-import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory;
 
 import javax.sql.DataSource;
 import java.util.Optional;
@@ -31,16 +31,19 @@ public interface CamundaEngineModule {
         return extractor.extract(config.get("camunda.engine"));
     }
 
-    @Tag(Camunda.class)
     @DefaultComponent
-    default DataSource camundaEngineDataSource(DataSource dataSource) {
-        return dataSource;
-    }
+    default CamundaDataSource camundaKoraDataSource(DataSource dataSource) {
+        return new CamundaDataSource() {
+            @Override
+            public CamundaTransactionManager transactionManager() {
+                return new JdbcCamundaTransactionManager(dataSource);
+            }
 
-    @Tag(Camunda.class)
-    @DefaultComponent
-    default JdbcConnectionFactory camundaEngineJdbcConnectionFactory(JdbcConnectionFactory jdbcConnectionFactory) {
-        return jdbcConnectionFactory;
+            @Override
+            public DataSource dataSource() {
+                return dataSource;
+            }
+        };
     }
 
     @DefaultComponent
@@ -126,27 +129,28 @@ public interface CamundaEngineModule {
     }
 
     @DefaultComponent
-    default KoraProcessEngineConfiguration camundaEngineKoraProcessEngineConfiguration(JobExecutor jobExecutor,
-                                                                                       TelemetryRegistry telemetryRegistry,
-                                                                                       IdGenerator idGenerator,
-                                                                                       JuelExpressionManager koraExpressionManager,
-                                                                                       ArtifactFactory artifactFactory,
-                                                                                       All<ProcessEnginePlugin> plugins,
-                                                                                       @Tag(Camunda.class) JdbcConnectionFactory jdbcConnectionFactory,
-                                                                                       @Tag(Camunda.class) DataSource dataSource,
-                                                                                       CamundaEngineConfig camundaEngineConfig,
-                                                                                       KoraResolverFactory componentResolverFactory,
-                                                                                       CamundaVersion camundaVersion) {
-        return new KoraProcessEngineConfiguration(jobExecutor, telemetryRegistry, idGenerator, koraExpressionManager, artifactFactory, plugins, jdbcConnectionFactory, dataSource, camundaEngineConfig, componentResolverFactory, camundaVersion);
+    default ProcessEngineConfiguration camundaEngineKoraProcessEngineConfiguration(JobExecutor jobExecutor,
+                                                                                   TelemetryRegistry telemetryRegistry,
+                                                                                   IdGenerator idGenerator,
+                                                                                   JuelExpressionManager koraExpressionManager,
+                                                                                   ArtifactFactory artifactFactory,
+                                                                                   All<ProcessEnginePlugin> plugins,
+                                                                                   CamundaDataSource camundaDataSource,
+                                                                                   CamundaEngineConfig camundaEngineConfig,
+                                                                                   KoraResolverFactory componentResolverFactory,
+                                                                                   CamundaVersion camundaVersion) {
+        return new KoraProcessEngineConfiguration(jobExecutor, telemetryRegistry, idGenerator, koraExpressionManager, artifactFactory, plugins, camundaDataSource, camundaEngineConfig, componentResolverFactory, camundaVersion);
     }
 
+    @Root
     @DefaultComponent
-    default KoraProcessEngine camundaEngineKoraProcessEngine(KoraProcessEngineConfiguration processEngineConfiguration) {
-        return new KoraProcessEngine(processEngineConfiguration);
+    default KoraProcessEngine camundaEngineKoraProcessEngine(ProcessEngineConfiguration processEngineConfiguration,
+                                                             All<ProcessEngineConfigurator> camundaConfigurators) {
+        return new KoraProcessEngine(processEngineConfiguration, camundaConfigurators);
     }
 
-    default ProcessEngineConfigurator camundaEngineKoraAdminUserConfigurator(CamundaEngineConfig camundaEngineConfig, @Tag(Camunda.class) JdbcConnectionFactory jdbcConnectionFactory) {
-        return new AdminUserProcessEngineConfigurator(camundaEngineConfig, jdbcConnectionFactory);
+    default ProcessEngineConfigurator camundaEngineKoraAdminUserConfigurator(CamundaEngineConfig camundaEngineConfig, CamundaDataSource camundaDataSource) {
+        return new AdminUserProcessEngineConfigurator(camundaEngineConfig, camundaDataSource);
     }
 
     default ProcessEngineConfigurator camundaEngineKoraFilterAllTaskConfigurator(CamundaEngineConfig camundaEngineConfig) {
@@ -161,15 +165,10 @@ public interface CamundaEngineModule {
         return new DeploymentProcessEngineConfigurator(camundaEngineConfig);
     }
 
-    default ProcessEngineConfigurator camundaEngineKoraProcessEngineTwoStageCamundaConfigurator(KoraProcessEngineConfiguration engineConfiguration,
+    default ProcessEngineConfigurator camundaEngineKoraProcessEngineTwoStageCamundaConfigurator(ProcessEngineConfiguration engineConfiguration,
                                                                                                 CamundaEngineConfig camundaEngineConfig,
                                                                                                 JobExecutor jobExecutor) {
-        return new StatementsProcessEngineConfigurator(engineConfiguration, camundaEngineConfig, jobExecutor);
-    }
-
-    @Root
-    default KoraProcessEngineConfigurator camundaEngineKoraProcessEngineConfigurator(ProcessEngine processEngine, All<ProcessEngineConfigurator> camundaConfigurators) {
-        return new KoraProcessEngineConfigurator(processEngine, camundaConfigurators);
+        return new StatementsKoraProcessEngineConfigurator(engineConfiguration, camundaEngineConfig, jobExecutor);
     }
 
     default RuntimeService camundaEngineRuntimeService(ProcessEngine processEngine) {

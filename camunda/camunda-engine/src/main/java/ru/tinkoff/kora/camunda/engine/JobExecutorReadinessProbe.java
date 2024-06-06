@@ -15,7 +15,7 @@ public final class JobExecutorReadinessProbe implements ReadinessProbe {
 
     @Nullable
     @Override
-    public ReadinessProbeFailure probe() throws Exception {
+    public ReadinessProbeFailure probe() {
         if (jobExecutor.isAutoActivate()) {
             return null;
         } else {

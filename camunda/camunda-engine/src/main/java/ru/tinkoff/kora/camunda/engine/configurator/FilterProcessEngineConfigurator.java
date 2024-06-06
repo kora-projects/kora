@@ -6,8 +6,7 @@ import org.camunda.bpm.engine.filter.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.camunda.engine.CamundaEngineConfig;
-
-import java.time.Duration;
+import ru.tinkoff.kora.common.util.TimeUtils;
 
 public final class FilterProcessEngineConfigurator implements ProcessEngineConfigurator {
 
@@ -23,7 +22,7 @@ public final class FilterProcessEngineConfigurator implements ProcessEngineConfi
     public void setup(ProcessEngine engine) {
         if (engineConfig.filter() != null && !engineConfig.filter().create().isBlank()) {
             logger.debug("Camunda Configurator filter creating...");
-            final long started = System.nanoTime();
+            final long started = TimeUtils.started();
 
             final String filterName = engineConfig.filter().create();
             FilterService filterService = engine.getFilterService();
@@ -31,7 +30,7 @@ public final class FilterProcessEngineConfigurator implements ProcessEngineConfi
             if (filter == null) {
                 filter = filterService.newTaskFilter(filterName);
                 filterService.saveFilter(filter);
-                logger.info("Camunda Configurator filter created in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+                logger.info("Camunda Configurator filter created in {}", TimeUtils.tookForLogging(started));
             } else {
                 logger.debug("Camunda Configurator filter already exist");
             }

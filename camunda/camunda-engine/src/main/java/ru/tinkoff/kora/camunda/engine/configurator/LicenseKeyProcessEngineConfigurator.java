@@ -7,10 +7,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.camunda.engine.CamundaEngineConfig;
 import ru.tinkoff.kora.camunda.engine.CamundaVersion;
+import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.Scanner;
 
 public final class LicenseKeyProcessEngineConfigurator implements ProcessEngineConfigurator {
@@ -31,7 +31,7 @@ public final class LicenseKeyProcessEngineConfigurator implements ProcessEngineC
     public void setup(ProcessEngine engine) {
         if (config.licensePath() != null) {
             logger.debug("Camunda Configurator licence key registering...");
-            final long started = System.nanoTime();
+            final long started = TimeUtils.started();
 
             ManagementService managementService = engine.getManagementService();
             if (!camundaVersion.isEnterprise()) {
@@ -47,7 +47,7 @@ public final class LicenseKeyProcessEngineConfigurator implements ProcessEngineC
             String licenseKey = readLicenseKeyFromUrl(config.licensePath());
             if (licenseKey != null) {
                 managementService.setLicenseKey(licenseKey);
-                logger.info("Camunda Configurator licence key registered in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+                logger.info("Camunda Configurator licence key registered in {}", TimeUtils.tookForLogging(started));
             } else {
                 logger.warn("Camunda Configurator can't find license key, register license in the Camunda Cockpit manually");
             }

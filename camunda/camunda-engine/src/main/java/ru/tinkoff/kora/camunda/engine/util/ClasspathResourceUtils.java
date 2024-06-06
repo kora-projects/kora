@@ -16,6 +16,10 @@ public final class ClasspathResourceUtils {
 
     private ClasspathResourceUtils() {}
 
+    public static Optional<Resource> findResource(String path) {
+        return findResources(path).stream().findFirst();
+    }
+
     public static List<Resource> findResources(Collection<String> paths) {
         return paths.stream()
             .distinct()

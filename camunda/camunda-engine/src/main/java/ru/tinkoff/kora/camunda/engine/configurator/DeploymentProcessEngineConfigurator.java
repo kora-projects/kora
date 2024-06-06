@@ -8,10 +8,10 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.camunda.engine.CamundaEngineConfig;
 import ru.tinkoff.kora.camunda.engine.util.ClasspathResourceUtils;
 import ru.tinkoff.kora.camunda.engine.util.Resource;
+import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -42,7 +42,7 @@ public final class DeploymentProcessEngineConfigurator implements ProcessEngineC
     private void deployProcessModels(CamundaEngineConfig.DeploymentConfig deploymentConfig, RepositoryService repositoryService) throws IOException {
         final List<String> locations = deploymentConfig.resources();
         logger.debug("Camunda Configurator deploying {} resources...", locations);
-        final long started = System.nanoTime();
+        final long started = TimeUtils.started();
 
         final Set<String> normalizedLocations = locations.stream()
             .map(location -> {
@@ -76,7 +76,7 @@ public final class DeploymentProcessEngineConfigurator implements ProcessEngineC
 
             if (deploy) {
                 builder.deploy();
-                logger.info("Camunda Configurator deployed {} resources in {}", resources, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+                logger.info("Camunda Configurator deployed {} resources in {}", resources, TimeUtils.tookForLogging(started));
             }
         }
     }

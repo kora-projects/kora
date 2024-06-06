@@ -77,11 +77,11 @@ public interface CamundaEngineConfig {
         }
 
         default Integer maxPoolSize() {
-            return 100;
+            return 25;
         }
 
         default Integer queueSize() {
-            return 25;
+            return 5;
         }
 
         default Integer maxJobsPerAcquisition() {

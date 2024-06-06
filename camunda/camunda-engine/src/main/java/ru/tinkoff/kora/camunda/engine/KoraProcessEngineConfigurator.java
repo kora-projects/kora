@@ -5,8 +5,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.camunda.engine.configurator.ProcessEngineConfigurator;
+import ru.tinkoff.kora.common.util.TimeUtils;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -26,7 +26,7 @@ public final class KoraProcessEngineConfigurator implements Lifecycle {
     @Override
     public void init() {
         logger.debug("Camunda Engine configuring...");
-        final long started = System.nanoTime();
+        final long started = TimeUtils.started();
 
         var setups = camundaConfigurators.stream()
             .map(c -> CompletableFuture.runAsync(() -> {
@@ -39,7 +39,7 @@ public final class KoraProcessEngineConfigurator implements Lifecycle {
             .toArray(CompletableFuture[]::new);
 
         CompletableFuture.allOf(setups).join();
-        logger.info("Camunda Engine configured in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        logger.info("Camunda Engine configured in {}", TimeUtils.tookForLogging(started));
     }
 
     @Override

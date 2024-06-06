@@ -26,9 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.camunda.engine.transaction.KoraTransactionContextFactory;
 import ru.tinkoff.kora.camunda.engine.transaction.KoraTransactionInterceptor;
-import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory;
 
-import javax.sql.DataSource;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -43,7 +41,7 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
     private final JobExecutor jobExecutor;
     private final TelemetryRegistry telemetryRegistry;
     private final KoraResolverFactory componentResolverFactory;
-    private final JdbcConnectionFactory connectionFactory;
+    private final CamundaDataSource camundaDataSource;
     private final CamundaVersion camundaVersion;
     private final CamundaEngineConfig engineConfig;
     private final List<ProcessEnginePlugin> plugins;
@@ -54,8 +52,7 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
                                           JuelExpressionManager koraExpressionManager,
                                           ArtifactFactory artifactFactory,
                                           List<ProcessEnginePlugin> plugins,
-                                          JdbcConnectionFactory jdbcConnectionFactory,
-                                          DataSource dataSource,
+                                          CamundaDataSource camundaDataSource,
                                           CamundaEngineConfig engineConfig,
                                           KoraResolverFactory componentResolverFactory,
                                           CamundaVersion camundaVersion) {
@@ -66,12 +63,12 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
         this.artifactFactory = artifactFactory;
         this.plugins = plugins;
         this.engineConfig = engineConfig;
-        this.connectionFactory = jdbcConnectionFactory;
+        this.camundaDataSource = camundaDataSource;
         this.camundaVersion = camundaVersion;
 
         setDefaultCharset(StandardCharsets.UTF_8);
 
-        setDataSource(dataSource);
+        setDataSource(camundaDataSource.dataSource());
         setTransactionsExternallyManaged(true);
         setIdGenerator(idGenerator);
         setExpressionManager(koraExpressionManager);
@@ -87,7 +84,7 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
     @Override
     protected void initTransactionContextFactory() {
         if (transactionContextFactory == null) {
-            transactionContextFactory = new KoraTransactionContextFactory(connectionFactory);
+            transactionContextFactory = new KoraTransactionContextFactory(camundaDataSource.transactionManager());
         }
     }
 
@@ -118,7 +115,7 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
             new LogInterceptor(),
             new CommandCounterInterceptor(this),
             new ProcessApplicationContextInterceptor(this),
-            new KoraTransactionInterceptor(connectionFactory),
+            new KoraTransactionInterceptor(camundaDataSource.transactionManager(), requiresNew),
             new CommandContextInterceptor(commandContextFactory, this, requiresNew)
         );
     }
@@ -127,16 +124,16 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
         setMetricsEnabled(Objects.requireNonNullElse(engineConfig.telemetry().metrics().enabled(), true));
         setTaskMetricsEnabled(Objects.requireNonNullElse(engineConfig.telemetry().metrics().enabled(), true));
 
-//        if (engineConfig.telemetry().engineTelemetryEnabled()) {
-//            setTelemetryRegistry(telemetryRegistry);
-//            setInitializeTelemetry(engineConfig.telemetry().engineTelemetryEnabled());
-//            setTelemetryReporterActivate(engineConfig.telemetry().engineTelemetryReporterEnabled());
-//
-//            if (camundaVersion.version() == null) {
-//                logger.warn("Disabling TelemetryReporter because required information 'Camunda Version' is not available.");
-//                setTelemetryReporterActivate(false);
-//            }
-//        }
+        if (engineConfig.telemetry().engineTelemetryEnabled()) {
+            setTelemetryRegistry(telemetryRegistry);
+            setInitializeTelemetry(engineConfig.telemetry().engineTelemetryEnabled());
+            setTelemetryReporterActivate(engineConfig.telemetry().engineTelemetryReporterEnabled());
+
+            if (camundaVersion.version() == null) {
+                logger.warn("Disabling TelemetryReporter because required information 'Camunda Version' is not available.");
+                setTelemetryReporterActivate(false);
+            }
+        }
     }
 
     protected void configureDefaultValues() {

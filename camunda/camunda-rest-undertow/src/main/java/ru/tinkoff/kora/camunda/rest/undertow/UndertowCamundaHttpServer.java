@@ -12,8 +12,8 @@ import ru.tinkoff.kora.camunda.rest.telemetry.CamundaRestTelemetry;
 import ru.tinkoff.kora.camunda.rest.telemetry.CamundaRestTelemetryFactory;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
+import ru.tinkoff.kora.common.util.TimeUtils;
 
-import java.time.Duration;
 import java.util.concurrent.atomic.AtomicReference;
 
 final class UndertowCamundaHttpServer implements Lifecycle, ReadinessProbe {
@@ -55,7 +55,7 @@ final class UndertowCamundaHttpServer implements Lifecycle, ReadinessProbe {
     public void init() {
         if (this.config.get().enabled()) {
             logger.debug("{} HTTP Server (Undertow) starting...", name);
-            final long started = System.nanoTime();
+            final long started = TimeUtils.started();
             this.gracefulShutdown.start();
             this.undertow = Undertow.builder()
                 .addHttpListener(this.config.get().port(), "0.0.0.0", this.gracefulShutdown)
@@ -63,7 +63,7 @@ final class UndertowCamundaHttpServer implements Lifecycle, ReadinessProbe {
 
             this.undertow.start();
             this.state.set(HttpServerState.RUN);
-            logger.info("{} HTTP Server (Undertow) started in {}", name, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+            logger.info("{} HTTP Server (Undertow) started in {}", name, TimeUtils.tookForLogging(started));
         }
     }
 
@@ -77,7 +77,7 @@ final class UndertowCamundaHttpServer implements Lifecycle, ReadinessProbe {
                 // ignore
             }
             logger.debug("{} HTTP Server (Undertow) stopping...", name);
-            final long started = System.nanoTime();
+            final long started = TimeUtils.started();
             this.gracefulShutdown.shutdown();
             try {
                 logger.debug("{} HTTP Server (Undertow) awaiting graceful shutdown...", name);
@@ -88,7 +88,7 @@ final class UndertowCamundaHttpServer implements Lifecycle, ReadinessProbe {
 
             this.undertow.stop();
             this.undertow = null;
-            logger.info("{} HTTP Server (Undertow) stopped in {}", name, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+            logger.info("{} HTTP Server (Undertow) stopped in {}", name, TimeUtils.tookForLogging(started));
         }
     }
 

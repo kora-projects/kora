@@ -10,10 +10,9 @@ import org.camunda.bpm.engine.identity.User;
 import org.camunda.bpm.engine.impl.persistence.entity.AuthorizationEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.tinkoff.kora.camunda.engine.CamundaDataSource;
 import ru.tinkoff.kora.camunda.engine.CamundaEngineConfig;
-import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory;
-
-import java.time.Duration;
+import ru.tinkoff.kora.common.util.TimeUtils;
 
 import static org.camunda.bpm.engine.authorization.Authorization.ANY;
 import static org.camunda.bpm.engine.authorization.Authorization.AUTH_TYPE_GRANT;
@@ -26,22 +25,23 @@ public final class AdminUserProcessEngineConfigurator implements ProcessEngineCo
     private static final Logger logger = LoggerFactory.getLogger(AdminUserProcessEngineConfigurator.class);
 
     private final CamundaEngineConfig.AdminConfig adminConfig;
-    private final JdbcConnectionFactory connectionFactory;
+    private final CamundaDataSource camundaDataSource;
 
-    public AdminUserProcessEngineConfigurator(CamundaEngineConfig camundaEngineConfig, JdbcConnectionFactory connectionFactory) {
+    public AdminUserProcessEngineConfigurator(CamundaEngineConfig camundaEngineConfig,
+                                              CamundaDataSource camundaDataSource) {
         this.adminConfig = camundaEngineConfig.admin();
-        this.connectionFactory = connectionFactory;
+        this.camundaDataSource = camundaDataSource;
     }
 
     @Override
     public void setup(ProcessEngine engine) {
         if (adminConfig != null) {
             logger.debug("Camunda Configurator Admin user creating...");
-            final long started = System.nanoTime();
+            final long started = TimeUtils.started();
 
             IdentityService identityService = engine.getIdentityService();
             AuthorizationService authorizationService = engine.getAuthorizationService();
-            connectionFactory.inTx(connection -> {
+            camundaDataSource.transactionManager().inNewTx(() -> {
                 if (!userAlreadyExists(identityService, adminConfig.id())) {
                     createUser(identityService);
 
@@ -51,7 +51,7 @@ public final class AdminUserProcessEngineConfigurator implements ProcessEngineCo
 
                     createAdminGroupAuthorizations(authorizationService);
                     identityService.createMembership(adminConfig.id(), CAMUNDA_ADMIN);
-                    logger.info("Camunda Configurator Admin user created in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+                    logger.info("Camunda Configurator Admin user created in {}", TimeUtils.tookForLogging(started));
                 } else {
                     logger.debug("Camunda Configurator Admin user already exist");
                 }

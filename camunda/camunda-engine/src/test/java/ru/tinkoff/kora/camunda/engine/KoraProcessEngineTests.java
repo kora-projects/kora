@@ -1,9 +1,12 @@
 package ru.tinkoff.kora.camunda.engine;
 
+import org.camunda.bpm.engine.ProcessEngineConfiguration;
 import org.camunda.bpm.engine.impl.jobexecutor.JobExecutor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import ru.tinkoff.kora.application.graph.All;
+import ru.tinkoff.kora.camunda.engine.transaction.CamundaTransactionManager;
+import ru.tinkoff.kora.camunda.engine.transaction.JdbcCamundaTransactionManager;
 import ru.tinkoff.kora.database.common.telemetry.DefaultDataBaseTelemetryFactory;
 import ru.tinkoff.kora.database.jdbc.$JdbcDatabaseConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.database.jdbc.JdbcDatabase;
@@ -11,6 +14,7 @@ import ru.tinkoff.kora.telemetry.common.*;
 import ru.tinkoff.kora.test.postgres.PostgresParams;
 import ru.tinkoff.kora.test.postgres.PostgresTestContainer;
 
+import javax.sql.DataSource;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.List;
@@ -41,33 +45,43 @@ public class KoraProcessEngineTests implements CamundaEngineModule {
 
             KoraDelegateWrapperFactory koraDelegateWrapperFactory = koraJavaDelegateTelemetryWrapper(null, null);
             JobExecutor jobExecutor = camundaEngineKoraJobExecutor(config);
-            KoraProcessEngineConfiguration koraProcessEngineConfiguration = camundaEngineKoraProcessEngineConfiguration(
+
+            CamundaDataSource camundaDataSource = new CamundaDataSource() {
+
+                @Override
+                public CamundaTransactionManager transactionManager() {
+                    return new JdbcCamundaTransactionManager(jdbc.value());
+                }
+
+                @Override
+                public DataSource dataSource() {
+                    return jdbc.value();
+                }
+            };
+
+            ProcessEngineConfiguration koraProcessEngineConfiguration = camundaEngineKoraProcessEngineConfiguration(
                 jobExecutor,
                 camundaEngineKoraTelemetryRegistry(null),
                 camundaEngineIdGenerator(),
                 camundaEngineKoraExpressionManager(camundaEngineKoraELResolver(koraDelegateWrapperFactory, All.of(), All.of())),
                 camundaEngineKoraArtifactFactory(koraDelegateWrapperFactory, All.of(), All.of()),
                 All.of(),
-                jdbc,
-                jdbc.value(),
+                camundaDataSource,
                 config,
                 camundaEngineKoraComponentResolverFactory(koraDelegateWrapperFactory, All.of(), All.of()),
                 camundaEnginePackageVersion()
             );
 
-            KoraProcessEngine koraProcessEngine = camundaEngineKoraProcessEngine(koraProcessEngineConfiguration);
-            try {
-                koraProcessEngine.init();
-
-                KoraProcessEngineConfigurator trigger = camundaEngineKoraProcessEngineConfigurator(koraProcessEngine.value(), All.of(
+            KoraProcessEngine koraProcessEngine = camundaEngineKoraProcessEngine(koraProcessEngineConfiguration,
+                All.of(
                     camundaEngineKoraProcessEngineTwoStageCamundaConfigurator(koraProcessEngineConfiguration, config, jobExecutor),
-                    camundaEngineKoraAdminUserConfigurator(config, jdbc),
+                    camundaEngineKoraAdminUserConfigurator(config, camundaDataSource),
                     camundaEngineKoraLicenseKeyConfigurator(config, camundaEnginePackageVersion()),
                     camundaEngineKoraFilterAllTaskConfigurator(config),
                     camundaEngineKoraResourceDeploymentConfigurator(config)
                 ));
-
-                trigger.init();
+            try {
+                koraProcessEngine.init();
             } catch (Exception e) {
                 throw new IllegalStateException(e);
             } finally {
@@ -97,32 +111,42 @@ public class KoraProcessEngineTests implements CamundaEngineModule {
 
             KoraDelegateWrapperFactory koraDelegateWrapperFactory = koraJavaDelegateTelemetryWrapper(null, null);
             JobExecutor jobExecutor = camundaEngineKoraJobExecutor(config);
-            KoraProcessEngineConfiguration koraProcessEngineConfiguration = camundaEngineKoraProcessEngineConfiguration(
+
+            CamundaDataSource camundaDataSource = new CamundaDataSource() {
+
+                @Override
+                public CamundaTransactionManager transactionManager() {
+                    return new JdbcCamundaTransactionManager(jdbc.value());
+                }
+
+                @Override
+                public DataSource dataSource() {
+                    return jdbc.value();
+                }
+            };
+
+            ProcessEngineConfiguration koraProcessEngineConfiguration = camundaEngineKoraProcessEngineConfiguration(
                 jobExecutor,
                 camundaEngineKoraTelemetryRegistry(null),
                 camundaEngineIdGenerator(),
                 camundaEngineKoraExpressionManager(camundaEngineKoraELResolver(koraDelegateWrapperFactory, All.of(), All.of())),
                 camundaEngineKoraArtifactFactory(koraDelegateWrapperFactory, All.of(), All.of()),
                 All.of(),
-                jdbc,
-                jdbc.value(),
+                camundaDataSource,
                 config,
                 camundaEngineKoraComponentResolverFactory(koraDelegateWrapperFactory, All.of(), All.of()),
                 camundaEnginePackageVersion()
             );
 
-            KoraProcessEngine koraProcessEngine = camundaEngineKoraProcessEngine(koraProcessEngineConfiguration);
-            try {
-                koraProcessEngine.init();
-
-                KoraProcessEngineConfigurator trigger = camundaEngineKoraProcessEngineConfigurator(koraProcessEngine.value(), All.of(
-                    camundaEngineKoraAdminUserConfigurator(config, jdbc),
+            KoraProcessEngine koraProcessEngine = camundaEngineKoraProcessEngine(koraProcessEngineConfiguration,
+                All.of(
+                    camundaEngineKoraAdminUserConfigurator(config, camundaDataSource),
                     camundaEngineKoraLicenseKeyConfigurator(config, camundaEnginePackageVersion()),
                     camundaEngineKoraFilterAllTaskConfigurator(config),
                     camundaEngineKoraResourceDeploymentConfigurator(config)
                 ));
-
-                trigger.init();
+            try {
+                koraProcessEngine.init();
             } catch (Exception e) {
                 throw new IllegalStateException(e);
             } finally {
