@@ -40,11 +40,11 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
     }
 
     record TelemetryContextData(long startTime, String method, String operation, String host, String scheme, String authority, String target) {
-        public TelemetryContextData(HttpClientRequest request) {
+        public TelemetryContextData(HttpClientRequest request, String operation) {
             this(
                 System.nanoTime(),
                 request.method(),
-                DefaultHttpClientTelemetry.operation(request.method(), request.uriTemplate(), request.uri()),
+                operation,
                 request.uri().getHost(),
                 request.uri().getScheme(),
                 request.uri().getAuthority(),
@@ -72,12 +72,16 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         if (!this.isEnabled()) {
             return null;
         }
-        var data = new TelemetryContextData(request);
 
         var method = request.method();
-        var operation = data.operation();
-        var authority = data.authority();
         var resolvedUri = request.uri().toString();
+
+        final boolean isOperationRequired = logger != null && (logger.logRequest() || logger.logResponse());
+        final String operation = isOperationRequired
+            ? DefaultHttpClientTelemetry.operation(request.method(), request.uriTemplate(), request.uri())
+            : null;
+        var data = new TelemetryContextData(request, operation);
+        var authority = data.authority();
 
         var createSpanResult = tracing == null ? null : tracing.createSpan(ctx, request);
         var headers = request.headers();

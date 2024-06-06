@@ -64,12 +64,12 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
         if (this.requestLog.isTraceEnabled() && headers != null && headers.size() > 0 && body != null) {
             var headersString = this.requestHeaderString(headers);
             var bodyStr = this.requestBodyString(body);
-            this.requestLog.trace(marker, "Requesting {}\n{}\n{}", operation, headersString, bodyStr);
+            this.requestLog.trace(marker, "HttpClient requesting {}\n{}\n{}", operation, headersString, bodyStr);
         } else if (this.requestLog.isDebugEnabled() && headers != null && headers.size() > 0) {
             var headersString = this.requestHeaderString(headers);
-            this.requestLog.debug(marker, "Requesting {}\n{}", operation, headersString);
+            this.requestLog.debug(marker, "HttpClient requesting {}\n{}", operation, headersString);
         } else {
-            this.requestLog.info(marker, "Requesting {}", operation);
+            this.requestLog.info(marker, "HttpClient requesting {}", operation);
         }
     }
 
@@ -105,14 +105,14 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
         if (responseLog.isTraceEnabled() && headers != null && headers.size() > 0 && body != null) {
             var headersString = this.responseHeaderString(headers);
             var bodyStr = this.responseBodyString(body);
-            responseLog.trace(marker, "Received {} from {}\n{}\n{}", statusCode, operation, headersString, bodyStr);
+            responseLog.trace(marker, "HttpClient received {} from {}\n{}\n{}", statusCode, operation, headersString, bodyStr);
         } else if (responseLog.isDebugEnabled() && headers != null && headers.size() > 0) {
             var headersString = this.responseHeaderString(headers);
-            responseLog.debug(marker, "Received {} from {}\n{}", statusCode, operation, headersString);
+            responseLog.debug(marker, "HttpClient received {} from {}\n{}", statusCode, operation, headersString);
         } else if (statusCode != null) {
-            responseLog.info(marker, "Received {} from {}", statusCode, operation);
+            responseLog.info(marker, "HttpClient received {} from {}", statusCode, operation);
         } else {
-            responseLog.info(marker, "Received no HttpResponse from {}", operation);
+            responseLog.info(marker, "HttpClient received No HttpResponse from {}", operation);
         }
     }
 
