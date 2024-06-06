@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Graph;
 import ru.tinkoff.kora.application.graph.Node;
+import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.util.TimeUtils;
 
@@ -19,7 +20,6 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
@@ -195,7 +195,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
         var testInstance = context.getTestInstance()
             .map(inst -> {
-                if(inst.getClass().isAnnotationPresent(Nested.class)) {
+                if (inst.getClass().isAnnotationPresent(Nested.class)) {
                     return Arrays.stream(inst.getClass().getDeclaredFields())
                         .filter(f -> f.getType().equals(metadata.testClass()))
                         .findFirst()
@@ -247,7 +247,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
         var koraTestContext = getKoraTestContext(context);
         final boolean isReady = koraTestContext.metadata != null && koraTestContext.graph != null;
-        if(!isReady) {
+        if (!isReady) {
             if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_METHOD) {
                 logger.info("@KoraAppTest test method '{}' setup started...", getTestMethodName(context));
             } else {
@@ -265,7 +265,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
         }
 
-        if(!isReady) {
+        if (!isReady) {
             if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_METHOD) {
                 logger.info("@KoraAppTest test method '{}' setup took: {}", getTestMethodName(context), TimeUtils.tookForLogging(started));
             } else {
@@ -348,7 +348,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         var koraTestContext = getInitializedKoraTestContext(InitializeOrigin.CONSTRUCTOR, context);
         var graphCandidate = getGraphCandidate(parameterContext);
 
-        if(parameterContext.getDeclaringExecutable() instanceof Constructor<?>) {
+        if (parameterContext.getDeclaringExecutable() instanceof Constructor<?>) {
             logger.debug("Looking for test class '{}' constructor parameter '{}' inject candidate: {}",
                 getTestClassName(context), parameterContext.getParameter().getName(), graphCandidate);
         } else {
@@ -562,6 +562,14 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                     } else if (Arrays.equals(candidate.tagsAsArray(), node.tags())) {
                         objects.add(object);
                     }
+                } else if(object instanceof Wrapped<?> wo && clazz.isInstance(wo.value())) {
+                    if (candidate.tags().isEmpty() && node.tags().length == 0) {
+                        objects.add(wo.value());
+                    } else if (candidate.tags().size() == 1 && candidate.tags().get(0).getCanonicalName().equals("ru.tinkoff.kora.common.Tag.Any")) {
+                        objects.add(wo.value());
+                    } else if (Arrays.equals(candidate.tagsAsArray(), node.tags())) {
+                        objects.add(wo.value());
+                    }
                 }
             }
             if (objects.size() == 1) {
@@ -577,13 +585,20 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             for (var node : graph.graphDraw().getNodes()) {
                 var object = graph.refreshableGraph().get(node);
                 if (clazz.isInstance(object) && doesExtendOrImplement(object.getClass(), parameterizedType)) {
-
                     if (candidate.tags().isEmpty() && node.tags().length == 0) {
                         objects.add(object);
                     } else if (candidate.tags().size() == 1 && candidate.tags().get(0).getCanonicalName().equals("ru.tinkoff.kora.common.Tag.Any")) {
                         objects.add(object);
                     } else if (Arrays.equals(candidate.tagsAsArray(), node.tags())) {
                         objects.add(object);
+                    }
+                } else if (object instanceof Wrapped<?> wo && clazz.isInstance(wo.value()) && doesExtendOrImplement(object.getClass(), parameterizedType)) {
+                    if (candidate.tags().isEmpty() && node.tags().length == 0) {
+                        objects.add(wo.value());
+                    } else if (candidate.tags().size() == 1 && candidate.tags().get(0).getCanonicalName().equals("ru.tinkoff.kora.common.Tag.Any")) {
+                        objects.add(wo.value());
+                    } else if (Arrays.equals(candidate.tagsAsArray(), node.tags())) {
+                        objects.add(wo.value());
                     }
                 }
             }

@@ -12,7 +12,7 @@ import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent12;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @KoraAppTest(TestApplication.class)
-public class InjectFieldTests {
+public class InjectMethodArgumentsTests {
 
     @BeforeEach
     void beforeEach(@TestComponent TestComponent1 component1) {

@@ -71,17 +71,17 @@ public final class KoraGraphModification {
     }
 
     /**
-     * Component that should replace existing one with new one
+     * Component that should replace existing one with new one AND keeps its dependencies in graph
      */
     @Nonnull
     public <T> KoraGraphModification replaceComponent(@Nonnull Type typeToReplace,
                                                       @Nonnull Supplier<? extends T> replacementSupplier) {
-        modifications.add(new GraphReplacement<T>(g -> replacementSupplier.get(), new GraphCandidate(typeToReplace)));
+        modifications.add(new GraphReplacementWithDeps<T>(g -> replacementSupplier.get(), new GraphCandidate(typeToReplace)));
         return this;
     }
 
     /**
-     * Component that should replace existing one with new one
+     * Component that should replace existing one with new one AND keeps its dependencies in graph
      */
     @Nonnull
     public <T> KoraGraphModification replaceComponent(@Nonnull Type typeToReplace,
@@ -90,23 +90,23 @@ public final class KoraGraphModification {
         if (tags.isEmpty()) {
             return replaceComponent(typeToReplace, replacementSupplier);
         } else {
-            modifications.add(new GraphReplacement<T>(g -> replacementSupplier.get(), new GraphCandidate(typeToReplace, tags)));
+            modifications.add(new GraphReplacementWithDeps<T>(g -> replacementSupplier.get(), new GraphCandidate(typeToReplace, tags)));
             return this;
         }
     }
 
     /**
-     * Component that should replace existing one with new one
+     * Component that should replace existing one with new one AND keeps its dependencies in graph
      */
     @Nonnull
     public <T> KoraGraphModification replaceComponent(@Nonnull Type typeToReplace,
                                                       @Nonnull Function<KoraAppGraph, ? extends T> replacementSupplier) {
-        modifications.add(new GraphReplacement<T>(replacementSupplier, new GraphCandidate(typeToReplace)));
+        modifications.add(new GraphReplacementWithDeps<T>(replacementSupplier, new GraphCandidate(typeToReplace)));
         return this;
     }
 
     /**
-     * Component that should replace existing one with new one
+     * Component that should replace existing one with new one AND keeps its dependencies in graph
      */
     @Nonnull
     public <T> KoraGraphModification replaceComponent(@Nonnull Type typeToReplace,
@@ -115,7 +115,32 @@ public final class KoraGraphModification {
         if (tags.isEmpty()) {
             return replaceComponent(typeToReplace, replacementSupplier);
         } else {
-            modifications.add(new GraphReplacement<>(replacementSupplier, new GraphCandidate(typeToReplace, tags)));
+            modifications.add(new GraphReplacementWithDeps<>(replacementSupplier, new GraphCandidate(typeToReplace, tags)));
+            return this;
+        }
+    }
+
+    /**
+     * Component that should replace existing one with Mock AND all real component dependencies removed for graph
+     */
+    @Nonnull
+    public <T> KoraGraphModification mockComponent(@Nonnull Type typeToMock,
+                                                   @Nonnull Supplier<? extends T> replacementSupplier) {
+        modifications.add(new GraphReplacementNoDeps<T>(g -> replacementSupplier.get(), new GraphCandidate(typeToMock)));
+        return this;
+    }
+
+    /**
+     * Component that should replace existing one with Mock AND all real component dependencies removed for graph
+     */
+    @Nonnull
+    public <T> KoraGraphModification mockComponent(@Nonnull Type typeToMock,
+                                                   @Nonnull List<Class<?>> tags,
+                                                   @Nonnull Supplier<? extends T> replacementSupplier) {
+        if (tags.isEmpty()) {
+            return mockComponent(typeToMock, replacementSupplier);
+        } else {
+            modifications.add(new GraphReplacementNoDeps<T>(g -> replacementSupplier.get(), new GraphCandidate(typeToMock, tags)));
             return this;
         }
     }
