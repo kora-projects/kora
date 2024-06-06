@@ -34,11 +34,11 @@ public final class Slf4jHttpServerLogger implements HttpServerLogger {
             gen.writeEndObject();
         });
 
-        if (log.isDebugEnabled() && headers != null && !headers.isEmpty()) {
+        if (log.isDebugEnabled() && headers != null && headers.size() > 0) {
             var headersString = HttpHeaders.toString(headers);
-            log.debug(marker, "HttpServer received for {}\n{}", operation, headersString);
+            log.debug(marker, "HttpServer received request for {}\n{}", operation, headersString);
         } else {
-            log.info(marker, "HttpServer received for {}", operation);
+            log.info(marker, "HttpServer received request for {}", operation);
         }
     }
 
@@ -66,13 +66,13 @@ public final class Slf4jHttpServerLogger implements HttpServerLogger {
             gen.writeEndObject();
         });
 
-        if (log.isDebugEnabled() && headers != null && !headers.isEmpty()) {
+        if (log.isDebugEnabled() && headers != null && headers.size() > 0) {
             var headersString = HttpHeaders.toString(headers);
             if (exception != null) {
                 if (this.logStacktrace) {
-                    log.warn(marker, "HttpServer processing error {} for {}\n{}", statusCode, operation, headersString, exception);
+                    log.warn(marker, "HttpServer responded error {} for {}\n{}", statusCode, operation, headersString, exception);
                 } else {
-                    log.warn(marker, "HttpServer processing error {} for {} due to: {} \n{}", statusCode, operation, exception.getMessage(), headersString);
+                    log.warn(marker, "HttpServer responded error {} for {} due to: {} \n{}", statusCode, operation, exception.getMessage(), headersString);
                 }
             } else {
                 log.debug(marker, "HttpServer responded {} for {}\n{}", statusCode, operation, headersString);
@@ -80,9 +80,9 @@ public final class Slf4jHttpServerLogger implements HttpServerLogger {
         } else if (statusCode != null) {
             if (exception != null) {
                 if (this.logStacktrace) {
-                    log.warn(marker, "HttpServer processing error {} for {}", statusCode, operation, exception);
+                    log.warn(marker, "HttpServer responded error {} for {}", statusCode, operation, exception);
                 } else {
-                    log.warn(marker, "HttpServer processing error {} for {} due to: {}", statusCode, operation, exception.getMessage());
+                    log.warn(marker, "HttpServer responded error {} for {} due to: {}", statusCode, operation, exception.getMessage());
                 }
             } else {
                 log.info(marker, "HttpServer responded {} for {}", statusCode, operation);
@@ -90,9 +90,9 @@ public final class Slf4jHttpServerLogger implements HttpServerLogger {
         } else {
             if (exception != null) {
                 if (this.logStacktrace) {
-                    log.warn(marker, "HttpServer processing error for {}", operation, exception);
+                    log.warn(marker, "HttpServer responded error for {}", operation, exception);
                 } else {
-                    log.warn(marker, "HttpServer processing error for {} due to: {}", operation, exception.getMessage());
+                    log.warn(marker, "HttpServer responded error for {} due to: {}", operation, exception.getMessage());
                 }
             } else {
                 log.info(marker, "HttpServer responded for {}", operation);
