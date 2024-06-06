@@ -22,13 +22,15 @@ import ru.tinkoff.kora.http.client.common.auth.*
 interface ApiSecurity {
 {{#authMethods}}
 
+    @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
     class {{#lambda.classname}}{{name}}{{/lambda.classname}}
 
 {{#isApiKey}}
     @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class)
-    fun {{name}}Config(config: Config): String {
+    fun {{name}}Config(config: Config, extractor: ConfigValueExtractor<String>): String {
         val configPath = "{{#hasSecurityConfigPrefix}}{{securityConfigPrefix}}.{{/hasSecurityConfigPrefix}}{{name}}"
-        return config.get(configPath).asString()
+        val configValue = config.get(configPath)
+        return extractor.extract(configValue) ?: throw ru.tinkoff.kora.config.common.extractor.ConfigValueExtractionException.missingValueAfterParse(configValue)
     }
 
     @DefaultComponent

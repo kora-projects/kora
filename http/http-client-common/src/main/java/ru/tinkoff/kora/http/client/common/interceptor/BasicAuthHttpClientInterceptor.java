@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.http.client.common.interceptor;
 
 import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.http.client.common.auth.BasicAuthHttpClientTokenProvider;
 import ru.tinkoff.kora.http.client.common.auth.HttpClientTokenProvider;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
@@ -9,10 +10,15 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 public class BasicAuthHttpClientInterceptor implements HttpClientInterceptor {
+
     private final HttpClientTokenProvider tokenProvider;
 
     public BasicAuthHttpClientInterceptor(HttpClientTokenProvider tokenProvider) {
         this.tokenProvider = tokenProvider;
+    }
+
+    public BasicAuthHttpClientInterceptor(String username, String password) {
+        this.tokenProvider = new BasicAuthHttpClientTokenProvider(username, password);
     }
 
     @Override
@@ -21,9 +27,10 @@ public class BasicAuthHttpClientInterceptor implements HttpClientInterceptor {
             try {
                 if (token == null) {
                     return chain.process(ctx, request);
+                } else {
+                    var modifiedRequest = request.toBuilder().header("authorization", "Basic " + token).build();
+                    return chain.process(ctx, modifiedRequest);
                 }
-                var modifiedRequest = request.toBuilder().header("authorization", "Basic " + token).build();
-                return chain.process(ctx, modifiedRequest);
             } catch (Throwable t) {
                 return CompletableFuture.failedFuture(t);
             }

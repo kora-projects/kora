@@ -21,13 +21,21 @@ import ru.tinkoff.kora.http.client.common.auth.*;
 @ru.tinkoff.kora.common.Module
 public interface ApiSecurity {
 {{#authMethods}}
+
+    @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
     static final class {{#lambda.classname}}{{name}}{{/lambda.classname}} {}
+
 {{#isApiKey}}
     @DefaultComponent
     @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class)
-    default String {{name}}Config(Config config) {
+    default String {{name}}Config(Config config, ConfigValueExtractor<String> extractor) {
         var configPath = "{{#hasSecurityConfigPrefix}}{{securityConfigPrefix}}.{{/hasSecurityConfigPrefix}}{{name}}";
-        return config.get(configPath).asString();
+        var configValue = config.get(configPath);
+        var parsed = extractor.extract(configValue);
+        if (parsed == null) {
+            throw ru.tinkoff.kora.config.common.extractor.ConfigValueExtractionException.missingValueAfterParse(configValue);
+        }
+        return parsed;
     }
 
     @DefaultComponent
