@@ -68,7 +68,10 @@ class MonoSinkStreamAsyncHandler implements AsyncHandler<Object> {
             }
         } else {
             if (bodyPart.length() > 0) {
-                this.publisher.next(bodyPart.getBodyByteBuffer());
+                var buf = ByteBuffer.allocate(bodyPart.length());
+                buf.put(bodyPart.getBodyByteBuffer());
+                buf.rewind();
+                this.publisher.next(buf);
             }
             if (bodyPart.isLast()) {
                 this.publisher.complete();
