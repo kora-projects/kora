@@ -2,10 +2,10 @@ package ru.tinkoff.kora.http.client.common.telemetry;
 
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Context;
-import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.common.HttpResultCode;
+import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
@@ -96,12 +96,12 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
                 if (requestBodyCharset == null) {
                     this.logger.logRequest(authority, request.method(), operation, resolvedUri, headers, null);
                 } else {
-                    var requestBodyFlux = this.wrapRequestBody(ctx, request.body(), buffers -> {
+                    var requestBody = this.wrapRequestBody(ctx, request.body(), buffers -> {
                         var bodyString = byteBufListToBodyString(buffers, requestBodyCharset);
                         this.logger.logRequest(authority, method, operation, resolvedUri, headers, bodyString);
                     });
                     request = request.toBuilder()
-                        .body(HttpBodyOutput.of(request.body().contentType(), requestBodyFlux))
+                        .body(requestBody)
                         .build();
                 }
             }
@@ -125,17 +125,17 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         return sb.toString();
     }
 
-    private Flow.Publisher<ByteBuffer> wrapRequestBody(Context ctx, HttpBodyOutput body, Consumer<List<ByteBuffer>> onComplete) {
+    private HttpBodyOutput wrapRequestBody(Context ctx, HttpBodyOutput body, Consumer<List<ByteBuffer>> onComplete) {
         var full = body.getFullContentIfAvailable();
         if (full != null) {
             try {
                 onComplete.accept(List.of(full.slice()));
             } catch (Exception ignore) {
             }
-            return FlowUtils.one(ctx, full);
+            return HttpBody.of(body.contentType(), full);
         }
         var bodyChunks = new ArrayList<ByteBuffer>();
-        return subscriber -> body.subscribe(new Flow.Subscriber<ByteBuffer>() {
+        var publisher = (Flow.Publisher<ByteBuffer>) subscriber -> body.subscribe(new Flow.Subscriber<ByteBuffer>() {
             @Override
             public void onSubscribe(Flow.Subscription subscription) {
                 subscriber.onSubscribe(subscription);
@@ -158,6 +158,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
                 subscriber.onComplete();
             }
         });
+        return HttpBodyOutput.of(body.contentType(), body.contentLength(), publisher);
     }
 
     @Nullable
