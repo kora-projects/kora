@@ -79,6 +79,7 @@ class DefaultHttpClientTelemetryTest {
     @Test
     void testLogging() throws IOException {
         var logger = Mockito.mock(HttpClientLogger.class);
+        Mockito.when(logger.logResponse()).thenReturn(true);
         Mockito.when(logger.logResponseBody()).thenReturn(true);
         var telemetry = new DefaultHttpClientTelemetry(null, null, logger);
         var rq = Mockito.mock(HttpClientRequest.class);
@@ -104,6 +105,7 @@ class DefaultHttpClientTelemetryTest {
     @Test
     void testLoggingWithStreamingBody() throws IOException {
         var logger = Mockito.mock(HttpClientLogger.class);
+        Mockito.when(logger.logResponse()).thenReturn(true);
         Mockito.when(logger.logResponseBody()).thenReturn(true);
         var telemetry = new DefaultHttpClientTelemetry(null, null, logger);
         var rq = Mockito.mock(HttpClientRequest.class);
