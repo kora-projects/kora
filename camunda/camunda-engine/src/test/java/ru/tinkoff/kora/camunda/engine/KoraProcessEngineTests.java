@@ -28,7 +28,7 @@ public class KoraProcessEngineTests implements CamundaEngineModule {
     void initTwoStage(PostgresParams params) {
         withDatabase(params, jdbc -> {
             var config = new $CamundaEngineConfig_ConfigValueExtractor.CamundaEngineConfig_Impl(
-                true,
+                new CamundaEngineConfig.ParallelInitConfig() {},
                 "camunda-license.txt",
                 $CamundaEngineConfig_JobExecutorConfig_ConfigValueExtractor.DEFAULTS,
                 new $CamundaEngineConfig_CamundaTelemetryConfig_ConfigValueExtractor.CamundaTelemetryConfig_Impl(
@@ -73,6 +73,7 @@ public class KoraProcessEngineTests implements CamundaEngineModule {
             );
 
             KoraProcessEngine koraProcessEngine = camundaEngineKoraProcessEngine(koraProcessEngineConfiguration,
+                config,
                 All.of(
                     camundaEngineKoraProcessEngineTwoStageCamundaConfigurator(koraProcessEngineConfiguration, config, jobExecutor),
                     camundaEngineKoraAdminUserConfigurator(config, camundaDataSource),
@@ -94,7 +95,12 @@ public class KoraProcessEngineTests implements CamundaEngineModule {
     void initOneStage(PostgresParams params) {
         withDatabase(params, jdbc -> {
             var config = new $CamundaEngineConfig_ConfigValueExtractor.CamundaEngineConfig_Impl(
-                false,
+                new CamundaEngineConfig.ParallelInitConfig() {
+                    @Override
+                    public boolean enabled() {
+                        return false;
+                    }
+                },
                 "camunda-license.txt",
                 $CamundaEngineConfig_JobExecutorConfig_ConfigValueExtractor.DEFAULTS,
                 new $CamundaEngineConfig_CamundaTelemetryConfig_ConfigValueExtractor.CamundaTelemetryConfig_Impl(
@@ -139,6 +145,7 @@ public class KoraProcessEngineTests implements CamundaEngineModule {
             );
 
             KoraProcessEngine koraProcessEngine = camundaEngineKoraProcessEngine(koraProcessEngineConfiguration,
+                config,
                 All.of(
                     camundaEngineKoraAdminUserConfigurator(config, camundaDataSource),
                     camundaEngineKoraLicenseKeyConfigurator(config, camundaEnginePackageVersion()),

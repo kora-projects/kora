@@ -54,7 +54,7 @@ public final class KoraJobExecutor extends DefaultJobExecutor {
 
     @Override
     public synchronized void registerProcessEngine(ProcessEngineImpl processEngine) {
-        if (engineConfig.initializeParallel()) {
+        if (engineConfig.parallelInitialization().enabled()) {
             processEngines.add(processEngine);
             // JobExecutor is started in ParallelInitializationService
         } else {

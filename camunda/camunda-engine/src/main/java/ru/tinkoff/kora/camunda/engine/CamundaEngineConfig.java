@@ -9,9 +9,7 @@ import java.util.List;
 @ConfigValueExtractor
 public interface CamundaEngineConfig {
 
-    default boolean initializeParallel() {
-        return true;
-    }
+    ParallelInitConfig parallelInitialization();
 
     @Nullable
     String licensePath();
@@ -28,6 +26,18 @@ public interface CamundaEngineConfig {
 
     @Nullable
     AdminConfig admin();
+
+    @ConfigValueExtractor
+    interface ParallelInitConfig {
+
+        default boolean enabled() {
+            return true;
+        }
+
+        default boolean validateIncompleteStatements() {
+            return true;
+        }
+    }
 
     @ConfigValueExtractor
     interface AdminConfig {

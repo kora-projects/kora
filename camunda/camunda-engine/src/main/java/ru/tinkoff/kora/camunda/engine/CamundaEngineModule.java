@@ -145,8 +145,9 @@ public interface CamundaEngineModule {
     @Root
     @DefaultComponent
     default KoraProcessEngine camundaEngineKoraProcessEngine(ProcessEngineConfiguration processEngineConfiguration,
+                                                             CamundaEngineConfig camundaEngineConfig,
                                                              All<ProcessEngineConfigurator> camundaConfigurators) {
-        return new KoraProcessEngine(processEngineConfiguration, camundaConfigurators);
+        return new KoraProcessEngine(processEngineConfiguration, camundaEngineConfig, camundaConfigurators);
     }
 
     default ProcessEngineConfigurator camundaEngineKoraAdminUserConfigurator(CamundaEngineConfig camundaEngineConfig, CamundaDataSource camundaDataSource) {
@@ -168,7 +169,15 @@ public interface CamundaEngineModule {
     default ProcessEngineConfigurator camundaEngineKoraProcessEngineTwoStageCamundaConfigurator(ProcessEngineConfiguration engineConfiguration,
                                                                                                 CamundaEngineConfig camundaEngineConfig,
                                                                                                 JobExecutor jobExecutor) {
-        return new StatementsKoraProcessEngineConfigurator(engineConfiguration, camundaEngineConfig, jobExecutor);
+        return new SecondStageKoraProcessEngineConfigurator(engineConfiguration, camundaEngineConfig, jobExecutor);
+    }
+
+    @Root
+    default KoraProcessEngineParallelInitializer camundaKoraProcessEngineParallelInitializer(ProcessEngine processEngine,
+                                                                                             CamundaEngineConfig camundaEngineConfig,
+                                                                                             ProcessEngineConfiguration processEngineConfiguration,
+                                                                                             All<ProcessEngineConfigurator> camundaConfigurators) {
+        return new KoraProcessEngineParallelInitializer(processEngine, camundaEngineConfig, processEngineConfiguration, camundaConfigurators);
     }
 
     default RuntimeService camundaEngineRuntimeService(ProcessEngine processEngine) {
