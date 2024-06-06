@@ -23,10 +23,7 @@ public final class Slf4jHttpServerLogger implements HttpServerLogger {
     }
 
     @Override
-    public void logStart(String method,
-                         String operation,
-                         String path,
-                         @Nullable HttpHeaders headers) {
+    public void logStart(String operation, @Nullable HttpHeaders headers) {
         if (!log.isInfoEnabled()) {
             return;
         }
@@ -39,16 +36,14 @@ public final class Slf4jHttpServerLogger implements HttpServerLogger {
 
         if (log.isDebugEnabled() && headers != null && !headers.isEmpty()) {
             var headersString = HttpHeaders.toString(headers);
-            log.debug(marker, "HttpServer received for {} {}\n{}", method, path, headersString);
+            log.debug(marker, "HttpServer received for {}\n{}", operation, headersString);
         } else {
             log.info(marker, "HttpServer received for {}", operation);
         }
     }
 
     @Override
-    public void logEnd(String method,
-                       String operation,
-                       String path,
+    public void logEnd(String operation,
                        Integer statusCode,
                        HttpResultCode resultCode,
                        long processingTime,
@@ -75,12 +70,12 @@ public final class Slf4jHttpServerLogger implements HttpServerLogger {
             var headersString = HttpHeaders.toString(headers);
             if (exception != null) {
                 if (this.logStacktrace) {
-                    log.warn(marker, "HttpServer processing error {} for {} {}\n{}", statusCode, method, path, headersString, exception);
+                    log.warn(marker, "HttpServer processing error {} for {}\n{}", statusCode, operation, headersString, exception);
                 } else {
-                    log.warn(marker, "HttpServer processing error {} for {} {} due to: {} \n{}", statusCode, method, path, exception.getMessage(), headersString);
+                    log.warn(marker, "HttpServer processing error {} for {} due to: {} \n{}", statusCode, operation, exception.getMessage(), headersString);
                 }
             } else {
-                log.debug(marker, "HttpServer responded {} for {} {}\n{}", statusCode, method, path, headersString);
+                log.debug(marker, "HttpServer responded {} for {}\n{}", statusCode, operation, headersString);
             }
         } else if (statusCode != null) {
             if (exception != null) {

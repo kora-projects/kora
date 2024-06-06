@@ -46,7 +46,7 @@ public final class DefaultHttpServerTelemetry implements HttpServerTelemetry {
                 span = null;
             }
             if (logger != null) {
-                logger.logStart(method, operation, request.path(), request.headers());
+                logger.logStart(operation, request.headers());
             }
         } else {
             span = null;
@@ -63,7 +63,7 @@ public final class DefaultHttpServerTelemetry implements HttpServerTelemetry {
 
             if (routeTemplate != null) {
                 if (logger != null) {
-                    logger.logEnd(method, operation, request.path(), statusCode, resultCode, processingTime, httpHeaders, exception);
+                    logger.logEnd(operation, statusCode, resultCode, processingTime, httpHeaders, exception);
                 }
                 if (span != null) {
                     span.close(statusCode, resultCode, exception);

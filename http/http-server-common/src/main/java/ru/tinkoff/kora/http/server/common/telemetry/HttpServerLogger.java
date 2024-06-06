@@ -9,14 +9,9 @@ public interface HttpServerLogger {
 
     boolean isEnabled();
 
-    void logStart(String method,
-                  String operation,
-                  String path,
-                  @Nullable HttpHeaders headers);
+    void logStart(String operation, @Nullable HttpHeaders headers);
 
-    void logEnd(String method,
-                String operation,
-                String path,
+    void logEnd(String operation,
                 Integer statusCode,
                 HttpResultCode resultCode,
                 long processingTime,
