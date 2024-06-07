@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.http.server.undertow;
 
+import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.SameThreadExecutor;
 import ru.tinkoff.kora.http.server.common.PrivateApiHandler;
@@ -12,13 +13,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Flow;
 
-public class UndertowPrivateApiHandler {
+public class UndertowPrivateApiHandler implements HttpHandler  {
     private final PrivateApiHandler privateApiHandler;
 
     public UndertowPrivateApiHandler(PrivateApiHandler privateApiHandler) {
         this.privateApiHandler = privateApiHandler;
     }
 
+    @Override
     public void handleRequest(HttpServerExchange exchange) {
         var path = exchange.getRequestPath() + "?" + exchange.getQueryString();
 

@@ -10,4 +10,6 @@ dependencies {
     compileOnly project(':database:database-common')
     compileOnly project(':scheduling:scheduling-common')
     compileOnly project(':cache:cache-common')
+    compileOnly project(':camunda:camunda-rest-undertow')
+    compileOnly project(':camunda:camunda-engine')
 }

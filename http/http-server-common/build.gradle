@@ -7,8 +7,8 @@ dependencies {
 
     api project(':common')
     api project(':logging:logging-common')
-    api project(':http:http-common')
     api project(':telemetry:telemetry-common')
+    api project(':http:http-common')
 
     testImplementation libs.reactor.core
 

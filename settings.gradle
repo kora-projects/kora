@@ -103,8 +103,8 @@ include(
     'test:test-junit5',
     'mapstruct:mapstruct-java-extension',
     'mapstruct:mapstruct-ksp-extension',
+    'camunda:camunda-engine',
+    'camunda:camunda-rest-undertow',
 )
 
 apply from: 'dependencies.gradle'
-include 'internal'
-

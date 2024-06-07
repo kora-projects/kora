@@ -9,6 +9,7 @@ class UndertowHttpServerTest extends HttpServerTestKit {
     @Override
     protected HttpServer httpServer(ValueOf<HttpServerConfig> config, PublicApiHandler publicApiHandler) {
         return new UndertowHttpServer(
+            "Test",
             config,
             valueOf(new UndertowPublicApiHandler(publicApiHandler, null)),
             null

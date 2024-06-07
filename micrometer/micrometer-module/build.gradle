@@ -20,4 +20,6 @@ dependencies {
     compileOnly project(':resilient:resilient-kora')
     compileOnly project(':cache:cache-common')
     compileOnly project(':cache:cache-caffeine')
+    compileOnly project(':camunda:camunda-engine')
+    compileOnly project(':camunda:camunda-rest-undertow')
 }

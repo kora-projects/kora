@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" id="Definitions_04wuw5h" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="4.6.0">
+  <bpmn:process id="ProcessEmptySubdir" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1" name="Process started">
+      <bpmn:outgoing>SequenceFlow_1ik94za</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:endEvent id="EndEvent_15r5qof" name="Process ended">
+      <bpmn:incoming>SequenceFlow_1ik94za</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="SequenceFlow_1ik94za" sourceRef="StartEvent_1" targetRef="EndEvent_15r5qof" />
+    <bpmn:textAnnotation id="TextAnnotation_02wha0b">
+      <bpmn:text>This process is simply there to test that process models are deployed correctly if they are placed in the resources, see tests in ProcessEngineFactoryDeploymentTest</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_0vwqu03" sourceRef="StartEvent_1" targetRef="TextAnnotation_02wha0b" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="ProcessEmptySubdir">
+      <bpmndi:BPMNEdge id="SequenceFlow_1ik94za_di" bpmnElement="SequenceFlow_1ik94za">
+        <di:waypoint x="209" y="120" />
+        <di:waypoint x="412" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
+        <dc:Bounds x="173" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="153" y="145" width="77" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_15r5qof_di" bpmnElement="EndEvent_15r5qof">
+        <dc:Bounds x="412" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="393" y="145" width="74" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_02wha0b_di" bpmnElement="TextAnnotation_02wha0b">
+        <dc:Bounds x="240" y="220" width="260" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Association_0vwqu03_di" bpmnElement="Association_0vwqu03">
+        <di:waypoint x="203" y="134" />
+        <di:waypoint x="277" y="220" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
