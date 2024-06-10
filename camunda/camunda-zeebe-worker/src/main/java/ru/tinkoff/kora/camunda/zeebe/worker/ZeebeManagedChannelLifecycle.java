@@ -13,6 +13,7 @@ import ru.tinkoff.grpc.client.telemetry.GrpcClientTelemetryFactory;
 import ru.tinkoff.grpc.client.telemetry.GrpcClientTelemetryInterceptor;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
+import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.net.URI;
 import java.time.Duration;
@@ -50,7 +51,7 @@ final class ZeebeManagedChannelLifecycle implements Lifecycle, Wrapped<ManagedCh
     @Override
     public void init() {
         logger.debug("Zeebe GrpcManagedChannel starting...");
-        final long started = System.nanoTime();
+        final long started = TimeUtils.started();
 
         var uri = URI.create(this.config.url());
         var host = uri.getHost();
@@ -81,19 +82,19 @@ final class ZeebeManagedChannelLifecycle implements Lifecycle, Wrapped<ManagedCh
         builder.intercept(interceptors);
         this.channel = builder.build();
 
-        logger.info("Zeebe GrpcManagedChannel started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        logger.info("Zeebe GrpcManagedChannel started in {}", TimeUtils.tookForLogging(started));
     }
 
     @Override
     public void release() {
         if (channel != null) {
             logger.debug("Zeebe GrpcManagedChannel closing...");
-            final long started = System.nanoTime();
+            final long started = TimeUtils.started();
 
             channel.shutdown();
             this.channel = null;
 
-            logger.info("Zeebe GrpcManagedChannel started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+            logger.info("Zeebe GrpcManagedChannel started in {}", TimeUtils.tookForLogging(started));
         }
     }
 

@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.camunda.zeebe.worker.util.ClasspathResourceUtils;
 import ru.tinkoff.kora.camunda.zeebe.worker.util.Resource;
+import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.lang.invoke.MethodHandles;
 import java.time.Duration;
@@ -36,7 +37,7 @@ public final class ZeebeResourceDeployment implements Lifecycle {
         final List<String> locations = deploymentConfig.resources();
         if (!locations.isEmpty()) {
             logger.debug("Zeebe resources deploying...");
-            final long started = System.nanoTime();
+            final long started = TimeUtils.started();
 
             final Set<String> normalizedLocations = locations.stream()
                 .map(location -> {
@@ -69,7 +70,7 @@ public final class ZeebeResourceDeployment implements Lifecycle {
                                 .map(process -> String.format("Process:<%s:%d>", process.getBpmnProcessId(), process.getVersion())))
                         .toList();
 
-                    logger.info("Zeebe resources {} deployed in {}", deployments, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+                    logger.info("Zeebe resources {} deployed in {}", deployments, TimeUtils.tookForLogging(started));
                 }
             } else {
                 logger.debug("Zeebe no resources found for deployment in {}", locations);

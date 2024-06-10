@@ -13,16 +13,16 @@ import ru.tinkoff.kora.camunda.zeebe.worker.ZeebeWorkerConfig.JobConfig;
 import ru.tinkoff.kora.camunda.zeebe.worker.telemetry.ZeebeClientWorkerMetricsFactory;
 import ru.tinkoff.kora.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetry;
 import ru.tinkoff.kora.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetryFactory;
+import ru.tinkoff.kora.common.util.TimeUtils;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
-public final class KoraJobHandlerLifecycle implements Lifecycle {
+public final class KoraZeebeJobWorkerEngine implements Lifecycle {
 
-    private static final Logger logger = LoggerFactory.getLogger(KoraJobHandlerLifecycle.class);
+    private static final Logger logger = LoggerFactory.getLogger(KoraZeebeJobWorkerEngine.class);
 
     private final ZeebeClient client;
     private final List<KoraJobWorker> jobWorkers;
@@ -34,13 +34,13 @@ public final class KoraJobHandlerLifecycle implements Lifecycle {
 
     private final List<JobWorker> workers = new CopyOnWriteArrayList<>();
 
-    public KoraJobHandlerLifecycle(ZeebeClient client,
-                                   List<KoraJobWorker> jobWorkers,
-                                   ZeebeClientConfig clientConfig,
-                                   ZeebeWorkerConfig workerConfig,
-                                   ZeebeBackoffFactory zeebeBackoffFactory,
-                                   ZeebeWorkerTelemetryFactory telemetryFactory,
-                                   @Nullable ZeebeClientWorkerMetricsFactory zeebeMetricsFactory) {
+    public KoraZeebeJobWorkerEngine(ZeebeClient client,
+                                    List<KoraJobWorker> jobWorkers,
+                                    ZeebeClientConfig clientConfig,
+                                    ZeebeWorkerConfig workerConfig,
+                                    ZeebeBackoffFactory zeebeBackoffFactory,
+                                    ZeebeWorkerTelemetryFactory telemetryFactory,
+                                    @Nullable ZeebeClientWorkerMetricsFactory zeebeMetricsFactory) {
         this.client = client;
         this.jobWorkers = jobWorkers;
         this.clientConfig = clientConfig;
@@ -54,7 +54,7 @@ public final class KoraJobHandlerLifecycle implements Lifecycle {
     public void init() {
         if (!jobWorkers.isEmpty()) {
             logger.debug("Zeebe JobWorkers starting...");
-            final long started = System.nanoTime();
+            final long started = TimeUtils.started();
 
             var workersByType = jobWorkers.stream().collect(Collectors.groupingBy(KoraJobWorker::type));
             for (List<KoraJobWorker> value : workersByType.values()) {
@@ -76,7 +76,7 @@ public final class KoraJobHandlerLifecycle implements Lifecycle {
             CompletableFuture.allOf(jobOpeners).join();
 
             final List<String> workerNames = jobWorkers.stream().map(KoraJobWorker::type).toList();
-            logger.info("Zeebe JobWorkers {} started in {}", workerNames, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+            logger.info("Zeebe JobWorkers {} started in {}", workerNames, TimeUtils.tookForLogging(started));
         }
     }
 
@@ -84,7 +84,7 @@ public final class KoraJobHandlerLifecycle implements Lifecycle {
     public void release() {
         if (!workers.isEmpty()) {
             logger.debug("Zeebe JobWorkers stopping...");
-            final long started = System.nanoTime();
+            final long started = TimeUtils.started();
 
             for (JobWorker worker : workers) {
                 try {
@@ -95,11 +95,11 @@ public final class KoraJobHandlerLifecycle implements Lifecycle {
             }
 
             final List<String> workerNames = jobWorkers.stream().map(KoraJobWorker::type).toList();
-            logger.info("Zeebe JobWorkers {} stopped in {}", workerNames, Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+            logger.info("Zeebe JobWorkers {} stopped in {}", workerNames, TimeUtils.tookForLogging(started));
         }
     }
 
-    public JobWorker createJobWorker(KoraJobWorker worker, JobConfig jobConfig) {
+    private JobWorker createJobWorker(KoraJobWorker worker, JobConfig jobConfig) {
         final ZeebeWorkerTelemetry telemetry = telemetryFactory.get(worker.type(), clientConfig.telemetry());
         final JobHandler jobHandler = new WrappedJobHandler(telemetry, worker);
         final BackoffSupplier backoffSupplier = zeebeBackoffFactory.build(jobConfig.backoff());

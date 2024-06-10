@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
+import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
@@ -36,7 +37,7 @@ public final class KoraZeebeClient implements Wrapped<ZeebeClient>, Lifecycle {
     @Override
     public void init() {
         logger.debug("ZeebeClient starting...");
-        final long started = System.nanoTime();
+        final long started = TimeUtils.started();
 
         this.zeebeClient = new ZeebeClientImpl(clientConfiguration, managedChannel);
         final Duration initTimeout = clientConfig.initializationFailTimeout();
@@ -51,18 +52,18 @@ public final class KoraZeebeClient implements Wrapped<ZeebeClient>, Lifecycle {
             }
         }
 
-        logger.info("ZeebeClient started in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+        logger.info("ZeebeClient started in {}", TimeUtils.tookForLogging(started));
     }
 
     @Override
     public void release() {
         if (this.zeebeClient != null) {
             logger.debug("ZeebeClient stopping...");
-            final long started = System.nanoTime();
+            final long started = TimeUtils.started();
 
             this.zeebeClient.close();
 
-            logger.info("ZeebeClient stopped in {}", Duration.ofNanos(System.nanoTime() - started).toString().substring(2).toLowerCase());
+            logger.info("ZeebeClient stopped in {}", TimeUtils.tookForLogging(started));
         }
     }
 }

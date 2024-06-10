@@ -128,13 +128,13 @@ public interface ZeebeWorkerModule extends JsonCommonModule, GrpcClientModule {
     }
 
     @Root
-    default KoraJobHandlerLifecycle zeebeWorkerJobHandlerLifecycle(ZeebeClient client,
+    default KoraZeebeJobWorkerEngine zeebeKoraZeebeJobWorkerEngine(ZeebeClient client,
                                                                    All<KoraJobWorker> jobWorkers,
                                                                    ZeebeClientConfig clientConfig,
                                                                    ZeebeWorkerConfig workerConfig,
                                                                    ZeebeBackoffFactory camundaBackoffFactory,
                                                                    ZeebeWorkerTelemetryFactory telemetryFactory,
                                                                    @Nullable ZeebeClientWorkerMetricsFactory zeebeMetricsFactory) {
-        return new KoraJobHandlerLifecycle(client, jobWorkers, clientConfig, workerConfig, camundaBackoffFactory, telemetryFactory, zeebeMetricsFactory);
+        return new KoraZeebeJobWorkerEngine(client, jobWorkers, clientConfig, workerConfig, camundaBackoffFactory, telemetryFactory, zeebeMetricsFactory);
     }
 }
