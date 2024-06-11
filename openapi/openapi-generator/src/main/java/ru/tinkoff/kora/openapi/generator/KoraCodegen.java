@@ -308,9 +308,15 @@ public class KoraCodegen extends DefaultCodegen {
         instantiationTypes.put("array", "ArrayList");
         instantiationTypes.put("set", "LinkedHashSet");
         instantiationTypes.put("map", "HashMap");
+
+        // Dates - RFC3339
         typeMapping.put("date", "java.time.LocalDate");
+        typeMapping.put("time", "java.time.OffsetTime");
+        typeMapping.put("duration", "java.time.Duration");
         typeMapping.put("DateTime", "java.time.OffsetDateTime");
+
         typeMapping.put("UUID", "java.util.UUID");
+        typeMapping.put("URI", "java.net.URI");
         typeMapping.put("BigDecimal", "java.math.BigDecimal");
 
         importMapping.put("BigDecimal", "java.math.BigDecimal");
@@ -318,8 +324,8 @@ public class KoraCodegen extends DefaultCodegen {
         importMapping.put("URI", "java.net.URI");
         importMapping.put("OffsetDateTime", "java.time.OffsetDateTime");
         importMapping.put("Map", "java.util.Map");
-        importMapping.put("HashMap", "java.util.HashMap");
         importMapping.put("Array", "java.util.List");
+        importMapping.put("HashMap", "java.util.HashMap");
         importMapping.put("ArrayList", "java.util.ArrayList");
         importMapping.put("List", "java.util.*");
         importMapping.put("Set", "java.util.*");
