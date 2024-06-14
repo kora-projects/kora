@@ -10,4 +10,5 @@ dependencies {
     compileOnly project(':database:database-common')
     compileOnly project(':scheduling:scheduling-common')
     compileOnly project(':cache:cache-common')
+    compileOnly project(':camunda:camunda-zeebe-worker')
 }

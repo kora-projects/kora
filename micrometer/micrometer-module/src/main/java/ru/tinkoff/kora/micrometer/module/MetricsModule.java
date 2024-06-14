@@ -11,6 +11,8 @@ import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.micrometer.module.cache.MicrometerCacheMetrics;
 import ru.tinkoff.kora.micrometer.module.cache.caffeine.MicrometerCaffeineCacheMetricCollector;
+import ru.tinkoff.kora.micrometer.module.camunda.zeebe.job.MicrometerZeebeClientWorkerJobMetricsFactory;
+import ru.tinkoff.kora.micrometer.module.camunda.zeebe.worker.MicrometerZeebeWorkerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.db.MicrometerDataBaseMetricWriterFactory;
 import ru.tinkoff.kora.micrometer.module.grpc.client.MicrometerGrpcClientMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.grpc.server.MicrometerGrpcServerMetricsFactory;
@@ -134,5 +136,15 @@ public interface MetricsModule {
     @DefaultComponent
     default MicrometerCaffeineCacheMetricCollector caffeineCacheMetricsCollector(MeterRegistry meterRegistry) {
         return new MicrometerCaffeineCacheMetricCollector(meterRegistry);
+    }
+
+    @DefaultComponent
+    default MicrometerZeebeWorkerMetricsFactory micrometerZeebeWorkerMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
+        return new MicrometerZeebeWorkerMetricsFactory(meterRegistry, metricsConfig);
+    }
+
+    @DefaultComponent
+    default MicrometerZeebeClientWorkerJobMetricsFactory micrometerZeebeClientWorkerJobMetricsFactory(MeterRegistry meterRegistry) {
+        return new MicrometerZeebeClientWorkerJobMetricsFactory(meterRegistry);
     }
 }

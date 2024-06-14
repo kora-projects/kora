@@ -103,8 +103,9 @@ include(
     'test:test-junit5',
     'mapstruct:mapstruct-java-extension',
     'mapstruct:mapstruct-ksp-extension',
+    'camunda:camunda-zeebe-worker',
+    'camunda:camunda-zeebe-worker-annotation-processor',
+    'camunda:camunda-zeebe-worker-symbol-processor',
 )
 
 apply from: 'dependencies.gradle'
-include 'internal'
-
