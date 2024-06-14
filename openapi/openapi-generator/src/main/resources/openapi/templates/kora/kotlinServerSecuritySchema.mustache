@@ -33,6 +33,7 @@ import ru.tinkoff.kora.http.server.common.auth.*
 @ru.tinkoff.kora.common.Module
 public interface ApiSecurity {
 {{#vendorExtensions.tags}}
+
     class {{.}} {}
 {{/vendorExtensions.tags}}
 
@@ -51,7 +52,7 @@ public interface ApiSecurity {
             val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = if ({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query == null || {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query.isEmpty())
               null else {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query.iterator().next();
             {{/isKeyInQuery}}{{#isKeyInCookie}}
-              TODO()
+            val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.cookies().filter { "{{keyParamName}}" == it.name() }.map { it.value() }.firstOrNull()
             {{/isKeyInCookie}}
             {{/isApiKey}}{{#isBasicBasic}}
             val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("Authorization")
