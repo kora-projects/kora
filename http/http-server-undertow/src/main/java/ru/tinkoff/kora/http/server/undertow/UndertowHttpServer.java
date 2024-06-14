@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.http.server.undertow;
 
 import io.undertow.Undertow;
+import io.undertow.connector.ByteBufferPool;
 import io.undertow.server.handlers.GracefulShutdownHandler;
 import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
@@ -15,7 +16,6 @@ import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
 import java.net.InetSocketAddress;
-import java.time.Duration;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class UndertowHttpServer implements HttpServer, ReadinessProbe {
@@ -27,12 +27,14 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
     private final ValueOf<UndertowPublicApiHandler> publicApiHandler;
     private final GracefulShutdownHandler gracefulShutdown;
     private final XnioWorker xnioWorker;
+    private final ByteBufferPool byteBufferPool;
     private volatile Undertow undertow;
 
-    public UndertowHttpServer(ValueOf<HttpServerConfig> config, ValueOf<UndertowPublicApiHandler> publicApiHandler, @Nullable XnioWorker xnioWorker) {
+    public UndertowHttpServer(ValueOf<HttpServerConfig> config, ValueOf<UndertowPublicApiHandler> publicApiHandler, @Nullable XnioWorker xnioWorker, ByteBufferPool byteBufferPool) {
         this.config = config;
         this.xnioWorker = xnioWorker;
         this.publicApiHandler = publicApiHandler;
+        this.byteBufferPool = byteBufferPool;
         this.gracefulShutdown = new GracefulShutdownHandler(exchange -> this.publicApiHandler.get().handleRequest(exchange));
     }
 
@@ -78,6 +80,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
         return Undertow.builder()
             .addHttpListener(this.config.get().publicApiHttpPort(), "0.0.0.0", this.gracefulShutdown)
             .setWorker(this.xnioWorker)
+            .setByteBufferPool(this.byteBufferPool)
             .build();
     }
 
