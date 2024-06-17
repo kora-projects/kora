@@ -2,6 +2,7 @@ package ru.tinkoff.kora.annotation.processor.common;
 
 import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.CodeBlock;
+import com.squareup.javapoet.TypeName;
 
 import javax.lang.model.AnnotatedConstruct;
 import javax.lang.model.element.Element;
@@ -103,6 +104,21 @@ public final class TagUtils {
             }
         }
         return Set.of();
+    }
+
+    public static AnnotationSpec makeAnnotationSpecForTypes(TypeName ... tags) {
+        var annotation = AnnotationSpec.builder(CommonClassNames.tag);
+        var value = CodeBlock.builder();
+        value.add("{");
+        var tagsList = List.of(tags);
+        for (int i = 0; i < tagsList.size(); i++) {
+            if (i > 0) {
+                value.add(", ");
+            }
+            value.add("$T.class", tagsList.get(i));
+        }
+        value.add("}");
+        return annotation.addMember("value", value.build()).build();
     }
 
     public static AnnotationSpec makeAnnotationSpec(Set<String> tags) {

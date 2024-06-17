@@ -8,6 +8,7 @@ public class JdbcTypes {
     public static final ClassName JDBC_REPOSITORY = ClassName.get("ru.tinkoff.kora.database.jdbc", "JdbcRepository");
 
     public static final String RESULT_PACKAGE = "ru.tinkoff.kora.database.jdbc.mapper.result";
+    public static final ClassName JDBC_DATABASE = ClassName.get("ru.tinkoff.kora.database.jdbc", "JdbcDatabase");
     public static final ClassName RESULT_SET_MAPPER = ClassName.get(RESULT_PACKAGE, "JdbcResultSetMapper");
     public static final ClassName ROW_MAPPER = ClassName.get(RESULT_PACKAGE, "JdbcRowMapper");
     public static final ClassName RESULT_COLUMN_MAPPER = ClassName.get(RESULT_PACKAGE, "JdbcResultColumnMapper");

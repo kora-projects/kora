@@ -28,6 +28,7 @@ import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
 import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.TagUtils.addTag
 import ru.tinkoff.kora.ksp.common.parseMappingData
 import java.sql.Statement
 import java.util.concurrent.Executor
@@ -236,12 +237,18 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
             constructorBuilder.addStatement("this._executor = _executor")
             if (executorTag != null) {
                 constructorBuilder.addParameter(
-                    ParameterSpec.builder("_executor", executor).addAnnotation(
-                        AnnotationSpec.builder(CommonClassNames.tag).addMember("value = %L", executorTag).build()
-                    ).build()
+                    ParameterSpec.builder("_executor", executor)
+                        .addAnnotation(
+                            AnnotationSpec.builder(CommonClassNames.tag)
+                                .addMember("value = %L", executorTag)
+                                .build()
+                        )
+                        .build()
                 )
             } else {
-                constructorBuilder.addParameter(ParameterSpec.builder("_executor", executor).build())
+                constructorBuilder.addParameter(ParameterSpec.builder("_executor", executor)
+                    .addTag(JdbcTypes.jdbcDatabase)
+                    .build())
             }
         }
     }

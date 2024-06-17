@@ -7,6 +7,7 @@ import org.junit.jupiter.api.TestInstance
 import ru.tinkoff.kora.annotation.processor.common.TestContext
 import ru.tinkoff.kora.application.graph.TypeRef
 import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory
+import ru.tinkoff.kora.database.jdbc.JdbcDatabase
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultSetMapper
 import ru.tinkoff.kora.database.symbol.processor.DbTestUtils
 import ru.tinkoff.kora.database.symbol.processor.jdbc.repository.AllowedSuspendResultsRepository
@@ -26,6 +27,7 @@ class JdbcSuspendResultsTest {
             ), executor
         )
         ctx.addContextElement(TypeRef.of(Executor::class.java),
+            arrayOf(JdbcDatabase::class.java),
             Executor { obj: Runnable -> obj.run() })
         ctx.addMock(TypeRef.of(TestEntityJdbcRowMapperNonFinal::class.java))
         ctx.addMock(TypeRef.of(TestEntityFieldJdbcResultColumnMapperNonFinal::class.java))

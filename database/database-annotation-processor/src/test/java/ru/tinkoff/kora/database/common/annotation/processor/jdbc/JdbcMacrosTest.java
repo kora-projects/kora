@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.concurrent.Executors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -40,9 +41,7 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
 
     @Test
     void returnSelectsAndTable() throws SQLException {
-        var repository = compileJdbc(List.of(newGeneratedObject("TestRowMapper")), """
-            import java.util.concurrent.CompletionStage;
-                            
+        var repository = compileJdbc(List.of(Executors.newCachedThreadPool(), newGeneratedObject("TestRowMapper")), """
             @Repository
             public interface TestRepository extends JdbcRepository {
                         
