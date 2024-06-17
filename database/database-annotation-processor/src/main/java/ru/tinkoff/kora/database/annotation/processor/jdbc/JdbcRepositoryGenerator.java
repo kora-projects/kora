@@ -22,10 +22,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.sql.Statement;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.stream.LongStream;
@@ -252,19 +249,9 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             .addCode("}\n");
 
         if (isMono) {
-            var executorTag = DbUtils.getTag(repositoryElement);
-            if(executorTag != null) {
-                b.addCode("$<\n}, _executor));\n");
-            } else {
-                b.addCode("$<\n}));\n");
-            }
+            b.addCode("$<\n}, _executor));\n");
         } else if (isFuture) {
-            var executorTag = DbUtils.getTag(repositoryElement);
-            if(executorTag != null) {
-                b.addCode("$<\n}, _executor);\n");
-            } else {
-                b.addCode("$<\n});\n");
-            }
+            b.addCode("$<\n}, _executor);\n");
         }
         return b.build();
     }
@@ -291,7 +278,15 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         if (needThreadPool && executorTag != null) {
             builder.addField(TypeName.get(Executor.class), "_executor", Modifier.PRIVATE, Modifier.FINAL);
             constructorBuilder.addStatement("this._executor = _executor");
-            constructorBuilder.addParameter(ParameterSpec.builder(TypeName.get(Executor.class), "_executor").addAnnotation(AnnotationSpec.builder(Tag.class).addMember("value", executorTag).build()).build());
+            constructorBuilder.addParameter(ParameterSpec.builder(TypeName.get(Executor.class), "_executor")
+                .addAnnotation(AnnotationSpec.builder(Tag.class).addMember("value", executorTag).build())
+                .build());
+        } else if(needThreadPool) {
+            builder.addField(TypeName.get(Executor.class), "_executor", Modifier.PRIVATE, Modifier.FINAL);
+            constructorBuilder.addStatement("this._executor = _executor");
+            constructorBuilder.addParameter(ParameterSpec.builder(TypeName.get(Executor.class), "_executor")
+                .addAnnotation(TagUtils.makeAnnotationSpecForTypes(JdbcTypes.JDBC_DATABASE))
+                .build());
         }
     }
 }

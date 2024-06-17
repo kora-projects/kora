@@ -108,7 +108,7 @@ public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
     @Test
     public void testReturnMonoObject() throws SQLException {
         var mapper = Mockito.mock(JdbcResultSetMapper.class);
-        var repository = compileJdbc(List.of(mapper), """
+        var repository = compileJdbc(List.of(Executors.newCachedThreadPool(), mapper), """
             @Repository
             public interface TestRepository extends JdbcRepository {
                 @Query("SELECT count(*) FROM test")
@@ -147,7 +147,7 @@ public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
 
     @Test
     public void testReturnMonoVoid() throws SQLException {
-        var repository = compileJdbc(List.of(), """
+        var repository = compileJdbc(List.of(Executors.newCachedThreadPool()), """
             @Repository
             public interface TestRepository extends JdbcRepository {
                 @Query("SELECT count(*) FROM test")
@@ -164,7 +164,7 @@ public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
     @Test
     public void testReturnCompletionStageObject() throws SQLException {
         var mapper = Mockito.mock(JdbcResultSetMapper.class);
-        var repository = compileJdbc(List.of(mapper), """
+        var repository = compileJdbc(List.of(Executors.newCachedThreadPool(), mapper), """
             @Repository
             public interface TestRepository extends JdbcRepository {
                 @Query("SELECT count(*) FROM test")
@@ -203,7 +203,7 @@ public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
 
     @Test
     public void testReturnCompletionStageVoid() throws SQLException {
-        var repository = compileJdbc(List.of(), """
+        var repository = compileJdbc(List.of(Executors.newCachedThreadPool()), """
             @Repository
             public interface TestRepository extends JdbcRepository {
                 @Query("SELECT count(*) FROM test")
@@ -220,7 +220,7 @@ public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
     @Test
     public void testReturnCompletableFutureObject() throws SQLException {
         var mapper = Mockito.mock(JdbcResultSetMapper.class);
-        var repository = compileJdbc(List.of(mapper), """
+        var repository = compileJdbc(List.of(Executors.newCachedThreadPool(), mapper), """
             @Repository
             public interface TestRepository extends JdbcRepository {
                 @Query("SELECT count(*) FROM test")
@@ -259,7 +259,7 @@ public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
 
     @Test
     public void testReturnCompletableFutureVoid() throws SQLException {
-        var repository = compileJdbc(List.of(), """
+        var repository = compileJdbc(List.of(Executors.newCachedThreadPool()), """
             @Repository
             public interface TestRepository extends JdbcRepository {
                 @Query("SELECT count(*) FROM test")

@@ -28,6 +28,13 @@ object TagUtils {
         return this.addAnnotation(tag.toTagAnnotation())
     }
 
+    fun ParameterSpec.Builder.addTag(vararg tags: TypeName): ParameterSpec.Builder {
+        if (tags.isEmpty()) {
+            return this
+        }
+        return this.addAnnotation(tags.toList().toTagTypesAnnotation())
+    }
+
     fun TypeSpec.Builder.addTag(tag: Set<String>): TypeSpec.Builder {
         if (tag.isEmpty()) {
             return this
@@ -92,5 +99,23 @@ object TagUtils {
         }
         val value = codeBlock.add("]").build()
         return AnnotationSpec.builder(CommonClassNames.tag).addMember(value).build()
+    }
+
+    fun Collection<TypeName>.toTagTypesAnnotation(): AnnotationSpec {
+        if(size == 1) {
+            return AnnotationSpec.builder(CommonClassNames.tag)
+                .addMember("%T::class", this.first())
+                .build()
+        } else {
+            val codeBlock = CodeBlock.builder().add("value = [")
+            forEachIndexed { i, type ->
+                if (i > 0) {
+                    codeBlock.add(", ")
+                }
+                codeBlock.add("%T::class", type)
+            }
+            val value = codeBlock.add("]").build()
+            return AnnotationSpec.builder(CommonClassNames.tag).addMember(value).build()
+        }
     }
 }
