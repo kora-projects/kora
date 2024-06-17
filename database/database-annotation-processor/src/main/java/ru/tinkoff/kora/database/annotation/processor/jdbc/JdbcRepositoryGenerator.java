@@ -71,7 +71,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                 tn -> JdbcNativeTypes.findNativeType(tn) != null,
                 JdbcTypes.PARAMETER_COLUMN_MAPPER
             ));
-            var methodSpec = this.generate(method, methodType, query, parameters, resultMapper, parameterMappers);
+            var methodSpec = this.generate(repositoryElement, method, methodType, query, parameters, resultMapper, parameterMappers);
             type.addMethod(methodSpec);
         }
         return type.addMethod(constructor.build()).build();
@@ -125,7 +125,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         return this.repositoryInterface;
     }
 
-    public MethodSpec generate(ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters, @Nullable String resultMapperName, FieldFactory parameterMappers) {
+    public MethodSpec generate(TypeElement repositoryElement, ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters, @Nullable String resultMapperName, FieldFactory parameterMappers) {
         var batchParam = parameters.stream().filter(QueryParameter.BatchParameter.class::isInstance).findFirst().orElse(null);
         var sql = query.rawQuery();
         for (var parameter : query.parameters().stream().sorted(Comparator.<QueryWithParameters.QueryParameter>comparingInt(s -> s.sqlParameterName().length()).reversed()).toList()) {
@@ -252,9 +252,19 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             .addCode("}\n");
 
         if (isMono) {
-            b.addCode("$<\n}));\n");
+            var executorTag = DbUtils.getTag(repositoryElement);
+            if(executorTag != null) {
+                b.addCode("$<\n}, _executor));\n");
+            } else {
+                b.addCode("$<\n}));\n");
+            }
         } else if (isFuture) {
-            b.addCode("$<\n});\n");
+            var executorTag = DbUtils.getTag(repositoryElement);
+            if(executorTag != null) {
+                b.addCode("$<\n}, _executor);\n");
+            } else {
+                b.addCode("$<\n});\n");
+            }
         }
         return b.build();
     }
