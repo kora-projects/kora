@@ -1,9 +1,11 @@
 package ru.tinkoff.kora.http.server.undertow;
 
+import io.undertow.Undertow;
 import io.undertow.connector.ByteBufferPool;
 import org.xnio.XnioWorker;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.application.graph.Wrapped;
+import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.HttpServerModule;
@@ -17,10 +19,14 @@ public interface UndertowModule extends HttpServerModule {
     }
 
     @Root
-    default UndertowPrivateHttpServer undertowPrivateHttpServer(ValueOf<HttpServerConfig> configValue, ValueOf<UndertowPrivateApiHandler> privateApiHandler, XnioWorker xnioWorker, ByteBufferPool byteBufferPool) {
+    default UndertowPrivateHttpServer undertowPrivateHttpServer(ValueOf<HttpServerConfig> configValue,
+                                                                ValueOf<UndertowPrivateApiHandler> privateApiHandler,
+                                                                @Tag(Undertow.class) XnioWorker xnioWorker,
+                                                                ByteBufferPool byteBufferPool) {
         return new UndertowPrivateHttpServer(configValue, privateApiHandler, xnioWorker, byteBufferPool);
     }
 
+    @Tag(Undertow.class)
     default Wrapped<XnioWorker> xnioWorker(ValueOf<HttpServerConfig> configValue) throws ExecutionException, InterruptedException {
         return new XnioLifecycle(configValue);
     }
