@@ -1,0 +1,96 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Swagger Petstore
+  license:
+    name: MIT
+servers:
+  - url: http://petstore.swagger.io/v1
+paths:
+  /pet/{id}:
+    get:
+      summary: List all pets
+      operationId: listPets
+      tags:
+        - pets
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: status
+          in: query
+          style: form
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/PetTypes"
+      responses:
+        '200':
+          description: A pet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        someFloat:
+          type: number
+          format: float
+        someDouble:
+          type: number
+          format: double
+        someInt64:
+          type: integer
+          format: int64
+        someInt32:
+          type: integer
+          format: int32
+        someInt:
+          type: integer
+        someDecimal:
+          type: number
+          format: decimal
+        someString:
+          type: string
+        someBinary:
+          type: string
+          format: binary
+        someBase64:
+          type: string
+          format: byte
+        someBoolean:
+          type: boolean
+        uri:
+          type: string
+          format: uri
+        type:
+          $ref: '#/components/schemas/PetTypes'
+        duration:
+          type: string
+          format: duration
+        date:
+          type: string
+          format: date
+        time:
+          type: string
+          format: time
+        dateTime:
+          type: string
+          format: date-time
+        pass:
+          type: string
+          format: email
+    PetTypes:
+      type: string
+      enum:
+        - cat
+        - dog
