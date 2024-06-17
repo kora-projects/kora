@@ -8,19 +8,19 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             version('reactor', '3.6.5')
             version('kotlin_', '1.9.10') //Visit https://kotlinlang.org/docs/releases.html#release-details to see versions compatability
             version('kotlin-coroutines', '1.7.3')
-            version('jackson', '2.17.0')
+            version('jackson', '2.17.1')
             version('mockserver', '5.15.0')
-            version('netty', '4.1.109.Final')
+            version('netty', '4.1.111.Final')
             version('kafka', '3.7.0')
             version('vertx', '4.3.8')
             version('testcontainers', '1.18.3')
             version('cassandra', '4.17.0')
-            version('grpc-java', '1.63.0')
+            version('grpc-java', '1.63.1')
             version('grpc-kotlin', '1.4.1')
             version('kotlin-testing', '1.5.0')
             version('ksp', '1.9.10-1.0.13')
             version('kotlinpoet', '1.16.0')
-            version('swagger', '2.2.21')
+            version('swagger', '2.2.22')
             version('opentelemetry', '1.37.0')
 
             library('jsr305', 'com.google.code.findbugs', 'jsr305').version('3.0.2')
@@ -74,9 +74,9 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
 
             library("jms-api", "javax.jms", "javax.jms-api").version("2.0.1")
 
-            library("undertow-core", "io.undertow", "undertow-core").version("2.3.12.Final")
+            library("undertow-core", "io.undertow", "undertow-core").version("2.3.13.Final")
             library("async-http-client", "org.asynchttpclient", "async-http-client").version("2.12.3")
-            library("okhttp", "com.squareup.okhttp3", "okhttp").version("5.0.0-alpha.12")
+            library("okhttp", "com.squareup.okhttp3", "okhttp").version("5.0.0-alpha.14")
             library("okio", "com.squareup.okio", "okio").version("3.9.0")
 
             library("netty-buffer", "io.netty", "netty-buffer").versionRef("netty")
