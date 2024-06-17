@@ -91,6 +91,7 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
         var returnType = methodType.getReturnType();
         var isFlux = CommonUtils.isFlux(returnType);
         var isMono = CommonUtils.isMono(returnType);
+        var isFuture = CommonUtils.isFuture(returnType);
         if (isMono || isFlux) {
             b.addCode("return ");
             b.beginControlFlow("$T.deferContextual(_reactorCtx ->", isFlux ? CommonClassNames.flux : CommonClassNames.mono);
@@ -103,7 +104,7 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
                 b.beginControlFlow(".flatMapMany(_st ->");
             }
             b.addStatement("var _stmt = _st.boundStatementBuilder()");
-        } else if (CommonUtils.isFuture(returnType)) {
+        } else if (isFuture) {
             b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext($T.current(), _query)", CommonClassNames.context);
             b.addStatement("var _session = this._connectionFactory.currentSession()");
             b.addCode("return _session.prepareAsync(_query.sql()).thenCompose(_st -> {$>\n");
@@ -138,7 +139,7 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
                   });
                 """);
             b.endControlFlow(")");// defer
-        } else if (CommonUtils.isFuture(returnType)) {
+        } else if (isFuture) {
             if (CommonUtils.isVoid(((DeclaredType) returnType).getTypeArguments().get(0))) {
                 b.addStatement("return _session.executeAsync(_s).thenApply(_rs -> (Void)null)");
             } else {

@@ -81,10 +81,14 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         var returnType = methodType.getReturnType();
         if (CommonUtils.isMono(returnType)) {
             returnType = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
+        } else if(CommonUtils.isFuture(returnType)) {
+            returnType = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
         }
+
         if (CommonUtils.isVoid(returnType)) {
             return Optional.empty();
         }
+
         var batchParam = parameters.stream().filter(QueryParameter.BatchParameter.class::isInstance).findFirst().orElse(null);
         var generatedKeys = AnnotationUtils.isAnnotationPresent(method, DbUtils.ID_ANNOTATION);
         if (batchParam != null && !generatedKeys) {
@@ -131,8 +135,12 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         var b = DbUtils.queryMethodBuilder(method, methodType);
         var returnType = methodType.getReturnType();
         final boolean isMono = CommonUtils.isMono(returnType);
+        final boolean isFuture = CommonUtils.isFuture(returnType);
         if (isMono) {
             b.addCode("return $T.fromCompletionStage(() -> $T.supplyAsync(() -> {$>\n", CommonClassNames.mono, CompletableFuture.class);
+            returnType = ((DeclaredType) returnType).getTypeArguments().get(0);
+        } else if (isFuture) {
+            b.addCode("return $T.supplyAsync(() -> {$>\n", CompletableFuture.class);
             returnType = ((DeclaredType) returnType).getTypeArguments().get(0);
         }
         var connection = parameters.stream().filter(QueryParameter.ConnectionParameter.class::isInstance).findFirst()
@@ -162,7 +170,10 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             b.addCode("try (_conToClose; var _stmt = _conToUse.prepareStatement(_query.sql())) {$>\n");
         }
         b.addCode(StatementSetterGenerator.generate(method, query, parameters, batchParam, parameterMappers));
-        if (MethodUtils.isVoid(method) || isMono && MethodUtils.isVoidGeneric(methodType.getReturnType())) {
+        if (MethodUtils.isVoid(method)
+            || isMono && MethodUtils.isVoidGeneric(methodType.getReturnType())
+            || isFuture && MethodUtils.isVoidGeneric(methodType.getReturnType())) {
+
             if (batchParam != null) {
                 b.addStatement("var _batchResult = _stmt.executeBatch()");
             } else {
@@ -171,6 +182,8 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             }
             b.addStatement("_telemetry.close(null)");
             if (isMono) {
+                b.addStatement("return null");
+            } else if(isFuture) {
                 b.addStatement("return null");
             }
         } else if (batchParam != null) {
@@ -240,6 +253,8 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
 
         if (isMono) {
             b.addCode("$<\n}));\n");
+        } else if (isFuture) {
+            b.addCode("$<\n});\n");
         }
         return b.build();
     }
@@ -262,7 +277,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         }
         constructorBuilder.addStatement("this._connectionFactory = _connectionFactory");
 
-        var needThreadPool = queryMethods.stream().anyMatch(e -> CommonUtils.isMono(e.getReturnType()));
+        var needThreadPool = queryMethods.stream().anyMatch(e -> CommonUtils.isMono(e.getReturnType()) || CommonUtils.isFuture(e.getReturnType()));
         if (needThreadPool && executorTag != null) {
             builder.addField(TypeName.get(Executor.class), "_executor", Modifier.PRIVATE, Modifier.FINAL);
             constructorBuilder.addStatement("this._executor = _executor");

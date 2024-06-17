@@ -9,6 +9,7 @@ import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultSetMapper;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Executors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -17,6 +18,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
+
+
     @Test
     public void testReturnVoid() throws SQLException {
         var repository = compileJdbc(List.of(), """
@@ -109,7 +112,27 @@ public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
             @Repository
             public interface TestRepository extends JdbcRepository {
                 @Query("SELECT count(*) FROM test")
-                reactor.core.publisher.Mono<Integer> test();
+                Mono<Integer> test();
+            }
+            """);
+
+        when(mapper.apply(any())).thenReturn(42);
+        var result = repository.invoke("test");
+
+        assertThat(result).isEqualTo(42);
+        verify(executor.mockConnection).prepareStatement("SELECT count(*) FROM test");
+        verify(executor.preparedStatement).executeQuery();
+        verify(mapper).apply(executor.resultSet);
+    }
+
+    @Test
+    public void testReturnMonoObjectWithExecutor() throws SQLException {
+        var mapper = Mockito.mock(JdbcResultSetMapper.class);
+        var repository = compileJdbc(List.of(Executors.newCachedThreadPool(), mapper), """
+            @Repository(executorTag = @Tag(String.class))
+            public interface TestRepository extends JdbcRepository {
+                @Query("SELECT count(*) FROM test")
+                Mono<Integer> test();
             }
             """);
 
@@ -128,7 +151,119 @@ public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
             @Repository
             public interface TestRepository extends JdbcRepository {
                 @Query("SELECT count(*) FROM test")
-                reactor.core.publisher.Mono<Void> test();
+                Mono<Void> test();
+            }
+            """);
+
+        repository.invoke("test");
+
+        verify(executor.mockConnection).prepareStatement("SELECT count(*) FROM test");
+        verify(executor.preparedStatement).execute();
+    }
+
+    @Test
+    public void testReturnCompletionStageObject() throws SQLException {
+        var mapper = Mockito.mock(JdbcResultSetMapper.class);
+        var repository = compileJdbc(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("SELECT count(*) FROM test")
+                CompletionStage<Integer> test();
+            }
+            """);
+
+        when(mapper.apply(any())).thenReturn(42);
+        var result = repository.invoke("test");
+
+        assertThat(result).isEqualTo(42);
+        verify(executor.mockConnection).prepareStatement("SELECT count(*) FROM test");
+        verify(executor.preparedStatement).executeQuery();
+        verify(mapper).apply(executor.resultSet);
+    }
+
+    @Test
+    public void testReturnCompletionStageObjectWithExecutor() throws SQLException {
+        var mapper = Mockito.mock(JdbcResultSetMapper.class);
+        var repository = compileJdbc(List.of(Executors.newCachedThreadPool(), mapper), """
+            @Repository(executorTag = @Tag(String.class))
+            public interface TestRepository extends JdbcRepository {
+                @Query("SELECT count(*) FROM test")
+                CompletionStage<Integer> test();
+            }
+            """);
+
+        when(mapper.apply(any())).thenReturn(42);
+        var result = repository.invoke("test");
+
+        assertThat(result).isEqualTo(42);
+        verify(executor.mockConnection).prepareStatement("SELECT count(*) FROM test");
+        verify(executor.preparedStatement).executeQuery();
+        verify(mapper).apply(executor.resultSet);
+    }
+
+    @Test
+    public void testReturnCompletionStageVoid() throws SQLException {
+        var repository = compileJdbc(List.of(), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("SELECT count(*) FROM test")
+                CompletionStage<Void> test();
+            }
+            """);
+
+        repository.invoke("test");
+
+        verify(executor.mockConnection).prepareStatement("SELECT count(*) FROM test");
+        verify(executor.preparedStatement).execute();
+    }
+
+    @Test
+    public void testReturnCompletableFutureObject() throws SQLException {
+        var mapper = Mockito.mock(JdbcResultSetMapper.class);
+        var repository = compileJdbc(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("SELECT count(*) FROM test")
+                CompletableFuture<Integer> test();
+            }
+            """);
+
+        when(mapper.apply(any())).thenReturn(42);
+        var result = repository.invoke("test");
+
+        assertThat(result).isEqualTo(42);
+        verify(executor.mockConnection).prepareStatement("SELECT count(*) FROM test");
+        verify(executor.preparedStatement).executeQuery();
+        verify(mapper).apply(executor.resultSet);
+    }
+
+    @Test
+    public void testReturnCompletableFutureObjectWithExecutor() throws SQLException {
+        var mapper = Mockito.mock(JdbcResultSetMapper.class);
+        var repository = compileJdbc(List.of(Executors.newCachedThreadPool(), mapper), """
+            @Repository(executorTag = @Tag(String.class))
+            public interface TestRepository extends JdbcRepository {
+                @Query("SELECT count(*) FROM test")
+                CompletableFuture<Integer> test();
+            }
+            """);
+
+        when(mapper.apply(any())).thenReturn(42);
+        var result = repository.invoke("test");
+
+        assertThat(result).isEqualTo(42);
+        verify(executor.mockConnection).prepareStatement("SELECT count(*) FROM test");
+        verify(executor.preparedStatement).executeQuery();
+        verify(mapper).apply(executor.resultSet);
+    }
+
+    @Test
+    public void testReturnCompletableFutureVoid() throws SQLException {
+        var repository = compileJdbc(List.of(), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("SELECT count(*) FROM test")
+                CompletableFuture<Void> test();
             }
             """);
 
