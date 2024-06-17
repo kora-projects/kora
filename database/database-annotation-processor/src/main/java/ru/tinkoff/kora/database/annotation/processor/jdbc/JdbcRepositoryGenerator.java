@@ -78,7 +78,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         var returnType = methodType.getReturnType();
         if (CommonUtils.isMono(returnType)) {
             returnType = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
-        } else if(CommonUtils.isFuture(returnType)) {
+        } else if (CommonUtils.isFuture(returnType)) {
             returnType = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
         }
 
@@ -281,7 +281,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             constructorBuilder.addParameter(ParameterSpec.builder(TypeName.get(Executor.class), "_executor")
                 .addAnnotation(AnnotationSpec.builder(Tag.class).addMember("value", executorTag).build())
                 .build());
-        } else if(needThreadPool) {
+        } else if (needThreadPool) {
             builder.addField(TypeName.get(Executor.class), "_executor", Modifier.PRIVATE, Modifier.FINAL);
             constructorBuilder.addStatement("this._executor = _executor");
             constructorBuilder.addParameter(ParameterSpec.builder(TypeName.get(Executor.class), "_executor")
