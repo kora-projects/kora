@@ -5,16 +5,20 @@ package ru.tinkoff.kora.scheduling.quartz;
  * <p>
  * Parse the given <a href="https://www.manpagez.com/man/5/crontab/">crontab expression</a> string into a Cron Expression.
  * The string has six single space-separated time and date fields:
- * ` ┌───────────── second (0-59)
- * ` │ ┌───────────── minute (0-59)
- * ` │ │ ┌───────────── hour (0-23)
- * ` │ │ │ ┌───────────── day of the month (1-31)
- * ` │ │ │ │ ┌───────────── month (1-12 or JAN-DEC)
- * ` │ │ │ │ │ ┌───────────── day of the week (1-7 or SUN-SAT)
- * ` │ │ │ │ │ │ ┌─────────────  year (empty, 1970-2099, ?)
- * ` │ │ │ │ │ │ │
- * ` │ │ │ │ │ │ │
- * ` * * * * * * *
+ * <pre>
+ * {@code
+ * ┌───────────── second (0-59)
+ * │ ┌───────────── minute (0-59)
+ * │ │ ┌───────────── hour (0-23)
+ * │ │ │ ┌───────────── day of the month (1-31)
+ * │ │ │ │ ┌───────────── month (1-12 or JAN-DEC)
+ * │ │ │ │ │ ┌───────────── day of the week (1-7 or SUN-SAT)
+ * │ │ │ │ │ │ ┌─────────────  year (empty, 1970-2099, ?)
+ * │ │ │ │ │ │ │
+ * │ │ │ │ │ │ │
+ * * * * * * * *
+ * }
+ * </pre>
  *
  * <p>Special characters:
  * <ul>
