@@ -31,32 +31,35 @@ import ru.tinkoff.kora.http.server.common.auth.*;
 @ru.tinkoff.kora.common.Module
 public interface ApiSecurity {
 {{#vendorExtensions.tags}}
+
     static final class {{.}} {}
 {{/vendorExtensions.tags}}
 
 {{#vendorExtensions.authMethods}}
     @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
-    static final class {{name}}HttpServerInterceptor implements HttpServerInterceptor { {{#methods}}
+    static final class {{name}}HttpServerInterceptor implements HttpServerInterceptor {
+
+    {{#methods}}
         private final HttpServerPrincipalExtractor<{{#isOAuth}}PrincipalWithScopes{{/isOAuth}}{{^isOAuth}}Principal{{/isOAuth}}> {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}};
     {{/methods}}
-        public {{name}}HttpServerInterceptor(
-        {{#methods}}  @ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class)
-          HttpServerPrincipalExtractor<{{#isOAuth}}PrincipalWithScopes{{/isOAuth}}{{^isOAuth}}Principal{{/isOAuth}}> {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}{{^vendorExtensions.isLast}},
-        {{/vendorExtensions.isLast}}{{/methods}}
-        ) { {{#methods}}
-            this.{{#lambda.camelcase}}{{name}}{{/lambda.camelcase}} = {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}};{{/methods}}
+
+        public {{name}}HttpServerInterceptor({{#methods}}
+            @ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class) HttpServerPrincipalExtractor<{{#isOAuth}}PrincipalWithScopes{{/isOAuth}}{{^isOAuth}}Principal{{/isOAuth}}> {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}{{^vendorExtensions.isLast}},{{/vendorExtensions.isLast}}{{/methods}}) {
+            {{#methods}}
+            this.{{#lambda.camelcase}}{{name}}{{/lambda.camelcase}} = {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}};
+            {{/methods}}
         }
 
         @Override
         public CompletionStage<HttpServerResponse> intercept(Context ctx, HttpServerRequest request, InterceptChain chain) {
-        var future = new CompletableFuture<Principal>();{{#methods}}{{#isApiKey}}{{#isKeyInHeader}}
+            var future = new CompletableFuture<Principal>();{{#methods}}{{#isApiKey}}{{#isKeyInHeader}}
             var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("{{keyParamName}}");{{/isKeyInHeader}}{{#isKeyInQuery}}
             var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query = request.queryParams().get("{{keyParamName}}");
             var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query == null || {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query.isEmpty()
               ? null
               : {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query.iterator().next();
             {{/isKeyInQuery}}{{#isKeyInCookie}}
-              throw new IllegalStateException("TODO");// TODO
+            var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.cookies().stream().filter(c -> "{{keyParamName}}".equals(c.name())).map(c -> c.value()).findFirst().orElse(null);
             {{/isKeyInCookie}}
             {{/isApiKey}}{{#isBasicBasic}}
             var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("Authorization");
@@ -65,7 +68,6 @@ public interface ApiSecurity {
             {{/isBasicBearer}}{{#isOAuth}}
             var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("Authorization");
             {{/isOAuth}}
-
 
             var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}} = this.{{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}.extract(request, {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token){{^isOAuth}};{{/isOAuth}}{{#isOAuth}}{{#vendorExtensions.hasScopes}}
               .<Principal>thenApply((principal) -> { {{#scopes}}
@@ -80,15 +82,13 @@ public interface ApiSecurity {
                 else { {{#vendorExtensions.isLast}}
                   future.completeExceptionally(HttpServerResponseException.of(403, "Forbidden"));{{/vendorExtensions.isLast}}{{^vendorExtensions.isLast}}
 
-{{/vendorExtensions.isLast}}
+        {{/vendorExtensions.isLast}}
             {{/methods}}
             {{#methods}}
 
                 }
             });
             {{/methods}}
-
-
 
             return future
               .thenCompose(principal -> {
@@ -108,8 +108,7 @@ public interface ApiSecurity {
     @ru.tinkoff.kora.common.Tag({{name}}.class)
     @DefaultComponent
     default {{name}}HttpServerInterceptor {{name}}HttpServerInterceptor({{#methods}}
-      @ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class) HttpServerPrincipalExtractor<{{#isOAuth}}PrincipalWithScopes{{/isOAuth}}{{^isOAuth}}Principal{{/isOAuth}}> {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}{{^vendorExtensions.isLast}},
-      {{/vendorExtensions.isLast}}{{/methods}}) {
+      @ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class) HttpServerPrincipalExtractor<{{#isOAuth}}PrincipalWithScopes{{/isOAuth}}{{^isOAuth}}Principal{{/isOAuth}}> {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}{{^vendorExtensions.isLast}},{{/vendorExtensions.isLast}}{{/methods}}) {
         return new {{name}}HttpServerInterceptor({{#methods}}{{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}{{^vendorExtensions.isLast}}, {{/vendorExtensions.isLast}}{{/methods}});
     }
 
