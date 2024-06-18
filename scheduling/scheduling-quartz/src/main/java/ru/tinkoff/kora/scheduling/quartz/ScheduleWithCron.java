@@ -19,17 +19,17 @@ package ru.tinkoff.kora.scheduling.quartz;
  * * * * * * * *
  * }
  * </pre>
- *
- * <p>Special characters:
+ * <p>
+ * Special characters:
  * <ul>
  * <li> * (“all values”) - used to select all values within a field. For example, “*” in the minute field means “every minute”. </li>
  * <li> ? (“no specific value”) - useful when you need to specify something in one of the two fields in which the character is allowed, but not the other.
  * For example, if I want my trigger to fire on a particular day of the month (say, the 10th),
  * but don’t care what day of the week that happens to be, I would put “10” in the day-of-month field,
  * and “?” in the day-of-week field. See the examples below for clarification. </li>
- * </p>
- *
- * <p>Example expressions:
+ * </ul>
+ * <p>
+ * Example expressions:
  * <ul>
  * <li>{@code "0 0 * * * ?"} = the top of every hour of every day.</li>
  * <li>{@code "*\/10 * * * * ?"} = every ten seconds.</li>
