@@ -197,7 +197,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                 b.addStatement("_telemetry.close(null)");
                 b.addStatement("return _batchResult");
             } else if (generatedKeys) {
-                var result = CommonUtils.isNullable(method) || method.getReturnType().getKind().isPrimitive() || isMono
+                var result = CommonUtils.isNullable(method) || method.getReturnType().getKind().isPrimitive() || isMono || isFuture
                     ? CodeBlock.of("_result")
                     : CodeBlock.of("$T.requireNonNull(_result)", Objects.class);
 
@@ -217,7 +217,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                 .addStatement("_telemetry.close(null)")
                 .addStatement("return new $T(_updateCount)", DbUtils.UPDATE_COUNT);
         } else if (generatedKeys) {
-            var result = CommonUtils.isNullable(method) || method.getReturnType().getKind().isPrimitive() || isMono
+            var result = CommonUtils.isNullable(method) || method.getReturnType().getKind().isPrimitive() || isMono || isFuture
                 ? CodeBlock.of("_result")
                 : CodeBlock.of("$T.requireNonNull(_result)", Objects.class);
 
@@ -228,7 +228,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                 .addCode("return $L;", result)
                 .addCode("$<\n}\n");
         } else {
-            var result = CommonUtils.isNullable(method) || method.getReturnType().getKind().isPrimitive() || isMono
+            var result = CommonUtils.isNullable(method) || method.getReturnType().getKind().isPrimitive() || isMono || isFuture
                 ? CodeBlock.of("_result")
                 : CodeBlock.of("$T.requireNonNull(_result)", Objects.class);
 
