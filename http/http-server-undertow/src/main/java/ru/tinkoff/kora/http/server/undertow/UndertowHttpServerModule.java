@@ -15,7 +15,10 @@ import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTracerFactory;
 import ru.tinkoff.kora.http.server.undertow.pool.KoraByteBufferPool;
 
 public interface UndertowHttpServerModule extends UndertowModule {
-    default UndertowPublicApiHandler undertowPublicApiHandler(PublicApiHandler publicApiHandler, @Nullable HttpServerTracerFactory tracerFactory, HttpServerConfig config) {
+
+    default UndertowPublicApiHandler undertowPublicApiHandler(PublicApiHandler publicApiHandler,
+                                                              @Nullable HttpServerTracerFactory tracerFactory,
+                                                              HttpServerConfig config) {
         var tracer = tracerFactory == null ? null : tracerFactory.get(config.telemetry().tracing());
         return new UndertowPublicApiHandler(publicApiHandler, tracer);
     }
@@ -31,22 +34,5 @@ public interface UndertowHttpServerModule extends UndertowModule {
     @DefaultComponent
     default BlockingRequestExecutor undertowBlockingRequestExecutor(@Tag(Undertow.class) XnioWorker xnioWorker) {
         return new BlockingRequestExecutor.Default(xnioWorker);
-    }
-
-    @DefaultComponent
-    default ByteBufferPool undertowByteBufferPool() {
-        long maxMemory = Runtime.getRuntime().maxMemory();
-        //smaller than 64mb of ram we use 512b buffers
-        if (maxMemory < 64 * 1024 * 1024) {
-            //use 512b buffers
-            return new KoraByteBufferPool(false, 512, -1, 4);
-        } else if (maxMemory < 128 * 1024 * 1024) {
-            //use 1k buffers
-            return new KoraByteBufferPool(true, 1024, -1, 4);
-        } else {
-            //use 16k buffers for best performance
-            //as 16k is generally the max amount of data that can be sent in a single write() call
-            return new KoraByteBufferPool(true, 1024 * 16 - 20, -1, 4);
-        }
     }
 }
