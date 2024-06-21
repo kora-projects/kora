@@ -14,6 +14,10 @@ public abstract class AbstractKoraProcessor extends AbstractProcessor {
 
     @Override
     public SourceVersion getSupportedSourceVersion() {
+        SourceVersion latestVersion = SourceVersion.latest();
+        if (latestVersion.ordinal() >= 17) {
+            return latestVersion;
+        }
         return SourceVersion.RELEASE_17;
     }
 
