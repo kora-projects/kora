@@ -137,7 +137,7 @@ public class PrivateApiHandler {
             for (var future : futures) {
                 var result = future.getNow(null);
                 if (result != null) {
-                    return HttpServerResponse.of(503, HttpBody.plaintext(result.toString()));
+                    return HttpServerResponse.of(503, HttpBody.plaintext(String.valueOf(result)));
                 }
             }
             return HttpServerResponse.of(200, HttpBody.plaintext("OK"));
