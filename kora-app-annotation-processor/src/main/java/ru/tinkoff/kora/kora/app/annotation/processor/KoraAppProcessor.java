@@ -6,7 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
 import ru.tinkoff.kora.annotation.processor.common.*;
-import ru.tinkoff.kora.common.KoraApp;
 import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ComponentDependency;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim;
@@ -20,7 +19,6 @@ import javax.annotation.processing.FilerException;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedOptions;
-import javax.lang.model.SourceVersion;
 import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
 import javax.tools.Diagnostic;
@@ -487,7 +485,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         var dependenciesCode = this.generateDependenciesCode(component, graphTypeName, components);
 
         if (declaration instanceof ComponentDeclaration.AnnotatedComponent annotatedComponent) {
-            statement.add("new $T", annotatedComponent.typeElement());
+            statement.add("new $T", ClassName.get(annotatedComponent.typeElement()));
             if (!annotatedComponent.typeVariables().isEmpty()) {
                 statement.add("<");
                 for (int i = 0; i < annotatedComponent.typeVariables().size(); i++) {

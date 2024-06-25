@@ -46,8 +46,8 @@ public class ComponentDependencyHelper {
             var element = annotated.constructor();
             var type = (ExecutableType) annotated.constructor().asType();
             var result = new ArrayList<DependencyClaim>(element.getParameters().size());
-            for (int i = 0; i < type.getParameterTypes().size(); i++) {
-                var parameterType = type.getParameterTypes().get(i);
+            for (int i = 0; i < annotated.methodParameterTypes().size(); i++) {
+                var parameterType = annotated.methodParameterTypes().get(i);
                 var parameterElement = element.getParameters().get(i);
                 var tags = TagUtils.parseTagValue(parameterElement);
                 var isNullable = CommonUtils.isNullable(parameterElement);
