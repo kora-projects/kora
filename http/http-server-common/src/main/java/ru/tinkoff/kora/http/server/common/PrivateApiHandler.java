@@ -130,7 +130,7 @@ public class PrivateApiHandler {
         }
 
         var resultFuture = CompletableFuture.allOf(futures).handle((r, error) -> {
-            if(error != null) {
+            if (error != null) {
                 return HttpServerResponseException.of(error, 500, error.getMessage());
             }
 
