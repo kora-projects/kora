@@ -4,6 +4,7 @@ import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.TypeName;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
 import ru.tinkoff.kora.database.annotation.processor.EntityUtils;
@@ -157,7 +158,7 @@ public class DbEntity {
                 simple.element.getSimpleName().toString(),
                 simple.columnName(),
                 new String[]{simple.element.getSimpleName().toString()},
-                CommonUtils.isNullable(simple.element),
+                simple.nullable,
                 simple.accessor());
         }
 
@@ -169,7 +170,7 @@ public class DbEntity {
                 f.variableName(),
                 f.columnName(),
                 new String[]{f.parent.element.getSimpleName().toString(), f.element.getSimpleName().toString()},
-                CommonUtils.isNullable(f.parent.element) || CommonUtils.isNullable(f.element),
+                f.nullable,
                 f.parent.accessor() + "()." + f.element.getSimpleName().toString()// todo
             );
         }
@@ -191,7 +192,7 @@ public class DbEntity {
         TypeMirror typeMirror();
     }
 
-    private record SimpleEntityField(VariableElement element, TypeMirror typeMirror, String columnName, DtoType entityType) implements EntityField {
+    private record SimpleEntityField(VariableElement element, TypeMirror typeMirror, String columnName, DtoType entityType, boolean nullable) implements EntityField {
         public String accessor() {
             return switch (entityType) {
                 case RECORD -> this.element.getSimpleName().toString();
@@ -215,7 +216,7 @@ public class DbEntity {
             return eb.build();
         }
 
-        private record Field(SimpleEntityField parent, VariableElement element, TypeMirror typeMirror, String columnName, DtoType entityType) {
+        private record Field(SimpleEntityField parent, VariableElement element, TypeMirror typeMirror, String columnName, DtoType entityType, boolean nullable) {
             public String variableName() {
                 return parent.element.getSimpleName() + "_" + element.getSimpleName().toString();
             }
@@ -244,28 +245,53 @@ public class DbEntity {
             .filter(e -> e.getKind() == ElementKind.FIELD)
             .filter(DbEntity::isNotStaticField)
             .<EntityField>map(e -> {
-                var element = (VariableElement) e;
-                var type = element.asType();
-                var embedded = AnnotationUtils.findAnnotation(element, DbUtils.EMBEDDED_ANNOTATION);
-                var columnName = EntityUtils.parseColumnName(element, nameConverter);
-                var field = new SimpleEntityField(element, type, columnName, DtoType.RECORD);
+                var fieldElement = (VariableElement) e;
+                var fieldType = fieldElement.asType();
+                var columnName = EntityUtils.parseColumnName(fieldElement, nameConverter);
+                var isNullableField = isNullableRecordField(fieldElement, typeElement);
+                var field = new SimpleEntityField(fieldElement, fieldType, columnName, DtoType.RECORD, isNullableField);
+                var embedded = AnnotationUtils.findAnnotation(fieldElement, DbUtils.EMBEDDED_ANNOTATION);
                 if (embedded == null) {
                     return field;
                 }
                 var prefix = Objects.requireNonNullElse(AnnotationUtils.parseAnnotationValueWithoutDefault(embedded, "value"), "");
-                var entity = parseEntity(types, type);
+                var entity = parseEntity(types, fieldType);
                 var embeddedFields = new ArrayList<EmbeddedEntityField.Field>();
                 for (var entityField : entity.entityFields) {
+                    boolean isNullableEmbedded = isNullableField || isNullableRecordField(entityField.element(), entity.typeElement);
+                    String prefixEmbedded = prefix + ((SimpleEntityField) entityField).columnName();
                     embeddedFields.add(new EmbeddedEntityField.Field(
-                        field, entityField.element(), entityField.typeMirror(), prefix + ((SimpleEntityField) entityField).columnName(), DtoType.RECORD
+                        field, entityField.element(), entityField.typeMirror(), prefixEmbedded, DtoType.RECORD, isNullableEmbedded
                     ));
                 }
                 return new EmbeddedEntityField(
-                    field, type, element, embeddedFields
+                    field, fieldType, fieldElement, embeddedFields
                 );
             })
             .toList();
         return new DbEntity(typeElement.asType(), typeElement, DtoType.RECORD, fields);
+    }
+
+    private static boolean isNullableRecordField(VariableElement field, TypeElement type) {
+        var nullable = AnnotationUtils.findAnnotation(field, CommonClassNames.nullable);
+        if(nullable != null) {
+            return true;
+        }
+
+        final List<ExecutableElement> constructors = type.getEnclosedElements().stream()
+            .filter(e -> e.getKind() == ElementKind.CONSTRUCTOR)
+            .map(e -> ((ExecutableElement) e))
+            .toList();
+
+        if(constructors.size() > 1) {
+            return false;
+        } else {
+            return constructors.get(0).getParameters().stream()
+                .filter(p -> p.getSimpleName().contentEquals(field.getSimpleName()))
+                .findFirst()
+                .map(p -> AnnotationUtils.findAnnotation(p, CommonClassNames.nullable) != null)
+                .orElse(false);
+        }
     }
 
     private static boolean isRecord(TypeElement typeElement) {
@@ -290,9 +316,9 @@ public class DbEntity {
             .filter(e -> e.getKind() == ElementKind.FIELD)
             .filter(DbEntity::isNotStaticField)
             .map(VariableElement.class::cast)
-            .<DbEntity.EntityField>mapMulti((field, sink) -> {
-                var fieldType = field.asType();
-                var fieldName = field.getSimpleName().toString();
+            .<DbEntity.EntityField>mapMulti((fieldElement, sink) -> {
+                var fieldType = fieldElement.asType();
+                var fieldName = fieldElement.getSimpleName().toString();
                 var getterName = "get" + CommonUtils.capitalize(fieldName);
                 var setterName = "set" + CommonUtils.capitalize(fieldName);
                 var getter = methods.get(getterName);
@@ -312,14 +338,45 @@ public class DbEntity {
                 if (!types.isSameType(setter.getParameters().get(0).asType(), fieldType)) {
                     return;
                 }
-                var columnName = EntityUtils.parseColumnName(field, nameConverter);
-                sink.accept(new DbEntity.SimpleEntityField(field, fieldType, columnName, DtoType.BEAN));
+                var columnName = EntityUtils.parseColumnName(fieldElement, nameConverter);
+                boolean isNullableField = isNullableBeanField(fieldElement, setter);
+
+                SimpleEntityField simpleField = new SimpleEntityField(fieldElement, fieldType, columnName, DtoType.BEAN, isNullableField);
+                var embedded = AnnotationUtils.findAnnotation(fieldElement, DbUtils.EMBEDDED_ANNOTATION);
+                if (embedded == null) {
+                    sink.accept(simpleField);
+                } else {
+                    var prefix = Objects.requireNonNullElse(AnnotationUtils.parseAnnotationValueWithoutDefault(embedded, "value"), "");
+                    var entity = parseEntity(types, fieldType);
+                    var embeddedFields = new ArrayList<EmbeddedEntityField.Field>();
+                    for (var entityField : entity.entityFields) {
+                        boolean isNullableEmbedded = isNullableField || isNullableRecordField(entityField.element(), entity.typeElement);
+                        String prefixEmbedded = prefix + ((SimpleEntityField) entityField).columnName();
+                        embeddedFields.add(new EmbeddedEntityField.Field(
+                            simpleField, entityField.element(), entityField.typeMirror(), prefixEmbedded, DtoType.RECORD, isNullableEmbedded
+                        ));
+                    }
+                    EmbeddedEntityField embeddedField = new EmbeddedEntityField(simpleField, fieldType, fieldElement, embeddedFields);
+                    sink.accept(embeddedField);
+                }
             })
             .toList();
         if (fields.isEmpty()) {
             return null;
         }
         return new DbEntity(typeMirror, typeElement, DtoType.BEAN, fields);
+    }
+
+    private static boolean isNullableBeanField(VariableElement field, ExecutableElement method) {
+        var nullable = AnnotationUtils.findAnnotation(field, CommonClassNames.nullable);
+        if (nullable != null) {
+            return true;
+        }
+
+        return method.getParameters().stream()
+            .findFirst()
+            .map(p -> AnnotationUtils.findAnnotation(p, CommonClassNames.nullable) != null)
+            .orElse(false);
     }
 
     private static boolean isNotStaticField(Element element) {
