@@ -144,10 +144,12 @@ public abstract class AbstractAnnotationProcessorTest {
                 Object o = declaredConstructor.newInstance();
 
                 int i = 0;
-                for (Method declaredMethod : clazz.getDeclaredMethods()) {
-                    if(declaredMethod.getName().startsWith("set")) {
-                        declaredMethod.setAccessible(true);
-                        declaredMethod.invoke(o, params[i++]);
+                if(params.length > 0) {
+                    for (Method declaredMethod : clazz.getDeclaredMethods()) {
+                        if (declaredMethod.getName().startsWith("set")) {
+                            declaredMethod.setAccessible(true);
+                            declaredMethod.invoke(o, params[i++]);
+                        }
                     }
                 }
 
