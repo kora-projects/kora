@@ -71,7 +71,7 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         val returnType = function.returnType!!
         val isSuspend = funDeclaration.isSuspend()
         val isFlow = funDeclaration.isFlow()
-        b.addStatement("val _telemetry = this._cassandraConnectionFactory.telemetry().createContext(%T.current(), _query)", context)
+        b.addStatement("val _telemetry = this._cassandraConnectionFactory.telemetry().createContext(%T.current().fork(), _query)", context)
         b.addStatement("val _session = this._cassandraConnectionFactory.currentSession()")
         if (isFlow) {
             b.controlFlow("return %M", flowBuilder) {

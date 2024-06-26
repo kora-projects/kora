@@ -95,7 +95,7 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
         if (isMono || isFlux) {
             b.addCode("return ");
             b.beginControlFlow("$T.deferContextual(_reactorCtx ->", isFlux ? CommonClassNames.flux : CommonClassNames.mono);
-            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.Reactor.current(_reactorCtx), _query)");
+            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.Reactor.current(_reactorCtx), _query).fork()");
             b.addStatement("var _session = this._connectionFactory.currentSession()");
             b.addCode("return $T.fromCompletionStage(_session.prepareAsync(_query.sql()))", CommonClassNames.mono);
             if (isMono) {
@@ -105,13 +105,13 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
             }
             b.addStatement("var _stmt = _st.boundStatementBuilder()");
         } else if (isFuture) {
-            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext($T.current(), _query)", CommonClassNames.context);
+            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext($T.current(), _query).fork()", CommonClassNames.context);
             b.addStatement("var _session = this._connectionFactory.currentSession()");
             b.addCode("return _session.prepareAsync(_query.sql()).thenCompose(_st -> {$>\n");
             b.addStatement("var _stmt = _st.boundStatementBuilder()");
 
         } else {
-            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext($T.current(), _query)", CommonClassNames.context);
+            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext($T.current(), _query).fork()", CommonClassNames.context);
             b.addStatement("var _session = this._connectionFactory.currentSession()");
             b.addStatement("var _stmt = _session.prepare(_query.sql()).boundStatementBuilder()");
         }

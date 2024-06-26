@@ -74,7 +74,7 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
         val isFlow = method.isFlow()
         b.addCode("return ")
         b.controlFlow("%T.deferContextual { _reactorCtx ->", if (isFlow) CommonClassNames.flux else CommonClassNames.mono) {
-            b.addStatement("val _telemetry = this._r2dbcConnectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.Reactor.current(_reactorCtx), _query)")
+            b.addStatement("val _telemetry = this._r2dbcConnectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.Reactor.current(_reactorCtx).fork(), _query)")
             b.controlFlow("_r2dbcConnectionFactory.withConnection%L { _con ->", if (isFlow) "Flux" else "") {
                 b.addStatement("val _stmt = _con.createStatement(_query.sql())")
                 R2dbcStatementSetterGenerator.generate(b, query, parameters, batchParam, parameterMappers)

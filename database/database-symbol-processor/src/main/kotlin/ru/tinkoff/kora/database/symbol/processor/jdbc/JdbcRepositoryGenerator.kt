@@ -91,7 +91,7 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
             addStatement("_conToClose = null")
         }
         b.addStatement("val _query = %T(%S, %S, %S)", DbUtils.queryContext, query.rawQuery, sql, method.operationName())
-        b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.current(), _query)")
+        b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.current().fork(), _query)")
         b.controlFlow("try") {
             controlFlow("_conToClose.use") {
                 if (isGeneratedKeys)

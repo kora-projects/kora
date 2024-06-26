@@ -23,12 +23,13 @@ public final class VertxRepositoryHelper {
         if (connection != null) {
             return completionStage(connection, connectionFactory.telemetry(), query, params, mapper);
         }
-        return connectionFactory.newConnection().toCompletableFuture().thenCompose(c -> completionStage(c, connectionFactory.telemetry(), query, params, mapper)
+        return connectionFactory.newConnection().toCompletableFuture()
+            .thenCompose(c -> completionStage(c, connectionFactory.telemetry(), query, params, mapper)
             .whenComplete((t, throwable) -> c.close()));
     }
 
     public static <T> CompletableFuture<T> completionStage(SqlClient connection, DataBaseTelemetry dataBaseTelemetry, QueryContext query, Tuple params, VertxRowSetMapper<T> mapper) {
-        var ctx = Context.current();
+        var ctx = Context.current().fork();
         var telemetry = dataBaseTelemetry.createContext(ctx, query);
         var future = new CompletableFuture<T>();
         connection.preparedQuery(query.sql()).execute(params, rowSetEvent -> {
@@ -64,7 +65,7 @@ public final class VertxRepositoryHelper {
     }
 
     public static CompletableFuture<UpdateCount> batchCompletionStage(SqlClient connection, DataBaseTelemetry dataBaseTelemetry, QueryContext query, List<Tuple> params) {
-        var ctx = Context.current();
+        var ctx = Context.current().fork();
         var telemetry = dataBaseTelemetry.createContext(ctx, query);
         var future = new CompletableFuture<UpdateCount>();
         connection.preparedQuery(query.sql()).executeBatch(params, rowSetEvent -> {
@@ -108,7 +109,8 @@ public final class VertxRepositoryHelper {
 
         public static <T> Mono<T> mono(SqlClient connection, DataBaseTelemetry dataBaseTelemetry, QueryContext query, Tuple params, VertxRowSetMapper<T> mapper) {
             return Mono.create(sink -> {
-                var telemetry = dataBaseTelemetry.createContext(Context.Reactor.current(sink.contextView()), query);
+                var ctx = Context.Reactor.current(sink.contextView()).fork();
+                var telemetry = dataBaseTelemetry.createContext(ctx, query);
                 connection.preparedQuery(query.sql()).execute(params, rowSetEvent -> {
                     if (rowSetEvent.failed()) {
                         telemetry.close(rowSetEvent.cause());
@@ -140,7 +142,8 @@ public final class VertxRepositoryHelper {
 
         public static Mono<UpdateCount> batchMono(SqlClient connection, DataBaseTelemetry dataBaseTelemetry, QueryContext query, List<Tuple> params) {
             return Mono.create(sink -> {
-                var telemetry = dataBaseTelemetry.createContext(Context.Reactor.current(sink.contextView()), query);
+                var ctx = Context.Reactor.current(sink.contextView()).fork();
+                var telemetry = dataBaseTelemetry.createContext(ctx, query);
                 connection.preparedQuery(query.sql()).executeBatch(params, rowSetEvent -> {
                     if (rowSetEvent.failed()) {
                         telemetry.close(rowSetEvent.cause());
@@ -167,7 +170,6 @@ public final class VertxRepositoryHelper {
             });
         }
 
-
         public static <T> Flux<T> flux(VertxConnectionFactory connectionFactory, QueryContext query, Tuple params, VertxRowMapper<T> mapper) {
             return Flux.defer(() -> {
                 var connection = connectionFactory.currentConnection();
@@ -180,7 +182,8 @@ public final class VertxRepositoryHelper {
 
         public static <T> Flux<T> flux(SqlConnection connection, DataBaseTelemetry dataBaseTelemetry, QueryContext query, Tuple params, VertxRowMapper<T> mapper) {
             return Flux.create(sink -> {
-                var telemetry = dataBaseTelemetry.createContext(Context.Reactor.current(sink.contextView()), query);
+                var ctx = Context.Reactor.current(sink.contextView()).fork();
+                var telemetry = dataBaseTelemetry.createContext(ctx, query);
                 connection.prepare(query.sql(), statementEvent -> {
                     if (statementEvent.failed()) {
                         telemetry.close(statementEvent.cause());

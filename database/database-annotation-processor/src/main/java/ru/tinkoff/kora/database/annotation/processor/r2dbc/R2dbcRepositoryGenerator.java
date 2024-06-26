@@ -103,7 +103,7 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
 
         b.addCode("var _result = ");
         b.addCode("$T.deferContextual(_reactorCtx -> {$>\n", isFlux ? CommonClassNames.flux : CommonClassNames.mono);
-        b.addCode("var _telemetry = this._connectionFactory.telemetry().createContext($T.Reactor.current(_reactorCtx), _query);\n", Context.class);
+        b.addCode("var _telemetry = this._connectionFactory.telemetry().createContext($T.Reactor.current(_reactorCtx).fork(), _query);\n", Context.class);
         var connectionName = "_con";
         if (connectionParameter == null) {
             b.addCode("return this._connectionFactory.withConnection$L(_con -> {$>\n", isFlux ? "Flux" : "");
