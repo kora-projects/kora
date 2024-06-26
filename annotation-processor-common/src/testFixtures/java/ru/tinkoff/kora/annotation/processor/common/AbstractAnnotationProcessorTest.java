@@ -134,27 +134,32 @@ public abstract class AbstractAnnotationProcessorTest {
     public Object newObject(String className, Object... params) {
         try {
             var clazz = this.compileResult.loadClass(className);
-            if(clazz.isRecord()) {
-                Constructor<?> declaredConstructor = clazz.getDeclaredConstructors()[0];
-                declaredConstructor.setAccessible(true);
-                return declaredConstructor.newInstance(params);
-            } else {
-                Constructor<?> declaredConstructor = clazz.getDeclaredConstructors()[0];
-                declaredConstructor.setAccessible(true);
-                Object o = declaredConstructor.newInstance();
+            Constructor<?> declaredConstructor = clazz.getDeclaredConstructors()[0];
+            declaredConstructor.setAccessible(true);
+            return declaredConstructor.newInstance(params);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
-                int i = 0;
-                if(params.length > 0) {
-                    for (Method declaredMethod : clazz.getDeclaredMethods()) {
-                        if (declaredMethod.getName().startsWith("set")) {
-                            declaredMethod.setAccessible(true);
-                            declaredMethod.invoke(o, params[i++]);
-                        }
+    public Object newJavaBean(String className, Object... params) {
+        try {
+            var clazz = this.compileResult.loadClass(className);
+            Constructor<?> declaredConstructor = clazz.getDeclaredConstructors()[0];
+            declaredConstructor.setAccessible(true);
+            Object o = declaredConstructor.newInstance();
+
+            int i = 0;
+            if (params.length > 0) {
+                for (Method declaredMethod : clazz.getDeclaredMethods()) {
+                    if (declaredMethod.getName().startsWith("set")) {
+                        declaredMethod.setAccessible(true);
+                        declaredMethod.invoke(o, params[i++]);
                     }
                 }
-
-                return o;
             }
+
+            return o;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

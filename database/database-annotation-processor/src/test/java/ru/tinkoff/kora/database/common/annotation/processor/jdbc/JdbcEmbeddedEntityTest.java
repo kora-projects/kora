@@ -171,13 +171,13 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
             of("f1", "test"),
             of("f2", 20)
         )))
-            .isEqualTo(newObject("TestBean", newObject("EmbeddedRecord", "test", 20)));
+            .isEqualTo(newJavaBean("TestBean", newObject("EmbeddedRecord", "test", 20)));
 
         assertThat(rowMapper.apply(mockResultSet(
             of("f1", (String) null),
             of("f2", 20)
         )))
-            .isEqualTo(newObject("TestBean", newObject("EmbeddedRecord", null, 20)));
+            .isEqualTo(newJavaBean("TestBean", newObject("EmbeddedRecord", null, 20)));
 
         assertThatThrownBy(() -> rowMapper.apply(mockResultSet(
             of("f1", "test"),
