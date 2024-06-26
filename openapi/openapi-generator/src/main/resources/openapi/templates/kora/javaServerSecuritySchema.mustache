@@ -107,7 +107,7 @@ public interface ApiSecurity {
 
     @ru.tinkoff.kora.common.Tag({{name}}.class)
     @DefaultComponent
-    default {{name}}HttpServerInterceptor {{name}}HttpServerInterceptor({{#methods}}
+    default {{name}}HttpServerInterceptor {{name}}HttpServerAuthInterceptor({{#methods}}
       @ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class) HttpServerPrincipalExtractor<{{#isOAuth}}PrincipalWithScopes{{/isOAuth}}{{^isOAuth}}Principal{{/isOAuth}}> {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}{{^vendorExtensions.isLast}},{{/vendorExtensions.isLast}}{{/methods}}) {
         return new {{name}}HttpServerInterceptor({{#methods}}{{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}{{^vendorExtensions.isLast}}, {{/vendorExtensions.isLast}}{{/methods}});
     }

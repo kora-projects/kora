@@ -35,7 +35,7 @@ interface ApiSecurity {
 
     @DefaultComponent
     @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class)
-    fun {{name}}HttpClientInterceptor(@Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class) apiKey: String): ApiKeyHttpClientInterceptor {
+    fun {{name}}HttpClientAuthInterceptor(@Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class) apiKey: String): ApiKeyHttpClientInterceptor {
         val paramLocation = ApiKeyHttpClientInterceptor.ApiKeyLocation.{{#isKeyInQuery}}QUERY{{/isKeyInQuery}}{{#isKeyInHeader}}HEADER{{/isKeyInHeader}}{{#isKeyInCookie}}COOKIE{{/isKeyInCookie}}
         return ApiKeyHttpClientInterceptor(paramLocation, "{{keyParamName}}", apiKey)
     }
@@ -56,19 +56,19 @@ interface ApiSecurity {
 
     @DefaultComponent
     @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class)
-    fun {{name}}HttpClientInterceptor(@Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class) provider: BasicAuthHttpClientTokenProvider): BasicAuthHttpClientInterceptor {
+    fun {{name}}HttpClientAuthInterceptor(@Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class) provider: BasicAuthHttpClientTokenProvider): BasicAuthHttpClientInterceptor {
         return BasicAuthHttpClientInterceptor(provider)
     }
 {{/isBasicBasic}}{{#isBasicBearer}}
     @DefaultComponent
     @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class)
-    fun {{name}}HttpClientInterceptor(@Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class) tokenProvider: HttpClientTokenProvider): BearerAuthHttpClientInterceptor {
+    fun {{name}}HttpClientAuthInterceptor(@Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class) tokenProvider: HttpClientTokenProvider): BearerAuthHttpClientInterceptor {
         return BearerAuthHttpClientInterceptor(tokenProvider)
     }
 {{/isBasicBearer}}{{#isOAuth}}
     @DefaultComponent
     @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class)
-    fun {{name}}HttpClientInterceptor(@Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class) tokenProvider: HttpClientTokenProvider): BearerAuthHttpClientInterceptor {
+    fun {{name}}HttpClientAuthInterceptor(@Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class) tokenProvider: HttpClientTokenProvider): BearerAuthHttpClientInterceptor {
         return BearerAuthHttpClientInterceptor(tokenProvider)
     }
 {{/isOAuth}}{{/authMethods}}

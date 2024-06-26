@@ -40,7 +40,7 @@ public interface ApiSecurity {
 
     @DefaultComponent
     @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class)
-    default ApiKeyHttpClientInterceptor {{name}}HttpClientInterceptor(@Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class) String apiKey) {
+    default ApiKeyHttpClientInterceptor {{name}}HttpClientAuthInterceptor(@Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class) String apiKey) {
         var paramLocation = ApiKeyHttpClientInterceptor.ApiKeyLocation.{{#isKeyInQuery}}QUERY{{/isKeyInQuery}}{{#isKeyInHeader}}HEADER{{/isKeyInHeader}}{{#isKeyInCookie}}COOKIE{{/isKeyInCookie}};
         return new ApiKeyHttpClientInterceptor(paramLocation, "{{keyParamName}}", apiKey);
     }
@@ -65,18 +65,18 @@ public interface ApiSecurity {
 
     @DefaultComponent
     @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class)
-    default BasicAuthHttpClientInterceptor {{name}}HttpClientInterceptor(@Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class) HttpClientTokenProvider tokenProvider) {
+    default BasicAuthHttpClientInterceptor {{name}}HttpClientAuthInterceptor(@Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class) HttpClientTokenProvider tokenProvider) {
         return new BasicAuthHttpClientInterceptor(tokenProvider);
     }
 {{/isBasicBasic}}{{#isBasicBearer}}
     @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class)
-    default BearerAuthHttpClientInterceptor {{name}}HttpClientInterceptor(@Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class) HttpClientTokenProvider tokenProvider) {
+    default BearerAuthHttpClientInterceptor {{name}}HttpClientAuthInterceptor(@Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class) HttpClientTokenProvider tokenProvider) {
         return new BearerAuthHttpClientInterceptor(tokenProvider);
     }
 {{/isBasicBearer}}{{#isOAuth}}
     @DefaultComponent
     @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class)
-    default BearerAuthHttpClientInterceptor {{name}}HttpClientInterceptor(@Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class) HttpClientTokenProvider tokenProvider) {
+    default BearerAuthHttpClientInterceptor {{name}}HttpClientAuthInterceptor(@Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class) HttpClientTokenProvider tokenProvider) {
         return new BearerAuthHttpClientInterceptor(tokenProvider);
     }
 {{/isOAuth}}{{/authMethods}}
