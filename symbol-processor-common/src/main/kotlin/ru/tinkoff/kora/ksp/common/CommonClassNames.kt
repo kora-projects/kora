@@ -23,6 +23,7 @@ object CommonClassNames {
     val flowBuilder = MemberName("kotlinx.coroutines.flow", "flow")
 
     val context = ClassName("ru.tinkoff.kora.common", "Context")
+    val contextReactor = ClassName("ru.tinkoff.kora.common", "Context", "Reactor")
     val aopAnnotation = ClassName("ru.tinkoff.kora.common", "AopAnnotation")
     val aopProxy = ClassName("ru.tinkoff.kora.common", "AopProxy")
     val mapping = ClassName("ru.tinkoff.kora.common", "Mapping")

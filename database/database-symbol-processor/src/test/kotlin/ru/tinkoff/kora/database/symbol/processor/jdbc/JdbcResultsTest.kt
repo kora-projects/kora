@@ -83,7 +83,7 @@ class JdbcResultsTest : AbstractJdbcRepositoryTest() {
     fun testReturnSuspendObject() {
         val e = Executor { command -> Thread(command).start() }
         val ctxKey = object : Context.Key<String>() {
-            override fun copy(`object`: String?) = TODO("Not yet implemented")
+            override fun copy(`object`: String?) = `object`
         }
         Context.current()[ctxKey] = "test"
         val mapper = Mockito.mock(JdbcResultSetMapper::class.java)

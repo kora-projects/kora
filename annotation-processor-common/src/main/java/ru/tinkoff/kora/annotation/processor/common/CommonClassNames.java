@@ -8,6 +8,7 @@ import java.util.List;
 public class CommonClassNames {
     public static final ClassName nullable = ClassName.get("jakarta.annotation", "Nullable");
     public static final ClassName context = ClassName.get("ru.tinkoff.kora.common", "Context");
+    public static final ClassName contextReactor = ClassName.get("ru.tinkoff.kora.common", "Context","Reactor");
     public static final ClassName flowUtils = ClassName.get("ru.tinkoff.kora.common.util", "FlowUtils");
     public static final ClassName publisher = ClassName.get("org.reactivestreams", "Publisher");
     public static final ClassName mono = ClassName.get("reactor.core.publisher", "Mono");

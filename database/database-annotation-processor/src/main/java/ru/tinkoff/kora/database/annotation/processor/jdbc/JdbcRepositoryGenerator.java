@@ -133,7 +133,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         var returnType = methodType.getReturnType();
         final boolean isMono = CommonUtils.isMono(returnType);
         final boolean isFuture = CommonUtils.isFuture(returnType);
-        b.addStatement("var ctxCurrent = ru.tinkoff.kora.common.Context.current()");
+        b.addStatement("var _ctxCurrent = ru.tinkoff.kora.common.Context.current()");
         if (isMono) {
             b.addCode("return $T.fromCompletionStage($T.supplyAsync(() -> {$>\n", CommonClassNames.mono, CompletableFuture.class);
             returnType = ((DeclaredType) returnType).getTypeArguments().get(0);
@@ -145,6 +145,14 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             .map(p -> CodeBlock.of("$L", p.variable()))
             .orElse(CodeBlock.of("this._connectionFactory.currentConnection()"));
         b.addCode("""
+            var _ctxFork = _ctxCurrent.fork();
+            _ctxFork.inject();
+            var _query = new $T(
+              $S,
+              $S,
+              $S
+            );
+            var _telemetry = this._connectionFactory.telemetry().createContext(_ctxFork, _query);
             var _conToUse = $L;
             $T _conToClose;
             if (_conToUse == null) {
@@ -153,13 +161,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             } else {
                 _conToClose = null;
             }
-            var _query = new $T(
-              $S,
-              $S,
-              $S
-            );
-            var _telemetry = this._connectionFactory.telemetry().createContext(ctxCurrent.fork(), _query);
-            """, connection, JdbcTypes.CONNECTION, DbUtils.QUERY_CONTEXT, query.rawQuery(), sql, DbUtils.operationName(method));
+            """, DbUtils.QUERY_CONTEXT, query.rawQuery(), sql, DbUtils.operationName(method), connection, JdbcTypes.CONNECTION);
 
         var generatedKeys = AnnotationUtils.isAnnotationPresent(method, DbUtils.ID_ANNOTATION);
         if (generatedKeys) {
@@ -244,9 +246,11 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         b.addCode("$<\n} catch (java.sql.SQLException e) {\n")
             .addCode("  _telemetry.close(e);\n")
             .addCode("  throw new ru.tinkoff.kora.database.jdbc.RuntimeSqlException(e);\n")
-            .addCode("}  catch (Exception e) {\n")
+            .addCode("} catch (Exception e) {\n")
             .addCode("  _telemetry.close(e);\n")
             .addCode("  throw e;\n")
+            .addCode("} finally {\n")
+            .addCode("  _ctxCurrent.inject();\n")
             .addCode("}\n");
 
         if (isMono) {

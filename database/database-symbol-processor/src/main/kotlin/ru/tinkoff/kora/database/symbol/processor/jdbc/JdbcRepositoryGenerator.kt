@@ -82,6 +82,11 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
 
         val connection = parameters.firstOrNull { it is QueryParameter.ConnectionParameter }
             ?.let { CodeBlock.of("%L", it.variable) } ?: CodeBlock.of("_jdbcConnectionFactory.currentConnection()")
+        b.addStatement("val _ctxCurrent = %T.current()", CommonClassNames.context)
+        b.addStatement("val _ctxFork = _ctxCurrent.fork()")
+        b.addStatement("_ctxFork.inject()")
+        b.addStatement("val _query = %T(%S, %S, %S)", DbUtils.queryContext, query.rawQuery, sql, method.operationName())
+        b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(_ctxFork, _query)")
         b.addStatement("var _conToUse = %L", connection)
         b.addStatement("val _conToClose: %T?", JdbcTypes.connection)
         b.controlFlow("if (_conToUse == null)") {
@@ -90,8 +95,6 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
             nextControlFlow("else")
             addStatement("_conToClose = null")
         }
-        b.addStatement("val _query = %T(%S, %S, %S)", DbUtils.queryContext, query.rawQuery, sql, method.operationName())
-        b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.current().fork(), _query)")
         b.controlFlow("try") {
             controlFlow("_conToClose.use") {
                 if (isGeneratedKeys)
@@ -163,6 +166,8 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
             nextControlFlow("catch (_e: Exception)")
             addStatement("_telemetry.close(_e)")
             addStatement("throw _e")
+            nextControlFlow("finally")
+            addStatement("_ctxCurrent.inject()")
         }
         if (method.isSuspend()) {
             b.endControlFlow()
