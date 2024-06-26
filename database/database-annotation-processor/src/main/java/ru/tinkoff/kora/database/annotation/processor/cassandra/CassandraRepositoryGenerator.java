@@ -69,13 +69,13 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
                 tn -> CassandraNativeTypes.findNativeType(tn) != null,
                 CassandraTypes.PARAMETER_COLUMN_MAPPER
             ));
-            var methodSpec = this.generate(type, method, methodType, query, parameters, resultMapperName, parameterMappers);
+            var methodSpec = this.generate(method, methodType, query, parameters, resultMapperName, parameterMappers);
             type.addMethod(methodSpec);
         }
         return type.addMethod(constructor.build()).build();
     }
 
-    private MethodSpec generate(TypeSpec.Builder type, ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters, @Nullable String resultMapperName, FieldFactory parameterMappers) {
+    private MethodSpec generate(ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters, @Nullable String resultMapperName, FieldFactory parameterMappers) {
         var sql = query.rawQuery();
         for (var parameter : query.parameters().stream().sorted(Comparator.<QueryWithParameters.QueryParameter, Integer>comparing(p -> p.sqlParameterName().length()).reversed()).toList()) {
             sql = sql.replace(":" + parameter.sqlParameterName(), "?");
@@ -118,9 +118,7 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
             b.addStatement("var _stmt = _st.boundStatementBuilder()");
         } else {
             b.addStatement("var _ctxCurrent = $T.current()", CommonClassNames.context);
-            b.addStatement("var _ctxFork = _ctxCurrent.fork()");
-            b.addStatement("_ctxFork.inject()");
-            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext(_ctxFork, _query)", CommonClassNames.context);
+            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext(_ctxCurrent, _query)", CommonClassNames.context);
             b.addStatement("var _session = this._connectionFactory.currentSession()");
             b.addStatement("var _stmt = _session.prepare(_query.sql()).boundStatementBuilder()");
         }
@@ -178,8 +176,6 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
             b.nextControlFlow("catch (Exception _e)")
                 .addStatement("_telemetry.close(_e)")
                 .addStatement("throw _e")
-                .nextControlFlow("finally")
-                .addStatement("_ctxCurrent.inject()")
                 .endControlFlow();
         }
         return b.build();

@@ -71,10 +71,16 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         val returnType = function.returnType!!
         val isSuspend = funDeclaration.isSuspend()
         val isFlow = funDeclaration.isFlow()
+
         b.addStatement("val _ctxCurrent = %T.current()", CommonClassNames.context)
-        b.addStatement("val _ctxFork = _ctxCurrent.fork()")
-        b.addStatement("_ctxFork.inject()")
-        b.addStatement("val _telemetry = this._cassandraConnectionFactory.telemetry().createContext(_ctxFork, _query)", context)
+        if(isSuspend) {
+            b.addStatement("val _ctxFork = _ctxCurrent.fork()")
+            b.addStatement("_ctxFork.inject()")
+            b.addStatement("val _telemetry = this._cassandraConnectionFactory.telemetry().createContext(_ctxFork, _query)", context)
+        } else {
+            b.addStatement("val _telemetry = this._cassandraConnectionFactory.telemetry().createContext(_ctxCurrent, _query)", context)
+        }
+
         b.addStatement("val _session = this._cassandraConnectionFactory.currentSession()")
         if (isFlow) {
             b.controlFlow("return %M", flowBuilder) {
@@ -106,7 +112,7 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         } else if (isSuspend) {
             b.controlFlow("try") {
                 addStatement("val _st = _session.prepareAsync(_query.sql()).%M()", await)
-                addStatement("var _stmt = _st.boundStatementBuilder()")
+                addStatement("val _stmt = _st.boundStatementBuilder()")
                 if (profile != null) {
                     addStatement("_stmt.setExecutionProfileName(%S)", profile)
                 }
@@ -130,7 +136,7 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
                 addStatement("_ctxCurrent.inject()")
             }
         } else {
-            b.addStatement("var _stmt = _session.prepare(_query.sql()).boundStatementBuilder()")
+            b.addStatement("val _stmt = _session.prepare(_query.sql()).boundStatementBuilder()")
             if (profile != null) {
                 b.addStatement("_stmt.setExecutionProfileName(%S)", profile)
             }
