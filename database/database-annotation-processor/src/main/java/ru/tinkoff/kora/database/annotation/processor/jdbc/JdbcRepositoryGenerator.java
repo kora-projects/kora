@@ -154,7 +154,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                   $S,
                   $S
                 );
-                """);
+                """, DbUtils.QUERY_CONTEXT, query.rawQuery(), sql, DbUtils.operationName(method));
 
         if (isFuture || isMono) {
             b.addCode("""
@@ -177,7 +177,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             } else {
                 _conToClose = null;
             }
-            """, DbUtils.QUERY_CONTEXT, query.rawQuery(), sql, DbUtils.operationName(method), connection, JdbcTypes.CONNECTION);
+            """, connection, JdbcTypes.CONNECTION);
 
         var generatedKeys = AnnotationUtils.isAnnotationPresent(method, DbUtils.ID_ANNOTATION);
         if (generatedKeys) {
