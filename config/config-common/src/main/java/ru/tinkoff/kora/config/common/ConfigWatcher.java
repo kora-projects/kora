@@ -37,6 +37,13 @@ public class ConfigWatcher implements Lifecycle {
         if (this.applicationConfig.isEmpty()) {
             return;
         }
+        var disableConfigWatch = System.getenv("KORA_CONFIG_WATCHER_DISABLE");
+        if (disableConfigWatch == null) {
+            disableConfigWatch = System.getProperty("kora.config.watcher.disabled");
+        }
+        if (Boolean.parseBoolean(disableConfigWatch)) {
+            return;
+        }
         if (this.isStarted.compareAndSet(false, true)) {
             this.thread = new Thread(this::watchJob);
             this.thread.setName("config-reload");
