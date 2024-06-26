@@ -142,7 +142,7 @@ sealed interface ComponentDeclaration {
                     it.variance
                 )
             }
-            val type = classDeclaration.asType(classDeclaration.typeParameters.map { ctx.resolver.getTypeArgument(it.bounds.first(), it.variance) })
+            val type = classDeclaration.asType(listOf())
             val tags = TagUtils.parseTagValue(classDeclaration)
             val parameterTypes = constructor.parameters.map { it.type.resolve() }
 
