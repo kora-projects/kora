@@ -6,7 +6,15 @@ import io.netty.channel.ServerChannel;
 
 public interface NettyChannelFactory {
 
-    ChannelFactory<Channel> getClientFactory();
+    default ChannelFactory<Channel> getClientFactory() {
+        return getClientFactory(false);
+    }
 
-    ChannelFactory<ServerChannel> getServerFactory();
+    ChannelFactory<Channel> getClientFactory(boolean domainSocket);
+
+    default ChannelFactory<ServerChannel> getServerFactory() {
+        return getServerFactory(false);
+    }
+
+    ChannelFactory<ServerChannel> getServerFactory(boolean domainSocket);
 }

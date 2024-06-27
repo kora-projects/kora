@@ -1,6 +1,11 @@
 package ru.tinkoff.kora.database.vertx;
 
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFactory;
+import io.netty.channel.ServerChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
 import io.vertx.sqlclient.Tuple;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterAll;
@@ -9,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.database.common.telemetry.DefaultDataBaseTelemetryFactory;
+import ru.tinkoff.kora.netty.common.NettyChannelFactory;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_LogConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
@@ -27,11 +33,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(PostgresTestContainer.class)
 class VertxConnectionFactoryTest {
+
     private static NioEventLoopGroup eventLoopGroup;
+    private static NettyChannelFactory nettyChannelFactory;
 
     @BeforeAll
     static void beforeAll() {
         eventLoopGroup = new NioEventLoopGroup(1, VertxUtil.vertxThreadFactory());
+        nettyChannelFactory = new NettyChannelFactory() {
+            @Override
+            public ChannelFactory<Channel> getClientFactory(boolean domainSocket) {
+                return NioSocketChannel::new;
+            }
+
+            @Override
+            public ChannelFactory<ServerChannel> getServerFactory(boolean domainSocket) {
+                return NioServerSocketChannel::new;
+            }
+        };
     }
 
     @AfterAll
@@ -58,7 +77,8 @@ class VertxConnectionFactoryTest {
                 new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(null, null)
             )
         );
-        var db = new VertxDatabase(config, eventLoopGroup, new DefaultDataBaseTelemetryFactory(null, null, null));
+        var db = new VertxDatabase(config, eventLoopGroup, nettyChannelFactory, new DefaultDataBaseTelemetryFactory(null, null, null));
+
         try {
             db.init();
         } catch (Exception e) {

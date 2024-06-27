@@ -33,7 +33,7 @@ class GrpcClientExtensionTest extends AbstractAnnotationProcessorTest {
         super.compile(List.of(new KoraAppProcessor()), patchedSources);
 
         compileResult.assertSuccess();
-        try (var g = loadGraph("TestApp");) {
+        try (var g = loadGraph("TestApp")) {
             /*
               1. root config
               2. duration parser
@@ -47,13 +47,17 @@ class GrpcClientExtensionTest extends AbstractAnnotationProcessorTest {
               10. config parser
               11. parsed config
               12. telemetry factory
-              13. netty event loop group
-              14. channel factory
-              15. channel lifecycle
-              16. the stub
-              17. test root
+              13. NettyTransportConfig.EventLoop extractor
+              14. NettyTransportConfig extractor
+              15. NettyTransportConfig
+              16. netty event loop group
+              17. netty channel factory
+              18. channel factory
+              19. channel lifecycle
+              20. the stub
+              21. test root
              */
-            Assertions.assertThat(g.draw().size()).isEqualTo(17);
+            Assertions.assertThat(g.draw().size()).isEqualTo(21);
         }
     }
 

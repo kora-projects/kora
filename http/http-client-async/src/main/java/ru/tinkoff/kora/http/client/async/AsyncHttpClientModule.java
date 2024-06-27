@@ -3,6 +3,7 @@ package ru.tinkoff.kora.http.client.async;
 import io.netty.channel.EventLoopGroup;
 import org.asynchttpclient.DefaultAsyncHttpClientConfig;
 import org.asynchttpclient.Dsl;
+import org.asynchttpclient.channel.ChannelPool;
 import org.asynchttpclient.proxy.ProxyServer;
 import org.asynchttpclient.proxy.ProxyType;
 import ru.tinkoff.kora.common.Tag;

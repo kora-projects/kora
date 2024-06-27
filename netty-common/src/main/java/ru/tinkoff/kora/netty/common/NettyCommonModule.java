@@ -4,15 +4,11 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFactory;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.ServerChannel;
-import io.netty.channel.epoll.Epoll;
-import io.netty.channel.epoll.EpollEventLoopGroup;
-import io.netty.channel.epoll.EpollServerSocketChannel;
-import io.netty.channel.epoll.EpollSocketChannel;
-import io.netty.channel.kqueue.KQueue;
-import io.netty.channel.kqueue.KQueueEventLoopGroup;
-import io.netty.channel.kqueue.KQueueServerSocketChannel;
-import io.netty.channel.kqueue.KQueueSocketChannel;
+import io.netty.channel.epoll.*;
+import io.netty.channel.kqueue.*;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioDomainSocketChannel;
+import io.netty.channel.socket.nio.NioServerDomainSocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import jakarta.annotation.Nullable;
@@ -106,13 +102,21 @@ public interface NettyCommonModule {
     private static NettyChannelFactory getNioChannelFactory() {
         return new NettyChannelFactory() {
             @Override
-            public ChannelFactory<Channel> getClientFactory() {
-                return NioSocketChannel::new;
+            public ChannelFactory<Channel> getClientFactory(boolean domainSocket) {
+                if (domainSocket) {
+                    return NioDomainSocketChannel::new;
+                } else {
+                    return NioSocketChannel::new;
+                }
             }
 
             @Override
-            public ChannelFactory<ServerChannel> getServerFactory() {
-                return NioServerSocketChannel::new;
+            public ChannelFactory<ServerChannel> getServerFactory(boolean domainSocket) {
+                if (domainSocket) {
+                    return NioServerDomainSocketChannel::new;
+                } else {
+                    return NioServerSocketChannel::new;
+                }
             }
         };
     }
@@ -120,13 +124,21 @@ public interface NettyCommonModule {
     private static NettyChannelFactory getEpollChannelFactory() {
         return new NettyChannelFactory() {
             @Override
-            public ChannelFactory<Channel> getClientFactory() {
-                return EpollSocketChannel::new;
+            public ChannelFactory<Channel> getClientFactory(boolean domainSocket) {
+                if (domainSocket) {
+                    return EpollDomainSocketChannel::new;
+                } else {
+                    return EpollSocketChannel::new;
+                }
             }
 
             @Override
-            public ChannelFactory<ServerChannel> getServerFactory() {
-                return EpollServerSocketChannel::new;
+            public ChannelFactory<ServerChannel> getServerFactory(boolean domainSocket) {
+                if (domainSocket) {
+                    return EpollServerDomainSocketChannel::new;
+                } else {
+                    return EpollServerSocketChannel::new;
+                }
             }
         };
     }
@@ -134,13 +146,21 @@ public interface NettyCommonModule {
     private static NettyChannelFactory getKQueueChannelFactory() {
         return new NettyChannelFactory() {
             @Override
-            public ChannelFactory<Channel> getClientFactory() {
-                return KQueueSocketChannel::new;
+            public ChannelFactory<Channel> getClientFactory(boolean domainSocket) {
+                if (domainSocket) {
+                    return KQueueDomainSocketChannel::new;
+                } else {
+                    return KQueueSocketChannel::new;
+                }
             }
 
             @Override
-            public ChannelFactory<ServerChannel> getServerFactory() {
-                return KQueueServerSocketChannel::new;
+            public ChannelFactory<ServerChannel> getServerFactory(boolean domainSocket) {
+                if (domainSocket) {
+                    return KQueueServerDomainSocketChannel::new;
+                } else {
+                    return KQueueServerSocketChannel::new;
+                }
             }
         };
     }
