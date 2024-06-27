@@ -65,6 +65,7 @@ class KoraCodegenTest {
             "/example/petstoreV3_types.yaml",
             "/example/petstoreV3_validation.yaml",
             "/example/petstoreV3_single_response.yaml",
+            "/example/petstoreV3_security_all.yaml",
             "/example/petstoreV3_security_api_key.yaml",
             "/example/petstoreV3_security_basic.yaml",
             "/example/petstoreV3_security_bearer.yaml",
