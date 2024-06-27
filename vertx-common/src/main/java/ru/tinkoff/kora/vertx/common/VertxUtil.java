@@ -20,7 +20,7 @@ public final class VertxUtil {
 
     public static Vertx customEventLoopVertx(EventLoopGroup eventLoopGroup, NettyChannelFactory nettyChannelFactory) {
         return new VertxBuilder(new VertxOptions()
-            .setWorkerPoolSize(1) //TODO ???
+            .setWorkerPoolSize(1) // We are not using Vertx workers, but cant be zero
             .setMetricsOptions(new MetricsOptions().setEnabled(false)))
             .executorServiceFactory((threadFactory, concurrency, maxConcurrency) -> eventLoopGroup)
             .transport(new VertxEventLoopGroupTransport(eventLoopGroup, nettyChannelFactory))
