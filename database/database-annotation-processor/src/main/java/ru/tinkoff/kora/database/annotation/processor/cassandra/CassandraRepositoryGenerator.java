@@ -95,7 +95,10 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
         if (isMono || isFlux) {
             b.addCode("return ");
             b.beginControlFlow("$T.deferContextual(_reactorCtx ->", isFlux ? CommonClassNames.flux : CommonClassNames.mono);
-            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.Reactor.current(_reactorCtx), _query)");
+            b.addStatement("var _ctxCurrent = $T.current(_reactorCtx)", CommonClassNames.contextReactor);
+            b.addStatement("var _ctxFork = _ctxCurrent.fork()");
+            b.addStatement("_ctxFork.inject()");
+            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext(_ctxFork, _query)");
             b.addStatement("var _session = this._connectionFactory.currentSession()");
             b.addCode("return $T.fromCompletionStage(_session.prepareAsync(_query.sql()))", CommonClassNames.mono);
             if (isMono) {
@@ -105,13 +108,17 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
             }
             b.addStatement("var _stmt = _st.boundStatementBuilder()");
         } else if (isFuture) {
-            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext($T.current(), _query)", CommonClassNames.context);
+            b.addStatement("var _ctxCurrent = $T.current()", CommonClassNames.context);
+            b.addStatement("var _ctxFork = _ctxCurrent.fork()");
+            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext(_ctxFork, _query)", CommonClassNames.context);
             b.addStatement("var _session = this._connectionFactory.currentSession()");
-            b.addCode("return _session.prepareAsync(_query.sql()).thenCompose(_st -> {$>\n");
+            b.addCode("return _session.prepareAsync(_query.sql())\n");
+            b.addCode("  .thenCompose(_st -> {$>$>\n");
+            b.addStatement("_ctxFork.inject()");
             b.addStatement("var _stmt = _st.boundStatementBuilder()");
-
         } else {
-            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext($T.current(), _query)", CommonClassNames.context);
+            b.addStatement("var _ctxCurrent = $T.current()", CommonClassNames.context);
+            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext(_ctxCurrent, _query)", CommonClassNames.context);
             b.addStatement("var _session = this._connectionFactory.currentSession()");
             b.addStatement("var _stmt = _session.prepare(_query.sql()).boundStatementBuilder()");
         }
@@ -133,8 +140,10 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
                   .doOnEach(_s -> {
                     if (_s.isOnComplete()) {
                       _telemetry.close(null);
+                      _ctxCurrent.inject();
                     } else if (_s.isOnError()) {
                       _telemetry.close(_s.getThrowable());
+                      _ctxCurrent.inject();
                     }
                   });
                 """);
@@ -144,9 +153,15 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
                 b.addStatement("return _session.executeAsync(_s).thenApply(_rs -> (Void)null)");
             } else {
                 Objects.requireNonNull(resultMapperName, () -> "Illegal State occurred when expected to get result mapper, but got null in " + method.getEnclosingElement().getSimpleName() + "#" + method.getSimpleName());
-                b.addCode("return _session.executeAsync(_s).thenCompose($N::apply);", resultMapperName);
+                b.addStatement("return _session.executeAsync(_s).thenCompose($N::apply)", resultMapperName);
             }
-            b.addCode("$<\n}).whenComplete((_result, _error) -> _telemetry.close(_error));\n");
+            b.addCode("""
+                    $<})$<
+                      .whenComplete((_result, _error) -> {
+                        _telemetry.close(_error);
+                        _ctxCurrent.inject();
+                      });
+                    """);
         } else {
             b.beginControlFlow("try");
             b.addStatement("var _rs = _session.execute(_s)");

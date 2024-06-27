@@ -66,7 +66,7 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
             .forEach { sql = sql.replace(":" + it.first, it.second) }
 
         val b = funDeclaration.queryMethodBuilder(resolver)
-        b.addCode("val _query = %T(\n  %S,\n  %S\n,  %S\n)\n", DbUtils.queryContext, query.rawQuery, sql, funDeclaration.operationName())
+        b.addCode("val _query = %T(\n  %S,\n  %S,\n  %S\n)\n", DbUtils.queryContext, query.rawQuery, sql, funDeclaration.operationName())
         val batchParam = parameters.firstOrNull { it is QueryParameter.BatchParameter }
         val isSuspend = funDeclaration.isSuspend()
         val isFlow = funDeclaration.isFlow()

@@ -17,22 +17,23 @@ public final class VertxRepositoryHelper {
 
     private VertxRepositoryHelper() {}
 
-
     public static <T> CompletableFuture<T> completionStage(VertxConnectionFactory connectionFactory, QueryContext query, Tuple params, VertxRowSetMapper<T> mapper) {
         var connection = connectionFactory.currentConnection();
         if (connection != null) {
             return completionStage(connection, connectionFactory.telemetry(), query, params, mapper);
         }
-        return connectionFactory.newConnection().toCompletableFuture().thenCompose(c -> completionStage(c, connectionFactory.telemetry(), query, params, mapper)
+        return connectionFactory.newConnection().toCompletableFuture()
+            .thenCompose(c -> completionStage(c, connectionFactory.telemetry(), query, params, mapper)
             .whenComplete((t, throwable) -> c.close()));
     }
 
     public static <T> CompletableFuture<T> completionStage(SqlClient connection, DataBaseTelemetry dataBaseTelemetry, QueryContext query, Tuple params, VertxRowSetMapper<T> mapper) {
-        var ctx = Context.current();
-        var telemetry = dataBaseTelemetry.createContext(ctx, query);
+        var ctxCurrent = Context.current();
+        var ctxFork = ctxCurrent.fork();
+        var telemetry = dataBaseTelemetry.createContext(ctxFork, query);
         var future = new CompletableFuture<T>();
         connection.preparedQuery(query.sql()).execute(params, rowSetEvent -> {
-            ctx.inject();
+            ctxFork.inject();
             if (rowSetEvent.failed()) {
                 telemetry.close(rowSetEvent.cause());
                 future.completeExceptionally(rowSetEvent.cause());
@@ -44,10 +45,12 @@ public final class VertxRepositoryHelper {
                 result = mapper.apply(rowSet);
             } catch (Exception e) {
                 telemetry.close(e);
+                ctxCurrent.inject();
                 future.completeExceptionally(e);
                 return;
             }
             telemetry.close(null);
+            ctxCurrent.inject();
             future.complete(result);
         });
         return future;
@@ -64,11 +67,12 @@ public final class VertxRepositoryHelper {
     }
 
     public static CompletableFuture<UpdateCount> batchCompletionStage(SqlClient connection, DataBaseTelemetry dataBaseTelemetry, QueryContext query, List<Tuple> params) {
-        var ctx = Context.current();
-        var telemetry = dataBaseTelemetry.createContext(ctx, query);
+        var ctxCurrent = Context.current();
+        var ctxFork = ctxCurrent.fork();
+        var telemetry = dataBaseTelemetry.createContext(ctxFork, query);
         var future = new CompletableFuture<UpdateCount>();
         connection.preparedQuery(query.sql()).executeBatch(params, rowSetEvent -> {
-            ctx.inject();
+            ctxFork.inject();
             if (rowSetEvent.failed()) {
                 telemetry.close(rowSetEvent.cause());
                 future.completeExceptionally(rowSetEvent.cause());
@@ -83,10 +87,12 @@ public final class VertxRepositoryHelper {
                 }
             } catch (Exception e) {
                 telemetry.close(e);
+                ctxCurrent.inject();
                 future.completeExceptionally(e);
                 return;
             }
             telemetry.close(null);
+            ctxCurrent.inject();
             future.complete(new UpdateCount(result));
         });
         return future;
@@ -108,8 +114,11 @@ public final class VertxRepositoryHelper {
 
         public static <T> Mono<T> mono(SqlClient connection, DataBaseTelemetry dataBaseTelemetry, QueryContext query, Tuple params, VertxRowSetMapper<T> mapper) {
             return Mono.create(sink -> {
-                var telemetry = dataBaseTelemetry.createContext(Context.Reactor.current(sink.contextView()), query);
+                var ctxCurrent = Context.Reactor.current(sink.contextView());
+                var ctxFork = ctxCurrent.fork();
+                var telemetry = dataBaseTelemetry.createContext(ctxFork, query);
                 connection.preparedQuery(query.sql()).execute(params, rowSetEvent -> {
+                    ctxFork.inject();
                     if (rowSetEvent.failed()) {
                         telemetry.close(rowSetEvent.cause());
                         sink.error(rowSetEvent.cause());
@@ -120,9 +129,11 @@ public final class VertxRepositoryHelper {
                         var result = mapper.apply(rowSet);
                         telemetry.close(null);
                         sink.success(result);
+                        ctxCurrent.inject();
                     } catch (Exception e) {
                         telemetry.close(e);
                         sink.error(e);
+                        ctxCurrent.inject();
                     }
                 });
             });
@@ -140,8 +151,11 @@ public final class VertxRepositoryHelper {
 
         public static Mono<UpdateCount> batchMono(SqlClient connection, DataBaseTelemetry dataBaseTelemetry, QueryContext query, List<Tuple> params) {
             return Mono.create(sink -> {
-                var telemetry = dataBaseTelemetry.createContext(Context.Reactor.current(sink.contextView()), query);
+                var ctxCurrent = Context.Reactor.current(sink.contextView());
+                var ctxFork = ctxCurrent.fork();
+                var telemetry = dataBaseTelemetry.createContext(ctxFork, query);
                 connection.preparedQuery(query.sql()).executeBatch(params, rowSetEvent -> {
+                    ctxFork.inject();
                     if (rowSetEvent.failed()) {
                         telemetry.close(rowSetEvent.cause());
                         sink.error(rowSetEvent.cause());
@@ -158,18 +172,19 @@ public final class VertxRepositoryHelper {
                     } catch (Exception e) {
                         telemetry.close(e);
                         sink.error(e);
+                        ctxCurrent.inject();
                         return;
                     }
 
                     telemetry.close(null);
                     sink.success(new UpdateCount(counter));
+                    ctxCurrent.inject();
                 });
             });
         }
 
-
         public static <T> Flux<T> flux(VertxConnectionFactory connectionFactory, QueryContext query, Tuple params, VertxRowMapper<T> mapper) {
-            return Flux.defer(() -> {
+            return Flux.deferContextual(contextView -> {
                 var connection = connectionFactory.currentConnection();
                 if (connection != null) {
                     return flux(connection, connectionFactory.telemetry(), query, params, mapper);
@@ -180,8 +195,11 @@ public final class VertxRepositoryHelper {
 
         public static <T> Flux<T> flux(SqlConnection connection, DataBaseTelemetry dataBaseTelemetry, QueryContext query, Tuple params, VertxRowMapper<T> mapper) {
             return Flux.create(sink -> {
-                var telemetry = dataBaseTelemetry.createContext(Context.Reactor.current(sink.contextView()), query);
+                var ctxCurrent = Context.Reactor.current(sink.contextView());
+                var ctxFork = ctxCurrent.fork();
+                var telemetry = dataBaseTelemetry.createContext(ctxFork, query);
                 connection.prepare(query.sql(), statementEvent -> {
+                    ctxFork.inject();
                     if (statementEvent.failed()) {
                         telemetry.close(statementEvent.cause());
                         sink.error(statementEvent.cause());
@@ -195,11 +213,13 @@ public final class VertxRepositoryHelper {
                         stmt.close();
                         telemetry.close(e);
                         sink.error(e);
+                        ctxCurrent.inject();
                     });
                     stream.endHandler(v -> {
                         stmt.close();
                         telemetry.close(null);
                         sink.complete();
+                        ctxCurrent.inject();
                     });
                     stream.handler(row -> {
                         var mappedRow = mapper.apply(row);

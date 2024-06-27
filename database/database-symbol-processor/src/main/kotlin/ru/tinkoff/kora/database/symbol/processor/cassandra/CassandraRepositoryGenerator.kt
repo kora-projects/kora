@@ -65,13 +65,22 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
             sql = sql.replace(":" + parameter.sqlParameterName, "?")
         }
         val b = funDeclaration.queryMethodBuilder(resolver)
-        b.addCode("val _query = %T(\n  %S,\n  %S\n,  %S\n)\n", DbUtils.queryContext, query.rawQuery, sql, funDeclaration.operationName())
+        b.addCode("val _query = %T(\n  %S,\n  %S,\n  %S\n)\n", DbUtils.queryContext, query.rawQuery, sql, funDeclaration.operationName())
         val batchParam = parameters.firstOrNull { it is QueryParameter.BatchParameter }
         val profile = funDeclaration.findAnnotation(CassandraTypes.cassandraProfileAnnotation)?.findValue<String>("value")
         val returnType = function.returnType!!
         val isSuspend = funDeclaration.isSuspend()
         val isFlow = funDeclaration.isFlow()
-        b.addStatement("val _telemetry = this._cassandraConnectionFactory.telemetry().createContext(%T.current(), _query)", context)
+
+        b.addStatement("val _ctxCurrent = %T.current()", CommonClassNames.context)
+        if(isSuspend) {
+            b.addStatement("val _ctxFork = _ctxCurrent.fork()")
+            b.addStatement("_ctxFork.inject()")
+            b.addStatement("val _telemetry = this._cassandraConnectionFactory.telemetry().createContext(_ctxFork, _query)", context)
+        } else {
+            b.addStatement("val _telemetry = this._cassandraConnectionFactory.telemetry().createContext(_ctxCurrent, _query)", context)
+        }
+
         b.addStatement("val _session = this._cassandraConnectionFactory.currentSession()")
         if (isFlow) {
             b.controlFlow("return %M", flowBuilder) {
@@ -96,6 +105,8 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
                     nextControlFlow("catch (_e: Exception)")
                     addStatement("_telemetry.close(_e)")
                     addStatement("throw _e")
+                    nextControlFlow("finally")
+                    addStatement("_ctxCurrent.inject()")
                 }
             }
         } else if (isSuspend) {
@@ -121,6 +132,8 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
                 nextControlFlow("catch (_e: Exception)")
                 addStatement("_telemetry.close(_e)")
                 addStatement("throw _e")
+                nextControlFlow("finally")
+                addStatement("_ctxCurrent.inject()")
             }
         } else {
             b.addStatement("var _stmt = _session.prepare(_query.sql()).boundStatementBuilder()")

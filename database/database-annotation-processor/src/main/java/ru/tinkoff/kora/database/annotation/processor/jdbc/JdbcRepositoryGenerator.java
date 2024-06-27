@@ -22,7 +22,10 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.sql.Statement;
-import java.util.*;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.stream.LongStream;
@@ -133,8 +136,9 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         var returnType = methodType.getReturnType();
         final boolean isMono = CommonUtils.isMono(returnType);
         final boolean isFuture = CommonUtils.isFuture(returnType);
+        b.addStatement("var _ctxCurrent = ru.tinkoff.kora.common.Context.current()");
         if (isMono) {
-            b.addCode("return $T.fromCompletionStage(() -> $T.supplyAsync(() -> {$>\n", CommonClassNames.mono, CompletableFuture.class);
+            b.addCode("return $T.fromCompletionStage($T.supplyAsync(() -> {$>\n", CommonClassNames.mono, CompletableFuture.class);
             returnType = ((DeclaredType) returnType).getTypeArguments().get(0);
         } else if (isFuture) {
             b.addCode("return $T.supplyAsync(() -> {$>\n", CompletableFuture.class);
@@ -143,6 +147,27 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         var connection = parameters.stream().filter(QueryParameter.ConnectionParameter.class::isInstance).findFirst()
             .map(p -> CodeBlock.of("$L", p.variable()))
             .orElse(CodeBlock.of("this._connectionFactory.currentConnection()"));
+
+        b.addCode("""
+                var _query = new $T(
+                  $S,
+                  $S,
+                  $S
+                );
+                """, DbUtils.QUERY_CONTEXT, query.rawQuery(), sql, DbUtils.operationName(method));
+
+        if (isFuture || isMono) {
+            b.addCode("""
+                var _ctxFork = _ctxCurrent.fork();
+                _ctxFork.inject();
+                var _telemetry = this._connectionFactory.telemetry().createContext(_ctxFork, _query);
+                """);
+        } else {
+            b.addCode("""
+                var _telemetry = this._connectionFactory.telemetry().createContext(_ctxCurrent, _query);
+                """);
+        }
+
         b.addCode("""
             var _conToUse = $L;
             $T _conToClose;
@@ -152,13 +177,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             } else {
                 _conToClose = null;
             }
-            var _query = new $T(
-              $S,
-              $S,
-              $S
-            );
-            var _telemetry = this._connectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.current(), _query);
-            """, connection, JdbcTypes.CONNECTION, DbUtils.QUERY_CONTEXT, query.rawQuery(), sql, DbUtils.operationName(method));
+            """, connection, JdbcTypes.CONNECTION);
 
         var generatedKeys = AnnotationUtils.isAnnotationPresent(method, DbUtils.ID_ANNOTATION);
         if (generatedKeys) {
@@ -180,7 +199,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             b.addStatement("_telemetry.close(null)");
             if (isMono) {
                 b.addStatement("return null");
-            } else if(isFuture) {
+            } else if (isFuture) {
                 b.addStatement("return null");
             }
         } else if (batchParam != null) {
@@ -243,10 +262,17 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         b.addCode("$<\n} catch (java.sql.SQLException e) {\n")
             .addCode("  _telemetry.close(e);\n")
             .addCode("  throw new ru.tinkoff.kora.database.jdbc.RuntimeSqlException(e);\n")
-            .addCode("}  catch (Exception e) {\n")
+            .addCode("} catch (Exception e) {\n")
             .addCode("  _telemetry.close(e);\n")
-            .addCode("  throw e;\n")
-            .addCode("}\n");
+            .addCode("  throw e;\n");
+
+        if (isMono || isFuture) {
+            b.addCode("} finally {\n")
+                .addCode("  _ctxCurrent.inject();\n")
+                .addCode("}\n");
+        } else {
+            b.addCode("}\n");
+        }
 
         if (isMono) {
             b.addCode("$<\n}, _executor));\n");

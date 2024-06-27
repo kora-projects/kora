@@ -67,14 +67,17 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
             sql = sql.replace(":" + parameter.sqlParameterName, "$" + (p.index + 1))
         }
         val b = method.queryMethodBuilder(resolver)
-        b.addCode("val _query = %T(\n  %S,\n  %S\n,  %S\n)\n", DbUtils.queryContext, query.rawQuery, sql, method.operationName())
+        b.addCode("val _query = %T(\n  %S,\n  %S,\n  %S\n)\n", DbUtils.queryContext, query.rawQuery, sql, method.operationName())
         val batchParam = parameters.firstOrNull { it is QueryParameter.BatchParameter }
         val returnType = function.returnType!!
         val isSuspend = method.isSuspend()
         val isFlow = method.isFlow()
         b.addCode("return ")
         b.controlFlow("%T.deferContextual { _reactorCtx ->", if (isFlow) CommonClassNames.flux else CommonClassNames.mono) {
-            b.addStatement("val _telemetry = this._r2dbcConnectionFactory.telemetry().createContext(ru.tinkoff.kora.common.Context.Reactor.current(_reactorCtx), _query)")
+            b.addStatement("val _ctxCurrent = %T.current(_reactorCtx)", CommonClassNames.contextReactor)
+            b.addStatement("val _ctxFork = _ctxCurrent.fork()")
+            b.addStatement("_ctxFork.inject()")
+            b.addStatement("val _telemetry = this._r2dbcConnectionFactory.telemetry().createContext(_ctxFork, _query)")
             b.controlFlow("_r2dbcConnectionFactory.withConnection%L { _con ->", if (isFlow) "Flux" else "") {
                 b.addStatement("val _stmt = _con.createStatement(_query.sql())")
                 R2dbcStatementSetterGenerator.generate(b, query, parameters, batchParam, parameterMappers)
@@ -93,8 +96,10 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
                 b.controlFlow(".doOnEach { _s ->") {
                     b.controlFlow("if (_s.isOnComplete)") {
                         b.addStatement("_telemetry.close(null)")
+                        b.addStatement("_ctxCurrent.inject()")
                         b.nextControlFlow("else if (_s.isOnError)")
                         b.addStatement("_telemetry.close(_s.throwable)")
+                        b.addStatement("_ctxCurrent.inject()")
                     }
                 }
             }
