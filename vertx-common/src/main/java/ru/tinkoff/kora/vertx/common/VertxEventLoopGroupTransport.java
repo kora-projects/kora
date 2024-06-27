@@ -169,18 +169,26 @@ public class VertxEventLoopGroupTransport extends Transport {
     public DatagramChannel datagramChannel(InternetProtocolFamily family) {
         return switch (this.type) {
             case NIO -> super.datagramChannel(family);
-            case EPOLL -> new EpollDatagramChannel(family);
-            case KQUEUE -> new KQueueDatagramChannel(family);
+            case EPOLL -> new EpollDatagramChannel();
+            case KQUEUE -> new KQueueDatagramChannel();
         };
     }
 
     @Override
     public ChannelFactory<? extends Channel> channelFactory(boolean domainSocket) {
+        if(type == TransportType.NIO && domainSocket) {
+            throw new IllegalArgumentException("The Vertx instance must be created with the preferNativeTransport option set to true to create domain sockets");
+        }
+
         return nettyChannelFactory.getClientFactory(domainSocket);
     }
 
     @Override
     public ChannelFactory<? extends ServerChannel> serverChannelFactory(boolean domainSocket) {
+        if(type == TransportType.NIO && domainSocket) {
+            throw new IllegalArgumentException("The Vertx instance must be created with the preferNativeTransport option set to true to create domain sockets");
+        }
+
         return nettyChannelFactory.getServerFactory(domainSocket);
     }
 
