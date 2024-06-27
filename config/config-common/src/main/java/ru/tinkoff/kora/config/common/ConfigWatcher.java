@@ -37,9 +37,9 @@ public class ConfigWatcher implements Lifecycle {
         if (this.applicationConfig.isEmpty()) {
             return;
         }
-        var disableConfigWatch = System.getenv("KORA_CONFIG_WATCHER_DISABLE");
+        var disableConfigWatch = System.getenv("KORA_CONFIG_WATCHER_ENABLED");
         if (disableConfigWatch == null) {
-            disableConfigWatch = System.getProperty("kora.config.watcher.disabled");
+            disableConfigWatch = System.getProperty("kora.config.watcher.enabled");
         }
         if (Boolean.parseBoolean(disableConfigWatch)) {
             return;
