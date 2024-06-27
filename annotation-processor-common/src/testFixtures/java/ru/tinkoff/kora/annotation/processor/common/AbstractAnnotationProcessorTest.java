@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -136,6 +137,29 @@ public abstract class AbstractAnnotationProcessorTest {
             Constructor<?> declaredConstructor = clazz.getDeclaredConstructors()[0];
             declaredConstructor.setAccessible(true);
             return declaredConstructor.newInstance(params);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Object newJavaBean(String className, Object... params) {
+        try {
+            var clazz = this.compileResult.loadClass(className);
+            Constructor<?> declaredConstructor = clazz.getDeclaredConstructors()[0];
+            declaredConstructor.setAccessible(true);
+            Object o = declaredConstructor.newInstance();
+
+            int i = 0;
+            if (params.length > 0) {
+                for (Method declaredMethod : clazz.getDeclaredMethods()) {
+                    if (declaredMethod.getName().startsWith("set")) {
+                        declaredMethod.setAccessible(true);
+                        declaredMethod.invoke(o, params[i++]);
+                    }
+                }
+            }
+
+            return o;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
