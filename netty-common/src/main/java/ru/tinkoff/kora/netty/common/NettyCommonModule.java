@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.netty.common;
 
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFactory;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.ServerChannel;
 import io.netty.channel.epoll.Epoll;
@@ -14,23 +15,31 @@ import io.netty.channel.kqueue.KQueueSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.util.NettyRuntime;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.application.graph.LifecycleWrapper;
 import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.config.common.Config;
+import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
+import ru.tinkoff.kora.netty.common.NettyTransportConfig.EventLoop;
 
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 public interface NettyCommonModule {
+
     final class BossLoopGroup {}
 
     final class WorkerLoopGroup {}
 
+    default NettyTransportConfig nettyTransportConfig(Config config, ConfigValueExtractor<NettyTransportConfig> extractor) {
+        return extractor.extract(config.get("netty"));
+    }
+
     @Tag(WorkerLoopGroup.class)
-    default LifecycleWrapper<EventLoopGroup> nettyEventLoopGroupLifecycle(@Tag(NettyCommonModule.class) @Nullable ThreadFactory threadFactory, @Tag(NettyCommonModule.class) @Nullable Integer size) {
+    default LifecycleWrapper<EventLoopGroup> nettyEventLoopGroupLifecycle(@Tag(NettyCommonModule.class) @Nullable ThreadFactory threadFactory,
+                                                                          NettyTransportConfig nettyTransportConfig) {
         return new LifecycleWrapper<>(
-            eventLoopGroup(threadFactory, size),
+            eventLoopGroup(threadFactory, nettyTransportConfig.threads(), nettyTransportConfig.transport()),
             elg -> {},
             // we don't have to wait because graph will shutdown loop after all the dependent components
             elg -> elg.shutdownGracefully(1, 1, TimeUnit.MILLISECONDS).get()
@@ -38,9 +47,10 @@ public interface NettyCommonModule {
     }
 
     @Tag(BossLoopGroup.class)
-    default LifecycleWrapper<EventLoopGroup> nettyEventBossLoopGroupLifecycle(@Tag(NettyCommonModule.class) @Nullable ThreadFactory threadFactory) {
+    default LifecycleWrapper<EventLoopGroup> nettyEventBossLoopGroupLifecycle(@Tag(NettyCommonModule.class) @Nullable ThreadFactory threadFactory,
+                                                                              NettyTransportConfig nettyTransportConfig) {
         return new LifecycleWrapper<>(
-            eventLoopGroup(threadFactory, 1),
+            eventLoopGroup(threadFactory, 1, nettyTransportConfig.transport()),
             elg -> {},
             // we don't have to wait because graph will shutdown loop after all the dependent components
             elg -> {
@@ -49,18 +59,98 @@ public interface NettyCommonModule {
         );
     }
 
-    private static EventLoopGroup eventLoopGroup(@Nullable ThreadFactory threadFactory, @Nullable Integer size) {
-        if (size == null) {
-            size = NettyRuntime.availableProcessors() * 2;
+    private static EventLoopGroup eventLoopGroup(@Nullable ThreadFactory threadFactory,
+                                                 Integer size,
+                                                 @Nullable EventLoop preferredEventLoop) {
+        if (preferredEventLoop != null) {
+            if (EventLoop.EPOLL == preferredEventLoop && isEpollAvailable()) {
+                return new EpollEventLoopGroup(size, threadFactory);
+            } else if (EventLoop.KQUEUE == preferredEventLoop && isKQueueAvailable()) {
+                return new KQueueEventLoopGroup(size, threadFactory);
+            } else if (EventLoop.NIO == preferredEventLoop) {
+                return new NioEventLoopGroup(size, threadFactory);
+            }
         }
 
-        if (isClassPresent("io.netty.channel.epoll.Epoll") && Epoll.isAvailable()) {
+        // default behavior
+        if (isEpollAvailable()) {
             return new EpollEventLoopGroup(size, threadFactory);
-        } else if (isClassPresent("io.netty.channel.kqueue.KQueue") && KQueue.isAvailable()) {
+        } else if (isKQueueAvailable()) {
             return new KQueueEventLoopGroup(size, threadFactory);
         } else {
             return new NioEventLoopGroup(size, threadFactory);
         }
+    }
+
+    default NettyChannelFactory nettyChannelFactory(NettyTransportConfig nettyConfig) {
+        if (nettyConfig.transport() != null) {
+            if (EventLoop.EPOLL == nettyConfig.transport() && isEpollAvailable()) {
+                return getEpollChannelFactory();
+            } else if (EventLoop.KQUEUE == nettyConfig.transport() && isKQueueAvailable()) {
+                return getKQueueChannelFactory();
+            } else if (EventLoop.NIO == nettyConfig.transport()) {
+                return getNioChannelFactory();
+            }
+        }
+
+        // default behavior
+        if (isEpollAvailable()) {
+            return getEpollChannelFactory();
+        } else if (isKQueueAvailable()) {
+            return getKQueueChannelFactory();
+        } else {
+            return getNioChannelFactory();
+        }
+    }
+
+    private static NettyChannelFactory getNioChannelFactory() {
+        return new NettyChannelFactory() {
+            @Override
+            public ChannelFactory<Channel> getClientFactory() {
+                return EpollSocketChannel::new;
+            }
+
+            @Override
+            public ChannelFactory<ServerChannel> getServerFactory() {
+                return EpollServerSocketChannel::new;
+            }
+        };
+    }
+
+    private static NettyChannelFactory getEpollChannelFactory() {
+        return new NettyChannelFactory() {
+            @Override
+            public ChannelFactory<Channel> getClientFactory() {
+                return EpollSocketChannel::new;
+            }
+
+            @Override
+            public ChannelFactory<ServerChannel> getServerFactory() {
+                return EpollServerSocketChannel::new;
+            }
+        };
+    }
+
+    private static NettyChannelFactory getKQueueChannelFactory() {
+        return new NettyChannelFactory() {
+            @Override
+            public ChannelFactory<Channel> getClientFactory() {
+                return EpollSocketChannel::new;
+            }
+
+            @Override
+            public ChannelFactory<ServerChannel> getServerFactory() {
+                return EpollServerSocketChannel::new;
+            }
+        };
+    }
+
+    private static boolean isEpollAvailable() {
+        return isClassPresent("io.netty.channel.epoll.Epoll") && Epoll.isAvailable();
+    }
+
+    private static boolean isKQueueAvailable() {
+        return isClassPresent("io.netty.channel.kqueue.KQueue") && KQueue.isAvailable();
     }
 
     private static boolean isClassPresent(String className) {
@@ -68,26 +158,6 @@ public interface NettyCommonModule {
             return NettyCommonModule.class.getClassLoader().loadClass(className) != null;
         } catch (ClassNotFoundException e) {
             return false;
-        }
-    }
-
-    static Class<? extends Channel> channelType() {
-        if (isClassPresent("io.netty.channel.epoll.Epoll") && Epoll.isAvailable()) {
-            return EpollSocketChannel.class;
-        } else if (isClassPresent("io.netty.channel.kqueue.KQueue") && KQueue.isAvailable()) {
-            return KQueueSocketChannel.class;
-        } else {
-            return NioSocketChannel.class;
-        }
-    }
-
-    static Class<? extends ServerChannel> serverChannelType() {
-        if (isClassPresent("io.netty.channel.epoll.Epoll") && Epoll.isAvailable()) {
-            return EpollServerSocketChannel.class;
-        } else if (isClassPresent("io.netty.channel.kqueue.KQueue") && KQueue.isAvailable()) {
-            return KQueueServerSocketChannel.class;
-        } else {
-            return NioServerSocketChannel.class;
         }
     }
 }
