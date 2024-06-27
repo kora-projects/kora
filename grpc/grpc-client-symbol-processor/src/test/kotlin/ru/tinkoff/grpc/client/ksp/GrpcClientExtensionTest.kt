@@ -41,13 +41,18 @@ class GrpcClientExtensionTest : AbstractSymbolProcessorTest() {
               10. config parser
               11. parsed config
               12. telemetry factory
+              13. NettyTransportConfig.EventLoop extractor
+              14. NettyTransportConfig extractor
+              15. NettyTransportConfig
+              16. netty event loop group
+              17. netty channel factory
               13. netty event loop group
               14. channel factory
               15. channel lifecycle
               16. the stub
               17. test root
              */
-            Assertions.assertThat(g.draw.size()).isEqualTo(17)
+            Assertions.assertThat(g.draw.size()).isEqualTo(21)
         }
     }
 

@@ -19,11 +19,13 @@ import ru.tinkoff.kora.grpc.server.interceptors.ContextServerInterceptor;
 import ru.tinkoff.kora.grpc.server.interceptors.CoroutineContextInjectInterceptor;
 import ru.tinkoff.kora.grpc.server.interceptors.TelemetryInterceptor;
 import ru.tinkoff.kora.grpc.server.telemetry.*;
+import ru.tinkoff.kora.netty.common.NettyChannelFactory;
 import ru.tinkoff.kora.netty.common.NettyCommonModule;
 
 import java.util.List;
 
 public interface GrpcServerModule extends NettyCommonModule {
+
     default GrpcServerConfig grpcServerConfig(Config config, ConfigValueExtractor<GrpcServerConfig> configValueExtractor) {
         return configValueExtractor.extract(config.get("grpcServer"));
     }
@@ -47,14 +49,15 @@ public interface GrpcServerModule extends NettyCommonModule {
         ValueOf<GrpcServerConfig> config,
         List<DynamicBindableService> services,
         List<DynamicServerInterceptor> interceptors,
-        @Tag(WorkerLoopGroup.class)
-        EventLoopGroup eventLoop,
+        @Tag(WorkerLoopGroup.class) EventLoopGroup eventLoop,
         @Tag(BossLoopGroup.class) EventLoopGroup bossEventLoop,
+        NettyChannelFactory nettyChannelFactory,
         ValueOf<GrpcServerTelemetry> telemetry) {
+
         var builder = NettyServerBuilder.forPort(config.get().port())
             .bossEventLoopGroup(bossEventLoop)
             .workerEventLoopGroup(eventLoop)
-            .channelType(NettyCommonModule.serverChannelType())
+            .channelFactory(nettyChannelFactory.getServerFactory())
             .intercept(CoroutineContextInjectInterceptor.newInstance())
             .intercept(new ContextServerInterceptor())
             .intercept(new TelemetryInterceptor(telemetry));

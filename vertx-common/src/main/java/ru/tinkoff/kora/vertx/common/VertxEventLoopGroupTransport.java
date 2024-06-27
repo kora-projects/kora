@@ -3,13 +3,13 @@ package ru.tinkoff.kora.vertx.common;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
-import io.netty.channel.epoll.*;
-import io.netty.channel.kqueue.*;
+import io.netty.channel.epoll.EpollChannelOption;
+import io.netty.channel.epoll.EpollDatagramChannel;
+import io.netty.channel.kqueue.KQueueChannelOption;
+import io.netty.channel.kqueue.KQueueDatagramChannel;
 import io.netty.channel.socket.DatagramChannel;
 import io.netty.channel.socket.InternetProtocolFamily;
 import io.netty.channel.socket.nio.NioDatagramChannel;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.channel.unix.DomainSocketAddress;
 import io.netty.util.concurrent.EventExecutor;
 import io.netty.util.concurrent.Future;
@@ -19,23 +19,27 @@ import io.vertx.core.net.ClientOptionsBase;
 import io.vertx.core.net.NetServerOptions;
 import io.vertx.core.net.impl.SocketAddressImpl;
 import io.vertx.core.net.impl.transport.Transport;
-
 import jakarta.annotation.Nonnull;
+import ru.tinkoff.kora.netty.common.NettyChannelFactory;
+
 import java.net.SocketAddress;
 import java.util.Iterator;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 public class VertxEventLoopGroupTransport extends Transport {
+
     private final TransportType type;
     private final EventLoopGroup eventLoopGroup;
+    private final NettyChannelFactory nettyChannelFactory;
 
     public enum TransportType {
         NIO, EPOLL, KQUEUE
     }
 
-    public VertxEventLoopGroupTransport(EventLoopGroup eventLoopGroup) {
+    public VertxEventLoopGroupTransport(EventLoopGroup eventLoopGroup, NettyChannelFactory nettyChannelFactory) {
         this.eventLoopGroup = eventLoopGroup;
+        this.nettyChannelFactory = nettyChannelFactory;
         if (this.eventLoopGroup.getClass().getName().contains("Epoll")) {
             this.type = TransportType.EPOLL;
         } else if (this.eventLoopGroup.getClass().getName().contains("KQueue")) {
@@ -172,54 +176,20 @@ public class VertxEventLoopGroupTransport extends Transport {
 
     @Override
     public ChannelFactory<? extends Channel> channelFactory(boolean domainSocket) {
-        return switch (this.type) {
-            case NIO -> {
-                if (domainSocket) {
-                    throw new IllegalArgumentException();
-                }
-                yield NioSocketChannel::new;
-            }
-            case EPOLL -> {
-                if (domainSocket) {
-                    yield EpollDomainSocketChannel::new;
-                } else {
-                    yield EpollSocketChannel::new;
-                }
-            }
-            case KQUEUE -> {
-                if (domainSocket) {
-                    yield KQueueDomainSocketChannel::new;
-                } else {
-                    yield KQueueSocketChannel::new;
-                }
-            }
-        };
+        if(type == TransportType.NIO && domainSocket) {
+            throw new IllegalArgumentException("The Vertx instance must be created with the preferNativeTransport option set to true to create domain sockets");
+        }
+
+        return nettyChannelFactory.getClientFactory(domainSocket);
     }
 
     @Override
     public ChannelFactory<? extends ServerChannel> serverChannelFactory(boolean domainSocket) {
-        return switch (this.type) {
-            case NIO -> {
-                if (domainSocket) {
-                    throw new IllegalArgumentException();
-                }
-                yield NioServerSocketChannel::new;
-            }
-            case EPOLL -> {
-                if (domainSocket) {
-                    yield EpollServerDomainSocketChannel::new;
-                } else {
-                    yield EpollServerSocketChannel::new;
-                }
-            }
-            case KQUEUE -> {
-                if (domainSocket) {
-                    yield KQueueServerDomainSocketChannel::new;
-                } else {
-                    yield KQueueServerSocketChannel::new;
-                }
-            }
-        };
+        if(type == TransportType.NIO && domainSocket) {
+            throw new IllegalArgumentException("The Vertx instance must be created with the preferNativeTransport option set to true to create domain sockets");
+        }
+
+        return nettyChannelFactory.getServerFactory(domainSocket);
     }
 
     @Override

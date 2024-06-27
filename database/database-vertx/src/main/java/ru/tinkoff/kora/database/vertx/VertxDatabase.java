@@ -16,6 +16,7 @@ import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
 import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory;
+import ru.tinkoff.kora.netty.common.NettyChannelFactory;
 import ru.tinkoff.kora.vertx.common.VertxUtil;
 
 import java.util.Objects;
@@ -44,10 +45,13 @@ public class VertxDatabase implements Lifecycle, Wrapped<Pool>, VertxConnectionF
     private final DataBaseTelemetry telemetry;
     private final VertxDatabaseConfig config;
 
-    public VertxDatabase(VertxDatabaseConfig vertxDatabaseConfig, EventLoopGroup eventLoopGroup, DataBaseTelemetryFactory telemetryFactory) {
+    public VertxDatabase(VertxDatabaseConfig vertxDatabaseConfig,
+                         EventLoopGroup eventLoopGroup,
+                         NettyChannelFactory nettyChannelFactory,
+                         DataBaseTelemetryFactory telemetryFactory) {
         this.config = vertxDatabaseConfig;
         this.pool = Pool.pool(
-            VertxUtil.customEventLoopVertx(eventLoopGroup),
+            VertxUtil.customEventLoopVertx(eventLoopGroup, nettyChannelFactory),
             VertxDatabaseConfig.toPgConnectOptions(vertxDatabaseConfig),
             VertxDatabaseConfig.toPgPoolOptions(vertxDatabaseConfig)
         );
