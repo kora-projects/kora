@@ -107,12 +107,12 @@ public interface NettyCommonModule {
         return new NettyChannelFactory() {
             @Override
             public ChannelFactory<Channel> getClientFactory() {
-                return EpollSocketChannel::new;
+                return NioSocketChannel::new;
             }
 
             @Override
             public ChannelFactory<ServerChannel> getServerFactory() {
-                return EpollServerSocketChannel::new;
+                return NioServerSocketChannel::new;
             }
         };
     }
@@ -135,12 +135,12 @@ public interface NettyCommonModule {
         return new NettyChannelFactory() {
             @Override
             public ChannelFactory<Channel> getClientFactory() {
-                return EpollSocketChannel::new;
+                return KQueueSocketChannel::new;
             }
 
             @Override
             public ChannelFactory<ServerChannel> getServerFactory() {
-                return EpollServerSocketChannel::new;
+                return KQueueServerSocketChannel::new;
             }
         };
     }
