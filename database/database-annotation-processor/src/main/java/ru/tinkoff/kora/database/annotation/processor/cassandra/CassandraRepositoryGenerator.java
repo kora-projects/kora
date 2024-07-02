@@ -22,6 +22,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 public class CassandraRepositoryGenerator implements RepositoryGenerator {
     private final TypeMirror repositoryInterface;
@@ -160,8 +161,13 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
                       .whenComplete((_result, _error) -> {
                         _telemetry.close(_error);
                         _ctxCurrent.inject();
-                      });
-                    """);
+                      })""");
+
+            if(((DeclaredType) returnType).asElement().toString().equals(CompletableFuture.class.getCanonicalName())) {
+                b.addCode(".toCompletableFuture();");
+            } else {
+                b.addCode(";");
+            }
         } else {
             b.beginControlFlow("try");
             b.addStatement("var _rs = _session.execute(_s)");
