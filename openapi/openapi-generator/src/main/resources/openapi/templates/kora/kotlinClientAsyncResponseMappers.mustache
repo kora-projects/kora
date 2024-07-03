@@ -25,7 +25,7 @@ interface {{classname}}ClientResponseMappers {
 
     override fun apply(response: HttpClientResponse): CompletionStage<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {
       {{#headers}}
-      val {{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}} = response.headers().getFirst("{{baseName}}"){{#required}}!!{{/required}}
+      val {{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}} = response.headers().getFirst("{{baseName}}"){{#required}} ?: return CompletableFuture.failedFuture(NullPointerException("{{baseName}} header is required, but was null"));{{/required}}
       {{/headers}}
       {{^dataType}}
       return CompletableFuture.completedFuture({{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{^vendorExtensions.singleResponse}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse{{/vendorExtensions.singleResponse}}(
