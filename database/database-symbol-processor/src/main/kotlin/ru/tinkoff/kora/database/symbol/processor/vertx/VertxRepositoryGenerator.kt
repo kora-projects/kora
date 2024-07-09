@@ -42,6 +42,8 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
         val repositoryResolvedType = repositoryType.asStarProjectedType()
         val resultMappers = FieldFactory(typeBuilder, constructorBuilder, "_result_mapper_")
         val parameterMappers = FieldFactory(typeBuilder, constructorBuilder, "_parameter_mapper_")
+
+        var methodCounter = 1
         for (method in repositoryType.findQueryMethods()) {
             val methodType = method.asMemberOf(repositoryResolvedType)
             val parameters = QueryParameterParser.parse(listOf(VertxTypes.sqlConnection, VertxTypes.sqlClient), VertxTypes.parameterColumnMapper, method, methodType)
@@ -51,14 +53,15 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
             val resultMapperName = this.parseResultMapper(method, parameters, methodType)?.let { resultMappers.addMapper(it) }
             DbUtils.parseParameterMappers(method, parameters, query, VertxTypes.parameterColumnMapper) { VertxNativeTypes.findNativeType(it.toTypeName()) != null }
                 .forEach { parameterMappers.addMapper(it) }
-            val methodSpec = this.generate(method, methodType, query, parameters, resultMapperName, parameterMappers)
+            val methodSpec = this.generate(typeBuilder, methodCounter, method, methodType, query, parameters, resultMapperName, parameterMappers)
             typeBuilder.addFunction(methodSpec)
+            methodCounter++
         }
 
         return typeBuilder.primaryConstructor(constructorBuilder.build()).build()
     }
 
-    private fun generate(funDeclaration: KSFunctionDeclaration, function: KSFunction, query: QueryWithParameters, parameters: List<QueryParameter>, resultMapperName: String?, parameterMappers: FieldFactory): FunSpec {
+    private fun generate(typeBuilder: TypeSpec.Builder, methodNumber:Int, funDeclaration: KSFunctionDeclaration, function: KSFunction, query: QueryWithParameters, parameters: List<QueryParameter>, resultMapperName: String?, parameterMappers: FieldFactory): FunSpec {
         var sql = query.rawQuery
         query.parameters.indices.asSequence()
             .map { query.parameters[it].sqlParameterName to "$" + (it + 1) }
@@ -66,7 +69,23 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
             .forEach { sql = sql.replace(":" + it.first, it.second) }
 
         val b = funDeclaration.queryMethodBuilder(resolver)
-        b.addCode("val _query = %T(\n  %S,\n  %S,\n  %S\n)\n", DbUtils.queryContext, query.rawQuery, sql, funDeclaration.operationName())
+
+        val queryContextFieldName = "_queryContext_$methodNumber"
+        typeBuilder.addProperty(
+            PropertySpec.builder(queryContextFieldName, DbUtils.queryContext, KModifier.PRIVATE)
+                .initializer(
+                    """
+                    %T(
+                      %S,
+                      %S,
+                      %S
+                    )
+                    """.trimIndent(), DbUtils.queryContext, query.rawQuery, sql, funDeclaration.operationName()
+                )
+                .build()
+        )
+        b.addStatement("val _query = %L", queryContextFieldName)
+
         val batchParam = parameters.firstOrNull { it is QueryParameter.BatchParameter }
         val isSuspend = funDeclaration.isSuspend()
         val isFlow = funDeclaration.isFlow()

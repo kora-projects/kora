@@ -55,6 +55,8 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
         this.enrichWithExecutor(repositoryElement, type, constructor);
         var resultMappers = new FieldFactory(this.types, elements, type, constructor, "_result_mapper_");
         var parameterMappers = new FieldFactory(this.types, elements, type, constructor, "_parameter_mapper_");
+
+        int methodCounter = 1;
         for (var method : queryMethods) {
             var methodType = (ExecutableType) this.types.asMemberOf(repositoryType, method);
             var parameters = QueryParameterParser.parse(this.types, CassandraTypes.CONNECTION, CassandraTypes.PARAMETER_COLUMN_MAPPER, method, methodType);
@@ -70,19 +72,32 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
                 tn -> CassandraNativeTypes.findNativeType(tn) != null,
                 CassandraTypes.PARAMETER_COLUMN_MAPPER
             ));
-            var methodSpec = this.generate(method, methodType, query, parameters, resultMapperName, parameterMappers);
+            var methodSpec = this.generate(type, methodCounter, method, methodType, query, parameters, resultMapperName, parameterMappers);
             type.addMethod(methodSpec);
+            methodCounter++;
         }
         return type.addMethod(constructor.build()).build();
     }
 
-    private MethodSpec generate(ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters, @Nullable String resultMapperName, FieldFactory parameterMappers) {
+    private MethodSpec generate(TypeSpec.Builder type, int methodNumber, ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters, @Nullable String resultMapperName, FieldFactory parameterMappers) {
         var sql = query.rawQuery();
         for (var parameter : query.parameters().stream().sorted(Comparator.<QueryWithParameters.QueryParameter, Integer>comparing(p -> p.sqlParameterName().length()).reversed()).toList()) {
             sql = sql.replace(":" + parameter.sqlParameterName(), "?");
         }
         var b = DbUtils.queryMethodBuilder(method, methodType);
-        b.addStatement(CodeBlock.of("var _query = new $T(\n  $S,\n  $S,\n  $S\n)", DbUtils.QUERY_CONTEXT, query.rawQuery(), sql, DbUtils.operationName(method)));
+
+        var queryContextFieldName = "QUERY_CONTEXT_" + methodNumber;
+        type.addField(
+            FieldSpec.builder(DbUtils.QUERY_CONTEXT, queryContextFieldName, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+                .initializer("""
+                    new $T(
+                          $S,
+                          $S,
+                          $S
+                        )""", DbUtils.QUERY_CONTEXT, query.rawQuery(), sql, DbUtils.operationName(method))
+                .build());
+        b.addStatement("var _query = $L", queryContextFieldName);
+
         var batchParam = parameters.stream().filter(QueryParameter.BatchParameter.class::isInstance).findFirst().orElse(null);
         String profile = null;
         var profileAnnotation = AnnotationUtils.findAnnotation(method, CassandraTypes.CASSANDRA_PROFILE);

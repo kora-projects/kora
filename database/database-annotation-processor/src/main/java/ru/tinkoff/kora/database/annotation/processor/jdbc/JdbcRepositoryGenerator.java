@@ -55,6 +55,8 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         this.enrichWithExecutor(repositoryElement, type, constructor, queryMethods);
         var resultMappers = new FieldFactory(this.types, elements, type, constructor, "_result_mapper_");
         var parameterMappers = new FieldFactory(this.types, elements, type, constructor, "_parameter_mapper_");
+
+        int methodCounter = 1;
         for (var method : queryMethods) {
             var methodType = (ExecutableType) this.types.asMemberOf(repositoryType, method);
             var parameters = QueryParameterParser.parse(this.types, JdbcTypes.CONNECTION, JdbcTypes.PARAMETER_COLUMN_MAPPER, method, methodType);
@@ -71,8 +73,9 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                 tn -> JdbcNativeTypes.findNativeType(tn) != null,
                 JdbcTypes.PARAMETER_COLUMN_MAPPER
             ));
-            var methodSpec = this.generate(repositoryElement, method, methodType, query, parameters, resultMapper, parameterMappers);
+            var methodSpec = this.generate(repositoryElement, type, methodCounter, method, methodType, query, parameters, resultMapper, parameterMappers);
             type.addMethod(methodSpec);
+            methodCounter++;
         }
         return type.addMethod(constructor.build()).build();
     }
@@ -125,7 +128,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         return this.repositoryInterface;
     }
 
-    public MethodSpec generate(TypeElement repositoryElement, ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters, @Nullable String resultMapperName, FieldFactory parameterMappers) {
+    public MethodSpec generate(TypeElement repositoryElement, TypeSpec.Builder type, int methodNumber, ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters, @Nullable String resultMapperName, FieldFactory parameterMappers) {
         var batchParam = parameters.stream().filter(QueryParameter.BatchParameter.class::isInstance).findFirst().orElse(null);
         var sql = query.rawQuery();
         for (var parameter : query.parameters().stream().sorted(Comparator.<QueryWithParameters.QueryParameter>comparingInt(s -> s.sqlParameterName().length()).reversed()).toList()) {
@@ -148,13 +151,17 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             .map(p -> CodeBlock.of("$L", p.variable()))
             .orElse(CodeBlock.of("this._connectionFactory.currentConnection()"));
 
-        b.addCode("""
-                var _query = new $T(
-                  $S,
-                  $S,
-                  $S
-                );
-                """, DbUtils.QUERY_CONTEXT, query.rawQuery(), sql, DbUtils.operationName(method));
+        var queryContextFieldName = "QUERY_CONTEXT_" + methodNumber;
+        type.addField(
+            FieldSpec.builder(DbUtils.QUERY_CONTEXT, queryContextFieldName, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+                .initializer("""
+                    new $T(
+                          $S,
+                          $S,
+                          $S
+                        )""", DbUtils.QUERY_CONTEXT, query.rawQuery(), sql, DbUtils.operationName(method))
+                .build());
+        b.addStatement("var _query = $L", queryContextFieldName);
 
         if (isFuture || isMono) {
             b.addCode("""

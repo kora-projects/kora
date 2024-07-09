@@ -43,6 +43,8 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
         val repositoryResolvedType = repositoryType.asStarProjectedType()
         val resultMappers = FieldFactory(typeBuilder, constructorBuilder, "_result_mapper_")
         val parameterMappers = FieldFactory(typeBuilder, constructorBuilder, "_parameter_mapper_")
+
+        var methodCounter = 1
         for (method in repositoryType.findQueryMethods()) {
             val methodType = method.asMemberOf(repositoryResolvedType)
             val parameters = QueryParameterParser.parse(R2dbcTypes.connection, R2dbcTypes.parameterColumnMapper, method, methodType)
@@ -52,14 +54,15 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
             val resultMapper = this.parseResultMapper(method, parameters, methodType)?.let { resultMappers.addMapper(it) }
             DbUtils.parseParameterMappers(method, parameters, query, R2dbcTypes.parameterColumnMapper) { R2dbcNativeTypes.findNativeType(it.toTypeName()) != null }
                 .forEach { parameterMappers.addMapper(it) }
-            val methodSpec = this.generate(method, methodType, query, parameters, resultMapper, parameterMappers)
+            val methodSpec = this.generate(typeBuilder, methodCounter, method, methodType, query, parameters, resultMapper, parameterMappers)
             typeBuilder.addFunction(methodSpec)
+            methodCounter++
         }
 
         return typeBuilder.primaryConstructor(constructorBuilder.build()).build()
     }
 
-    private fun generate(method: KSFunctionDeclaration, function: KSFunction, query: QueryWithParameters, parameters: List<QueryParameter>, resultMapperName: String?, parameterMappers: FieldFactory): FunSpec {
+    private fun generate(typeBuilder: TypeSpec.Builder, methodNumber:Int, method: KSFunctionDeclaration, function: KSFunction, query: QueryWithParameters, parameters: List<QueryParameter>, resultMapperName: String?, parameterMappers: FieldFactory): FunSpec {
         val isGeneratedKeys = method.isAnnotationPresent(DbUtils.idAnnotation)
         var sql = query.rawQuery
         for (p in query.parameters.asSequence().withIndex().sortedByDescending { it.value.sqlParameterName.length }) {
@@ -67,7 +70,23 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
             sql = sql.replace(":" + parameter.sqlParameterName, "$" + (p.index + 1))
         }
         val b = method.queryMethodBuilder(resolver)
-        b.addCode("val _query = %T(\n  %S,\n  %S,\n  %S\n)\n", DbUtils.queryContext, query.rawQuery, sql, method.operationName())
+
+        val queryContextFieldName = "_queryContext_$methodNumber"
+        typeBuilder.addProperty(
+            PropertySpec.builder(queryContextFieldName, DbUtils.queryContext, KModifier.PRIVATE)
+                .initializer(
+                    """
+                    %T(
+                      %S,
+                      %S,
+                      %S
+                    )
+                    """.trimIndent(), DbUtils.queryContext, query.rawQuery, sql, method.operationName()
+                )
+                .build()
+        )
+        b.addStatement("val _query = %L", queryContextFieldName)
+
         val batchParam = parameters.firstOrNull { it is QueryParameter.BatchParameter }
         val returnType = function.returnType!!
         val isSuspend = method.isSuspend()

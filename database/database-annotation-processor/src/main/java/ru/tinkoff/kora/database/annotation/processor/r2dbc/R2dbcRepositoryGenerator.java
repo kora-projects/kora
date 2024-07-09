@@ -60,6 +60,7 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
         var resultMappers = new FieldFactory(this.types, elements, type, constructor, "_result_mapper_");
         var parameterMappers = new FieldFactory(this.types, elements, type, constructor, "_parameter_mapper_");
 
+        int methodCounter = 1;
         for (var method : queryMethods) {
             var methodType = (ExecutableType) this.types.asMemberOf(repositoryType, method);
             var parameters = QueryParameterParser.parse(this.types, R2dbcTypes.CONNECTION, R2dbcTypes.PARAMETER_COLUMN_MAPPER, method, methodType);
@@ -75,13 +76,14 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
                 tn -> R2dbcNativeTypes.findAndBox(tn) != null,
                 R2dbcTypes.PARAMETER_COLUMN_MAPPER
             ));
-            var methodSpec = this.generate(method, methodType, query, parameters, resultMapper, parameterMappers);
+            var methodSpec = this.generate(type, methodCounter, method, methodType, query, parameters, resultMapper, parameterMappers);
             type.addMethod(methodSpec);
+            methodCounter++;
         }
         return type.addMethod(constructor.build()).build();
     }
 
-    private MethodSpec generate(ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters, @Nullable String resultMapperName, FieldFactory parameterMappers) {
+    private MethodSpec generate(TypeSpec.Builder type, int methodNumber, ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters, @Nullable String resultMapperName, FieldFactory parameterMappers) {
         final boolean generatedKeys = AnnotationUtils.isAnnotationPresent(method, DbUtils.ID_ANNOTATION);
         var sql = query.rawQuery();
         for (var parameter : query.parameters().stream().sorted(Comparator.<QueryWithParameters.QueryParameter>comparingInt(s -> s.sqlParameterName().length()).reversed()).toList()) {
@@ -92,7 +94,19 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
         var connectionParameter = parameters.stream().filter(QueryParameter.ConnectionParameter.class::isInstance).findFirst().orElse(null);
 
         var b = DbUtils.queryMethodBuilder(method, methodType);
-        b.addStatement(CodeBlock.of("var _query = new $T(\n  $S,\n  $S,\n  $S\n)", DbUtils.QUERY_CONTEXT, query.rawQuery(), sql, DbUtils.operationName(method)));
+
+        var queryContextFieldName = "QUERY_CONTEXT_" + methodNumber;
+        type.addField(
+            FieldSpec.builder(DbUtils.QUERY_CONTEXT, queryContextFieldName, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+                .initializer("""
+                    new $T(
+                          $S,
+                          $S,
+                          $S
+                        )""", DbUtils.QUERY_CONTEXT, query.rawQuery(), sql, DbUtils.operationName(method))
+                .build());
+        b.addStatement("var _query = $L", queryContextFieldName);
+
         var batchParam = parameters.stream().filter(QueryParameter.BatchParameter.class::isInstance).findFirst().orElse(null);
         var isFlux = CommonUtils.isFlux(methodType.getReturnType());
         var isMono = CommonUtils.isMono(methodType.getReturnType());
