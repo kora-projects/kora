@@ -26,6 +26,7 @@ paths:
           description: A paged array of pets
           headers:
             x-next:
+              required: true
               description: A link to the next page of responses
               schema:
                 type: string
@@ -61,6 +62,7 @@ paths:
           description: A paged array of pets
           headers:
             x-next:
+              required: true
               description: A link to the next page of responses
               schema:
                 type: string
@@ -93,6 +95,7 @@ paths:
           description: A paged array of pets
           headers:
             x-next:
+              required: true
               description: A link to the next page of responses
               schema:
                 type: string

@@ -15,7 +15,7 @@ public interface {{classname}}ClientResponseMappers {
 {{#operation}}
   {{#responses}}
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
-  final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper implements HttpClientResponseMapper<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>{
+  final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper implements HttpClientResponseMapper<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {
     {{#dataType}}
     private final HttpClientResponseMapper<{{{dataType}}}> delegate;
     public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper({{#vendorExtensions.hasMapperTag}}@{{vendorExtensions.mapperTag}}{{/vendorExtensions.hasMapperTag}} HttpClientResponseMapper<{{{dataType}}}> delegate) {
@@ -25,7 +25,12 @@ public interface {{classname}}ClientResponseMappers {
     @Override
     public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse apply(HttpClientResponse response) throws java.io.IOException {
       {{#headers}}
-      var {{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}} = {{#required}}java.util.Objects.requireNonNull({{/required}}response.headers().getFirst("{{baseName}}"){{#required}}){{/required}};
+      var {{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}} = response.headers().getFirst("{{baseName}}");
+      {{#required}}
+      if ({{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}} == null) {
+          throw new NullPointerException("{{baseName}} header is required, but was null");
+      }
+      {{/required}}
       {{/headers}}
       {{^dataType}}
       return new {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{^vendorExtensions.singleResponse}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse{{/vendorExtensions.singleResponse}}(

@@ -22,7 +22,7 @@ interface {{classname}}ClientResponseMappers {
 
     override fun apply(response: HttpClientResponse): {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {
       {{#headers}}
-      val {{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}} = response.headers().getFirst("{{baseName}}"){{#required}}!!{{/required}}
+      val {{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}} = response.headers().getFirst("{{baseName}}"){{#required}} ?: throw NullPointerException("{{baseName}} header is required, but was null"); {{/required}}
       {{/headers}}
       {{^dataType}}
       return {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{^vendorExtensions.singleResponse}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse{{/vendorExtensions.singleResponse}}(
