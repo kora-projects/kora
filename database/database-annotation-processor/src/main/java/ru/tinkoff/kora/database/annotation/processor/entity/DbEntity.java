@@ -4,8 +4,8 @@ import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.TypeName;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
-import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.RecordUtils;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
 import ru.tinkoff.kora.database.annotation.processor.EntityUtils;
 
@@ -273,25 +273,17 @@ public class DbEntity {
     }
 
     private static boolean isNullableRecordField(VariableElement field, TypeElement type) {
-        var nullable = AnnotationUtils.findAnnotation(field, CommonClassNames.nullable);
-        if(nullable != null) {
+        var nullable = CommonUtils.isNullable(field);
+        if (nullable) {
             return true;
         }
-
-        final List<ExecutableElement> constructors = type.getEnclosedElements().stream()
-            .filter(e -> e.getKind() == ElementKind.CONSTRUCTOR)
-            .map(e -> ((ExecutableElement) e))
-            .toList();
-
-        if(constructors.size() > 1) {
-            return false;
-        } else {
-            return constructors.get(0).getParameters().stream()
-                .filter(p -> p.getSimpleName().contentEquals(field.getSimpleName()))
-                .findFirst()
-                .map(p -> AnnotationUtils.findAnnotation(p, CommonClassNames.nullable) != null)
-                .orElse(false);
+        var constructor = RecordUtils.findCanonicalConstructor(type);
+        for (var param : constructor.getParameters()) {
+            if (param.getSimpleName().contentEquals(field.getSimpleName())) {
+                return CommonUtils.isNullable(param);
+            }
         }
+        throw new IllegalStateException();
     }
 
     private static boolean isRecord(TypeElement typeElement) {
@@ -368,14 +360,14 @@ public class DbEntity {
     }
 
     private static boolean isNullableBeanField(VariableElement field, ExecutableElement method) {
-        var nullable = AnnotationUtils.findAnnotation(field, CommonClassNames.nullable);
-        if (nullable != null) {
+        var nullable = CommonUtils.isNullable(field);
+        if (nullable) {
             return true;
         }
 
         return method.getParameters().stream()
             .findFirst()
-            .map(p -> AnnotationUtils.findAnnotation(p, CommonClassNames.nullable) != null)
+            .map(CommonUtils::isNullable)
             .orElse(false);
     }
 
