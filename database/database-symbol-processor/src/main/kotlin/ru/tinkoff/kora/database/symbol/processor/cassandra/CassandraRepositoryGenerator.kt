@@ -43,6 +43,8 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         val repositoryResolvedType = repositoryType.asStarProjectedType()
         val resultMappers = FieldFactory(typeBuilder, constructorBuilder, "_result_mapper_")
         val parameterMappers = FieldFactory(typeBuilder, constructorBuilder, "_parameter_mapper")
+
+        var methodCounter = 1
         for (method in repositoryType.findQueryMethods()) {
             val methodType = method.asMemberOf(repositoryResolvedType)
             val parameters = QueryParameterParser.parse(CassandraTypes.connection, CassandraTypes.parameterColumnMapper, method, methodType)
@@ -52,20 +54,46 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
             val resultMapper = this.parseResultMapper(method, parameters, methodType)?.let { resultMappers.addMapper(it) }
             DbUtils.parseParameterMappers(method, parameters, query, CassandraTypes.parameterColumnMapper) { CassandraNativeTypes.findNativeType(it.toTypeName()) != null }
                 .forEach { parameterMappers.addMapper(it) }
-            val methodSpec = this.generate(method, methodType, query, parameters, resultMapper, parameterMappers)
+            val methodSpec = this.generate(typeBuilder, methodCounter, method, methodType, query, parameters, resultMapper, parameterMappers)
             typeBuilder.addFunction(methodSpec)
+            methodCounter++
         }
 
         return typeBuilder.primaryConstructor(constructorBuilder.build()).build()
     }
 
-    private fun generate(funDeclaration: KSFunctionDeclaration, function: KSFunction, query: QueryWithParameters, parameters: List<QueryParameter>, resultMapper: String?, parameterMappers: FieldFactory): FunSpec {
+    private fun generate(
+        typeBuilder: TypeSpec.Builder,
+        methodNumber: Int,
+        funDeclaration: KSFunctionDeclaration,
+        function: KSFunction,
+        query: QueryWithParameters,
+        parameters: List<QueryParameter>,
+        resultMapper: String?,
+        parameterMappers: FieldFactory
+    ): FunSpec {
         var sql = query.rawQuery
         for (parameter in query.parameters.asSequence().sortedByDescending { it.sqlParameterName.length }) {
             sql = sql.replace(":" + parameter.sqlParameterName, "?")
         }
         val b = funDeclaration.queryMethodBuilder(resolver)
-        b.addCode("val _query = %T(\n  %S,\n  %S,\n  %S\n)\n", DbUtils.queryContext, query.rawQuery, sql, funDeclaration.operationName())
+
+        val queryContextFieldName = "_queryContext_$methodNumber"
+        typeBuilder.addProperty(
+            PropertySpec.builder(queryContextFieldName, DbUtils.queryContext, KModifier.PRIVATE)
+                .initializer(
+                    """
+                    %T(
+                      %S,
+                      %S,
+                      %S
+                    )
+                    """.trimIndent(), DbUtils.queryContext, query.rawQuery, sql, funDeclaration.operationName()
+                )
+                .build()
+        )
+        b.addStatement("val _query = %L", queryContextFieldName)
+
         val batchParam = parameters.firstOrNull { it is QueryParameter.BatchParameter }
         val profile = funDeclaration.findAnnotation(CassandraTypes.cassandraProfileAnnotation)?.findValue<String>("value")
         val returnType = function.returnType!!
@@ -73,7 +101,7 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         val isFlow = funDeclaration.isFlow()
 
         b.addStatement("val _ctxCurrent = %T.current()", CommonClassNames.context)
-        if(isSuspend) {
+        if (isSuspend) {
             b.addStatement("val _ctxFork = _ctxCurrent.fork()")
             b.addStatement("_ctxFork.inject()")
             b.addStatement("val _telemetry = this._cassandraConnectionFactory.telemetry().createContext(_ctxFork, _query)", context)
