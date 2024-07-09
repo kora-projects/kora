@@ -98,7 +98,6 @@ subprojects {
             resolutionStrategy.force "io.netty:netty-resolver:${versions.netty.get()}"
             resolutionStrategy.force "io.netty:netty-resolver-dns:${versions.netty.get()}"
             resolutionStrategy.force "io.netty:netty-resolver-dns-classes-macos:${versions.netty.get()}"
-            resolutionStrategy.force "io.netty:netty-resolver-dns-classes-macos:${versions.netty.get()}"
             resolutionStrategy.force "io.netty:netty-transport:${versions.netty.get()}"
             resolutionStrategy.force "io.netty:netty-transport-clasess-epoll:${versions.netty.get()}"
             resolutionStrategy.force "io.netty:netty-transport-clasess-kqueue:${versions.netty.get()}"
