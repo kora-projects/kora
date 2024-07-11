@@ -1,7 +1,17 @@
 package ru.tinkoff.kora.ksp.common
 
-import com.google.devtools.ksp.symbol.*
-import com.squareup.kotlinpoet.*
+import com.google.devtools.ksp.symbol.KSAnnotated
+import com.google.devtools.ksp.symbol.KSAnnotation
+import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSPropertyDeclaration
+import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.Modifier
+import com.squareup.kotlinpoet.AnnotationSpec
+import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.ParameterSpec
+import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.TypeSpec
 
 object TagUtils {
     val ignoreList = setOf("Component", "DefaultComponent")
@@ -117,5 +127,24 @@ object TagUtils {
             val value = codeBlock.add("]").build()
             return AnnotationSpec.builder(CommonClassNames.tag).addMember(value).build()
         }
+    }
+
+    fun Collection<String>.tagsMatch(other: Collection<String>): Boolean {
+        if (this.isEmpty() && other.isEmpty()) {
+            return true
+        }
+        if (this.isEmpty()) {
+            return false
+        }
+        if (this.contains(CommonClassNames.tagAny.canonicalName)) {
+            return true
+        }
+
+        for (tag in this) {
+            if (tag !in other) {
+                return false
+            }
+        }
+        return true
     }
 }

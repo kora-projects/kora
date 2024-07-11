@@ -1,8 +1,11 @@
 package ru.tinkoff.kora.database.annotation.processor;
 
-import com.squareup.javapoet.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.squareup.javapoet.AnnotationSpec;
+import com.squareup.javapoet.CodeBlock;
+import com.squareup.javapoet.MethodSpec;
+import com.squareup.javapoet.ParameterSpec;
+import com.squareup.javapoet.TypeName;
+import com.squareup.javapoet.TypeSpec;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
@@ -19,6 +22,9 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Types;
 import java.io.IOException;
 import java.util.List;
+
+import static ru.tinkoff.kora.annotation.processor.common.TagUtils.makeAnnotationSpec;
+import static ru.tinkoff.kora.annotation.processor.common.TagUtils.parseTagValue;
 
 public class RepositoryBuilder {
 
@@ -43,6 +49,12 @@ public class RepositoryBuilder {
         var builder = CommonUtils.extendsKeepAop(repositoryElement, name)
             .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", CodeBlock.of("$S", RepositoryAnnotationProcessor.class.getCanonicalName())).build())
             .addOriginatingElement(repositoryElement);
+
+        var tags = parseTagValue(repositoryElement);
+        if (!tags.isEmpty()) {
+            builder.addAnnotation(makeAnnotationSpec(tags));
+        }
+
         var constructorBuilder = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC);
         if (repositoryElement.getKind().isClass()) {

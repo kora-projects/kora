@@ -18,6 +18,9 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.Set;
 
+import static ru.tinkoff.kora.annotation.processor.common.TagUtils.parseTagValue;
+import static ru.tinkoff.kora.annotation.processor.common.TagUtils.tagsMatch;
+
 public class RepositoryKoraExtension implements KoraExtension {
     private final Elements elements;
     private final Types types;
@@ -29,7 +32,6 @@ public class RepositoryKoraExtension implements KoraExtension {
 
     @Override
     public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tags) {
-        if (!tags.isEmpty()) return null;
         if (typeMirror.getKind() != TypeKind.DECLARED) {
             return null;
         }
@@ -38,6 +40,9 @@ public class RepositoryKoraExtension implements KoraExtension {
             return null;
         }
         if (AnnotationUtils.findAnnotation(element, DbUtils.REPOSITORY_ANNOTATION) == null) {
+            return null;
+        }
+        if (!tagsMatch(tags, parseTagValue(element))) {
             return null;
         }
         var typeElement = (TypeElement) this.types.asElement(typeMirror);

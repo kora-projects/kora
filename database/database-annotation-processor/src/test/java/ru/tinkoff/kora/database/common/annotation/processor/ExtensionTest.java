@@ -6,7 +6,8 @@ import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.annotation.processor.RepositoryAnnotationProcessor;
 import ru.tinkoff.kora.database.common.annotation.processor.app.TestKoraApp;
-import ru.tinkoff.kora.database.common.annotation.processor.app.TestKoraAppTagged;
+import ru.tinkoff.kora.database.common.annotation.processor.app.TestKoraAppExecutorTagged;
+import ru.tinkoff.kora.database.common.annotation.processor.app.TestKoraAppRepoTagged;
 import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor;
 
 import java.lang.reflect.Constructor;
@@ -29,9 +30,9 @@ public class ExtensionTest {
     }
 
     @Test
-    void testTagged() throws Exception {
-        var classLoader = TestUtils.annotationProcess(TestKoraAppTagged.class, new RepositoryAnnotationProcessor());
-        var clazz = classLoader.loadClass("ru.tinkoff.kora.database.common.annotation.processor.app.$TestKoraAppTagged_TestRepository_Impl");
+    void testExecutorTagged() throws Exception {
+        var classLoader = TestUtils.annotationProcess(TestKoraAppExecutorTagged.class, new RepositoryAnnotationProcessor());
+        var clazz = classLoader.loadClass("ru.tinkoff.kora.database.common.annotation.processor.app.$TestKoraAppExecutorTagged_TestRepository_Impl");
         var constructors = clazz.getConstructors();
         var parameters = constructors[0].getParameters();
         var connectionFactory = parameters[0];
@@ -39,10 +40,28 @@ public class ExtensionTest {
         assertThat(connectionFactory.isAnnotationPresent(Tag.class)).isTrue();
         var classes = Arrays.asList(connectionFactory.getAnnotation(Tag.class).value());
         assertThat(classes).hasSize(1);
-        assertThat(classes.get(0)).isAssignableFrom(TestKoraAppTagged.ExampleTag.class);
+        assertThat(classes.get(0)).isAssignableFrom(TestKoraAppExecutorTagged.ExampleTag.class);
         assertThat(executor.isAnnotationPresent(Tag.class)).isTrue();
         classes = Arrays.asList(executor.getAnnotation(Tag.class).value());
         assertThat(classes).hasSize(1);
-        assertThat(classes.get(0)).isAssignableFrom(TestKoraAppTagged.ExampleTag.class);
+        assertThat(classes.get(0)).isAssignableFrom(TestKoraAppExecutorTagged.ExampleTag.class);
+    }
+
+    @Test
+    void testRepositoryTagged() throws Exception {
+        var classLoader = TestUtils.annotationProcess(TestKoraAppRepoTagged.class, new KoraAppProcessor(), new RepositoryAnnotationProcessor());
+
+        var clazz = classLoader.loadClass(TestKoraAppRepoTagged.class.getName() + "Graph");
+
+        @SuppressWarnings("unchecked")
+        var constructors = (Constructor<? extends Supplier<? extends ApplicationGraphDraw>>[]) clazz.getConstructors();
+        var graphDraw = constructors[0].newInstance().get();
+
+        var graph = graphDraw.init();
+
+        var rootTestString = graph.get(graphDraw.findNodeByType(String.class));
+
+        assertThat(rootTestString)
+            .isEqualTo("i'm in tagged repo");
     }
 }

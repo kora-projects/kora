@@ -15,20 +15,24 @@ import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.hasAopAnnotations
+import ru.tinkoff.kora.ksp.common.TagUtils.parseTags
+import ru.tinkoff.kora.ksp.common.TagUtils.tagsMatch
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 
 @KspExperimental
 class RepositoryKoraExtension(private val kspLogger: KSPLogger) : KoraExtension {
     override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
-        if (tags.isNotEmpty()) return null
         if (type.declaration !is KSClassDeclaration) {
             return null
         }
         val declaration = type.declaration as KSClassDeclaration
-        if (declaration.classKind != ClassKind.INTERFACE && (declaration.classKind != ClassKind.CLASS || !declaration.modifiers.contains(Modifier.ABSTRACT))) {
+        if (declaration.classKind != ClassKind.INTERFACE && !(declaration.classKind == ClassKind.CLASS && Modifier.ABSTRACT in declaration.modifiers)) {
             return null
         }
         if (declaration.findAnnotation(DbUtils.repositoryAnnotation) == null) {
+            return null
+        }
+        if (!tags.tagsMatch(declaration.parseTags())) {
             return null
         }
         return lambda@{

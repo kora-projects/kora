@@ -12,6 +12,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.RecordComponentElement;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -143,5 +144,23 @@ public final class TagUtils {
             b.add("$T.class, ", typeMirrorValue);
         }
         return b.add("}").build();
+    }
+
+    public static Boolean tagsMatch(Collection<String> requiredTags, Collection<String> providedTags) {
+        if (requiredTags.isEmpty() && providedTags.isEmpty()) {
+            return true;
+        }
+        if (requiredTags.isEmpty()) {
+            return false;
+        }
+        if (requiredTags.contains(CommonClassNames.tagAny.canonicalName())) {
+            return true;
+        }
+        for (var tag : requiredTags) {
+            if (!providedTags.contains(tag)) {
+                return false;
+            }
+        }
+        return true;
     }
 }
