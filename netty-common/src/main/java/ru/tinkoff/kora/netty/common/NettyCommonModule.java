@@ -7,8 +7,6 @@ import io.netty.channel.ServerChannel;
 import io.netty.channel.epoll.*;
 import io.netty.channel.kqueue.*;
 import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.nio.NioDomainSocketChannel;
-import io.netty.channel.socket.nio.NioServerDomainSocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import jakarta.annotation.Nullable;
@@ -103,20 +101,22 @@ public interface NettyCommonModule {
         return new NettyChannelFactory() {
             @Override
             public ChannelFactory<Channel> getClientFactory(boolean domainSocket) {
-                if (domainSocket) {
-                    return NioDomainSocketChannel::new;
-                } else {
+                    //TODO Netty 4.1.110+
+//                if (domainSocket) {
+//                    return NioDomainSocketChannel::new;
+//                } else {
                     return NioSocketChannel::new;
-                }
+//                }
             }
 
             @Override
             public ChannelFactory<ServerChannel> getServerFactory(boolean domainSocket) {
-                if (domainSocket) {
-                    return NioServerDomainSocketChannel::new;
-                } else {
+                //TODO Netty 4.1.110+
+//                if (domainSocket) {
+//                    return NioServerDomainSocketChannel::new;
+//                } else {
                     return NioServerSocketChannel::new;
-                }
+//                }
             }
         };
     }
