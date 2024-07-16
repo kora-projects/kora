@@ -4,17 +4,32 @@ import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.Modifier
-import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.INT_ARRAY
+import com.squareup.kotlinpoet.KModifier
+import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import com.squareup.kotlinpoet.ksp.*
+import com.squareup.kotlinpoet.PropertySpec
+import com.squareup.kotlinpoet.TypeSpec
+import com.squareup.kotlinpoet.ksp.TypeParameterResolver
+import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
+import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.toTypeName
+import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
+import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import ru.tinkoff.kora.json.ksp.JsonTypes
 import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum
-import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum.*
+import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum.BIG_DECIMAL
+import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum.BIG_INTEGER
+import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum.BINARY
+import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum.INTEGER
 import ru.tinkoff.kora.json.ksp.jsonReaderName
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
-import java.util.*
+import java.util.BitSet
 import java.util.UUID
 
 class JsonReaderGenerator(val resolver: Resolver) {
@@ -74,7 +89,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
             functionBody.addStatement("val _fieldName = _parser.currentName")
             functionBody.controlFlow("when (_fieldName)") {
                 meta.fields.forEach { field ->
-                    functionBody.addStatement("%S -> %L = %L(_parser, _receivedFields)", field.jsonName, field.parameter, readerMethodName(field))
+                    functionBody.addStatement("%S -> %N = %N(_parser, _receivedFields)", field.jsonName, field.parameter.name!!.asString(), readerMethodName(field))
                 }
                 functionBody.controlFlow("else -> ") {
                     addStatement("_parser.nextToken()")
@@ -145,14 +160,14 @@ class JsonReaderGenerator(val resolver: Resolver) {
             val paramName = field.parameter.name!!.asString()
 
             when {
-                type.isNullable -> functionBody.add("%L", paramName)
-                type == resolver.builtIns.booleanType -> functionBody.add("%L", paramName)
-                type == resolver.builtIns.shortType -> functionBody.add("%L", paramName)
-                type == resolver.builtIns.intType -> functionBody.add("%L", paramName)
-                type == resolver.builtIns.longType -> functionBody.add("%L", paramName)
-                type == resolver.builtIns.floatType -> functionBody.add("%L", paramName)
-                type == resolver.builtIns.doubleType -> functionBody.add("%L", paramName)
-                else -> functionBody.add("%L!!", paramName)
+                type.isNullable -> functionBody.add("%N", paramName)
+                type == resolver.builtIns.booleanType -> functionBody.add("%N", paramName)
+                type == resolver.builtIns.shortType -> functionBody.add("%N", paramName)
+                type == resolver.builtIns.intType -> functionBody.add("%N", paramName)
+                type == resolver.builtIns.longType -> functionBody.add("%N", paramName)
+                type == resolver.builtIns.floatType -> functionBody.add("%N", paramName)
+                type == resolver.builtIns.doubleType -> functionBody.add("%N", paramName)
+                else -> functionBody.add("%N!!", paramName)
             }
 
             functionBody.add(",\n")
@@ -166,7 +181,11 @@ class JsonReaderGenerator(val resolver: Resolver) {
 
     private fun assertTokenType(method: CodeBlock.Builder, expectedToken: String) {
         method.controlFlow("if (_token != %T.%L)", JsonTypes.jsonToken, expectedToken) {
-            addStatement("throw %T(\n _parser, \n%P\n)", JsonTypes.jsonParseException, "Expecting %s token, got \$_token".format(expectedToken))
+            addStatement(
+                "throw %T(\n_parser,\n%P\n)",
+                JsonTypes.jsonParseException,
+                "Expecting $expectedToken token, got \$_token"
+            )
         }
     }
 
@@ -177,14 +196,14 @@ class JsonReaderGenerator(val resolver: Resolver) {
             val paramName = field.parameter.name!!.asString()
 
             when {
-                type.isNullable -> method.addStatement("var %L: %T = null", paramName, field.parameter.type.toTypeName(typeParameterResolver))
-                type == resolver.builtIns.booleanType -> method.addStatement("var %L = false", paramName)
-                type == resolver.builtIns.shortType -> method.addStatement("var %L: Short = 0", paramName)
-                type == resolver.builtIns.intType -> method.addStatement("var %L = 0", paramName)
-                type == resolver.builtIns.longType -> method.addStatement("var %L = 0L", paramName)
-                type == resolver.builtIns.floatType -> method.addStatement("var %L = 0f", paramName)
-                type == resolver.builtIns.doubleType -> method.addStatement("var %L = 0.0", paramName)
-                else -> method.addStatement("var %L: %T = null", paramName, field.parameter.type.toTypeName(typeParameterResolver).copy(nullable = true))
+                type.isNullable -> method.addStatement("var %N: %T = null", paramName, field.parameter.type.toTypeName(typeParameterResolver))
+                type == resolver.builtIns.booleanType -> method.addStatement("var %N = false", paramName)
+                type == resolver.builtIns.shortType -> method.addStatement("var %N: Short = 0", paramName)
+                type == resolver.builtIns.intType -> method.addStatement("var %N = 0", paramName)
+                type == resolver.builtIns.longType -> method.addStatement("var %N = 0L", paramName)
+                type == resolver.builtIns.floatType -> method.addStatement("var %N = 0f", paramName)
+                type == resolver.builtIns.doubleType -> method.addStatement("var %N = 0.0", paramName)
+                else -> method.addStatement("var %N: %T = null", paramName, field.parameter.type.toTypeName(typeParameterResolver).copy(nullable = true))
             }
         }
     }
@@ -227,8 +246,8 @@ class JsonReaderGenerator(val resolver: Resolver) {
         functionBody.controlFlow("run") {
             for (i in meta.fields.indices) {
                 val field: JsonClassReaderMeta.FieldMeta = meta.fields[i]
-                addStatement("if (!_parser.nextFieldName(%L)) return@run", jsonNameStaticName(field))
-                addStatement("%L = %L(_parser, _receivedFields)", field.parameter, readerMethodName(field))
+                addStatement("if (!_parser.nextFieldName(%N)) return@run", jsonNameStaticName(field))
+                addStatement("%N = %N(_parser, _receivedFields)", field.parameter.name!!.asString(), readerMethodName(field))
                 functionBody.add("\n")
             }
 
@@ -284,7 +303,11 @@ class JsonReaderGenerator(val resolver: Resolver) {
             functionBody.add("val _token = _parser.nextToken()\n")
             if (!isMarkedNullable) {
                 functionBody.controlFlow("if (_token == %T.VALUE_NULL)", JsonTypes.jsonToken) {
-                    addStatement("throw %T(\n   _parser, %S\n)", JsonTypes.jsonParseException, "Expecting non nul value for field %s, got VALUE_NULL token".format(field.jsonName))
+                    addStatement(
+                        "throw %T(\n_parser,\n%S\n)",
+                        JsonTypes.jsonParseException,
+                        "Expecting non nul value for field '${field.jsonName}', got VALUE_NULL token"
+                    )
                 }
                 if (size > maxFields) {
                     functionBody.add("_receivedFields.set(%L)\n", index)
@@ -393,13 +416,15 @@ class JsonReaderGenerator(val resolver: Resolver) {
                 addStatement("return null")
             }
         }
-        val exceptionMessage = "Expecting %s token for field '%s', got \$_token".format(
-            expectedTokens(
-                knownType,
-                isNullable
-            ).contentToString(), jsonName
+
+        val expectedTokenStr = expectedTokens(knownType, isNullable)
+            .contentToString()
+
+        method.addStatement(
+            "throw %T(\n_parser,\n%S +\n_token\n)",
+            JsonTypes.jsonParseException,
+            "Expecting $expectedTokenStr token for field '$jsonName', got "
         )
-        method.addStatement("throw %T(\n _parser,\n%P\n)", JsonTypes.jsonParseException, exceptionMessage)
         return method.build()
     }
 
