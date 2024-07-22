@@ -13,7 +13,6 @@ public class CoroutineContextInjectInterceptor {
     public static ServerInterceptor newInstance() {
         try {
             CoroutineContextInjectInterceptor.class.getClassLoader().loadClass("kotlinx.coroutines.Dispatchers");
-            CoroutineContextInjectInterceptor.class.getClassLoader().loadClass("kotlinx.coroutines.reactor.ReactorContextKt");
             return new CoroutineContextInjectInterceptorDelegate();
         } catch (ClassNotFoundException e) {
             return new ServerInterceptor() {
