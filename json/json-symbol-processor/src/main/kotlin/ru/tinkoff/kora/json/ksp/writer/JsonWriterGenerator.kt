@@ -114,7 +114,7 @@ class JsonWriterGenerator(private val resolver: Resolver) {
 
     private fun addWriteParam(function: CodeBlock.Builder, field: JsonClassWriterMeta.FieldMeta) {
         val read = CodeBlock.builder()
-            .add("_gen.writeFieldName(%L)\n", jsonNameStaticName(field))
+            .add("_gen.writeFieldName(%N)\n", jsonNameStaticName(field))
         if (field.writer == null && field.typeMeta is WriterFieldType.KnownWriterFieldType) {
             read.add(writeKnownType(field.typeMeta.knownType))
         } else {
