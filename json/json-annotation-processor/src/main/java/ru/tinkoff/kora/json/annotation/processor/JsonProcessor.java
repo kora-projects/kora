@@ -1,18 +1,23 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
 import com.squareup.javapoet.JavaFile;
+import javax.lang.model.element.AnnotationMirror;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ComparableTypeMirror;
+import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.annotation.processor.common.SealedTypeUtils;
 import ru.tinkoff.kora.json.annotation.processor.reader.EnumReaderGenerator;
 import ru.tinkoff.kora.json.annotation.processor.reader.JsonReaderGenerator;
+import ru.tinkoff.kora.json.annotation.processor.reader.UnboxedReaderGenerator;
 import ru.tinkoff.kora.json.annotation.processor.reader.ReaderTypeMetaParser;
 import ru.tinkoff.kora.json.annotation.processor.reader.SealedInterfaceReaderGenerator;
 import ru.tinkoff.kora.json.annotation.processor.writer.EnumWriterGenerator;
 import ru.tinkoff.kora.json.annotation.processor.writer.JsonWriterGenerator;
 import ru.tinkoff.kora.json.annotation.processor.writer.SealedInterfaceWriterGenerator;
+import ru.tinkoff.kora.json.annotation.processor.writer.UnboxedWriterGenerator;
 import ru.tinkoff.kora.json.annotation.processor.writer.WriterTypeMetaParser;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -38,6 +43,8 @@ public class JsonProcessor {
     private final SealedInterfaceWriterGenerator sealedWriterGenerator;
     private final EnumReaderGenerator enumReaderGenerator;
     private final EnumWriterGenerator enumWriterGenerator;
+    private final UnboxedReaderGenerator unboxedReaderGenerator;
+    private final UnboxedWriterGenerator unboxedWriterGenerator;
 
     public JsonProcessor(ProcessingEnvironment processingEnv) {
         this.processingEnv = processingEnv;
@@ -52,6 +59,8 @@ public class JsonProcessor {
         this.sealedWriterGenerator = new SealedInterfaceWriterGenerator(this.processingEnv);
         this.enumReaderGenerator = new EnumReaderGenerator();
         this.enumWriterGenerator = new EnumWriterGenerator();
+        this.unboxedReaderGenerator = new UnboxedReaderGenerator();
+        this.unboxedWriterGenerator = new UnboxedWriterGenerator();
     }
 
     public void generateReader(TypeElement jsonElement) {
@@ -62,6 +71,13 @@ public class JsonProcessor {
         if (readerElement != null) {
             return;
         }
+
+        var unboxedAnnotation = AnnotationUtils.findAnnotation(jsonElement, JsonTypes.jsonUnboxed);
+        if (unboxedAnnotation != null) {
+            this.generateUnboxedReader(jsonElement, jsonElementType, unboxedAnnotation);
+            return;
+        }
+
         if (jsonElement.getKind() == ElementKind.ENUM) {
             this.generateEnumReader(jsonElement);
             return;
@@ -98,6 +114,22 @@ public class JsonProcessor {
         CommonUtils.safeWriteTo(this.processingEnv, javaFile);
     }
 
+    private void generateUnboxedReader(
+        TypeElement typeElement,
+        TypeMirror jsonTypeMirror,
+        AnnotationMirror unboxedAnnotation
+    ) {
+        checkUnboxedTarget(typeElement, unboxedAnnotation);
+
+        var packageElement = JsonUtils.jsonClassPackage(this.elements, typeElement);
+        var meta = Objects.requireNonNull(this.readerTypeMetaParser.parseUnboxed(typeElement, jsonTypeMirror));
+        var readerType = Objects.requireNonNull(this.unboxedReaderGenerator.generateForUnboxed(meta));
+
+        var javaFile = JavaFile.builder(packageElement, readerType).build();
+
+        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
+    }
+
     private void generateEnumWriter(TypeElement jsonElement) {
         var packageElement = JsonUtils.jsonClassPackage(this.elements, jsonElement);
         var enumWriterType = this.enumWriterGenerator.generateEnumWriter(jsonElement);
@@ -111,6 +143,11 @@ public class JsonProcessor {
         var writerClassName = JsonUtils.jsonWriterName(this.types, wrapper.typeMirror());
         var writerElement = this.elements.getTypeElement(packageElement + "." + writerClassName);
         if (writerElement != null) {
+            return;
+        }
+        var unboxedAnnotation = AnnotationUtils.findAnnotation(jsonElement, JsonTypes.jsonUnboxed);
+        if (unboxedAnnotation != null) {
+            this.generateUnboxedWriter(jsonElement, jsonElement.asType(), unboxedAnnotation);
             return;
         }
         if (jsonElement.getKind() == ElementKind.ENUM) {
@@ -133,6 +170,22 @@ public class JsonProcessor {
         CommonUtils.safeWriteTo(this.processingEnv, javaFile);
     }
 
+    private void generateUnboxedWriter(
+        TypeElement typeElement,
+        TypeMirror jsonTypeMirror,
+        AnnotationMirror unboxedAnnotation
+    ) {
+        checkUnboxedTarget(typeElement, unboxedAnnotation);
+
+        var meta = Objects.requireNonNull(this.writerTypeMetaParser.parseUnboxed(typeElement, jsonTypeMirror));
+
+        var writerType = Objects.requireNonNull(this.unboxedWriterGenerator.generate(meta));
+        var packageElement = JsonUtils.jsonClassPackage(this.elements, typeElement);
+        var javaFile = JavaFile.builder(packageElement, writerType).build();
+
+        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
+    }
+
     private void tryGenerateWriter(TypeElement jsonElement, TypeMirror jsonTypeMirror) {
         var meta = Objects.requireNonNull(this.writerTypeMetaParser.parse(jsonElement, jsonTypeMirror));
         var packageElement = JsonUtils.jsonClassPackage(this.elements, jsonElement);
@@ -140,5 +193,17 @@ public class JsonProcessor {
 
         var javaFile = JavaFile.builder(packageElement, writerType).build();
         CommonUtils.safeWriteTo(this.processingEnv, javaFile);
+    }
+
+    private void checkUnboxedTarget(TypeElement typeElement, AnnotationMirror unboxedAnnotation) {
+        var kind = typeElement.getKind();
+
+        if (kind != ElementKind.CLASS && kind != ElementKind.RECORD) {
+            throw new ProcessingErrorException(
+                "@JsonUnboxed supported only for classes and records",
+                typeElement,
+                unboxedAnnotation
+            );
+        }
     }
 }

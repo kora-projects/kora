@@ -54,6 +54,34 @@ public class WriterTypeMetaParser {
         return new JsonClassWriterMeta(typeMirror, jsonClass, fieldMetas);
     }
 
+    public UnboxedWriterMeta parseUnboxed(TypeElement jsonClass, TypeMirror typeMirror) {
+        if (jsonClass.getKind() != ElementKind.CLASS && jsonClass.getKind() != ElementKind.RECORD) {
+            throw new IllegalArgumentException("Should not be called for non classes");
+        }
+        if (jsonClass.getModifiers().contains(Modifier.ABSTRACT)) {
+            throw new IllegalArgumentException("Should not be called for abstract classes");
+        }
+
+        var fieldElements = this.parseFields(jsonClass);
+
+        if (fieldElements.size() != 1) {
+            throw new ProcessingErrorException(
+                "@JsonUnboxed JsonWriter can be created only for classes with single field",
+                jsonClass
+            );
+        }
+
+        VariableElement field = fieldElements.get(0);
+
+        var fieldMeta = new UnboxedWriterMeta.FieldMeta(
+            field,
+            field.asType(),
+            this.getAccessorMethod(jsonClass, field)
+        );
+
+        return new UnboxedWriterMeta(typeMirror, jsonClass, fieldMeta);
+    }
+
     private List<VariableElement> parseFields(TypeElement typeElement) {
         return typeElement.getEnclosedElements()
             .stream()
