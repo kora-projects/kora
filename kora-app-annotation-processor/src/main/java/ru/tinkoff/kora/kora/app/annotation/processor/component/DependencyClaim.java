@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.component;
 
-import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
+import ru.tinkoff.kora.annotation.processor.common.TagUtils;
 import ru.tinkoff.kora.annotation.processor.common.TypeParameterUtils;
 
 import javax.lang.model.type.TypeMirror;
@@ -19,21 +19,7 @@ public record DependencyClaim(TypeMirror type, Set<String> tags, DependencyClaim
     }
 
     public boolean tagsMatches(Collection<String> other) {
-        if (this.tags.isEmpty() && other.isEmpty()) {
-            return true;
-        }
-        if (this.tags.isEmpty()) {
-            return false;
-        }
-        if (this.tags.contains(CommonClassNames.tagAny.canonicalName())) {
-            return true;
-        }
-        for (var tag : this.tags) {
-            if (!other.contains(tag)) {
-                return false;
-            }
-        }
-        return true;
+        return TagUtils.tagsMatch(this.tags, other);
     }
 
     public enum DependencyClaimType {

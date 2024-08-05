@@ -3,21 +3,9 @@ package ru.tinkoff.kora.database.symbol.processor.jdbc
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.common.Tag
-import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 import ru.tinkoff.kora.ksp.common.GraphUtil.toGraphDraw
 
-class JdbcExtensionTests : AbstractSymbolProcessorTest() {
-
-    override fun commonImports(): String {
-        return super.commonImports() + """
-            import ru.tinkoff.kora.database.jdbc.*;
-            import ru.tinkoff.kora.database.jdbc.mapper.result.*;
-            import ru.tinkoff.kora.database.jdbc.mapper.parameter.*;
-            import ru.tinkoff.kora.common.Mapping;
-
-            import java.sql.*;
-        """.trimIndent()
-    }
+class JdbcExtensionTests : AbstractJdbcRepositoryTest() {
 
     @Test
     fun testRowMapper() {

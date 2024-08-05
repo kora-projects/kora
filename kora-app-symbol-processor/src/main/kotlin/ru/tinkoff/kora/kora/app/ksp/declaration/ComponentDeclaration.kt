@@ -2,7 +2,12 @@ package ru.tinkoff.kora.kora.app.ksp.declaration
 
 import com.google.devtools.ksp.closestClassDeclaration
 import com.google.devtools.ksp.isConstructor
-import com.google.devtools.ksp.symbol.*
+import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSDeclaration
+import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.KSTypeArgument
+import com.google.devtools.ksp.symbol.KSTypeParameter
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.TypeName
@@ -172,7 +177,11 @@ sealed interface ComponentDeclaration {
             if (type.isError) {
                 throw ProcessingErrorException("Component type is not resolvable in the current round of processing", sourceMethod)
             }
-            val tag = sourceMethod.parseTags()
+            val tag = if (sourceMethod.isConstructor()) {
+                sourceMethod.closestClassDeclaration()!!.parseTags()
+            } else {
+                sourceMethod.parseTags()
+            }
 
             return FromExtensionComponent(type, sourceMethod, parameterTypes, parameterTags, tag) {
                 if (sourceMethod.isConstructor()) {

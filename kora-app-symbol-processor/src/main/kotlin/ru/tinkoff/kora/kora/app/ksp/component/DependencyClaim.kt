@@ -1,25 +1,11 @@
 package ru.tinkoff.kora.kora.app.ksp.component
 
 import com.google.devtools.ksp.symbol.KSType
-import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.TagUtils.tagsMatch
 
 data class DependencyClaim(val type: KSType, val tags: Set<String>, val claimType: DependencyClaimType) {
-    fun tagsMatches(other: Collection<String?>): Boolean {
-        if (tags.isEmpty() && other.isEmpty()) {
-            return true
-        }
-        if (tags.isEmpty()) {
-            return false
-        }
-        if (tags.contains(CommonClassNames.tagAny.canonicalName)) {
-            return true
-        }
-        for (tag in tags) {
-            if (!other.contains(tag)) {
-                return false
-            }
-        }
-        return true
+    fun tagsMatches(other: Collection<String>): Boolean {
+        return tags.tagsMatch(other)
     }
 
     enum class DependencyClaimType {

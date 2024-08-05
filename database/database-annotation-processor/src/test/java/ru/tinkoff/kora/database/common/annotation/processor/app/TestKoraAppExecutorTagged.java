@@ -11,7 +11,7 @@ import ru.tinkoff.kora.database.jdbc.JdbcRepository;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-public interface TestKoraAppTagged {
+public interface TestKoraAppExecutorTagged {
 
     class ExampleTag {}
 

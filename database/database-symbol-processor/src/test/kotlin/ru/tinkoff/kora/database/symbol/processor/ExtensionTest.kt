@@ -14,8 +14,10 @@ import ru.tinkoff.kora.ksp.common.symbolProcess
 import java.lang.reflect.Constructor
 import java.util.function.Supplier
 import kotlin.reflect.full.isSubclassOf
+import ru.tinkoff.kora.database.symbol.processor.jdbc.AbstractJdbcRepositoryTest
+import ru.tinkoff.kora.ksp.common.GraphUtil.toGraph
 
-class ExtensionTest {
+class ExtensionTest : AbstractJdbcRepositoryTest() {
 
     @Test
     fun test() {
@@ -38,5 +40,47 @@ class ExtensionTest {
             Assertions.assertThat(annotation.value).hasSize(1)
             Assertions.assertThat(annotation.value[0].isSubclassOf(TestKoraAppTagged.ExampleTag::class)).isTrue()
         }
+    }
+
+
+    @Test
+    fun testTaggedRepo() {
+        val result = compile0(
+            """
+            import org.mockito.Mockito
+
+            @KoraApp
+            interface Application {
+                @Root
+                fun testRoot(
+                    @Tag(value = [TestRepository::class, JdbcRepository::class, Int::class])
+                    repo: TestRepository
+                ) = repo.test()
+        
+                fun jdbcQueryExecutorAccessor(): JdbcConnectionFactory {
+                    return Mockito.mock(JdbcConnectionFactory::class.java)
+                }
+            }
+            """.trimIndent(),
+            """
+            @Repository
+            @Tag(value = [TestRepository::class, JdbcRepository::class, Int::class])
+            interface TestRepository : JdbcRepository {
+                @Query("SELECT 1;")
+                fun select1()
+                
+                fun test() = "i'm in test repo"
+            }
+            """.trimIndent(),
+        )
+
+        result.assertSuccess()
+
+        val graph = compileResult.loadClass("ApplicationGraph").toGraph()
+
+        val testRoot = graph.graph.get(graph.draw.findNodeByType(String::class.java))
+
+        Assertions.assertThat(testRoot)
+            .isEqualTo("i'm in test repo")
     }
 }
