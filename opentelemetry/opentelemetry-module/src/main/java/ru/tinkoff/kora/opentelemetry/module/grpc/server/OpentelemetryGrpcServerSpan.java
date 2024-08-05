@@ -20,7 +20,7 @@ public final class OpentelemetryGrpcServerSpan implements GrpcServerTracer.GrpcS
     }
 
     @Override
-    public void close(Status status, @Nullable Throwable exception) {
+    public void close(@Nullable Status status, @Nullable Throwable exception) {
         if (exception != null) {
             this.span.recordException(exception);
             this.span.setStatus(StatusCode.ERROR);
