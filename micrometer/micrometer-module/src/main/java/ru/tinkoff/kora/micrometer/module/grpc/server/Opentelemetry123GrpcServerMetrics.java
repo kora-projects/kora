@@ -6,6 +6,7 @@ import io.micrometer.core.instrument.DistributionSummary;
 import ru.tinkoff.kora.grpc.server.telemetry.GrpcServerMetrics;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -23,8 +24,9 @@ public final class Opentelemetry123GrpcServerMetrics implements GrpcServerMetric
 
     @Override
     public void onClose(Status status, Throwable exception, long processingTimeNano) {
-        double durationValue = ((double) processingTimeNano) / 1_000_000_000;
-        duration.computeIfAbsent(status, durationFactory).record(durationValue);
+        var durationValue = ((double) processingTimeNano) / 1_000_000_000;
+        var finalStatus = Objects.requireNonNullElse(status, Status.UNKNOWN);
+        duration.computeIfAbsent(finalStatus, durationFactory).record(durationValue);
     }
 
     @Override
