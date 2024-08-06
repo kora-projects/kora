@@ -1,6 +1,7 @@
 ---
-name: Просьба о новом функционале / Feature request
+name: Предложить новый функционал / Feature request
 title: ''
+about: Предложить как улучшить Kora / Suggest an idea for Kora
 labels: new feature
 ---
 
