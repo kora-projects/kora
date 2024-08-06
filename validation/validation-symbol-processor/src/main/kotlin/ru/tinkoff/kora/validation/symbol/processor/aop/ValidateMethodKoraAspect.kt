@@ -7,13 +7,12 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
 import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
-import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotations
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isCompletionStage
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
-import ru.tinkoff.kora.ksp.common.FunctionUtils.isCompletionStage
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
@@ -106,7 +105,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
         val memberList = MemberName("kotlin.collections", "mutableListOf")
         builder.addStatement("val _returnValueContext = %T.builder().failFast(%L).build()", CONTEXT_TYPE, failFast)
 
-        if(!failFast) {
+        if (!failFast) {
             builder.addStatement("val _returnValueViolations = %M<%T>()", memberList, VIOLATION_TYPE)
         }
 
@@ -116,8 +115,15 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             val constraintType = constraint.factory.validator().asKSType(resolver)
 
             val parameters = CodeBlock.of(constraint.factory.parameters.values.asSequence()
-                .map { fp -> CodeBlock.of("%L", fp) }
+                .map {
+                    if (it is String) {
+                        CodeBlock.of("%S", it)
+                    } else {
+                        CodeBlock.of("%L", it)
+                    }
+                }
                 .joinToString(", ", "(", ")"))
+
 
             val createCodeBlock = CodeBlock.builder()
                 .add("%N.create", constraintFactory)
@@ -205,7 +211,13 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
                 val constraintType = constraint.factory.validator().asKSType(resolver)
 
                 val parameters = CodeBlock.of(constraint.factory.parameters.values.asSequence()
-                    .map { fp -> CodeBlock.of("%L", fp) }
+                    .map {
+                        if (it is String) {
+                            CodeBlock.of("%S", it)
+                        } else {
+                            CodeBlock.of("%L", it)
+                        }
+                    }
                     .joinToString(", ", "(", ")"))
 
                 val createCodeBlock = CodeBlock.builder()

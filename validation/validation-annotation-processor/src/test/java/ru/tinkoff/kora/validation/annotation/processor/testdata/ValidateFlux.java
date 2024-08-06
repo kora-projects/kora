@@ -14,7 +14,7 @@ public class ValidateFlux {
 
     @Validate
     public Flux<Void> validatedInput(@Range(from = 1, to = 5) int c1,
-                                     @Nullable @NotEmpty String c2,
+                                     @Nullable @NotEmpty @Pattern(".*") String c2,
                                      @Nullable @Valid ValidTaz c3) {
         return Flux.empty();
     }
@@ -41,7 +41,7 @@ public class ValidateFlux {
     @Valid
     @Validate
     public Flux<List<ValidTaz>> validatedInputAndOutput(@Range(from = 1, to = 5) int c1,
-                                                        @Nullable @NotEmpty String c2,
+                                                        @Nullable @NotEmpty @Pattern(".*") String c2,
                                                         @Valid ValidTaz c3,
                                                         @Nullable ValidTaz c4) {
         return (c4 == null)

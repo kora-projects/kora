@@ -15,7 +15,7 @@ public class ValidateFuture {
 
     @Validate
     public CompletionStage<Integer> validatedInput(@Range(from = 1, to = Integer.MAX_VALUE) int c1,
-                                                   @Nullable @NotEmpty String c2,
+                                                   @Nullable @NotEmpty @Pattern(".*") String c2,
                                                    @Nullable @Valid ValidTaz c3) {
         return CompletableFuture.completedFuture(c1);
     }
@@ -59,7 +59,7 @@ public class ValidateFuture {
     @Valid
     @Validate
     public CompletionStage<List<ValidTaz>> validatedInputAndOutput(@Range(from = 1, to = 5) int c1,
-                                                                   @Nullable @NotEmpty String c2,
+                                                                   @Nullable @NotEmpty @Pattern(".*") String c2,
                                                                    @Valid ValidTaz c3,
                                                                    @Nullable ValidTaz c4) {
         return (c4 == null)

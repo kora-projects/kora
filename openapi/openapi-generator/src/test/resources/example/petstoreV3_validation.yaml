@@ -21,6 +21,12 @@ paths:
             format: int32
             minimum: 1
             maximum: 100
+        - name: filter
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: '.*'
       responses:
         '200':
           description: A paged array of pets

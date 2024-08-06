@@ -13,7 +13,7 @@ public class ValidateSync {
 
     @Validate
     public int validatedInput(@Range(from = 1, to = Integer.MAX_VALUE) int c1,
-                              @Nullable @NotEmpty String c2,
+                              @Nullable @NotEmpty @Pattern(".*") String c2,
                               @Nullable @Valid ValidTaz c3) {
         return c1;
     }
@@ -58,7 +58,7 @@ public class ValidateSync {
     @Valid
     @Validate
     public List<ValidTaz> validatedInputAndOutput(@Range(from = 1, to = 5) int c1,
-                                                  @Nullable @NotEmpty String c2,
+                                                  @Nullable @NotEmpty @Pattern(".*") String c2,
                                                   @Valid ValidTaz c3,
                                                   @Nullable ValidTaz c4) {
         return (c4 == null)
