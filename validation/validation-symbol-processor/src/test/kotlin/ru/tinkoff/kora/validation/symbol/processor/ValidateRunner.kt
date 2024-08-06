@@ -25,6 +25,7 @@ open class ValidateRunner : Assertions(),
         return clazz.constructors[0].newInstance(
             rangeIntegerConstraintFactory(),
             notEmptyStringConstraintFactory(),
+            patternStringConstraintFactory(),
             getTazValidator(),
             sizeListConstraintFactory(TypeRef.of(ValidTaz::class.java)),
             listValidator(getTazValidator(), TypeRef.of(ValidTaz::class.java))
@@ -37,6 +38,7 @@ open class ValidateRunner : Assertions(),
         return clazz.constructors[0].newInstance(
             rangeIntegerConstraintFactory(),
             notEmptyStringConstraintFactory(),
+            patternStringConstraintFactory(),
             getTazValidator(),
             sizeListConstraintFactory(TypeRef.of(ValidTaz::class.java)),
             listValidator(getTazValidator(), TypeRef.of(ValidTaz::class.java))
@@ -49,6 +51,7 @@ open class ValidateRunner : Assertions(),
         return clazz.constructors[0].newInstance(
             rangeIntegerConstraintFactory(),
             notEmptyStringConstraintFactory(),
+            patternStringConstraintFactory(),
             getTazValidator(),
             sizeListConstraintFactory(TypeRef.of(ValidTaz::class.java)),
             listValidator(getTazValidator(), TypeRef.of(ValidTaz::class.java))

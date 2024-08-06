@@ -21,6 +21,7 @@ public abstract class ValidateRunner extends Assertions implements ValidatorModu
             return (ValidateSync) clazz.getConstructors()[0].newInstance(
                 rangeIntegerConstraintFactory(),
                 notEmptyStringConstraintFactory(),
+                patternStringConstraintFactory(),
                 getTazValidator(),
                 sizeListConstraintFactory(TypeRef.of(ValidTaz.class)),
                 listValidator(getTazValidator(), TypeRef.of(ValidTaz.class))
@@ -39,6 +40,7 @@ public abstract class ValidateRunner extends Assertions implements ValidatorModu
             return (ValidateFuture) clazz.getConstructors()[0].newInstance(
                     rangeIntegerConstraintFactory(),
                     notEmptyStringConstraintFactory(),
+                    patternStringConstraintFactory(),
                     getTazValidator(),
                     sizeListConstraintFactory(TypeRef.of(ValidTaz.class)),
                     listValidator(getTazValidator(), TypeRef.of(ValidTaz.class))
@@ -57,6 +59,7 @@ public abstract class ValidateRunner extends Assertions implements ValidatorModu
             return (ValidateMono) clazz.getConstructors()[0].newInstance(
                 rangeIntegerConstraintFactory(),
                 notEmptyStringConstraintFactory(),
+                patternStringConstraintFactory(),
                 getTazValidator(),
                 sizeListConstraintFactory(TypeRef.of(ValidTaz.class)),
                 listValidator(getTazValidator(), TypeRef.of(ValidTaz.class))
@@ -75,6 +78,7 @@ public abstract class ValidateRunner extends Assertions implements ValidatorModu
             return (ValidateFlux) clazz.getConstructors()[0].newInstance(
                 rangeIntegerConstraintFactory(),
                 notEmptyStringConstraintFactory(),
+                patternStringConstraintFactory(),
                 getTazValidator(),
                 sizeListConstraintFactory(TypeRef.of(ValidTaz.class)),
                 listValidator(getTazValidator(), TypeRef.of(ValidTaz.class))

@@ -16,7 +16,7 @@ open class ValidateFlow {
     @Validate
     open fun validatedInput(
         @Range(from = 1.0, to = 5.0) c1: Int,
-        @NotEmpty c2: String,
+        @NotEmpty @Pattern(".*") c2: String,
         @Valid c3: ValidTaz
     ): Flow<Int> = flow { emit(c1) }
 
@@ -45,7 +45,7 @@ open class ValidateFlow {
     @Validate
     open suspend fun validatedInputAndOutput(
         @Range(from = 1.0, to = 5.0) c1: Int,
-        @NotEmpty c2: String,
+        @NotEmpty @Pattern(".*") c2: String,
         @Valid c3: ValidTaz,
         c4: ValidTaz?
     ): Flow<List<ValidTaz>?> {
