@@ -24,7 +24,7 @@ public class HttpServerResponseEntityMapper<T> implements HttpServerResponseMapp
         var response = this.delegate.apply(ctx, request, result.body());
 
         final HttpBodyOutput body;
-        final String contentType = request.headers().getFirst("content-type");
+        final String contentType = result.headers().getFirst("content-type");
         if (contentType != null && !contentType.isEmpty()) {
             body = (response.body().contentLength() > 0)
                 ? HttpBodyOutput.of(contentType, response.body().contentLength(), response.body())
