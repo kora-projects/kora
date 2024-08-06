@@ -32,7 +32,6 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
 
             library('micrometer-core', 'io.micrometer', 'micrometer-core').versionRef('micrometer')
             library('micrometer-registry-prometheus', 'io.micrometer', 'micrometer-registry-prometheus').versionRef('micrometer')
-            library('prometheus-jmx-collector', 'io.prometheus.jmx', 'collector').version("0.20.0")
             library('prometheus-collector-caffeine', 'io.prometheus', 'simpleclient_caffeine').version("0.16.0")
 
             library('opentelemetry-sdk-trace', 'io.opentelemetry', 'opentelemetry-sdk-trace').versionRef('opentelemetry')

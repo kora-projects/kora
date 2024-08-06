@@ -1,7 +1,6 @@
 dependencies {
     api libs.micrometer.core
     api libs.micrometer.registry.prometheus
-    api libs.prometheus.jmx.collector
     api libs.opentelemetry.semconv
     api libs.opentelemetry.api
 
