@@ -4,12 +4,12 @@ import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.http.client.common.HttpClientConfig;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public final class OkHttpClientWrapper implements Lifecycle, Wrapped<OkHttpClient> {
@@ -18,11 +18,13 @@ public final class OkHttpClientWrapper implements Lifecycle, Wrapped<OkHttpClien
 
     private final OkHttpClientConfig config;
     private final HttpClientConfig baseConfig;
+    private final All<OkHttpConfigurer> configurers;
     private volatile OkHttpClient client;
 
-    public OkHttpClientWrapper(OkHttpClientConfig config, HttpClientConfig baseConfig) {
+    public OkHttpClientWrapper(OkHttpClientConfig config, HttpClientConfig baseConfig, All<OkHttpConfigurer> configurers) {
         this.config = config;
         this.baseConfig = baseConfig;
+        this.configurers = configurers;
     }
 
     @Override
@@ -35,7 +37,7 @@ public final class OkHttpClientWrapper implements Lifecycle, Wrapped<OkHttpClien
             .readTimeout(this.baseConfig.readTimeout())
             .followRedirects(this.config.followRedirects());
 
-        List<Protocol> protocols = getProtocols(this.config.httpVersion());
+        var protocols = getProtocols(this.config.httpVersion());
         builder.protocols(protocols);
 
         var proxyConfig = this.baseConfig.proxy();
@@ -49,6 +51,9 @@ public final class OkHttpClientWrapper implements Lifecycle, Wrapped<OkHttpClien
             if (proxyUser != null && proxyPassword != null) {
                 builder.proxyAuthenticator(new ProxyAuthenticator(proxyUser, proxyPassword));
             }
+        }
+        for (var configurer : this.configurers) {
+            builder = configurer.configure(builder);
         }
         this.client = builder.build();
 
