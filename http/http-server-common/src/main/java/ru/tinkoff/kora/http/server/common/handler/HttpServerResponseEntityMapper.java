@@ -26,7 +26,7 @@ public class HttpServerResponseEntityMapper<T> implements HttpServerResponseMapp
         final HttpBodyOutput body;
         final String contentType = result.headers().getFirst("content-type");
         if (contentType != null && !contentType.isEmpty()) {
-            body = (response.body().contentLength() > 0)
+            body = (response.body().contentLength() >= 0)
                 ? HttpBodyOutput.of(contentType, response.body().contentLength(), response.body())
                 : HttpBodyOutput.of(contentType, response.body());
         } else {
