@@ -2,6 +2,7 @@ package ru.tinkoff.kora.http.server.common.handler;
 
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.common.HttpResponseEntity;
+import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
@@ -22,11 +23,22 @@ public class HttpServerResponseEntityMapper<T> implements HttpServerResponseMapp
 
         var response = this.delegate.apply(ctx, request, result.body());
 
-        if (result.headers().isEmpty()) {
-            return HttpServerResponse.of(result.code(), response.headers(), response.body());
-        } else if (response.headers().isEmpty()) {
-            return HttpServerResponse.of(result.code(), result.headers(), response.body());
+        final HttpBodyOutput body;
+        final String contentType = result.headers().getFirst("content-type");
+        if (contentType != null && !contentType.isEmpty()) {
+            body = (response.body().contentLength() >= 0)
+                ? HttpBodyOutput.of(contentType, response.body().contentLength(), response.body())
+                : HttpBodyOutput.of(contentType, response.body());
+        } else {
+            body = response.body();
         }
+
+        if (result.headers().isEmpty()) {
+            return HttpServerResponse.of(result.code(), response.headers(), body);
+        } else if (response.headers().isEmpty()) {
+            return HttpServerResponse.of(result.code(), result.headers(), body);
+        }
+
         var headers = HttpHeaders.of();
         for (var header : response.headers()) {
             headers.set(header.getKey(), header.getValue());
@@ -35,11 +47,6 @@ public class HttpServerResponseEntityMapper<T> implements HttpServerResponseMapp
             headers.add(header.getKey(), header.getValue());
         }
 
-        return HttpServerResponse.of(
-            result.code(),
-            headers,
-            response.body()
-        );
-
+        return HttpServerResponse.of(result.code(), headers, body);
     }
 }
