@@ -65,7 +65,7 @@ public class JsonReaderGenerator {
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addException(IOException.class)
             .addParameter(JsonTypes.jsonParser, "_parser")
-            .returns(TypeName.get(meta.typeElement().asType()))
+            .returns(TypeName.get(meta.typeMirror()))
             .addAnnotation(Override.class)
             .addAnnotation(Nullable.class);
         method.addStatement("var _token = _parser.currentToken()");
