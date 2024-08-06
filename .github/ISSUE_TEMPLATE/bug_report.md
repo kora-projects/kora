@@ -1,6 +1,7 @@
 ---
 name: Сообщить об ошибке / Bug report
 title: ''
+about: Сообщить об ошибке и помочь улучшить Kora / Create a report to help us improve Kora
 labels: bug
 ---
 
