@@ -67,6 +67,18 @@ subprojects {
     }
 }
 
+// config experimental libraries
+subprojects {
+    if (project.parent.name != "experimental") {
+        return
+    }
+
+    group = "ru.tinkoff.kora.experimental"
+    dependencies {
+        implementation libs.jetbrains.annotations
+    }
+}
+
 def isPublishedLibrary = { Project p ->
     if (!p.childProjects.isEmpty()) {
         return false

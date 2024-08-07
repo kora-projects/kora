@@ -4,13 +4,16 @@ package ru.tinkoff.kora.http.common.body;
 import jakarta.annotation.Nullable;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.http.HttpRequest;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Flow;
 
 public interface HttpBodyOutput extends HttpBody, Flow.Publisher<ByteBuffer> {
+
     static HttpBodyOutput of(String contentType, Flow.Publisher<? extends ByteBuffer> content) {
         return new StreamingHttpBodyOutput(contentType, -1, content);
     }
@@ -19,8 +22,20 @@ public interface HttpBodyOutput extends HttpBody, Flow.Publisher<ByteBuffer> {
         return new StreamingHttpBodyOutput(contentType, length, content);
     }
 
+    static HttpBodyOutput of(String contentType, InputStream inputStream) {
+        return new StreamingHttpBodyOutput(contentType, -1, HttpRequest.BodyPublishers.ofInputStream(() -> inputStream));
+    }
+
+    static HttpBodyOutput of(String contentType, long length, InputStream inputStream) {
+        return new StreamingHttpBodyOutput(contentType, length, HttpRequest.BodyPublishers.ofInputStream(() -> inputStream));
+    }
+
     static HttpBodyOutput octetStream(Flow.Publisher<? extends ByteBuffer> content) {
         return new StreamingHttpBodyOutput("application/octet-stream", -1, content);
+    }
+
+    static HttpBodyOutput octetStream(InputStream inputStream) {
+        return new StreamingHttpBodyOutput("application/octet-stream", -1, HttpRequest.BodyPublishers.ofInputStream(() -> inputStream));
     }
 
     static HttpBodyOutput octetStream(long length, Flow.Publisher<? extends ByteBuffer> content) {
@@ -37,7 +52,7 @@ public interface HttpBodyOutput extends HttpBody, Flow.Publisher<ByteBuffer> {
 
     default void write(OutputStream os) throws IOException {
         var f = new CompletableFuture<Void>();
-        this.subscribe(new Flow.Subscriber<ByteBuffer>() {
+        this.subscribe(new Flow.Subscriber<>() {
             Flow.Subscription s;
 
             @Override
