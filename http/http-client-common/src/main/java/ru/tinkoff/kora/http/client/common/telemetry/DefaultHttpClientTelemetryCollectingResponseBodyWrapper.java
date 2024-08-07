@@ -167,6 +167,7 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
         private final DefaultHttpClientTelemetry.DefaultHttpClientTelemetryContextImpl telemetryContext;
         private final HttpClientResponse response;
         private final List<ByteBuffer> body = new ArrayList<>();
+        private boolean closed = false;
 
         public WrappedInputStream(DefaultHttpClientTelemetry.DefaultHttpClientTelemetryContextImpl telemetryContext, HttpClientResponse response, InputStream inputStream) {
             this.is = inputStream;
@@ -189,6 +190,7 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
             try {
                 var read = is.read(b, off, len);
                 if (read < 0) {
+                    closed = true;
                     telemetryContext.onClose(response.code(), response.headers(), response.body().contentType(), body);
                 }
                 if (read > 0) {
@@ -199,11 +201,35 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
                 return read;
             } catch (IOException e) {
                 try {
+                    closed = true;
                     telemetryContext.onClose(e);
                 } catch (Throwable t) {
                     e.addSuppressed(t);
                 }
                 throw e;
+            }
+        }
+
+        @Override
+        public void close() throws IOException {
+            try (this.is) {
+                if (!closed) {
+                    closed = true;
+                    try {
+                        while (true) {
+                            var buf = new byte[1024];
+                            var read = this.is.read(buf);
+                            if (read < 0) {
+                                break;
+                            }
+                            if (read > 0) {
+                                this.body.add(ByteBuffer.wrap(buf, 0, read));
+                            }
+                        }
+                    } finally {
+                        telemetryContext.onClose(response.code(), response.headers(), response.body().contentType(), body);
+                    }
+                }
             }
         }
     }
