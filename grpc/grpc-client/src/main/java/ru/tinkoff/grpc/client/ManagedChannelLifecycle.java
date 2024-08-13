@@ -32,7 +32,12 @@ public final class ManagedChannelLifecycle implements Lifecycle, Wrapped<Managed
     private final All<ClientInterceptor> interceptors;
     private volatile ManagedChannel channel;
 
-    public ManagedChannelLifecycle(GrpcClientConfig config, @Nullable ChannelCredentials channelCredentials, All<ClientInterceptor> interceptors, GrpcClientTelemetryFactory telemetryFactory, GrpcClientChannelFactory channelFactory, ServiceDescriptor serviceDefinition) {
+    public ManagedChannelLifecycle(GrpcClientConfig config,
+                                   @Nullable ChannelCredentials channelCredentials,
+                                   All<ClientInterceptor> interceptors,
+                                   GrpcClientTelemetryFactory telemetryFactory,
+                                   GrpcClientChannelFactory channelFactory,
+                                   ServiceDescriptor serviceDefinition) {
         this.config = config;
         this.serviceDefinition = serviceDefinition;
         this.channelCredentials = channelCredentials;
@@ -59,23 +64,25 @@ public final class ManagedChannelLifecycle implements Lifecycle, Wrapped<Managed
                 throw new IllegalArgumentException("Unknown scheme '" + scheme + "'");
             }
         }
-        var b = this.channelCredentials == null
+        var builder = this.channelCredentials == null
             ? this.channelFactory.forAddress(host, port)
             : this.channelFactory.forAddress(host, port, this.channelCredentials);
+
         if (Objects.equals(scheme, "http")) {
-            b.usePlaintext();
+            builder.usePlaintext();
         }
+
         var interceptors = new ArrayList<ClientInterceptor>(2);
-        interceptors.add(new GrpcClientConfigInterceptor(this.config));
+        interceptors.addAll(this.interceptors);
 
         var telemetry = telemetryFactory.get(serviceDefinition, config.telemetry(), uri);
         if (telemetry != null) {
             interceptors.add(new GrpcClientTelemetryInterceptor(telemetry));
         }
-        interceptors.addAll(this.interceptors);
-        b.intercept(interceptors);
-        this.channel = b.build();
+        interceptors.add(new GrpcClientConfigInterceptor(this.config));
+        builder.intercept(interceptors);
 
+        this.channel = builder.build();
         logger.info("GrpcManagedChannel '{}' started in {}", this.config.url(), TimeUtils.tookForLogging(started));
     }
 
