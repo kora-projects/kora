@@ -19,7 +19,7 @@ public interface MinioS3ClientConfig {
     interface UploadConfig {
 
         default long partSize() {
-            return 1024 * 1024 * 50; // 50Mb
+            return 1024 * 1024 * 25; // 25Mb
         }
     }
 }
