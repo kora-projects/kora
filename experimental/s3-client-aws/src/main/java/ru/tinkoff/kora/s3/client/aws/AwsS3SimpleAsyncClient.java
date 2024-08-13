@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.s3.client.aws;
 
+import jakarta.annotation.Nullable;
 import org.jetbrains.annotations.ApiStatus;
 import reactor.adapter.JdkFlowAdapter;
 import ru.tinkoff.kora.common.Context;
@@ -134,10 +135,10 @@ public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
     }
 
     @Override
-    public CompletionStage<S3ObjectList> list(String bucket, String prefix, int limit) {
+    public CompletionStage<S3ObjectList> list(String bucket, String prefix, @Nullable String delimiter, int limit) {
         var telemetryContext = telemetry.get("LIST", bucket);
 
-        return listMeta(bucket, prefix, limit)
+        return listMeta(bucket, prefix, delimiter, limit)
             .thenCompose(metaList -> {
                 var futures = metaList.metas().stream()
                     .map(meta -> get(bucket, meta.key()).toCompletableFuture())
@@ -157,8 +158,8 @@ public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
             .exceptionallyCompose(e -> handleExceptionAndTelemetryStage(e, telemetryContext));
     }
 
-    private CompletionStage<S3ObjectList> listInternal(String bucket, String prefix, int limit) {
-        return listMeta(bucket, prefix, limit)
+    private CompletionStage<S3ObjectList> listInternal(String bucket, String prefix, @Nullable String delimiter, int limit) {
+        return listMeta(bucket, prefix, delimiter, limit)
             .thenCompose(metaList -> {
                 var futures = metaList.metas().stream()
                     .map(meta -> get(bucket, meta.key()).toCompletableFuture())
@@ -177,11 +178,12 @@ public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
     }
 
     @Override
-    public CompletionStage<S3ObjectMetaList> listMeta(String bucket, String prefix, int limit) {
+    public CompletionStage<S3ObjectMetaList> listMeta(String bucket, String prefix, @Nullable String delimiter, int limit) {
         var request = ListObjectsV2Request.builder()
             .bucket(bucket)
             .prefix(prefix)
             .maxKeys(limit)
+            .delimiter(delimiter)
             .build();
 
         var ctx = Context.current();
@@ -197,11 +199,11 @@ public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
     }
 
     @Override
-    public CompletionStage<List<S3ObjectList>> list(String bucket, Collection<String> prefixes, int limitPerPrefix) {
+    public CompletionStage<List<S3ObjectList>> list(String bucket, Collection<String> prefixes, @Nullable String delimiter, int limitPerPrefix) {
         var telemetryContext = telemetry.get("LIST_MANY", bucket);
 
         var futures = prefixes.stream()
-            .map(p -> listInternal(bucket, p, limitPerPrefix).toCompletableFuture())
+            .map(p -> listInternal(bucket, p, delimiter, limitPerPrefix).toCompletableFuture())
             .toArray(CompletableFuture[]::new);
 
         return CompletableFuture.allOf(futures)
@@ -215,11 +217,11 @@ public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
     }
 
     @Override
-    public CompletionStage<List<S3ObjectMetaList>> listMeta(String bucket, Collection<String> prefixes, int limitPerPrefix) {
+    public CompletionStage<List<S3ObjectMetaList>> listMeta(String bucket, Collection<String> prefixes, @Nullable String delimiter, int limitPerPrefix) {
         var telemetryContext = telemetry.get("LIST_META_MANY", bucket);
 
         var futures = prefixes.stream()
-            .map(p -> listMeta(bucket, p, limitPerPrefix).toCompletableFuture())
+            .map(p -> listMeta(bucket, p, delimiter, limitPerPrefix).toCompletableFuture())
             .toArray(CompletableFuture[]::new);
 
         return CompletableFuture.allOf(futures)

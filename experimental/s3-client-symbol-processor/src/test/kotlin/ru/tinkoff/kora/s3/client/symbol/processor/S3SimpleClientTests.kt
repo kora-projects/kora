@@ -257,6 +257,23 @@ class S3SimpleClientTests : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun clientListKeyAndDelimiter() {
+        this.compile0(
+            """
+            @S3.Client("my")
+            interface Client {
+                        
+                @S3.List(value = "some/path/to/{key1}/object", delimiter = "/")
+                fun list(key1: String): S3ObjectList
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        val clazz = compileResult.loadClass("\$Client_Impl")
+        assertThat(clazz).isNotNull()
+    }
+
+    @Test
     fun clientListKeyMissing() {
         val result = this.compile0(
             """

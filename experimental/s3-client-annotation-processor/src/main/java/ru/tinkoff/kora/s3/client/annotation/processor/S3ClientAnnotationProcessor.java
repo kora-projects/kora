@@ -11,6 +11,7 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeMirror;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -303,6 +304,18 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
             returnType = ClassName.get(MethodUtils.getGenericType(method.getReturnType()).orElseThrow());
         }
 
+        var codeBuilder = CodeBlock.builder();
+        for (VariableElement parameter : method.getParameters()) {
+            if(!(method.getReturnType() instanceof PrimitiveType)) {
+                codeBuilder.add("""
+                    if($T.isNull($L)) {
+                        throw new $T("S3.Get request key argument expected, but was null for arg: $L");
+                    }
+                    """, Objects.class, parameter.getSimpleName().toString(), IllegalArgumentException.class, parameter.getSimpleName().toString());
+            }
+        }
+        codeBuilder.add("\n");
+
         if (CLASS_S3_OBJECT.equals(returnType) || CLASS_S3_OBJECT_META.equals(returnType)) {
             if (firstParameter != null && CommonUtils.isCollection(firstParameter.asType())) {
                 throw new ProcessingErrorException("@S3.Get operation expected single result, but parameter is collection of keys", method);
@@ -325,11 +338,9 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                 bodyBuilder.add(".toCompletableFuture()");
             }
 
-            CodeBlock.Builder methodBuilder = CodeBlock.builder()
-                .addStatement(key.code());
-
+            codeBuilder.addStatement(key.code());
             if (isOptional) {
-                methodBuilder
+                codeBuilder
                     .beginControlFlow("try")
                     .add("return $T.of(", Optional.class)
                     .add(bodyBuilder.build())
@@ -338,7 +349,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                     .addStatement("return $T.empty()", Optional.class)
                     .endControlFlow();
             } else if (isMono) {
-                methodBuilder
+                codeBuilder
                     .beginControlFlow("return $T.fromCompletionStage(() -> ", CommonClassNames.mono)
                     .add("return ").add(bodyBuilder.build()).add("\n")
                     .add("""
@@ -357,10 +368,10 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                         """, CompletionException.class, CLASS_S3_EXCEPTION_NOT_FOUND, CompletableFuture.class, CompletableFuture.class)
                     .endControlFlow(")");
             } else {
-                methodBuilder.add("return ").add(bodyBuilder.build()).add(";\n");
+                codeBuilder.add("return ").add(bodyBuilder.build()).add(";\n");
             }
 
-            return new S3Operation(method, operationMeta.annotation, OperationType.GET, ImplType.SIMPLE, mode, methodBuilder.build());
+            return new S3Operation(method, operationMeta.annotation, OperationType.GET, ImplType.SIMPLE, mode, codeBuilder.build());
         } else if (CLASS_S3_OBJECT_MANY.equals(returnType) || CLASS_S3_OBJECT_META_MANY.equals(returnType)) {
             if (firstParameter != null && !CommonUtils.isCollection(firstParameter.asType())) {
                 throw new ProcessingErrorException("@S3.Get operation expected many results, but parameter isn't collection of keys", method);
@@ -407,7 +418,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                 ? "_awsSyncClient"
                 : "_awsAsyncClient";
 
-            var codeBuilder = CodeBlock.builder()
+            codeBuilder
                 .addStatement(key.code())
                 .add("\n")
                 .addStatement(CodeBlock.of("""
@@ -460,24 +471,24 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                         clientField, CLASS_AWS_IS_ASYNC_TRANSFORMER);
                 }
 
-                if(isMono) {
+                if (isMono) {
                     codeBuilder
                         .add("\n")
                         .add("""
-                            .exceptionallyCompose(e -> {
-                                Throwable cause = e;
-                                if(e instanceof $T) {
-                                    cause = e.getCause();
-                                }
-                                
-                                if(cause instanceof $T) {
-                                    return $T.completedFuture(null);
-                                } else {
-                                    return $T.failedFuture(cause);
-                                }
-                            });
-                        """, CompletionException.class, CLASS_S3_EXCEPTION_NOT_FOUND, CompletableFuture.class, CompletableFuture.class);
-                } else if(isOptional) {
+                                .exceptionallyCompose(e -> {
+                                    Throwable cause = e;
+                                    if(e instanceof $T) {
+                                        cause = e.getCause();
+                                    }
+                                    
+                                    if(cause instanceof $T) {
+                                        return $T.completedFuture(null);
+                                    } else {
+                                        return $T.failedFuture(cause);
+                                    }
+                                });
+                            """, CompletionException.class, CLASS_S3_EXCEPTION_NOT_FOUND, CompletableFuture.class, CompletableFuture.class);
+                } else if (isOptional) {
                     codeBuilder.add(";\n");
                 } else {
                     codeBuilder.add(";\n");
@@ -527,12 +538,25 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
 
         boolean isMono = MethodUtils.isMono(method);
         final Integer limit = AnnotationUtils.parseAnnotationValue(elements, operationMeta.annotation(), "limit");
+        final String delimiter = AnnotationUtils.parseAnnotationValueWithoutDefault(operationMeta.annotation(), "delimiter");
         final TypeName returnType = (mode == S3Operation.Mode.SYNC)
             ? ClassName.get(method.getReturnType())
             : ClassName.get(MethodUtils.getGenericType(method.getReturnType()).orElseThrow());
 
+        var codeBuilder = CodeBlock.builder();
+        for (VariableElement parameter : method.getParameters()) {
+            if(!(method.getReturnType() instanceof PrimitiveType)) {
+                codeBuilder.add("""
+                    if($T.isNull($L)) {
+                        throw new $T("S3.List request prefix argument expected, but was null for arg: $L");
+                    }
+                    """, Objects.class, parameter.getSimpleName().toString(), IllegalArgumentException.class, parameter.getSimpleName().toString());
+
+            }
+        }
+        codeBuilder.add("\n");
+
         if (CLASS_S3_OBJECT_LIST.equals(returnType) || CLASS_S3_OBJECT_META_LIST.equals(returnType)) {
-            var codeBuilder = CodeBlock.builder();
             if (key != null) {
                 codeBuilder.addStatement(key.code());
             }
@@ -550,9 +574,9 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
 
             String keyField = (key == null) ? "(String) null" : "_key";
             if (CLASS_S3_OBJECT_LIST.equals(returnType)) {
-                bodyBuilder.add(".list(_clientConfig.bucket(), $L, $L)", keyField, limit);
+                bodyBuilder.add(".list(_clientConfig.bucket(), $L, $S, $L)", keyField, delimiter, limit);
             } else {
-                bodyBuilder.add(".listMeta(_clientConfig.bucket(), $L, $L)", keyField, limit);
+                bodyBuilder.add(".listMeta(_clientConfig.bucket(), $L, $S, $L)", keyField, delimiter, limit);
             }
 
             if (mode == S3Operation.Mode.ASYNC && CompletableFuture.class.getCanonicalName().equals(((DeclaredType) method.getReturnType()).asElement().toString())) {
@@ -572,7 +596,6 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                 ? "_awsSyncClient"
                 : "_awsAsyncClient";
 
-            var codeBuilder = CodeBlock.builder();
             if (key != null) {
                 codeBuilder.addStatement(key.code()).add("\n");
             }
@@ -583,8 +606,9 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                     var _request = $L.builder()
                         .bucket(_clientConfig.bucket())
                         .prefix($L)
+                        .delimiter($S)
                         .maxKeys($L)
-                        .build()""", CLASS_AWS_LIST_REQUEST, keyField, limit))
+                        .build()""", CLASS_AWS_LIST_REQUEST, keyField, delimiter, limit))
                 .add("\n");
 
             if (MethodUtils.isMono(method)) {
@@ -620,8 +644,8 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
             .filter(p -> {
                 TypeName bodyType = ClassName.get(p.asType());
                 return !CLASS_S3_BODY.equals(bodyType)
-                    && !ClassName.get(ByteBuffer.class).equals(bodyType)
-                    && !ArrayTypeName.get(byte[].class).equals(bodyType);
+                       && !ClassName.get(ByteBuffer.class).equals(bodyType)
+                       && !ArrayTypeName.get(byte[].class).equals(bodyType);
             })
             .toList();
 
@@ -656,6 +680,20 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
         final boolean isMono = MethodUtils.isMono(method);
         final boolean isUploadResponse = CLASS_S3_UPLOAD.equals(returnType);
         final boolean isAwsResponse = CLASS_AWS_PUT_RESPONSE.equals(returnType);
+
+        var methodBuilder = CodeBlock.builder();
+        for (VariableElement parameter : method.getParameters()) {
+            if(!(method.getReturnType() instanceof PrimitiveType)) {
+                methodBuilder.add("""
+                    if($T.isNull($L)) {
+                        throw new $T("S3.Put request key argument expected, but was null for arg: $L");
+                    }
+                    """, Objects.class, parameter.getSimpleName().toString(), IllegalArgumentException.class, parameter.getSimpleName().toString());
+
+            }
+        }
+        methodBuilder.add("\n");
+
         if (CommonUtils.isVoid(returnTypeMirror) || isUploadResponse) {
             CodeBlock bodyCode;
             if (CLASS_S3_BODY.equals(bodyType)) {
@@ -686,8 +724,6 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                         CLASS_S3_BODY, methodCall, bodyParam.getSimpleName().toString());
                 }
             }
-
-            var methodBuilder = CodeBlock.builder();
 
             if (mode == S3Operation.Mode.SYNC) {
                 if (isUploadResponse) {
@@ -792,7 +828,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                 }
             }
 
-            var methodBuilder = CodeBlock.builder()
+            methodBuilder
                 .addStatement(key.code())
                 .add("\n")
                 .addStatement("""
@@ -884,42 +920,52 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
             : MethodUtils.getGenericType(method.getReturnType()).orElseThrow();
         final TypeName returnType = ClassName.get(returnTypeMirror);
 
+        var methodBuilder = CodeBlock.builder();
+        for (VariableElement parameter : method.getParameters()) {
+            if(!(method.getReturnType() instanceof PrimitiveType)) {
+                methodBuilder.add("""
+                    if($T.isNull($L)) {
+                        throw new $T("S3.Delete request key argument expected, but was null for arg: $L");
+                    }
+                    """, Objects.class, parameter.getSimpleName().toString(), IllegalArgumentException.class, parameter.getSimpleName().toString());
+            }
+        }
+        methodBuilder.add("\n");
+
         if (CommonUtils.isVoid(returnTypeMirror)) {
             String clientField = mode == S3Operation.Mode.SYNC
                 ? "_simpleSyncClient"
                 : "_simpleAsyncClient";
-
-            var bodyBuilder = CodeBlock.builder();
 
             final String keyArgName;
             boolean isKeyCollection = firstParameter != null && CommonUtils.isCollection(firstParameter.asType());
             if (isKeyCollection) {
                 keyArgName = firstParameter.getSimpleName().toString();
             } else {
-                bodyBuilder.addStatement(key.code());
+                methodBuilder.addStatement(key.code());
                 keyArgName = "_key";
             }
 
             if (isMono) {
-                bodyBuilder.beginControlFlow("return $T.fromCompletionStage(() -> ", CommonClassNames.mono);
+                methodBuilder.beginControlFlow("return $T.fromCompletionStage(() -> ", CommonClassNames.mono);
             }
 
             if (mode == S3Operation.Mode.ASYNC) {
-                bodyBuilder.add("return ");
+                methodBuilder.add("return ");
             }
-            bodyBuilder.add("$L.delete(_clientConfig.bucket(), $L)", clientField, keyArgName);
+            methodBuilder.add("$L.delete(_clientConfig.bucket(), $L)", clientField, keyArgName);
             if (mode == S3Operation.Mode.ASYNC) {
                 if (CompletableFuture.class.getCanonicalName().equals(((DeclaredType) method.getReturnType()).asElement().toString())) {
-                    bodyBuilder.add(".toCompletableFuture()");
+                    methodBuilder.add(".toCompletableFuture()");
                 }
             }
-            bodyBuilder.add(";\n");
+            methodBuilder.add(";\n");
 
             if (isMono) {
-                bodyBuilder.endControlFlow(")");
+                methodBuilder.endControlFlow(")");
             }
 
-            return new S3Operation(method, operationMeta.annotation, OperationType.DELETE, ImplType.SIMPLE, mode, bodyBuilder.build());
+            return new S3Operation(method, operationMeta.annotation, OperationType.DELETE, ImplType.SIMPLE, mode, methodBuilder.build());
         } else if (CLASS_AWS_DELETE_RESPONSE.equals(returnType)) {
             if (firstParameter != null && CommonUtils.isCollection(firstParameter.asType())) {
                 throw new ProcessingErrorException("@S3.Delete operation expected single result, but parameter is collection of keys", method);
@@ -929,7 +975,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                 ? "_awsSyncClient"
                 : "_awsAsyncClient";
 
-            var bodyBuilder = CodeBlock.builder()
+            methodBuilder
                 .addStatement(key.code())
                 .add("\n")
                 .addStatement(CodeBlock.of("""
@@ -940,10 +986,10 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                 .add("\n");
 
             if (MethodUtils.isMono(method)) {
-                bodyBuilder.beginControlFlow("return $T.fromCompletionStage(() -> ", CommonClassNames.mono);
+                methodBuilder.beginControlFlow("return $T.fromCompletionStage(() -> ", CommonClassNames.mono);
             }
 
-            bodyBuilder
+            methodBuilder
                 .add("""
                     var _ctx = $T.current();
                     _ctx.set($T.OPERATION_KEY, new $T(_clientConfig.bucket(), $S));
@@ -953,10 +999,10 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                 .build();
 
             if (MethodUtils.isMono(method)) {
-                bodyBuilder.endControlFlow(")");
+                methodBuilder.endControlFlow(")");
             }
 
-            return new S3Operation(method, operationMeta.annotation, OperationType.DELETE, ImplType.AWS, mode, bodyBuilder.build());
+            return new S3Operation(method, operationMeta.annotation, OperationType.DELETE, ImplType.AWS, mode, methodBuilder.build());
         } else if (CLASS_AWS_DELETES_RESPONSE.equals(returnType)) {
             if (firstParameter == null || !CommonUtils.isCollection(firstParameter.asType())) {
                 throw new ProcessingErrorException("@S3.Delete operation multiple keys, but parameter is not collection of keys", method);
@@ -966,8 +1012,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                 ? "_awsSyncClient"
                 : "_awsAsyncClient";
 
-            CodeBlock.Builder bodyBuilder = CodeBlock.builder()
-                .addStatement(CodeBlock.of("""
+            methodBuilder.addStatement(CodeBlock.of("""
                         var _request = $T.builder()
                             .bucket(_clientConfig.bucket())
                             .delete($T.builder()
@@ -984,10 +1029,10 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                 .add("\n");
 
             if (MethodUtils.isMono(method)) {
-                bodyBuilder.beginControlFlow("return $T.fromCompletionStage(() -> ", CommonClassNames.mono);
+                methodBuilder.beginControlFlow("return $T.fromCompletionStage(() -> ", CommonClassNames.mono);
             }
 
-            bodyBuilder
+            methodBuilder
                 .add("""
                     var _ctx = $T.current();
                     _ctx.set($T.OPERATION_KEY, new $T(_clientConfig.bucket(), $S));
@@ -997,10 +1042,10 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                 .build();
 
             if (MethodUtils.isMono(method)) {
-                bodyBuilder.endControlFlow(")");
+                methodBuilder.endControlFlow(")");
             }
 
-            return new S3Operation(method, operationMeta.annotation, OperationType.DELETE, ImplType.AWS, mode, bodyBuilder.build());
+            return new S3Operation(method, operationMeta.annotation, OperationType.DELETE, ImplType.AWS, mode, methodBuilder.build());
         } else {
             throw new ProcessingErrorException("@S3.Delete operation unsupported method return signature, expected any of Void/%s/%s".formatted(
                 CLASS_AWS_DELETE_RESPONSE.simpleName(), CLASS_AWS_DELETES_RESPONSE.simpleName()
@@ -1035,7 +1080,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                 .filter(p -> {
                     TypeName bodyType = ClassName.get(p.asType());
                     return !ClassName.get(ByteBuffer.class).equals(bodyType)
-                        && !ArrayTypeName.get(byte[].class).equals(bodyType);
+                           && !ArrayTypeName.get(byte[].class).equals(bodyType);
                 })
                 .filter(p -> p.getSimpleName().contentEquals(paramName))
                 .findFirst()

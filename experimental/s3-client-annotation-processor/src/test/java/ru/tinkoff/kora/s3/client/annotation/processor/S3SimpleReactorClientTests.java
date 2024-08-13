@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.s3.client.annotation.processor;
 
 import org.junit.jupiter.api.Test;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest;
 
 import java.util.List;
@@ -245,6 +244,21 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
                         
                 @S3.List("{key1}-{key2}")
                 Mono<S3ObjectList> list(String key1, long key2);
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$Client_Impl");
+        assertThat(clazz).isNotNull();
+    }
+
+    @Test
+    public void clientListKeyAndDelimiter() {
+        this.compile(List.of(new S3ClientAnnotationProcessor()), """
+            @S3.Client("my")
+            public interface Client {
+                        
+                @S3.List(value = "{key1}", delimiter = "/")
+                Mono<S3ObjectList> list(String key1);
             }
             """);
         this.compileResult.assertSuccess();

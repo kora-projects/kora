@@ -123,11 +123,11 @@ public class MinioS3SimpleClient implements S3SimpleClient {
     }
 
     @Override
-    public S3ObjectList list(String bucket, String prefix, int limit) {
+    public S3ObjectList list(String bucket, String prefix, @Nullable String delimiter, int limit) {
         var telemetryContext = telemetry.get("LIST", bucket);
 
         try {
-            var objectList = listInternal(bucket, prefix, limit);
+            var objectList = listInternal(bucket, prefix, delimiter, limit);
             telemetryContext.close(200);
             return objectList;
         } catch (Exception e) {
@@ -135,9 +135,9 @@ public class MinioS3SimpleClient implements S3SimpleClient {
         }
     }
 
-    private S3ObjectList listInternal(String bucket, @Nullable String prefix, int limit) {
+    private S3ObjectList listInternal(String bucket, @Nullable String prefix, @Nullable String delimiter, int limit) {
         try {
-            var metaList = listMeta(bucket, prefix, limit);
+            var metaList = listMeta(bucket, prefix, delimiter, limit);
 
             final List<S3Object> objects = new ArrayList<>(metaList.metas().size());
             for (S3ObjectMeta meta : metaList.metas()) {
@@ -152,7 +152,7 @@ public class MinioS3SimpleClient implements S3SimpleClient {
     }
 
     @Override
-    public S3ObjectMetaList listMeta(String bucket, @Nullable String prefix, int limit) {
+    public S3ObjectMetaList listMeta(String bucket, @Nullable String prefix, @Nullable String delimiter, int limit) {
         var ctx = Context.current();
         try {
             ctx.set(OPERATION_KEY, new Operation("LIST_META", bucket));
@@ -161,6 +161,7 @@ public class MinioS3SimpleClient implements S3SimpleClient {
                 .bucket(bucket)
                 .prefix(prefix)
                 .maxKeys(limit)
+                .delimiter(delimiter)
                 .build());
 
             final List<S3ObjectMeta> metas = new ArrayList<>();
@@ -177,13 +178,13 @@ public class MinioS3SimpleClient implements S3SimpleClient {
     }
 
     @Override
-    public List<S3ObjectList> list(String bucket, Collection<String> prefixes, int limitPerPrefix) {
+    public List<S3ObjectList> list(String bucket, Collection<String> prefixes, @Nullable String delimiter, int limitPerPrefix) {
         var telemetryContext = telemetry.get("LIST_MANY", bucket);
 
         try {
             final List<S3ObjectList> lists = new ArrayList<>(prefixes.size());
             for (String prefix : prefixes) {
-                S3ObjectList list = listInternal(bucket, prefix, limitPerPrefix);
+                S3ObjectList list = listInternal(bucket, prefix, delimiter, limitPerPrefix);
                 lists.add(list);
             }
 
@@ -195,13 +196,13 @@ public class MinioS3SimpleClient implements S3SimpleClient {
     }
 
     @Override
-    public List<S3ObjectMetaList> listMeta(String bucket, Collection<String> prefixes, int limitPerPrefix) {
+    public List<S3ObjectMetaList> listMeta(String bucket, Collection<String> prefixes, @Nullable String delimiter, int limitPerPrefix) {
         var telemetryContext = telemetry.get("LIST_META_MANY", bucket);
 
         try {
             final List<S3ObjectMetaList> lists = new ArrayList<>(prefixes.size());
             for (String prefix : prefixes) {
-                var list = listMeta(bucket, prefix, limitPerPrefix);
+                var list = listMeta(bucket, prefix, delimiter, limitPerPrefix);
                 lists.add(list);
             }
 

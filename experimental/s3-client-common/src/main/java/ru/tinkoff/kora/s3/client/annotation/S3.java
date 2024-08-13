@@ -79,7 +79,19 @@ public @interface S3 {
          */
         String value() default "";
 
-        
+        /**
+         * @return Specifies key delimiter to exclude objects
+         * <pre>{@code
+         *     @S3.Client("my-client")
+         *     interface SomeClient {
+         *
+         *         @S3.List(value = "some/object/path", delimiter = "/")
+         *         S3ObjectList list();
+         *     }
+         * }</pre>
+         */
+        String delimiter() default "";
+
         @Range(from = 1, to = 1000)
         int limit() default 1000;
     }

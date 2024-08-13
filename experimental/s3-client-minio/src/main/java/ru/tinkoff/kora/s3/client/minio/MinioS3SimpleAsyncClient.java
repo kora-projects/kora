@@ -5,6 +5,7 @@ import io.minio.errors.ErrorResponseException;
 import io.minio.messages.DeleteError;
 import io.minio.messages.DeleteObject;
 import io.minio.messages.Item;
+import jakarta.annotation.Nullable;
 import org.jetbrains.annotations.ApiStatus;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.s3.client.S3DeleteException;
@@ -112,10 +113,10 @@ public class MinioS3SimpleAsyncClient implements S3SimpleAsyncClient {
 
 
     @Override
-    public CompletableFuture<S3ObjectList> list(String bucket, String prefix, int limit) {
+    public CompletableFuture<S3ObjectList> list(String bucket, String prefix, @Nullable String delimiter, int limit) {
         var telemetryContext = telemetry.get("LIST", bucket);
 
-        return listMeta(bucket, prefix, limit)
+        return listMeta(bucket, prefix, delimiter, limit)
             .<S3ObjectList>thenCompose(metaList -> {
                 var futures = metaList.metas().stream()
                     .map(meta -> get(bucket, meta.key()))
@@ -135,7 +136,7 @@ public class MinioS3SimpleAsyncClient implements S3SimpleAsyncClient {
     }
 
     @Override
-    public CompletableFuture<S3ObjectMetaList> listMeta(String bucket, String prefix, int limit) {
+    public CompletableFuture<S3ObjectMetaList> listMeta(String bucket, String prefix, @Nullable String delimiter, int limit) {
         return CompletableFuture.<S3ObjectMetaList>supplyAsync(() -> {
                 var ctx = Context.current();
                 ctx.set(OPERATION_KEY, new Operation("LIST_META", bucket));
@@ -144,6 +145,7 @@ public class MinioS3SimpleAsyncClient implements S3SimpleAsyncClient {
                     .bucket(bucket)
                     .prefix(prefix)
                     .maxKeys(limit)
+                    .delimiter(delimiter)
                     .build());
 
                 try {
@@ -164,11 +166,11 @@ public class MinioS3SimpleAsyncClient implements S3SimpleAsyncClient {
     }
 
     @Override
-    public CompletionStage<List<S3ObjectList>> list(String bucket, Collection<String> prefixes, int limitPerPrefix) {
+    public CompletionStage<List<S3ObjectList>> list(String bucket, Collection<String> prefixes, @Nullable String delimiter, int limitPerPrefix) {
         var telemetryContext = telemetry.get("LIST_MANY", bucket);
 
         var futures = prefixes.stream()
-            .map(p -> list(bucket, p, limitPerPrefix).toCompletableFuture())
+            .map(p -> list(bucket, p, delimiter, limitPerPrefix).toCompletableFuture())
             .toArray(CompletableFuture[]::new);
 
         return CompletableFuture.allOf(futures)
@@ -182,11 +184,11 @@ public class MinioS3SimpleAsyncClient implements S3SimpleAsyncClient {
     }
 
     @Override
-    public CompletionStage<List<S3ObjectMetaList>> listMeta(String bucket, Collection<String> prefixes, int limitPerPrefix) {
+    public CompletionStage<List<S3ObjectMetaList>> listMeta(String bucket, Collection<String> prefixes, @Nullable String delimiter, int limitPerPrefix) {
         var telemetryContext = telemetry.get("LIST_META_MANY", bucket);
 
         var futures = prefixes.stream()
-            .map(p -> listMeta(bucket, p, limitPerPrefix).toCompletableFuture())
+            .map(p -> listMeta(bucket, p, delimiter, limitPerPrefix).toCompletableFuture())
             .toArray(CompletableFuture[]::new);
 
         return CompletableFuture.allOf(futures)

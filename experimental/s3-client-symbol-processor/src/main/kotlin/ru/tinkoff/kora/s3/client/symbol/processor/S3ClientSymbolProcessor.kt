@@ -250,6 +250,12 @@ class S3ClientSymbolProcessor(
     }
 
     private fun getOperation(method: KSFunctionDeclaration, operationMeta: OperationMeta): S3Operation {
+        for (parameter in method.parameters) {
+            if (parameter.type.toTypeName().isNullable) {
+                throw ProcessingErrorException("S3.${operationMeta.type} operation can't have nullable method argument", method)
+            }
+        }
+
         val mode = if (method.isSuspend()) S3Operation.Mode.ASYNC else S3Operation.Mode.SYNC
 
         return if (S3Operation.OperationType.GET == operationMeta.type) {
@@ -425,6 +431,7 @@ class S3ClientSymbolProcessor(
         }
 
         val limit: Int = operationMeta.annotation.findValue("limit") ?: 1000
+        val delimiter: String? = operationMeta.annotation.findValueNoDefault("delimiter")
         val returnType: TypeName = method.returnType!!.toTypeName()
 
         if (CLASS_S3_OBJECT_LIST == returnType || CLASS_S3_OBJECT_META_LIST == returnType) {
@@ -441,9 +448,9 @@ class S3ClientSymbolProcessor(
 
             val keyField = if ((key == null)) "null as String?" else "_key"
             if (CLASS_S3_OBJECT_LIST == returnType) {
-                bodyBuilder.add(".list(_clientConfig.bucket(), %L, %L)", keyField, limit)
+                bodyBuilder.add(".list(_clientConfig.bucket(), %L, %S, %L)", keyField, delimiter, limit)
             } else {
-                bodyBuilder.add(".listMeta(_clientConfig.bucket(), %L, %L)", keyField, limit)
+                bodyBuilder.add(".listMeta(_clientConfig.bucket(), %L, %S, %L)", keyField, delimiter, limit)
             }
 
             if (mode == S3Operation.Mode.ASYNC) {
@@ -467,9 +474,10 @@ class S3ClientSymbolProcessor(
                     var _request = %L.builder()
                         .bucket(_clientConfig.bucket())
                         .prefix(%L)
+                        .delimiter(%S)
                         .maxKeys(%L)
                         .build()
-                        """.trimIndent(), CLASS_AWS_LIST_REQUEST, keyField, limit
+                        """.trimIndent(), CLASS_AWS_LIST_REQUEST, keyField, delimiter, limit
                 )
                 .add("\n")
                 .add("return %L.listObjectsV2(_request)", clientField)
@@ -856,7 +864,7 @@ class S3ClientSymbolProcessor(
         }
 
         if (indexEnd + 1 != keyTemplate.length) {
-            builder.add(" + \$S", keyTemplate.substring(indexEnd + 1))
+            builder.add(" + %S", keyTemplate.substring(indexEnd + 1))
         }
 
         return Key(builder.add("\n").build(), params)

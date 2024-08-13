@@ -101,6 +101,21 @@ class S3AwsAsyncClientTests extends AbstractAnnotationProcessorTest {
     }
 
     @Test
+    public void clientListKeyAndDelimiter() {
+        this.compile(List.of(new S3ClientAnnotationProcessor()), """
+            @S3.Client("my")
+            public interface Client {
+                        
+                @S3.List(value = "{key1}", delimiter = "/")
+                CompletionStage<ListObjectsV2Response> list(String key1);
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$Client_Impl");
+        assertThat(clazz).isNotNull();
+    }
+
+    @Test
     public void clientListAwsFuture() {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
