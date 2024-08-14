@@ -6,6 +6,8 @@ import java.util.*;
 
 public interface HttpHeaders extends Iterable<Map.Entry<String, List<String>>> {
 
+    Set<String> MASKED_HEADERS = Set.of("authorization", "cookie", "set-cookie");
+
     @Nullable
     String getFirst(String name);
 
@@ -165,16 +167,21 @@ public interface HttpHeaders extends Iterable<Map.Entry<String, List<String>>> {
                 sb.append('\n');
             }
 
-            sb.append(entry.getKey());
-            boolean first = true;
-            for (var val : entry.getValue()) {
-                if (first) {
-                    first = false;
-                    sb.append(": ");
-                } else {
-                    sb.append(", ");
+            final String headerKey = entry.getKey();
+            sb.append(headerKey);
+            if (shouldHeaderBeMasked(headerKey)) {
+                sb.append(": ***");
+            } else {
+                boolean first = true;
+                for (var val : entry.getValue()) {
+                    if (first) {
+                        first = false;
+                        sb.append(": ");
+                    } else {
+                        sb.append(", ");
+                    }
+                    sb.append(val);
                 }
-                sb.append(val);
             }
         }
         return sb.toString();
@@ -194,20 +201,29 @@ public interface HttpHeaders extends Iterable<Map.Entry<String, List<String>>> {
                 sb.append(", ");
             }
 
-            sb.append(entry.getKey()).append(": [");
-            boolean first = true;
-            for (var val : entry.getValue()) {
-                if (first) {
-                    first = false;
-                    sb.append(": ");
-                } else {
-                    sb.append(", ");
+            final String headerKey = entry.getKey();
+            sb.append(headerKey).append(": [");
+
+            if (shouldHeaderBeMasked(headerKey)) {
+                sb.append("***");
+            } else {
+                boolean first = true;
+                for (var val : entry.getValue()) {
+                    if (first) {
+                        first = false;
+                    } else {
+                        sb.append(", ");
+                    }
+                    sb.append(val);
                 }
-                sb.append(val);
             }
 
             sb.append("]");
         }
         return sb.toString();
+    }
+
+    private static boolean shouldHeaderBeMasked(String headerKey) {
+        return MASKED_HEADERS.contains(headerKey);
     }
 }

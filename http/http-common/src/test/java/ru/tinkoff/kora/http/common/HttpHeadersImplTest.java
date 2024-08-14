@@ -67,4 +67,32 @@ class HttpHeadersImplTest {
         assertThat(headers.remove("test-header-2").has("test-header-2")).isFalse();
     }
 
+    @Test
+    void toStringTest() {
+        var headers = HttpHeaders.of(
+            "test-header-1", "test-value-1",
+            "test-header-1", "test-value-2",
+            "Authorization", "TOP_SECRET",
+            "Cookie", "ANOTHER_SECRET"
+        );
+
+        assertThat(HttpHeaders.toString(headers))
+            .isEqualTo("""
+                           test-header-1: test-value-1, test-value-2
+                           authorization: ***
+                           cookie: ***""");
+    }
+
+    @Test
+    void toStringPlainTest() {
+        var headers = HttpHeaders.of(
+            "test-header-1", "test-value-1",
+            "test-header-1", "test-value-2",
+            "Authorization", "TOP_SECRET",
+            "Cookie", "ANOTHER_SECRET"
+        );
+
+        assertThat(HttpHeaders.toStringPlain(headers))
+            .isEqualTo("test-header-1: [test-value-1, test-value-2], authorization: [***], cookie: [***]");
+    }
 }
