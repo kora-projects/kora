@@ -8,12 +8,13 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
+class S3KoraAsyncClientTests extends AbstractAnnotationProcessorTest {
 
     @Override
     protected String commonImports() {
         return super.commonImports() + """
-            import reactor.core.publisher.Mono;
+            import java.util.concurrent.CompletionStage;
+            import java.util.concurrent.CompletableFuture;
             import java.nio.ByteBuffer;
             import java.io.InputStream;
             import java.util.List;
@@ -34,7 +35,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Get
-                Mono<S3ObjectMeta> get(String key);
+                CompletionStage<S3ObjectMeta> get(String key);
             }
             """);
         this.compileResult.assertSuccess();
@@ -53,7 +54,22 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Get
-                Mono<S3ObjectMeta> get(String key);
+                CompletionStage<S3ObjectMeta> get(String key);
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$Client_Impl");
+        assertThat(clazz).isNotNull();
+    }
+
+    @Test
+    public void clientGetMetaFuture() {
+        this.compile(List.of(new S3ClientAnnotationProcessor()), """
+            @S3.Client("my")
+            public interface Client {
+                        
+                @S3.Get
+                CompletableFuture<S3ObjectMeta> get(String key);
             }
             """);
         this.compileResult.assertSuccess();
@@ -68,7 +84,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Get
-                Mono<S3Object> get(String key);
+                CompletionStage<S3Object> get(String key);
             }
             """);
         this.compileResult.assertSuccess();
@@ -83,7 +99,22 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Get
-                Mono<List<S3ObjectMeta>> get(Collection<String> keys);
+                CompletionStage<List<S3ObjectMeta>> get(Collection<String> keys);
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$Client_Impl");
+        assertThat(clazz).isNotNull();
+    }
+
+    @Test
+    public void clientGetManyMetasFuture() {
+        this.compile(List.of(new S3ClientAnnotationProcessor()), """
+            @S3.Client("my")
+            public interface Client {
+                        
+                @S3.Get
+                CompletableFuture<List<S3ObjectMeta>> get(Collection<String> keys);
             }
             """);
         this.compileResult.assertSuccess();
@@ -98,7 +129,22 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Get
-                Mono<List<S3Object>> get(List<String> keys);
+                CompletionStage<List<S3Object>> get(List<String> keys);
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$Client_Impl");
+        assertThat(clazz).isNotNull();
+    }
+
+    @Test
+    public void clientGetManyObjectsFuture() {
+        this.compile(List.of(new S3ClientAnnotationProcessor()), """
+            @S3.Client("my")
+            public interface Client {
+                        
+                @S3.Get
+                CompletableFuture<List<S3Object>> get(List<String> keys);
             }
             """);
         this.compileResult.assertSuccess();
@@ -113,7 +159,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Get("{key1}-{key2}")
-                Mono<S3ObjectMeta> get(String key1, long key2);
+                CompletionStage<S3ObjectMeta> get(String key1, long key2);
             }
             """);
         this.compileResult.assertSuccess();
@@ -128,7 +174,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Get("{key1}-{key12345}")
-                Mono<S3ObjectMeta> get(String key1);
+                CompletionStage<S3ObjectMeta> get(String key1);
             }
             """));
     }
@@ -140,7 +186,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Get("const-key")
-                Mono<S3ObjectMeta> get();
+                CompletionStage<S3ObjectMeta> get();
             }
             """);
         this.compileResult.assertSuccess();
@@ -155,7 +201,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Get("const-key")
-                Mono<S3ObjectMeta> get(String key);
+                CompletionStage<S3ObjectMeta> get(String key);
             }
             """));
     }
@@ -168,7 +214,22 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.List
-                Mono<S3ObjectMetaList> list();
+                CompletionStage<S3ObjectMetaList> list();
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$Client_Impl");
+        assertThat(clazz).isNotNull();
+    }
+
+    @Test
+    public void clientListMetaFuture() {
+        this.compile(List.of(new S3ClientAnnotationProcessor()), """
+            @S3.Client("my")
+            public interface Client {
+                        
+                @S3.List
+                CompletableFuture<S3ObjectMetaList> list();
             }
             """);
         this.compileResult.assertSuccess();
@@ -183,7 +244,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.List
-                Mono<S3ObjectMetaList> list(String prefix);
+                CompletionStage<S3ObjectMetaList> list(String prefix);
             }
             """);
         this.compileResult.assertSuccess();
@@ -198,7 +259,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.List
-                Mono<S3ObjectMetaList> list(String prefix);
+                CompletableFuture<S3ObjectMetaList> list(String prefix);
             }
             """);
         this.compileResult.assertSuccess();
@@ -213,7 +274,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.List
-                Mono<S3ObjectList> list(String prefix);
+                CompletionStage<S3ObjectList> list(String prefix);
             }
             """);
         this.compileResult.assertSuccess();
@@ -228,7 +289,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.List(limit = 100)
-                Mono<S3ObjectList> list(String prefix);
+                CompletionStage<S3ObjectList> list(String prefix);
             }
             """);
         this.compileResult.assertSuccess();
@@ -243,7 +304,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.List("{key1}-{key2}")
-                Mono<S3ObjectList> list(String key1, long key2);
+                CompletionStage<S3ObjectList> list(String key1, long key2);
             }
             """);
         this.compileResult.assertSuccess();
@@ -258,7 +319,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.List(value = "{key1}", delimiter = "/")
-                Mono<S3ObjectList> list(String key1);
+                CompletionStage<S3ObjectList> list(String key1);
             }
             """);
         this.compileResult.assertSuccess();
@@ -273,7 +334,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.List("{key1}-{key12345}")
-                Mono<S3ObjectList> list(String key1);
+                CompletionStage<S3ObjectList> list(String key1);
             }
             """));
     }
@@ -285,7 +346,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.List("const-key")
-                Mono<S3ObjectList> list();
+                CompletionStage<S3ObjectList> list();
             }
             """);
         this.compileResult.assertSuccess();
@@ -300,7 +361,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.List("const-key")
-                Mono<S3ObjectList> list(String key);
+                CompletionStage<S3ObjectList> list(String key);
             }
             """));
     }
@@ -313,7 +374,22 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Delete
-                Mono<Void> delete(String key);
+                CompletionStage<Void> delete(String key);
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$Client_Impl");
+        assertThat(clazz).isNotNull();
+    }
+
+    @Test
+    public void clientDeleteFuture() {
+        this.compile(List.of(new S3ClientAnnotationProcessor()), """
+            @S3.Client("my")
+            public interface Client {
+                        
+                @S3.Delete
+                CompletableFuture<Void> delete(String key);
             }
             """);
         this.compileResult.assertSuccess();
@@ -328,7 +404,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Delete("{key1}-{key2}")
-                Mono<Void> delete(String key1, long key2);
+                CompletionStage<Void> delete(String key1, long key2);
             }
             """);
         this.compileResult.assertSuccess();
@@ -343,7 +419,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Delete("{key1}-{key12345}")
-                Mono<Void> delete(String key1);
+                CompletionStage<Void> delete(String key1);
             }
             """));
     }
@@ -355,7 +431,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Delete("const-key")
-                Mono<Void> delete();
+                CompletionStage<Void> delete();
             }
             """);
         this.compileResult.assertSuccess();
@@ -370,7 +446,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Delete("const-key")
-                Mono<Void> delete(String key);
+                CompletionStage<Void> delete(String key);
             }
             """));
     }
@@ -383,7 +459,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Delete
-                Mono<Void> delete(List<String> key);
+                CompletionStage<Void> delete(List<String> key);
             }
             """);
         this.compileResult.assertSuccess();
@@ -399,7 +475,22 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Put
-                Mono<Void> put(String key, S3Body body);
+                CompletionStage<Void> put(String key, S3Body body);
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$Client_Impl");
+        assertThat(clazz).isNotNull();
+    }
+
+    @Test
+    public void clientPutBodyFuture() {
+        this.compile(List.of(new S3ClientAnnotationProcessor()), """
+            @S3.Client("my")
+            public interface Client {
+                        
+                @S3.Put
+                CompletableFuture<Void> put(String key, S3Body body);
             }
             """);
         this.compileResult.assertSuccess();
@@ -414,7 +505,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Put
-                Mono<S3ObjectUpload> put(String key, S3Body body);
+                CompletionStage<S3ObjectUpload> put(String key, S3Body body);
             }
             """);
         this.compileResult.assertSuccess();
@@ -429,7 +520,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Put
-                Mono<Void> put(String key, byte[] body);
+                CompletionStage<Void> put(String key, byte[] body);
             }
             """);
         this.compileResult.assertSuccess();
@@ -444,7 +535,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Put
-                Mono<Void> put(String key, ByteBuffer body);
+                CompletionStage<Void> put(String key, ByteBuffer body);
             }
             """);
         this.compileResult.assertSuccess();
@@ -459,7 +550,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Put(type = "type")
-                Mono<Void> put(String key, S3Body body);
+                CompletionStage<Void> put(String key, S3Body body);
             }
             """);
         this.compileResult.assertSuccess();
@@ -474,7 +565,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Put(encoding = "encoding")
-                Mono<Void> put(String key, S3Body body);
+                CompletionStage<Void> put(String key, S3Body body);
             }
             """);
         this.compileResult.assertSuccess();
@@ -489,7 +580,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Put(type = "type", encoding = "encoding")
-                Mono<Void> put(String key, S3Body body);
+                CompletionStage<Void> put(String key, S3Body body);
             }
             """);
         this.compileResult.assertSuccess();
@@ -504,7 +595,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Put("{key1}-{key2}")
-                Mono<Void> put(String key1, long key2, S3Body body);
+                CompletionStage<Void> put(String key1, long key2, S3Body body);
             }
             """);
         this.compileResult.assertSuccess();
@@ -519,7 +610,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Put("{key1}-{key12345}")
-                Mono<Void> put(String key1, S3Body body);
+                CompletionStage<Void> put(String key1, S3Body body);
             }
             """));
     }
@@ -531,7 +622,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Put("const-key")
-                Mono<Void> put(S3Body body);
+                CompletionStage<Void> put(S3Body body);
             }
             """);
         this.compileResult.assertSuccess();
@@ -546,7 +637,7 @@ class S3SimpleReactorClientTests extends AbstractAnnotationProcessorTest {
             public interface Client {
                         
                 @S3.Put("const-key")
-                Mono<Void> put(String key, S3Body body);
+                CompletionStage<Void> put(String key, S3Body body);
             }
             """));
     }

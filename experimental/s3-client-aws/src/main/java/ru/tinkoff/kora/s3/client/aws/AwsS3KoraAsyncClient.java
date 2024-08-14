@@ -7,7 +7,7 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.s3.client.S3DeleteException;
 import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.s3.client.S3NotFoundException;
-import ru.tinkoff.kora.s3.client.S3SimpleAsyncClient;
+import ru.tinkoff.kora.s3.client.S3KoraAsyncClient;
 import ru.tinkoff.kora.s3.client.aws.AwsS3ClientTelemetryInterceptor.Operation;
 import ru.tinkoff.kora.s3.client.model.S3Object;
 import ru.tinkoff.kora.s3.client.model.*;
@@ -33,7 +33,7 @@ import java.util.concurrent.ExecutorService;
 import static ru.tinkoff.kora.s3.client.aws.AwsS3ClientTelemetryInterceptor.OPERATION_KEY;
 
 @ApiStatus.Experimental
-public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
+public class AwsS3KoraAsyncClient implements S3KoraAsyncClient {
 
     private final S3AsyncClient asyncClient;
     private final S3AsyncClient multipartAsyncClient;
@@ -41,10 +41,10 @@ public class AwsS3SimpleAsyncClient implements S3SimpleAsyncClient {
     private final S3ClientTelemetry telemetry;
     private final AwsS3ClientConfig awsS3ClientConfig;
 
-    public AwsS3SimpleAsyncClient(S3AsyncClient asyncClient,
-                                  ExecutorService awsExecutor,
-                                  S3ClientTelemetry telemetry,
-                                  AwsS3ClientConfig awsS3ClientConfig) {
+    public AwsS3KoraAsyncClient(S3AsyncClient asyncClient,
+                                ExecutorService awsExecutor,
+                                S3ClientTelemetry telemetry,
+                                AwsS3ClientConfig awsS3ClientConfig) {
         this.asyncClient = asyncClient;
         this.awsExecutor = awsExecutor;
         this.telemetry = telemetry;

@@ -4,7 +4,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 
-class S3SimpleSuspendClientTests : AbstractSymbolProcessorTest() {
+class S3KoraSuspendClientTests : AbstractSymbolProcessorTest() {
 
     override fun commonImports(): String {
         return super.commonImports() + """

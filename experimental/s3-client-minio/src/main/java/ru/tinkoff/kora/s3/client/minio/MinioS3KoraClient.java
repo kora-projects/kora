@@ -11,7 +11,7 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.s3.client.S3DeleteException;
 import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.s3.client.S3NotFoundException;
-import ru.tinkoff.kora.s3.client.S3SimpleClient;
+import ru.tinkoff.kora.s3.client.S3KoraClient;
 import ru.tinkoff.kora.s3.client.minio.MinioS3ClientTelemetryInterceptor.Operation;
 import ru.tinkoff.kora.s3.client.model.*;
 import ru.tinkoff.kora.s3.client.telemetry.S3ClientTelemetry;
@@ -27,13 +27,13 @@ import java.util.concurrent.CompletionException;
 import static ru.tinkoff.kora.s3.client.minio.MinioS3ClientTelemetryInterceptor.OPERATION_KEY;
 
 @ApiStatus.Experimental
-public class MinioS3SimpleClient implements S3SimpleClient {
+public class MinioS3KoraClient implements S3KoraClient {
 
     private final MinioClient minioClient;
     private final MinioS3ClientConfig minioS3ClientConfig;
     private final S3ClientTelemetry telemetry;
 
-    public MinioS3SimpleClient(MinioClient minioClient, MinioS3ClientConfig minioS3ClientConfig, S3ClientTelemetry telemetry) {
+    public MinioS3KoraClient(MinioClient minioClient, MinioS3ClientConfig minioS3ClientConfig, S3ClientTelemetry telemetry) {
         this.minioClient = minioClient;
         this.minioS3ClientConfig = minioS3ClientConfig;
         this.telemetry = telemetry;

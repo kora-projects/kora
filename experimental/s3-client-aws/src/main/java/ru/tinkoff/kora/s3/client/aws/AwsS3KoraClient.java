@@ -23,16 +23,16 @@ import java.util.concurrent.CompletionException;
 import static ru.tinkoff.kora.s3.client.aws.AwsS3ClientTelemetryInterceptor.OPERATION_KEY;
 
 @ApiStatus.Experimental
-public class AwsS3SimpleClient implements S3SimpleClient {
+public class AwsS3KoraClient implements S3KoraClient {
 
     private final S3Client syncClient;
-    private final S3SimpleAsyncClient asyncClient;
+    private final S3KoraAsyncClient asyncClient;
     private final S3ClientTelemetry telemetry;
     private final AwsS3ClientConfig awsS3ClientConfig;
 
-    public AwsS3SimpleClient(S3Client syncClient,
-                             S3SimpleAsyncClient asyncClient, S3ClientTelemetry telemetry,
-                             AwsS3ClientConfig awsS3ClientConfig) {
+    public AwsS3KoraClient(S3Client syncClient,
+                           S3KoraAsyncClient asyncClient, S3ClientTelemetry telemetry,
+                           AwsS3ClientConfig awsS3ClientConfig) {
         this.syncClient = syncClient;
         this.telemetry = telemetry;
         this.awsS3ClientConfig = awsS3ClientConfig;

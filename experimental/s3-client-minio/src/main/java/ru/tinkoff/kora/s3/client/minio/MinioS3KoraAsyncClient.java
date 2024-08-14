@@ -11,7 +11,7 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.s3.client.S3DeleteException;
 import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.s3.client.S3NotFoundException;
-import ru.tinkoff.kora.s3.client.S3SimpleAsyncClient;
+import ru.tinkoff.kora.s3.client.S3KoraAsyncClient;
 import ru.tinkoff.kora.s3.client.minio.MinioS3ClientTelemetryInterceptor.Operation;
 import ru.tinkoff.kora.s3.client.model.*;
 import ru.tinkoff.kora.s3.client.telemetry.S3ClientTelemetry;
@@ -25,13 +25,13 @@ import java.util.concurrent.CompletionStage;
 import static ru.tinkoff.kora.s3.client.minio.MinioS3ClientTelemetryInterceptor.OPERATION_KEY;
 
 @ApiStatus.Experimental
-public class MinioS3SimpleAsyncClient implements S3SimpleAsyncClient {
+public class MinioS3KoraAsyncClient implements S3KoraAsyncClient {
 
     private final MinioAsyncClient minioClient;
     private final MinioS3ClientConfig minioS3ClientConfig;
     private final S3ClientTelemetry telemetry;
 
-    public MinioS3SimpleAsyncClient(MinioAsyncClient minioClient, MinioS3ClientConfig minioS3ClientConfig, S3ClientTelemetry telemetry) {
+    public MinioS3KoraAsyncClient(MinioAsyncClient minioClient, MinioS3ClientConfig minioS3ClientConfig, S3ClientTelemetry telemetry) {
         this.minioClient = minioClient;
         this.minioS3ClientConfig = minioS3ClientConfig;
         this.telemetry = telemetry;
@@ -48,7 +48,7 @@ public class MinioS3SimpleAsyncClient implements S3SimpleAsyncClient {
                     .object(key)
                     .build())
                 .<S3Object>thenApply(MinioS3Object::new)
-                .exceptionallyCompose(MinioS3SimpleAsyncClient::handleExceptionStage);
+                .exceptionallyCompose(MinioS3KoraAsyncClient::handleExceptionStage);
         } catch (Exception e) {
             throw handleException(e);
         } finally {
@@ -67,7 +67,7 @@ public class MinioS3SimpleAsyncClient implements S3SimpleAsyncClient {
                     .object(key)
                     .build())
                 .<S3ObjectMeta>thenApply(MinioS3ObjectMeta::new)
-                .exceptionallyCompose(MinioS3SimpleAsyncClient::handleExceptionStage);
+                .exceptionallyCompose(MinioS3KoraAsyncClient::handleExceptionStage);
         } catch (Exception e) {
             throw handleException(e);
         } finally {
@@ -162,7 +162,7 @@ public class MinioS3SimpleAsyncClient implements S3SimpleAsyncClient {
                     ctx.remove(OPERATION_KEY);
                 }
             })
-            .exceptionallyCompose(MinioS3SimpleAsyncClient::handleExceptionStage);
+            .exceptionallyCompose(MinioS3KoraAsyncClient::handleExceptionStage);
     }
 
     @Override
@@ -230,15 +230,15 @@ public class MinioS3SimpleAsyncClient implements S3SimpleAsyncClient {
             if (body instanceof ByteS3Body bb) {
                 return minioClient.putObject(requestBuilder.stream(new ByteArrayInputStream(bb.bytes()), bb.size(), -1).build())
                     .thenApply(r -> ((S3ObjectUpload) new MinioS3ObjectUpload(r.versionId())))
-                    .exceptionallyCompose(MinioS3SimpleAsyncClient::handleExceptionStage);
+                    .exceptionallyCompose(MinioS3KoraAsyncClient::handleExceptionStage);
             } else if (body.size() > 0) {
                 return minioClient.putObject(requestBuilder.stream(body.asInputStream(), body.size(), minioS3ClientConfig.upload().partSize()).build())
                     .thenApply(r -> ((S3ObjectUpload) new MinioS3ObjectUpload(r.versionId())))
-                    .exceptionallyCompose(MinioS3SimpleAsyncClient::handleExceptionStage);
+                    .exceptionallyCompose(MinioS3KoraAsyncClient::handleExceptionStage);
             } else {
                 return minioClient.putObject(requestBuilder.stream(body.asInputStream(), -1, minioS3ClientConfig.upload().partSize()).build())
                     .thenApply(r -> ((S3ObjectUpload) new MinioS3ObjectUpload(r.versionId())))
-                    .exceptionallyCompose(MinioS3SimpleAsyncClient::handleExceptionStage);
+                    .exceptionallyCompose(MinioS3KoraAsyncClient::handleExceptionStage);
             }
         } catch (Exception e) {
             throw handleException(e);
@@ -257,7 +257,7 @@ public class MinioS3SimpleAsyncClient implements S3SimpleAsyncClient {
                     .bucket(bucket)
                     .object(key)
                     .build())
-                .exceptionallyCompose(MinioS3SimpleAsyncClient::handleExceptionStage);
+                .exceptionallyCompose(MinioS3KoraAsyncClient::handleExceptionStage);
         } catch (Exception e) {
             throw handleException(e);
         } finally {

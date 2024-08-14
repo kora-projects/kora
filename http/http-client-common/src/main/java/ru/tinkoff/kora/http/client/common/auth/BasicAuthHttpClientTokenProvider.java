@@ -19,6 +19,7 @@ public class BasicAuthHttpClientTokenProvider implements HttpClientTokenProvider
 
     @Override
     public CompletionStage<String> getToken(HttpClientRequest request) {
+        request.toBuilder()
         return this.tokenFuture;
     }
 }

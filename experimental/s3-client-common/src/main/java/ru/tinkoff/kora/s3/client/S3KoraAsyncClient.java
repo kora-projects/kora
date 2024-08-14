@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.concurrent.CompletionStage;
 
 @ApiStatus.Experimental
-public interface S3SimpleAsyncClient {
+public interface S3KoraAsyncClient {
 
     CompletionStage<S3Object> get(String bucket, String key) throws S3NotFoundException;
 

@@ -9,8 +9,8 @@ import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.http.client.common.HttpClient;
 import ru.tinkoff.kora.s3.client.S3ClientModule;
 import ru.tinkoff.kora.s3.client.S3Config;
-import ru.tinkoff.kora.s3.client.S3SimpleAsyncClient;
-import ru.tinkoff.kora.s3.client.S3SimpleClient;
+import ru.tinkoff.kora.s3.client.S3KoraAsyncClient;
+import ru.tinkoff.kora.s3.client.S3KoraClient;
 import ru.tinkoff.kora.s3.client.telemetry.S3ClientTelemetry;
 import ru.tinkoff.kora.s3.client.telemetry.S3ClientTelemetryFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -108,22 +108,22 @@ public interface AwsS3ClientModule extends S3ClientModule {
             .build();
     }
 
-    default S3SimpleClient awsS3SimpleClient(S3Client s3Client,
-                                             S3SimpleAsyncClient simpleAsyncClient,
-                                             S3ClientTelemetryFactory telemetryFactory,
-                                             S3Config config,
-                                             AwsS3ClientConfig awsS3ClientConfig) {
-        S3ClientTelemetry telemetry = telemetryFactory.get(config.telemetry(), S3SimpleClient.class.getCanonicalName());
-        return new AwsS3SimpleClient(s3Client, simpleAsyncClient, telemetry, awsS3ClientConfig);
+    default S3KoraClient awsS3KoraClient(S3Client s3Client,
+                                           S3KoraAsyncClient simpleAsyncClient,
+                                           S3ClientTelemetryFactory telemetryFactory,
+                                           S3Config config,
+                                           AwsS3ClientConfig awsS3ClientConfig) {
+        S3ClientTelemetry telemetry = telemetryFactory.get(config.telemetry(), S3KoraClient.class.getCanonicalName());
+        return new AwsS3KoraClient(s3Client, simpleAsyncClient, telemetry, awsS3ClientConfig);
     }
 
-    default S3SimpleAsyncClient awsS3SimpleAsyncClient(S3AsyncClient s3AsyncClient,
-                                                       @Tag(AwsClient.class) ExecutorService awsExecutor,
-                                                       S3ClientTelemetryFactory telemetryFactory,
-                                                       S3Config config,
-                                                       AwsS3ClientConfig awsS3ClientConfig) {
-        S3ClientTelemetry telemetry = telemetryFactory.get(config.telemetry(), S3SimpleAsyncClient.class.getCanonicalName());
-        return new AwsS3SimpleAsyncClient(s3AsyncClient, awsExecutor, telemetry, awsS3ClientConfig);
+    default S3KoraAsyncClient awsS3KoraAsyncClient(S3AsyncClient s3AsyncClient,
+                                                     @Tag(AwsClient.class) ExecutorService awsExecutor,
+                                                     S3ClientTelemetryFactory telemetryFactory,
+                                                     S3Config config,
+                                                     AwsS3ClientConfig awsS3ClientConfig) {
+        S3ClientTelemetry telemetry = telemetryFactory.get(config.telemetry(), S3KoraAsyncClient.class.getCanonicalName());
+        return new AwsS3KoraAsyncClient(s3AsyncClient, awsExecutor, telemetry, awsS3ClientConfig);
     }
 
     @Tag(MultipartUpload.class)

@@ -32,8 +32,8 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
     private static final ClassName CLASS_CONFIG = ClassName.get("ru.tinkoff.kora.s3.client", "S3Config");
     private static final ClassName CLASS_AWS_CONFIG = ClassName.get("ru.tinkoff.kora.s3.client.aws", "AwsS3ClientConfig");
     private static final ClassName CLASS_CLIENT_CONFIG = ClassName.get("ru.tinkoff.kora.s3.client", "S3ClientConfig");
-    private static final ClassName CLASS_CLIENT_SIMPLE_SYNC = ClassName.get("ru.tinkoff.kora.s3.client", "S3SimpleClient");
-    private static final ClassName CLASS_CLIENT_SIMPLE_ASYNC = ClassName.get("ru.tinkoff.kora.s3.client", "S3SimpleAsyncClient");
+    private static final ClassName CLASS_CLIENT_SIMPLE_SYNC = ClassName.get("ru.tinkoff.kora.s3.client", "S3KoraClient");
+    private static final ClassName CLASS_CLIENT_SIMPLE_ASYNC = ClassName.get("ru.tinkoff.kora.s3.client", "S3KoraAsyncClient");
     private static final ClassName CLASS_CLIENT_AWS_SYNC = ClassName.get("software.amazon.awssdk.services.s3", "S3Client");
     private static final ClassName CLASS_CLIENT_AWS_ASYNC = ClassName.get("software.amazon.awssdk.services.s3", "S3AsyncClient");
     private static final ClassName CLASS_CLIENT_AWS_ASYNC_MULTIPART = ClassName.get("software.amazon.awssdk.services.s3.internal.multipart", "MultipartS3AsyncClient");

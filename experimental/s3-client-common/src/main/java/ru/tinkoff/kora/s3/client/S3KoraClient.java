@@ -9,7 +9,7 @@ import java.util.Collection;
 import java.util.List;
 
 @ApiStatus.Experimental
-public interface S3SimpleClient {
+public interface S3KoraClient {
 
     S3Object get(String bucket, String key) throws S3NotFoundException;
 
