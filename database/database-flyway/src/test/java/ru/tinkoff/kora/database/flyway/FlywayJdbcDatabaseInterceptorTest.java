@@ -49,7 +49,7 @@ public class FlywayJdbcDatabaseInterceptorTest {
         dataBase.init();
         try {
 
-            var interceptor = new FlywayJdbcDatabaseInterceptor();
+            var interceptor = new FlywayJdbcDatabaseInterceptor(new FlywayConfig() {});
             Assertions.assertSame(dataBase, interceptor.init(dataBase), "FlywayJdbcDatabaseInterceptor should return same reference on init");
 
             dataBase.inTx((Connection connection) -> {

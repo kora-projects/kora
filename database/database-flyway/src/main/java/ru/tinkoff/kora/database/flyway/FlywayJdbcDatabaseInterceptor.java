@@ -7,11 +7,15 @@ import ru.tinkoff.kora.application.graph.GraphInterceptor;
 import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.database.jdbc.JdbcDatabase;
 
-import java.time.Duration;
-
 public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<JdbcDatabase> {
 
     private static final Logger logger = LoggerFactory.getLogger(FlywayJdbcDatabaseInterceptor.class);
+
+    private final FlywayConfig flywayConfig;
+
+    public FlywayJdbcDatabaseInterceptor(FlywayConfig flywayConfig) {
+        this.flywayConfig = flywayConfig;
+    }
 
     @Override
     public JdbcDatabase init(JdbcDatabase value) {
@@ -20,6 +24,8 @@ public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<Jdb
 
         Flyway.configure()
             .dataSource(value.value())
+            .locations(flywayConfig.locations().toArray(String[]::new))
+            .loggers("slf4j")
             .load()
             .migrate();
 
