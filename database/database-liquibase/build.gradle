@@ -1,0 +1,6 @@
+dependencies {
+    api project(":database:database-jdbc")
+    api libs.liquibase
+
+    testImplementation project(":internal:test-postgres")
+}
