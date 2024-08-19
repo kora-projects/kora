@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.database.liquibase;
 
-
 import liquibase.Liquibase;
 import liquibase.database.Database;
 import liquibase.database.DatabaseFactory;
@@ -22,6 +21,12 @@ public class LiquibaseJdbcDatabaseInterceptor implements GraphInterceptor<JdbcDa
 
     private static final Logger logger = LoggerFactory.getLogger(LiquibaseJdbcDatabaseInterceptor.class);
 
+    private final LiquibaseConfig liquibaseConfig;
+
+    public LiquibaseJdbcDatabaseInterceptor(LiquibaseConfig liquibaseConfig) {
+        this.liquibaseConfig = liquibaseConfig;
+    }
+
     @Override
     public JdbcDatabase init(JdbcDatabase value) {
         final long started = TimeUtils.started();
@@ -32,13 +37,13 @@ public class LiquibaseJdbcDatabaseInterceptor implements GraphInterceptor<JdbcDa
         try (Connection connection = dataSource.getConnection()) {
             JdbcConnection jdbcConnection = new JdbcConnection(connection);
             Database database = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(jdbcConnection);
-            try (Liquibase liquibase = new Liquibase("db/changelog/db.changelog-master.xml", new ClassLoaderResourceAccessor(), database)) {
+            try (Liquibase liquibase = new Liquibase(liquibaseConfig.changelog(), new ClassLoaderResourceAccessor(), database)) {
                 liquibase.update();
             }
             logger.info("Liquibase migration applied in {}", TimeUtils.tookForLogging(started));
         } catch (LiquibaseException | SQLException e) {
             logger.error("Error during Liquibase migration", e);
-            throw new RuntimeException("Liquibase migration failed", e);
+            throw new IllegalStateException("Liquibase migration failed", e);
         }
 
         return value;

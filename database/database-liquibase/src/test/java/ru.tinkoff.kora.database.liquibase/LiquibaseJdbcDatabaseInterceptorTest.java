@@ -49,7 +49,7 @@ public class LiquibaseJdbcDatabaseInterceptorTest {
         var dataBase = new JdbcDatabase(config, new DefaultDataBaseTelemetryFactory(null, null, null));
         dataBase.init();
         try {
-            var interceptor = new LiquibaseJdbcDatabaseInterceptor();
+            var interceptor = new LiquibaseJdbcDatabaseInterceptor(new LiquibaseConfig() {});
             Assertions.assertSame(dataBase, interceptor.init(dataBase), "LiquibaseJdbcDatabaseInterceptor should return same reference on init");
 
             dataBase.inTx((Connection connection) -> {
