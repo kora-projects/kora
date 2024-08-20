@@ -19,7 +19,7 @@ import java.util.Map;
 public interface CassandraConfig {
 
     /**
-     * @see CassandraProfile
+     * @see ru.tinkoff.kora.database.cassandra.annotation.CassandraProfile
      */
     @Nullable
     Map<String, Profile> profiles();

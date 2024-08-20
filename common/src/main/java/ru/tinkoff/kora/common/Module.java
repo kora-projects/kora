@@ -18,9 +18,11 @@ import java.lang.annotation.Target;
  *  {@code
  *  @Module
  *  public interface MyModule {
+ *
  *     default Supplier<String> strSupplier() {
  *         return () -> "1";
  *     }
+ *  }
  *  }
  * </pre>
  */

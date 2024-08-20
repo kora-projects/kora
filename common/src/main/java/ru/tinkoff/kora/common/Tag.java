@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.common;
 
-import ru.tinkoff.kora.common.naming.NameConverter;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -29,6 +27,7 @@ import java.lang.annotation.Target;
  *     default Supplier<String> myStr(@Tag(String.class) Supplier<String> tagStr) {
  *         return s -> tagStr.get() + "2";
  *     }
+ *  }
  *  }
  * </pre>
  */
