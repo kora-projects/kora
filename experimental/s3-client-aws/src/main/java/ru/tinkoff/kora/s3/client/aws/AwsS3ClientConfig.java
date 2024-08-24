@@ -9,6 +9,15 @@ import java.time.Duration;
 @ConfigValueExtractor
 public interface AwsS3ClientConfig {
 
+    enum AddressStyle {
+        PATH,
+        VIRTUAL_HOSTED
+    }
+
+    default AddressStyle addressStyle() {
+        return AddressStyle.PATH;
+    }
+
     default Duration requestTimeout() {
         return Duration.ofSeconds(45);
     }
@@ -19,22 +28,6 @@ public interface AwsS3ClientConfig {
 
     default boolean chunkedEncodingEnabled() {
         return true;
-    }
-
-    default boolean multiRegionEnabled() {
-        return true;
-    }
-
-    default boolean pathStyleAccessEnabled() {
-        return true;
-    }
-
-    default boolean accelerateModeEnabled() {
-        return false;
-    }
-
-    default boolean useArnRegionEnabled() {
-        return false;
     }
 
     UploadConfig upload();

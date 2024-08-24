@@ -4,5 +4,5 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 public interface S3ClientTelemetryFactory {
 
-    S3ClientTelemetry get(TelemetryConfig config, String clientName);
+    S3ClientTelemetry get(TelemetryConfig config, Class<?> client);
 }

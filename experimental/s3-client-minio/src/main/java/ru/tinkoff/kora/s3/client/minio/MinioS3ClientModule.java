@@ -16,8 +16,8 @@ import ru.tinkoff.kora.s3.client.S3ClientModule;
 import ru.tinkoff.kora.s3.client.S3Config;
 import ru.tinkoff.kora.s3.client.S3KoraAsyncClient;
 import ru.tinkoff.kora.s3.client.S3KoraClient;
-import ru.tinkoff.kora.s3.client.telemetry.S3ClientTelemetry;
 import ru.tinkoff.kora.s3.client.telemetry.S3ClientTelemetryFactory;
+import ru.tinkoff.kora.s3.client.telemetry.S3KoraClientTelemetryFactory;
 
 import java.util.concurrent.TimeUnit;
 
@@ -47,46 +47,58 @@ public interface MinioS3ClientModule extends S3ClientModule {
     }
 
     default MinioClient minioClient(S3Config s3Config,
+                                    MinioS3ClientConfig minioS3ClientConfig,
                                     Provider provider,
                                     S3ClientTelemetryFactory telemetryFactory,
                                     @Tag(MinioClient.class) OkHttpClient okHttpClient) {
-        return MinioClient.builder()
+        MinioClient builded = MinioClient.builder()
             .endpoint(s3Config.url())
             .region(s3Config.region())
             .credentialsProvider(provider)
             .httpClient(okHttpClient.newBuilder()
-                .addInterceptor(new MinioS3ClientTelemetryInterceptor(telemetryFactory.get(s3Config.telemetry(), MinioClient.class.getCanonicalName())))
+                .addInterceptor(new MinioS3ClientTelemetryInterceptor(telemetryFactory.get(s3Config.telemetry(), MinioClient.class), minioS3ClientConfig.addressStyle()))
                 .build())
             .build();
+
+        if (minioS3ClientConfig.addressStyle() == MinioS3ClientConfig.AddressStyle.PATH) {
+            builded.disableVirtualStyleEndpoint();
+        } else {
+            builded.enableVirtualStyleEndpoint();
+        }
+
+        return builded;
     }
 
     default MinioAsyncClient minioAsyncClient(S3Config s3Config,
+                                              MinioS3ClientConfig minioS3ClientConfig,
                                               Provider provider,
                                               S3ClientTelemetryFactory telemetryFactory,
                                               @Tag(MinioClient.class) OkHttpClient okHttpClient) {
-        return MinioAsyncClient.builder()
+        MinioAsyncClient builded = MinioAsyncClient.builder()
             .endpoint(s3Config.url())
             .region(s3Config.region())
             .credentialsProvider(provider)
             .httpClient(okHttpClient.newBuilder()
-                .addInterceptor(new MinioS3ClientTelemetryInterceptor(telemetryFactory.get(s3Config.telemetry(), MinioAsyncClient.class.getCanonicalName())))
+                .addInterceptor(new MinioS3ClientTelemetryInterceptor(telemetryFactory.get(s3Config.telemetry(), MinioAsyncClient.class), minioS3ClientConfig.addressStyle()))
                 .build())
             .build();
+
+        return builded;
     }
 
     default S3KoraClient MinioS3KoraClient(MinioClient minioClient,
-                                             MinioS3ClientConfig minioS3ClientConfig,
-                                             S3Config s3Config,
-                                             S3ClientTelemetryFactory telemetryFactory) {
-        S3ClientTelemetry telemetry = telemetryFactory.get(s3Config.telemetry(), MinioClient.class.getCanonicalName());
+                                           MinioS3ClientConfig minioS3ClientConfig,
+                                           S3Config s3Config,
+                                           S3KoraClientTelemetryFactory telemetryFactory) {
+        var telemetry = telemetryFactory.get(s3Config.telemetry(), MinioClient.class);
         return new MinioS3KoraClient(minioClient, minioS3ClientConfig, telemetry);
     }
 
     default S3KoraAsyncClient MinioS3KoraAsyncClient(MinioAsyncClient minioAsyncClient,
-                                                       MinioS3ClientConfig minioS3ClientConfig,
-                                                       S3Config s3Config,
-                                                       S3ClientTelemetryFactory telemetryFactory) {
-        S3ClientTelemetry telemetry = telemetryFactory.get(s3Config.telemetry(), MinioAsyncClient.class.getCanonicalName());
+                                                     MinioS3ClientConfig minioS3ClientConfig,
+                                                     S3Config s3Config,
+                                                     S3KoraClientTelemetryFactory telemetryFactory) {
+        var telemetry = telemetryFactory.get(s3Config.telemetry(), MinioAsyncClient.class);
         return new MinioS3KoraAsyncClient(minioAsyncClient, minioS3ClientConfig, telemetry);
     }
 }

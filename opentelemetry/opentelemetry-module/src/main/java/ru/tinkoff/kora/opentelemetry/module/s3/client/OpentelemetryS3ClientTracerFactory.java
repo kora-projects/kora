@@ -18,9 +18,9 @@ public final class OpentelemetryS3ClientTracerFactory implements S3ClientTracerF
 
     @Nullable
     @Override
-    public S3ClientTracer get(TelemetryConfig.TracingConfig config, String clientName) {
+    public S3ClientTracer get(TelemetryConfig.TracingConfig config, Class<?> client) {
         if (Objects.requireNonNullElse(config.enabled(), true)) {
-            return new OpentelemetryS3ClientTracer(clientName, tracer);
+            return new OpentelemetryS3ClientTracer(client, tracer);
         } else {
             return null;
         }

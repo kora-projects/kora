@@ -27,7 +27,8 @@ import ru.tinkoff.kora.micrometer.module.resilient.MicrometerCircuitBreakerMetri
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerFallbackMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerRetryMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerTimeoutMetrics;
-import ru.tinkoff.kora.micrometer.module.s3.client.MicrometerS3ClientMetricsFactory;
+import ru.tinkoff.kora.micrometer.module.s3.client.OpentelemetryS3ClientMetricsFactory;
+import ru.tinkoff.kora.micrometer.module.s3.client.OpentelemetryS3KoraClientMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.scheduling.MicrometerSchedulingMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.soap.client.MicrometerSoapClientMetricsFactory;
 
@@ -138,7 +139,12 @@ public interface MetricsModule {
     }
 
     @DefaultComponent
-    default MicrometerS3ClientMetricsFactory micrometerS3ClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
-        return new MicrometerS3ClientMetricsFactory(meterRegistry, metricsConfig);
+    default OpentelemetryS3ClientMetricsFactory micrometerS3ClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
+        return new OpentelemetryS3ClientMetricsFactory(meterRegistry, metricsConfig);
+    }
+
+    @DefaultComponent
+    default OpentelemetryS3KoraClientMetricsFactory micrometerS3KoraClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
+        return new OpentelemetryS3KoraClientMetricsFactory(meterRegistry, metricsConfig);
     }
 }

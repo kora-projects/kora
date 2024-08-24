@@ -9,27 +9,27 @@ import ru.tinkoff.kora.s3.client.S3Exception;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 
-public class DefaultS3ClientLogger implements S3ClientLogger {
+public class DefaultS3KoraClientLogger implements S3KoraClientLogger {
 
     private final Logger requestLogger;
     private final Logger responseLogger;
 
-    public DefaultS3ClientLogger(Class<?> client) {
-        this.requestLogger = LoggerFactory.getLogger(client.getCanonicalName() + ".request");
-        this.responseLogger = LoggerFactory.getLogger(client.getCanonicalName() + ".response");
+    public DefaultS3KoraClientLogger(Class<?> clientImpl) {
+        this.requestLogger = LoggerFactory.getLogger(clientImpl.getCanonicalName() + ".request");
+        this.responseLogger = LoggerFactory.getLogger(clientImpl.getCanonicalName() + ".response");
     }
 
     @Override
-    public void logRequest(String method,
+    public void logRequest(String operation,
                            String bucket,
                            @Nullable String key,
                            @Nullable Long contentLength) {
         if (requestLogger.isInfoEnabled()) {
-            var marker = StructuredArgument.marker("s3Request", gen -> {
+            var marker = StructuredArgument.marker("s3Operation", gen -> {
                 gen.writeStartObject();
-                gen.writeStringField("method", method);
+                gen.writeStringField("operation", operation);
                 gen.writeStringField("bucket", bucket);
-                if(key != null) {
+                if (key != null) {
                     gen.writeStringField("key", key);
                 }
                 if (contentLength != null) {
@@ -38,30 +38,25 @@ public class DefaultS3ClientLogger implements S3ClientLogger {
                 gen.writeEndObject();
             });
 
-            if(key == null) {
-                this.requestLogger.info(marker, "S3 Client starting operation for {} {}", method, bucket);
-            } else {
-                this.requestLogger.info(marker, "S3 Client starting operation for {} {}/{}", method, bucket, key);
-            }
+            this.requestLogger.info(marker, "S3 Kora Client starting operation {} for bucket {}", operation, bucket);
         }
     }
 
     @Override
-    public void logResponse(String method,
+    public void logResponse(String operation,
                             String bucket,
                             @Nullable String key,
-                            int statusCode,
                             long processingTimeNanos,
                             @Nullable S3Exception exception) {
         if (responseLogger.isInfoEnabled()) {
-            var marker = StructuredArgument.marker("s3Response", gen -> {
+            var marker = StructuredArgument.marker("s3Operation", gen -> {
                 gen.writeStartObject();
-                gen.writeStringField("method", method);
+                gen.writeStringField("operation", operation);
                 gen.writeStringField("bucket", bucket);
-                if(key != null) {
+                if (key != null) {
                     gen.writeStringField("key", key);
                 }
-                gen.writeNumberField("statusCode", statusCode);
+                gen.writeStringField("status", (exception == null) ? "success" : "failure");
                 gen.writeNumberField("processingTime", processingTimeNanos / 1_000_000);
                 if (exception != null) {
                     gen.writeStringField("errorCode", exception.getErrorCode());
@@ -73,13 +68,8 @@ public class DefaultS3ClientLogger implements S3ClientLogger {
                 gen.writeEndObject();
             });
 
-            if(key == null) {
-                this.responseLogger.info(marker, "S3 Client finished operation with statusCode {} for {} {} in {}",
-                    statusCode, method, bucket, Duration.ofNanos(processingTimeNanos).truncatedTo(ChronoUnit.MILLIS));
-            } else {
-                this.responseLogger.info(marker, "S3 Client finished operation with statusCode {} for {} {}/{} in {}",
-                    statusCode, method, bucket, key, Duration.ofNanos(processingTimeNanos).truncatedTo(ChronoUnit.MILLIS));
-            }
+            responseLogger.info(marker, "S3 Kora Client finished operation {} for bucket {} in {}",
+                operation, bucket, Duration.ofNanos(processingTimeNanos).truncatedTo(ChronoUnit.MILLIS));
         }
     }
 }

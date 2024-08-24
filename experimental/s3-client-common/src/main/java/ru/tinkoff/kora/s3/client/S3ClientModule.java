@@ -26,4 +26,16 @@ public interface S3ClientModule {
                                                               @Nullable S3ClientMetricsFactory metricsFactory) {
         return new DefaultS3ClientTelemetryFactory(loggerFactory, tracingFactory, metricsFactory);
     }
+
+    @DefaultComponent
+    default S3KoraClientLoggerFactory s3KoraClientLoggerFactory() {
+        return new DefaultS3KoraClientLoggerFactory();
+    }
+
+    @DefaultComponent
+    default S3KoraClientTelemetryFactory s3KoraClientTelemetryFactory(@Nullable S3KoraClientLoggerFactory loggerFactory,
+                                                                      @Nullable S3KoraClientTracerFactory tracingFactory,
+                                                                      @Nullable S3KoraClientMetricsFactory metricsFactory) {
+        return new DefaultS3KoraClientTelemetryFactory(loggerFactory, tracingFactory, metricsFactory);
+    }
 }

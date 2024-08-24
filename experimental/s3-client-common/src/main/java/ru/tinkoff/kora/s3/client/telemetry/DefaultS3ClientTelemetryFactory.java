@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.s3.client.telemetry;
 
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.net.URI;
@@ -9,12 +10,12 @@ public final class DefaultS3ClientTelemetryFactory implements S3ClientTelemetryF
 
     private static final S3ClientTelemetry.S3ClientTelemetryContext EMPTY_CTX = new S3ClientTelemetry.S3ClientTelemetryContext() {
         @Override
-        public void prepared(String method, String path, URI uri, String host, int port, Long contentLength) {}
+        public void prepared(String method, String bucket, String key, Long contentLength) {}
 
         @Override
-        public void close(int statusCode, @Nullable Throwable exception) {}
+        public void close(String method, String bucket, String key, int statusCode, @Nullable S3Exception exception) {}
     };
-    private static final S3ClientTelemetry EMPTY_TELEMETRY = (operation, bucket) -> EMPTY_CTX;
+    private static final S3ClientTelemetry EMPTY_TELEMETRY = () -> EMPTY_CTX;
 
     private final S3ClientLoggerFactory loggerFactory;
     private final S3ClientTracerFactory tracingFactory;
@@ -29,10 +30,10 @@ public final class DefaultS3ClientTelemetryFactory implements S3ClientTelemetryF
     }
 
     @Override
-    public S3ClientTelemetry get(TelemetryConfig config, String clientName) {
-        var logger = this.loggerFactory == null ? null : this.loggerFactory.get(config.logging(), clientName);
-        var metrics = this.metricsFactory == null ? null : this.metricsFactory.get(config.metrics(), clientName);
-        var tracer = this.tracingFactory == null ? null : this.tracingFactory.get(config.tracing(), clientName);
+    public S3ClientTelemetry get(TelemetryConfig config, Class<?> client) {
+        var logger = this.loggerFactory == null ? null : this.loggerFactory.get(config.logging(), client);
+        var metrics = this.metricsFactory == null ? null : this.metricsFactory.get(config.metrics(), client);
+        var tracer = this.tracingFactory == null ? null : this.tracingFactory.get(config.tracing(), client);
         if (metrics == null && tracer == null && logger == null) {
             return EMPTY_TELEMETRY;
         }

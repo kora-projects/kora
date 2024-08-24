@@ -432,13 +432,6 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                 codeBuilder.beginControlFlow("return $T.fromCompletionStage(() -> ", CommonClassNames.mono);
             }
 
-            codeBuilder
-                .add("""
-                    var _ctx = $T.current();
-                    _ctx.set($T.OPERATION_KEY, new $T(_clientConfig.bucket(), $S));
-                    """, CommonClassNames.context, CLASS_INTERCEPTOR_AWS_CONTEXT_KEY, CLASS_INTERCEPTOR_AWS_OPERATION, "GET")
-                .add("\n");
-
             if (mode == S3Operation.Mode.SYNC) {
                 if (isOptional) {
                     codeBuilder.beginControlFlow("try");
@@ -616,11 +609,6 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
             }
 
             codeBuilder
-                .add("""
-                    var _ctx = $T.current();
-                    _ctx.set($T.OPERATION_KEY, new $T(_clientConfig.bucket(), $S));
-                    """, CommonClassNames.context, CLASS_INTERCEPTOR_AWS_CONTEXT_KEY, CLASS_INTERCEPTOR_AWS_OPERATION, "LIST_META")
-                .add("\n")
                 .addStatement("return $L.listObjectsV2(_request)", clientField)
                 .build();
 
@@ -844,13 +832,6 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                 methodBuilder.beginControlFlow("return $T.fromCompletionStage(() -> ", CommonClassNames.mono);
             }
 
-            methodBuilder
-                .add("""
-                    var _ctx = $T.current();
-                    _ctx.set($T.OPERATION_KEY, new $T(_clientConfig.bucket(), $S));
-                    """, CommonClassNames.context, CLASS_INTERCEPTOR_AWS_CONTEXT_KEY, CLASS_INTERCEPTOR_AWS_OPERATION, "PUT")
-                .add("\n");
-
             if (CLASS_S3_BODY.equals(bodyType) && mode == S3Operation.Mode.SYNC) {
                 methodBuilder.add("""
                         if ($L instanceof $T || $L.size() < 0 || $L.size() > _awsClientConfig.upload().bufferSize()) {
@@ -990,11 +971,6 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
             }
 
             methodBuilder
-                .add("""
-                    var _ctx = $T.current();
-                    _ctx.set($T.OPERATION_KEY, new $T(_clientConfig.bucket(), $S));
-                    """, CommonClassNames.context, CLASS_INTERCEPTOR_AWS_CONTEXT_KEY, CLASS_INTERCEPTOR_AWS_OPERATION, "DELETE")
-                .add("\n")
                 .addStatement("return $L.deleteObject(_request)", clientField)
                 .build();
 
@@ -1033,11 +1009,6 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
             }
 
             methodBuilder
-                .add("""
-                    var _ctx = $T.current();
-                    _ctx.set($T.OPERATION_KEY, new $T(_clientConfig.bucket(), $S));
-                    """, CommonClassNames.context, CLASS_INTERCEPTOR_AWS_CONTEXT_KEY, CLASS_INTERCEPTOR_AWS_OPERATION, "DELETE_MANY")
-                .add("\n")
                 .addStatement("return $L.deleteObjects(_request)", clientField)
                 .build();
 

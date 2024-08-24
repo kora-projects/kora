@@ -6,5 +6,5 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 public interface S3ClientTracerFactory {
 
     @Nullable
-    S3ClientTracer get(TelemetryConfig.TracingConfig tracing, String clientName);
+    S3ClientTracer get(TelemetryConfig.TracingConfig tracing, Class<?> client);
 }

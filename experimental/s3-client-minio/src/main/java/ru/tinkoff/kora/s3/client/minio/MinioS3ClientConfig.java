@@ -10,6 +10,15 @@ import java.time.Duration;
 @ConfigValueExtractor
 public interface MinioS3ClientConfig {
 
+    enum AddressStyle {
+        PATH,
+        VIRTUAL_HOSTED
+    }
+
+    default AddressStyle addressStyle() {
+        return AddressStyle.PATH;
+    }
+
     @Nullable
     Duration requestTimeout();
 

@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.s3.client.telemetry;
 
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.s3.client.S3Exception;
 
 import java.net.URI;
 import java.util.concurrent.atomic.AtomicReference;
@@ -20,43 +21,36 @@ public final class DefaultS3ClientTelemetry implements S3ClientTelemetry {
     }
 
     @Override
-    public S3ClientTelemetryContext get(@Nullable String operation,
-                                        @Nullable String bucket) {
+    public S3ClientTelemetryContext get() {
         var start = System.nanoTime();
         final S3ClientTracer.S3ClientSpan span;
         if (tracer != null) {
-            span = tracer.createSpan(operation, bucket);
+            span = tracer.createSpan();
         } else {
             span = null;
         }
 
         return new S3ClientTelemetryContext() {
 
-            record Operation(String method, String path, URI uri, String host, int port, @Nullable Long contentLength) {}
-
-            private final AtomicReference<Operation> opRef = new AtomicReference<>();
-
             @Override
-            public void prepared(String method, String path, URI uri, String host, int port, @Nullable Long contentLength) {
-                opRef.set(new Operation(method, path, uri, host, port, contentLength));
+            public void prepared(String method, String bucket, @Nullable String key, @Nullable Long contentLength) {
                 if (logger != null) {
-                    logger.logRequest(operation, bucket, method, path, contentLength);
+                    logger.logRequest(method, bucket, key, contentLength);
                 }
                 if (span != null) {
-                    span.prepared(method, path, uri, host, port, contentLength);
+                    span.prepared(method, bucket, key, contentLength);
                 }
             }
 
             @Override
-            public void close(int statusCode, @Nullable Throwable exception) {
+            public void close(String method, String bucket, @Nullable String key, int statusCode, @Nullable S3Exception exception) {
                 var end = System.nanoTime();
                 var processingTime = end - start;
-                Operation op = opRef.get();
                 if (metrics != null) {
-                    metrics.record(operation, bucket, op.method, statusCode, processingTime, exception);
+                    metrics.record(method, bucket, key, statusCode, processingTime, exception);
                 }
                 if (logger != null) {
-                    logger.logResponse(operation, bucket, op.method, op.path, statusCode, processingTime, exception);
+                    logger.logResponse(method, bucket, key, statusCode, processingTime, exception);
                 }
                 if (span != null) {
                     span.close(statusCode, exception);

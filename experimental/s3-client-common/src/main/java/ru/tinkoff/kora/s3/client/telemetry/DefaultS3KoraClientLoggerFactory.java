@@ -4,12 +4,12 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.Objects;
 
-public class DefaultS3ClientLoggerFactory implements S3ClientLoggerFactory {
+public class DefaultS3KoraClientLoggerFactory implements S3KoraClientLoggerFactory {
 
     @Override
-    public S3ClientLogger get(TelemetryConfig.LogConfig logging, Class<?> client) {
+    public S3KoraClientLogger get(TelemetryConfig.LogConfig logging, Class<?> clientImpl) {
         if (Objects.requireNonNullElse(logging.enabled(), false)) {
-            return new DefaultS3ClientLogger(client);
+            return new DefaultS3KoraClientLogger(clientImpl);
         } else {
             return null;
         }

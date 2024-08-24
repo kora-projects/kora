@@ -5,12 +5,10 @@ import org.jetbrains.annotations.ApiStatus;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.s3.client.*;
-import ru.tinkoff.kora.s3.client.aws.AwsS3ClientTelemetryInterceptor.Operation;
 import ru.tinkoff.kora.s3.client.model.S3Object;
 import ru.tinkoff.kora.s3.client.model.*;
-import ru.tinkoff.kora.s3.client.telemetry.S3ClientTelemetry;
+import ru.tinkoff.kora.s3.client.telemetry.S3KoraClientTelemetry;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
-import software.amazon.awssdk.core.exception.SdkServiceException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
@@ -19,19 +17,19 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletionException;
-
-import static ru.tinkoff.kora.s3.client.aws.AwsS3ClientTelemetryInterceptor.OPERATION_KEY;
+import java.util.function.Supplier;
 
 @ApiStatus.Experimental
 public class AwsS3KoraClient implements S3KoraClient {
 
     private final S3Client syncClient;
     private final S3KoraAsyncClient asyncClient;
-    private final S3ClientTelemetry telemetry;
+    private final S3KoraClientTelemetry telemetry;
     private final AwsS3ClientConfig awsS3ClientConfig;
 
     public AwsS3KoraClient(S3Client syncClient,
-                           S3KoraAsyncClient asyncClient, S3ClientTelemetry telemetry,
+                           S3KoraAsyncClient asyncClient,
+                           S3KoraClientTelemetry telemetry,
                            AwsS3ClientConfig awsS3ClientConfig) {
         this.syncClient = syncClient;
         this.telemetry = telemetry;
@@ -41,14 +39,8 @@ public class AwsS3KoraClient implements S3KoraClient {
 
     @Override
     public S3Object get(String bucket, String key) throws S3NotFoundException {
-        var ctx = Context.current();
-        try {
-            ctx.set(OPERATION_KEY, new Operation("GET", bucket));
-
-            return getInternal(bucket, key);
-        } finally {
-            ctx.remove(OPERATION_KEY);
-        }
+        return wrapWithTelemetry(() -> getInternal(bucket, key),
+            () -> telemetry.get("GetObject", bucket, key, null));
     }
 
     private S3Object getInternal(String bucket, String key) throws S3NotFoundException {
@@ -57,25 +49,14 @@ public class AwsS3KoraClient implements S3KoraClient {
             .key(key)
             .build();
 
-        try {
-            var response = syncClient.getObject(request);
-            return new AwsS3Object(request.key(), response);
-        } catch (Exception e) {
-            throw handleException(e);
-        }
+        var response = syncClient.getObject(request);
+        return new AwsS3Object(request.key(), response);
     }
 
     @Override
     public S3ObjectMeta getMeta(String bucket, String key) throws S3NotFoundException {
-        var ctx = Context.current();
-
-        try {
-            ctx.set(OPERATION_KEY, new Operation("GET_META", bucket));
-
-            return getMetaInternal(bucket, key);
-        } finally {
-            ctx.remove(OPERATION_KEY);
-        }
+        return wrapWithTelemetry(() -> getMetaInternal(bucket, key),
+            () -> telemetry.get("GetObjectMeta", bucket, key, null));
     }
 
     private S3ObjectMeta getMetaInternal(String bucket, String key) throws S3NotFoundException {
@@ -85,44 +66,30 @@ public class AwsS3KoraClient implements S3KoraClient {
             .objectAttributes(ObjectAttributes.OBJECT_SIZE)
             .build();
 
-        try {
-            var response = syncClient.getObjectAttributes(request);
-            return new AwsS3ObjectMeta(key, response);
-        } catch (Exception e) {
-            throw handleException(e);
-        }
+        var response = syncClient.getObjectAttributes(request);
+        return new AwsS3ObjectMeta(key, response);
     }
 
     @Override
     public List<S3Object> get(String bucket, Collection<String> keys) {
-        var telemetryContext = telemetry.get("GET_MANY", bucket);
-
-        final List<S3Object> objects = new ArrayList<>(keys.size());
-
-        try {
+        return wrapWithTelemetry(() -> {
+            final List<S3Object> objects = new ArrayList<>(keys.size());
             for (String key : keys) {
                 try {
-                    S3Object object = get(bucket, key);
+                    S3Object object = getInternal(bucket, key);
                     objects.add(object);
                 } catch (S3NotFoundException e) {
                     // do nothing
                 }
             }
-        } catch (Exception e) {
-            throw handleExceptionAndTelemetry(e, telemetryContext);
-        }
-
-        telemetryContext.close(200);
-        return objects;
+            return objects;
+        }, () -> telemetry.get("GetObjects", bucket, null, null));
     }
 
     @Override
     public List<S3ObjectMeta> getMeta(String bucket, Collection<String> keys) {
-        var telemetryContext = telemetry.get("GET_META_MANY", bucket);
-
-        final List<S3ObjectMeta> metas = new ArrayList<>(keys.size());
-
-        try {
+        return wrapWithTelemetry(() -> {
+            final List<S3ObjectMeta> metas = new ArrayList<>(keys.size());
             for (String key : keys) {
                 try {
                     S3ObjectMeta meta = getMeta(bucket, key);
@@ -131,52 +98,32 @@ public class AwsS3KoraClient implements S3KoraClient {
                     // do nothing
                 }
             }
-        } catch (Exception e) {
-            throw handleExceptionAndTelemetry(e, telemetryContext);
-        }
-
-        telemetryContext.close(200);
-        return metas;
+            return metas;
+        }, () -> telemetry.get("GetObjectMetas", bucket, null, null));
     }
 
     @Override
     public S3ObjectList list(String bucket, @Nullable String prefix, @Nullable String delimiter, int limit) {
-        var telemetryContext = telemetry.get("LIST", bucket);
-
-        try {
-            var objectList = listInternal(bucket, prefix, delimiter, limit);
-            telemetryContext.close(200);
-            return objectList;
-        } catch (Exception e) {
-            throw handleExceptionAndTelemetry(e, telemetryContext);
-        }
+        return wrapWithTelemetry(() -> listInternal(bucket, prefix, delimiter, limit),
+            () -> telemetry.get("ListObjects", bucket, prefix, null));
     }
 
     private S3ObjectList listInternal(String bucket, @Nullable String prefix, @Nullable String delimiter, int limit) {
-        try {
-            var metaList = listMeta(bucket, prefix, delimiter, limit);
+        var metaList = listMetaInternal(bucket, prefix, delimiter, limit);
 
-            final List<S3Object> objects = new ArrayList<>(metaList.metas().size());
-            for (S3ObjectMeta meta : metaList.metas()) {
-                S3Object object = get(bucket, meta.key());
-                objects.add(object);
-            }
-
-            return new AwsS3ObjectList(((AwsS3ObjectMetaList) metaList).response(), objects);
-        } catch (Exception e) {
-            throw handleException(e);
+        final List<S3Object> objects = new ArrayList<>(metaList.metas().size());
+        for (S3ObjectMeta meta : metaList.metas()) {
+            S3Object object = getInternal(bucket, meta.key());
+            objects.add(object);
         }
+
+        return new AwsS3ObjectList(((AwsS3ObjectMetaList) metaList).response(), objects);
     }
 
     @Override
     public S3ObjectMetaList listMeta(String bucket, @Nullable String prefix, @Nullable String delimiter, int limit) {
-        var ctx = Context.current();
-        try {
-            ctx.set(OPERATION_KEY, new Operation("LIST_META", bucket));
-            return listMetaInternal(bucket, prefix, delimiter, limit);
-        } finally {
-            ctx.remove(OPERATION_KEY);
-        }
+        return wrapWithTelemetry(() -> listMetaInternal(bucket, prefix, delimiter, limit),
+            () -> telemetry.get("ListObjectMetas", bucket, prefix, null));
     }
 
     private S3ObjectMetaList listMetaInternal(String bucket, @Nullable String prefix, @Nullable String delimiter, int limit) {
@@ -187,47 +134,32 @@ public class AwsS3KoraClient implements S3KoraClient {
             .delimiter(delimiter)
             .build();
 
-        try {
-            var response = syncClient.listObjectsV2(request);
-            return new AwsS3ObjectMetaList(response);
-        } catch (Exception e) {
-            throw handleException(e);
-        }
+        var response = syncClient.listObjectsV2(request);
+        return new AwsS3ObjectMetaList(response);
     }
 
     @Override
     public List<S3ObjectList> list(String bucket, Collection<String> prefixes, @Nullable String delimiter, int limitPerPrefix) {
-        var telemetryContext = telemetry.get("LIST_MANY", bucket);
-
-        final List<S3ObjectList> lists = new ArrayList<>(prefixes.size());
-        try {
+        return wrapWithTelemetry(() -> {
+            final List<S3ObjectList> lists = new ArrayList<>(prefixes.size());
             for (String prefix : prefixes) {
-                S3ObjectList list = list(bucket, prefix, delimiter, limitPerPrefix);
+                S3ObjectList list = listInternal(bucket, prefix, delimiter, limitPerPrefix);
                 lists.add(list);
             }
-            telemetryContext.close(200);
             return lists;
-        } catch (Exception e) {
-            throw handleExceptionAndTelemetry(e, telemetryContext);
-        }
+        }, () -> telemetry.get("ListMultiObjects", bucket, null, null));
     }
 
     @Override
     public List<S3ObjectMetaList> listMeta(String bucket, Collection<String> prefixes, @Nullable String delimiter, int limitPerPrefix) {
-        var telemetryContext = telemetry.get("LIST_META_MANY", bucket);
-
-        final List<S3ObjectMetaList> lists = new ArrayList<>(prefixes.size());
-
-        try {
+        return wrapWithTelemetry(() -> {
+            final List<S3ObjectMetaList> lists = new ArrayList<>(prefixes.size());
             for (String prefix : prefixes) {
                 var list = listMeta(bucket, prefix, delimiter, limitPerPrefix);
                 lists.add(list);
             }
-            telemetryContext.close(200);
             return lists;
-        } catch (Exception e) {
-            throw handleExceptionAndTelemetry(e, telemetryContext);
-        }
+        }, () -> telemetry.get("ListMultiObjectMetas", bucket, null, null));
     }
 
     @Override
@@ -251,20 +183,30 @@ public class AwsS3KoraClient implements S3KoraClient {
         }
 
         var request = requestBuilder.build();
+
         var ctx = Context.current();
         try {
-            ctx.set(OPERATION_KEY, new Operation("PUT", bucket));
-            if (body instanceof ByteS3Body bb) {
-                final PutObjectResponse response = syncClient.putObject(request, RequestBody.fromBytes(bb.bytes()));
-                return new AwsS3ObjectUpload(response);
-            } else {
-                final PutObjectResponse response = syncClient.putObject(request, RequestBody.fromContentProvider(body::asInputStream, body.size(), body.type()));
-                return new AwsS3ObjectUpload(response);
+            var fork = ctx.fork();
+            fork.inject();
+
+            var context = telemetry.get("PutObject", bucket, key, body.size() > 0 ? body.size() : null);
+            try {
+                if (body instanceof ByteS3Body bb) {
+                    final PutObjectResponse response = syncClient.putObject(request, RequestBody.fromBytes(bb.bytes()));
+                    context.close();
+                    return new AwsS3ObjectUpload(response);
+                } else {
+                    final PutObjectResponse response = syncClient.putObject(request, RequestBody.fromContentProvider(body::asInputStream, body.size(), body.type()));
+                    context.close();
+                    return new AwsS3ObjectUpload(response);
+                }
+            } catch (Exception e) {
+                S3Exception ex = handleException(e);
+                context.close(ex);
+                throw ex;
             }
-        } catch (Exception e) {
-            throw handleException(e);
         } finally {
-            ctx.remove(OPERATION_KEY);
+            ctx.inject();
         }
     }
 
@@ -277,13 +219,20 @@ public class AwsS3KoraClient implements S3KoraClient {
 
         var ctx = Context.current();
         try {
-            ctx.set(OPERATION_KEY, new Operation("PUT", bucket));
+            var fork = ctx.fork();
+            fork.inject();
 
-            syncClient.deleteObject(request);
-        } catch (Exception e) {
-            throw handleException(e);
+            var context = telemetry.get("DeleteObject", bucket, key, null);
+            try {
+                syncClient.deleteObject(request);
+                context.close();
+            } catch (Exception e) {
+                S3Exception ex = handleException(e);
+                context.close(ex);
+                throw ex;
+            }
         } finally {
-            ctx.remove(OPERATION_KEY);
+            ctx.inject();
         }
     }
 
@@ -302,34 +251,50 @@ public class AwsS3KoraClient implements S3KoraClient {
 
         var ctx = Context.current();
         try {
-            ctx.set(OPERATION_KEY, new Operation("DELETE_MANY", bucket));
+            var fork = ctx.fork();
+            fork.inject();
 
-            var response = syncClient.deleteObjects(request);
-            if (response.hasErrors()) {
-                var errors = response.errors().stream()
-                    .map(e -> new S3DeleteException.Error(e.key(), bucket, e.code(), e.message()))
-                    .toList();
+            var context = telemetry.get("DeleteObjects", bucket, null, null);
+            try {
+                var response = syncClient.deleteObjects(request);
+                if (response.hasErrors()) {
+                    var errors = response.errors().stream()
+                        .map(e -> new S3DeleteException.Error(e.key(), bucket, e.code(), e.message()))
+                        .toList();
 
-                throw new S3DeleteException(errors);
+                    throw new S3DeleteException(errors);
+                }
+                context.close();
+            } catch (Exception e) {
+                S3Exception ex = handleException(e);
+                context.close(ex);
+                throw ex;
             }
-        } catch (Exception e) {
-            throw handleException(e);
         } finally {
-            ctx.remove(OPERATION_KEY);
+            ctx.inject();
         }
     }
 
-    private static S3Exception handleExceptionAndTelemetry(Throwable e, S3ClientTelemetry.S3ClientTelemetryContext telemetryContext) {
-        Throwable cause = e;
-        if (e instanceof S3Exception se) {
-            cause = se.getCause();
+    private static <T> T wrapWithTelemetry(Supplier<T> operationSupplier,
+                                           Supplier<S3KoraClientTelemetry.S3KoraClientTelemetryContext> contextSupplier) {
+        var ctx = Context.current();
+        try {
+            var fork = ctx.fork();
+            fork.inject();
+
+            var context = contextSupplier.get();
+            try {
+                T value = operationSupplier.get();
+                context.close();
+                return value;
+            } catch (Exception e) {
+                S3Exception ex = handleException(e);
+                context.close(ex);
+                throw ex;
+            }
+        } finally {
+            ctx.inject();
         }
-        if (cause instanceof SdkServiceException se) {
-            telemetryContext.close(se.statusCode(), e);
-        } else {
-            telemetryContext.close(-1, e);
-        }
-        throw handleException(e);
     }
 
     private static S3Exception handleException(Throwable e) {
@@ -337,16 +302,16 @@ public class AwsS3KoraClient implements S3KoraClient {
             e = ce.getCause();
         }
 
-        if (e instanceof NoSuchKeyException ke) {
+        if (e instanceof S3Exception se) {
+            return se;
+        } else if (e instanceof NoSuchKeyException ke) {
             return S3NotFoundException.ofNoSuchKey(e, ke.awsErrorDetails().errorMessage());
         } else if (e instanceof NoSuchBucketException be) {
             return S3NotFoundException.ofNoSuchBucket(e, be.awsErrorDetails().errorMessage());
         } else if (e instanceof AwsServiceException ae) {
             return new S3Exception(e, ae.awsErrorDetails().errorCode(), ae.awsErrorDetails().errorMessage());
-        } else if (e instanceof S3Exception se) {
-            return se;
         } else {
-            return new S3Exception(e, "unknown", "unknown");
+            return new S3Exception(e, e.getClass().getSimpleName(), e.getMessage());
         }
     }
 }
