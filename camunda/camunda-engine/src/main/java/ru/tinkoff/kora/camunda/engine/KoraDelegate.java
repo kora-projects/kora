@@ -6,5 +6,7 @@ import org.camunda.bpm.engine.delegate.JavaDelegate;
 public interface KoraDelegate extends JavaDelegate {
 
     @Nonnull
-    String key();
+    default String key() {
+        return getClass().getCanonicalName();
+    }
 }

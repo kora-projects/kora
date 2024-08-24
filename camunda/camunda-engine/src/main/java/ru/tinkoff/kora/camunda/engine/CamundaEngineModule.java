@@ -16,6 +16,7 @@ import ru.tinkoff.kora.camunda.engine.configurator.*;
 import ru.tinkoff.kora.camunda.engine.telemetry.*;
 import ru.tinkoff.kora.camunda.engine.transaction.CamundaTransactionManager;
 import ru.tinkoff.kora.camunda.engine.transaction.JdbcCamundaTransactionManager;
+import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
@@ -83,6 +84,10 @@ public interface CamundaEngineModule {
         return delegate -> {
             var telemetry = telemetryFactory.get(camundaEngineConfig.telemetry());
             return execution -> {
+                var current = Context.current();
+                var fork = current.fork();
+                fork.inject();
+
                 var telemetryContext = telemetry.get(delegate.getClass().getCanonicalName(), execution);
                 try {
                     delegate.execute(execution);
@@ -90,6 +95,8 @@ public interface CamundaEngineModule {
                 } catch (Exception e) {
                     telemetryContext.close(e);
                     throw e;
+                } finally {
+                    current.inject();
                 }
             };
         };

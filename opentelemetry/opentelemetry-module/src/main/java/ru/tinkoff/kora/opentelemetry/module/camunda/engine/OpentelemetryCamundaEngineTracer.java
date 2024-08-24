@@ -20,7 +20,7 @@ public final class OpentelemetryCamundaEngineTracer implements CamundaEngineTrac
     public CamundaEngineSpan createSpan(String javaDelegateName, DelegateExecution execution) {
         var context = Context.current();
         var span = this.tracer
-            .spanBuilder("Camunda JavaDelegate " + javaDelegateName)
+            .spanBuilder("Camunda Delegate " + javaDelegateName)
             .setSpanKind(SpanKind.INTERNAL)
             .setAttribute("delegate", javaDelegateName)
             .setAttribute("eventName", execution.getEventName())
