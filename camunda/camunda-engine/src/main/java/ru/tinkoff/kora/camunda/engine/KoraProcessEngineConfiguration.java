@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.camunda.engine;
 
+import jakarta.annotation.Nullable;
 import org.apache.ibatis.builder.xml.XMLConfigBuilder;
 import org.camunda.bpm.engine.ArtifactFactory;
 import org.camunda.bpm.engine.ProcessEngineConfiguration;
@@ -24,12 +25,16 @@ import org.camunda.bpm.engine.runtime.CaseInstance;
 import org.camunda.bpm.engine.runtime.CaseInstanceQuery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.tinkoff.kora.camunda.engine.telemetry.CamundaEngineMetricsFactory;
 import ru.tinkoff.kora.camunda.engine.transaction.KoraTransactionContextFactory;
 import ru.tinkoff.kora.camunda.engine.transaction.KoraTransactionInterceptor;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Properties;
 
 import static java.util.Collections.emptyList;
 import static org.camunda.bpm.engine.impl.history.HistoryLevel.HISTORY_LEVEL_FULL;
@@ -45,6 +50,8 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
     private final CamundaVersion camundaVersion;
     private final CamundaEngineConfig engineConfig;
     private final List<ProcessEnginePlugin> plugins;
+    @Nullable
+    private final CamundaEngineMetricsFactory metricsFactory;
 
     public KoraProcessEngineConfiguration(JobExecutor jobExecutor,
                                           TelemetryRegistry telemetryRegistry,
@@ -55,7 +62,8 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
                                           CamundaDataSource camundaDataSource,
                                           CamundaEngineConfig engineConfig,
                                           KoraResolverFactory componentResolverFactory,
-                                          CamundaVersion camundaVersion) {
+                                          CamundaVersion camundaVersion,
+                                          @Nullable CamundaEngineMetricsFactory metricsFactory) {
         this.jobExecutor = jobExecutor;
         this.telemetryRegistry = telemetryRegistry;
         this.componentResolverFactory = componentResolverFactory;
@@ -65,6 +73,7 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
         this.engineConfig = engineConfig;
         this.camundaDataSource = camundaDataSource;
         this.camundaVersion = camundaVersion;
+        this.metricsFactory = metricsFactory;
 
         setDefaultCharset(StandardCharsets.UTF_8);
 
@@ -121,18 +130,22 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
     }
 
     protected void configureMetricsAndTelemetry() {
-        setMetricsEnabled(Objects.requireNonNullElse(engineConfig.telemetry().metrics().enabled(), true));
-        setTaskMetricsEnabled(Objects.requireNonNullElse(engineConfig.telemetry().metrics().enabled(), true));
-
-        if (engineConfig.telemetry().engineTelemetryEnabled()) {
+        if (metricsFactory != null && engineConfig.telemetry().engineTelemetryEnabled()) {
             setTelemetryRegistry(telemetryRegistry);
-            setInitializeTelemetry(engineConfig.telemetry().engineTelemetryEnabled());
-            setTelemetryReporterActivate(engineConfig.telemetry().engineTelemetryReporterEnabled());
+            setMetricsEnabled(true);
+            setTaskMetricsEnabled(true);
+            setInitializeTelemetry(true);
+            setTelemetryReporterActivate(true);
 
             if (camundaVersion.version() == null) {
                 logger.warn("Disabling TelemetryReporter because required information 'Camunda Version' is not available.");
                 setTelemetryReporterActivate(false);
             }
+        } else {
+            setMetricsEnabled(false);
+            setTaskMetricsEnabled(false);
+            setInitializeTelemetry(false);
+            setTelemetryReporterActivate(false);
         }
     }
 
@@ -290,37 +303,37 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
 
     protected InputStream getMyBatisXmlConfigurationSteamStageOne() {
         String s = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-            "<!DOCTYPE configuration PUBLIC \"-//mybatis.org//DTD Config 3.0//EN\" \"http://mybatis.org/dtd/mybatis-3-config.dtd\">\n" +
-            "\n" +
-            "<configuration>\n" +
-            "\t<settings>\n" +
-            "\t\t<setting name=\"lazyLoadingEnabled\" value=\"false\" />\n" +
-            "\t</settings>\n" +
-            "\t<mappers>\n" +
-            "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Commons.xml\" />\n" +
-            "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Authorization.xml\" />\n" +
-            "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Tenant.xml\" />\n" +
+                   "<!DOCTYPE configuration PUBLIC \"-//mybatis.org//DTD Config 3.0//EN\" \"http://mybatis.org/dtd/mybatis-3-config.dtd\">\n" +
+                   "\n" +
+                   "<configuration>\n" +
+                   "\t<settings>\n" +
+                   "\t\t<setting name=\"lazyLoadingEnabled\" value=\"false\" />\n" +
+                   "\t</settings>\n" +
+                   "\t<mappers>\n" +
+                   "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Commons.xml\" />\n" +
+                   "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Authorization.xml\" />\n" +
+                   "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Tenant.xml\" />\n" +
 
-            "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Deployment.xml\" />\n" +
-            "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Incident.xml\" />\n" + // e.g. New process definition is deployed which replaces a previous version that included a Timer Start Event
-            "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Job.xml\" />\n" +
-            "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/JobDefinition.xml\" />\n" +
-            "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/ProcessDefinition.xml\" />\n" +
-            "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Property.xml\" />\n" +
-            "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Resource.xml\" />\n" +
-            "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Task.xml\" />\n" +
-            "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/EventSubscription.xml\" />\n" + // e.g. Message Start Events are registered during deployment
-            "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Filter.xml\" />\n" + // FilterAllTasksCreator
-            "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/User.xml\" />\n" + //AdminUserCreator
-            "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Group.xml\" />\n" + //AdminUserCreator
-            "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Membership.xml\" />\n" + //AdminUserCreator
-            "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/CamundaFormDefinition.xml\" />\n" + //Deployment BPMN
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/DecisionDefinition.xml\" />\n" + //Deployment DMN
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/DecisionRequirementsDefinition.xml\" />" + // Deployment DMN
-            (getHistoryLevel() == HISTORY_LEVEL_FULL ? "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricJobLog.xml\" />\n" : "") + // full history
-            "\n" +
-            "\t</mappers>\n" +
-            "</configuration>\n";
+                   "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Deployment.xml\" />\n" +
+                   "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Incident.xml\" />\n" + // e.g. New process definition is deployed which replaces a previous version that included a Timer Start Event
+                   "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Job.xml\" />\n" +
+                   "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/JobDefinition.xml\" />\n" +
+                   "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/ProcessDefinition.xml\" />\n" +
+                   "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Property.xml\" />\n" +
+                   "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Resource.xml\" />\n" +
+                   "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Task.xml\" />\n" +
+                   "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/EventSubscription.xml\" />\n" + // e.g. Message Start Events are registered during deployment
+                   "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Filter.xml\" />\n" + // FilterAllTasksCreator
+                   "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/User.xml\" />\n" + //AdminUserCreator
+                   "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Group.xml\" />\n" + //AdminUserCreator
+                   "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Membership.xml\" />\n" + //AdminUserCreator
+                   "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/CamundaFormDefinition.xml\" />\n" + //Deployment BPMN
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/DecisionDefinition.xml\" />\n" + //Deployment DMN
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/DecisionRequirementsDefinition.xml\" />" + // Deployment DMN
+                   (getHistoryLevel() == HISTORY_LEVEL_FULL ? "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricJobLog.xml\" />\n" : "") + // full history
+                   "\n" +
+                   "\t</mappers>\n" +
+                   "</configuration>\n";
         return new ByteArrayInputStream(s.getBytes());
     }
 
@@ -346,73 +359,73 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
 
     protected InputStream getMyBatisXmlConfigurationSteamStageTwo() {
         String s = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-            "<!DOCTYPE configuration PUBLIC \"-//mybatis.org//DTD Config 3.0//EN\" \"http://mybatis.org/dtd/mybatis-3-config.dtd\">\n" +
-            "<configuration>\n" +
-            "\t<settings>\n" +
-            "\t\t<setting name=\"lazyLoadingEnabled\" value=\"false\" />\n" +
-            "\t</settings>\n" +
-            "\t<mappers>\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Report.xml\" />\n" +
+                   "<!DOCTYPE configuration PUBLIC \"-//mybatis.org//DTD Config 3.0//EN\" \"http://mybatis.org/dtd/mybatis-3-config.dtd\">\n" +
+                   "<configuration>\n" +
+                   "\t<settings>\n" +
+                   "\t\t<setting name=\"lazyLoadingEnabled\" value=\"false\" />\n" +
+                   "\t</settings>\n" +
+                   "\t<mappers>\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Report.xml\" />\n" +
 
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Attachment.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Comment.xml\" />\n" +
-            //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Deployment.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Execution.xml\" />\n" +
-            //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Group.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricActivityInstance.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricCaseActivityInstance.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricDetail.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricIncident.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricIdentityLinkLog.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricProcessInstance.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricCaseInstance.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricStatistics.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricVariableInstance.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricTaskInstance.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricTaskInstanceReport.xml\" />\n" +
-            (getHistoryLevel() != HISTORY_LEVEL_FULL ? "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricJobLog.xml\" />\n" : "") +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricExternalTaskLog.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/UserOperationLogEntry.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/IdentityInfo.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/IdentityLink.xml\" />\n" +
-            //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Job.xml\" />\n" +
-            //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/JobDefinition.xml\" />\n" +
-            //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Incident.xml\" />\n" +
-            //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Membership.xml\" />\n" +
-            //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/ProcessDefinition.xml\" />\n" +
-            //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Property.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/SchemaLogEntry.xml\" />\n" +
-            //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Resource.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/TableData.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/TaskMetrics.xml\" />\n" +
-            //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Task.xml\" />\n" +
-            //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/User.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/VariableInstance.xml\" />\n" +
-            //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/EventSubscription.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Statistics.xml\" />\n" +
-            //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Filter.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Metrics.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/ExternalTask.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Batch.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricBatch.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/TenantMembership.xml\" />\n" +
-            //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/CamundaFormDefinition.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Attachment.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Comment.xml\" />\n" +
+                   //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Deployment.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Execution.xml\" />\n" +
+                   //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Group.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricActivityInstance.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricCaseActivityInstance.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricDetail.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricIncident.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricIdentityLinkLog.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricProcessInstance.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricCaseInstance.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricStatistics.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricVariableInstance.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricTaskInstance.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricTaskInstanceReport.xml\" />\n" +
+                   (getHistoryLevel() != HISTORY_LEVEL_FULL ? "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricJobLog.xml\" />\n" : "") +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricExternalTaskLog.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/UserOperationLogEntry.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/IdentityInfo.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/IdentityLink.xml\" />\n" +
+                   //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Job.xml\" />\n" +
+                   //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/JobDefinition.xml\" />\n" +
+                   //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Incident.xml\" />\n" +
+                   //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Membership.xml\" />\n" +
+                   //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/ProcessDefinition.xml\" />\n" +
+                   //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Property.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/SchemaLogEntry.xml\" />\n" +
+                   //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Resource.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/TableData.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/TaskMetrics.xml\" />\n" +
+                   //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Task.xml\" />\n" +
+                   //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/User.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/VariableInstance.xml\" />\n" +
+                   //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/EventSubscription.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Statistics.xml\" />\n" +
+                   //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Filter.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Metrics.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/ExternalTask.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Batch.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricBatch.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/TenantMembership.xml\" />\n" +
+                   //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/CamundaFormDefinition.xml\" />\n" +
 
-            // Never include CMMN - not supported
-            //"    <!-- CMMN -->\n" +
-            //"\n" +
-            //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/CaseDefinition.xml\" />\n" +
-            //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/CaseExecution.xml\" />\n" +
-            //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/CaseSentryPart.xml\" />\n" +
+                   // Never include CMMN - not supported
+                   //"    <!-- CMMN -->\n" +
+                   //"\n" +
+                   //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/CaseDefinition.xml\" />\n" +
+                   //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/CaseExecution.xml\" />\n" +
+                   //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/CaseSentryPart.xml\" />\n" +
 
-            "    <!-- DMN -->\n" +
-            //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/DecisionDefinition.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricDecisionInstance.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricDecisionInputInstance.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricDecisionOutputInstance.xml\" />\n" +
-            //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/DecisionRequirementsDefinition.xml\" />" +
-            "\t</mappers>\n" +
-            "</configuration>\n";
+                   "    <!-- DMN -->\n" +
+                   //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/DecisionDefinition.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricDecisionInstance.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricDecisionInputInstance.xml\" />\n" +
+                   "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricDecisionOutputInstance.xml\" />\n" +
+                   //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/DecisionRequirementsDefinition.xml\" />" +
+                   "\t</mappers>\n" +
+                   "</configuration>\n";
         return new ByteArrayInputStream(s.getBytes());
     }
 }

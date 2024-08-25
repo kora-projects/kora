@@ -13,7 +13,7 @@ public class JdbcCamundaTransactionManager implements CamundaTransactionManager 
     private final Context.Key<Connection> camundaConnectionKey = new Context.Key<>() {
         @Override
         protected Connection copy(Connection object) {
-            return null;
+            return object;
         }
     };
 

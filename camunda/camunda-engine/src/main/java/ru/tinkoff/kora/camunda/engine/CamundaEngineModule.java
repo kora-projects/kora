@@ -18,6 +18,7 @@ import ru.tinkoff.kora.camunda.engine.transaction.CamundaTransactionManager;
 import ru.tinkoff.kora.camunda.engine.transaction.JdbcCamundaTransactionManager;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.DefaultComponent;
+import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.config.common.Config;
@@ -32,8 +33,14 @@ public interface CamundaEngineModule {
         return extractor.extract(config.get("camunda.engine"));
     }
 
+    @Tag(Camunda.class)
     @DefaultComponent
-    default CamundaDataSource camundaKoraDataSource(DataSource dataSource) {
+    default DataSource camundaDataSource(DataSource dataSource) {
+        return dataSource;
+    }
+
+    @DefaultComponent
+    default CamundaDataSource camundaKoraDataSource(@Tag(Camunda.class) DataSource dataSource) {
         return new CamundaDataSource() {
             @Override
             public CamundaTransactionManager transactionManager() {
@@ -145,8 +152,9 @@ public interface CamundaEngineModule {
                                                                                    CamundaDataSource camundaDataSource,
                                                                                    CamundaEngineConfig camundaEngineConfig,
                                                                                    KoraResolverFactory componentResolverFactory,
-                                                                                   CamundaVersion camundaVersion) {
-        return new KoraProcessEngineConfiguration(jobExecutor, telemetryRegistry, idGenerator, koraExpressionManager, artifactFactory, plugins, camundaDataSource, camundaEngineConfig, componentResolverFactory, camundaVersion);
+                                                                                   CamundaVersion camundaVersion,
+                                                                                   @Nullable CamundaEngineMetricsFactory metricsFactory) {
+        return new KoraProcessEngineConfiguration(jobExecutor, telemetryRegistry, idGenerator, koraExpressionManager, artifactFactory, plugins, camundaDataSource, camundaEngineConfig, componentResolverFactory, camundaVersion, metricsFactory);
     }
 
     @Root
@@ -159,10 +167,6 @@ public interface CamundaEngineModule {
 
     default ProcessEngineConfigurator camundaEngineKoraAdminUserConfigurator(CamundaEngineConfig camundaEngineConfig, CamundaDataSource camundaDataSource) {
         return new AdminUserProcessEngineConfigurator(camundaEngineConfig, camundaDataSource);
-    }
-
-    default ProcessEngineConfigurator camundaEngineKoraFilterAllTaskConfigurator(CamundaEngineConfig camundaEngineConfig) {
-        return new FilterProcessEngineConfigurator(camundaEngineConfig);
     }
 
     default ProcessEngineConfigurator camundaEngineKoraLicenseKeyConfigurator(CamundaEngineConfig camundaEngineConfig, CamundaVersion camundaVersion) {

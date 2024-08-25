@@ -16,16 +16,13 @@ public interface CamundaEngineConfig {
 
     JobExecutorConfig jobExecutor();
 
-    CamundaTelemetryConfig telemetry();
-
-    @Nullable
-    FilterConfig filter();
-
     @Nullable
     DeploymentConfig deployment();
 
     @Nullable
     AdminConfig admin();
+
+    CamundaTelemetryConfig telemetry();
 
     @ConfigValueExtractor
     interface ParallelInitConfig {
@@ -91,11 +88,11 @@ public interface CamundaEngineConfig {
         }
 
         default Integer queueSize() {
-            return 5;
+            return 25;
         }
 
         default Integer maxJobsPerAcquisition() {
-            return 5;
+            return Runtime.getRuntime().availableProcessors() * 2;
         }
     }
 
@@ -105,17 +102,24 @@ public interface CamundaEngineConfig {
         @Override
         CamundaEngineLogConfig logging();
 
-        default boolean engineTelemetryEnabled() {
-            return true;
-        }
+        @Override
+        TracingConfig tracing();
 
-        default boolean engineTelemetryReporterEnabled() {
-            return true;
+        default boolean engineTelemetryEnabled() {
+            return false;
         }
     }
 
     @ConfigValueExtractor
     interface CamundaEngineLogConfig extends TelemetryConfig.LogConfig {
+
+        default boolean stacktrace() {
+            return true;
+        }
+    }
+
+    @ConfigValueExtractor
+    interface CamundaEngineTelemetryConfig extends TelemetryConfig.LogConfig {
 
         default boolean stacktrace() {
             return true;

@@ -16,19 +16,11 @@ public final class KoraJobExecutor extends DefaultJobExecutor {
     public KoraJobExecutor(CamundaEngineConfig engineConfig) {
         this.engineConfig = engineConfig;
 
-        CamundaEngineConfig.JobExecutorConfig jobExecutorConfig = engineConfig.jobExecutor();
-        if (jobExecutorConfig.queueSize() != null) {
-            setQueueSize(jobExecutorConfig.queueSize());
-        }
-        if (jobExecutorConfig.corePoolSize() != null) {
-            setCorePoolSize(jobExecutorConfig.corePoolSize());
-        }
-        if (jobExecutorConfig.maxPoolSize() != null) {
-            setMaxPoolSize(jobExecutorConfig.maxPoolSize());
-        }
-        if (jobExecutorConfig.maxJobsPerAcquisition() != null) {
-            setMaxJobsPerAcquisition(jobExecutorConfig.maxJobsPerAcquisition());
-        }
+        var jobExecutorConfig = engineConfig.jobExecutor();
+        setQueueSize(jobExecutorConfig.queueSize());
+        setCorePoolSize(jobExecutorConfig.corePoolSize());
+        setMaxPoolSize(jobExecutorConfig.maxPoolSize());
+        setMaxJobsPerAcquisition(jobExecutorConfig.maxJobsPerAcquisition());
     }
 
     @Override
