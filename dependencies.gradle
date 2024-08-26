@@ -174,8 +174,6 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
 
             library('camunda7-engine', 'org.camunda.bpm', 'camunda-engine').versionRef('camunda7')
             library('camunda7-rest-jakarta', 'org.camunda.bpm', 'camunda-engine-rest-jakarta').versionRef('camunda7')
-            library('camunda7-webapp-jakarta', 'org.camunda.bpm.webapp', 'camunda-webapp-jakarta').versionRef('camunda7')
-            library('camunda7-webapp-webjar', 'org.camunda.bpm.webapp', 'camunda-webapp-webjar').versionRef('camunda7')
             library('fasterxml-uuidgenerator', 'com.fasterxml.uuid', 'java-uuid-generator').version('5.0.0')
             library('resteasy-undertow-jakarta', 'org.jboss.resteasy', 'resteasy-undertow').version('6.2.8.Final')
             library('jakarta-rs-api', 'jakarta.ws.rs', 'jakarta.ws.rs-api').version('3.1.0')

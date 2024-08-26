@@ -17,7 +17,7 @@ public interface CamundaRestConfig {
     }
 
     default Integer port() {
-        return 8090;
+        return 8081;
     }
 
     default Duration shutdownWait() {
