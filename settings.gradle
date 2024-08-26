@@ -55,6 +55,7 @@ include(
     'database:database-vertx',
     'database:database-flyway',
     'database:database-cassandra',
+    'database:database-liquibase',
     'jms',
     'kafka:kafka',
     'kafka:kafka-annotation-processor',

@@ -70,6 +70,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             library("hikari", "com.zaxxer", "HikariCP").version("5.1.0")
             library("jdbi-core", "org.jdbi", "jdbi3-core").version("3.41.3")
             library("flyway", "org.flywaydb", "flyway-core").version("9.22.3")
+            library("liquibase", "org.liquibase", "liquibase-core").version("4.29.1")
 
             library("jms-api", "javax.jms", "javax.jms-api").version("2.0.1")
 
