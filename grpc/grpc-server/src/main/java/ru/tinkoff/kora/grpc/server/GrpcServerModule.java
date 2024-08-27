@@ -57,7 +57,7 @@ public interface GrpcServerModule extends NettyCommonModule {
         GrpcServerConfig grpcServerConfig = config.get();
 
         var builder = NettyServerBuilder.forPort(grpcServerConfig.port())
-            .maxInboundMessageSize((int) grpcServerConfig.maxMessageSize())
+            .maxInboundMessageSize(((int) grpcServerConfig.maxMessageSize().toBytes()))
             .bossEventLoopGroup(bossEventLoop)
             .workerEventLoopGroup(eventLoop)
             .channelFactory(nettyChannelFactory.getServerFactory());
