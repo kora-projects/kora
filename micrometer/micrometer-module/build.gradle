@@ -20,6 +20,6 @@ dependencies {
     compileOnly project(':cache:cache-common')
     compileOnly project(':cache:cache-caffeine')
     compileOnly project(':experimental:s3-client-common')
-    compileOnly project(':camunda:camunda-engine')
-    compileOnly project(':camunda:camunda-rest-undertow')
+    compileOnly project(':experimental:camunda-engine')
+    compileOnly project(':experimental:camunda-rest-undertow')
 }
