@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.http.server.undertow;
 
 import io.undertow.Undertow;
-import io.undertow.server.HttpHandler;
 import io.undertow.connector.ByteBufferPool;
+import io.undertow.server.HttpHandler;
 import io.undertow.server.handlers.GracefulShutdownHandler;
 import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
@@ -29,6 +29,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
     private final GracefulShutdownHandler gracefulShutdown;
     private final XnioWorker xnioWorker;
     private final ByteBufferPool byteBufferPool;
+
     private volatile Undertow undertow;
 
     public UndertowHttpServer(String name,

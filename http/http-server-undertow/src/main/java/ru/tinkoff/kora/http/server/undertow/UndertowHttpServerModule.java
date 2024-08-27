@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.http.server.undertow;
 
-import io.undertow.server.HttpHandler;
 import io.undertow.Undertow;
 import io.undertow.connector.ByteBufferPool;
+import io.undertow.server.HttpHandler;
 import jakarta.annotation.Nullable;
 import org.xnio.XnioWorker;
 import ru.tinkoff.kora.application.graph.ValueOf;
@@ -13,14 +13,13 @@ import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor;
 import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTracerFactory;
-import ru.tinkoff.kora.http.server.undertow.pool.KoraByteBufferPool;
 
 public interface UndertowHttpServerModule extends UndertowModule {
 
     @Tag(PublicApiHandler.class)
     default HttpHandler undertowPublicApiHandler(PublicApiHandler publicApiHandler,
-                                                              @Nullable HttpServerTracerFactory tracerFactory,
-                                                              HttpServerConfig config) {
+                                                 @Nullable HttpServerTracerFactory tracerFactory,
+                                                 HttpServerConfig config) {
         var tracer = tracerFactory == null ? null : tracerFactory.get(config.telemetry().tracing());
         return new UndertowPublicApiHandler(publicApiHandler, tracer);
     }
@@ -28,7 +27,7 @@ public interface UndertowHttpServerModule extends UndertowModule {
     @Root
     default UndertowHttpServer undertowHttpServer(ValueOf<HttpServerConfig> config,
                                                   @Tag(PublicApiHandler.class) ValueOf<HttpHandler> handler,
-                                                 @Tag(Undertow.class) XnioWorker worker,
+                                                  @Tag(Undertow.class) XnioWorker worker,
                                                   ByteBufferPool byteBufferPool) {
         return new UndertowHttpServer("Public", config, handler, worker, byteBufferPool);
     }

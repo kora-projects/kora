@@ -26,7 +26,10 @@ public class UndertowPrivateHttpServer implements PrivateHttpServer {
 
     private volatile Undertow undertow;
 
-    public UndertowPrivateHttpServer(ValueOf<HttpServerConfig> config, ValueOf<HttpHandler> privateApiHandler, @Nullable XnioWorker xnioWorker, ByteBufferPool byteBufferPool) {
+    public UndertowPrivateHttpServer(ValueOf<HttpServerConfig> config,
+                                     ValueOf<HttpHandler> privateApiHandler,
+                                     @Nullable XnioWorker xnioWorker,
+                                     ByteBufferPool byteBufferPool) {
         this.config = config;
         this.privateApiHandler = exchange -> privateApiHandler.get().handleRequest(exchange);
         this.xnioWorker = xnioWorker;
