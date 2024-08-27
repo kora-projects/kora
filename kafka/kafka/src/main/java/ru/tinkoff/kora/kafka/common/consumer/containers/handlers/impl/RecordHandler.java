@@ -2,10 +2,14 @@ package ru.tinkoff.kora.kafka.common.consumer.containers.handlers.impl;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.TopicPartition;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.BaseKafkaRecordsHandler;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.KafkaRecordHandler;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
+
+import java.util.Map;
 
 public class RecordHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
     private final KafkaConsumerTelemetry<K, V> telemetry;
@@ -28,13 +32,13 @@ public class RecordHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
                 try {
                     handler.handle(consumer, recordCtx, record);
                     recordCtx.close(null);
+                    if (this.shouldCommit && commitAllowed) {
+                        consumer.commitSync(Map.of(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset(), record.leaderEpoch(), "")));
+                    }
                 } catch (Exception e) {
                     recordCtx.close(e);
                     throw e;
                 }
-            }
-            if (this.shouldCommit && commitAllowed) {
-                consumer.commitSync();
             }
             ctx.close(null);
         } catch (Exception e) {
