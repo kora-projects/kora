@@ -57,17 +57,19 @@ public interface GrpcServerModule extends NettyCommonModule {
         var builder = NettyServerBuilder.forPort(config.get().port())
             .bossEventLoopGroup(bossEventLoop)
             .workerEventLoopGroup(eventLoop)
-            .channelFactory(nettyChannelFactory.getServerFactory())
-            .intercept(CoroutineContextInjectInterceptor.newInstance())
-            .intercept(new ContextServerInterceptor())
-            .intercept(new TelemetryInterceptor(telemetry));
+            .channelFactory(nettyChannelFactory.getServerFactory());
 
-        if(config.get().reflectionEnabled() && isClassPresent("io.grpc.protobuf.services.ProtoReflectionService")) {
+        if (config.get().reflectionEnabled() && isClassPresent("io.grpc.protobuf.services.ProtoReflectionService")) {
             builder.addService(ProtoReflectionService.newInstance());
         }
 
-        services.forEach(builder::addService);
         interceptors.forEach(builder::intercept);
+        builder
+            .intercept(new TelemetryInterceptor(telemetry))
+            .intercept(new ContextServerInterceptor())
+            .intercept(CoroutineContextInjectInterceptor.newInstance());
+
+        services.forEach(builder::addService);
 
         return builder;
     }
