@@ -170,6 +170,9 @@ public final class Size {
                 try {
                     String v = value.substring(0, i).strip();
                     size = Long.parseLong(v);
+                    if (size < 0) {
+                        throw new IllegalArgumentException("Malformed negative value, can't be size: " + value);
+                    }
                 } catch (NumberFormatException e) {
                     throw new IllegalArgumentException("Can't extract size number part from: " + value);
                 }
@@ -195,12 +198,13 @@ public final class Size {
         if (size == null) {
             try {
                 long bytes = Long.parseLong(value);
+                if (bytes < 0) {
+                    throw new IllegalArgumentException("Malformed negative value, can't be size: " + value);
+                }
                 return new Size(bytes, Type.BYTES);
             } catch (NumberFormatException e) {
                 throw new IllegalArgumentException("Malformed value, can't be size: " + value);
             }
-        } else if (size < 0) {
-            throw new IllegalArgumentException("Malformed negative value, can't be size: " + size);
         } else {
             return of(size, type);
         }
