@@ -19,10 +19,6 @@ import java.util.concurrent.CompletionException;
 @ApiStatus.Experimental
 public final class MinioS3ClientTelemetryInterceptor implements Interceptor {
 
-    public static final Context.Key<Operation> OPERATION_KEY = new Context.KeyImmutable<>() {};
-
-    public record Operation(String name, String bucket) {}
-
     private final S3ClientTelemetry telemetry;
     private final MinioS3ClientConfig.AddressStyle addressStyle;
 
@@ -103,22 +99,21 @@ public final class MinioS3ClientTelemetryInterceptor implements Interceptor {
     }
 
     private static BucketAndKey getVirtualHost(String host, String path) {
+        int bucketEnd = host.indexOf('.');
+        if (bucketEnd == -1) {
+            return getPathAddress(path);
+        }
+
         final String bucket;
         final String key;
         final int startFrom = (path.charAt(0) == '/')
             ? 1
             : 0;
-
-        int bucketEnd = host.indexOf('.');
-        if (bucketEnd == -1) {
-            return getPathAddress(path);
+        bucket = host.substring(0, bucketEnd);
+        if (path.length() == 1) {
+            key = null;
         } else {
-            bucket = host.substring(0, bucketEnd);
-            if (path.length() == 1) {
-                key = null;
-            } else {
-                key = path.substring(startFrom);
-            }
+            key = path.substring(startFrom);
         }
 
         return new BucketAndKey(bucket, key);

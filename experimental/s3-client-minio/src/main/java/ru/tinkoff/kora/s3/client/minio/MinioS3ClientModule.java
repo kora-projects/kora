@@ -35,6 +35,7 @@ public interface MinioS3ClientModule extends S3ClientModule {
     }
 
     @Tag(MinioClient.class)
+    @DefaultComponent
     default OkHttpClient minioOkHttpClient(@Nullable OkHttpClient okHttpClient,
                                            MinioS3ClientConfig minioS3ClientConfig) {
         long timeout = (minioS3ClientConfig.requestTimeout() != null)
@@ -82,6 +83,12 @@ public interface MinioS3ClientModule extends S3ClientModule {
                 .addInterceptor(new MinioS3ClientTelemetryInterceptor(telemetryFactory.get(s3Config.telemetry(), MinioAsyncClient.class), minioS3ClientConfig.addressStyle()))
                 .build())
             .build();
+
+        if (minioS3ClientConfig.addressStyle() == MinioS3ClientConfig.AddressStyle.PATH) {
+            builded.disableVirtualStyleEndpoint();
+        } else {
+            builded.enableVirtualStyleEndpoint();
+        }
 
         return builded;
     }

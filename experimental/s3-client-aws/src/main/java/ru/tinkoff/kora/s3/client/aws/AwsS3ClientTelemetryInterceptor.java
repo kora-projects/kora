@@ -2,8 +2,6 @@ package ru.tinkoff.kora.s3.client.aws;
 
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
-import ru.tinkoff.kora.common.Context.Key;
-import ru.tinkoff.kora.common.Context.KeyImmutable;
 import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.s3.client.telemetry.S3ClientTelemetry;
 import ru.tinkoff.kora.s3.client.telemetry.S3ClientTelemetry.S3ClientTelemetryContext;
@@ -50,7 +48,7 @@ public final class AwsS3ClientTelemetryInterceptor implements ExecutionIntercept
                 .orElse(null);
 
             final BucketAndKey bk;
-            if(addressStyle == AwsS3ClientConfig.AddressStyle.PATH) {
+            if (addressStyle == AwsS3ClientConfig.AddressStyle.PATH) {
                 bk = getPathAddress(request.encodedPath());
             } else {
                 bk = getVirtualHost(request.host(), request.encodedPath());
@@ -61,7 +59,7 @@ public final class AwsS3ClientTelemetryInterceptor implements ExecutionIntercept
         }
     }
 
-    private record BucketAndKey(String bucket, @Nullable String key) { }
+    private record BucketAndKey(String bucket, @Nullable String key) {}
 
     private static BucketAndKey getPathAddress(String path) {
         final String bucket;
@@ -70,7 +68,7 @@ public final class AwsS3ClientTelemetryInterceptor implements ExecutionIntercept
             ? 1
             : 0;
 
-        if(path.equals("/")) {
+        if (path.equals("/")) {
             bucket = "/";
             key = null;
         } else {
@@ -88,22 +86,22 @@ public final class AwsS3ClientTelemetryInterceptor implements ExecutionIntercept
     }
 
     private static BucketAndKey getVirtualHost(String host, String path) {
+        int bucketEnd = host.indexOf('.');
+        if (bucketEnd == -1) {
+            return getPathAddress(path);
+        }
+
         final String bucket;
         final String key;
         final int startFrom = (path.charAt(0) == '/')
             ? 1
             : 0;
 
-        int bucketEnd = host.indexOf('.');
-        if(bucketEnd == -1) {
-            return getPathAddress(path);
+        bucket = host.substring(0, bucketEnd);
+        if (path.length() == 1) {
+            key = null;
         } else {
-            bucket = host.substring(0, bucketEnd);
-            if (path.length() == 1) {
-                key = null;
-            } else {
-                key = path.substring(startFrom);
-            }
+            key = path.substring(startFrom);
         }
 
         return new BucketAndKey(bucket, key);
