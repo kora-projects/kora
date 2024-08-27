@@ -178,8 +178,10 @@ public final class Size {
                 for (Type sizeType : ALL) {
                     if (sizeType == Type.BYTES && typeAsStr.equalsIgnoreCase("B")) {
                         type = sizeType;
+                        break;
                     } else if (sizeType.name().equalsIgnoreCase(typeAsStr)) {
                         type = sizeType;
+                        break;
                     }
                 }
 
