@@ -2,6 +2,7 @@ package ru.tinkoff.kora.s3.client.minio;
 
 import jakarta.annotation.Nullable;
 import org.jetbrains.annotations.ApiStatus;
+import ru.tinkoff.kora.common.util.Size;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
 import java.time.Duration;
@@ -27,8 +28,8 @@ public interface MinioS3ClientConfig {
     @ConfigValueExtractor
     interface UploadConfig {
 
-        default long partSize() {
-            return 1024 * 1024 * 25; // 25Mb
+        default Size partSize() {
+            return Size.of(8, Size.Type.MiB);
         }
     }
 }

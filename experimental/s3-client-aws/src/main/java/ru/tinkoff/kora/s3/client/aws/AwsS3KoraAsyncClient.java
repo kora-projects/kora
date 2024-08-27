@@ -50,12 +50,11 @@ public class AwsS3KoraAsyncClient implements S3KoraAsyncClient {
         this.awsS3ClientConfig = awsS3ClientConfig;
         this.multipartAsyncClient = MultipartS3AsyncClient.create(asyncClient,
             MultipartConfiguration.builder()
-                .thresholdInBytes(awsS3ClientConfig.upload().bufferSize())
-                .apiCallBufferSizeInBytes(awsS3ClientConfig.upload().bufferSize())
-                .minimumPartSizeInBytes(awsS3ClientConfig.upload().partSize())
+                .thresholdInBytes(awsS3ClientConfig.upload().partSize().toBytes())
+                .apiCallBufferSizeInBytes(awsS3ClientConfig.upload().bufferSize().toBytes())
+                .minimumPartSizeInBytes(awsS3ClientConfig.upload().partSize().toBytes())
                 .build());
     }
-
 
     private CompletionStage<S3Object> getInternal(String bucket, String key) {
         var request = GetObjectRequest.builder()
@@ -228,7 +227,7 @@ public class AwsS3KoraAsyncClient implements S3KoraAsyncClient {
             } else if (body instanceof PublisherS3Body) {
                 operation = asyncClient.putObject(request, AsyncRequestBody.fromPublisher(JdkFlowAdapter.flowPublisherToFlux(body.asPublisher())))
                     .thenApply(AwsS3ObjectUpload::new);
-            } else if (body.size() > 0 && body.size() <= awsS3ClientConfig.upload().bufferSize()) {
+            } else if (body.size() > 0 && body.size() <= awsS3ClientConfig.upload().partSize().toBytes()) {
                 operation = asyncClient.putObject(request, AsyncRequestBody.fromInputStream(body.asInputStream(), body.size(), awsExecutor))
                     .thenApply(AwsS3ObjectUpload::new);
             } else {

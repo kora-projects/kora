@@ -129,9 +129,9 @@ public interface AwsS3ClientModule extends S3ClientModule {
     default MultipartS3AsyncClient multipartS3AsyncClient(S3AsyncClient asyncClient,
                                                           AwsS3ClientConfig awsS3ClientConfig) {
         MultipartConfiguration config = MultipartConfiguration.builder()
-            .thresholdInBytes(awsS3ClientConfig.upload().bufferSize())
-            .apiCallBufferSizeInBytes(awsS3ClientConfig.upload().bufferSize())
-            .minimumPartSizeInBytes(awsS3ClientConfig.upload().partSize())
+            .thresholdInBytes(awsS3ClientConfig.upload().partSize().toBytes())
+            .apiCallBufferSizeInBytes(awsS3ClientConfig.upload().bufferSize().toBytes())
+            .minimumPartSizeInBytes(awsS3ClientConfig.upload().partSize().toBytes())
             .build();
 
         return MultipartS3AsyncClient.create(asyncClient, config);

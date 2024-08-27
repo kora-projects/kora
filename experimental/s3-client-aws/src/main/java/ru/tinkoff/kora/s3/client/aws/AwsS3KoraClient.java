@@ -164,7 +164,7 @@ public class AwsS3KoraClient implements S3KoraClient {
 
     @Override
     public S3ObjectUpload put(String bucket, String key, S3Body body) {
-        if (body instanceof PublisherS3Body || body.size() < 0 || body.size() > awsS3ClientConfig.upload().bufferSize()) {
+        if (body instanceof PublisherS3Body || body.size() < 0 || body.size() > awsS3ClientConfig.upload().partSize().toBytes()) {
             try {
                 return asyncClient.put(bucket, key, body).toCompletableFuture().join();
             } catch (Exception e) {

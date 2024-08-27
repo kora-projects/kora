@@ -234,10 +234,10 @@ public class MinioS3KoraAsyncClient implements S3KoraAsyncClient {
                     operation = minioClient.putObject(requestBuilder.stream(new ByteArrayInputStream(bb.bytes()), bb.size(), -1).build())
                         .thenApply(r -> new MinioS3ObjectUpload(r.versionId()));
                 } else if (body.size() > 0) {
-                    operation = minioClient.putObject(requestBuilder.stream(body.asInputStream(), body.size(), minioS3ClientConfig.upload().partSize()).build())
+                    operation = minioClient.putObject(requestBuilder.stream(body.asInputStream(), body.size(), minioS3ClientConfig.upload().partSize().toBytes()).build())
                         .thenApply(r -> new MinioS3ObjectUpload(r.versionId()));
                 } else {
-                    operation = minioClient.putObject(requestBuilder.stream(body.asInputStream(), -1, minioS3ClientConfig.upload().partSize()).build())
+                    operation = minioClient.putObject(requestBuilder.stream(body.asInputStream(), -1, minioS3ClientConfig.upload().partSize().toBytes()).build())
                         .thenApply(r -> new MinioS3ObjectUpload(r.versionId()));
                 }
             } catch (Exception e) {

@@ -210,10 +210,10 @@ public class MinioS3KoraClient implements S3KoraClient {
                     final ObjectWriteResponse response = minioClient.putObject(requestBuilder.stream(new BufferedInputStream(new ByteArrayInputStream(bb.bytes())), bb.size(), -1).build());
                     return new MinioS3ObjectUpload(response.versionId());
                 } else if (body.size() > 0) {
-                    final ObjectWriteResponse response = minioClient.putObject(requestBuilder.stream(body.asInputStream(), body.size(), minioS3ClientConfig.upload().partSize()).build());
+                    final ObjectWriteResponse response = minioClient.putObject(requestBuilder.stream(body.asInputStream(), body.size(), minioS3ClientConfig.upload().partSize().toBytes()).build());
                     return new MinioS3ObjectUpload(response.versionId());
                 } else {
-                    final ObjectWriteResponse response = minioClient.putObject(requestBuilder.stream(body.asInputStream(), -1, minioS3ClientConfig.upload().partSize()).build());
+                    final ObjectWriteResponse response = minioClient.putObject(requestBuilder.stream(body.asInputStream(), -1, minioS3ClientConfig.upload().partSize().toBytes()).build());
                     return new MinioS3ObjectUpload(response.versionId());
                 }
             } catch (Exception e) {

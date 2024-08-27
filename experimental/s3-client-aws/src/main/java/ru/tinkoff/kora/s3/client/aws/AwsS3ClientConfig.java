@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.s3.client.aws;
 
 import org.jetbrains.annotations.ApiStatus;
+import ru.tinkoff.kora.common.util.Size;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
 import java.time.Duration;
@@ -35,12 +36,12 @@ public interface AwsS3ClientConfig {
     @ConfigValueExtractor
     interface UploadConfig {
 
-        default long bufferSize() {
-            return 1024 * 1024 * 50; // 50 Mb
+        default Size bufferSize() {
+            return Size.of(32, Size.Type.MiB);
         }
 
-        default long partSize() {
-            return 1024 * 1024 * 25; // 25 Mb
+        default Size partSize() {
+            return Size.of(8, Size.Type.MiB);
         }
     }
 }
