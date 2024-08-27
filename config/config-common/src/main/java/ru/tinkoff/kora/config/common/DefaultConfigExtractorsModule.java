@@ -3,6 +3,7 @@ package ru.tinkoff.kora.config.common;
 import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.util.Either;
+import ru.tinkoff.kora.common.util.Size;
 import ru.tinkoff.kora.config.common.extractor.*;
 
 import java.math.BigDecimal;
@@ -95,6 +96,10 @@ public interface DefaultConfigExtractorsModule {
 
     default ConfigValueExtractor<double[]> doubleArrayConfigValueExtractor(ConfigValueExtractor<Double> doubleExtractor) {
         return new DoubleArrayConfigValueExtractor(doubleExtractor);
+    }
+
+    default ConfigValueExtractor<Size> sizeConfigValueExtractor() {
+        return new SizeConfigValueExtractor();
     }
 
     @DefaultComponent
