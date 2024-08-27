@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.common.naming;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -136,5 +137,16 @@ class SizeTests {
     void parseSI(String actual, Size expected) {
         Size actualSize = Size.parse(actual);
         assertEquals(expected, actualSize);
+    }
+
+    @Test
+    void parseFailed() {
+        Assertions.assertThrows(IllegalArgumentException.class, () -> Size.parse("110 MBG"));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> Size.parse("MBG"));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> Size.parse("-10"));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> Size.parse("-10MiB"));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> Size.parse(" 10MBMB"));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> Size.parse("10MB MB"));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> Size.parse("10MBB"));
     }
 }

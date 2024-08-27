@@ -24,7 +24,6 @@ public final class Size {
 
     /**
      * Binary format have letter 'i' in its name
-     * <p/>
      * <a href="https://blocksandfiles.com/2022/04/23/decimal-and-binary-prefixes/">Decimal and Binary Prefixes</a>
      */
     public enum Type {
