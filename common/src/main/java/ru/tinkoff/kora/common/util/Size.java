@@ -91,6 +91,8 @@ public final class Size {
     public double valueRounded(int scale) {
         if(scale < 1) {
             return valueExact();
+        } else if(scale == 2) {
+            return valueRounded();
         }
 
         double v = (double) bytes / type.toBytes();
