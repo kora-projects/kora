@@ -33,7 +33,7 @@ public class RecordHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
                     handler.handle(consumer, recordCtx, record);
                     recordCtx.close(null);
                     if (this.shouldCommit && commitAllowed) {
-                        consumer.commitSync(Map.of(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset())));
+                        consumer.commitSync(Map.of(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset(), record.leaderEpoch(), "")));
                     }
                 } catch (Exception e) {
                     recordCtx.close(e);
