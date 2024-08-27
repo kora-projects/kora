@@ -8,8 +8,6 @@ class S3AwsSuspendClientTests : AbstractSymbolProcessorTest() {
 
     override fun commonImports(): String {
         return super.commonImports() + """
-            import java.util.concurrent.CompletableFuture
-            import java.util.concurrent.CompletionStage
             import java.util.List
             import java.util.Collection
             import ru.tinkoff.kora.s3.client.annotation.*
@@ -91,24 +89,6 @@ class S3AwsSuspendClientTests : AbstractSymbolProcessorTest() {
     }
 
     @Test
-    fun clientListAwsFuture() {
-        this.compile0(
-            """
-            @S3.Client("my")
-            interface Client {
-            
-                @S3.List
-                suspend fun list(prefix: String): ListObjectsV2Response
-            }
-            
-            """.trimIndent()
-        )
-        compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
-        assertThat(clazz).isNotNull()
-    }
-
-    @Test
     fun clientListKeyAndDelimiter() {
         this.compile0(
             """
@@ -127,24 +107,6 @@ class S3AwsSuspendClientTests : AbstractSymbolProcessorTest() {
 
     @Test
     fun clientDeleteAws() {
-        this.compile0(
-            """
-            @S3.Client("my")
-            interface Client {
-                        
-                @S3.Delete
-                suspend fun delete(key: String): DeleteObjectResponse
-            }
-            
-            """.trimIndent()
-        )
-        compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
-        assertThat(clazz).isNotNull()
-    }
-
-    @Test
-    fun clientDeleteAwsFuture() {
         this.compile0(
             """
             @S3.Client("my")
@@ -195,22 +157,4 @@ class S3AwsSuspendClientTests : AbstractSymbolProcessorTest() {
         val clazz = compileResult.loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
-
-    @Test
-    fun clientPutBodyFuture() {
-        this.compile0(
-            """
-            @S3.Client("my")
-            interface Client {
-                        
-                @S3.Put
-                suspend fun put(key: String, value: S3Body): PutObjectResponse
-            }
-            """.trimIndent()
-        )
-        compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
-        assertThat(clazz).isNotNull()
-    }
-
 }

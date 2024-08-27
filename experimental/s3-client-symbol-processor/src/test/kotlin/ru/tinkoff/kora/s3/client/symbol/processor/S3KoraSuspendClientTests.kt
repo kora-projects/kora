@@ -8,8 +8,6 @@ class S3KoraSuspendClientTests : AbstractSymbolProcessorTest() {
 
     override fun commonImports(): String {
         return super.commonImports() + """
-            import java.util.concurrent.CompletionStage;
-            import java.util.concurrent.CompletableFuture;
             import java.nio.ByteBuffer;
             import java.io.InputStream;
             import ru.tinkoff.kora.s3.client.annotation.*;
@@ -94,41 +92,7 @@ class S3KoraSuspendClientTests : AbstractSymbolProcessorTest() {
     }
 
     @Test
-    fun clientGetManyMetasFuture() {
-        this.compile0(
-            """
-            @S3.Client("my")
-            interface Client {
-                        
-                @S3.Get
-                suspend fun get(keys: Collection<String>): List<S3ObjectMeta>
-            }
-            """.trimIndent()
-        )
-        compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
-        assertThat(clazz).isNotNull()
-    }
-
-    @Test
     fun clientGetManyObjects() {
-        this.compile0(
-            """
-            @S3.Client("my")
-            interface Client {
-                        
-                @S3.Get
-                suspend fun get(key: List<String>): List<S3Object>
-            }
-            """.trimIndent()
-        )
-        compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
-        assertThat(clazz).isNotNull()
-    }
-
-    @Test
-    fun clientGetManyObjectsFuture() {
         this.compile0(
             """
             @S3.Client("my")
@@ -227,41 +191,7 @@ class S3KoraSuspendClientTests : AbstractSymbolProcessorTest() {
     }
 
     @Test
-    fun clientListMetaFuture() {
-        this.compile0(
-            """
-            @S3.Client("my")
-            interface Client {
-                        
-                @S3.List
-                suspend fun list(): S3ObjectMetaList
-            }
-            """.trimIndent()
-        )
-        compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
-        assertThat(clazz).isNotNull()
-    }
-
-    @Test
     fun clientListMetaWithPrefix() {
-        this.compile0(
-            """
-            @S3.Client("my")
-            interface Client {
-                        
-                @S3.List
-                suspend fun list(prefix: String): S3ObjectMetaList
-            }
-            """.trimIndent()
-        )
-        compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
-        assertThat(clazz).isNotNull()
-    }
-
-    @Test
-    fun clientListMetaFutureWithPrefix() {
         this.compile0(
             """
             @S3.Client("my")
@@ -395,23 +325,6 @@ class S3KoraSuspendClientTests : AbstractSymbolProcessorTest() {
     // Delete
     @Test
     fun clientDelete() {
-        this.compile0(
-            """
-            @S3.Client("my")
-            interface Client {
-                        
-                @S3.Delete
-                suspend fun delete(key: String)
-            }
-            """.trimIndent()
-        )
-        compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
-        assertThat(clazz).isNotNull()
-    }
-
-    @Test
-    fun clientDeleteFuture() {
         this.compile0(
             """
             @S3.Client("my")

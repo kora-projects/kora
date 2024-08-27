@@ -674,10 +674,9 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
             if(!(method.getReturnType() instanceof PrimitiveType)) {
                 methodBuilder.add("""
                     if($T.isNull($L)) {
-                        throw new $T("S3.Put request key argument expected, but was null for arg: $L");
+                        throw new $T("S3.Put request argument expected, but was null for arg: $L");
                     }
                     """, Objects.class, parameter.getSimpleName().toString(), IllegalArgumentException.class, parameter.getSimpleName().toString());
-
             }
         }
         methodBuilder.add("\n");
@@ -834,17 +833,18 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
 
             if (CLASS_S3_BODY.equals(bodyType) && mode == S3Operation.Mode.SYNC) {
                 methodBuilder.add("""
-                        if ($L instanceof $T || $L.size() < 0 || $L.size() > _awsClientConfig.upload().bufferSize()) {
-                            if ($L instanceof $T pb) {
-                                return _awsAsyncClient.putObject(_request, $T.fromPublisher($T.flowPublisherToFlux(pb.asPublisher()))).join();
-                            } else {
-                                final Long _bodySize = $L.size() > 0 ? $L.size() : null;
-                                return _awsAsyncMultipartClient.putObject(_request, $T.fromInputStream($L.asInputStream(), _bodySize, _awsAsyncExecutor)).join();
-                            }
+                        if ($L instanceof $T pb) {
+                            return _awsAsyncClient.putObject(_request, $T.fromPublisher($T.flowPublisherToFlux(pb.asPublisher()))).join();
+                        } else if($L.size() < 0 || $L.size() > _awsClientConfig.upload().partSize().toBytes()) {
+                            final Long _bodySize = $L.size() > 0 ? $L.size() : null;
+                            return _awsAsyncMultipartClient.putObject(_request, $T.fromInputStream($L.asInputStream(), _bodySize, _awsAsyncExecutor)).join();
                         }
-                        """, bodyParamName, CLASS_S3_BODY_PUBLISHER, bodyParamName, bodyParamName,
-                    bodyParamName, CLASS_S3_BODY_PUBLISHER, CLASS_AWS_IS_ASYNC_BODY, CLASS_JDK_FLOW_ADAPTER,
-                    bodyParamName, bodyParamName, CLASS_AWS_IS_ASYNC_BODY, bodyParamName);
+                        """,
+                    bodyParamName, CLASS_S3_BODY_PUBLISHER,
+                    CLASS_AWS_IS_ASYNC_BODY, CLASS_JDK_FLOW_ADAPTER,
+                    bodyParamName, bodyParamName,
+                    bodyParamName, bodyParamName,
+                    CLASS_AWS_IS_ASYNC_BODY, bodyParamName);
             }
 
             methodBuilder
@@ -855,7 +855,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
             if (mode == S3Operation.Mode.ASYNC) {
                 methodBuilder
                     .addStatement("""
-                        return ($L.size() > 0 && $L.size() <= _awsClientConfig.upload().bufferSize())
+                        return ($L.size() > 0 && $L.size() <= _awsClientConfig.upload().partSize().toBytes())
                             ? _awsAsyncClient.putObject(_request, _requestBody)
                             : _awsAsyncMultipartClient.putObject(_request, _requestBody)""", bodyParamName, bodyParamName);
             } else {

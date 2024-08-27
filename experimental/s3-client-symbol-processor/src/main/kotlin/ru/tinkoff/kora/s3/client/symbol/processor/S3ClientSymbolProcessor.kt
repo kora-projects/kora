@@ -36,6 +36,7 @@ class S3ClientSymbolProcessor(
     companion object {
         private val ANNOTATION_CLIENT: ClassName = ClassName("ru.tinkoff.kora.s3.client.annotation", "S3", "Client")
         private val MEMBER_AWAIT_FUTURE: MemberName = MemberName("kotlinx.coroutines.future", "await")
+        private val MEMBER_RUN_BLOCKING: MemberName = MemberName("kotlinx.coroutines", "runBlocking")
 
         private val ANNOTATION_OP_GET: ClassName = ClassName("ru.tinkoff.kora.s3.client.annotation", "S3", "Get")
         private val ANNOTATION_OP_LIST: ClassName = ClassName("ru.tinkoff.kora.s3.client.annotation", "S3", "List")
@@ -57,6 +58,7 @@ class S3ClientSymbolProcessor(
         private val CLASS_S3_UPLOAD: ClassName = ClassName("ru.tinkoff.kora.s3.client.model", "S3ObjectUpload")
         private val CLASS_S3_BODY: ClassName = ClassName("ru.tinkoff.kora.s3.client.model", "S3Body")
         private val CLASS_S3_BODY_BYTES: ClassName = ClassName("ru.tinkoff.kora.s3.client.model", "ByteS3Body")
+        private val CLASS_S3_BODY_PUBLISHER: ClassName = ClassName("ru.tinkoff.kora.s3.client.model", "PublisherS3Body")
         private val CLASS_S3_OBJECT: ClassName = ClassName("ru.tinkoff.kora.s3.client.model", "S3Object")
         private val CLASS_S3_OBJECT_META: ClassName = ClassName("ru.tinkoff.kora.s3.client.model", "S3ObjectMeta")
         private val CLASS_S3_OBJECT_MANY: TypeName = List::class.asTypeName().parameterizedBy(CLASS_S3_OBJECT)
@@ -534,10 +536,11 @@ class S3ClientSymbolProcessor(
         val bodyType: TypeName = bodyParam.type.toTypeName()
 
         val isResultUpload = CLASS_S3_UPLOAD == returnType
+        val bodyParamName = bodyParam.name!!.asString()
         if (returnTypeMirror.isVoid() || isResultUpload) {
             val bodyCode: CodeBlock
             if (CLASS_S3_BODY == bodyType) {
-                bodyCode = CodeBlock.of("val _body = %L", bodyParam.name!!.asString())
+                bodyCode = CodeBlock.of("val _body = %L", bodyParamName)
             } else {
                 val methodCall = when (bodyType) {
                     ByteBuffer::class.asTypeName() -> "ofBuffer"
@@ -550,22 +553,22 @@ class S3ClientSymbolProcessor(
                 bodyCode = if (type != null && encoding != null) {
                     CodeBlock.of(
                         "val _body = %T.%L(%L, %S, %S)",
-                        CLASS_S3_BODY, methodCall, bodyParam.name!!.asString(), methodCall, type, encoding
+                        CLASS_S3_BODY, methodCall, bodyParamName, methodCall, type, encoding
                     )
                 } else if (type != null) {
                     CodeBlock.of(
                         "val _body = %T.%L(%L, %S)",
-                        CLASS_S3_BODY, methodCall, bodyParam.name!!.asString(), methodCall, type
+                        CLASS_S3_BODY, methodCall, bodyParamName, methodCall, type
                     )
                 } else if (encoding != null) {
                     CodeBlock.of(
                         "val _body = %T.%L(%L, null, %S)",
-                        CLASS_S3_BODY, methodCall, bodyParam.name!!.asString(), methodCall, encoding
+                        CLASS_S3_BODY, methodCall, bodyParamName, methodCall, encoding
                     )
                 } else {
                     CodeBlock.of(
                         "val _body = %T.%L(%L)",
-                        CLASS_S3_BODY, methodCall, bodyParam.name!!.asString()
+                        CLASS_S3_BODY, methodCall, bodyParamName
                     )
                 }
             }
@@ -601,7 +604,7 @@ class S3ClientSymbolProcessor(
             val requestBuilder: CodeBlock.Builder = CodeBlock.builder()
             val type: String? = operationMeta.annotation.findValueNoDefault("type")
             val encoding: String? = operationMeta.annotation.findValueNoDefault("encoding")
-            val bodyParamName = bodyParam.name!!.asString()
+            val bodyParamName = bodyParamName
 
             if (CLASS_S3_BODY == bodyType) {
                 bodyCode = if (mode == S3Operation.Mode.SYNC) {
@@ -624,11 +627,18 @@ class S3ClientSymbolProcessor(
                     CodeBlock.of(
                         """
                         val _bodySize = if(%L.size() > 0) %L.size() else null
-                        val _requestBody = if(%L is %T) %T.fromBytes(%L.bytes())
-                            else %T.fromInputStream(%L.asInputStream(), _bodySize, _awsAsyncExecutor)
+                        val _requestBody = if(%L is %T) 
+                                %T.fromBytes(%L.bytes())
+                            else if(%L is %T)
+                                %T.fromPublisher(%T.flowPublisherToFlux(%L.asPublisher()))
+                            else 
+                                %T.fromInputStream(%L.asInputStream(), _bodySize, _awsAsyncExecutor)
                             """.trimIndent(),
                         bodyParamName, bodyParamName,
-                        bodyParamName, CLASS_S3_BODY_BYTES, CLASS_AWS_IS_ASYNC_BODY, bodyParamName,
+                        bodyParamName, CLASS_S3_BODY_BYTES,
+                        CLASS_AWS_IS_ASYNC_BODY, bodyParamName,
+                        bodyParamName, CLASS_S3_BODY_PUBLISHER,
+                        CLASS_AWS_IS_ASYNC_BODY, CLASS_JDK_FLOW_ADAPTER, bodyParamName,
                         CLASS_AWS_IS_ASYNC_BODY, bodyParamName
                     )
                 }
@@ -677,8 +687,6 @@ class S3ClientSymbolProcessor(
             val clientField = if (mode == S3Operation.Mode.SYNC) "_awsSyncClient" else "_awsAsyncClient"
             val bodyBuilder = CodeBlock.builder()
                 .add(key.code)
-                .add("\n")
-                .add(bodyCode)
                 .add("\n\n")
                 .addStatement(
                     """
@@ -690,10 +698,51 @@ class S3ClientSymbolProcessor(
                 .add(requestBuilder.build())
                 .addStatement("val _request = _requestBuilder.build()")
                 .add("\n")
-                .add("return %L.putObject(_request, _requestBody)", clientField)
+
+            if (mode == S3Operation.Mode.SYNC) {
+                bodyBuilder
+                    .beginControlFlow("if(%L is %T)", bodyParamName, CLASS_S3_BODY_PUBLISHER)
+                    .addStatement(
+                        "val _asyncBody = %T.fromPublisher(%T.flowPublisherToFlux(%L.asPublisher()))",
+                        CLASS_AWS_IS_ASYNC_BODY, CLASS_JDK_FLOW_ADAPTER, bodyParamName
+                    )
+                    .addStatement(
+                        "return %M { _awsAsyncClient.putObject(_request, _asyncBody).%M() }",
+                        MEMBER_RUN_BLOCKING, MEMBER_AWAIT_FUTURE
+                    )
+                    .nextControlFlow(
+                        "else if(%L.size() < 0 || %L.size() > _awsClientConfig.upload().partSize().toBytes())",
+                        bodyParamName, bodyParamName
+                    )
+                    .addStatement("val _bodySize = if(%L.size() > 0) %L.size() else null", bodyParamName, bodyParamName)
+                    .addStatement(
+                        "val _asyncBody = %T.fromInputStream(%L.asInputStream(), _bodySize, _awsAsyncExecutor)",
+                        CLASS_AWS_IS_ASYNC_BODY, bodyParamName
+                    )
+                    .addStatement(
+                        "return %M { _awsAsyncMultipartClient.putObject(_request, _asyncBody).%M() }",
+                        MEMBER_RUN_BLOCKING, MEMBER_AWAIT_FUTURE
+                    )
+                    .endControlFlow()
+                    .add("\n")
+            }
+
+            bodyBuilder
+                .add(bodyCode)
+                .add("\n\n")
 
             if (mode == S3Operation.Mode.ASYNC) {
-                bodyBuilder.add(".%M()", MEMBER_AWAIT_FUTURE)
+                bodyBuilder.add(
+                    """
+                    return if(%L.size() > 0 && %L.size() <= _awsClientConfig.upload().partSize().toBytes())
+                            _awsAsyncClient.putObject(_request, _requestBody).%M()
+                        else
+                            _awsAsyncMultipartClient.putObject(_request, _requestBody).%M()
+                            """.trimIndent(), bodyParamName, bodyParamName, MEMBER_AWAIT_FUTURE, MEMBER_AWAIT_FUTURE
+                )
+            } else {
+                bodyBuilder
+                    .add("return %L.putObject(_request, _requestBody)", clientField)
             }
             bodyBuilder.add("\n")
 
@@ -845,14 +894,14 @@ class S3ClientSymbolProcessor(
                 .findFirst()
                 .orElseThrow {
                     ProcessingErrorException(
-                        "@S3 operation key part named '%s' expected, but was not found".formatted(paramName),
+                        "@S3 operation key part named '${paramName}' expected, but was not found",
                         method
                     )
                 }
 
             val paramType = parameter.type.resolve()
             if (paramType.isCollection() || paramType.isMap()) {
-                throw ProcessingErrorException("@S3 operation key part '%s' can't be Collection or Map".formatted(paramName), method)
+                throw ProcessingErrorException("@S3 operation key part '${paramName}' can't be Collection or Map", method)
             }
 
             params.add(parameter)
