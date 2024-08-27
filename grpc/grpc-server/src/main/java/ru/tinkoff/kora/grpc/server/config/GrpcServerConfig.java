@@ -14,5 +14,9 @@ public interface GrpcServerConfig {
         return false;
     }
 
+    default long maxMessageSize() {
+        return 4 * 1024 * 1024; // 4Mb
+    }
+
     TelemetryConfig telemetry();
 }

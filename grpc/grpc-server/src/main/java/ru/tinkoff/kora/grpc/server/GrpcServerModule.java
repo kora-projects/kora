@@ -54,12 +54,15 @@ public interface GrpcServerModule extends NettyCommonModule {
         NettyChannelFactory nettyChannelFactory,
         ValueOf<GrpcServerTelemetry> telemetry) {
 
-        var builder = NettyServerBuilder.forPort(config.get().port())
+        GrpcServerConfig grpcServerConfig = config.get();
+
+        var builder = NettyServerBuilder.forPort(grpcServerConfig.port())
+            .maxInboundMessageSize((int) grpcServerConfig.maxMessageSize())
             .bossEventLoopGroup(bossEventLoop)
             .workerEventLoopGroup(eventLoop)
             .channelFactory(nettyChannelFactory.getServerFactory());
 
-        if (config.get().reflectionEnabled() && isClassPresent("io.grpc.protobuf.services.ProtoReflectionService")) {
+        if (grpcServerConfig.reflectionEnabled() && isClassPresent("io.grpc.protobuf.services.ProtoReflectionService")) {
             builder.addService(ProtoReflectionService.newInstance());
         }
 
