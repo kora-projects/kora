@@ -99,7 +99,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
                                 } else if (resetTo.equals("latest")) {
                                     consumer.seekToEnd(List.of(partition));
                                 } else {
-                                    throw new IllegalArgumentException("Expected `earliest` or `latest` value, but received: " + resetTo);
+                                    throw new IllegalArgumentException("Expected `earliest` or `latest` or some duration value, but received: " + resetTo);
                                 }
                             } else if (config.offset().left() != null) {
                                 var resetToDuration = Objects.requireNonNull(config.offset().left());
