@@ -18,7 +18,6 @@ import ru.tinkoff.kora.kafka.common.consumer.KafkaListenerConfig;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.BaseKafkaRecordsHandler;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -97,12 +96,14 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
                                 var resetTo = Objects.requireNonNull(config.offset().right());
                                 if (resetTo.equals("earliest")) {
                                     consumer.seekToBeginning(List.of(partition));
-                                } else {
+                                } else if (resetTo.equals("latest")) {
                                     consumer.seekToEnd(List.of(partition));
+                                } else {
+                                    throw new IllegalArgumentException("Expected `earliest` or `latest` value, but received: " + resetTo);
                                 }
                             } else if (config.offset().left() != null) {
                                 var resetToDuration = Objects.requireNonNull(config.offset().left());
-                                var resetTo = Instant.now().minus(resetToDuration).getEpochSecond();// todo millis?
+                                var resetTo = Instant.now().minus(resetToDuration).toEpochMilli();
                                 var resetToOffset = consumer.offsetsForTimes(Map.of(partition, resetTo)).get(partition).offset();
                                 consumer.seek(partition, resetToOffset);
                             }
