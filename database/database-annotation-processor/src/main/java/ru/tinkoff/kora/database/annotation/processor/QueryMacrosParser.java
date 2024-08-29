@@ -1,12 +1,15 @@
 package ru.tinkoff.kora.database.annotation.processor;
 
 import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.TypeName;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.common.naming.NameConverter;
 import ru.tinkoff.kora.common.naming.SnakeCaseNameConverter;
+import ru.tinkoff.kora.database.annotation.processor.jdbc.JdbcNativeType;
+import ru.tinkoff.kora.database.annotation.processor.jdbc.JdbcNativeTypes;
 
 import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
@@ -52,7 +55,12 @@ final class QueryMacrosParser {
         }
     }
 
-    private List<Field> getPathField(DeclaredType target, String rootPath, String columnPrefix) {
+    private List<Field> getPathField(ExecutableElement method, DeclaredType target, String rootPath, String columnPrefix) {
+        final JdbcNativeType nativeType = JdbcNativeTypes.findNativeType(TypeName.get(target));
+        if (nativeType != null) {
+            throw new ProcessingErrorException("Can't process argument '" + rootPath  +"' as macros cause it is Native Type: " + target, method);
+        }
+
         var result = new ArrayList<Field>();
         for (var field : getFields(target)) {
             var path = rootPath.isEmpty()
@@ -64,7 +72,7 @@ final class QueryMacrosParser {
             if (embedded != null) {
                 if (field.asType() instanceof DeclaredType dt) {
                     var prefix = Objects.requireNonNullElse(AnnotationUtils.parseAnnotationValueWithoutDefault(embedded, "value"), "");
-                    for (var f : getPathField(dt, path, prefix)) {
+                    for (var f : getPathField(method, dt, path, prefix)) {
                         result.add(new Field(f.field(), f.column(), f.path(), isId));
                     }
                 } else {
@@ -146,7 +154,6 @@ final class QueryMacrosParser {
             }
 
             var target = getTarget(targetAndCmd[0].strip(), repositoryType, method);
-
             var selectors = targetAndCmd[1].split("-=");
             final boolean include;
             if (selectors.length == 1) {
@@ -163,8 +170,8 @@ final class QueryMacrosParser {
                 : Set.<String>of();
 
             var fields = paths.isEmpty()
-                ? getPathField(target.type(), target.name(), "")
-                : getPathField(target.type(), target.name(), "").stream()
+                ? getPathField(method, target.type(), target.name(), "")
+                : getPathField(method, target.type(), target.name(), "").stream()
                 .filter(f -> include == paths.contains(f.path()))
                 .toList();
 
