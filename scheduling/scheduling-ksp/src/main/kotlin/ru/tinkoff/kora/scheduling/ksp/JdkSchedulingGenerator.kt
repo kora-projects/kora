@@ -163,7 +163,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             .parameterizedBy(ClassName(packageName, configClassName))
         )
         .addCode("val configValue = config.get(%S);\n", configPath)
-        .addStatement("return extractor.extract(configValue) ?: throw %T.missingValueAfterParse(configValue)", CommonClassNames.configParseException)
+        .addStatement("return extractor.extract(configValue) ?: throw %T.missingValueAfterParse(configValue)", CommonClassNames.configValueExtractionException)
         .returns(ClassName(packageName, configClassName))
         .build()
 

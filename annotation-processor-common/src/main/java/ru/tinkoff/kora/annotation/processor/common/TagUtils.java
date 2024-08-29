@@ -6,21 +6,17 @@ import com.squareup.javapoet.TypeName;
 
 import javax.lang.model.AnnotatedConstruct;
 import javax.lang.model.element.Element;
-import javax.lang.model.type.ArrayType;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.RecordComponentElement;
+import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.TypeMirror;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public final class TagUtils {
 
-    private TagUtils() { }
+    private TagUtils() {}
 
     private static Set<String> parseTagValue0(AnnotatedConstruct element) {
         for (var annotationMirror : element.getAnnotationMirrors()) {
@@ -107,11 +103,34 @@ public final class TagUtils {
         return Set.of();
     }
 
-    public static AnnotationSpec makeAnnotationSpecForTypes(TypeName ... tags) {
+    public static AnnotationSpec makeAnnotationSpecForTypes(Collection<TypeName> tags) {
         var annotation = AnnotationSpec.builder(CommonClassNames.tag);
         var value = CodeBlock.builder();
         value.add("{");
-        var tagsList = List.of(tags);
+        var tagsList = tags.stream().toList();
+        for (int i = 0; i < tagsList.size(); i++) {
+            if (i > 0) {
+                value.add(", ");
+            }
+            value.add("$T.class", tagsList.get(i));
+        }
+        value.add("}");
+        return annotation.addMember("value", value.build()).build();
+    }
+
+    public static AnnotationSpec makeAnnotationSpecForTypes(TypeName... tags) {
+        return makeAnnotationSpecForTypes(Arrays.stream(tags).toList());
+    }
+
+    public static AnnotationSpec makeAnnotationSpecForClasses(Class<?>... tags) {
+        return makeAnnotationSpecForClasses(Arrays.stream(tags).toList());
+    }
+
+    public static AnnotationSpec makeAnnotationSpecForClasses(Collection<Class<?>> tags) {
+        var annotation = AnnotationSpec.builder(CommonClassNames.tag);
+        var value = CodeBlock.builder();
+        value.add("{");
+        var tagsList = tags.stream().toList();
         for (int i = 0; i < tagsList.size(); i++) {
             if (i > 0) {
                 value.add(", ");

@@ -35,7 +35,7 @@ class ConfigModuleGenerator(val resolver: Resolver) {
                     .addParameter(ParameterSpec.builder("config", CommonClassNames.config).build())
                     .addParameter(ParameterSpec.builder("extractor", extractorClass).build())
                     .addStatement("val value = config.get(%S)", configPath)
-                    .addStatement("return extractor.extract(value) ?: throw %T.missingValueAfterParse(value)", CommonClassNames.configParseException)
+                    .addStatement("return extractor.extract(value) ?: throw %T.missingValueAfterParse(value)", CommonClassNames.configValueExtractionException)
                     .build()
             )
         return FileSpec.builder(packageName, moduleName)

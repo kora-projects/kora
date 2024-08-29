@@ -56,7 +56,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             library('kotlin-stdlib-lib', 'org.jetbrains.kotlin', 'kotlin-stdlib').versionRef('kotlin_')
             library('kotlin-reflect', 'org.jetbrains.kotlin', 'kotlin-reflect').versionRef('kotlin_')
             library('kotlin-compiler', 'org.jetbrains.kotlin', 'kotlin-compiler-embeddable').versionRef('kotlin_')
-            library('jetbrains.annotations', 'org.jetbrains', 'annotations').version('24.0.1')
+            library('jetbrains.annotations', 'org.jetbrains', 'annotations').version('24.1.0')
 
             library('kotlin-coroutines-core', 'org.jetbrains.kotlinx', 'kotlinx-coroutines-core').versionRef('kotlin-coroutines')
             library('kotlin-coroutines-reactor', 'org.jetbrains.kotlinx', 'kotlinx-coroutines-reactor').versionRef('kotlin-coroutines')
@@ -165,6 +165,9 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             library('swagger-core', 'io.swagger.core.v3', 'swagger-core').versionRef("swagger")
             library('swagger-annotations', 'io.swagger.core.v3', 'swagger-annotations').versionRef("swagger")
             library('swagger-models', 'io.swagger.core.v3', 'swagger-models').versionRef("swagger")
+
+            library('s3client-minio', 'io.minio', 'minio').version("8.5.12")
+            library('s3client-aws', 'software.amazon.awssdk', 's3').version("2.27.12")
         }
     }
 }
