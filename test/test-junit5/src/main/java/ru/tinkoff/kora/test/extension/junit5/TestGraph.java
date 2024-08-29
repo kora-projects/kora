@@ -27,7 +27,7 @@ final class TestGraph implements AutoCloseable {
     }
 
     void initialize() {
-        logger.debug("@KoraAppTest dependency container initializing...");
+        logger.trace("@KoraAppTest dependency container initializing...");
         final long started = TimeUtils.started();
 
         synchronized (LOCK) {
@@ -36,7 +36,7 @@ final class TestGraph implements AutoCloseable {
                 config.setup(graph);
                 final RefreshableGraph initGraph = graph.init();
                 this.graphInitialized = new TestGraphInitialized(initGraph, graph, new DefaultKoraAppGraph(graph, initGraph));
-                logger.info("@KoraAppTest dependency container initialized in {}", TimeUtils.tookForLogging(started));
+                logger.debug("@KoraAppTest dependency container initialized in {}", TimeUtils.tookForLogging(started));
             } catch (IOException e) {
                 throw new IllegalStateException(e);
             } finally {
@@ -57,7 +57,7 @@ final class TestGraph implements AutoCloseable {
     public void close() {
         if (graphInitialized != null) {
             final long started = TimeUtils.started();
-            logger.debug("@KoraAppTest dependency container releasing...");
+            logger.trace("@KoraAppTest dependency container releasing...");
             try {
                 graphInitialized.refreshableGraph().release();
             } catch (RuntimeException | Error e) {
@@ -66,7 +66,7 @@ final class TestGraph implements AutoCloseable {
                 throw new RuntimeException(e);
             }
             graphInitialized = null;
-            logger.info("@KoraAppTest dependency container released in {}", TimeUtils.tookForLogging(started));
+            logger.debug("@KoraAppTest dependency container released in {}", TimeUtils.tookForLogging(started));
         }
     }
 }
