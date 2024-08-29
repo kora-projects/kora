@@ -1337,6 +1337,23 @@ public class KoraCodegen extends DefaultCodegen {
         if ("BigDecimal".equals(codegenModel.dataType)) {
             codegenModel.imports.add("BigDecimal");
         }
+        if (model.getOneOf() != null) {
+            // I don't care what DefaultCodegen devs think about it
+            if (model.getProperties() == null || model.getProperties().isEmpty()) {
+                codegenModel.vars.clear();
+                codegenModel.allVars.clear();
+                codegenModel.requiredVars.clear();
+                codegenModel.optionalVars.clear();
+            } else {
+                codegenModel.vars.removeIf(p -> !model.getProperties().containsKey(p.name));
+                codegenModel.allVars.removeIf(p -> !model.getProperties().containsKey(p.name));
+                codegenModel.requiredVars.removeIf(p -> !model.getProperties().containsKey(p.name));
+                codegenModel.optionalVars.removeIf(p -> !model.getProperties().containsKey(p.name));
+            }
+            codegenModel.hasVars = !codegenModel.vars.isEmpty();
+            codegenModel.hasOptional = !codegenModel.optionalVars.isEmpty();
+            codegenModel.hasRequired = !codegenModel.requiredVars.isEmpty();
+        }
         return codegenModel;
     }
 
