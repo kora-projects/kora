@@ -62,9 +62,9 @@ jobs:
           KORA_CHANGELOG_TAG=${KORA_CHANGELOG_TAG//.}
           echo "KORA_CHANGELOG_TAG=${KORA_CHANGELOG_TAG}" >> $GITHUB_OUTPUT
 
-      - name: Wait package available at Maven Central (~80m)
+      - name: Wait package available at Maven Central (~40m)
         shell: bash
-        run: sleep 80m
+        run: sleep 40m
 
       - name: Notify new release to Telegram
         uses: appleboy/telegram-action@master
