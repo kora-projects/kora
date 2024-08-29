@@ -8,6 +8,7 @@ import org.junit.platform.commons.support.AnnotationSupport;
 import org.junit.platform.commons.util.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Graph;
 import ru.tinkoff.kora.application.graph.Node;
@@ -256,13 +257,15 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         }
 
         if (koraTestContext.metadata == null) {
+            logger.trace("@KoraAppTest class metadata extracting started...");
+            long startedMeta = TimeUtils.started();
             koraTestContext.metadata = getClassMetadata(koraTestContext, initializeOrigin, context);
+            logger.debug("@KoraAppTest class metadata extracting took: {}", TimeUtils.tookForLogging(startedMeta));
         }
 
         if (koraTestContext.graph == null) {
             koraTestContext.graph = generateTestGraph(koraTestContext.metadata, context);
             koraTestContext.graph.initialize();
-
         }
 
         if (!isReady) {
@@ -278,12 +281,14 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
     @Override
     public void beforeAll(ExtensionContext context) {
+        MDC.clear();
         getKoraTestContext(context);
     }
 
     @Override
     public void beforeEach(ExtensionContext context) {
         var koraTestContext = getInitializedKoraTestContext(InitializeOrigin.METHOD, context);
+        MDC.clear();
         prepareMocks(koraTestContext.graph.initialized());
         injectComponentsToFields(koraTestContext.metadata, koraTestContext.graph.initialized(), context);
     }
@@ -771,11 +776,13 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     @SuppressWarnings("unchecked")
     private static TestGraph generateTestGraph(TestClassMetadata classMetadata, ExtensionContext context) {
         var applicationClass = classMetadata.annotation.value();
+        long started = TimeUtils.started();
         var graphSupplier = GRAPH_SUPPLIER_MAP.computeIfAbsent(applicationClass, k -> {
             try {
                 var clazz = KoraJUnit5Extension.class.getClassLoader().loadClass(applicationClass.getName() + "Graph");
                 var constructors = (Constructor<? extends Supplier<? extends ApplicationGraphDraw>>[]) clazz.getConstructors();
                 var supplier = (Supplier<ApplicationGraphDraw>) constructors[0].newInstance();
+                logger.info("Instantiated and cached @KoraApp application '{}' graph in {}", applicationClass.getSimpleName(), TimeUtils.tookForLogging(started));
                 return supplier;
             } catch (ClassNotFoundException e) {
                 throw new ExtensionConfigurationException("@KoraAppTest#value must be annotated with @KoraApp, but probably wasn't: " + applicationClass, e);
