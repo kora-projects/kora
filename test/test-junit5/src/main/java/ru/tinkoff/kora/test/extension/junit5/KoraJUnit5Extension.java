@@ -782,7 +782,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                 var clazz = KoraJUnit5Extension.class.getClassLoader().loadClass(applicationClass.getName() + "Graph");
                 var constructors = (Constructor<? extends Supplier<? extends ApplicationGraphDraw>>[]) clazz.getConstructors();
                 var supplier = (Supplier<ApplicationGraphDraw>) constructors[0].newInstance();
-                logger.info("Instantiated and cached @KoraApp application class '{}' in {}", applicationClass.getSimpleName(), TimeUtils.tookForLogging(started));
+                logger.info("Instantiated and cached @KoraApp application '{}' graph in {}", applicationClass.getSimpleName(), TimeUtils.tookForLogging(started));
                 return supplier;
             } catch (ClassNotFoundException e) {
                 throw new ExtensionConfigurationException("@KoraAppTest#value must be annotated with @KoraApp, but probably wasn't: " + applicationClass, e);
