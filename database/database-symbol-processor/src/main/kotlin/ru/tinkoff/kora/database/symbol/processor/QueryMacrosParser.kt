@@ -7,6 +7,7 @@ import com.google.devtools.ksp.symbol.KSTypeReference
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.common.naming.SnakeCaseNameConverter
+import ru.tinkoff.kora.database.symbol.processor.jdbc.JdbcNativeTypes
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
@@ -46,29 +47,36 @@ class QueryMacrosParser {
         }
     }
 
-    private fun getPathField(target: KSClassDeclaration, rootPath: String, columnPrefix: String): Sequence<Field> = getFields(target).flatMap { field ->
-        val path = if (rootPath.isEmpty())
-            field.simpleName.asString()
-        else
-            "$rootPath." + field.simpleName.asString()
+    private fun getPathField(method: KSFunctionDeclaration, target: KSClassDeclaration, rootPath: String, columnPrefix: String): Sequence<Field> {
+        val nativeType = JdbcNativeTypes.findNativeType(target.toClassName())
+        if(nativeType != null) {
+            throw ProcessingErrorException("Can't process argument '$rootPath' as macros cause it is Native Type: $target", method)
+        }
 
-        val isId = field.isAnnotationPresent(DbUtils.idAnnotation)
-        val isEmbedded = field.annotations
-            .filter { a -> DbUtils.embeddedAnnotation == a.annotationType.resolve().toClassName() }
-            .firstOrNull()
+        return getFields(target).flatMap { field ->
+            val path = if (rootPath.isEmpty())
+                field.simpleName.asString()
+            else
+                "$rootPath." + field.simpleName.asString()
 
-        if (isEmbedded != null) {
-            val declaration = field.type.resolve().declaration
-            if (declaration !is KSClassDeclaration) {
-                throw IllegalArgumentException("@Embedded annotation placed on field that can't be embedded: $target")
+            val isId = field.isAnnotationPresent(DbUtils.idAnnotation)
+            val isEmbedded = field.annotations
+                .filter { a -> DbUtils.embeddedAnnotation == a.annotationType.resolve().toClassName() }
+                .firstOrNull()
+
+            if (isEmbedded != null) {
+                val declaration = field.type.resolve().declaration
+                if (declaration !is KSClassDeclaration) {
+                    throw IllegalArgumentException("@Embedded annotation placed on field that can't be embedded: $target")
+                }
+                val prefix = isEmbedded.findValueNoDefault("value") ?: ""
+
+                return@flatMap getPathField(method, declaration, path, prefix)
+                    .map { f -> Field(f.field, f.column, f.path, isId) }
+            } else {
+                val columnName = getColumnName(target, field, columnPrefix)
+                return@flatMap sequenceOf(Field(field, columnName, path, isId))
             }
-            val prefix = isEmbedded.findValueNoDefault("value") ?: ""
-
-            return@flatMap getPathField(declaration, path, prefix)
-                .map { f -> Field(f.field, f.column, f.path, isId) }
-        } else {
-            val columnName = getColumnName(target, field, columnPrefix)
-            return@flatMap sequenceOf(Field(field, columnName, path, isId))
         }
     }
 
@@ -151,9 +159,9 @@ class QueryMacrosParser {
                 setOf()
 
             val fields = if (paths.isEmpty()) {
-                getPathField(target.type, target.name, "").toList()
+                getPathField(method, target.type, target.name, "").toList()
             } else {
-                getPathField(target.type, target.name, "").filter { include == paths.contains(it.path) }.toList()
+                getPathField(method, target.type, target.name, "").filter { include == paths.contains(it.path) }.toList()
             }
 
             val nameConverter = target.type.getNameConverter(SnakeCaseNameConverter.INSTANCE)
