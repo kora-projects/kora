@@ -38,10 +38,7 @@ public interface MinioS3ClientModule extends S3ClientModule {
     @DefaultComponent
     default OkHttpClient minioOkHttpClient(@Nullable OkHttpClient okHttpClient,
                                            MinioS3ClientConfig minioS3ClientConfig) {
-        long timeout = (minioS3ClientConfig.requestTimeout() != null)
-            ? minioS3ClientConfig.requestTimeout().toMillis()
-            : TimeUnit.MINUTES.toMillis(5L);
-
+        long timeout = minioS3ClientConfig.requestTimeout().toMillis();
         return (okHttpClient == null)
             ? HttpUtils.newDefaultHttpClient(timeout, timeout, timeout)
             : okHttpClient.newBuilder().callTimeout(timeout, TimeUnit.MILLISECONDS).build();

@@ -20,8 +20,9 @@ public interface MinioS3ClientConfig {
         return AddressStyle.PATH;
     }
 
-    @Nullable
-    Duration requestTimeout();
+    default Duration requestTimeout() {
+        return Duration.ofSeconds(45);
+    }
 
     UploadConfig upload();
 
