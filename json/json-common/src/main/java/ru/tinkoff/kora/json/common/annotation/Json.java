@@ -8,11 +8,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Indicates that class will be serialized into/from JSON
+ * <b>Русский</b>: Аннотация указывает что для типа представлен в формате JSON. Если указан для типа то для данного типа будет создан читатель и писатель JSON и внедрен в контейнер зависимостей.
+ * <hr>
+ * <b>English</b>: Annotation specifies that for the type is represented in JSON format. If specified for a type, a JSON reader and writer will be created for that type and embedded in the dependency container.
  */
 @Tag(Json.class)
 @Target({ElementType.TYPE, ElementType.PARAMETER, ElementType.METHOD, ElementType.TYPE_USE})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Json {
-
-}
+public @interface Json { }

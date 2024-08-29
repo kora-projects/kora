@@ -8,8 +8,19 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * <b>Русский</b>: Конфигурация описывающая соединения к Cassandra базе данных.
+ * <hr>
+ * <b>English</b>: Configuration describing connections to the Cassandra database.
+ *
+ * @see CassandraRepository
+ */
 @ConfigValueExtractor
 public interface CassandraConfig {
+
+    /**
+     * @see ru.tinkoff.kora.database.cassandra.annotation.CassandraProfile
+     */
     @Nullable
     Map<String, Profile> profiles();
 

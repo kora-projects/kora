@@ -2,10 +2,28 @@ package ru.tinkoff.kora.http.common.cookie;
 
 import java.time.ZonedDateTime;
 
+/**
+ * <b>Русский</b>: Описывает HTTP Cookie параметр
+ * <hr>
+ * <b>English</b>: Describes HTTP Cookie parameter
+ * <br>
+ * <br>
+ * <a href="https://developer.mozilla.org/ru/docs/Web/HTTP/Cookies">Описание Куки параметра</a>
+ */
 public interface Cookie extends Comparable<Cookie> {
 
+    /**
+     * @return <b>Русский</b>: Возвращает имя Cookie
+     * <hr>
+     * <b>English</b>: Returns the name of the cookie
+     */
     String name();
 
+    /**
+     * @return <b>Русский</b>: Возвращает значение Cookie
+     * <hr>
+     * <b>English</b>: Returns value of the cookie
+     */
     String value();
 
     Cookie setValue(final String value);

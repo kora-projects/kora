@@ -19,18 +19,18 @@ public class AsyncHttpClientHeaders extends AbstractHttpHeaders implements HttpH
 
     @Nullable
     @Override
-    public String getFirst(String name) {
-        return this.headers.get(name);
+    public String getFirst(String headerName) {
+        return this.headers.get(headerName);
     }
 
     @Override
-    public List<String> getAll(String name) {
-        return this.headers.getAll(name);
+    public List<String> getAll(String headerName) {
+        return this.headers.getAll(headerName);
     }
 
     @Override
-    public boolean has(String key) {
-        return headers.contains(key);
+    public boolean has(String headerName) {
+        return headers.contains(headerName);
     }
 
     @Override

@@ -48,8 +48,8 @@ public final class HttpHeadersImpl extends AbstractHttpHeaders implements Mutabl
 
     @Nullable
     @Override
-    public String getFirst(String name) {
-        var headerValues = this.values.get(name.toLowerCase());
+    public String getFirst(String headerName) {
+        var headerValues = this.values.get(headerName.toLowerCase());
         if (headerValues == null || headerValues.isEmpty()) {
             return null;
         }
@@ -59,8 +59,8 @@ public final class HttpHeadersImpl extends AbstractHttpHeaders implements Mutabl
 
     @Override
     @Nullable
-    public List<String> getAll(String name) {
-        var value = this.values.get(name.toLowerCase());
+    public List<String> getAll(String headerName) {
+        var value = this.values.get(headerName.toLowerCase());
         if (value == null) {
             return null;
         }
@@ -68,8 +68,8 @@ public final class HttpHeadersImpl extends AbstractHttpHeaders implements Mutabl
     }
 
     @Override
-    public boolean has(String key) {
-        return this.values.containsKey(key.toLowerCase());
+    public boolean has(String headerName) {
+        return this.values.containsKey(headerName.toLowerCase());
     }
 
     @Override

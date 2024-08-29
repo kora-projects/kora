@@ -2,7 +2,10 @@ package ru.tinkoff.kora.database.jdbc;
 
 import java.sql.SQLException;
 
-public class JdbcHelper {
+public final class JdbcHelper {
+
+    private JdbcHelper() { }
+
     public interface SqlFunction0<T> {
         T apply() throws SQLException;
     }

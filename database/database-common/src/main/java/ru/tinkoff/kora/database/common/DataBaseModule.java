@@ -12,9 +12,9 @@ public interface DataBaseModule {
 
     @Nonnull
     @DefaultComponent
-    default DefaultDataBaseTelemetryFactory defaultDataBaseTelemetry( @Nullable DataBaseLoggerFactory loggerFactory,
-                                                                      @Nullable DataBaseMetricWriterFactory metricWriterFactory,
-                                                                      @Nullable DataBaseTracerFactory tracingFactory) {
+    default DefaultDataBaseTelemetryFactory defaultDataBaseTelemetry(@Nullable DataBaseLoggerFactory loggerFactory,
+                                                                     @Nullable DataBaseMetricWriterFactory metricWriterFactory,
+                                                                     @Nullable DataBaseTracerFactory tracingFactory) {
         return new DefaultDataBaseTelemetryFactory(loggerFactory, metricWriterFactory, tracingFactory);
     }
 

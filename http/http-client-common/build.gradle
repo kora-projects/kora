@@ -1,7 +1,6 @@
 plugins {
     id "java-test-fixtures"
 }
-apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
     api project(':logging:logging-common')
@@ -37,5 +36,6 @@ dependencies {
 
     testFixturesImplementation(libs.kotlin.stdlib.lib)
     testFixturesImplementation(libs.kotlin.coroutines.jdk8)
-
 }
+
+apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"

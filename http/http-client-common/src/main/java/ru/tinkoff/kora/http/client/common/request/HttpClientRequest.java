@@ -9,6 +9,7 @@ import java.net.URI;
 import java.time.Duration;
 
 public interface HttpClientRequest {
+
     String method();
 
     URI uri();

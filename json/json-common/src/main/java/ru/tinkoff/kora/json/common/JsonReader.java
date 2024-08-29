@@ -3,19 +3,18 @@ package ru.tinkoff.kora.json.common;
 import com.fasterxml.jackson.core.JsonParser;
 
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorField;
+
 import java.io.IOException;
 import java.io.InputStream;
 
 /**
- * Class that defines public API for reading JSON content.
+ * <b>Русский</b>: Контракт читателя JSON со всеми методами чтения
+ * <hr>
+ * <b>English</b>: JSON reader contract with all read methods
  */
 public interface JsonReader<T> {
 
-    /**
-     * @param parser jackson parser used for deserializing JSON
-     * @return deserialized object
-     * @throws IOException in case of deserialization errors
-     */
     @Nullable
     T read(JsonParser parser) throws IOException;
 

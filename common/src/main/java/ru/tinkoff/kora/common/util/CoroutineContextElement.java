@@ -7,8 +7,8 @@ import kotlin.jvm.functions.Function2;
 import ru.tinkoff.kora.common.Context;
 
 public record CoroutineContextElement(Context value) implements CoroutineContext.Element {
-    public static final Key<CoroutineContextElement> KEY = new Key<>() {
-    };
+
+    public static final Key<CoroutineContextElement> KEY = new Key<>() {};
 
     @Nonnull
     @Override

@@ -1,6 +1,14 @@
 package ru.tinkoff.kora.http.common;
 
-public class HttpMethod {
+/**
+ * <b>Русский</b>: Описывает стандартные HTTP методы
+ * <hr>
+ * <b>English</b>: Describes standard HTTP methods
+ */
+public final class HttpMethod {
+
+    private HttpMethod() { }
+
     public static final String GET = "GET";
     public static final String HEAD = "HEAD";
     public static final String POST = "POST";

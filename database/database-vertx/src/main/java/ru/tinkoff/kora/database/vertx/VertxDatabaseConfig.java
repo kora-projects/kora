@@ -9,8 +9,16 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 import java.time.Duration;
 import java.util.Objects;
 
+/**
+ * <b>Русский</b>: Конфигурация описывающая соединения к Vertx базе данных.
+ * <hr>
+ * <b>English</b>: Configuration describing connections to the Vertx database.
+ *
+ * @see VertxRepository
+ */
 @ConfigValueExtractor
 public interface VertxDatabaseConfig {
+
     String connectionUri();
 
     String username();
@@ -48,22 +56,22 @@ public interface VertxDatabaseConfig {
     static SqlConnectOptions toPgConnectOptions(VertxDatabaseConfig config) {
         var options = SqlConnectOptions.fromUri(config.connectionUri());
 
-        options
-            .setCachePreparedStatements(config.cachePreparedStatements())
-            .setUser(config.username())
-            .setPassword(config.password())
-            .setConnectTimeout(Math.toIntExact(config.connectionTimeout().toMillis()))
-            .setIdleTimeout(Math.toIntExact(config.idleTimeout().toMillis()))
-            .setMetricsName(config.poolName());
+                options
+                .setCachePreparedStatements(config.cachePreparedStatements())
+                .setUser(config.username())
+                .setPassword(config.password())
+                .setConnectTimeout(Math.toIntExact(config.connectionTimeout().toMillis()))
+                .setIdleTimeout(Math.toIntExact(config.idleTimeout().toMillis()))
+                .setMetricsName(config.poolName());
         return options;
     }
 
     static PoolOptions toPgPoolOptions(VertxDatabaseConfig config) {
         return new PoolOptions()
-            .setIdleTimeout(Math.toIntExact(config.idleTimeout().toMillis()))
-            .setConnectionTimeout(Math.toIntExact(Objects.requireNonNullElse(config.acquireTimeout(), config.connectionTimeout()).toMillis()))
-            .setName(config.poolName())
-            .setMaxSize(config.maxPoolSize());
+                .setIdleTimeout(Math.toIntExact(config.idleTimeout().toMillis()))
+                .setConnectionTimeout(Math.toIntExact(Objects.requireNonNullElse(config.acquireTimeout(), config.connectionTimeout()).toMillis()))
+                .setName(config.poolName())
+                .setMaxSize(config.maxPoolSize());
     }
 
     TelemetryConfig telemetry();

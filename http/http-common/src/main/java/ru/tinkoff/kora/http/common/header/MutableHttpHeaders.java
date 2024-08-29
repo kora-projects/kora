@@ -5,7 +5,21 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * <b>Русский</b>: Описывает заголовки HTTP запроса/ответа, не мутирующий
+ * <hr>
+ * <b>English</b>: Describes HTTP request/response headers, immutable
+ * <br>
+ * <br>
+ * Пример / Example:
+ * <pre>
+ * {@code
+ * HttpHeaders.of("content-type", "application/json").toMutable()
+ * }
+ * </pre>
+ */
 public interface MutableHttpHeaders extends HttpHeaders {
+
     MutableHttpHeaders set(String key, Collection<String> value);
 
     default MutableHttpHeaders set(String key, Iterable<?> values) {

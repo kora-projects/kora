@@ -1,12 +1,19 @@
 package ru.tinkoff.kora.common.naming;
 
+import jakarta.annotation.Nonnull;
+
 /**
- * Example: "myFieldNAME" will convert to "myFieldName"
+ * Пример / Example:
+ * <br>
+ * <pre>
+ * "myFieldNAME" &#8594; "myFieldName"
+ * </pre>
  */
 public final class CamelCaseNameConverter implements NameConverter {
 
+    @Nonnull
     @Override
-    public String convert(String originalName) {
+    public String convert(@Nonnull String originalName) {
         final String[] splitted = originalName.split("(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|( +)");
 
         final StringBuilder builder = new StringBuilder(splitted[0].toLowerCase());

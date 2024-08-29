@@ -4,15 +4,38 @@ import jakarta.annotation.Nullable;
 
 import java.util.*;
 
+/**
+ * <b>Русский</b>: Описывает заголовки HTTP запроса/ответа, не мутирующий
+ * <hr>
+ * <b>English</b>: Describes HTTP request/response headers, immutable
+ * <br>
+ * <br>
+ * Пример / Example:
+ * <pre>
+ * {@code
+ * HttpHeaders.of("content-type", "application/json")
+ * }
+ * </pre>
+ */
 public interface HttpHeaders extends Iterable<Map.Entry<String, List<String>>> {
 
+    /**
+     * @return <b>Русский</b>: Возвращает первое найденное значение по имени переданного заголовка либо <i>null</i> если таковой заголовок отсутствует
+     * <hr>
+     * <b>English</b>: Returns the first value found by the name of the passed header or <i>null</i> if no header is present
+     */
     @Nullable
-    String getFirst(String name);
+    String getFirst(String headerName);
 
+    /**
+     * @return <b>Русский</b>: Возвращает все значения по имени переданного заголовка либо <i>null</i> если таковые заголовки отсутствуют
+     * <hr>
+     * <b>English</b>: Returns all values by name of the passed header or <i>null</i> if no such headers are present
+     */
     @Nullable
-    List<String> getAll(String name);
+    List<String> getAll(String headerName);
 
-    boolean has(String key);
+    boolean has(String headerName);
 
     default boolean isEmpty() {
         return size() == 0;
@@ -20,6 +43,11 @@ public interface HttpHeaders extends Iterable<Map.Entry<String, List<String>>> {
 
     int size();
 
+    /**
+     * @return <b>Русский</b>: Возвращает все имена заголовков
+     * <hr>
+     * <b>English</b>: Returns all header names
+     */
     Set<String> names();
 
     default MutableHttpHeaders toMutable() {

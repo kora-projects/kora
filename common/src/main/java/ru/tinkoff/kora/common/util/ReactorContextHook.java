@@ -13,7 +13,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
 public final class ReactorContextHook {
-
     private static final AtomicBoolean initialized = new AtomicBoolean(false);
 
     private ReactorContextHook() { }

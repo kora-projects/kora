@@ -4,6 +4,7 @@ import ru.tinkoff.kora.config.common.impl.SimpleConfigValueOrigin;
 import ru.tinkoff.kora.config.common.origin.ConfigOrigin;
 
 public interface ConfigValueOrigin {
+
     ConfigValuePath path();
 
     ConfigOrigin config();

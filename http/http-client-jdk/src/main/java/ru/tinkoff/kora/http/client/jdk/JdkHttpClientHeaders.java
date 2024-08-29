@@ -16,8 +16,8 @@ public class JdkHttpClientHeaders extends AbstractHttpHeaders implements HttpHea
 
     @Nullable
     @Override
-    public String getFirst(String name) {
-        var headers = this.headers.get(name);
+    public String getFirst(String headerName) {
+        var headers = this.headers.get(headerName);
         if (headers == null || headers.isEmpty()) {
             return null;
         }
@@ -26,8 +26,8 @@ public class JdkHttpClientHeaders extends AbstractHttpHeaders implements HttpHea
 
     @Nullable
     @Override
-    public List<String> getAll(String name) {
-        return this.headers.get(name);
+    public List<String> getAll(String headerName) {
+        return this.headers.get(headerName);
     }
 
     @Override
@@ -36,8 +36,8 @@ public class JdkHttpClientHeaders extends AbstractHttpHeaders implements HttpHea
     }
 
     @Override
-    public boolean has(String key) {
-        return this.headers.containsKey(key);
+    public boolean has(String headerName) {
+        return this.headers.containsKey(headerName);
     }
 
     @Override
