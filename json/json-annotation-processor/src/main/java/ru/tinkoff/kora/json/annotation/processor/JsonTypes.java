@@ -7,6 +7,7 @@ public class JsonTypes {
     public static final ClassName jsonInclude = ClassName.get("ru.tinkoff.kora.json.common.annotation", "JsonInclude");
     public static final ClassName jsonDiscriminatorField = ClassName.get("ru.tinkoff.kora.json.common.annotation", "JsonDiscriminatorField");
     public static final ClassName jsonDiscriminatorValue = ClassName.get("ru.tinkoff.kora.json.common.annotation", "JsonDiscriminatorValue");
+    public static final ClassName jsonUnboxed = ClassName.get("ru.tinkoff.kora.json.common.annotation", "JsonUnboxed");
 
 
     public static final ClassName jsonReaderAnnotation = ClassName.get("ru.tinkoff.kora.json.common.annotation", "JsonReader");

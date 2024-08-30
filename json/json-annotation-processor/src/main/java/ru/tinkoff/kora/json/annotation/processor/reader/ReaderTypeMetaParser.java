@@ -49,6 +49,30 @@ public class ReaderTypeMetaParser {
         return new JsonClassReaderMeta(typeMirror, jsonClass, fields);
     }
 
+    public UnboxedReaderMeta parseUnboxed(TypeElement jsonClass, TypeMirror typeMirror) throws ProcessingErrorException {
+        if (jsonClass.getKind() != ElementKind.CLASS && jsonClass.getKind() != ElementKind.RECORD) {
+            throw new IllegalArgumentException("Should not be called for non class elements");
+        }
+        if (jsonClass.getModifiers().contains(Modifier.ABSTRACT)) {
+            throw new IllegalArgumentException("Should not be called for abstract elements");
+        }
+
+        var jsonConstructor = Objects.requireNonNull(this.findJsonConstructor(jsonClass));
+
+        if (jsonConstructor.getParameters().size() != 1) {
+            throw new ProcessingErrorException(
+                "@JsonUnboxed JsonReader can be created only for constructors with single parameter",
+                jsonConstructor
+            );
+        }
+
+        VariableElement parameter = jsonConstructor.getParameters().get(0);
+
+        var fieldMeta = new UnboxedReaderMeta.FieldMeta(parameter, TypeName.get(parameter.asType()));
+
+        return new UnboxedReaderMeta(typeMirror, jsonClass, fieldMeta);
+    }
+
     @Nullable
     public ReaderFieldType parseReaderFieldType(TypeMirror jsonClass) {
         var knownType = this.knownTypes.detect(jsonClass);

@@ -71,9 +71,9 @@ public record CompileResult(String testPackage, List<Diagnostic<? extends JavaFi
                 .filter(d -> d.getKind() == Diagnostic.Kind.ERROR)
                 .map(Object::toString)
                 .collect(Collectors.joining("\n"));
-            throw new RuntimeException("CompilationError: \n" + errors.indent(2) + "\n" + j.toString().indent(2));
+            return new RuntimeException("CompilationError: \n" + errors.indent(2) + "\n" + j.toString().indent(2));
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            return new RuntimeException(e);
         }
 
     }
