@@ -29,11 +29,11 @@ public class CassandraSessionBuilder {
         }
 
         applyOverridable(loaderBuilder, config.basic(), config.advanced());
-        builder.withConfigLoader(loaderBuilder.build());
         if (telemetry.getMetricRegistry() != null) {
             loaderBuilder.withString(METRICS_FACTORY_CLASS, MicrometerMetricsFactory.class.getCanonicalName());
             builder.withMetricRegistry(telemetry.getMetricRegistry());
         }
+        builder.withConfigLoader(loaderBuilder.build());
         return builder.build();
     }
 

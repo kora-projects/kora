@@ -1,5 +1,7 @@
 package ru.tinkoff.kora.database.cassandra;
 
+import com.datastax.oss.driver.api.core.metrics.DefaultNodeMetric;
+import com.datastax.oss.driver.api.core.metrics.DefaultSessionMetric;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
@@ -319,8 +321,21 @@ public interface CassandraConfig {
 
             @ConfigValueExtractor
             interface NodeConfig {
-                @Nullable
-                List<String> enabled();
+
+                /**
+                 * @see com.datastax.oss.driver.api.core.metrics.DefaultNodeMetric
+                 */
+                default List<String> enabled() {
+                    return List.of(
+                        DefaultNodeMetric.OPEN_CONNECTIONS.getPath(),
+                        DefaultNodeMetric.IN_FLIGHT.getPath(),
+                        DefaultNodeMetric.BYTES_RECEIVED.getPath(),
+                        DefaultNodeMetric.BYTES_SENT.getPath(),
+                        DefaultNodeMetric.WRITE_TIMEOUTS.getPath(),
+                        DefaultNodeMetric.READ_TIMEOUTS.getPath(),
+                        DefaultNodeMetric.ABORTED_REQUESTS.getPath()
+                    );
+                }
 
                 @Nullable
                 Config cqlMessages();
@@ -328,8 +343,19 @@ public interface CassandraConfig {
 
             @ConfigValueExtractor
             interface SessionConfig {
-                @Nullable
-                List<String> enabled();
+
+                /**
+                 * @see com.datastax.oss.driver.api.core.metrics.DefaultSessionMetric
+                 */
+                default List<String> enabled() {
+                    return List.of(
+                        DefaultSessionMetric.CONNECTED_NODES.getPath(),
+                        DefaultSessionMetric.CQL_REQUESTS.getPath(),
+                        DefaultSessionMetric.CQL_CLIENT_TIMEOUTS.getPath(),
+                        DefaultSessionMetric.CQL_PREPARED_CACHE_SIZE.getPath(),
+                        DefaultSessionMetric.THROTTLING_DELAY.getPath()
+                    );
+                }
 
                 @Nullable
                 Config cqlRequests();
