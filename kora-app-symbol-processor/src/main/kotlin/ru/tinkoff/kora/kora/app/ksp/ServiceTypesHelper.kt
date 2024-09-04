@@ -110,16 +110,16 @@ class ServiceTypesHelper(val resolver: Resolver) {
             throw IllegalArgumentException()
         }
 
-//        return if (maybeInterceptor.declaration is KSClassDeclaration) {
-//            (maybeInterceptor.declaration as KSClassDeclaration).getDeclaredFunctions()
-//                .filter { f -> f.simpleName.asString() == "init" && f.parameters.size == 1 && f.returnType != null && !f.returnType!!.isVoid() }
-//                .filter { f -> f.parameters.first().type.toTypeName() == f.returnType!!.toTypeName() }
-//                .map { it.returnType!!.resolve() }
-//                .firstOrNull() ?: throw IllegalArgumentException()
-//        } else {
-        val memberOf = interceptorInitFunction.asMemberOf(maybeInterceptor)
-        return memberOf.parameterTypes[0]!!.makeNotNullable()
-//        }
+        return if (maybeInterceptor.declaration is KSClassDeclaration) {
+            (maybeInterceptor.declaration as KSClassDeclaration).getDeclaredFunctions()
+                .filter { f -> f.simpleName.asString() == "init" && f.parameters.size == 1 && f.returnType != null && !f.returnType!!.isVoid() }
+                .filter { f -> f.parameters.first().type.toTypeName() == f.returnType!!.toTypeName() }
+                .map { it.returnType!!.resolve() }
+                .firstOrNull() ?: throw IllegalArgumentException()
+        } else {
+            val memberOf = interceptorInitFunction.asMemberOf(maybeInterceptor)
+            return memberOf.parameterTypes[0]!!.makeNotNullable()
+        }
     }
 
     fun isInterceptor(type: KSType) = interceptorType.isAssignableFrom(type)
