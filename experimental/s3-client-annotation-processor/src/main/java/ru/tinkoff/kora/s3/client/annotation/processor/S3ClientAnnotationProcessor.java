@@ -1055,7 +1055,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                 })
                 .filter(p -> p.getSimpleName().contentEquals(paramName))
                 .findFirst()
-                .orElseThrow(() -> new ProcessingErrorException("@S3 operation key part named '%s' expected, but was not found".formatted(paramName), method));
+                .orElseThrow(() -> new ProcessingErrorException("@S3 operation key part named '%s' expected, but wasn't found".formatted(paramName), method));
 
             if (CommonUtils.isCollection(parameter.asType()) || CommonUtils.isMap(parameter.asType())) {
                 throw new ProcessingErrorException("@S3 operation key part '%s' can't be Collection or Map".formatted(paramName), method);

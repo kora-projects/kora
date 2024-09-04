@@ -91,7 +91,7 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
                 }
             }
             if (params.size() == size) {
-                throw new ProcessingErrorException("Parameter usage was not found in query: " + parameterName, parameter.variable());
+                throw new ProcessingErrorException("Parameter usage wasn't found in query: " + parameterName, parameter.variable());
             }
         }
 

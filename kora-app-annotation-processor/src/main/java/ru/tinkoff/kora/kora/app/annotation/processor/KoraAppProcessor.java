@@ -332,7 +332,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             var sourceDescriptors = components.nonTemplates;
             var rootSet = sourceDescriptors.stream()
                 .filter(cd -> AnnotationUtils.isAnnotationPresent(cd.source(), CommonClassNames.root)
-                    || cd instanceof ComponentDeclaration.AnnotatedComponent ac && AnnotationUtils.isAnnotationPresent(ac.typeElement(), CommonClassNames.root))
+                              || cd instanceof ComponentDeclaration.AnnotatedComponent ac && AnnotationUtils.isAnnotationPresent(ac.typeElement(), CommonClassNames.root))
                 .toList();
             return new ProcessingState.None(type, allModules, sourceDescriptors, components.templates, rootSet);
         } catch (ProcessingErrorException e) {
@@ -431,7 +431,20 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 }
             }
             var component = components.get(i);
-            currentClass.addField(FieldSpec.builder(ParameterizedTypeName.get(CommonClassNames.node, TypeName.get(component.type()).box()), component.fieldName(), Modifier.PRIVATE, Modifier.FINAL).build());
+            TypeName componentTypeName = TypeName.get(component.type()).box();
+            var typeMirrorElement = types.asElement(component.type());
+            if (typeMirrorElement instanceof TypeElement te) {
+                var annotation = AnnotationUtils.findAnnotation(typeMirrorElement, CommonClassNames.aopProxy);
+                if (annotation != null) {
+                    var superElement = types.asElement(te.getSuperclass());
+                    var aopProxyName = NameUtils.generatedType(superElement, "_AopProxy");
+                    if (typeMirrorElement.getSimpleName().contentEquals(aopProxyName)) {
+                        componentTypeName = TypeName.get(te.getSuperclass()).box();
+                    }
+                }
+            }
+
+            currentClass.addField(FieldSpec.builder(ParameterizedTypeName.get(CommonClassNames.node, componentTypeName), component.fieldName(), Modifier.PRIVATE, Modifier.FINAL).build());
             currentConstructor.addStatement("var _type_of_$L = map.get($S)", component.fieldName(), component.fieldName());
             var statement = this.generateComponentStatement(graphTypeName, allModules, interceptors, components, component);
             currentConstructor.addStatement(statement);

@@ -64,7 +64,7 @@ public class TestContext {
                     continue param;
                 }
             }
-            throw new RuntimeException("Constructor param of type %s with tags %s was not found".formatted(paramType, Arrays.toString(tags)));
+            throw new RuntimeException("Constructor param of type %s with tags %s wasn't found".formatted(paramType, Arrays.toString(tags)));
         }
         try {
             return constructor.newInstance(params);

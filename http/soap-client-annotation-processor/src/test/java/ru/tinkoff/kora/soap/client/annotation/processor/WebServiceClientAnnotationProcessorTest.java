@@ -260,7 +260,7 @@ class WebServiceClientAnnotationProcessorTest {
                 return;
             }
         }
-        throw new RuntimeException("Field was not found: " + fieldName);
+        throw new RuntimeException("Field wasn't found: " + fieldName);
     }
 
     private Object get(Object object, String fieldName) throws IllegalAccessException {
@@ -270,7 +270,7 @@ class WebServiceClientAnnotationProcessorTest {
                 return f.get(object);
             }
         }
-        throw new RuntimeException("Field was not found: " + fieldName);
+        throw new RuntimeException("Field wasn't found: " + fieldName);
     }
 
     private Object createClient(ClassLoader cl, String className, String url) throws Exception {

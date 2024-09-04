@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.interceptor;
 
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.annotation.processor.common.TagUtils;
 import ru.tinkoff.kora.kora.app.annotation.processor.ProcessingContext;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponent;
 
@@ -40,11 +41,8 @@ public class ComponentInterceptors {
     public List<ComponentInterceptor> interceptorsFor(ResolvedComponent component) {
         var type = component.type();
         return this.interceptors.stream()
-            .filter(interceptor -> this.ctx.types.isSameType(type, interceptor.interceptType()))
-            .filter(interceptor -> {
-                // todo tag matches
-                return interceptor.component().tags().equals(component.tags());
-            })
+            .filter(interceptor -> this.ctx.serviceTypeHelper.isInterceptable(interceptor.interceptType(), type))
+            .filter(interceptor -> TagUtils.tagsMatch(interceptor.component().tags(), component.tags()))
             .toList();
     }
 }

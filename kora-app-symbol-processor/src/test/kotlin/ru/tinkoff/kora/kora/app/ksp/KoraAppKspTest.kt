@@ -206,7 +206,7 @@ class KoraAppKspTest {
             .isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
                 SoftAssertions.assertSoftly { s: SoftAssertions ->
                     s.assertThat(e.messages)
-                        .anyMatch { it.contains("Required dependency type was not found and can't be auto created: ru.tinkoff.kora.kora.app.ksp.app.AppWithUnresolvedDependency.Class3") }
+                        .anyMatch { it.contains("Required dependency type wasn't found and can't be auto created: ru.tinkoff.kora.kora.app.ksp.app.AppWithUnresolvedDependency.Class3") }
                 }
             }
     }
@@ -257,7 +257,7 @@ class KoraAppKspTest {
             .isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
                 SoftAssertions.assertSoftly { s: SoftAssertions ->
                     s.assertThat(e.messages).anyMatch {
-                        it.contains("Required dependency type was not found and can't be auto created: java.io.Closeable")
+                        it.contains("Required dependency type wasn't found and can't be auto created: java.io.Closeable")
                     }
                 }
             }
@@ -266,7 +266,7 @@ class KoraAppKspTest {
 //            .isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
 //                SoftAssertions.assertSoftly { s: SoftAssertions ->
 //                    s.assertThat(e.messages).contains(
-//                        "Required dependency was not found and candidate class ru.tinkoff.kora.kora.app.ksp.app.AppWithFactories11.GenericClass<kotlin.String> is not final"
+//                        "Required dependency wasn't found and candidate class ru.tinkoff.kora.kora.app.ksp.app.AppWithFactories11.GenericClass<kotlin.String> is not final"
 //                    )
 //                }
 //            } delete or fix?

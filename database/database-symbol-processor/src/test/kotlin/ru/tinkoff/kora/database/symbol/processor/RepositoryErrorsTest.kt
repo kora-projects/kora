@@ -14,7 +14,7 @@ class RepositoryErrorsTest {
         Assertions.assertThatThrownBy { process(InvalidParameterUsage::class) }
             .isInstanceOfSatisfying(CompilationErrorException::class.java) { e: CompilationErrorException ->
                 SoftAssertions.assertSoftly { s: SoftAssertions ->
-                    s.assertThat(e.messages).anyMatch { it.contains("Parameter usage was not found in sql: param2") }
+                    s.assertThat(e.messages).anyMatch { it.contains("Parameter usage wasn't found in sql: param2") }
                 }
             }
     }

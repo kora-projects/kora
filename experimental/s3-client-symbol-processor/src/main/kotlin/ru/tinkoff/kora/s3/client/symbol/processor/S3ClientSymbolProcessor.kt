@@ -894,7 +894,7 @@ class S3ClientSymbolProcessor(
                 .findFirst()
                 .orElseThrow {
                     ProcessingErrorException(
-                        "@S3 operation key part named '${paramName}' expected, but was not found",
+                        "@S3 operation key part named '${paramName}' expected, but wasn't found",
                         method
                     )
                 }

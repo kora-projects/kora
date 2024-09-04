@@ -23,5 +23,4 @@ abstract class AbstractKoraAppProcessorTest : AbstractSymbolProcessorTest() {
         val `object` = appClass.getConstructor().newInstance() as Supplier<ApplicationGraphDraw>
         return `object`.get()
     }
-
 }

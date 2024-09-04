@@ -70,7 +70,7 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
                 }
                 if (params.size == size) {
                     throw ProcessingErrorException(
-                        "Parameter usage was not found in sql: ${parameter.name}",
+                        "Parameter usage wasn't found in sql: ${parameter.name}",
                         parameter.variable
                     )
                 }

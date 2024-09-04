@@ -1,10 +1,15 @@
 import java.nio.file.Files
 
 dependencies {
-    api project(':annotation-processor-common')
+    api project(":annotation-processor-common")
     implementation libs.jackson.core
 
-    testImplementation testFixtures(project(':annotation-processor-common'))
+    testImplementation testFixtures(project(":annotation-processor-common"))
+    testImplementation project(":annotation-processor-common")
+    testImplementation project(":kora-app-annotation-processor")
+    testImplementation project(":aop:aop-annotation-processor")
+    testImplementation project(":logging:logging-logback")
+    testImplementation project(":logging:declarative-logging:declarative-logging-annotation-processor")
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
@@ -20,10 +25,10 @@ sourceSets {
 
 project.tasks.register("copyModules", Copy) {
     def counter = 0
-    from('..') {
+    from("..") {
         includeEmptyDirs = false
-        include '/**/src/main/resources/modules.json'
-        exclude '**/build/**/*'
+        include "/**/src/main/resources/modules.json"
+        exclude "**/build/**/*"
         rename {
             counter++
             return "module-" + counter + ".json";
@@ -32,17 +37,17 @@ project.tasks.register("copyModules", Copy) {
             path = name
         }
     }
-    into 'build/kora-modules/parts'
+    into "build/kora-modules/parts"
 }
 
 
 project.tasks.register("buildModules") {
-    it.dependsOn('copyModules')
+    it.dependsOn("copyModules")
     it.outputs.file("build/kora-modules/kora-modules.json")
-    it.inputs.dir('build/kora-modules/parts')
+    it.inputs.dir("build/kora-modules/parts")
     doLast {
         def list = new ArrayList<>()
-        fileTree(dir: 'build/kora-modules/parts', include: '*.json').visit {
+        fileTree(dir: "build/kora-modules/parts", include: "*.json").visit {
             def result = new groovy.json.JsonSlurper().parseText(it.file.text)
             list.addAll(result)
         }

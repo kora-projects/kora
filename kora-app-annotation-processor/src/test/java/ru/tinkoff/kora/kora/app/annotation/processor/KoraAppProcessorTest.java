@@ -157,7 +157,7 @@ class KoraAppProcessorTest {
         assertThatThrownBy(() -> testClass(AppWithUnresolvedDependency.class))
             .isInstanceOfSatisfying(CompilationErrorException.class, e -> SoftAssertions.assertSoftly(s -> {
                 s.assertThat(e.getMessage()).startsWith("""
-                    Required dependency type was not found and can't be auto created: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3.
+                    Required dependency type wasn't found and can't be auto created: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3.
                       Please check class for @Component annotation or that required module with component is plugged in.
                       Dependency chain:
                         ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.class2
@@ -203,13 +203,13 @@ class KoraAppProcessorTest {
         testClass(AppWithFactories9.class).init();
         assertThatThrownBy(() -> testClass(AppWithFactories10.class))
             .isInstanceOf(CompilationErrorException.class)
-            .hasMessageStartingWith("Required dependency type was not found and can't be auto created: java.io.Closeable")
+            .hasMessageStartingWith("Required dependency type wasn't found and can't be auto created: java.io.Closeable")
             .asInstanceOf(type(CompilationErrorException.class))
             .extracting(CompilationErrorException::getDiagnostics, list(Diagnostic.class))
             .anySatisfy(d -> {
                 assertThat(d.getKind()).isEqualTo(Diagnostic.Kind.ERROR);
                 assertThat(d.getMessage(Locale.ENGLISH)).isEqualTo("""
-                    Required dependency type was not found and can't be auto created: java.io.Closeable.
+                    Required dependency type wasn't found and can't be auto created: java.io.Closeable.
                       Please check class for @Component annotation or that required module with component is plugged in.
                       Dependency chain:
                         ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithFactories10.mock1
@@ -218,21 +218,21 @@ class KoraAppProcessorTest {
             });
 //        assertThatThrownBy(() -> testClass(AppWithFactories11.class))
 //            .isInstanceOf(CompilationErrorException.class)
-//            .hasMessageContaining("Required dependency was not found and candidate class ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithFactories11.GenericClass<java.lang.String> is not final")
+//            .hasMessageContaining("Required dependency wasn't found and candidate class ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithFactories11.GenericClass<java.lang.String> is not final")
 //            .asInstanceOf(type(CompilationErrorException.class))
 //            .extracting(CompilationErrorException::getDiagnostics, list(Diagnostic.class))
 //            .anySatisfy(d -> {
 //                assertThat(d.getKind()).isEqualTo(Diagnostic.Kind.ERROR);
 //                assertThat(d.getMessage(Locale.ENGLISH)).isEqualTo("""
-//                      Required dependency was not found and candidate class java.lang.Long has more then one public constructor
+//                      Required dependency wasn't found and candidate class java.lang.Long has more then one public constructor
 //                        Requested at: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithFactories11.<T>factory2(java.lang.Long)
 //                     \s
 //                      Factory ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithFactories11#factory2 failed to produce component because of missing dependency of type java.lang.Long
 //                      Factory ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithFactories11#factory1 failed to produce component because of missing dependency of type java.io.Closeable
-//                        Required dependency implementation was not found java.io.Closeable, check if it is declared or appropriate module is declared in @KoraApp
+//                        Required dependency implementation wasn't found java.io.Closeable, check if it is declared or appropriate module is declared in @KoraApp
 //                        Requested at: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithFactories11.<T>factory1(java.io.Closeable)
 //                     \s
-//                      Required dependency was not found and candidate class ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithFactories11.GenericClass<java.lang.String> is not final
+//                      Required dependency wasn't found and candidate class ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithFactories11.GenericClass<java.lang.String> is not final
 //                      Requested at: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithFactories11.mock1(ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithFactories11.GenericClass<java.lang.String>)
 //                    """.stripTrailing());
 //

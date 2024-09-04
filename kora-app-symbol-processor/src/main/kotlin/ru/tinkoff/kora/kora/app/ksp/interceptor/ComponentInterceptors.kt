@@ -2,10 +2,12 @@ package ru.tinkoff.kora.kora.app.ksp.interceptor
 
 import com.google.devtools.ksp.processing.Resolver
 import ru.tinkoff.kora.kora.app.ksp.ProcessingContext
+import ru.tinkoff.kora.kora.app.ksp.ServiceTypesHelper
 import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponent
 import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
 
 data class ComponentInterceptors(
+    private val serviceTypesHelper: ServiceTypesHelper,
     private val resolver: Resolver,
     private val interceptors: MutableList<ComponentInterceptor> = mutableListOf()
 ) {
@@ -19,7 +21,7 @@ data class ComponentInterceptors(
                     interceptors.add(factory)
                 }
             }
-            return ComponentInterceptors(ctx.resolver, interceptors)
+            return ComponentInterceptors(ServiceTypesHelper(ctx.resolver), ctx.resolver, interceptors)
         }
 
         private fun parseInterceptor(ctx: ProcessingContext, component: ResolvedComponent): ComponentInterceptor? {
@@ -36,7 +38,8 @@ data class ComponentInterceptors(
 
         return this.interceptors.filter { interceptor ->
             val realInterceptorType = interceptor.interceptType.makeNotNullable()
-            type == realInterceptorType && descriptor.tags.containsAll(interceptor.declaration.tags)
+            serviceTypesHelper.isInterceptable(realInterceptorType, type)
+                && descriptor.tags.containsAll(interceptor.declaration.tags)
         }
     }
 }

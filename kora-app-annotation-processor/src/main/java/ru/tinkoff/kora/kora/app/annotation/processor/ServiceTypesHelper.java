@@ -1,6 +1,8 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
+import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
@@ -46,14 +48,32 @@ public class ServiceTypesHelper {
         return this.types.isSameType(unwrappedType, typeMirror);
     }
 
-    public boolean isInterceptorFor(TypeMirror maybeInterceptor, TypeMirror typeMirror) {
-        if (!this.types.isAssignable(maybeInterceptor, this.interceptorType)) {
+    public boolean isInterceptorFor(TypeMirror interceptorType, TypeMirror targetType) {
+        if (!this.types.isAssignable(interceptorType, this.interceptorType)) {
             return false;
         }
         var interceptorTypeParameter = this.interceptorTypeElement.getTypeParameters().get(0); // somehow it can be changed during execution
-        var declaredType = (DeclaredType) maybeInterceptor;
+        var declaredType = (DeclaredType) interceptorType;
         var interceptedType = this.types.asMemberOf(declaredType, interceptorTypeParameter);
-        return this.types.isSameType(interceptedType, typeMirror);
+        return isInterceptable(interceptedType, targetType);
+    }
+
+    public boolean isInterceptable(TypeMirror interceptedType, TypeMirror targetType) {
+        if (this.types.isSameType(interceptedType, targetType)) {
+            return true;
+        } else if (this.types.isAssignable(targetType, interceptedType)) {
+            // Check if is AopProxy
+            var typeMirrorElement = types.asElement(targetType);
+            var annotation = AnnotationUtils.findAnnotation(typeMirrorElement, CommonClassNames.aopProxy);
+            if (annotation != null) {
+                var interceptedTypeElement = types.asElement(interceptedType);
+                var aopProxyName = NameUtils.generatedType(interceptedTypeElement, "_AopProxy");
+                var expectedAopProxyCanonicalName = elements.getPackageOf(interceptedTypeElement).toString() + "." + aopProxyName;
+                return expectedAopProxyCanonicalName.equals(typeMirrorElement.toString());
+            }
+        }
+
+        return false;
     }
 
     public boolean isInterceptor(TypeMirror maybeInterceptor) {
