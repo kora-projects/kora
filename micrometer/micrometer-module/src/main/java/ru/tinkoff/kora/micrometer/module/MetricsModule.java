@@ -29,8 +29,8 @@ import ru.tinkoff.kora.micrometer.module.resilient.MicrometerCircuitBreakerMetri
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerFallbackMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerRetryMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerTimeoutMetrics;
-import ru.tinkoff.kora.micrometer.module.s3.client.OpentelemetryS3ClientMetricsFactory;
-import ru.tinkoff.kora.micrometer.module.s3.client.OpentelemetryS3KoraClientMetricsFactory;
+import ru.tinkoff.kora.micrometer.module.s3.client.MicrometerS3ClientMetricsFactory;
+import ru.tinkoff.kora.micrometer.module.s3.client.MicrometerS3KoraClientMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.scheduling.MicrometerSchedulingMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.soap.client.MicrometerSoapClientMetricsFactory;
 
@@ -141,23 +141,13 @@ public interface MetricsModule {
     }
 
     @DefaultComponent
-    default OpentelemetryS3ClientMetricsFactory micrometerS3ClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
-        return new OpentelemetryS3ClientMetricsFactory(meterRegistry, metricsConfig);
+    default MicrometerS3ClientMetricsFactory micrometerS3ClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
+        return new MicrometerS3ClientMetricsFactory(meterRegistry, metricsConfig);
     }
 
     @DefaultComponent
-    default OpentelemetryS3KoraClientMetricsFactory micrometerS3KoraClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
-        return new OpentelemetryS3KoraClientMetricsFactory(meterRegistry, metricsConfig);
-    }
-
-    @DefaultComponent
-    default MicrometerZeebeWorkerMetricsFactory micrometerZeebeWorkerMetricsFactory(MeterRegistry meterRegistry) {
-        return new MicrometerZeebeWorkerMetricsFactory(meterRegistry);
-    }
-
-    @DefaultComponent
-    default MicrometerZeebeClientWorkerMetricsFactory micrometerZeebeClientWorkerMetricsFactory(MeterRegistry meterRegistry) {
-        return new MicrometerZeebeClientWorkerMetricsFactory(meterRegistry);
+    default MicrometerS3KoraClientMetricsFactory micrometerS3KoraClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
+        return new MicrometerS3KoraClientMetricsFactory(meterRegistry, metricsConfig);
     }
 
     @DefaultComponent

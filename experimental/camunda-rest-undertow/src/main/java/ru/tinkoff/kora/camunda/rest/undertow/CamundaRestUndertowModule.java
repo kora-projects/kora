@@ -28,15 +28,14 @@ public interface CamundaRestUndertowModule extends CamundaRestModule {
         return new DefaultCamundaRestTelemetryFactory(logger, metrics, tracer);
     }
 
-    @Tag(CamundaRest.class)
-    default HttpHandler camundaRestUndertowHttpHandler(@Tag(CamundaRest.class) All<Application> applications,
+    default UndertowCamundaRestHttpHandler camundaRestUndertowHttpHandler(@Tag(CamundaRest.class) All<Application> applications,
                                                        CamundaRestConfig camundaRestConfig) {
         return new UndertowCamundaRestHttpHandler(applications, camundaRestConfig);
     }
 
     @Tag(CamundaRest.class)
     @Root
-    default Lifecycle camundaRestUndertowHttpServer(@Tag(CamundaRest.class) ValueOf<HttpHandler> camundaHttpHandler,
+    default Lifecycle camundaRestUndertowHttpServer(ValueOf<UndertowCamundaRestHttpHandler> camundaHttpHandler,
                                                     ValueOf<CamundaRestConfig> camundaRestConfig,
                                                     CamundaRestTelemetryFactory telemetryFactory) {
         return new UndertowCamundaHttpServer(camundaRestConfig, camundaHttpHandler, telemetryFactory);

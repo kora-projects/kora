@@ -9,12 +9,12 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.Objects;
 
-public class OpentelemetryS3ClientMetricsFactory implements S3ClientMetricsFactory {
+public class MicrometerS3ClientMetricsFactory implements S3ClientMetricsFactory {
 
     private final MetricsConfig metricsConfig;
     private final MeterRegistry meterRegistry;
 
-    public OpentelemetryS3ClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
+    public MicrometerS3ClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
         this.metricsConfig = metricsConfig;
         this.meterRegistry = meterRegistry;
     }
