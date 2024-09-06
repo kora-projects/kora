@@ -4,6 +4,7 @@ dependencies {
     testImplementation project(':logging:logging-common')
     testImplementation testFixtures(project(':annotation-processor-common'))
     testImplementation project(':logging:logging-logback')
+    testImplementation libs.reactor.core
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.logging.symbol.processor.aop
 
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.slf4j.event.Level
@@ -10,12 +11,14 @@ class LogAspectTest : AbstractLogAspectTest() {
 
     @Test
     fun testLogPrintsInAndOut() {
-        val aopProxy = compile("""
+        val aopProxy = compile(
+            """
             open class Target {
                 @Log
                 open fun test() {}
             }
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
         val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
@@ -29,13 +32,143 @@ class LogAspectTest : AbstractLogAspectTest() {
     }
 
     @Test
+    fun testLogPrintsInAndOutWhenExceptionInWarn() {
+        val aopProxy = compile(
+            """
+             open class Target {
+                @Log
+                open fun test() {
+                    throw RuntimeException("OPS")
+                }
+            }
+        """.trimIndent()
+        )
+
+        Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
+        val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
+
+        val o = Mockito.inOrder(log)
+        reset(log, Level.WARN)
+
+        assertThrows<RuntimeException> { aopProxy.invoke<Any>("test") }
+
+        o.verify(log).info(">")
+        o.verify(log).warn(outData.capture(), ArgumentMatchers.eq("<"))
+        verifyOutData(
+            mapOf(
+                "errorType" to "java.lang.RuntimeException",
+                "errorMessage" to "OPS"
+            )
+        )
+        o.verifyNoMoreInteractions()
+        o.verifyNoMoreInteractions()
+    }
+
+    @Test
+    fun testLogPrintsInAndOutWhenExceptionInDebug() {
+        val aopProxy = compile(
+            """
+            open class Target {
+                @Log
+                open fun test() {
+                    throw RuntimeException("OPS")
+                }
+            }
+        """.trimIndent()
+        )
+
+        Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
+        val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
+
+        val o = Mockito.inOrder(log)
+        reset(log, Level.DEBUG)
+
+        assertThrows<RuntimeException> { aopProxy.invoke<Any>("test") }
+
+        o.verify(log).info(">")
+        o.verify(log).warn(outData.capture(), ArgumentMatchers.eq("<"), ArgumentMatchers.any(Throwable::class.java))
+        verifyOutData(
+            mapOf(
+                "errorType" to "java.lang.RuntimeException",
+                "errorMessage" to "OPS"
+            )
+        )
+        o.verifyNoMoreInteractions()
+    }
+
+    @Test
+    fun testLogPrintsOutWhenExceptionInWarn() {
+        val aopProxy = compile(
+            """
+             open class Target {
+                @Log.out
+                open fun test(): String {
+                    throw RuntimeException("OPS")
+                }
+            }
+        """.trimIndent()
+        )
+
+        Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
+        val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
+
+        val o = Mockito.inOrder(log)
+        reset(log, Level.WARN)
+
+        assertThrows<RuntimeException> { aopProxy.invoke<Any>("test") }
+
+        o.verify(log).warn(outData.capture(), ArgumentMatchers.eq("<"))
+        verifyOutData(
+            mapOf(
+                "errorType" to "java.lang.RuntimeException",
+                "errorMessage" to "OPS"
+            )
+        )
+        o.verifyNoMoreInteractions()
+        o.verifyNoMoreInteractions()
+    }
+
+    @Test
+    fun testLogPrintsOutWhenExceptionInDebug() {
+        val aopProxy = compile(
+            """
+            open class Target {
+                @Log.out
+                open fun test(): String {
+                    throw RuntimeException("OPS")
+                }
+            }
+        """.trimIndent()
+        )
+
+        Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
+        val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
+
+        val o = Mockito.inOrder(log)
+        reset(log, Level.DEBUG)
+
+        assertThrows<RuntimeException> { aopProxy.invoke<Any>("test") }
+
+        o.verify(log).warn(outData.capture(), ArgumentMatchers.eq("<"), ArgumentMatchers.any(Throwable::class.java))
+        verifyOutData(
+            mapOf(
+                "errorType" to "java.lang.RuntimeException",
+                "errorMessage" to "OPS"
+            )
+        )
+        o.verifyNoMoreInteractions()
+    }
+
+    @Test
     fun testLogInPrintsIn() {
-        val aopProxy = compile("""
+        val aopProxy = compile(
+            """
             open class Target {
                 @Log.`in`
                 open fun test() {}
             }
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
         val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
@@ -49,12 +182,14 @@ class LogAspectTest : AbstractLogAspectTest() {
 
     @Test
     fun testLogOutPrintsOut() {
-        val aopProxy = compile("""
+        val aopProxy = compile(
+            """
             open class Target {
                 @Log.out
                 open fun test() {}
             }
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
         val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
@@ -68,12 +203,14 @@ class LogAspectTest : AbstractLogAspectTest() {
 
     @Test
     fun testLogArgs() {
-        val aopProxy = compile("""
+        val aopProxy = compile(
+            """
             open class Target {
                 @Log.`in`
                 open fun test(arg1: String, @Log(TRACE) arg2: String, @Log.off arg3: String) {}
             }
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
         val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
@@ -131,12 +268,14 @@ class LogAspectTest : AbstractLogAspectTest() {
 
     @Test
     fun testLogResults() {
-        val aopProxy = compile("""
+        val aopProxy = compile(
+            """
             open class Target {
               @Log.out
               open fun test(): String { return "test-result" }
             }
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
         val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
@@ -159,13 +298,15 @@ class LogAspectTest : AbstractLogAspectTest() {
 
     @Test
     fun testLogResultsOff() {
-        val aopProxy = compile("""
+        val aopProxy = compile(
+            """
             open class Target {
               @Log.out
               @Log.off
               open fun test(): String { return "test-result" }
             }
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
         val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
@@ -185,13 +326,15 @@ class LogAspectTest : AbstractLogAspectTest() {
 
     @Test
     fun logResultSameLevelAsOut() {
-        val aopProxy = compile("""
+        val aopProxy = compile(
+            """
             open class Target {
               @Log.out
               @Log.result(INFO)
               open fun test(): String { return "test-result" }
             }
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
         val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
@@ -206,7 +349,8 @@ class LogAspectTest : AbstractLogAspectTest() {
 
     @Test
     fun testLogArgWithMapper() {
-        compile0("""
+        compile0(
+            """
             open class Target {
                 @Log.`in`
                 open fun test(arg1: String) {}
@@ -217,7 +361,8 @@ class LogAspectTest : AbstractLogAspectTest() {
                 gen.writeString("mapped-" + value)
               }
             }
-        """.trimIndent())
+        """.trimIndent()
+        )
         compileResult.assertSuccess()
 
         val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, new("MyLogArgMapper")))

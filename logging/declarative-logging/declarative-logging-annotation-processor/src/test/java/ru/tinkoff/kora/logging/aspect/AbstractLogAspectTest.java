@@ -97,6 +97,10 @@ public abstract class AbstractLogAspectTest extends AbstractAnnotationProcessorT
     @SuppressWarnings("fallthrough")
     protected void reset(Logger log, Level level) {
         Mockito.reset(log);
+        mockLevel(log, level);
+    }
+
+    protected void mockLevel(Logger log, Level level) {
         if (level == null) {
             return;
         }

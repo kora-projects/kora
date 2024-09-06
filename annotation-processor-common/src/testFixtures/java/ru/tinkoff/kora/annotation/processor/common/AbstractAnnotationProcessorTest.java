@@ -8,6 +8,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.reactivestreams.FlowAdapters;
 import org.reactivestreams.Publisher;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.compile.ByteArrayJavaFileObject;
 import ru.tinkoff.kora.annotation.processor.common.compile.KoraCompileTestJavaFileManager;
@@ -320,6 +321,12 @@ public abstract class AbstractAnnotationProcessorTest {
                     method.setAccessible(true);
                     try {
                         var result = method.invoke(this.object, args);
+                        if (result instanceof Mono<?> mono) {
+                            return (T) mono.block();
+                        }
+                        if (result instanceof Flux<?> flux) {
+                            return (T) flux.blockFirst();
+                        }
                         if (result instanceof Publisher<?> mono) {
                             return (T) Mono.from(mono).block();
                         }
