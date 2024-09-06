@@ -2,7 +2,6 @@ package ru.tinkoff.kora.http.server.undertow;
 
 import io.undertow.Undertow;
 import io.undertow.connector.ByteBufferPool;
-import io.undertow.server.HttpHandler;
 import io.undertow.server.handlers.GracefulShutdownHandler;
 import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
@@ -31,9 +30,8 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
 
     private volatile Undertow undertow;
 
-    public UndertowHttpServer(String name,
-                              ValueOf<HttpServerConfig> config,
-                              ValueOf<HttpHandler> publicApiHandler,
+    public UndertowHttpServer(ValueOf<HttpServerConfig> config,
+                              ValueOf<UndertowPublicApiHandler> publicApiHandler,
                               @Nullable XnioWorker xnioWorker, ByteBufferPool byteBufferPool) {
         this.config = config;
         this.xnioWorker = xnioWorker;

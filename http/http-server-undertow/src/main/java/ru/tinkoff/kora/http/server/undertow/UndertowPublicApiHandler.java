@@ -1,15 +1,14 @@
 package ru.tinkoff.kora.http.server.undertow;
 
-import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.SameThreadExecutor;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTracer;
 
-import jakarta.annotation.Nullable;
+public final class UndertowPublicApiHandler {
 
-public final class UndertowPublicApiHandler implements HttpHandler {
     private final PublicApiHandler publicApiHandler;
     @Nullable
     private final HttpServerTracer tracer;
@@ -19,7 +18,6 @@ public final class UndertowPublicApiHandler implements HttpHandler {
         this.tracer = tracer;
     }
 
-    @Override
     public void handleRequest(HttpServerExchange exchange) {
         var context = Context.clear();
         var exchangeProcessor = new UndertowExchangeProcessor(exchange, this.publicApiHandler, context, this.tracer);

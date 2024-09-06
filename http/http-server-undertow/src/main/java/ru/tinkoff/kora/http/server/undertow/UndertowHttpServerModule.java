@@ -2,7 +2,6 @@ package ru.tinkoff.kora.http.server.undertow;
 
 import io.undertow.Undertow;
 import io.undertow.connector.ByteBufferPool;
-import io.undertow.server.HttpHandler;
 import jakarta.annotation.Nullable;
 import org.xnio.XnioWorker;
 import ru.tinkoff.kora.application.graph.ValueOf;
@@ -16,8 +15,7 @@ import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTracerFactory;
 
 public interface UndertowHttpServerModule extends UndertowModule {
 
-    @Tag(PublicApiHandler.class)
-    default HttpHandler undertowPublicApiHandler(PublicApiHandler publicApiHandler,
+    default UndertowPublicApiHandler undertowPublicApiHandler(PublicApiHandler publicApiHandler,
                                                  @Nullable HttpServerTracerFactory tracerFactory,
                                                  HttpServerConfig config) {
         var tracer = tracerFactory == null ? null : tracerFactory.get(config.telemetry().tracing());
@@ -26,10 +24,10 @@ public interface UndertowHttpServerModule extends UndertowModule {
 
     @Root
     default UndertowHttpServer undertowHttpServer(ValueOf<HttpServerConfig> config,
-                                                  @Tag(PublicApiHandler.class) ValueOf<HttpHandler> handler,
+                                                  ValueOf<UndertowPublicApiHandler> handler,
                                                   @Tag(Undertow.class) XnioWorker worker,
                                                   ByteBufferPool byteBufferPool) {
-        return new UndertowHttpServer("Public", config, handler, worker, byteBufferPool);
+        return new UndertowHttpServer(config, handler, worker, byteBufferPool);
     }
 
     @DefaultComponent
