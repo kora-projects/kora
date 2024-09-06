@@ -2,7 +2,6 @@ package ru.tinkoff.kora.http.server.undertow;
 
 import io.undertow.Undertow;
 import io.undertow.connector.ByteBufferPool;
-import io.undertow.server.HttpHandler;
 import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,7 +19,7 @@ public class UndertowPrivateHttpServer implements PrivateHttpServer {
     private static final Logger logger = LoggerFactory.getLogger(UndertowPrivateHttpServer.class);
 
     private final ValueOf<HttpServerConfig> config;
-    private final HttpHandler privateApiHandler;
+    private final ValueOf<UndertowPrivateApiHandler> privateApiHandler;
     private final XnioWorker xnioWorker;
     private final ByteBufferPool byteBufferPool;
 
@@ -31,7 +30,7 @@ public class UndertowPrivateHttpServer implements PrivateHttpServer {
                                      @Nullable XnioWorker xnioWorker,
                                      ByteBufferPool byteBufferPool) {
         this.config = config;
-        this.privateApiHandler = exchange -> privateApiHandler.get().handleRequest(exchange);
+        this.privateApiHandler = privateApiHandler;
         this.xnioWorker = xnioWorker;
         this.byteBufferPool = byteBufferPool;
     }
@@ -65,7 +64,7 @@ public class UndertowPrivateHttpServer implements PrivateHttpServer {
     private Undertow createServer() {
         return Undertow.builder()
             .setByteBufferPool(this.byteBufferPool)
-            .addHttpListener(this.config.get().privateApiHttpPort(), "0.0.0.0", this.privateApiHandler)
+            .addHttpListener(this.config.get().privateApiHttpPort(), "0.0.0.0", exchange -> this.privateApiHandler.get().handleRequest(exchange))
             .setWorker(this.xnioWorker)
             .build();
     }
