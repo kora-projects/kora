@@ -21,6 +21,7 @@ import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
+import ru.tinkoff.kora.ksp.common.exception.UnknownTypeError
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 import java.util.*
 import java.util.stream.Collectors
@@ -61,7 +62,16 @@ object GraphBuilder {
                 val dependencyClaim = dependenciesToFind[currentDependency]
                 ctx.kspLogger.info("Resolving ${dependencyClaim.type} for ${declaration.source}")
                 if (dependencyClaim.claimType in listOf(ALL, ALL_OF_PROMISE, ALL_OF_VALUE)) {
-                    val allOfDependency = processAllOf(ctx, processing, frame, currentDependency)
+                    val allOfDependency = try {
+                        processAllOf(ctx, processing, frame, currentDependency)
+                    } catch (e: UnknownTypeError) {
+                        throw UnresolvedDependencyException(
+                            e.toString(),
+                            declaration.source,
+                            dependencyClaim.type,
+                            dependencyClaim.tags
+                        )
+                    }
                     if (allOfDependency == null) {
                         continue@frame
                     } else {

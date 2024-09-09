@@ -10,6 +10,7 @@ import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.TagUtils
 import ru.tinkoff.kora.ksp.common.exception.ProcessingError
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
+import java.lang.RuntimeException
 import javax.tools.Diagnostic
 
 object ComponentDependencyHelper {
@@ -32,6 +33,11 @@ object ComponentDependencyHelper {
                 val result = ArrayList<DependencyClaim>(declaration.methodParameterTypes.size)
                 for (i in 0 until declaration.methodParameterTypes.size) {
                     val parameterType = declaration.methodParameterTypes[i]
+                    if(element.parameters[i].type.resolve().declaration.simpleName.asString() == "KafkaListenerConfig") {
+                        val par = element.parameters[i]
+                        val parseTagValueTESTER = TagUtils.parseTagValueTESTER(par.annotations)
+                        throw RuntimeException("TYPE - ${par}, anns - ${par.annotations.toList()}, tags - ${parseTagValueTESTER}")
+                    }
                     val tags = TagUtils.parseTagValue(element.parameters[i])
                     result.add(parseClaim(parameterType, tags, declaration.constructor.parameters[i]))
                 }

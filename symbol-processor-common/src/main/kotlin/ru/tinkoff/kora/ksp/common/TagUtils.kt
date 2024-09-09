@@ -2,6 +2,8 @@ package ru.tinkoff.kora.ksp.common
 
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
+import ru.tinkoff.kora.ksp.common.exception.UnknownTypeError
+import kotlin.RuntimeException
 
 object TagUtils {
     val ignoreList = setOf("Component", "DefaultComponent")
@@ -79,6 +81,13 @@ object TagUtils {
             if (type.declaration.qualifiedName?.asString() == CommonClassNames.tag.canonicalName) {
                 return AnnotationUtils.parseAnnotationValueWithoutDefaults<List<KSType>>(annotation, "value")!!
                     .asSequence()
+//                    .map {
+//                        if(it.declaration.qualifiedName == null) {
+//                            it.declaration.qualifiedName?.asString() ?: it.declaration.toString()
+//                        } else {
+//                            it.declaration.qualifiedName?.asString() ?: it.declaration.toString()
+//                        }
+//                    }
                     .map { it.declaration.qualifiedName!!.asString() }
 //                    .map { if(it is KSType) it.declaration.qualifiedName!!.asString() else it.toString() }
                     .toSet()
@@ -95,6 +104,51 @@ object TagUtils {
 
             }
         }
+        return setOf()
+    }
+
+    fun parseTagValueTESTER(annotations: Sequence<KSAnnotation>): Set<String> {
+        for (annotation in annotations.filter { !ignoreList.contains(it.shortName.asString()) }) {
+            val type = annotation.annotationType.resolve()
+            if (type.declaration.qualifiedName?.asString() == CommonClassNames.tag.canonicalName) {
+//                throw RuntimeException("arg - ${(annotation.arguments.firstOrNull()?.value as List<*>).firstOrNull()!!::class}")
+                return AnnotationUtils.parseAnnotationValueWithoutDefaults<List<KSType>>(annotation, "value")!!
+                    .asSequence()
+//                    .map {
+//                        if(it.declaration.qualifiedName == null) {
+//                            it.declaration.qualifiedName?.asString() ?: it.declaration.toString()
+//                        } else {
+//                            it.declaration.qualifiedName?.asString() ?: it.declaration.toString()
+//                        }
+//                    }
+//                    .map { it.declaration.qualifiedName!!.asString() }
+                    .map {
+                        try {
+                            if(it is KSType) it.declaration.qualifiedName!!.asString() else it.toString()
+                        } catch (e: Exception) {
+                            if(it.isError) {
+                                throw UnknownTypeError(it.declaration)
+//                                throw RuntimeException("OPS - ${it}, isError - ${(it as KSType).isError}, der - ${it.toString()}")
+                            } else {
+                                 throw e
+                            }
+                        }
+                    }
+                    .toSet()
+            }
+
+            for (annotatedWith in type.declaration.annotations) {
+                val annotatedWithType = annotatedWith.annotationType.resolve()
+                if (annotatedWithType.declaration.qualifiedName?.asString() == CommonClassNames.tag.canonicalName) {
+                    return AnnotationUtils.parseAnnotationValueWithoutDefaults<List<KSType>>(annotatedWith, "value")!!
+                        .asSequence()
+                        .map { it.declaration.qualifiedName!!.asString() }
+//                        .map { if(it is KSType) it.declaration.qualifiedName!!.asString() else it.toString() }
+                        .toSet()
+                }
+            }
+        }
+
         return setOf()
     }
 

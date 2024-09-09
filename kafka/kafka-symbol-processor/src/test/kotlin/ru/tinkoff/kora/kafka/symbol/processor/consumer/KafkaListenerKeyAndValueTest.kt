@@ -5,6 +5,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.application.graph.ValueOf
 import ru.tinkoff.kora.common.Tag
+import ru.tinkoff.kora.kafka.common.consumer.ConsumerAwareRebalanceListener
 import ru.tinkoff.kora.kafka.common.consumer.KafkaListenerConfig
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetryFactory
 
@@ -71,7 +72,8 @@ class KafkaListenerKeyAndValueTest : AbstractKafkaListenerAnnotationProcessorTes
             ValueOf::class.java,
             Deserializer::class.java,
             Deserializer::class.java,
-            KafkaConsumerTelemetryFactory::class.java
+            KafkaConsumerTelemetryFactory::class.java,
+            ConsumerAwareRebalanceListener::class.java
         )
         val valueDeserializer = container.parameters[3]
 
@@ -114,7 +116,8 @@ class KafkaListenerKeyAndValueTest : AbstractKafkaListenerAnnotationProcessorTes
             ValueOf::class.java,
             Deserializer::class.java,
             Deserializer::class.java,
-            KafkaConsumerTelemetryFactory::class.java
+            KafkaConsumerTelemetryFactory::class.java,
+            ConsumerAwareRebalanceListener::class.java
         )
         val keyDeserializer = container.parameters[2]
         val valueDeserializer = container.parameters[3]
