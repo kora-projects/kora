@@ -1,12 +1,15 @@
 package ru.tinkoff.kora.kafka.common;
 
+import jakarta.annotation.Nonnull;
 import ru.tinkoff.kora.kafka.common.consumer.KafkaListenerConfig;
 
-import jakarta.annotation.Nonnull;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class KafkaUtils {
+public final class KafkaUtils {
+
+    private KafkaUtils() {}
+
     public static String getConsumerPrefix(KafkaListenerConfig config) {
         if (config.topics() != null) {
             return String.join(";", config.topics());
