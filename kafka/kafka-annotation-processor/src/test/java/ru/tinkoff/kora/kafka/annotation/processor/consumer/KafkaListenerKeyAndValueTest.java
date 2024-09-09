@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.kafka.annotation.processor.consumer;
 
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
@@ -61,7 +62,7 @@ public class KafkaListenerKeyAndValueTest extends AbstractKafkaListenerAnnotatio
             """);
         compileResult.assertSuccess();
         var module = compileResult.loadClass("KafkaListenerClassModule");
-        var container = module.getMethod("kafkaListenerClassProcessContainer", KafkaListenerConfig.class, ValueOf.class, Deserializer.class, Deserializer.class, KafkaConsumerTelemetryFactory.class);
+        var container = module.getMethod("kafkaListenerClassProcessContainer", KafkaListenerConfig.class, ValueOf.class, Deserializer.class, Deserializer.class, KafkaConsumerTelemetryFactory.class, ConsumerRebalanceListener.class);
         var valueDeserializer = container.getParameters()[3];
 
         var valueTag = valueDeserializer.getAnnotation(Tag.class);
@@ -101,7 +102,7 @@ public class KafkaListenerKeyAndValueTest extends AbstractKafkaListenerAnnotatio
             }
             """);
         var module = compileResult.loadClass("KafkaListenerClassModule");
-        var container = module.getMethod("kafkaListenerClassProcessContainer", KafkaListenerConfig.class, ValueOf.class, Deserializer.class, Deserializer.class, KafkaConsumerTelemetryFactory.class);
+        var container = module.getMethod("kafkaListenerClassProcessContainer", KafkaListenerConfig.class, ValueOf.class, Deserializer.class, Deserializer.class, KafkaConsumerTelemetryFactory.class, ConsumerRebalanceListener.class);
         var keyDeserializer = container.getParameters()[2];
         var valueDeserializer = container.getParameters()[3];
 
