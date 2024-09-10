@@ -22,8 +22,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * @see <a href="https://github.com/open-telemetry/semantic-conventions/blob/main/docs/messaging/messaging-metrics.md">messaging-metrics</a>
  */
 public class Opentelemetry120KafkaConsumerMetrics implements KafkaConsumerMetrics, Lifecycle {
+
     private final MeterRegistry meterRegistry;
-    private final ConcurrentHashMap<TopicPartition, DistributionSummary> metrics = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<DurationKey, DistributionSummary> metrics = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<TopicPartition, LagGauge> lagMetrics = new ConcurrentHashMap<>();
     private final TelemetryConfig.MetricsConfig config;
     private final Properties driverProperties;
@@ -34,20 +35,15 @@ public class Opentelemetry120KafkaConsumerMetrics implements KafkaConsumerMetric
         this.driverProperties = driverProperties;
     }
 
-    @Override
-    public void onRecordsReceived(ConsumerRecords<?, ?> records) {
-        for (var partition : records.partitions()) {
-            this.metrics.computeIfAbsent(partition, this::metrics);
-        }
-    }
+    private record DurationKey(String topic, int partition) {}
 
-    private DistributionSummary metrics(TopicPartition topicPartition) {
+    private DistributionSummary metrics(DurationKey key) {
         var builder = DistributionSummary.builder("messaging.receive.duration")
             .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V120))
             .baseUnit("milliseconds")
             .tag(SemanticAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
-            .tag(SemanticAttributes.MESSAGING_DESTINATION_NAME.getKey(), topicPartition.topic())
-            ;
+            .tag(SemanticAttributes.MESSAGING_DESTINATION_NAME.getKey(), key.topic());
+
         var clientId = driverProperties.get(ProducerConfig.CLIENT_ID_CONFIG);
         if (clientId != null) {
             builder.tag(SemanticAttributes.MESSAGING_CLIENT_ID.getKey(), clientId.toString());
@@ -60,9 +56,16 @@ public class Opentelemetry120KafkaConsumerMetrics implements KafkaConsumerMetric
     }
 
     @Override
+    public void onRecordsReceived(ConsumerRecords<?, ?> records) {
+
+    }
+
+    @Override
     public void onRecordProcessed(ConsumerRecord<?, ?> record, long duration, Throwable ex) {
         double durationDouble = ((double) duration) / 1_000_000;
-        this.metrics.get(new TopicPartition(record.topic(), record.partition())).record(durationDouble);
+        var key = new DurationKey(record.topic(), record.partition());
+
+        this.metrics.computeIfAbsent(key, this::metrics).record(durationDouble);
     }
 
     @Override
@@ -72,10 +75,12 @@ public class Opentelemetry120KafkaConsumerMetrics implements KafkaConsumerMetric
 
     @Override
     public void onRecordsProcessed(ConsumerRecords<?, ?> records, long duration, Throwable ex) {
+
     }
 
     @Override
     public void init() {
+
     }
 
     @Override

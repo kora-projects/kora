@@ -20,6 +20,10 @@ public class RecordsHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
 
     @Override
     public void handle(ConsumerRecords<K, V> records, Consumer<K, V> consumer, boolean commitAllowed) {
+        if(records.isEmpty()) {
+            return;
+        }
+
         var ctx = this.telemetry.get(records);
         try {
             var handler = this.handler.get();
