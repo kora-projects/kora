@@ -8,17 +8,16 @@ import ru.tinkoff.kora.kafka.annotation.processor.consumer.KafkaConsumerHandlerG
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import java.util.List;
+import java.util.Set;
 
 import static ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames.*;
-import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.prepareConsumerTagName;
-import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.prepareMethodName;
+import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.*;
 
 public class KafkaConsumerContainerGenerator {
 
     public MethodSpec generate(ExecutableElement executableElement, HandlerMethod handlerMethod, List<ConsumerParameter> parameters) {
-        var tagName = prepareConsumerTagName(executableElement);
-        var tagsBlock = CodeBlock.of("$L.class", tagName);
-        var tagAnnotation = AnnotationSpec.builder(CommonClassNames.tag).addMember("value", tagsBlock).build();
+        var consumerTags = getConsumerTags(executableElement);
+        var tagAnnotation = TagUtils.makeAnnotationSpecForTypes(consumerTags);
 
         var methodBuilder = MethodSpec.methodBuilder(prepareMethodName(executableElement, "Container"))
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)

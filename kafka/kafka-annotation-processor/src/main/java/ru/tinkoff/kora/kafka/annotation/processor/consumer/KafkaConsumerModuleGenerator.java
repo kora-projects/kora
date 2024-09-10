@@ -46,7 +46,9 @@ public class KafkaConsumerModuleGenerator {
             }
             var configTagData = this.configGenerator.generate(method, annotation);
             classBuilder.addMethod(configTagData.configMethod());
-            classBuilder.addType(configTagData.tag());
+            if(configTagData.tag() != null) {
+                classBuilder.addType(configTagData.tag());
+            }
 
             var parameters = ConsumerParameter.parseParameters(method);
             var handler = this.kafkaConsumerHandlerGenerator.generate(method, parameters);

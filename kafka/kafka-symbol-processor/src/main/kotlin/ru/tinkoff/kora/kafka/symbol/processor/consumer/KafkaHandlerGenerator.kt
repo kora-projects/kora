@@ -13,11 +13,13 @@ import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.recordHandler
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.recordKeyDeserializationException
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.recordValueDeserializationException
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.recordsHandler
+import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.getConsumerTags
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.handlerFunName
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.tagTypeName
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.TagUtils.parseTags
 import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
+import ru.tinkoff.kora.ksp.common.TagUtils.toTagSpecTypes
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
 class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
@@ -26,10 +28,10 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
 
     fun generate(functionDeclaration: KSFunctionDeclaration, parameters: List<ConsumerParameter>): HandlerFunction {
         val controller = functionDeclaration.parentDeclaration as KSClassDeclaration
-        val tagName = functionDeclaration.tagTypeName()
+        val tag = functionDeclaration.getConsumerTags().toTagSpecTypes()
         val b = FunSpec.builder(functionDeclaration.handlerFunName())
             .addParameter("controller", controller.toClassName())
-            .addAnnotation(listOf(tagName).toTagAnnotation())
+            .addAnnotation(tag)
 
         val hasRecords = parameters.any { it is ConsumerParameter.Records }
         val hasRecord = parameters.any { it is ConsumerParameter.Record }

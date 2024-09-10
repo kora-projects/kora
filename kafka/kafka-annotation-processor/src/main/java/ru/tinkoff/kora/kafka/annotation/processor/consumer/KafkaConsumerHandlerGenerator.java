@@ -13,21 +13,19 @@ import java.util.List;
 import java.util.Set;
 
 import static ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames.*;
-import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.prepareConsumerTagName;
-import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.prepareMethodName;
+import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.*;
 
 public class KafkaConsumerHandlerGenerator {
 
     public HandlerMethod generate(ExecutableElement executableElement, List<ConsumerParameter> parameters) {
         var controller = (TypeElement) executableElement.getEnclosingElement();
         var methodName = prepareMethodName(executableElement, "Handler");
-        var tagName = prepareConsumerTagName(executableElement);
-        var tagsBlock = CodeBlock.of("$L.class", tagName);
-        var tag = AnnotationSpec.builder(CommonClassNames.tag).addMember("value", tagsBlock).build();
+        var consumerTags = getConsumerTags(executableElement);
+        var tagAnnotation = TagUtils.makeAnnotationSpecForTypes(consumerTags);
         var methodBuilder = MethodSpec.methodBuilder(methodName)
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .addParameter(TypeName.get(controller.asType()), "controller")
-            .addAnnotation(tag)
+            .addAnnotation(tagAnnotation)
             .returns(CommonClassNames.lifecycle);
 
         var hasRecords = parameters.stream().anyMatch(p -> p instanceof ConsumerParameter.Records);

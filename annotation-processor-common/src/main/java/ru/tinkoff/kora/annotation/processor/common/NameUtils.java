@@ -7,6 +7,7 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
 
 public class NameUtils {
+
     public static String getOuterClassesAsPrefix(Element element) {
         var prefix = new StringBuilder("$");
         var parent = element.getEnclosingElement();
@@ -15,6 +16,14 @@ public class NameUtils {
             parent = parent.getEnclosingElement();
         }
         return prefix.toString();
+    }
+
+    public static String getPackageName(Element element) {
+        var parent = element.getEnclosingElement();
+        while (parent.getKind() != ElementKind.PACKAGE) {
+            parent = parent.getEnclosingElement();
+        }
+        return parent.toString();
     }
 
     public static String generatedType(Element from, String postfix) {

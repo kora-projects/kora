@@ -170,6 +170,12 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
         return new ListenerModule(compileResult);
     }
 
+    protected ListenerModule compile(Class<?> tag, @Language("java") String... sources) {
+        super.compile(List.of(new KafkaListenerAnnotationProcessor()), sources);
+        compileResult.assertSuccess();
+        return new ListenerModule(compileResult, tag);
+    }
+
     protected class ListenerModule {
         private final CompileResult compileResult;
         private final Class<?> controllerClass;
@@ -181,6 +187,13 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
             this.controllerClass = Objects.requireNonNull(compileResult.loadClass("KafkaListenerClass"));
             this.moduleClass = Objects.requireNonNull(compileResult.loadClass("KafkaListenerClassModule"));
             this.tagValue = new Class<?>[]{compileResult.loadClass("KafkaListenerClassModule$KafkaListenerClassProcessTag")};
+        }
+
+        protected ListenerModule(CompileResult compileResult, Class<?> tag) {
+            this.compileResult = compileResult;
+            this.controllerClass = Objects.requireNonNull(compileResult.loadClass("KafkaListenerClass"));
+            this.moduleClass = Objects.requireNonNull(compileResult.loadClass("KafkaListenerClassModule"));
+            this.tagValue = new Class[]{tag};
         }
 
         protected <K, V> ListenerModuleAssertions<K, V>.RecordHandlerAssertions handler(Class<? extends K> keyType, Class<? extends V> valueType) {

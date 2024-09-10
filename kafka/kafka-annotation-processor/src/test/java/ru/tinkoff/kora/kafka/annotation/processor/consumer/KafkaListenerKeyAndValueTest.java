@@ -13,11 +13,30 @@ import ru.tinkoff.kora.kafka.common.exceptions.RecordValueDeserializationExcepti
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class KafkaListenerKeyAndValueTest extends AbstractKafkaListenerAnnotationProcessorTest {
+
     @Test
     public void testProcessValue() {
         var handler = compile("""
             public class KafkaListenerClass {
                 @KafkaListener("test.config.path")
+                public void process(String value) {
+                }
+            }
+            """)
+            .handler(byte[].class, String.class);
+
+        handler.handle(record("test".getBytes(), "test-value"), i -> i.assertValue(0, "test-value"));
+
+        handler.handle(errorKey("test-value"), i -> i.assertValue(0, "test-value"));
+
+        handler.handle(errorValue(), RecordValueDeserializationException.class);
+    }
+
+    @Test
+    public void testProcessValueWithTaggedListener() {
+        var handler = compile(String.class, """
+            public class KafkaListenerClass {
+                @KafkaListener(value = "test.config.path", tag = String.class)
                 public void process(String value) {
                 }
             }

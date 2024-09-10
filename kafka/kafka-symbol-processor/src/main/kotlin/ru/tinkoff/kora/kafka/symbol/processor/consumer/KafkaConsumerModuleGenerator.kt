@@ -20,6 +20,7 @@ class KafkaConsumerModuleGenerator(
         val classBuilder = TypeSpec.interfaceBuilder(declaration.simpleName.asString() + "Module")
             .addOriginatingKSFile(declaration.containingFile!!)
             .generated(KafkaConsumerModuleGenerator::class)
+
         classBuilder.addAnnotation(AnnotationSpec.builder(CommonClassNames.module).build())
         for (function in declaration.getDeclaredFunctions()) {
             val kafkaListener = function.findAnnotation(KafkaClassNames.kafkaListener)
@@ -29,7 +30,9 @@ class KafkaConsumerModuleGenerator(
 
             val configTagData = kafkaConfigGenerator.generate(function, kafkaListener)
             classBuilder.addFunction(configTagData.configFunction)
-            classBuilder.addType(configTagData.tag)
+            if(configTagData.tag != null) {
+                classBuilder.addType(configTagData.tag)
+            }
 
             val parameters = ConsumerParameter.parseParameters(function)
 

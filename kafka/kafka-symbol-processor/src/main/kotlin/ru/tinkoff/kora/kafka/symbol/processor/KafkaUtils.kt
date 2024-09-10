@@ -5,6 +5,7 @@ import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.THROWABLE
+import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.consumer
@@ -13,6 +14,9 @@ import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.consumerRecords
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.kafkaConsumerRecordsTelemetry
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.recordKeyDeserializationException
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.recordValueDeserializationException
+import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.tagTypeName
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 
 object KafkaUtils {
     fun KSFunctionDeclaration.moduleName(suffix: String): String {
@@ -21,6 +25,21 @@ object KafkaUtils {
         val function = this.simpleName.asString().replaceFirstChar { it.uppercaseChar() }
 
         return "${prefix}${function}${suffix}"
+    }
+
+    fun KSFunctionDeclaration.findConsumerUserTags(): List<TypeName>? {
+        val listener = findAnnotation(KafkaClassNames.kafkaListener) ?: return null
+        val tags = listener.findValueNoDefault<List<KSType>>("tag")
+        if (tags.isNullOrEmpty()) {
+            return null
+        }
+
+        return tags.map { t -> t.toTypeName() }
+    }
+
+    fun KSFunctionDeclaration.getConsumerTags(): List<TypeName> {
+        val userTags = findConsumerUserTags()
+        return userTags ?: listOf(ClassName(packageName.asString(), tagTypeName()))
     }
 
     fun KSFunctionDeclaration.tagTypeName() = moduleName("Tag")
