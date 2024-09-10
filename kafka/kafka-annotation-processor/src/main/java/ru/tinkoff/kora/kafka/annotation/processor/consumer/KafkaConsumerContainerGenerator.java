@@ -1,6 +1,8 @@
 package ru.tinkoff.kora.kafka.annotation.processor.consumer;
 
-import com.squareup.javapoet.*;
+import com.squareup.javapoet.MethodSpec;
+import com.squareup.javapoet.ParameterSpec;
+import com.squareup.javapoet.ParameterizedTypeName;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.TagUtils;
 import ru.tinkoff.kora.kafka.annotation.processor.consumer.KafkaConsumerHandlerGenerator.HandlerMethod;
@@ -8,10 +10,10 @@ import ru.tinkoff.kora.kafka.annotation.processor.consumer.KafkaConsumerHandlerG
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import java.util.List;
-import java.util.Set;
 
 import static ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames.*;
-import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.*;
+import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.getConsumerTags;
+import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.prepareMethodName;
 
 public class KafkaConsumerContainerGenerator {
 

@@ -13,7 +13,8 @@ import java.util.List;
 import java.util.Set;
 
 import static ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames.*;
-import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.*;
+import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.getConsumerTags;
+import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.prepareMethodName;
 
 public class KafkaConsumerHandlerGenerator {
 

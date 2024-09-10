@@ -15,10 +15,8 @@ import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.recordValueDeseria
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.recordsHandler
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.getConsumerTags
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.handlerFunName
-import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.tagTypeName
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.TagUtils.parseTags
-import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 import ru.tinkoff.kora.ksp.common.TagUtils.toTagSpecTypes
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 

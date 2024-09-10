@@ -31,8 +31,9 @@ public final class KafkaUtils {
         return capitalize(controllerName) + capitalize(methodName) + "Tag";
     }
 
-    public static TypeName prepareConsumerTag(ExecutableElement method) {
-        return ClassName.get(NameUtils.getPackageName(method), prepareConsumerTagName(method));
+    public static ClassName prepareConsumerTag(ExecutableElement method) {
+        String moduleName = method.getEnclosingElement().getSimpleName().toString() + "Module";
+        return ClassName.get(NameUtils.getPackageName(method), moduleName, prepareConsumerTagName(method));
     }
 
     @Nullable

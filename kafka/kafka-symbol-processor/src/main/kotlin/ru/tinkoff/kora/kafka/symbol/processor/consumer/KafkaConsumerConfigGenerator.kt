@@ -2,18 +2,16 @@ package ru.tinkoff.kora.kafka.symbol.processor.consumer
 
 import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeSpec
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.kafkaConsumerConfig
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.configFunName
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.findConsumerUserTags
-import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.tagTypeName
+import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.tagType
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
-import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 import ru.tinkoff.kora.ksp.common.TagUtils.toTagSpecTypes
 
 class KafkaConsumerConfigGenerator {
@@ -22,9 +20,9 @@ class KafkaConsumerConfigGenerator {
         var targetTags = functionDeclaration.findConsumerUserTags()
         val tagBuilder: TypeSpec?
         if(targetTags == null) {
-            val tagName = functionDeclaration.tagTypeName()
-            targetTags = listOf(ClassName(functionDeclaration.packageName.asString(), tagName))
-            tagBuilder = TypeSpec.classBuilder(tagName)
+            val tag = functionDeclaration.tagType()
+            targetTags = listOf(tag)
+            tagBuilder = TypeSpec.classBuilder(tag.simpleName)
                 .generated(KafkaConsumerConfigGenerator::class)
                 .build()
         } else {

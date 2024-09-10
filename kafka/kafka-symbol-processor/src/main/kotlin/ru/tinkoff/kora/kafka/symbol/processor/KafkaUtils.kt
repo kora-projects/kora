@@ -14,7 +14,6 @@ import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.consumerRecords
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.kafkaConsumerRecordsTelemetry
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.recordKeyDeserializationException
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.recordValueDeserializationException
-import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.tagTypeName
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 
@@ -39,9 +38,10 @@ object KafkaUtils {
 
     fun KSFunctionDeclaration.getConsumerTags(): List<TypeName> {
         val userTags = findConsumerUserTags()
-        return userTags ?: listOf(ClassName(packageName.asString(), tagTypeName()))
+        return userTags ?: listOf(tagType())
     }
 
+    fun KSFunctionDeclaration.tagType() = ClassName(packageName.asString(), parentDeclaration!!.simpleName.asString() + "Module", tagTypeName())
     fun KSFunctionDeclaration.tagTypeName() = moduleName("Tag")
     fun KSFunctionDeclaration.containerFunName() = moduleName("Container").replaceFirstChar { it.lowercaseChar() }
     fun KSFunctionDeclaration.handlerFunName() = moduleName("Handler").replaceFirstChar { it.lowercaseChar() }

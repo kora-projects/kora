@@ -8,12 +8,10 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.containerFunName
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.getConsumerTags
-import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.tagTypeName
 import ru.tinkoff.kora.kafka.symbol.processor.consumer.KafkaHandlerGenerator.HandlerFunction
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.TagUtils.addTag
-import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 import ru.tinkoff.kora.ksp.common.TagUtils.toTagSpecTypes
 
 class KafkaContainerGenerator {
