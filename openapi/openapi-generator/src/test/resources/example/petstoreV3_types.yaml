@@ -42,31 +42,39 @@ components:
         id:
           type: integer
           format: int64
+          default: 1
         someFloat:
           type: number
           format: float
         someDouble:
           type: number
           format: double
+          default: 1
         someInt64:
           type: integer
           format: int64
+          default: 1
         someInt32:
           type: integer
           format: int32
+          default: 1
         someInt:
           type: integer
+          default: 1
         someDecimal:
           type: number
           format: decimal
+          default: 1
         someString:
           type: string
+          default: 1
         someBinary:
           type: string
           format: binary
         someBase64:
           type: string
           format: byte
+          default: "MQ=="
         someBoolean:
           type: boolean
         uri:
