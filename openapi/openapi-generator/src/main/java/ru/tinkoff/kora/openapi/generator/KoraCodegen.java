@@ -1077,6 +1077,8 @@ public class KoraCodegen extends DefaultCodegen {
                     return String.format(Locale.ROOT, localDate.toString(), "");
                 } else if (schema.getDefault() instanceof java.time.OffsetDateTime) {
                     return "OffsetDateTime.parse(\"" + String.format(Locale.ROOT, ((java.time.OffsetDateTime) schema.getDefault()).atZoneSameInstant(ZoneId.systemDefault()).toString(), "") + "\", java.time.format.DateTimeFormatter.ISO_ZONED_DATE_TIME.withZone(java.time.ZoneId.systemDefault()))";
+                } else if(schema.getDefault() instanceof byte[] vb) {
+                    _default = new String(vb);
                 } else {
                     _default = (String) schema.getDefault();
                 }
