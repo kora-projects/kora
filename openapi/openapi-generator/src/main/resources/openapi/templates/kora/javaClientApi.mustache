@@ -16,6 +16,8 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 import java.util.Map;
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.http.client.common.interceptor.HttpClientInterceptor;
+import ru.tinkoff.kora.http.client.common.annotation.ResponseCodeMapper;
 
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
 @ru.tinkoff.kora.http.client.common.annotation.HttpClient{{{annotationParams}}}
@@ -49,9 +51,9 @@ public interface {{classname}} {
     {{/headerParams}}
     })
     {{/implicitHeaders}}{{#responses}}
-    @ru.tinkoff.kora.http.client.common.annotation.ResponseCodeMapper(code = {{#isDefault}}-1{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, mapper = {{classname}}ClientResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper.class){{/responses}}
+    @ResponseCodeMapper(code = {{#isDefault}}ResponseCodeMapper.DEFAULT{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, mapper = {{classname}}ClientResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper.class){{/responses}}
     {{#hasAuthMethods}}
-    @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = @ru.tinkoff.kora.common.Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}.class), value = ru.tinkoff.kora.http.client.common.interceptor.HttpClientInterceptor.class)
+    @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = @ru.tinkoff.kora.common.Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}.class), value = HttpClientInterceptor.class)
     {{/hasAuthMethods}}
     {{#koraInterceptors}}
     {{#interceptorTags}}
@@ -70,6 +72,25 @@ public interface {{classname}} {
     {{#isBlocking}}
     {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{/isBlocking}} {{operationId}}({{>javaAnnotatedParams}}
     );
+
+    {{#vendorExtensions.x-have-optional}}
+    {{^hasFormParams}}
+    {{#isAsync}}
+    default CompletionStage<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>
+    {{/isAsync}}
+    {{#isReactive}}
+    default Mono<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>
+    {{/isReactive}}
+    {{#isBlocking}}
+    default {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{/isBlocking}} {{operationId}}(
+    {{#vendorExtensions.x-required-params}}
+        {{{dataType}}} {{paramName}}{{^-last}},{{/-last}}
+    {{/vendorExtensions.x-required-params}}
+    ) {
+        return {{operationId}}({{#allParams}}{{#required}}{{paramName}}{{/required}}{{^required}}{{#defaultValue}}{{.}}{{/defaultValue}}{{^defaultValue}}null{{/defaultValue}}{{/required}}{{^-last}}, {{/-last}}{{/allParams}});
+    }
+    {{/hasFormParams}}
+    {{/vendorExtensions.x-have-optional}}
 
 {{>javaFormParams}}
 

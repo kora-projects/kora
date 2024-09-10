@@ -12,7 +12,9 @@ import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 
 class ConfigClassGenerator {
     fun generate(declaration: KSClassDeclaration): TypeSpec {
-        val functions = declaration.getDeclaredFunctions().map { it.simpleName.asString() }
+        val functions = declaration.getDeclaredFunctions()
+            .filter { f -> f.isAbstract }
+            .map { it.simpleName.asString() }
 
         val typeName = declaration.configName()
 

@@ -667,15 +667,17 @@ class ClientClassGenerator(private val resolver: Resolver) {
     private fun parseMethods(declaration: KSClassDeclaration): List<MethodData> {
         val result = ArrayList<MethodData>()
         declaration.getDeclaredFunctions().forEach { function ->
-            val parameters = mutableListOf<Parameter>()
-            for (i in function.parameters.indices) {
-                val parameter = Parameter.parseParameter(function, i)
-                parameters.add(parameter)
+            if(function.isAbstract) {
+                val parameters = mutableListOf<Parameter>()
+                for (i in function.parameters.indices) {
+                    val parameter = Parameter.parseParameter(function, i)
+                    parameters.add(parameter)
+                }
+                val returnType = function.returnType!!.resolve()
+                val responseCodeMappers = this.parseMapperData(function)
+                val responseMapper = function.parseMappingData().getMapping(httpClientResponseMapper)
+                result.add(MethodData(function, returnType, responseMapper, responseCodeMappers, parameters))
             }
-            val returnType = function.returnType!!.resolve()
-            val responseCodeMappers = this.parseMapperData(function)
-            val responseMapper = function.parseMappingData().getMapping(httpClientResponseMapper)
-            result.add(MethodData(function, returnType, responseMapper, responseCodeMappers, parameters))
         }
         return result
     }

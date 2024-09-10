@@ -1431,6 +1431,9 @@ public class KoraCodegen extends DefaultCodegen {
                 if (importMapping.containsKey(p.dataType)) {
                     operationImports.add(importMapping.get(p.dataType));
                 }
+                if(p.notRequiredOrIsNullable()) {
+                    op.vendorExtensions.put("x-have-optional", true);
+                }
             }
 
             TagClient tagClient = null;
@@ -1746,6 +1749,13 @@ public class KoraCodegen extends DefaultCodegen {
                         allParam.dataType = "boolean";
                     }
                 }
+            }
+
+            if (params.codegenMode.isClient()) {
+                List<CodegenParameter> requiredParams = op.allParams.stream()
+                    .filter(p -> !p.notRequiredOrIsNullable())
+                    .toList();
+                op.vendorExtensions.put("x-required-params", requiredParams);
             }
         }
         if (params.codegenMode.isClient()) {
