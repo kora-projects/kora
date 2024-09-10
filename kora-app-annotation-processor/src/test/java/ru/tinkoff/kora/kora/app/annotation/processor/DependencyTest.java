@@ -1,9 +1,19 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
+import com.squareup.javapoet.*;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import ru.tinkoff.kora.common.Module;
+import ru.tinkoff.kora.common.Tag;
 
+import javax.annotation.processing.AbstractProcessor;
+import javax.annotation.processing.RoundEnvironment;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
+import java.io.IOException;
+import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -277,5 +287,57 @@ public class DependencyTest extends AbstractKoraAppTest {
         Assertions.assertThat(draw.getNodes()).hasSize(4);
         draw.init();
     }
+
+
+    public @interface TestAnnotation {}
+
+    @Test
+    public void testTagIsInvalidOnFirstRound() {
+        class TestProcessor extends AbstractProcessor {
+            @Override
+            public Set<String> getSupportedAnnotationTypes() {
+                return Set.of(TestAnnotation.class.getCanonicalName());
+            }
+
+            @Override
+            public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+                for (var annotation : annotations) {
+                    for (var element : roundEnv.getElementsAnnotatedWith(annotation)) {
+                        var type = TypeSpec.interfaceBuilder("TestModule")
+                            .addAnnotation(Module.class)
+                            .addMethod(MethodSpec.methodBuilder("test")
+                                .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
+                                .addAnnotation(AnnotationSpec.builder(Tag.class).addMember("value", "TestModule.class").build())
+                                .returns(ClassName.get(testPackage(), "TestClass"))
+                                .addCode("return new TestClass();\n")
+                                .build())
+                            .build();
+                        try {
+                            JavaFile.builder(testPackage(), type).build().writeTo(processingEnv.getFiler());
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }
+                return false;
+            }
+        }
+
+        var compileResult = compile(List.of(new KoraAppProcessor(), new TestProcessor()), """
+            @KoraApp
+            public interface ExampleApplication {
+                @Root
+                default Object root(@Tag(TestModule.class) TestClass object) { return java.util.Objects.requireNonNull(object); }
+            }
+            """, """
+            @ru.tinkoff.kora.kora.app.annotation.processor.DependencyTest.TestAnnotation
+            public class TestClass {
+            }
+            """);
+        if (compileResult.isFailed()) {
+            throw compileResult.compilationException();
+        }
+    }
+
 
 }
