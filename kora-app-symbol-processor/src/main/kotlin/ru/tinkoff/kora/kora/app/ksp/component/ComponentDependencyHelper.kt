@@ -33,11 +33,6 @@ object ComponentDependencyHelper {
                 val result = ArrayList<DependencyClaim>(declaration.methodParameterTypes.size)
                 for (i in 0 until declaration.methodParameterTypes.size) {
                     val parameterType = declaration.methodParameterTypes[i]
-                    if(element.parameters[i].type.resolve().declaration.simpleName.asString() == "KafkaListenerConfig") {
-                        val par = element.parameters[i]
-                        val parseTagValueTESTER = TagUtils.parseTagValueTESTER(par.annotations)
-                        throw RuntimeException("TYPE - ${par}, anns - ${par.annotations.toList()}, tags - ${parseTagValueTESTER}")
-                    }
                     val tags = TagUtils.parseTagValue(element.parameters[i])
                     result.add(parseClaim(parameterType, tags, declaration.constructor.parameters[i]))
                 }

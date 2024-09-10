@@ -7,7 +7,6 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.ksp.toClassName
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.resolveToUnderlying
-import ru.tinkoff.kora.ksp.common.exception.UnknownTypeError
 import kotlin.reflect.KClass
 
 object AnnotationUtils {
@@ -22,12 +21,7 @@ object AnnotationUtils {
                     return value.asSequence()
                         .map {
                             if (it is KSTypeReference) {
-                                val type = it.resolve()
-                                if(type.isError) {
-//                                    throw RuntimeException("OPS");
-                                    throw UnknownTypeError(type.declaration)
-                                }
-                                type
+                                it.resolve()
                             } else {
                                 it
                             }
