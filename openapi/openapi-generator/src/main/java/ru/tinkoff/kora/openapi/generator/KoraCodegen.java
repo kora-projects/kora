@@ -1753,7 +1753,7 @@ public class KoraCodegen extends DefaultCodegen {
 
             if (params.codegenMode.isClient()) {
                 List<CodegenParameter> requiredParams = op.allParams.stream()
-                    .filter(p -> !p.notRequiredOrIsNullable())
+                    .filter(p -> !p.notRequiredOrIsNullable() || p.isPathParam)
                     .toList();
                 op.vendorExtensions.put("x-required-params", requiredParams);
             }
