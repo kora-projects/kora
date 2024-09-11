@@ -10,7 +10,8 @@ public final class Slf4jHttpServerLoggerFactory implements HttpServerLoggerFacto
     @Override
     public HttpServerLogger get(HttpServerLoggerConfig logging) {
         if (Objects.requireNonNullElse(logging.enabled(), false)) {
-            return new Slf4jHttpServerLogger(logging.stacktrace(), logging.maskQueries(), logging.maskHeaders());
+            return new Slf4jHttpServerLogger(logging.stacktrace(), logging.maskQueries(),
+                                             logging.maskHeaders(), logging.maskFiller());
         } else {
             return null;
         }

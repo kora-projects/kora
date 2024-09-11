@@ -17,9 +17,14 @@ public interface HttpClientModule extends HttpClientRequestMapperModule, HttpCli
         return configValueExtractor.extract(configValue);
     }
 
+    default HttpClientTelemetryConfig httpClientTelemetryConfig(Config config, ConfigValueExtractor<HttpClientTelemetryConfig> configValueExtractor) {
+        var configValue = config.get("httpClient.telemetry");
+        return configValueExtractor.extract(configValue);
+    }
+
     @DefaultComponent
-    default Sl4fjHttpClientLoggerFactory sl4fjHttpClientLoggerFactory() {
-        return new Sl4fjHttpClientLoggerFactory();
+    default Sl4fjHttpClientLoggerFactory sl4fjHttpClientLoggerFactory(HttpClientTelemetryConfig config) {
+        return new Sl4fjHttpClientLoggerFactory(config);
     }
 
     @DefaultComponent

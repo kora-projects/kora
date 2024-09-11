@@ -9,14 +9,15 @@ import java.util.Set;
 @ConfigValueExtractor
 public interface HttpClientLoggerConfig extends TelemetryConfig.LogConfig {
 
-    Set<String> DEFAULT_MASK_QUERIES = Collections.emptySet();
-    Set<String> DEFAULT_MASK_HEADERS = Collections.singleton("authorization");
-
     default Set<String> maskQueries() {
-        return DEFAULT_MASK_QUERIES;
+        return Collections.emptySet();
     }
 
     default Set<String> maskHeaders() {
-        return DEFAULT_MASK_HEADERS;
+        return Set.of("authorization");
+    }
+
+    default String maskFiller() {
+        return "***";
     }
 }
