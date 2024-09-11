@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.http.client.common.telemetry;
 
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 public final class DefaultHttpClientTelemetryFactory implements HttpClientTelemetryFactory {
     @Nullable
@@ -18,7 +19,7 @@ public final class DefaultHttpClientTelemetryFactory implements HttpClientTeleme
 
     @Override
     @Nullable
-    public HttpClientTelemetry get(HttpClientTelemetryConfig config, String clientName) {
+    public HttpClientTelemetry get(TelemetryConfig config, String clientName) {
         var tracing = this.tracingFactory == null ? null : this.tracingFactory.get(config.tracing(), clientName);
         var metrics = this.metricsFactory == null ? null : this.metricsFactory.get(config.metrics(), clientName);
         var logger = this.loggerFactory == null ? null : this.loggerFactory.get(config.logging(), clientName);

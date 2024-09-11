@@ -1,25 +1,23 @@
 package ru.tinkoff.kora.http.client.common.declarative;
 
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.http.client.common.telemetry.HttpClientLoggerConfig;
-import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryConfig;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.Objects;
-import java.util.Set;
 
-public final class HttpClientOperationTelemetryConfig implements HttpClientTelemetryConfig {
+public final class HttpClientOperationTelemetryConfig implements TelemetryConfig {
     private final OperationLogConfig logging;
     private final OperationMetricConfig metrics;
     private final OperationTracingConfig tracing;
 
-    public HttpClientOperationTelemetryConfig(HttpClientTelemetryConfig client, HttpClientTelemetryConfig operation) {
+    public HttpClientOperationTelemetryConfig(TelemetryConfig client, TelemetryConfig operation) {
         this.logging = new OperationLogConfig(client.logging(), operation.logging());
         this.metrics = new OperationMetricConfig(client.metrics(), operation.metrics());
         this.tracing = new OperationTracingConfig(client.tracing(), operation.tracing());
     }
 
     @Override
-    public HttpClientLoggerConfig logging() {
+    public LogConfig logging() {
         return this.logging;
     }
 
@@ -33,11 +31,11 @@ public final class HttpClientOperationTelemetryConfig implements HttpClientTelem
         return this.metrics;
     }
 
-    private static class OperationLogConfig implements HttpClientLoggerConfig {
-        private final HttpClientLoggerConfig client;
-        private final HttpClientLoggerConfig operation;
+    private static class OperationLogConfig implements LogConfig {
+        private final LogConfig client;
+        private final LogConfig operation;
 
-        private OperationLogConfig(HttpClientLoggerConfig client, HttpClientLoggerConfig operation) {
+        private OperationLogConfig(LogConfig client, LogConfig operation) {
             this.client = Objects.requireNonNull(client);
             this.operation = Objects.requireNonNull(operation);
         }
@@ -49,24 +47,6 @@ public final class HttpClientOperationTelemetryConfig implements HttpClientTelem
                 return this.operation.enabled();
             }
             return this.client.enabled();
-        }
-
-        @Nullable
-        @Override
-        public Set<String> maskQueries() {
-            if (!this.operation.maskQueries().equals(DEFAULT_MASK_QUERIES)) {
-                return this.operation.maskQueries();
-            }
-            return this.client.maskQueries();
-        }
-
-        @Nullable
-        @Override
-        public Set<String> maskHeaders() {
-            if (!this.operation.maskHeaders().equals(DEFAULT_MASK_HEADERS)) {
-                return this.operation.maskHeaders();
-            }
-            return this.operation.maskHeaders();
         }
     }
 
