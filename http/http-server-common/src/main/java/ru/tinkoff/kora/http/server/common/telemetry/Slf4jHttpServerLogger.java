@@ -5,16 +5,28 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
+import ru.tinkoff.kora.http.common.masking.MaskUtils;
 import ru.tinkoff.kora.http.server.common.HttpServer;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
-public final class Slf4jHttpServerLogger implements HttpServerLogger {
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
+
+public class Slf4jHttpServerLogger implements HttpServerLogger {
 
     private static final Logger log = LoggerFactory.getLogger(HttpServer.class);
     private final boolean logStacktrace;
+    private final Set<String> maskedQueryParams;
+    private final Set<String> maskedHeaders;
 
-    public Slf4jHttpServerLogger(boolean stacktrace) {
+    public Slf4jHttpServerLogger(boolean stacktrace,
+                                 Set<String> maskedQueryParams,
+                                 Set<String> maskedHeaders) {
         this.logStacktrace = stacktrace;
+        this.maskedQueryParams = Collections.unmodifiableSet(maskedQueryParams);
+        this.maskedHeaders = Collections.unmodifiableSet(maskedHeaders);
     }
 
     @Override
@@ -23,7 +35,9 @@ public final class Slf4jHttpServerLogger implements HttpServerLogger {
     }
 
     @Override
-    public void logStart(String operation, @Nullable HttpHeaders headers) {
+    public void logStart(String operation,
+                         Map<String, ? extends Collection<String>> queryParams,
+                         @Nullable HttpHeaders headers) {
         if (!log.isInfoEnabled()) {
             return;
         }
@@ -35,8 +49,9 @@ public final class Slf4jHttpServerLogger implements HttpServerLogger {
         });
 
         if (log.isDebugEnabled() && headers != null && headers.size() > 0) {
-            var headersString = HttpHeaders.toString(headers);
-            log.debug(marker, "HttpServer received request for {}\n{}", operation, headersString);
+            var headersString = requestHeaderString(headers);
+            var queryParamsString = requestQueryParamsString(queryParams);
+            log.debug(marker, "HttpServer received request for {}{}\n{}", operation, queryParamsString, headersString);
         } else {
             log.info(marker, "HttpServer received request for {}", operation);
         }
@@ -47,6 +62,7 @@ public final class Slf4jHttpServerLogger implements HttpServerLogger {
                        Integer statusCode,
                        HttpResultCode resultCode,
                        long processingTime,
+                       Map<String, ? extends Collection<String>> queryParams,
                        @Nullable HttpHeaders headers,
                        @Nullable Throwable exception) {
         if (!log.isWarnEnabled()) {
@@ -67,15 +83,16 @@ public final class Slf4jHttpServerLogger implements HttpServerLogger {
         });
 
         if (log.isDebugEnabled() && headers != null && headers.size() > 0) {
-            var headersString = HttpHeaders.toString(headers);
+            var headersString = requestHeaderString(headers);
+            var queryParamsString = requestQueryParamsString(queryParams);
             if (exception != null) {
                 if (this.logStacktrace) {
-                    log.warn(marker, "HttpServer responded error {} for {}\n{}", statusCode, operation, headersString, exception);
+                    log.warn(marker, "HttpServer responded error {} for {}{}\n{}", statusCode, operation, queryParamsString, headersString, exception);
                 } else {
-                    log.warn(marker, "HttpServer responded error {} for {} due to: {} \n{}", statusCode, operation, exception.getMessage(), headersString);
+                    log.warn(marker, "HttpServer responded error {} for {}{} due to: {} \n{}", statusCode, operation, queryParamsString, exception.getMessage(), headersString);
                 }
             } else {
-                log.debug(marker, "HttpServer responded {} for {}\n{}", statusCode, operation, headersString);
+                log.debug(marker, "HttpServer responded {} for {}{}\n{}", statusCode, operation, queryParamsString, headersString);
             }
         } else if (statusCode != null) {
             if (exception != null) {
@@ -98,5 +115,14 @@ public final class Slf4jHttpServerLogger implements HttpServerLogger {
                 log.info(marker, "HttpServer responded for {}", operation);
             }
         }
+    }
+
+    protected String requestHeaderString(HttpHeaders headers) {
+        return MaskUtils.toMaskedString(headers, maskedHeaders);
+    }
+
+    protected String requestQueryParamsString(Map<String, ? extends Collection<String>> queryParams) {
+        final String result = MaskUtils.toMaskedString(queryParams, maskedQueryParams);
+        return result.isEmpty() ? result : '?' + result;
     }
 }
