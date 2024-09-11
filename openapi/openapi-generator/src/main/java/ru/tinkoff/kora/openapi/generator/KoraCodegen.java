@@ -1752,10 +1752,20 @@ public class KoraCodegen extends DefaultCodegen {
             }
 
             if (params.codegenMode.isClient()) {
-                List<CodegenParameter> requiredParams = op.allParams.stream()
-                    .filter(p -> !p.notRequiredOrIsNullable() || p.isPathParam)
-                    .toList();
+                List<CodegenParameter> requiredParams = new ArrayList<>();
+                List<CodegenParameter> optionalParams = new ArrayList<>();
+                for (CodegenParameter param : op.allParams) {
+                    if(param.notRequiredOrIsNullable() && !param.isPathParam) {
+                        optionalParams.add(param);
+                        param.vendorExtensions.put("x-optional-params", optionalParams);
+                    } else {
+                        requiredParams.add(param);
+                        param.vendorExtensions.put("x-required-params", requiredParams);
+                    }
+                }
+
                 op.vendorExtensions.put("x-required-params", requiredParams);
+                op.vendorExtensions.put("x-optional-params", optionalParams);
             }
         }
         if (params.codegenMode.isClient()) {

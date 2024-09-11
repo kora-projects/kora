@@ -1,0 +1,16 @@
+    @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
+    public record {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}OptArgs(
+{{#vendorExtensions.x-optional-params}}        @Nullable {{{dataType}}} {{paramName}}{{^-last}},{{/-last}}{{#-last}}) { {{/-last}}
+{{/vendorExtensions.x-optional-params}}
+
+        public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}OptArgs() {
+            this({{#vendorExtensions.x-optional-params}}{{#defaultValue}}{{.}}{{/defaultValue}}{{^defaultValue}}null{{/defaultValue}}{{^-last}}, {{/-last}}{{/vendorExtensions.x-optional-params}});
+        }
+        {{#vendorExtensions.x-optional-params}}
+
+        public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}OptArgs with{{#lambda.titlecase}}{{paramName}}{{/lambda.titlecase}}(@Nullable {{{dataType}}} {{paramName}}) {
+            if (this.{{paramName}} == {{paramName}}) return this;
+            return new {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}OptArgs({{#vendorExtensions.x-optional-params}}{{paramName}}{{^-last}}, {{/-last}}{{/vendorExtensions.x-optional-params}});
+        }
+        {{/vendorExtensions.x-optional-params}}
+    }

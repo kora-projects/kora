@@ -72,9 +72,9 @@ public interface {{classname}} {
     {{#isBlocking}}
     {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{/isBlocking}} {{operationId}}({{>javaAnnotatedParams}}
     );
-
     {{#vendorExtensions.x-have-optional}}
     {{^hasFormParams}}
+
     {{#isAsync}}
     default CompletionStage<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>
     {{/isAsync}}
@@ -89,6 +89,24 @@ public interface {{classname}} {
     ) {
         return {{operationId}}({{#allParams}}{{#required}}{{paramName}}{{/required}}{{^required}}{{#defaultValue}}{{.}}{{/defaultValue}}{{^defaultValue}}null{{/defaultValue}}{{/required}}{{^-last}}, {{/-last}}{{/allParams}});
     }
+
+    {{#isAsync}}
+    default CompletionStage<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>
+    {{/isAsync}}
+    {{#isReactive}}
+    default Mono<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>
+    {{/isReactive}}
+    {{#isBlocking}}
+    default {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{/isBlocking}} {{operationId}}(
+    {{#vendorExtensions.x-required-params}}
+        {{{dataType}}} {{paramName}},
+    {{/vendorExtensions.x-required-params}}
+        {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}OptArgs optionalArguments
+    ) {
+        return {{operationId}}({{#allParams}}{{#required}}{{paramName}}{{/required}}{{^required}}optionalArguments.{{paramName}}(){{/required}}{{^-last}}, {{/-last}}{{/allParams}});
+    }
+
+{{>javaClientApiOptionalParams}}
     {{/hasFormParams}}
     {{/vendorExtensions.x-have-optional}}
 
