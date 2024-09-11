@@ -44,17 +44,17 @@ public class KafkaConsumerModuleGenerator {
             if (annotation == null) {
                 continue;
             }
-            var configTagData = this.configGenerator.generate(method, annotation);
+            var configTagData = this.configGenerator.generate(elements, method, annotation);
             classBuilder.addMethod(configTagData.configMethod());
-            if(configTagData.tag() != null) {
+            if (configTagData.tag() != null) {
                 classBuilder.addType(configTagData.tag());
             }
 
             var parameters = ConsumerParameter.parseParameters(method);
-            var handler = this.kafkaConsumerHandlerGenerator.generate(method, parameters);
+            var handler = this.kafkaConsumerHandlerGenerator.generate(elements, method, parameters);
             classBuilder.addMethod(handler.method());
 
-            var container = this.kafkaConsumerContainerGenerator.generate(method, handler, parameters);
+            var container = this.kafkaConsumerContainerGenerator.generate(elements, method, handler, parameters);
             classBuilder.addMethod(container);
         }
 

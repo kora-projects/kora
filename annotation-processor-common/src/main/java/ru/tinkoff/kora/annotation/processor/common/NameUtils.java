@@ -18,14 +18,6 @@ public class NameUtils {
         return prefix.toString();
     }
 
-    public static String getPackageName(Element element) {
-        var parent = element.getEnclosingElement();
-        while (parent.getKind() != ElementKind.PACKAGE) {
-            parent = parent.getEnclosingElement();
-        }
-        return parent.toString();
-    }
-
     public static String generatedType(Element from, String postfix) {
         return NameUtils.getOuterClassesAsPrefix(from) + from.getSimpleName() + "_" + postfix;
     }

@@ -12,6 +12,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.Elements;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -31,9 +32,9 @@ public final class KafkaUtils {
         return capitalize(controllerName) + capitalize(methodName) + "Tag";
     }
 
-    public static ClassName prepareConsumerTag(ExecutableElement method) {
+    public static ClassName prepareConsumerTag(Elements elements, ExecutableElement method) {
         String moduleName = method.getEnclosingElement().getSimpleName().toString() + "Module";
-        return ClassName.get(NameUtils.getPackageName(method), moduleName, prepareConsumerTagName(method));
+        return ClassName.get(elements.getPackageOf(method).getQualifiedName().toString(), moduleName, prepareConsumerTagName(method));
     }
 
     @Nullable
@@ -47,10 +48,10 @@ public final class KafkaUtils {
             .orElse(null);
     }
 
-    public static Set<TypeName> getConsumerTags(ExecutableElement method) {
+    public static Set<TypeName> getConsumerTags(Elements elements, ExecutableElement method) {
         var tags = findConsumerUserTags(method);
         if (tags == null) {
-            return Set.of(prepareConsumerTag(method));
+            return Set.of(prepareConsumerTag(elements, method));
         } else {
             return new HashSet<>(tags);
         }

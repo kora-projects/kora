@@ -9,6 +9,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.*;
+import javax.lang.model.util.Elements;
 import java.util.List;
 import java.util.Set;
 
@@ -18,10 +19,10 @@ import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.prepar
 
 public class KafkaConsumerHandlerGenerator {
 
-    public HandlerMethod generate(ExecutableElement executableElement, List<ConsumerParameter> parameters) {
+    public HandlerMethod generate(Elements elements, ExecutableElement executableElement, List<ConsumerParameter> parameters) {
         var controller = (TypeElement) executableElement.getEnclosingElement();
         var methodName = prepareMethodName(executableElement, "Handler");
-        var consumerTags = getConsumerTags(executableElement);
+        var consumerTags = getConsumerTags(elements, executableElement);
         var tagAnnotation = TagUtils.makeAnnotationSpecForTypes(consumerTags);
         var methodBuilder = MethodSpec.methodBuilder(methodName)
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)

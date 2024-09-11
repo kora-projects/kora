@@ -12,6 +12,7 @@ import ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.util.Elements;
 import java.util.Objects;
 import java.util.Set;
 
@@ -19,11 +20,11 @@ import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.*;
 
 public class KafkaConsumerConfigGenerator {
 
-    public KafkaConfigData generate(ExecutableElement executableElement, AnnotationMirror listenerAnnotation) {
-        var targetTags = findConsumerUserTags(executableElement);
+    public KafkaConfigData generate(Elements elements, ExecutableElement method, AnnotationMirror listenerAnnotation) {
+        var targetTags = findConsumerUserTags(method);
         TypeSpec tagBuilded;
         if (targetTags == null) {
-            var tag = prepareConsumerTag(executableElement);
+            var tag = prepareConsumerTag(elements, method);
             targetTags = Set.of(tag);
             tagBuilded = TypeSpec.classBuilder(tag.simpleName())
                 .addAnnotation(AnnotationUtils.generated(KafkaConsumerConfigGenerator.class))
@@ -34,7 +35,7 @@ public class KafkaConsumerConfigGenerator {
         }
 
         var configPath = AnnotationUtils.parseAnnotationValueWithoutDefault(listenerAnnotation, "value");
-        var methodBuilder = MethodSpec.methodBuilder(prepareMethodName(executableElement, "Config"))
+        var methodBuilder = MethodSpec.methodBuilder(prepareMethodName(method, "Config"))
             .returns(KafkaClassNames.kafkaConsumerConfig)
             .addParameter(CommonClassNames.config, "config")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueExtractor, KafkaClassNames.kafkaConsumerConfig), "extractor")
