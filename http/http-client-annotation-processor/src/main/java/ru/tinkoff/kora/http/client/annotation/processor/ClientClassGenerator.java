@@ -128,7 +128,7 @@ public class ClientClassGenerator {
                         var isMap = CommonUtils.isMap(type);
                         if (isMap) {
                             var keyType = ((DeclaredType) type).getTypeArguments().get(0);
-                            if(!String.class.getCanonicalName().equals(keyType.toString())) {
+                            if (!String.class.getCanonicalName().equals(keyType.toString())) {
                                 throw new ProcessingErrorException("@Query map key type must be String, but was: " + keyType, method);
                             }
 
@@ -194,7 +194,7 @@ public class ClientClassGenerator {
                 var isMap = CommonUtils.isMap(type);
                 if (isMap) {
                     var keyType = ((DeclaredType) type).getTypeArguments().get(0);
-                    if(!String.class.getCanonicalName().equals(keyType.toString())) {
+                    if (!String.class.getCanonicalName().equals(keyType.toString())) {
                         throw new ProcessingErrorException("@Header map key type must be String, but was: " + keyType, method);
                     }
 
@@ -207,7 +207,7 @@ public class ClientClassGenerator {
                         b.addStatement("_headers.add($L_header.getKey(), $L_header.getValue())", targetLiteral, targetLiteral);
                     }
                     b.endControlFlow().endControlFlow();
-                } else if(ClassName.get(type).equals(httpHeaders)) {
+                } else if (ClassName.get(type).equals(httpHeaders)) {
                     b.beginControlFlow("for (var $L_header : $L)", targetLiteral, targetLiteral);
                     b.addStatement("_headers.add($L_header.getKey(), $L_header.getValue())", targetLiteral, targetLiteral);
                     b.endControlFlow();
@@ -818,7 +818,7 @@ public class ClientClassGenerator {
                     var type = queryParameter.parameter().asType();
                     if (CommonUtils.isCollection(type)) {
                         type = ((DeclaredType) type).getTypeArguments().get(0);
-                    } else if(CommonUtils.isMap(type)) {
+                    } else if (CommonUtils.isMap(type)) {
                         type = ((DeclaredType) type).getTypeArguments().get(1);
                     }
 
@@ -833,7 +833,7 @@ public class ClientClassGenerator {
                     var type = headerParameter.parameter().asType();
                     if (CommonUtils.isCollection(type)) {
                         type = ((DeclaredType) type).getTypeArguments().get(0);
-                    } else if(CommonUtils.isMap(type)) {
+                    } else if (CommonUtils.isMap(type)) {
                         type = ((DeclaredType) type).getTypeArguments().get(1);
                     }
 

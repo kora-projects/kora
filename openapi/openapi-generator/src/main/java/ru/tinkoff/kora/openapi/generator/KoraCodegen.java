@@ -1749,10 +1749,10 @@ public class KoraCodegen extends DefaultCodegen {
             }
 
             if (params.codegenMode.isClient()) {
-                List<CodegenParameter> requiredParams = new ArrayList<>();
-                List<CodegenParameter> optionalParams = new ArrayList<>();
-                for (CodegenParameter param : op.allParams) {
-                    if(param.notRequiredOrIsNullable() && !param.isPathParam) {
+                var requiredParams = new ArrayList<CodegenParameter>();
+                var optionalParams = new ArrayList<CodegenParameter>();
+                for (var param : op.allParams) {
+                    if (param.notRequiredOrIsNullable() && !param.isPathParam) {
                         optionalParams.add(param);
                         param.vendorExtensions.put("x-optional-params", optionalParams);
                         op.vendorExtensions.put("x-have-optional", true);
