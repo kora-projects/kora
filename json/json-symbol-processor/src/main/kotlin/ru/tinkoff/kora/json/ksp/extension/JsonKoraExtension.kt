@@ -145,7 +145,7 @@ class JsonKoraExtension(
         } else if (resultElement.getConstructors().count() == 1) {
             resultElement.getConstructors().first()
         } else {
-            throw NoSuchElementException("No primary constructor found for: $resultElement")
+            throw ProcessingErrorException("No primary constructor found for: $resultElement", resultElement)
         }
     }
 
