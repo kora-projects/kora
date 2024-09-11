@@ -24,7 +24,7 @@ public class RecordHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
 
     @Override
     public void handle(ConsumerRecords<K, V> records, Consumer<K, V> consumer, boolean commitAllowed) {
-        if(records.isEmpty()) {
+        if (records.isEmpty()) {
             return;
         }
 
