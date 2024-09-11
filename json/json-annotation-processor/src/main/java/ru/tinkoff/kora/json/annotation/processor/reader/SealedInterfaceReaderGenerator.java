@@ -52,14 +52,14 @@ public class SealedInterfaceReaderGenerator {
         var method = MethodSpec.methodBuilder("read")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addException(IOException.class)
-            .addParameter(JsonTypes.jsonParser, "_parser")
+            .addParameter(JsonTypes.jsonParser, "__parser")
             .returns(ClassName.get(jsonElement))
             .addAnnotation(Override.class)
             .addAnnotation(Nullable.class);
-        method.addCode("var bufferingParser = new $T(_parser);\n", JsonTypes.bufferingJsonParser);
+        method.addCode("var bufferingParser = new $T(__parser);\n", JsonTypes.bufferingJsonParser);
         method.addCode("var discriminator = $T.readStringDiscriminator(bufferingParser, $S);\n", JsonTypes.discriminatorHelper, discriminatorField);
-        method.addCode("if (discriminator == null) throw new $T(_parser, $S);\n", JsonTypes.jsonParseException, "Discriminator required, but not provided");
-        method.addCode("var bufferedParser = $T.createFlattened(false, bufferingParser.reset(), _parser);\n", JsonTypes.jsonParserSequence);
+        method.addCode("if (discriminator == null) throw new $T(__parser, $S);\n", JsonTypes.jsonParseException, "Discriminator required, but not provided");
+        method.addCode("var bufferedParser = $T.createFlattened(false, bufferingParser.reset(), __parser);\n", JsonTypes.jsonParserSequence);
         method.addCode("bufferedParser.nextToken();\n");
         method.addCode("return switch(discriminator) {$>\n");
         for (var elem : permittedSubclasses) {
@@ -69,7 +69,7 @@ public class SealedInterfaceReaderGenerator {
                 method.addCode("case $S -> $L.read(bufferedParser);\n", discriminatorValue, readerName);
             }
         }
-        method.addCode("default -> throw new $T(_parser, $S + discriminator + \"'\");$<\n};", JsonTypes.jsonParseException, "Unknown discriminator: '");
+        method.addCode("default -> throw new $T(__parser, $S + discriminator + \"'\");$<\n};", JsonTypes.jsonParseException, "Unknown discriminator: '");
         typeBuilder.addMethod(method.build());
 
         return typeBuilder.build();

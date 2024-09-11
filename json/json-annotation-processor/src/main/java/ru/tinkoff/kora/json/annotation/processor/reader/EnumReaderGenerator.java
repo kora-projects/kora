@@ -37,11 +37,11 @@ public class EnumReaderGenerator {
         typeBuilder.addMethod(MethodSpec.methodBuilder("read")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addException(IOException.class)
-            .addParameter(JsonTypes.jsonParser, "_parser")
+            .addParameter(JsonTypes.jsonParser, "__parser")
             .returns(typeName)
             .addAnnotation(Override.class)
             .addAnnotation(Nullable.class)
-            .addCode("return this.delegate.read(_parser);\n")
+            .addCode("return this.delegate.read(__parser);\n")
             .build()
         );
         return typeBuilder.build();
