@@ -17,7 +17,22 @@ public interface HttpClientLogger {
 
     boolean logResponseBody();
 
-    void logRequest(String authority, String method, String operation, String resolvedUri, @Nullable HttpHeaders headers, @Nullable String body);
+    default void logRequest(String authority,
+                            String method,
+                            String operation,
+                            String resolvedUri,
+                            @Nullable String queryParams,
+                            @Nullable HttpHeaders headers,
+                            @Nullable String body) {
+        logRequest(authority, method, operation, resolvedUri, headers, body);
+    }
+
+    /**
+     * @see #logRequest(String, String, String, String, String, HttpHeaders, String)
+     */
+    @Deprecated
+    default void logRequest(String authority, String method, String operation, String resolvedUri, @Nullable HttpHeaders headers, @Nullable String body) {
+    }
 
     void logResponse(String authority, String operation, long processingTime, @Nullable Integer statusCode, HttpResultCode resultCode, @Nullable Throwable exception, @Nullable HttpHeaders headers, @Nullable String body);
 
