@@ -9,7 +9,7 @@
       {{/isPathParam}}{{#isHeaderParam}}@ru.tinkoff.kora.http.common.annotation.Header("{{baseName}}")
       {{/isHeaderParam}}{{#isCookieParam}}@ru.tinkoff.kora.http.common.annotation.Cookie("{{baseName}}")
       {{/isCookieParam}}{{#isBodyParam}}{{#vendorExtensions.hasMapperTag}}@{{vendorExtensions.mapperTag}}{{/vendorExtensions.hasMapperTag}}
-      {{/isBodyParam}}{{paramName}}: {{{dataType}}}{{^required}}?{{/required}}{{#hasFormParams}},{{/hasFormParams}}{{^hasFormParams}}{{^-last}},{{/-last}}{{/hasFormParams}}
+      {{/isBodyParam}}{{paramName}}: {{{dataType}}}{{^required}}? = {{#defaultValue}}{{.}}{{/defaultValue}}{{^defaultValue}}null{{/defaultValue}}{{/required}}{{#hasFormParams}},{{/hasFormParams}}{{^hasFormParams}}{{^-last}},{{/-last}}{{/hasFormParams}}
 {{/isFormParam}}{{/allParams}}    {{#hasFormParams}}
       {{#isClient}}@ru.tinkoff.kora.common.Mapping(value={{classname}}ClientRequestMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper::class)
       {{/isClient}}{{^isClient}}@ru.tinkoff.kora.common.Mapping(value={{classname}}ServerRequestMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper::class)

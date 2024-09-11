@@ -1747,6 +1747,24 @@ public class KoraCodegen extends DefaultCodegen {
                     }
                 }
             }
+
+            if (params.codegenMode.isClient()) {
+                var requiredParams = new ArrayList<CodegenParameter>();
+                var optionalParams = new ArrayList<CodegenParameter>();
+                for (var param : op.allParams) {
+                    if (param.notRequiredOrIsNullable() && !param.isPathParam) {
+                        optionalParams.add(param);
+                        param.vendorExtensions.put("x-optional-params", optionalParams);
+                        op.vendorExtensions.put("x-have-optional", true);
+                    } else {
+                        requiredParams.add(param);
+                        param.vendorExtensions.put("x-required-params", requiredParams);
+                    }
+                }
+
+                op.vendorExtensions.put("x-required-params", requiredParams);
+                op.vendorExtensions.put("x-optional-params", optionalParams);
+            }
         }
         if (params.codegenMode.isClient()) {
             var annotationParams = httpClientAnnotationParams.entrySet()

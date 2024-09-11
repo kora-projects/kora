@@ -48,6 +48,13 @@ paths:
           schema:
             type: integer
             format: int32
+        - name: defaultLimit
+          in: query
+          description: How many items to return at one time (max 100)
+          schema:
+            type: integer
+            format: int32
+            default: 100
         - name: status
           in: query
           style: form
