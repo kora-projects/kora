@@ -19,6 +19,10 @@ public class HandlerWrapper {
 
     public static <K, V> BaseKafkaRecordsHandler<K, V> wrapHandler(KafkaConsumerTelemetry<K, V> telemetry, ValueOf<BaseKafkaRecordsHandler<K, V>> realHandler) {
         return (records, consumer, commitAllowed) -> {
+            if (records.isEmpty()) {
+                return;
+            }
+
             var ctx = telemetry.get(records);
             try {
                 realHandler.get().handle(records, consumer, commitAllowed);

@@ -24,6 +24,10 @@ public class RecordHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
 
     @Override
     public void handle(ConsumerRecords<K, V> records, Consumer<K, V> consumer, boolean commitAllowed) {
+        if (records.isEmpty()) {
+            return;
+        }
+
         var ctx = this.telemetry.get(records);
         try {
             var handler = this.handler.get();
@@ -31,10 +35,10 @@ public class RecordHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
                 var recordCtx = ctx.get(record);
                 try {
                     handler.handle(consumer, recordCtx, record);
-                    recordCtx.close(null);
                     if (this.shouldCommit && commitAllowed) {
                         consumer.commitSync(Map.of(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset(), record.leaderEpoch(), "")));
                     }
+                    recordCtx.close(null);
                 } catch (Exception e) {
                     recordCtx.close(e);
                     throw e;

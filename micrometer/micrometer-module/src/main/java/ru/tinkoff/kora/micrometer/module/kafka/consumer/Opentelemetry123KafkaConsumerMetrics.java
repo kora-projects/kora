@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @see <a href="https://github.com/open-telemetry/semantic-conventions/blob/main/docs/messaging/messaging-metrics.md">messaging-metrics</a>
  */
 public final class Opentelemetry123KafkaConsumerMetrics implements KafkaConsumerMetrics, Lifecycle {
+
     private final MeterRegistry meterRegistry;
     private final ConcurrentHashMap<DurationKey, DistributionSummary> metrics = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<TopicPartition, LagGauge> lagMetrics = new ConcurrentHashMap<>();
@@ -35,10 +36,6 @@ public final class Opentelemetry123KafkaConsumerMetrics implements KafkaConsumer
         this.driverProperties = driverProperties;
     }
 
-    @Override
-    public void onRecordsReceived(ConsumerRecords<?, ?> records) {
-    }
-
     private record DurationKey(String topic, int partition, @Nullable Class<? extends Throwable> errorType) {}
 
     private DistributionSummary metrics(DurationKey key) {
@@ -48,6 +45,7 @@ public final class Opentelemetry123KafkaConsumerMetrics implements KafkaConsumer
             .tag(SemanticAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
             .tag(SemanticAttributes.MESSAGING_DESTINATION_NAME.getKey(), key.topic())
             .tag(SemanticAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION.getKey(), String.valueOf(key.partition()));
+
         var clientId = driverProperties.get(ProducerConfig.CLIENT_ID_CONFIG);
         if (clientId != null) {
             builder.tag(SemanticAttributes.MESSAGING_CLIENT_ID.getKey(), clientId.toString());
@@ -63,6 +61,11 @@ public final class Opentelemetry123KafkaConsumerMetrics implements KafkaConsumer
     }
 
     @Override
+    public void onRecordsReceived(ConsumerRecords<?, ?> records) {
+
+    }
+
+    @Override
     public void onRecordProcessed(ConsumerRecord<?, ?> record, long duration, Throwable ex) {
         double durationDouble = ((double) duration) / 1_000_000_000;
         var key = new DurationKey(record.topic(), record.partition(), ex != null ? ex.getClass() : null);
@@ -71,16 +74,18 @@ public final class Opentelemetry123KafkaConsumerMetrics implements KafkaConsumer
     }
 
     @Override
+    public void onRecordsProcessed(ConsumerRecords<?, ?> records, long duration, Throwable ex) {
+
+    }
+
+    @Override
     public void reportLag(TopicPartition partition, long lag) {
         lagMetrics.computeIfAbsent(partition, p -> new LagGauge(p, meterRegistry)).offsetLag = lag;
     }
 
     @Override
-    public void onRecordsProcessed(ConsumerRecords<?, ?> records, long duration, Throwable ex) {
-    }
-
-    @Override
     public void init() {
+
     }
 
     @Override
