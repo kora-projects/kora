@@ -24,6 +24,7 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 
@@ -176,13 +177,12 @@ public class JsonKoraExtension implements KoraExtension {
         return ExtensionResult.fromExecutable(constructor);
     }
 
-
     private ExecutableElement findDefaultConstructor(TypeElement resultElement) {
         return resultElement.getEnclosedElements()
             .stream()
             .filter(e -> e.getKind() == ElementKind.CONSTRUCTOR)
             .map(ExecutableElement.class::cast)
             .findFirst()
-            .orElseThrow();
+            .orElseThrow(() -> new NoSuchElementException("No primary constructor found for: " + resultElement));
     }
 }
