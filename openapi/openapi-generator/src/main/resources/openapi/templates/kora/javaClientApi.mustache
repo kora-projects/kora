@@ -64,40 +64,44 @@ public interface {{classname}} {
     {{/interceptorTags}}
     {{/koraInterceptors}}
     {{#isAsync}}
-    CompletionStage<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>
+    CompletionStage<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {{operationId}}(
     {{/isAsync}}
     {{#isReactive}}
-    Mono<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>
+    Mono<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {{operationId}}(
     {{/isReactive}}
     {{#isBlocking}}
-    {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{/isBlocking}} {{operationId}}({{>javaAnnotatedParams}}
+    {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {{operationId}}(
+    {{/isBlocking}}
+    {{>javaAnnotatedParams}}
     );
     {{#vendorExtensions.x-have-optional}}
     {{^hasFormParams}}
 
     {{#isAsync}}
-    default CompletionStage<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>
+    default CompletionStage<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {{operationId}}(
     {{/isAsync}}
     {{#isReactive}}
-    default Mono<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>
+    default Mono<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {{operationId}}(
     {{/isReactive}}
     {{#isBlocking}}
-    default {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{/isBlocking}} {{operationId}}(
+    default {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {{operationId}}(
+    {{/isBlocking}}
     {{#vendorExtensions.x-required-params}}
         {{{dataType}}} {{paramName}}{{^-last}},{{/-last}}
     {{/vendorExtensions.x-required-params}}
     ) {
-        return {{operationId}}({{#allParams}}{{#required}}{{paramName}}{{/required}}{{^required}}{{#defaultValue}}{{.}}{{/defaultValue}}{{^defaultValue}}null{{/defaultValue}}{{/required}}{{^-last}}, {{/-last}}{{/allParams}});
+        return {{operationId}}({{#allParams}}{{#required}}{{paramName}}{{/required}}{{^required}}{{#defaultValue}}{{.}}{{/defaultValue}}{{^defaultValue}}({{{dataType}}}) null{{/defaultValue}}{{/required}}{{^-last}}, {{/-last}}{{/allParams}});
     }
 
     {{#isAsync}}
-    default CompletionStage<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>
+    default CompletionStage<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {{operationId}}(
     {{/isAsync}}
     {{#isReactive}}
-    default Mono<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>
+    default Mono<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {{operationId}}(
     {{/isReactive}}
     {{#isBlocking}}
-    default {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{/isBlocking}} {{operationId}}(
+    default {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {{operationId}}(
+    {{/isBlocking}}
     {{#vendorExtensions.x-required-params}}
         {{{dataType}}} {{paramName}},
     {{/vendorExtensions.x-required-params}}
