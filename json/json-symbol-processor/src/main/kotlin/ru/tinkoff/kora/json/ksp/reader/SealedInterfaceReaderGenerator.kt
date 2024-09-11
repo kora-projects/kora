@@ -45,12 +45,12 @@ class SealedInterfaceReaderGenerator(private val resolver: Resolver, logger: KSP
             ?: throw ProcessingErrorException("Sealed interface should have @JsonDiscriminatorField annotation", jsonClassDeclaration)
         val function = FunSpec.builder("read")
             .addModifiers(KModifier.PUBLIC, KModifier.OVERRIDE)
-            .addParameter("_parser", JsonTypes.jsonParser)
+            .addParameter("__parser", JsonTypes.jsonParser)
             .returns(typeName.copy(nullable = true))
-        function.addCode("val bufferingParser = %T(_parser)\n", JsonTypes.bufferingJsonParser)
+        function.addCode("val bufferingParser = %T(__parser)\n", JsonTypes.bufferingJsonParser)
         function.addCode("val discriminator = %T.readStringDiscriminator(bufferingParser, %S)\n", JsonTypes.discriminatorHelper, discriminatorField);
-        function.addCode("if (discriminator == null) throw %T(_parser, %S)\n", JsonTypes.jsonParseException, "Discriminator required, but not provided");
-        function.addCode("val bufferedParser = %T.createFlattened(false, bufferingParser.reset(), _parser)\n", JsonTypes.jsonParserSequence)
+        function.addCode("if (discriminator == null) throw %T(__parser, %S)\n", JsonTypes.jsonParseException, "Discriminator required, but not provided");
+        function.addCode("val bufferedParser = %T.createFlattened(false, bufferingParser.reset(), __parser)\n", JsonTypes.jsonParserSequence)
         function.addCode("bufferedParser.nextToken()\n")
         function.beginControlFlow("return when(discriminator) {")
         subclasses.forEach { elem ->
@@ -64,7 +64,7 @@ class SealedInterfaceReaderGenerator(private val resolver: Resolver, logger: KSP
                 )
             }
         }
-        function.addCode("else -> throw %T(_parser, %S)", JsonTypes.jsonParseException, "Unknown discriminator")
+        function.addCode("else -> throw %T(__parser, %S)", JsonTypes.jsonParseException, "Unknown discriminator")
         function.endControlFlow()
         typeBuilder.addFunction(function.build())
         return typeBuilder.build()

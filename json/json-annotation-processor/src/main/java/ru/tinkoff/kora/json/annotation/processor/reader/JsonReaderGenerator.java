@@ -89,7 +89,7 @@ public class JsonReaderGenerator {
         }
         method.addCode("while (__token != $T.END_OBJECT) {$>\n", JsonTypes.jsonToken);
         assertTokenType(method, "FIELD_NAME");
-        method.addStatement("var __fieldName = __parser.getCurrentName()");
+        method.addStatement("var __fieldName = __parser.currentName()");
         method.addCode("switch (__fieldName) {$>\n");
         for (int i = 0, fieldsSize = meta.fields().size(); i < fieldsSize; i++) {
             var field = meta.fields().get(i);
