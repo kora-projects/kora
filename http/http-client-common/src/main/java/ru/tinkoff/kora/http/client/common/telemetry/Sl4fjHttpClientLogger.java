@@ -4,17 +4,26 @@ import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
+import ru.tinkoff.kora.http.common.masking.MaskUtils;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
+import java.util.Collections;
+import java.util.Set;
 import java.util.concurrent.CancellationException;
 
 public class Sl4fjHttpClientLogger implements HttpClientLogger {
+
     private final Logger requestLog;
     private final Logger responseLog;
+    private final Set<String> maskedQueryParams;
+    private final Set<String> maskedHeaders;
 
-    public Sl4fjHttpClientLogger(Logger requestLog, Logger responseLog) {
+    public Sl4fjHttpClientLogger(Logger requestLog, Logger responseLog,
+                                 Set<String> maskedQueryParams, Set<String> maskedHeaders) {
         this.requestLog = requestLog;
         this.responseLog = responseLog;
+        this.maskedQueryParams = Collections.unmodifiableSet(maskedQueryParams);
+        this.maskedHeaders = Collections.unmodifiableSet(maskedHeaders);
     }
 
     @Override
@@ -52,6 +61,7 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
                            String method,
                            String operation,
                            String resolvedUri,
+                           @Nullable String queryParams,
                            @Nullable HttpHeaders headers,
                            @Nullable String body) {
         var marker = StructuredArgument.marker("httpRequest", gen -> {
@@ -64,10 +74,12 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
         if (this.requestLog.isTraceEnabled() && headers != null && headers.size() > 0 && body != null) {
             var headersString = this.requestHeaderString(headers);
             var bodyStr = this.requestBodyString(body);
-            this.requestLog.trace(marker, "HttpClient requesting {}\n{}\n{}", operation, headersString, bodyStr);
+            var queryParamsString = this.requestQueryParamsString(queryParams);
+            this.requestLog.trace(marker, "HttpClient requesting {}{}\n{}\n{}", operation, queryParamsString, headersString, bodyStr);
         } else if (this.requestLog.isDebugEnabled() && headers != null && headers.size() > 0) {
             var headersString = this.requestHeaderString(headers);
-            this.requestLog.debug(marker, "HttpClient requesting {}\n{}", operation, headersString);
+            var queryParamsString = this.requestQueryParamsString(queryParams);
+            this.requestLog.debug(marker, "HttpClient requesting {}{}\n{}", operation, queryParamsString, headersString);
         } else {
             this.requestLog.info(marker, "HttpClient requesting {}", operation);
         }
@@ -129,6 +141,11 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
     }
 
     public String requestHeaderString(HttpHeaders headers) {
-        return HttpHeaders.toString(headers);
+        return MaskUtils.toMaskedString(headers, maskedHeaders);
+    }
+
+    public String requestQueryParamsString(@Nullable String queryParams) {
+        final String result = queryParams != null ? MaskUtils.toMaskedString(queryParams, maskedQueryParams) : "";
+        return result.isEmpty() ? result : '?' + result;
     }
 }

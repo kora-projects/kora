@@ -87,18 +87,19 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         var headers = request.headers();
 
         if (logger != null && logger.logRequest()) {
+            final String queryParams = request.uri().getRawQuery();
             if (!logger.logRequestHeaders()) {
-                logger.logRequest(authority, request.method(), operation, resolvedUri, null, null);
+                logger.logRequest(authority, request.method(), operation, resolvedUri, queryParams, null, null);
             } else if (!logger.logRequestBody()) {
-                logger.logRequest(authority, request.method(), operation, resolvedUri, headers, null);
+                logger.logRequest(authority, request.method(), operation, resolvedUri, queryParams, headers, null);
             } else {
                 var requestBodyCharset = this.detectCharset(request.body().contentType());
                 if (requestBodyCharset == null) {
-                    this.logger.logRequest(authority, request.method(), operation, resolvedUri, headers, null);
+                    this.logger.logRequest(authority, request.method(), operation, resolvedUri, queryParams, headers, null);
                 } else {
                     var requestBody = this.wrapRequestBody(ctx, request.body(), buffers -> {
                         var bodyString = byteBufListToBodyString(buffers, requestBodyCharset);
-                        this.logger.logRequest(authority, method, operation, resolvedUri, headers, bodyString);
+                        this.logger.logRequest(authority, method, operation, resolvedUri, queryParams, headers, bodyString);
                     });
                     request = request.toBuilder()
                         .body(requestBody)
