@@ -283,10 +283,13 @@ public class UndertowExchangeProcessor implements Runnable {
             exchange.endExchange();
             return;
         } else {
-            this.setHeaders(exchange.getResponseHeaders(), rs.headers(), null);
+            this.setHeaders(exchange.getResponseHeaders(), rs.headers(), body.contentType());
         }
 
-        exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+        var contentType = body.contentType();
+        if (contentType != null) {
+            exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, body.contentType());
+        }
         var full = body.getFullContentIfAvailable();
         if (full != null) {
             sendFullBody(response, rs, full, error);
