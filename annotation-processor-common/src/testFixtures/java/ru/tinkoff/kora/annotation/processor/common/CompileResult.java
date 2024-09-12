@@ -45,7 +45,7 @@ public record CompileResult(String testPackage, List<Diagnostic<? extends JavaFi
         try {
             return this.manager.getClassLoader(StandardLocation.CLASS_OUTPUT).loadClass(this.testPackage + "." + className);
         } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException(e);
         }
     }
 

@@ -7,6 +7,7 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
 
 public class NameUtils {
+
     public static String getOuterClassesAsPrefix(Element element) {
         var prefix = new StringBuilder("$");
         var parent = element.getEnclosingElement();

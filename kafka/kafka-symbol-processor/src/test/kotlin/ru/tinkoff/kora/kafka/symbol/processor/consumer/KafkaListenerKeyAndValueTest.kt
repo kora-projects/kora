@@ -24,6 +24,20 @@ class KafkaListenerKeyAndValueTest : AbstractKafkaListenerAnnotationProcessorTes
     }
 
     @Test
+    fun testProcessValueWithTaggedListener() {
+        compile(
+            """
+            class KafkaListenerClass {
+                @KafkaListener(value = "test.config.path", tag = [String::class])
+                fun process(value: String) {
+                }
+            }
+            
+            """.trimIndent()
+        )
+    }
+
+    @Test
     fun testProcessValueSuspend() {
         compile(
             """

@@ -7,12 +7,12 @@ import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.containerFunName
-import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.tagTypeName
+import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.getConsumerTags
 import ru.tinkoff.kora.kafka.symbol.processor.consumer.KafkaHandlerGenerator.HandlerFunction
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.TagUtils.addTag
-import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
+import ru.tinkoff.kora.ksp.common.TagUtils.toTagSpecTypes
 
 class KafkaContainerGenerator {
     fun generate(functionDeclaration: KSFunctionDeclaration, handler: HandlerFunction, parameters: List<ConsumerParameter>): FunSpec {
@@ -21,8 +21,7 @@ class KafkaContainerGenerator {
         val handlerType = handler.funSpec.returnType as ParameterizedTypeName
 
         val consumerParameter = parameters.firstOrNull { it is ConsumerParameter.Consumer } as ConsumerParameter.Consumer?
-        val tagName = functionDeclaration.tagTypeName()
-        val tagAnnotation = listOf(tagName).toTagAnnotation()
+        val tagAnnotation = functionDeclaration.getConsumerTags().toTagSpecTypes()
 
         val funBuilder = FunSpec.builder(functionDeclaration.containerFunName())
             .addParameter(ParameterSpec.builder("config", KafkaClassNames.kafkaConsumerConfig).addAnnotation(tagAnnotation).build())

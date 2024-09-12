@@ -1,24 +1,26 @@
 package ru.tinkoff.kora.kafka.annotation.processor.consumer;
 
-import com.squareup.javapoet.*;
+import com.squareup.javapoet.MethodSpec;
+import com.squareup.javapoet.ParameterSpec;
+import com.squareup.javapoet.ParameterizedTypeName;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.TagUtils;
 import ru.tinkoff.kora.kafka.annotation.processor.consumer.KafkaConsumerHandlerGenerator.HandlerMethod;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.util.Elements;
 import java.util.List;
 
 import static ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames.*;
-import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.prepareConsumerTagName;
+import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.getConsumerTags;
 import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.prepareMethodName;
 
 public class KafkaConsumerContainerGenerator {
 
-    public MethodSpec generate(ExecutableElement executableElement, HandlerMethod handlerMethod, List<ConsumerParameter> parameters) {
-        var tagName = prepareConsumerTagName(executableElement);
-        var tagsBlock = CodeBlock.of("$L.class", tagName);
-        var tagAnnotation = AnnotationSpec.builder(CommonClassNames.tag).addMember("value", tagsBlock).build();
+    public MethodSpec generate(Elements elements, ExecutableElement executableElement, HandlerMethod handlerMethod, List<ConsumerParameter> parameters) {
+        var consumerTags = getConsumerTags(elements, executableElement);
+        var tagAnnotation = TagUtils.makeAnnotationSpecForTypes(consumerTags);
 
         var methodBuilder = MethodSpec.methodBuilder(prepareMethodName(executableElement, "Container"))
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
