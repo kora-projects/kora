@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.kafka.annotation.processor.consumer;
 
+import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
