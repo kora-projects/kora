@@ -140,7 +140,13 @@ class JsonKoraExtension(
     }
 
     private fun findDefaultConstructor(resultElement: KSClassDeclaration): KSFunctionDeclaration {
-        return resultElement.primaryConstructor ?: throw NoSuchElementException("No value present")
+        return if (resultElement.primaryConstructor != null) {
+            resultElement.primaryConstructor!!
+        } else if (resultElement.getConstructors().count() == 1) {
+            resultElement.getConstructors().first()
+        } else {
+            throw ProcessingErrorException("No primary constructor found for: $resultElement", resultElement)
+        }
     }
 
     private fun isProcessableType(typeRef: KSType): Boolean {
