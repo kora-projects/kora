@@ -4,6 +4,7 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
+import java.time.Duration;
 import java.util.List;
 
 @ConfigValueExtractor
@@ -74,6 +75,9 @@ public interface CamundaEngineConfig {
         }
 
         List<String> resources();
+
+        @Nullable
+        Duration delay();
     }
 
     @ConfigValueExtractor

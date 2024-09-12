@@ -1,8 +1,8 @@
-package ru.tinkoff.kora.camunda.engine;
+package ru.tinkoff.kora.camunda.engine.configurator;
 
 import org.junit.jupiter.api.Test;
-import ru.tinkoff.kora.camunda.engine.util.ClasspathResourceUtils;
-import ru.tinkoff.kora.camunda.engine.util.Resource;
+import ru.tinkoff.kora.camunda.engine.configurator.ClasspathResourceUtils;
+import ru.tinkoff.kora.camunda.engine.configurator.Resource;
 
 import java.util.List;
 

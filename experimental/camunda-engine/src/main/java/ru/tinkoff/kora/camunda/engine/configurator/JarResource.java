@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.camunda.engine.util;
+package ru.tinkoff.kora.camunda.engine.configurator;
 
 import java.io.InputStream;
 import java.util.Objects;

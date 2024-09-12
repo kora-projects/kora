@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.camunda.engine.util;
+package ru.tinkoff.kora.camunda.engine.configurator;
 
 import jakarta.annotation.Nullable;
 
@@ -12,7 +12,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 
-public final class ClasspathResourceUtils {
+final class ClasspathResourceUtils {
 
     private ClasspathResourceUtils() {}
 
