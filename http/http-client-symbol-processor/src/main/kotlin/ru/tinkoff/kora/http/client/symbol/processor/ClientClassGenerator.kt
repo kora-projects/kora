@@ -64,6 +64,10 @@ class ClientClassGenerator(private val resolver: Resolver) {
         val builder = declaration.extendsKeepAop(typeName)
             .generated(ClientClassGenerator::class)
 
+        if (declaration.findAnnotation(CommonClassNames.component) != null) {
+            builder.addAnnotation(CommonClassNames.component)
+        }
+
         builder.primaryConstructor(this.buildConstructor(builder, declaration, methods))
         builder.addProperty("rootUrl", String::class.asClassName(), KModifier.PRIVATE, KModifier.FINAL);
 

@@ -6,6 +6,7 @@ import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.mockito.Mockito.reset
 import org.mockito.kotlin.whenever
+import ru.tinkoff.kora.common.Component
 import ru.tinkoff.kora.common.Context
 import ru.tinkoff.kora.http.client.common.HttpClientEncoderException
 import ru.tinkoff.kora.http.client.common.HttpClientResponseException
@@ -14,6 +15,25 @@ import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper
 import ru.tinkoff.kora.http.common.body.HttpBody
 
 class BlockingApiTest : AbstractHttpClientTest() {
+
+    @Test
+    fun testComponentAnnotationPreserved() {
+        val client = compile(listOf<Any>(), """
+            @Component
+            @HttpClient
+            interface TestClient {
+              @HttpRoute(method = "POST", path = "/test")
+              fun request()
+            }
+            
+            """.trimIndent())
+
+        Assertions.assertThat(client.objectClass.annotations.any { a -> a is Component }).isTrue
+
+        onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(200) }
+        client.invoke<Unit>("request")
+    }
+
     @Test
     fun testBlockingVoid() {
         val client = compile(listOf<Any>(), """
