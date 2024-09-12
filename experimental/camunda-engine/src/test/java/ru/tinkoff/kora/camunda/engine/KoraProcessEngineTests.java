@@ -31,7 +31,7 @@ public class KoraProcessEngineTests implements CamundaEngineModule {
                 new CamundaEngineConfig.ParallelInitConfig() {},
                 "camunda-license.txt",
                 $CamundaEngineConfig_JobExecutorConfig_ConfigValueExtractor.DEFAULTS,
-                new $CamundaEngineConfig_DeploymentConfig_ConfigValueExtractor.DeploymentConfig_Impl(null, "MyDep", false, List.of("bpm")),
+                new $CamundaEngineConfig_DeploymentConfig_ConfigValueExtractor.DeploymentConfig_Impl(null, "MyDep", false, List.of("bpm"), null),
                 new $CamundaEngineConfig_AdminConfig_ConfigValueExtractor.AdminConfig_Impl("admin", "admin", null, null, null),
                 new $CamundaEngineConfig_CamundaTelemetryConfig_ConfigValueExtractor.CamundaTelemetryConfig_Impl(
                     $CamundaEngineConfig_CamundaEngineLogConfig_ConfigValueExtractor.DEFAULTS,
@@ -101,7 +101,7 @@ public class KoraProcessEngineTests implements CamundaEngineModule {
                 },
                 "camunda-license.txt",
                 $CamundaEngineConfig_JobExecutorConfig_ConfigValueExtractor.DEFAULTS,
-                new $CamundaEngineConfig_DeploymentConfig_ConfigValueExtractor.DeploymentConfig_Impl(null, "MyDep", false, List.of("bpm")),
+                new $CamundaEngineConfig_DeploymentConfig_ConfigValueExtractor.DeploymentConfig_Impl(null, "MyDep", false, List.of("bpm"), null),
                 new $CamundaEngineConfig_AdminConfig_ConfigValueExtractor.AdminConfig_Impl("admin", "admin", null, null, null),
                 new $CamundaEngineConfig_CamundaTelemetryConfig_ConfigValueExtractor.CamundaTelemetryConfig_Impl(
                     $CamundaEngineConfig_CamundaEngineLogConfig_ConfigValueExtractor.DEFAULTS,
