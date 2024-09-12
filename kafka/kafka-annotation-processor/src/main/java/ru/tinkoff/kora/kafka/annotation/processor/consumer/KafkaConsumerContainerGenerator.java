@@ -1,8 +1,10 @@
 package ru.tinkoff.kora.kafka.annotation.processor.consumer;
 
+import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.TagUtils;
 import ru.tinkoff.kora.kafka.annotation.processor.consumer.KafkaConsumerHandlerGenerator.HandlerMethod;
@@ -56,6 +58,10 @@ public class KafkaConsumerContainerGenerator {
         methodBuilder.addParameter(keyDeserializer.build());
         methodBuilder.addParameter(valueDeserializer.build());
         methodBuilder.addParameter(ParameterizedTypeName.get(kafkaConsumerTelemetryFactory, handlerMethod.keyType(), handlerMethod.valueType()), "telemetryFactory");
+        methodBuilder.addParameter(ParameterSpec.builder(consumerRebalanceListener, "rebalanceListener")
+            .addAnnotations(List.of(AnnotationSpec.builder(Nullable.class).build(), tagAnnotation))
+            .build());
+
         methodBuilder.addStatement("var telemetry = telemetryFactory.get(config.driverProperties(), config.telemetry())");
 
         var consumerParameter = parameters.stream().filter(r -> r instanceof ConsumerParameter.Consumer).map(ConsumerParameter.Consumer.class::cast).findFirst();
@@ -70,7 +76,7 @@ public class KafkaConsumerContainerGenerator {
         methodBuilder.endControlFlow();
         methodBuilder.addCode("return new $T<>(config, config.topics().get(0), keyDeserializer, valueDeserializer, telemetry, wrappedHandler);", kafkaAssignConsumerContainer);
         methodBuilder.addCode("$<\n} else {$>\n");
-        methodBuilder.addCode("return new $T<>(config, keyDeserializer, valueDeserializer, wrappedHandler);", kafkaSubscribeConsumerContainer);
+        methodBuilder.addCode("return new $T<>(config, keyDeserializer, valueDeserializer, wrappedHandler, rebalanceListener);", kafkaSubscribeConsumerContainer);
         methodBuilder.addCode("$<\n}\n");
         return methodBuilder.build();
     }

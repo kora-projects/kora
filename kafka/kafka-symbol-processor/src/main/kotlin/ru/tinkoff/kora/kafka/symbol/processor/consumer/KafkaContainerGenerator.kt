@@ -1,10 +1,12 @@
 package ru.tinkoff.kora.kafka.symbol.processor.consumer
 
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import jakarta.annotation.Nullable
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.containerFunName
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.getConsumerTags
@@ -29,6 +31,9 @@ class KafkaContainerGenerator {
             .addParameter(ParameterSpec.builder("keyDeserializer", KafkaClassNames.deserializer.parameterizedBy(keyType)).addTag(handler.keyTag).build())
             .addParameter(ParameterSpec.builder("valueDeserializer", KafkaClassNames.deserializer.parameterizedBy(valueType)).addTag(handler.valueTag).build())
             .addParameter("telemetryFactory", KafkaClassNames.kafkaConsumerTelemetryFactory.parameterizedBy(keyType, valueType))
+            .addParameter(ParameterSpec.builder("rebalanceListener", KafkaClassNames.consumerRebalanceListener.copy(true))
+                .addAnnotations(listOf(tagAnnotation))
+                .build())
             .addAnnotation(CommonClassNames.root)
             .addAnnotation(tagAnnotation)
             .returns(CommonClassNames.lifecycle)
@@ -44,7 +49,7 @@ class KafkaContainerGenerator {
             addStatement("require(topics.size == 1)")
             addStatement("return %T(config, topics[0], keyDeserializer, valueDeserializer, telemetry, wrappedHandler)", KafkaClassNames.kafkaAssignConsumerContainer)
             nextControlFlow("else")
-            addStatement("return %T(config, keyDeserializer, valueDeserializer, wrappedHandler)", KafkaClassNames.kafkaSubscribeConsumerContainer)
+            addStatement("return %T(config, keyDeserializer, valueDeserializer, wrappedHandler, rebalanceListener)", KafkaClassNames.kafkaSubscribeConsumerContainer)
         }
         return funBuilder.build()
     }

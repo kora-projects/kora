@@ -24,6 +24,7 @@ public final class KafkaClassNames {
     public static final ClassName kafkaConsumerConfig = ClassName.get("ru.tinkoff.kora.kafka.common.consumer", "KafkaListenerConfig");
     public static final ClassName kafkaSubscribeConsumerContainer = ClassName.get("ru.tinkoff.kora.kafka.common.consumer.containers", "KafkaSubscribeConsumerContainer");
     public static final ClassName kafkaAssignConsumerContainer = ClassName.get("ru.tinkoff.kora.kafka.common.consumer.containers", "KafkaAssignConsumerContainer");
+    public static final ClassName consumerRebalanceListener = ClassName.get("ru.tinkoff.kora.kafka.common.consumer", "ConsumerAwareRebalanceListener");
     public static final ClassName handlerWrapper = ClassName.get("ru.tinkoff.kora.kafka.common.consumer.containers.handlers.wrapper", "HandlerWrapper");
     public static final ClassName kafkaConsumerTelemetry = ClassName.get("ru.tinkoff.kora.kafka.common.consumer.telemetry", "KafkaConsumerTelemetry");
     public static final ClassName kafkaConsumerTelemetryFactory = ClassName.get("ru.tinkoff.kora.kafka.common.consumer.telemetry", "KafkaConsumerTelemetryFactory");

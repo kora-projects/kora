@@ -129,11 +129,17 @@ public class AnnotationUtils {
                 }
                 var annotationValue = value.getValue();
                 if (annotationValue instanceof List<?> list) {
+                    var result = new ArrayList<>();
+                    for (var o : list) {
+                        var itemAnnotationValue = (AnnotationValue) o;
+                        var itemValue = itemAnnotationValue.getValue();
+                        if (itemValue instanceof String str && str.equals("<error>")) {
+                            throw new ProcessingErrorException("Tag value is not a valid type ", null, annotationMirror);
+                        }
+                        result.add(itemValue);
+                    }
                     @SuppressWarnings("unchecked")
-                    var finalValue = (T) list.stream()
-                        .map(AnnotationValue.class::cast)
-                        .map(AnnotationValue::getValue)
-                        .toList();
+                    var finalValue = (T) result;
                     return finalValue;
                 } else {
                     @SuppressWarnings("unchecked")

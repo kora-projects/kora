@@ -23,6 +23,7 @@ object KafkaClassNames {
     val handlerWrapper = ClassName("ru.tinkoff.kora.kafka.common.consumer.containers.handlers.wrapper", "HandlerWrapper")
     val kafkaConsumerTelemetry = ClassName("ru.tinkoff.kora.kafka.common.consumer.telemetry", "KafkaConsumerTelemetry")
     val kafkaConsumerTelemetryFactory = ClassName("ru.tinkoff.kora.kafka.common.consumer.telemetry", "KafkaConsumerTelemetryFactory")
+    val consumerRebalanceListener = ClassName("ru.tinkoff.kora.kafka.common.consumer", "ConsumerAwareRebalanceListener")
     val kafkaConsumerRecordsTelemetry = kafkaConsumerTelemetry.nestedClass("KafkaConsumerRecordsTelemetryContext")
     val kafkaConsumerRecordTelemetry = kafkaConsumerTelemetry.nestedClass("KafkaConsumerRecordTelemetryContext")
     val recordKeyDeserializationException = ClassName("ru.tinkoff.kora.kafka.common.exceptions", "RecordKeyDeserializationException")

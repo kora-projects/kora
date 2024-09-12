@@ -1,8 +1,10 @@
 package ru.tinkoff.kora.kafka.common.consumer.containers;
 
+import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
@@ -14,11 +16,10 @@ import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.kafka.common.KafkaUtils.NamedThreadFactory;
+import ru.tinkoff.kora.kafka.common.consumer.ConsumerAwareRebalanceListener;
 import ru.tinkoff.kora.kafka.common.consumer.KafkaListenerConfig;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.BaseKafkaRecordsHandler;
 
-import jakarta.annotation.Nullable;
-import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -39,6 +40,8 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
 
     private final BaseKafkaRecordsHandler<K, V> handler;
     private final Set<Consumer<K, V>> consumers = Collections.synchronizedSet(Collections.newSetFromMap(new IdentityHashMap<>()));
+    @Nullable
+    private final ConsumerAwareRebalanceListener rebalanceListener;
     private final KafkaListenerConfig config;
     private final String consumerPrefix;
     private final boolean commitAllowed;
@@ -49,10 +52,21 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
         Deserializer<V> valueDeserializer,
         BaseKafkaRecordsHandler<K, V> handler
     ) {
+        this(config, keyDeserializer, valueDeserializer, handler, null);
+    }
+
+    public KafkaSubscribeConsumerContainer(
+        KafkaListenerConfig config,
+        Deserializer<K> keyDeserializer,
+        Deserializer<V> valueDeserializer,
+        BaseKafkaRecordsHandler<K, V> handler,
+        @Nullable ConsumerAwareRebalanceListener rebalanceListener
+    ) {
         if (config.driverProperties().get(CommonClientConfigs.GROUP_ID_CONFIG) == null) {
             throw new IllegalArgumentException("Group id is required for subscribe container");
         }
         this.handler = handler;
+        this.rebalanceListener = rebalanceListener;
         this.backoffTimeout = new AtomicLong(config.backoffTimeout().toMillis());
         this.consumerPrefix = getConsumerPrefix(config);
         var autoCommit = config.driverProperties().get(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG);
@@ -181,9 +195,47 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
         var consumer = new KafkaConsumer<>(this.config.driverProperties(), new ByteArrayDeserializer(), new ByteArrayDeserializer());
         try {
             if (config.topicsPattern() != null) {
-                consumer.subscribe(config.topicsPattern());
+                if (rebalanceListener != null) {
+                    consumer.subscribe(config.topicsPattern(), new ConsumerRebalanceListener() {
+                        @Override
+                        public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+                            rebalanceListener.onPartitionsRevoked(consumer, partitions);
+                        }
+
+                        @Override
+                        public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+                            rebalanceListener.onPartitionsAssigned(consumer, partitions);
+                        }
+
+                        @Override
+                        public void onPartitionsLost(Collection<TopicPartition> partitions) {
+                            rebalanceListener.onPartitionsLost(consumer, partitions);
+                        }
+                    });
+                } else {
+                    consumer.subscribe(config.topicsPattern());
+                }
             } else if (config.topics() != null) {
-                consumer.subscribe(config.topics());
+                if (rebalanceListener != null) {
+                    consumer.subscribe(config.topicsPattern(), new ConsumerRebalanceListener() {
+                        @Override
+                        public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+                            rebalanceListener.onPartitionsRevoked(consumer, partitions);
+                        }
+
+                        @Override
+                        public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+                            rebalanceListener.onPartitionsAssigned(consumer, partitions);
+                        }
+
+                        @Override
+                        public void onPartitionsLost(Collection<TopicPartition> partitions) {
+                            rebalanceListener.onPartitionsLost(consumer, partitions);
+                        }
+                    });
+                } else {
+                    consumer.subscribe(config.topics());
+                }
             }
         } catch (Exception e) {
             try {

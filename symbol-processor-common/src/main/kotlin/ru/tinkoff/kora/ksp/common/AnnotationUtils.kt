@@ -19,7 +19,13 @@ object AnnotationUtils {
                 val value = argument.value ?: return null
                 if (value is List<*>) {
                     return value.asSequence()
-                        .map { if (it is KSTypeReference) it.resolve() else it }
+                        .map {
+                            if (it is KSTypeReference) {
+                                it.resolve()
+                            } else {
+                                it
+                            }
+                        }
                         .toList() as T
                 }
                 return value as T

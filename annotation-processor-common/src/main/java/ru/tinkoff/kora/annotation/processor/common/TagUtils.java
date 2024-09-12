@@ -22,9 +22,9 @@ public final class TagUtils {
         for (var annotationMirror : element.getAnnotationMirrors()) {
             var type = annotationMirror.getAnnotationType();
             if (type.toString().equals(CommonClassNames.tag.canonicalName())) {
-                return Objects.requireNonNull(AnnotationUtils.<List<TypeMirror>>parseAnnotationValueWithoutDefault(annotationMirror, "value"))
+                return Objects.requireNonNull(AnnotationUtils.<List<?>>parseAnnotationValueWithoutDefault(annotationMirror, "value"))
                     .stream()
-                    .map(TypeMirror::toString)
+                    .map(Object::toString)
                     .collect(Collectors.toSet());
             }
 
@@ -32,9 +32,9 @@ public final class TagUtils {
             for (var annotatedWith : annotationElement.getAnnotationMirrors()) {
                 var annotationType = annotatedWith.getAnnotationType();
                 if (annotationType.toString().equals(CommonClassNames.tag.canonicalName())) {
-                    return Objects.requireNonNull(AnnotationUtils.<List<TypeMirror>>parseAnnotationValueWithoutDefault(annotatedWith, "value"))
+                    return Objects.requireNonNull(AnnotationUtils.<List<?>>parseAnnotationValueWithoutDefault(annotatedWith, "value"))
                         .stream()
-                        .map(TypeMirror::toString)
+                        .map(Object::toString)
                         .collect(Collectors.toSet());
                 }
             }

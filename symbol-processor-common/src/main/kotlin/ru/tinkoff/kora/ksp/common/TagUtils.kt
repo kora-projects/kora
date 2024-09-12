@@ -1,17 +1,7 @@
 package ru.tinkoff.kora.ksp.common
 
-import com.google.devtools.ksp.symbol.KSAnnotated
-import com.google.devtools.ksp.symbol.KSAnnotation
-import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.KSPropertyDeclaration
-import com.google.devtools.ksp.symbol.KSType
-import com.google.devtools.ksp.symbol.Modifier
-import com.squareup.kotlinpoet.AnnotationSpec
-import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.FunSpec
-import com.squareup.kotlinpoet.ParameterSpec
-import com.squareup.kotlinpoet.TypeName
-import com.squareup.kotlinpoet.TypeSpec
+import com.google.devtools.ksp.symbol.*
+import com.squareup.kotlinpoet.*
 
 object TagUtils {
     val ignoreList = setOf("Component", "DefaultComponent")
@@ -119,22 +109,31 @@ object TagUtils {
     }
 
     fun Collection<String>.toTagAnnotation(): AnnotationSpec {
-        val codeBlock = CodeBlock.builder().add("value = [")
-        forEachIndexed { i, type ->
-            if (i > 0) {
-                codeBlock.add(", ")
+        return if (size == 1) {
+            first().toTagAnnotation()
+        } else {
+            val codeBlock = CodeBlock.builder().add("value = [")
+            forEachIndexed { i, type ->
+                if (i > 0) {
+                    codeBlock.add(", ")
+                }
+                codeBlock.add("%L::class", type)
             }
-            codeBlock.add("%L::class", type)
+            val value = codeBlock.add("]").build()
+            return AnnotationSpec.builder(CommonClassNames.tag).addMember(value).build()
         }
-        val value = codeBlock.add("]").build()
-        return AnnotationSpec.builder(CommonClassNames.tag).addMember(value).build()
+    }
+
+    fun String.toTagAnnotation(): AnnotationSpec {
+        val codeBlock = CodeBlock.builder()
+            .add("%L::class", this)
+            .build()
+        return AnnotationSpec.builder(CommonClassNames.tag).addMember(codeBlock).build()
     }
 
     fun Collection<TypeName>.toTagTypesAnnotation(): AnnotationSpec {
-        if(size == 1) {
-            return AnnotationSpec.builder(CommonClassNames.tag)
-                .addMember("%T::class", this.first())
-                .build()
+        return if (size == 1) {
+            first().toTagTypeAnnotation()
         } else {
             val codeBlock = CodeBlock.builder().add("value = [")
             forEachIndexed { i, type ->
@@ -144,8 +143,14 @@ object TagUtils {
                 codeBlock.add("%T::class", type)
             }
             val value = codeBlock.add("]").build()
-            return AnnotationSpec.builder(CommonClassNames.tag).addMember(value).build()
+            AnnotationSpec.builder(CommonClassNames.tag).addMember(value).build()
         }
+    }
+
+    fun TypeName.toTagTypeAnnotation(): AnnotationSpec {
+        return AnnotationSpec.builder(CommonClassNames.tag)
+            .addMember("%T::class", this)
+            .build()
     }
 
     fun Collection<String>.tagsMatch(other: Collection<String>): Boolean {

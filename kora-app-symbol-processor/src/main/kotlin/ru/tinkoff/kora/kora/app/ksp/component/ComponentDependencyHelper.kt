@@ -10,6 +10,7 @@ import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.TagUtils
 import ru.tinkoff.kora.ksp.common.exception.ProcessingError
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
+import java.lang.RuntimeException
 import javax.tools.Diagnostic
 
 object ComponentDependencyHelper {
