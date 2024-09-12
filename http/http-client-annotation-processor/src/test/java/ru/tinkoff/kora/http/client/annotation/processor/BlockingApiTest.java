@@ -1,7 +1,9 @@
 package ru.tinkoff.kora.http.client.annotation.processor;
 
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.client.common.HttpClientEncoderException;
 import ru.tinkoff.kora.http.client.common.HttpClientResponseException;
@@ -10,6 +12,7 @@ import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper;
 import ru.tinkoff.kora.http.common.body.HttpBody;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -18,6 +21,24 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 public class BlockingApiTest extends AbstractHttpClientTest {
+
+    @Test
+    public void testComponentAnnotationPreserved() {
+        var client = compileClient(List.of(), """
+            @Component
+            @HttpClient
+            public interface TestClient {
+              @HttpRoute(method = "POST", path = "/test")
+              void request();
+            }
+            """);
+
+        Assertions.assertThat(Arrays.stream(client.objectClass.getAnnotations()).anyMatch(a -> a.annotationType().equals(Component.class))).isTrue();
+
+        onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(200));
+        client.invoke("request");
+    }
+
     @Test
     public void testBlockingVoid() {
         var client = compileClient(List.of(), """

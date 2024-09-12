@@ -39,9 +39,14 @@ public class ClientClassGenerator {
         var methods = this.parseMethods(element);
         var builder = CommonUtils.extendsKeepAop(element, typeName)
             .addOriginatingElement(element)
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", "$S", ClientClassGenerator.class.getCanonicalName()).build());
+            .addAnnotation(AnnotationUtils.generated(ClientClassGenerator.class));
+
         builder.addMethod(this.buildConstructor(builder, element, methods));
         builder.addField(String.class, "rootUrl", Modifier.PRIVATE, Modifier.FINAL);
+
+        if(AnnotationUtils.findAnnotation(element, CommonClassNames.component) != null) {
+            builder.addAnnotation(CommonClassNames.component);
+        }
 
         for (var method : methods) {
             builder.addField(HttpClientClassNames.httpClient, method.element().getSimpleName() + "Client", Modifier.PRIVATE, Modifier.FINAL);
