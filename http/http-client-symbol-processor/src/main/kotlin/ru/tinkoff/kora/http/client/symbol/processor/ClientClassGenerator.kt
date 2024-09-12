@@ -64,7 +64,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
         val builder = declaration.extendsKeepAop(typeName)
             .generated(ClientClassGenerator::class)
 
-        if(declaration.findAnnotation(CommonClassNames.component) != null) {
+        if (declaration.findAnnotation(CommonClassNames.component) != null) {
             builder.addAnnotation(CommonClassNames.component)
         }
 
