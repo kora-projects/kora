@@ -1,5 +1,7 @@
 package ru.tinkoff.kora.logging.symbol.processor.aop
 
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.ArgumentMatchers
@@ -7,7 +9,7 @@ import org.mockito.Mockito
 import org.slf4j.event.Level
 import java.util.*
 
-class LogAspectSuspendTest : AbstractLogAspectTest() {
+class LogAspectFlowTest : AbstractLogAspectTest() {
 
     @Test
     fun testLogPrintsInAndOut() {
@@ -15,7 +17,7 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
             """
             open class Target {
                 @Log
-                open suspend fun test() {}
+                open fun test(): Flow<Unit> = flow { }
             }
         """.trimIndent()
         )
@@ -23,9 +25,11 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
         Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
         val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
 
-        aopProxy.invoke<Any>("test")
-
         val o = Mockito.inOrder(log)
+        reset(log, Level.INFO)
+
+        runBlocking { (aopProxy.invoke<Any>("test") as Flow<Any>).toList() }
+
         o.verify(log).info(">")
         o.verify(log).info("<")
         o.verifyNoMoreInteractions()
@@ -37,8 +41,8 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
             """
              open class Target {
                 @Log
-                open suspend fun test() {
-                    throw RuntimeException("OPS")
+                open fun test(): Flow<Unit> = flow { 
+                    throw RuntimeException("OPS") 
                 }
             }
         """.trimIndent()
@@ -50,9 +54,10 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
         val o = Mockito.inOrder(log)
         reset(log, Level.WARN)
 
-        assertThrows<RuntimeException> { aopProxy.invoke<Any>("test") }
+        assertThrows<RuntimeException> {
+            runBlocking { (aopProxy.invoke<Any>("test") as Flow<Any>).toList() }
+        }
 
-        o.verify(log).info(">")
         o.verify(log).warn(outData.capture(), ArgumentMatchers.eq("<"))
         verifyOutData(
             mapOf(
@@ -60,7 +65,6 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
                 "errorMessage" to "OPS"
             )
         )
-        o.verifyNoMoreInteractions()
         o.verifyNoMoreInteractions()
     }
 
@@ -70,8 +74,8 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
             """
             open class Target {
                 @Log
-                open suspend fun test() {
-                    throw RuntimeException("OPS")
+                open fun test(): Flow<Unit> = flow { 
+                    throw RuntimeException("OPS") 
                 }
             }
         """.trimIndent()
@@ -83,7 +87,9 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
         val o = Mockito.inOrder(log)
         reset(log, Level.DEBUG)
 
-        assertThrows<RuntimeException> { aopProxy.invoke<Any>("test") }
+        assertThrows<RuntimeException> {
+            runBlocking { (aopProxy.invoke<Any>("test") as Flow<Any>).toList() }
+        }
 
         o.verify(log).info(">")
         o.verify(log).warn(outData.capture(), ArgumentMatchers.eq("<"), ArgumentMatchers.any(Throwable::class.java))
@@ -102,9 +108,7 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
             """
              open class Target {
                 @Log.out
-                open suspend fun test(): String {
-                    throw RuntimeException("OPS")
-                }
+                open fun test(): Flow<String> = flow { throw RuntimeException("OPS") }
             }
         """.trimIndent()
         )
@@ -115,7 +119,9 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
         val o = Mockito.inOrder(log)
         reset(log, Level.WARN)
 
-        assertThrows<RuntimeException> { aopProxy.invoke<Any>("test") }
+        assertThrows<RuntimeException> {
+            runBlocking { (aopProxy.invoke<Any>("test") as Flow<Any>).toList() }
+        }
 
         o.verify(log).warn(outData.capture(), ArgumentMatchers.eq("<"))
         verifyOutData(
@@ -134,9 +140,7 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
             """
             open class Target {
                 @Log.out
-                open suspend fun test(): String {
-                    throw RuntimeException("OPS")
-                }
+                open fun test(): Flow<String> = flow { throw RuntimeException("OPS") }
             }
         """.trimIndent()
         )
@@ -147,7 +151,9 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
         val o = Mockito.inOrder(log)
         reset(log, Level.DEBUG)
 
-        assertThrows<RuntimeException> { aopProxy.invoke<Any>("test") }
+        assertThrows<RuntimeException> {
+            runBlocking { (aopProxy.invoke<Any>("test") as Flow<Any>).toList() }
+        }
 
         o.verify(log).warn(outData.capture(), ArgumentMatchers.eq("<"), ArgumentMatchers.any(Throwable::class.java))
         verifyOutData(
@@ -165,7 +171,7 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
             """
             open class Target {
                 @Log.`in`
-                open suspend fun test() {}
+                open fun test(): Flow<Unit> = flow { }
             }
         """.trimIndent()
         )
@@ -173,9 +179,12 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
         Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
         val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
 
-        aopProxy.invoke<Any>("test")
 
         val o = Mockito.inOrder(log)
+        reset(log, Level.INFO)
+
+        runBlocking { (aopProxy.invoke<Any>("test") as Flow<Any>).toList() }
+
         o.verify(log).info(">")
         o.verifyNoMoreInteractions()
     }
@@ -186,7 +195,7 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
             """
             open class Target {
                 @Log.out
-                open suspend fun test() {}
+                open fun test(): Flow<Unit> = flow { }
             }
         """.trimIndent()
         )
@@ -194,9 +203,11 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
         Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
         val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
 
-        aopProxy.invoke<Any>("test")
-
         val o = Mockito.inOrder(log)
+        reset(log, Level.INFO)
+
+        runBlocking { (aopProxy.invoke<Any>("test") as Flow<Any>).toList() }
+
         o.verify(log).info("<")
         o.verifyNoMoreInteractions()
     }
@@ -207,7 +218,7 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
             """
             open class Target {
                 @Log.`in`
-                open suspend fun test(arg1: String, @Log(TRACE) arg2: String, @Log.off arg3: String) {}
+                open fun test(arg1: String, @Log(TRACE) arg2: String, @Log.off arg3: String): Flow<Unit> = flow { }
             }
         """.trimIndent()
         )
@@ -215,7 +226,10 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
         Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
         val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
 
-        aopProxy.invoke<Any>("test", "test1", "test2", "test3")
+
+        reset(log, Level.INFO)
+
+        runBlocking { (aopProxy.invoke<Any>("test", "test1", "test2", "test3") as Flow<Any>).toList() }
 
         var o = Mockito.inOrder(log)
         o.verify(log).isDebugEnabled
@@ -223,7 +237,9 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
         o.verifyNoMoreInteractions()
 
         reset(log, Level.DEBUG)
-        aopProxy.invoke<Any>("test", "test1", "test2", "test3")
+
+        runBlocking { (aopProxy.invoke<Any>("test", "test1", "test2", "test3") as Flow<Any>).toList() }
+
         o = Mockito.inOrder(log)
         o.verify(log).isDebugEnabled
         o.verify(log).info(inData.capture(), ArgumentMatchers.eq(">"))
@@ -233,7 +249,9 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
         o.verifyNoMoreInteractions()
 
         reset(log, Level.TRACE)
-        aopProxy.invoke<Any>("test", "test1", "test2", "test3")
+
+        runBlocking { (aopProxy.invoke<Any>("test", "test1", "test2", "test3") as Flow<Any>).toList() }
+
         o = Mockito.inOrder(log)
         o.verify(log).isDebugEnabled
         o.verify(log).info(inData.capture(), ArgumentMatchers.eq(">"))
@@ -249,14 +267,17 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
             """
             open class Target {
               @Log.`in`
-              open suspend fun test(@Log(INFO) arg1: String, @Log(TRACE) arg2: String, @Log.off arg3: String) {}
+              open fun test(@Log(INFO) arg1: String, @Log(TRACE) arg2: String, @Log.off arg3: String): Flow<Unit> = flow { }
             }
             """.trimIndent()
         )
         Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
         val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
+
         reset(log, Level.INFO)
-        aopProxy.invoke<Any>("test", "test1", "test2", "test3")
+
+        runBlocking { (aopProxy.invoke<Any>("test", "test1", "test2", "test3") as Flow<Any>).toList() }
+
         val o = Mockito.inOrder(log)
         o.verify(log).isInfoEnabled
         o.verify(log).info(inData.capture(), ArgumentMatchers.eq(">"))
@@ -272,7 +293,7 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
             """
             open class Target {
               @Log.out
-              open suspend fun test(): String { return "test-result" }
+              open fun test(): Flow<String> = flow { emit("test-result") }
             }
         """.trimIndent()
         )
@@ -281,17 +302,23 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
         val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
 
         reset(log, Level.INFO)
-        aopProxy.invoke<Any>("test")
+
+        runBlocking { (aopProxy.invoke<Any>("test") as Flow<String>).toList() }
+
         var o = Mockito.inOrder(log)
         o.verify(log).isDebugEnabled()
+        o.verify(log).info("<<<")
         o.verify(log).info("<")
         o.verifyNoMoreInteractions()
 
         reset(log, Level.DEBUG)
-        aopProxy.invoke<Any>("test")
+
+        runBlocking { (aopProxy.invoke<Any>("test") as Flow<String>).toList() }
+
         o = Mockito.inOrder(log)
         o.verify(log).isDebugEnabled()
-        o.verify(log).info(outData.capture(), ArgumentMatchers.eq("<"))
+        o.verify(log).info(outData.capture(), ArgumentMatchers.eq("<<<"))
+        o.verify(log).info("<")
         o.verifyNoMoreInteractions()
         verifyOutData(mapOf("out" to "test-result"))
     }
@@ -303,7 +330,7 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
             open class Target {
               @Log.out
               @Log.off
-              open suspend fun test(): String { return "test-result" }
+              open fun test(): Flow<String> = flow { emit("test-result") }
             }
         """.trimIndent()
         )
@@ -312,14 +339,20 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
         val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
 
         reset(log, Level.INFO)
-        aopProxy.invoke<Any>("test")
+
+        runBlocking { (aopProxy.invoke<Any>("test") as Flow<String>).toList() }
+
         var o = Mockito.inOrder(log)
+        o.verify(log).info("<<<")
         o.verify(log).info("<")
         o.verifyNoMoreInteractions()
 
         reset(log, Level.DEBUG)
-        aopProxy.invoke<Any>("test")
+
+        runBlocking { (aopProxy.invoke<Any>("test") as Flow<String>).toList() }
+
         o = Mockito.inOrder(log)
+        o.verify(log).info("<<<")
         o.verify(log).info("<")
         o.verifyNoMoreInteractions()
     }
@@ -331,7 +364,7 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
             open class Target {
               @Log.out
               @Log.result(INFO)
-              open suspend fun test(): String { return "test-result" }
+              open fun test(): Flow<String> = flow { emit("test-result") }
             }
         """.trimIndent()
         )
@@ -340,9 +373,12 @@ class LogAspectSuspendTest : AbstractLogAspectTest() {
         val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
 
         reset(log, Level.INFO)
-        aopProxy.invoke<Any>("test")
+
+        runBlocking { (aopProxy.invoke<Any>("test") as Flow<String>).toList() }
+
         val o = Mockito.inOrder(log)
-        o.verify(log).info(outData.capture(), ArgumentMatchers.eq("<"))
+        o.verify(log).info(outData.capture(), ArgumentMatchers.eq("<<<"))
+        o.verify(log).info("<")
         o.verifyNoMoreInteractions()
         verifyOutData(mapOf("out" to "test-result"))
     }

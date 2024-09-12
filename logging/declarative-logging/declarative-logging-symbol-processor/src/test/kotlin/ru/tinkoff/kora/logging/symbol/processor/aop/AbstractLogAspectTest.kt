@@ -38,6 +38,8 @@ abstract class AbstractLogAspectTest : AbstractSymbolProcessorTest() {
             import org.slf4j.event.Level.*
             import org.slf4j.Logger
             import org.slf4j.LoggerFactory
+            import kotlinx.coroutines.flow.Flow
+            import kotlinx.coroutines.flow.flow
             
             """.trimIndent();
     }

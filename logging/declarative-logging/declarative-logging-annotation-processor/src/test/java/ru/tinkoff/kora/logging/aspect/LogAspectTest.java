@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.verify;
 import static org.slf4j.event.Level.*;
@@ -27,11 +29,63 @@ public class LogAspectTest extends AbstractLogAspectTest {
         verify(factory).getLogger(testPackage() + ".Target.test");
         var log = Objects.requireNonNull(loggers.get(testPackage() + ".Target.test"));
 
+        reset(log, INFO);
         aopProxy.invoke("test");
-
         var o = Mockito.inOrder(log);
         o.verify(log).info(">");
         o.verify(log).info("<");
+        o.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testLogPrintsInAndOutWhenExceptionInWarn() {
+        var aopProxy = compile("""
+            public class Target {
+              @Log
+              public void test() {
+                throw new RuntimeException("OPS");
+              }
+            }
+            """);
+
+
+        verify(factory).getLogger(testPackage() + ".Target.test");
+        var log = Objects.requireNonNull(loggers.get(testPackage() + ".Target.test"));
+
+        reset(log, INFO);
+        mockLevel(log, WARN);
+        var o = Mockito.inOrder(log);
+        assertThrows(RuntimeException.class, () -> aopProxy.invoke("test"));
+        o.verify(log).info(">");
+        o.verify(log).warn(outData.capture(), eq("<"));
+        verifyOutData(Map.of("errorType", "java.lang.RuntimeException",
+            "errorMessage", "OPS"));
+        o.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testLogPrintsInAndOutWhenExceptionInDebug() {
+        var aopProxy = compile("""
+            public class Target {
+              @Log
+              public void test() {
+                throw new RuntimeException("OPS");
+              }
+            }
+            """);
+
+
+        verify(factory).getLogger(testPackage() + ".Target.test");
+        var log = Objects.requireNonNull(loggers.get(testPackage() + ".Target.test"));
+
+        reset(log, INFO);
+        mockLevel(log, DEBUG);
+        var o = Mockito.inOrder(log);
+        assertThrows(RuntimeException.class, () -> aopProxy.invoke("test"));
+        o.verify(log).info(">");
+        o.verify(log).warn(outData.capture(), eq("<"), any(Throwable.class));
+        verifyOutData(Map.of("errorType", "java.lang.RuntimeException",
+            "errorMessage", "OPS"));
         o.verifyNoMoreInteractions();
     }
 
@@ -162,6 +216,54 @@ public class LogAspectTest extends AbstractLogAspectTest {
         o.verify(log).info(outData.capture(), eq("<"));
         o.verifyNoMoreInteractions();
         verifyOutData(Map.of("out", "test-result"));
+    }
+
+    @Test
+    public void testLogResultsWithExceptionInWarn() {
+        var aopProxy = compile("""
+            public class Target {
+              @Log.out
+              public String test() {
+                throw new RuntimeException("OPS");
+              }
+            }
+            """);
+
+        verify(factory).getLogger(testPackage() + ".Target.test");
+        var log = Objects.requireNonNull(loggers.get(testPackage() + ".Target.test"));
+
+        reset(log, WARN);
+        var o = Mockito.inOrder(log);
+        assertThrows(RuntimeException.class, () -> aopProxy.invoke("test"));
+        o.verify(log).isDebugEnabled();
+        o.verify(log).warn(outData.capture(), eq("<"));
+        verifyOutData(Map.of("errorType", "java.lang.RuntimeException",
+            "errorMessage", "OPS"));
+        o.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void testLogResultsWithExceptionInDebug() {
+        var aopProxy = compile("""
+            public class Target {
+              @Log.out
+              public String test() {
+                throw new RuntimeException("OPS");
+              }
+            }
+            """);
+
+        verify(factory).getLogger(testPackage() + ".Target.test");
+        var log = Objects.requireNonNull(loggers.get(testPackage() + ".Target.test"));
+
+        reset(log, DEBUG);
+        var o = Mockito.inOrder(log);
+        assertThrows(RuntimeException.class, () -> aopProxy.invoke("test"));
+        o.verify(log).isDebugEnabled();
+        o.verify(log).warn(outData.capture(), eq("<"), any(Throwable.class));
+        verifyOutData(Map.of("errorType", "java.lang.RuntimeException",
+            "errorMessage", "OPS"));
+        o.verifyNoMoreInteractions();
     }
 
     @Test

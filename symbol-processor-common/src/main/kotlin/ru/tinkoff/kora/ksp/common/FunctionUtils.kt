@@ -10,6 +10,7 @@ import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isMono
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isPublisher
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isVoid
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
 
 object FunctionUtils {
 
@@ -22,4 +23,7 @@ object FunctionUtils {
     fun KSFunctionDeclaration.isList() = returnType!!.resolve().isList()
     fun KSFunctionDeclaration.isSuspend() = modifiers.contains(Modifier.SUSPEND)
     fun KSFunctionDeclaration.isVoid() = returnType!!.isVoid()
+    fun KSFunctionDeclaration.isFlowVoid() = isFlow() && returnType!!.resolve().arguments.firstOrNull()?.type?.isVoid() ?: false
+    fun KSFunctionDeclaration.isMonoVoid() = isMono() && returnType!!.resolve().arguments.firstOrNull()?.type?.isVoid() ?: false
+    fun KSFunctionDeclaration.isCompletionStageVoid() = isCompletionStage() && returnType!!.resolve().arguments.firstOrNull()?.type?.isVoid() ?: false
 }
