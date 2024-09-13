@@ -10,9 +10,8 @@ public final class Slf4jHttpServerLoggerFactory implements HttpServerLoggerFacto
     @Override
     public HttpServerLogger get(HttpServerLoggerConfig logging) {
         if (Objects.requireNonNullElse(logging.enabled(), false)) {
-            final boolean alwaysWriteFullPath = !Objects.requireNonNullElse(logging.pathTemplate(), true);
             return new Slf4jHttpServerLogger(logging.stacktrace(), logging.maskQueries(),
-                                             logging.maskHeaders(), logging.maskFiller(), alwaysWriteFullPath);
+                                             logging.maskHeaders(), logging.maskFiller(), logging.pathTemplate());
         } else {
             return null;
         }
