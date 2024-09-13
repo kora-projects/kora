@@ -12,9 +12,6 @@ public interface CamundaEngineConfig {
 
     ParallelInitConfig parallelInitialization();
 
-    @Nullable
-    String licensePath();
-
     JobExecutorConfig jobExecutor();
 
     @Nullable

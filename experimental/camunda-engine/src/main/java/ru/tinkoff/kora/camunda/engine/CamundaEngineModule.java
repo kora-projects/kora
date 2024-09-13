@@ -169,10 +169,6 @@ public interface CamundaEngineModule {
         return new AdminUserProcessEngineConfigurator(camundaEngineConfig, camundaDataSource);
     }
 
-    default ProcessEngineConfigurator camundaEngineKoraLicenseKeyConfigurator(CamundaEngineConfig camundaEngineConfig, CamundaVersion camundaVersion) {
-        return new LicenseKeyProcessEngineConfigurator(camundaEngineConfig, camundaVersion);
-    }
-
     default ProcessEngineConfigurator camundaEngineKoraResourceDeploymentConfigurator(CamundaEngineConfig camundaEngineConfig) {
         return new DeploymentProcessEngineConfigurator(camundaEngineConfig);
     }

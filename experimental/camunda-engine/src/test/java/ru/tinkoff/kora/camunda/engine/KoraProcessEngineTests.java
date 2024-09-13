@@ -29,7 +29,6 @@ public class KoraProcessEngineTests implements CamundaEngineModule {
         withDatabase(params, jdbc -> {
             var config = new $CamundaEngineConfig_ConfigValueExtractor.CamundaEngineConfig_Impl(
                 new CamundaEngineConfig.ParallelInitConfig() {},
-                "camunda-license.txt",
                 $CamundaEngineConfig_JobExecutorConfig_ConfigValueExtractor.DEFAULTS,
                 new $CamundaEngineConfig_DeploymentConfig_ConfigValueExtractor.DeploymentConfig_Impl(null, "MyDep", false, List.of("bpm"), null),
                 new $CamundaEngineConfig_AdminConfig_ConfigValueExtractor.AdminConfig_Impl("admin", "admin", null, null, null),
@@ -76,7 +75,6 @@ public class KoraProcessEngineTests implements CamundaEngineModule {
                 All.of(
                     camundaEngineKoraProcessEngineTwoStageCamundaConfigurator(koraProcessEngineConfiguration, config, jobExecutor),
                     camundaEngineKoraAdminUserConfigurator(config, camundaDataSource),
-                    camundaEngineKoraLicenseKeyConfigurator(config, camundaEnginePackageVersion()),
                     camundaEngineKoraResourceDeploymentConfigurator(config)
                 ));
             try {
@@ -99,7 +97,6 @@ public class KoraProcessEngineTests implements CamundaEngineModule {
                         return false;
                     }
                 },
-                "camunda-license.txt",
                 $CamundaEngineConfig_JobExecutorConfig_ConfigValueExtractor.DEFAULTS,
                 new $CamundaEngineConfig_DeploymentConfig_ConfigValueExtractor.DeploymentConfig_Impl(null, "MyDep", false, List.of("bpm"), null),
                 new $CamundaEngineConfig_AdminConfig_ConfigValueExtractor.AdminConfig_Impl("admin", "admin", null, null, null),
@@ -145,7 +142,6 @@ public class KoraProcessEngineTests implements CamundaEngineModule {
                 config,
                 All.of(
                     camundaEngineKoraAdminUserConfigurator(config, camundaDataSource),
-                    camundaEngineKoraLicenseKeyConfigurator(config, camundaEnginePackageVersion()),
                     camundaEngineKoraResourceDeploymentConfigurator(config)
                 ));
             try {
