@@ -23,11 +23,11 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
     private final Set<String> maskedQueryParams;
     private final Set<String> maskedHeaders;
     private final String maskFiller;
-    private final boolean alwaysWriteFullPath;
+    private final Boolean pathTemplate;
 
     public Sl4fjHttpClientLogger(Logger requestLog, Logger responseLog,
                                  Set<String> maskedQueryParams, Set<String> maskedHeaders,
-                                 String maskFiller, boolean alwaysWriteFullPath) {
+                                 String maskFiller, Boolean pathTemplate) {
         this.requestLog = requestLog;
         this.responseLog = responseLog;
         this.maskedQueryParams = maskedQueryParams.stream()
@@ -37,7 +37,7 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
             .map(e -> e.toLowerCase(Locale.ROOT))
             .collect(Collectors.toSet());
         this.maskFiller = maskFiller;
-        this.alwaysWriteFullPath = alwaysWriteFullPath;
+        this.pathTemplate = pathTemplate;
     }
 
     @Override
@@ -213,7 +213,7 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
     }
 
     private boolean shouldWritePath(Logger logger) {
-        return alwaysWriteFullPath || logger.isTraceEnabled();
+        return pathTemplate != null ? !pathTemplate : logger.isTraceEnabled();
     }
 
     private String getOperation(Logger logger, String method, @Nullable String path, @Nullable String pathTemplate) {
