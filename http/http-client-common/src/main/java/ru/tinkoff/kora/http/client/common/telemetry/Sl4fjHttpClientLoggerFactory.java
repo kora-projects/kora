@@ -22,7 +22,8 @@ public class Sl4fjHttpClientLoggerFactory implements HttpClientLoggerFactory {
             final Set<String> maskedQueryParams = loggerConfig.maskQueries();
             final Set<String> maskedHeaders = loggerConfig.maskHeaders();
             final String maskFiller = loggerConfig.maskFiller();
-            return new Sl4fjHttpClientLogger(requestLog, responseLog, maskedQueryParams, maskedHeaders, maskFiller);
+            final boolean alwaysWriteFullPath = !Objects.requireNonNullElse(loggerConfig.pathTemplate(), true);
+            return new Sl4fjHttpClientLogger(requestLog, responseLog, maskedQueryParams, maskedHeaders, maskFiller, alwaysWriteFullPath);
         } else {
             return null;
         }

@@ -668,8 +668,8 @@ public abstract class HttpServerTestKit {
         try (var response = client.newCall(request).execute()) {
             assertThat(response.code()).isEqualTo(404);
         }
-        verify(logger, never()).logStart(any(), any());
-        verify(logger, never()).logEnd(any(), any(), any(), anyLong().getAsLong(), any(), any());
+        verify(logger, never()).logStart(any(), any(), any(), any(), any());
+        verify(logger, never()).logEnd(any(), any(), any(), any(), any(), anyLong().getAsLong(), any(), any(), any());
         verify(metrics, times(1)).requestStarted(eq(GET), eq("UNKNOWN_ROUTE"), eq("localhost"), eq("http"));
         verify(metrics, timeout(100).times(1)).requestFinished(eq(GET), eq("UNKNOWN_ROUTE"), eq("localhost"), eq("http"), eq(404), Mockito.anyLong(), eq(null));
     }
@@ -1046,8 +1046,8 @@ public abstract class HttpServerTestKit {
 
     private void verifyResponse(String method, String route, int code, HttpResultCode resultCode, String host, String scheme, Supplier<? extends Throwable> throwable, LongSupplier duration, VerificationMode mode) {
         verify(metrics, mode).requestStarted(eq(method), eq(route), eq(host), eq(scheme));
-        verify(logger, mode).logStart(eq(method + " " + route), any());
-        verify(logger, mode).logEnd(eq(method + " " + route), eq(code), eq(resultCode), duration.getAsLong(), any(), throwable.get());
+        verify(logger, mode).logStart(eq(method), eq(route), eq(route), any(), any());
+        verify(logger, mode).logEnd(eq(method), eq(route), eq(route), eq(code), eq(resultCode), duration.getAsLong(), any(), any(), throwable.get());
         verify(metrics, mode).requestFinished(eq(method), eq(route), eq(host), eq(scheme), eq(code), Mockito.anyLong(), throwable.get());
     }
 
@@ -1134,7 +1134,7 @@ public abstract class HttpServerTestKit {
             10,
             Duration.ofMillis(1),
             new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
-                new $HttpServerLoggerConfig_ConfigValueExtractor.HttpServerLoggerConfig_Impl(true, true, Collections.emptySet(), Collections.emptySet(), "***"),
+                new $HttpServerLoggerConfig_ConfigValueExtractor.HttpServerLoggerConfig_Impl(true, true, Collections.emptySet(), Collections.emptySet(), "***", false),
                 new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
                 new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO)
             )

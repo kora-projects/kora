@@ -24,11 +24,13 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
     private final Set<String> maskedQueryParams;
     private final Set<String> maskedHeaders;
     private final String maskFiller;
+    private final boolean alwaysWriteFullPath;
 
     public Slf4jHttpServerLogger(boolean stacktrace,
                                  Set<String> maskedQueryParams,
                                  Set<String> maskedHeaders,
-                                 String maskFiller) {
+                                 String maskFiller,
+                                 boolean alwaysWriteFullPath) {
         this.logStacktrace = stacktrace;
         this.maskedQueryParams = maskedQueryParams.stream()
             .map(e -> e.toLowerCase(Locale.ROOT))
@@ -37,6 +39,7 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
             .map(e -> e.toLowerCase(Locale.ROOT))
             .collect(Collectors.toSet());
         this.maskFiller = maskFiller;
+        this.alwaysWriteFullPath = alwaysWriteFullPath;
     }
 
     @Override
@@ -45,12 +48,16 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
     }
 
     @Override
-    public void logStart(String operation,
+    public void logStart(String method,
+                         String path,
+                         String pathTemplate,
                          Map<String, ? extends Collection<String>> queryParams,
                          @Nullable HttpHeaders headers) {
         if (!log.isInfoEnabled()) {
             return;
         }
+
+        final String operation = getOperation(method, path, pathTemplate);
 
         var marker = StructuredArgument.marker("httpRequest", gen -> {
             gen.writeStartObject();
@@ -68,7 +75,9 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
     }
 
     @Override
-    public void logEnd(String operation,
+    public void logEnd(String method,
+                       String path,
+                       String pathTemplate,
                        Integer statusCode,
                        HttpResultCode resultCode,
                        long processingTime,
@@ -78,6 +87,8 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
         if (!log.isWarnEnabled()) {
             return;
         }
+
+        final String operation = getOperation(method, path, pathTemplate);
 
         var marker = StructuredArgument.marker("httpResponse", gen -> {
             gen.writeStartObject();
@@ -171,5 +182,13 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
                     }
                 }
             }).collect(Collectors.joining("&"));
+    }
+
+    private boolean shouldWritePath() {
+        return alwaysWriteFullPath || log.isTraceEnabled();
+    }
+
+    private String getOperation(String method, String path, String pathTemplate) {
+        return method + ' ' + (shouldWritePath() ? path : pathTemplate);
     }
 }

@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.http.client.common.telemetry;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
@@ -20,4 +21,7 @@ public interface HttpClientLoggerConfig extends TelemetryConfig.LogConfig {
     default String maskFiller() {
         return "***";
     }
+
+    @Nullable
+    Boolean pathTemplate();
 }
