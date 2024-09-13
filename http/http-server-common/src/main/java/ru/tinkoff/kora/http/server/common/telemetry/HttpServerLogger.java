@@ -7,7 +7,6 @@ import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 import java.util.Collection;
 import java.util.Map;
-import java.util.Objects;
 
 public interface HttpServerLogger {
 
@@ -18,7 +17,7 @@ public interface HttpServerLogger {
                           String pathTemplate,
                           Map<String, ? extends Collection<String>> queryParams,
                           @Nullable HttpHeaders headers) {
-        logStart(method + ' ' + Objects.requireNonNullElse(pathTemplate, ""), headers);
+        logStart(method + ' ' + pathTemplate, headers);
     }
 
     default void logEnd(String method,
@@ -30,7 +29,7 @@ public interface HttpServerLogger {
                         Map<String, ? extends Collection<String>> queryParams,
                         @Nullable HttpHeaders headers,
                         @Nullable Throwable exception) {
-        logEnd(method + ' ' + Objects.requireNonNullElse(pathTemplate, ""),
+        logEnd(method + ' ' + pathTemplate,
                statusCode, resultCode, processingTime, headers, exception);
     }
 
