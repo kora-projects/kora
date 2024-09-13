@@ -4,6 +4,8 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
+import java.util.Objects;
+
 public interface HttpClientLogger {
     boolean logRequest();
 
@@ -19,21 +21,42 @@ public interface HttpClientLogger {
 
     default void logRequest(String authority,
                             String method,
-                            String operation,
-                            String resolvedUri,
+                            @Nullable String path,
+                            @Nullable String pathTemplate,
+                            @Nullable String resolvedUri,
                             @Nullable String queryParams,
                             @Nullable HttpHeaders headers,
                             @Nullable String body) {
-        logRequest(authority, method, operation, resolvedUri, headers, body);
+        logRequest(authority, method,
+                   method + ' ' + Objects.requireNonNullElse(pathTemplate, ""),
+                   Objects.requireNonNullElse(resolvedUri, ""),
+                   headers, body);
     }
 
     /**
-     * @see #logRequest(String, String, String, String, String, HttpHeaders, String)
+     * @see #logRequest(String, String, String, String, String, String, HttpHeaders, String)
      */
     @Deprecated
     default void logRequest(String authority, String method, String operation, String resolvedUri, @Nullable HttpHeaders headers, @Nullable String body) {
     }
 
-    void logResponse(String authority, String operation, long processingTime, @Nullable Integer statusCode, HttpResultCode resultCode, @Nullable Throwable exception, @Nullable HttpHeaders headers, @Nullable String body);
+    default void logResponse(String authority,
+                             String method,
+                             @Nullable String path,
+                             @Nullable String pathTemplate,
+                             long processingTime,
+                             @Nullable Integer statusCode,
+                             HttpResultCode resultCode,
+                             @Nullable Throwable exception,
+                             @Nullable HttpHeaders headers,
+                             @Nullable String body) {
+        logResponse(authority, method + ' ' + Objects.requireNonNullElse(pathTemplate, ""), processingTime, statusCode, resultCode, exception, headers, body);
+    }
 
+    /**
+     * @see #logResponse(String, String, String, String, long, Integer, HttpResultCode, Throwable, HttpHeaders, String)
+     */
+    @Deprecated
+    default void logResponse(String authority, String operation, long processingTime, @Nullable Integer statusCode, HttpResultCode resultCode, @Nullable Throwable exception, @Nullable HttpHeaders headers, @Nullable String body) {
+    }
 }

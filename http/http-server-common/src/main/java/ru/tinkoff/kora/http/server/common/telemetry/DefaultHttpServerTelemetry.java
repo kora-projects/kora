@@ -37,20 +37,17 @@ public final class DefaultHttpServerTelemetry implements HttpServerTelemetry {
         }
 
         final HttpServerTracer.HttpServerSpan span;
-        final String operation;
         if (routeTemplate != null) {
-            operation = method + " " + routeTemplate;
             if (tracer != null) {
                 span = tracer.createSpan(routeTemplate, request);
             } else {
                 span = null;
             }
             if (logger != null) {
-                logger.logStart(operation, request.queryParams(), request.headers());
+                logger.logStart(method, request.path(), routeTemplate, request.queryParams(), request.headers());
             }
         } else {
             span = null;
-            operation = null;
         }
 
         return (statusCode, resultCode, httpHeaders, exception) -> {
@@ -63,7 +60,7 @@ public final class DefaultHttpServerTelemetry implements HttpServerTelemetry {
 
             if (routeTemplate != null) {
                 if (logger != null) {
-                    logger.logEnd(operation, statusCode, resultCode, processingTime, request.queryParams(), httpHeaders, exception);
+                    logger.logEnd(method, request.path(), routeTemplate, statusCode, resultCode, processingTime, request.queryParams(), httpHeaders, exception);
                 }
                 if (span != null) {
                     span.close(statusCode, resultCode, exception);

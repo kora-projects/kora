@@ -39,12 +39,13 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
             || logger != null && (logger.logRequest() || logger.logRequestBody() || logger.logResponse() || logger.logResponseBody());
     }
 
-    record TelemetryContextData(long startTime, String method, String operation, String host, String scheme, String authority, String target) {
-        public TelemetryContextData(HttpClientRequest request, String operation) {
+    record TelemetryContextData(long startTime, String method, String path, String pathTemplate, String host, String scheme, String authority, String target) {
+        public TelemetryContextData(HttpClientRequest request, String path, String pathTemplate) {
             this(
                 System.nanoTime(),
                 request.method(),
-                operation,
+                path,
+                pathTemplate,
                 request.uri().getHost(),
                 request.uri().getScheme(),
                 request.uri().getAuthority(),
@@ -53,7 +54,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         }
     }
 
-    private static String operation(String method, String uriTemplate, URI uri) {
+    private static String pathTemplate(String uriTemplate, URI uri) {
         if (uri.getAuthority() != null) {
             if (uri.getScheme() != null) {
                 uriTemplate = uriTemplate.replace(uri.getScheme() + "://" + uri.getAuthority(), "");
@@ -63,7 +64,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         if (questionMark >= 0) {
             uriTemplate = uriTemplate.substring(0, questionMark);
         }
-        return method + " " + uriTemplate;
+        return uriTemplate;
     }
 
     @Override
@@ -73,33 +74,38 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
             return null;
         }
 
+        var isRequestLog = logger != null && logger.logRequest();
+        final boolean isAnyLog = logger != null && (logger.logRequest() || logger.logResponse());
         var method = request.method();
-        var resolvedUri = request.uri().toString();
-
-        final boolean isOperationRequired = logger != null && (logger.logRequest() || logger.logResponse());
-        final String operation = isOperationRequired
-            ? DefaultHttpClientTelemetry.operation(request.method(), request.uriTemplate(), request.uri())
-            : null;
-        var data = new TelemetryContextData(request, operation);
+        var path = (isAnyLog)
+                    ? request.uri().getPath()
+                    : null;
+        var pathTemplate = (isAnyLog)
+                    ? DefaultHttpClientTelemetry.pathTemplate(request.uriTemplate(), request.uri())
+                    : null;
+        var resolvedUri = (isRequestLog)
+                    ? request.uri().toString()
+                    : null;
+        var data = new TelemetryContextData(request, path, pathTemplate);
         var authority = data.authority();
 
         var createSpanResult = tracing == null ? null : tracing.createSpan(ctx, request);
         var headers = request.headers();
 
-        if (logger != null && logger.logRequest()) {
+        if (isRequestLog) {
             final String queryParams = request.uri().getRawQuery();
             if (!logger.logRequestHeaders()) {
-                logger.logRequest(authority, request.method(), operation, resolvedUri, queryParams, null, null);
+                logger.logRequest(authority, request.method(), path, pathTemplate, resolvedUri, queryParams, null, null);
             } else if (!logger.logRequestBody()) {
-                logger.logRequest(authority, request.method(), operation, resolvedUri, queryParams, headers, null);
+                logger.logRequest(authority, request.method(), path, pathTemplate, resolvedUri, queryParams, headers, null);
             } else {
                 var requestBodyCharset = this.detectCharset(request.body().contentType());
                 if (requestBodyCharset == null) {
-                    this.logger.logRequest(authority, request.method(), operation, resolvedUri, queryParams, headers, null);
+                    this.logger.logRequest(authority, request.method(), path, pathTemplate, resolvedUri, queryParams, headers, null);
                 } else {
                     var requestBody = this.wrapRequestBody(ctx, request.body(), buffers -> {
                         var bodyString = byteBufListToBodyString(buffers, requestBodyCharset);
-                        this.logger.logRequest(authority, method, operation, resolvedUri, queryParams, headers, bodyString);
+                        this.logger.logRequest(authority, method, path, pathTemplate, resolvedUri, queryParams, headers, bodyString);
                     });
                     request = request.toBuilder()
                         .body(requestBody)
@@ -237,7 +243,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
             if (logger != null && logger.logResponse()) {
                 try {
                     this.ctx.inject();
-                    logger.logResponse(data.authority(), data.operation(), processingTime, null, HttpResultCode.CONNECTION_ERROR, throwable, null, null);
+                    logger.logResponse(data.authority(), data.method(), data.path(), data.pathTemplate(), processingTime, null, HttpResultCode.CONNECTION_ERROR, throwable, null, null);
                 } finally {
                     ctx.inject();
                 }
@@ -260,7 +266,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
                 var ctx = Context.current();
                 try {
                     this.ctx.inject();
-                    logger.logResponse(data.authority(), data.operation(), processingTime, code, resultCode, null, headersStr, bodyString);
+                    logger.logResponse(data.authority(), data.method(), data.path(), data.pathTemplate(), processingTime, code, resultCode, null, headersStr, bodyString);
                 } finally {
                     ctx.inject();
                 }

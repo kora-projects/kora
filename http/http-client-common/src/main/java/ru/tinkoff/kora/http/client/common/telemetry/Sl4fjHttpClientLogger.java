@@ -9,6 +9,7 @@ import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.stream.Collectors;
@@ -22,9 +23,11 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
     private final Set<String> maskedQueryParams;
     private final Set<String> maskedHeaders;
     private final String maskFiller;
+    private final boolean alwaysWriteFullPath;
 
     public Sl4fjHttpClientLogger(Logger requestLog, Logger responseLog,
-                                 Set<String> maskedQueryParams, Set<String> maskedHeaders, String maskFiller) {
+                                 Set<String> maskedQueryParams, Set<String> maskedHeaders,
+                                 String maskFiller, boolean alwaysWriteFullPath) {
         this.requestLog = requestLog;
         this.responseLog = responseLog;
         this.maskedQueryParams = maskedQueryParams.stream()
@@ -34,6 +37,7 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
             .map(e -> e.toLowerCase(Locale.ROOT))
             .collect(Collectors.toSet());
         this.maskFiller = maskFiller;
+        this.alwaysWriteFullPath = alwaysWriteFullPath;
     }
 
     @Override
@@ -69,11 +73,15 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
     @Override
     public void logRequest(String authority,
                            String method,
-                           String operation,
-                           String resolvedUri,
+                           @Nullable String path,
+                           @Nullable String pathTemplate,
+                           @Nullable String resolvedUri,
                            @Nullable String queryParams,
                            @Nullable HttpHeaders headers,
                            @Nullable String body) {
+
+        final String operation = getOperation(requestLog, method, path, pathTemplate);
+
         var marker = StructuredArgument.marker("httpRequest", gen -> {
             gen.writeStartObject();
             gen.writeStringField("authority", authority);
@@ -97,7 +105,9 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
 
     @Override
     public void logResponse(String authority,
-                            String operation,
+                            String method,
+                            @Nullable String path,
+                            @Nullable String pathTemplate,
                             long processingTime,
                             @Nullable Integer statusCode,
                             HttpResultCode resultCode,
@@ -107,6 +117,8 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
         var exceptionTypeString = exception != null
             ? exception.getClass().getCanonicalName()
             : statusCode != null ? null : CancellationException.class.getCanonicalName();
+
+        final String operation = getOperation(responseLog, method, path, pathTemplate);
 
         var marker = StructuredArgument.marker("httpResponse", gen -> {
             gen.writeStartObject();
@@ -198,5 +210,13 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
                 }
             })
             .collect(Collectors.joining("&"));
+    }
+
+    private boolean shouldWritePath(Logger logger) {
+        return alwaysWriteFullPath || logger.isTraceEnabled();
+    }
+
+    private String getOperation(Logger logger, String method, @Nullable String path, @Nullable String pathTemplate) {
+        return method + ' ' + Objects.requireNonNullElse((shouldWritePath(logger) ? path : pathTemplate), "");
     }
 }
