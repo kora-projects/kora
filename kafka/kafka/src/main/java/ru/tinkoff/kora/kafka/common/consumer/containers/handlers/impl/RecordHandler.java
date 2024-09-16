@@ -43,12 +43,16 @@ public class RecordHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
 
                         try {
                             consumer.commitSync(topicAndOffsetAndMeta);
+                            recordCtx.close(null);
                         } catch (WakeupException e) {
                             // retry commit if thrown on consumer release
                             consumer.commitSync(topicAndOffsetAndMeta);
+                            recordCtx.close(null);
+                            throw e;
                         }
                     }
-                    recordCtx.close(null);
+                } catch (WakeupException e) {
+                    throw e;
                 } catch (Exception e) {
                     recordCtx.close(e);
                     throw e;
