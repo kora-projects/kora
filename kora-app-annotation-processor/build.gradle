@@ -5,11 +5,6 @@ dependencies {
     implementation libs.jackson.core
 
     testImplementation testFixtures(project(":annotation-processor-common"))
-    testImplementation project(":annotation-processor-common")
-    testImplementation project(":kora-app-annotation-processor")
-    testImplementation project(":aop:aop-annotation-processor")
-    testImplementation project(":logging:logging-logback")
-    testImplementation project(":logging:declarative-logging:declarative-logging-annotation-processor")
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

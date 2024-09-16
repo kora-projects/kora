@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
 import org.junit.jupiter.api.Test;
+import ru.tinkoff.kora.application.graph.RefreshableGraph;
 import ru.tinkoff.kora.application.graph.internal.NodeImpl;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,12 +47,10 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
     }
 
     @Test
-    public void testGraphInterceptorForAopParent() {
+    public void testGraphInterceptorForAopParent() throws Exception {
         var draw = compileWithAop(
             """
-                import ch.qos.logback.classic.LoggerContext;
-                import org.slf4j.ILoggerFactory;
-                import ru.tinkoff.kora.logging.common.annotation.Log;
+                import ru.tinkoff.kora.annotation.processor.common.TestAspect;
                 import ru.tinkoff.kora.application.graph.GraphInterceptor;
 
                 @KoraApp
@@ -62,7 +61,7 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
                     @Component
                     class TestClass {
                                
-                        @Log
+                        @TestAspect
                         public String getSome() {
                             return "1";
                         }
@@ -86,15 +85,15 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
                     default TestInterceptor interceptor() {
                         return new TestInterceptor();
                     }
-                    
-                    default ILoggerFactory someLoggerFactory() {
-                        return new LoggerContext();
-                    }
                 }
                 """);
-        assertThat(draw.getNodes()).hasSize(4);
-        draw.init();
-        assertThat(((NodeImpl<?>) draw.getNodes().get(2)).getInterceptors()).hasSize(1);
+        assertThat(draw.getNodes()).hasSize(3);
+        RefreshableGraph init = draw.init();
+
+        NodeImpl<?> node = (NodeImpl<?>) draw.getNodes().get(1);
+        assertThat((node).getInterceptors()).hasSize(1);
+        var value = node.factory.get(init);
+        assertThat(value.getClass().getSimpleName()).isEqualTo("$ExampleApplication_TestClass__AopProxy");
     }
 
     @Test

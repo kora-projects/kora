@@ -41,10 +41,8 @@ class GraphInterceptorTests :AbstractKoraAppProcessorTest() {
     fun interceptorForAopParent() {
         val draw = compile(
             """
-                import ch.qos.logback.classic.LoggerContext
-                import org.slf4j.ILoggerFactory
-                import ru.tinkoff.kora.logging.common.annotation.Log
                 import ru.tinkoff.kora.application.graph.GraphInterceptor
+                import ru.tinkoff.kora.ksp.common.TestAspect
 
                 @KoraApp
                 interface ExampleApplication {
@@ -54,7 +52,7 @@ class GraphInterceptorTests :AbstractKoraAppProcessorTest() {
                     @Component
                     open class TestClass {
                                
-                        @Log
+                        @TestAspect
                         open fun getSome() = "1"
                     }
                     
@@ -68,14 +66,16 @@ class GraphInterceptorTests :AbstractKoraAppProcessorTest() {
                     fun root(testClass: TestClass) = TestRoot()
                     
                     fun interceptor(): TestInterceptor = TestInterceptor()
-                    
-                    fun someLoggerFactory(): ILoggerFactory = LoggerContext()
                 }
                 """.trimIndent(),
         )
-        Assertions.assertThat(draw.nodes).hasSize(4)
-        draw.init()
-        Assertions.assertThat((draw.nodes[2] as NodeImpl<*>).interceptors).hasSize(1)
+        Assertions.assertThat(draw.nodes).hasSize(3)
+        val init = draw.init()
+
+        val node = draw.nodes[1] as NodeImpl<*>
+        Assertions.assertThat(node.interceptors).hasSize(1)
+        val value = node.factory[init]
+        Assertions.assertThat(value.javaClass.simpleName).isEqualTo("\$ExampleApplication_TestClass__AopProxy")
     }
 
     @Test

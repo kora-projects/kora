@@ -7,23 +7,10 @@ apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
     api project(":symbol-processor-common")
-    api libs.kotlin.reflect
-
-    implementation "org.reflections:reflections:0.10.2"
-    implementation libs.ksp.api
-    implementation libs.kotlin.reflect
-    implementation libs.kotlinpoet
-    implementation libs.kotlinpoet.ksp
     implementation libs.jackson.core
 
     testImplementation testFixtures(project(":annotation-processor-common"))
     testImplementation testFixtures(project(":symbol-processor-common"))
-    testImplementation project(":symbol-processor-common")
-    testImplementation project(":kora-app-symbol-processor")
-    testImplementation project(":aop:aop-symbol-processor")
-    testImplementation project(":logging:logging-logback")
-    testImplementation project(":logging:declarative-logging:declarative-logging-symbol-processor")
-
 }
 
 test {
