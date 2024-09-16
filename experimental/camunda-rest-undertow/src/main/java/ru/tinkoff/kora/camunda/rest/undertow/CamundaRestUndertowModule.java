@@ -6,6 +6,7 @@ import jakarta.ws.rs.core.Application;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.ValueOf;
+import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.camunda.rest.CamundaRest;
 import ru.tinkoff.kora.camunda.rest.CamundaRestConfig;
 import ru.tinkoff.kora.camunda.rest.CamundaRestModule;
@@ -28,14 +29,16 @@ public interface CamundaRestUndertowModule extends CamundaRestModule {
         return new DefaultCamundaRestTelemetryFactory(logger, metrics, tracer);
     }
 
-    default UndertowCamundaRestHttpHandler camundaRestUndertowHttpHandler(@Tag(CamundaRest.class) All<Application> applications,
-                                                       CamundaRestConfig camundaRestConfig) {
+    @Tag(CamundaRest.class)
+    @DefaultComponent
+    default Wrapped<HttpHandler> camundaRestUndertowHttpHandler(@Tag(CamundaRest.class) All<Application> applications,
+                                                                CamundaRestConfig camundaRestConfig) {
         return new UndertowCamundaRestHttpHandler(applications, camundaRestConfig);
     }
 
     @Tag(CamundaRest.class)
     @Root
-    default Lifecycle camundaRestUndertowHttpServer(ValueOf<UndertowCamundaRestHttpHandler> camundaHttpHandler,
+    default Lifecycle camundaRestUndertowHttpServer(@Tag(CamundaRest.class) ValueOf<HttpHandler> camundaHttpHandler,
                                                     ValueOf<CamundaRestConfig> camundaRestConfig,
                                                     CamundaRestTelemetryFactory telemetryFactory) {
         return new UndertowCamundaHttpServer(camundaRestConfig, camundaHttpHandler, telemetryFactory);

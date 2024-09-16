@@ -19,7 +19,7 @@ import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.util.*;
 
-final class UndertowCamundaRestHttpHandler implements HttpHandler, Lifecycle, Wrapped<HttpHandler> {
+final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHandler> {
 
     private static final Logger logger = LoggerFactory.getLogger(UndertowCamundaRestHttpHandler.class);
 
@@ -50,11 +50,6 @@ final class UndertowCamundaRestHttpHandler implements HttpHandler, Lifecycle, Wr
         };
 
         this.camundaRestConfig = camundaRestConfig;
-    }
-
-    @Override
-    public void handleRequest(HttpServerExchange exchange) throws Exception {
-        this.realhttpHandler.handleRequest(exchange);
     }
 
     @Override

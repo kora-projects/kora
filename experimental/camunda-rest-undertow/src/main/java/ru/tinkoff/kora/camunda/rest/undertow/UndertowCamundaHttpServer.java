@@ -28,9 +28,9 @@ final class UndertowCamundaHttpServer implements Lifecycle, ReadinessProbe {
 
     private volatile Undertow undertow;
 
-    public UndertowCamundaHttpServer(ValueOf<CamundaRestConfig> config,
-                                     ValueOf<UndertowCamundaRestHttpHandler> publicApiHandler,
-                                     CamundaRestTelemetryFactory telemetryFactory) {
+    UndertowCamundaHttpServer(ValueOf<CamundaRestConfig> config,
+                              ValueOf<HttpHandler> publicApiHandler,
+                              CamundaRestTelemetryFactory telemetryFactory) {
         this.name = "Camunda";
         this.config = config;
         this.telemetry = telemetryFactory.get(config.get().telemetry());
