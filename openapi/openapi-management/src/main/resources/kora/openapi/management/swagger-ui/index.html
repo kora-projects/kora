@@ -3091,10 +3091,7 @@
                 };
             },
             ui = SwaggerUIBundle({
-                url: window.location.href.substring(0, window.location.href.lastIndexOf("#") === -1
-                    ? window.location.href.length
-                    : window.location.href.lastIndexOf("#")
-                ).replace("${swaggerUIPath}", "${openapiPath}"),
+                ${swaggerUrls},
                 dom_id: "#swagger-ui",
                 defaultModelsExpandDepth: 0,
                 presets: [

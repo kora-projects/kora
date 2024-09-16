@@ -17,9 +17,9 @@ final class ResourceUtils {
     @Nullable
     public static InputStream getFileAsStream(@Nonnull String path) {
         return Optional.ofNullable(ResourceUtils.class.getResourceAsStream(path))
-                .or(() -> Optional.ofNullable(ResourceUtils.class.getResourceAsStream("/" + path)))
-                .map(BufferedInputStream::new)
-                .orElse(null);
+            .or(() -> Optional.ofNullable(ResourceUtils.class.getResourceAsStream("/" + path)))
+            .map(BufferedInputStream::new)
+            .orElse(null);
     }
 
     public static Optional<String> getFileAsString(@Nonnull String path) {
@@ -33,5 +33,19 @@ final class ResourceUtils {
         } catch (IOException e) {
             throw new IllegalArgumentException("Can't read file: " + path, e);
         }
+    }
+
+    public static String getFileName(String filePath) {
+        int i = filePath.lastIndexOf('/');
+        String fileName = (i == -1) ? filePath : filePath.substring(i + 1);
+        if (fileName.endsWith(".json")) {
+            fileName = fileName.substring(0, fileName.length() - 5);
+        } else if (fileName.endsWith(".yml")) {
+            fileName = fileName.substring(0, fileName.length() - 4);
+        } else if (fileName.endsWith(".yaml")) {
+            fileName = fileName.substring(0, fileName.length() - 5);
+        }
+
+        return fileName;
     }
 }

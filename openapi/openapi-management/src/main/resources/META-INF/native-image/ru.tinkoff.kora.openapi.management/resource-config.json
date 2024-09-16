@@ -1,8 +1,8 @@
 {
-  "resources": {
-    "includes": [
-      { "pattern": "kora/openapi/management/rapidoc/index.html" },
-      { "pattern": "kora/openapi/management/swagger-ui/index.html" }
-    ]
-  }
+    "resources": {
+        "includes": [
+            { "pattern": "kora/openapi/management/rapidoc/index.html" },
+            { "pattern": "kora/openapi/management/swagger-ui/index.html" }
+        ]
+    }
 }

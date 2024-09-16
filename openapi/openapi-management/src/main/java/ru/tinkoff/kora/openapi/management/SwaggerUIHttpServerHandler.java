@@ -5,7 +5,6 @@ import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.HttpServerResponseException;
-import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 
 import java.nio.charset.StandardCharsets;
@@ -18,31 +17,55 @@ final class SwaggerUIHttpServerHandler implements HttpServerRequestHandler.Handl
     private static final String FILE_PATH = "kora/openapi/management/swagger-ui/index.html";
     private static final String HTML_CONTENT_TYPE = "text/html; charset=utf-8";
 
-    private final byte[] swaggerui;
+    private final AtomicReference<byte[]> content = new AtomicReference<>();
+    private final OpenApiManagementConfig config;
 
     SwaggerUIHttpServerHandler(OpenApiManagementConfig config) {
-        this.swaggerui = loadSwagger(config);
+        this.config = config;
     }
 
     @Override
     public CompletionStage<HttpServerResponse> apply(Context context, HttpServerRequest request) throws Exception {
-        return CompletableFuture.completedFuture(HttpServerResponse.of(200, HttpBody.of(HTML_CONTENT_TYPE, swaggerui)));
+        byte[] bytes = content.get();
+        if (bytes != null) {
+            return CompletableFuture.completedFuture(HttpServerResponse.of(200, HttpBody.of(HTML_CONTENT_TYPE, bytes)));
+        }
+
+        return CompletableFuture.supplyAsync(() -> {
+            byte[] loadedBytes = loadSwagger(config);
+            content.set(loadedBytes);
+            return HttpServerResponse.of(200, HttpBody.of(HTML_CONTENT_TYPE, loadedBytes));
+        });
     }
 
     private static byte[] loadSwagger(OpenApiManagementConfig config) {
         return ResourceUtils.getFileAsString(FILE_PATH)
-                .map(file -> {
-                    var tagSwagger = "${swaggerUIPath}";
+            .map(file -> {
+                if (config.file().size() == 1) {
+                    String replacement = """
+                        url: window.location.href.substring(0, window.location.href.lastIndexOf("#") === -1 ? window.location.href.length : window.location.href.lastIndexOf("#")).replace("%s", "%s")
+                        """.formatted(config.swaggerui().endpoint(), config.endpoint());
+
+                    var tagSwagger = "${swaggerUrls}";
                     int ri = file.lastIndexOf(tagSwagger);
-                    var result = file.substring(0, ri) + config.swaggerui().endpoint() + file.substring(ri + tagSwagger.length());
+                    return file.substring(0, ri) + replacement + file.substring(ri + tagSwagger.length());
+                } else {
+                    final StringBuilder replacement = new StringBuilder("urls: [");
+                    for (String filePath : config.file()) {
+                        final String fileName = ResourceUtils.getFileName(filePath);
+                        replacement.append("""
+                            { url: window.location.href.substring(0, window.location.href.lastIndexOf("#") === -1 ? window.location.href.length : window.location.href.lastIndexOf("#")).replace("%s", "%s"),
+                              name: "%s" },
+                             """.formatted(config.swaggerui().endpoint(), config.endpoint() + "/" + fileName, fileName));
+                    }
+                    replacement.append("]");
 
-                    var tagOpenapi = "${openapiPath}";
-                    int oi = result.lastIndexOf(tagOpenapi);
-                    result = result.substring(0, oi) + config.endpoint() + result.substring(oi + tagOpenapi.length());
-
-                    return result;
-                })
-                .map(file -> file.getBytes(StandardCharsets.UTF_8))
-                .orElseThrow(() -> HttpServerResponseException.of(404, "Swagger UI file not found"));
+                    var tagSwagger = "${swaggerUrls}";
+                    int ri = file.lastIndexOf(tagSwagger);
+                    return file.substring(0, ri) + replacement + file.substring(ri + tagSwagger.length());
+                }
+            })
+            .map(file -> file.getBytes(StandardCharsets.UTF_8))
+            .orElseThrow(() -> HttpServerResponseException.of(404, "Swagger UI file not found"));
     }
 }
