@@ -91,24 +91,29 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         if (CommonUtils.isVoid(returnType)) {
             return Optional.empty();
         }
+        if (returnType.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
+            return Optional.empty();
+        }
 
         var batchParam = parameters.stream().filter(QueryParameter.BatchParameter.class::isInstance).findFirst().orElse(null);
         var generatedKeys = AnnotationUtils.isAnnotationPresent(method, DbUtils.ID_ANNOTATION);
         if (batchParam != null && !generatedKeys) {
             // either void or update count, no way to parse results from db with jdbc api
-            return Optional.empty();
-        }
-        if (returnType.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
-            return Optional.empty();
+            if (ArrayTypeName.of(int.class).equals(TypeName.get(returnType))) {
+                return Optional.empty();
+            } else if (ArrayTypeName.of(long.class).equals(TypeName.get(returnType))) {
+                return Optional.empty();
+            } else {
+                throw new ProcessingErrorException("@Batch method can't return arbitrary values, it can only return: void/UpdateCount or database-generated @Id", method);
+            }
         }
         var mappings = CommonUtils.parseMapping(method);
-        var mapperType = ParameterizedTypeName.get(
-            JdbcTypes.RESULT_SET_MAPPER, TypeName.get(returnType).box()
-        );
+        var mapperType = ParameterizedTypeName.get(JdbcTypes.RESULT_SET_MAPPER, TypeName.get(returnType).box());
         var resultSetMapper = mappings.getMapping(JdbcTypes.RESULT_SET_MAPPER);
         if (resultSetMapper != null) {
             return Optional.of(new Mapper(resultSetMapper.mapperClass(), mapperType, mappings.mapperTags()));
         }
+
         var rowMapper = mappings.getMapping(JdbcTypes.ROW_MAPPER);
         if (rowMapper != null) {
             if (CommonUtils.isList(returnType)) {

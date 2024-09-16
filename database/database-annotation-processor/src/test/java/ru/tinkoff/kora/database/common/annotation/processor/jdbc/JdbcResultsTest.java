@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.database.common.annotation.processor.jdbc;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.common.Tag;
@@ -274,7 +275,7 @@ public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
     }
 
     @Test
-    public void testReturnUpdateCount() throws SQLException {
+    public void returnUpdateCount() throws SQLException {
         var repository = compileJdbc(List.of(), """
             @Repository
             public interface TestRepository extends JdbcRepository {
@@ -292,7 +293,38 @@ public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
     }
 
     @Test
-    public void testReturnBatchUpdateCount() throws SQLException {
+    public void returnBatchArbitraryFails() {
+        Exception exception = Assertions.assertThrows(Exception.class, () -> {
+            compileJdbc(List.of(), """
+                @Repository
+                public interface TestRepository extends JdbcRepository {
+                    @Query("INSERT INTO test(value) VALUES (:value)")
+                    java.util.List<String> test(@Batch java.util.List<String> value);
+                }
+                """);
+        });
+
+        assertThat(exception.getMessage()).contains("@Batch method can't return arbitrary values, it can only return: void/UpdateCount or database-generated @Id");
+    }
+
+    @Test
+    public void returnBatchVoid() throws SQLException {
+        var repository = compileJdbc(List.of(), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                void test(@Batch java.util.List<String> value);
+            }
+            """);
+        when(executor.preparedStatement.executeBatch()).thenReturn(new int[]{42, 43});
+
+        repository.<Void>invoke("test", List.of("test1", "test2"));
+        verify(executor.mockConnection).prepareStatement("INSERT INTO test(value) VALUES (?)");
+        verify(executor.preparedStatement).executeBatch();
+    }
+
+    @Test
+    public void returnBatchUpdateCount() throws SQLException {
         var repository = compileJdbc(List.of(), """
             @Repository
             public interface TestRepository extends JdbcRepository {
@@ -310,7 +342,7 @@ public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
     }
 
     @Test
-    public void returnIntArrayBatch() throws SQLException {
+    public void returnBatchIntArray() throws SQLException {
         var repository = compileJdbc(List.of(), """
             @Repository
             public interface TestRepository extends JdbcRepository {
@@ -326,7 +358,7 @@ public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
     }
 
     @Test
-    public void returnLongArrayBatch() throws SQLException {
+    public void returnBatchLongArray() throws SQLException {
         var repository = compileJdbc(List.of(), """
             @Repository
             public interface TestRepository extends JdbcRepository {
@@ -342,7 +374,7 @@ public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
     }
 
     @Test
-    public void returnGeneratedIds() throws SQLException {
+    public void returnBatchGeneratedIds() throws SQLException {
         var repository = compileJdbc(List.of(JdbcResultSetMapper.listResultSetMapper(rs -> rs.getLong(1))), """
             @Repository
             public interface TestRepository extends JdbcRepository {
