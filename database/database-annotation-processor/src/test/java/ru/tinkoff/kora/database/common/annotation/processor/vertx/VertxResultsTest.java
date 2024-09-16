@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.database.common.annotation.processor.vertx;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.common.Tag;
@@ -145,6 +146,23 @@ public class VertxResultsTest extends AbstractVertxRepositoryTest {
     }
 
     @Test
+    public void returnBatchVoid() {
+        var repository = compileVertx(List.of(), """
+            @Repository
+            public interface TestRepository extends VertxRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                Mono<Void> test(@Batch java.util.List<String> value);
+            }
+            """);
+        when(executor.rowSet.rowCount()).thenReturn(42);
+
+        repository.<Void>invoke("test", List.of("test1", "test2"));
+
+        verify(executor.connection).preparedQuery("INSERT INTO test(value) VALUES ($1)");
+        verify(executor.query).executeBatch(any(), any());
+    }
+
+    @Test
     public void testReturnBatchMonoUpdateCount() {
         var repository = compileVertx(List.of(), """
             @Repository
@@ -196,6 +214,21 @@ public class VertxResultsTest extends AbstractVertxRepositoryTest {
         assertThat(result.value()).isEqualTo(42);
         verify(executor.connection).preparedQuery("INSERT INTO test(value) VALUES ($1)");
         verify(executor.query).executeBatch(any(), any());
+    }
+
+    @Test
+    public void returnBatchArbitraryFails() {
+        Exception exception = Assertions.assertThrows(Exception.class, () -> {
+            compileVertx(List.of(), """
+                @Repository
+                public interface TestRepository extends VertxRepository {
+                    @Query("INSERT INTO test(value) VALUES (:value)")
+                    Mono<java.util.List<String>> test(@ru.tinkoff.kora.database.common.annotation.Batch java.util.List<String> value);
+                }
+                """);
+        });
+
+        assertThat(exception.getMessage()).contains("@Batch method can't return arbitrary values, it can only return: void/UpdateCount");
     }
 
     @Test

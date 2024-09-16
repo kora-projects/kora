@@ -32,6 +32,7 @@ import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isList
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.parseMappingData
 
 
@@ -63,7 +64,6 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
     }
 
     private fun generate(typeBuilder: TypeSpec.Builder, methodNumber:Int, method: KSFunctionDeclaration, function: KSFunction, query: QueryWithParameters, parameters: List<QueryParameter>, resultMapperName: String?, parameterMappers: FieldFactory): FunSpec {
-        val isGeneratedKeys = method.isAnnotationPresent(DbUtils.idAnnotation)
         var sql = query.rawQuery
         for (p in query.parameters.asSequence().withIndex().sortedByDescending { it.value.sqlParameterName.length }) {
             val parameter = p.value
@@ -143,23 +143,32 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
     }
 
     private fun parseResultMapper(method: KSFunctionDeclaration, parameters: List<QueryParameter>, methodType: KSFunction): Mapper? {
+        val returnType = methodType.returnType!!
+        val returnTypeName = returnType.toTypeName().copy(false)
+        if (returnTypeName == UNIT) {
+            return null
+        }
+        if (returnTypeName == updateCount) {
+            return null
+        }
+
         val isGeneratedKeys = method.isAnnotationPresent(DbUtils.idAnnotation)
         for (parameter in parameters) {
             if (parameter is QueryParameter.BatchParameter) {
                 if (!isGeneratedKeys) {
-                    return null
+                    throw ProcessingErrorException("@Batch method can't return arbitrary values, it can only return: void/UpdateCount or database-generated @Id", method)
                 }
             }
         }
-        val returnType = methodType.returnType!!
+
         val mapperName = method.resultMapperName()
         val mappings = method.parseMappingData()
         val resultSetMapper = mappings.getMapping(R2dbcTypes.resultFluxMapper)
         val rowMapper = mappings.getMapping(R2dbcTypes.rowMapper)
         if (method.isFlow()) {
             val flowParam = returnType.arguments[0]
-            val returnTypeName = flowParam.toTypeName().copy(false)
-            val mapperType = R2dbcTypes.resultFluxMapper.parameterizedBy(returnTypeName, CommonClassNames.flux.parameterizedBy(returnTypeName))
+            val flowReturnTypeName = flowParam.toTypeName().copy(false)
+            val mapperType = R2dbcTypes.resultFluxMapper.parameterizedBy(flowReturnTypeName, CommonClassNames.flux.parameterizedBy(flowReturnTypeName))
             if (rowMapper != null) {
                 return Mapper(rowMapper, mapperType, mapperName) {
                     CodeBlock.of("%T.flux(%L)", R2dbcTypes.resultFluxMapper, it)
@@ -167,28 +176,24 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
             }
             return Mapper(mapperType, mapperName)
         }
-        val returnTypeName = returnType.toTypeName().copy(false)
+
         val mapperType = R2dbcTypes.resultFluxMapper.parameterizedBy(returnTypeName, CommonClassNames.mono.parameterizedBy(returnTypeName))
         if (resultSetMapper != null) {
             return Mapper(resultSetMapper, mapperType, mapperName)
         }
+
         if (rowMapper != null) {
-            if (method.isList()) {
-                return Mapper(rowMapper, mapperType, mapperName) {
+            return if (method.isList()) {
+                Mapper(rowMapper, mapperType, mapperName) {
                     CodeBlock.of("%T.monoList(%L)", R2dbcTypes.resultFluxMapper, it)
                 }
             } else {
-                return Mapper(rowMapper, mapperType, mapperName) {
+                Mapper(rowMapper, mapperType, mapperName) {
                     CodeBlock.of("%T.mono(%L)", R2dbcTypes.resultFluxMapper, it)
                 }
             }
         }
-        if (returnTypeName == UNIT) {
-            return null
-        }
-        if (returnTypeName == updateCount) {
-            return null
-        }
+
         return Mapper(mapperType, mapperName)
     }
 

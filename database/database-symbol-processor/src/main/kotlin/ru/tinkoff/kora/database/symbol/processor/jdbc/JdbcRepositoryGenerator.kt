@@ -29,6 +29,7 @@ import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.TagUtils.addTag
+import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.parseMappingData
 import java.sql.Statement
 import java.util.concurrent.Executor
@@ -201,41 +202,44 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
     }
 
     private fun parseResultMapper(method: KSFunctionDeclaration, parameters: List<QueryParameter>, methodType: KSFunction): Mapper? {
-        val isGeneratedKeys = method.isAnnotationPresent(DbUtils.idAnnotation)
-        for (parameter in parameters) {
-            if (parameter is QueryParameter.BatchParameter) {
-                if (!isGeneratedKeys) {
-                    return null
-                }
-            }
-        }
         val returnType = methodType.returnType!!
-        val mapperName = method.resultMapperName()
-        val mappings = method.parseMappingData()
-        val resultSetMapper = mappings.getMapping(JdbcTypes.jdbcResultSetMapper)
-        val rowMapper = mappings.getMapping(JdbcTypes.jdbcRowMapper)
         val returnTypeName = returnType.toTypeName().copy(false)
-        val mapperType = JdbcTypes.jdbcResultSetMapper.parameterizedBy(returnTypeName)
-        if (resultSetMapper != null) {
-            return Mapper(resultSetMapper, mapperType, mapperName)
-        }
-        if (rowMapper != null) {
-            if (returnType.isList()) {
-                return Mapper(rowMapper, mapperType, mapperName) {
-                    CodeBlock.of("%T.listResultSetMapper(%L)", JdbcTypes.jdbcResultSetMapper, it)
-                }
-            } else {
-                return Mapper(rowMapper, mapperType, mapperName) {
-                    CodeBlock.of("%T.singleResultSetMapper(%L)", JdbcTypes.jdbcResultSetMapper, it)
-                }
-            }
-        }
         if (returnType == resolver.builtIns.unitType) {
             return null
         }
         if (returnTypeName == updateCount) {
             return null
         }
+
+        val isGeneratedKeys = method.isAnnotationPresent(DbUtils.idAnnotation)
+        for (parameter in parameters) {
+            if (parameter is QueryParameter.BatchParameter) {
+                if (!isGeneratedKeys) {
+                    throw ProcessingErrorException("@Batch method can't return arbitrary values, it can only return: void/UpdateCount or database-generated @Id", method)
+                }
+            }
+        }
+
+        val mapperName = method.resultMapperName()
+        val mappings = method.parseMappingData()
+        val resultSetMapper = mappings.getMapping(JdbcTypes.jdbcResultSetMapper)
+        val rowMapper = mappings.getMapping(JdbcTypes.jdbcRowMapper)
+        val mapperType = JdbcTypes.jdbcResultSetMapper.parameterizedBy(returnTypeName)
+        if (resultSetMapper != null) {
+            return Mapper(resultSetMapper, mapperType, mapperName)
+        }
+        if (rowMapper != null) {
+            return if (returnType.isList()) {
+                Mapper(rowMapper, mapperType, mapperName) {
+                    CodeBlock.of("%T.listResultSetMapper(%L)", JdbcTypes.jdbcResultSetMapper, it)
+                }
+            } else {
+                Mapper(rowMapper, mapperType, mapperName) {
+                    CodeBlock.of("%T.singleResultSetMapper(%L)", JdbcTypes.jdbcResultSetMapper, it)
+                }
+            }
+        }
+
         return Mapper(mapperType, mapperName)
     }
 

@@ -2,10 +2,7 @@ package ru.tinkoff.kora.database.annotation.processor.vertx;
 
 import com.squareup.javapoet.*;
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
-import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
-import ru.tinkoff.kora.annotation.processor.common.Visitors;
+import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
 import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
@@ -188,19 +185,34 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
     }
 
     private Optional<DbUtils.Mapper> parseResultMapper(ExecutableElement method, List<QueryParameter> parameters, ExecutableType methodType) {
-        for (var parameter : parameters) {
-            if (parameter instanceof QueryParameter.BatchParameter) {
-                return Optional.empty();
-            }
-        }
         var returnType = methodType.getReturnType();
         if (isVoid(returnType)) {
             return Optional.empty();
         }
+
+        final boolean isFlux = CommonUtils.isFlux(returnType);
+        final boolean isMono = CommonUtils.isMono(returnType);
+        final boolean isCompletionStage = isCompletionStage(returnType);
+        for (var parameter : parameters) {
+            if (parameter instanceof QueryParameter.BatchParameter) {
+                final TypeMirror realReturnType = (isMono || isFlux || isCompletionStage)
+                    ? Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0))
+                    : method.getReturnType();
+
+                if (CommonUtils.isVoid(realReturnType)) {
+                    return Optional.empty();
+                } else if (DbUtils.UPDATE_COUNT.canonicalName().equals(realReturnType.toString())) {
+                    return Optional.empty();
+                } else {
+                    throw new ProcessingErrorException("@Batch method can't return arbitrary values, it can only return: void/UpdateCount", method);
+                }
+            }
+        }
+
         var mappings = CommonUtils.parseMapping(method);
         var rowSetMapper = mappings.getMapping(VertxTypes.ROW_SET_MAPPER);
         var rowMapper = mappings.getMapping(VertxTypes.ROW_MAPPER);
-        if (CommonUtils.isFlux(returnType)) {
+        if (isFlux) {
             var fluxParam = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
             var mapperType = ParameterizedTypeName.get(VertxTypes.ROW_MAPPER, TypeName.get(fluxParam));
             if (rowMapper != null) {
@@ -208,7 +220,7 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
             }
             return Optional.of(new DbUtils.Mapper(mapperType, Set.of()));
         }
-        if (CommonUtils.isMono(returnType) || this.isCompletionStage(returnType)) {
+        if (isMono || isCompletionStage) {
             var monoParam = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
             var mapperType = ParameterizedTypeName.get(VertxTypes.ROW_SET_MAPPER, TypeName.get(monoParam));
             if (monoParam.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
@@ -271,9 +283,9 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
     }
 
     private boolean isVoid(TypeMirror tm) {
-        if (isCompletionStage(tm) || CommonUtils.isMono(tm)) {
+        if (isCompletionStage(tm) || CommonUtils.isMono(tm) || CommonUtils.isFlux(tm)) {
             tm = Visitors.visitDeclaredType(tm, dt -> dt.getTypeArguments().get(0));
         }
-        return tm.getKind() == TypeKind.NONE || tm.toString().equals("java.lang.Void") || tm.getKind() == TypeKind.VOID;
+        return CommonUtils.isVoid(tm);
     }
 }

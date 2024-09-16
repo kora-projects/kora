@@ -47,6 +47,7 @@ public class MockR2dbcExecutor implements R2dbcConnectionFactory {
         Mockito.reset(con, statement, telemetry, telemetryContext);
         rows = new ArrayList<>();
         when(con.createStatement(any())).thenReturn(statement);
+        when(statement.returnGeneratedValues()).thenReturn(statement);
         when(statement.execute()).thenReturn((Publisher) Flux.defer(() -> Flux.just(new MockResult(this.rows, null))));
         when(telemetry.createContext(any(), any())).thenReturn(telemetryContext);
     }

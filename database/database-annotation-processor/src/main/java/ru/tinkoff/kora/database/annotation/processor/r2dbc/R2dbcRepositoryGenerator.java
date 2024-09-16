@@ -191,7 +191,7 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
                 } else if (DbUtils.UPDATE_COUNT.canonicalName().equals(realReturnType.toString())) {
                     return Optional.empty();
                 } else if (!generatedKeys) {
-                    throw new ProcessingErrorException("@Batch operations doesn't support return type other than UpdateCount or generated IDs", method);
+                    throw new ProcessingErrorException("@Batch method can't return arbitrary values, it can only return: void/UpdateCount or database-generated @Id", method);
                 }
             }
         }

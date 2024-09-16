@@ -1,19 +1,23 @@
 package ru.tinkoff.kora.database.common.annotation.processor.r2dbc;
 
+import io.r2dbc.spi.Row;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.common.UpdateCount;
 import ru.tinkoff.kora.database.common.annotation.processor.r2dbc.MockR2dbcExecutor.MockColumn;
+import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultSetMapper;
 import ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcResultFluxMapper;
+import ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcRowMapper;
 
-import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -457,6 +461,98 @@ public class R2dbcResultsTest extends AbstractR2dbcRepositoryTest {
         assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
     }
 
+    @Test
+    public void returnUpdateCount() {
+        var repository = compileR2dbc(List.of(), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("INSERT INTO test(value) VALUES ('test')")
+                Mono<UpdateCount> test();
+            }
+            """);
+        executor.setUpdateCountResult(42);
+
+        var result = repository.<UpdateCount>invoke("test");
+
+        assertThat(result.value()).isEqualTo(42);
+        verify(executor.con).createStatement("INSERT INTO test(value) VALUES ('test')");
+        verify(executor.statement).execute();
+    }
+
+    @Test
+    public void returnBatchArbitraryFails() {
+        Exception exception = Assertions.assertThrows(Exception.class, () -> {
+            compileR2dbc(List.of(), """
+                @Repository
+                public interface TestRepository extends R2dbcRepository {
+                    @Query("INSERT INTO test(value) VALUES (:value)")
+                    Mono<java.util.List<String>> test(@ru.tinkoff.kora.database.common.annotation.Batch java.util.List<String> value);
+                }
+                """);
+        });
+
+        assertThat(exception.getMessage()).contains("@Batch method can't return arbitrary values, it can only return: void/UpdateCount or database-generated @Id");
+    }
+
+    @Test
+    public void returnBatchVoid() {
+        var repository = compileR2dbc(List.of(), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                Mono<Void> test(@ru.tinkoff.kora.database.common.annotation.Batch java.util.List<String> value);
+            }
+            """);
+        executor.setUpdateCountResult(42);
+
+        repository.<Void>invoke("test", List.of("test1", "test2"));
+
+        verify(executor.con).createStatement("INSERT INTO test(value) VALUES ($1)");
+        verify(executor.statement).execute();
+    }
+
+    @Test
+    public void returnBatchUpdateCount() {
+        var repository = compileR2dbc(List.of(), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                Mono<UpdateCount> test(@ru.tinkoff.kora.database.common.annotation.Batch java.util.List<String> value);
+            }
+            """);
+        executor.setUpdateCountResult(42);
+
+        var result = repository.<UpdateCount>invoke("test", List.of("test1", "test2"));
+
+        assertThat(result.value()).isEqualTo(42);
+        verify(executor.con).createStatement("INSERT INTO test(value) VALUES ($1)");
+        verify(executor.statement).execute();
+    }
+
+    @Test
+    public void returnBatchGeneratedIds() {
+        var repository = compileR2dbc(List.of(R2dbcResultFluxMapper.monoList(row -> row.get(0, String.class))), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("INSERT INTO test(test) VALUES (:value)")
+                @Id
+                Mono<java.util.List<String>> test(@ru.tinkoff.kora.database.common.annotation.Batch java.util.List<String> value);
+            }
+            """);
+
+        Mockito.when(executor.statement.returnGeneratedValues()).thenReturn(executor.statement);
+        executor.setRows(List.of(
+            List.of(new MockColumn("test", "test1")),
+            List.of(new MockColumn("test", "test2"))
+        ));
+
+        var result = repository.<List<String>>invoke("test", List.of("test1", "test2"));
+
+        assertThat(result).hasSize(2);
+        verify(executor.statement).returnGeneratedValues();
+        verify(executor.statement).execute();
+    }
+    
 
     /*
     todo not supported yet

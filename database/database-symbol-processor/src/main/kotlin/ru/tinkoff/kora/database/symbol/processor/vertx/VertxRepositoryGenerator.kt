@@ -30,6 +30,7 @@ import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
 import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
+import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.parseMappingData
 import java.util.concurrent.CompletableFuture
 
@@ -61,7 +62,16 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
         return typeBuilder.primaryConstructor(constructorBuilder.build()).build()
     }
 
-    private fun generate(typeBuilder: TypeSpec.Builder, methodNumber:Int, funDeclaration: KSFunctionDeclaration, function: KSFunction, query: QueryWithParameters, parameters: List<QueryParameter>, resultMapperName: String?, parameterMappers: FieldFactory): FunSpec {
+    private fun generate(
+        typeBuilder: TypeSpec.Builder,
+        methodNumber: Int,
+        funDeclaration: KSFunctionDeclaration,
+        function: KSFunction,
+        query: QueryWithParameters,
+        parameters: List<QueryParameter>,
+        resultMapperName: String?,
+        parameterMappers: FieldFactory
+    ): FunSpec {
         var sql = query.rawQuery
         query.parameters.indices.asSequence()
             .map { query.parameters[it].sqlParameterName to "$" + (it + 1) }
@@ -139,46 +149,51 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
     }
 
     private fun parseResultMapper(method: KSFunctionDeclaration, parameters: List<QueryParameter>, methodType: KSFunction): Mapper? {
+        val returnType = methodType.returnType!!
+        val returnTypeName = returnType.toTypeName().copy(false)
+        if (returnTypeName == UNIT) {
+            return null
+        }
+        if (returnTypeName == updateCount) {
+            return null
+        }
+
         for (parameter in parameters) {
             if (parameter is QueryParameter.BatchParameter) {
-                return null
+                throw ProcessingErrorException("@Batch method can't return arbitrary values, it can only return: void/UpdateCount", method)
             }
         }
-        val returnType = methodType.returnType!!
+
         val mapperName = method.resultMapperName()
         val mappings = method.parseMappingData()
         val resultSetMapper = mappings.getMapping(VertxTypes.rowSetMapper)
         val rowMapper = mappings.getMapping(VertxTypes.rowMapper)
         if (returnType.isFlow()) {
             val flowParam = returnType.arguments[0]
-            val returnTypeName = flowParam.toTypeName().copy(false)
-            val mapperType = VertxTypes.rowMapper.parameterizedBy(returnTypeName)
+            val flowReturnTypeName = flowParam.toTypeName().copy(false)
+            val mapperType = VertxTypes.rowMapper.parameterizedBy(flowReturnTypeName)
             if (rowMapper != null) {
                 return Mapper(rowMapper, mapperType, mapperName)
             }
             return Mapper(mapperType, mapperName)
         }
-        val mapperType = VertxTypes.rowSetMapper.parameterizedBy(returnType.toTypeName().copy(false))
+        val mapperType = VertxTypes.rowSetMapper.parameterizedBy(returnTypeName)
         if (resultSetMapper != null) {
             return Mapper(resultSetMapper, mapperType, mapperName)
         }
+
         if (rowMapper != null) {
-            if (returnType.isList()) {
-                return Mapper(rowMapper, mapperType, mapperName) {
+            return if (returnType.isList()) {
+                Mapper(rowMapper, mapperType, mapperName) {
                     CodeBlock.of("%T.listRowSetMapper(%L)", VertxTypes.rowSetMapper, it)
                 }
             } else {
-                return Mapper(rowMapper, mapperType, mapperName) {
+                Mapper(rowMapper, mapperType, mapperName) {
                     CodeBlock.of("%T.singleRowSetMapper(%L)", VertxTypes.rowSetMapper, it)
                 }
             }
         }
-        if (returnType == resolver.builtIns.unitType) {
-            return null
-        }
-        if (returnType.toTypeName() == updateCount) {
-            return null
-        }
+
         return Mapper(mapperType, mapperName)
     }
 
