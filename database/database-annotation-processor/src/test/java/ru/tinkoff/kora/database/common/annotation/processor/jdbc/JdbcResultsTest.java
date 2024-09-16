@@ -316,11 +316,11 @@ public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
                 void test(@Batch java.util.List<String> value);
             }
             """);
-        when(executor.preparedStatement.executeLargeBatch()).thenReturn(new long[]{42, 43});
+        when(executor.preparedStatement.executeBatch()).thenReturn(new int[]{42, 43});
 
         repository.<Void>invoke("test", List.of("test1", "test2"));
         verify(executor.mockConnection).prepareStatement("INSERT INTO test(value) VALUES (?)");
-        verify(executor.preparedStatement).executeLargeBatch();
+        verify(executor.preparedStatement).executeBatch();
     }
 
     @Test

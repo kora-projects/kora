@@ -6,6 +6,7 @@ import com.google.devtools.ksp.symbol.KSFunction
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.database.symbol.processor.DbUtils
 import ru.tinkoff.kora.database.symbol.processor.DbUtils.addMapper
@@ -106,7 +107,7 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         b.addStatement("val _query = %L", queryContextFieldName)
 
         b.addStatement("val _ctxCurrent = %T.current()", CommonClassNames.context)
-        if(method.isSuspend()) {
+        if (method.isSuspend()) {
             b.addStatement("val _ctxFork = _ctxCurrent.fork()")
             b.addStatement("_ctxFork.inject()")
             b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(_ctxFork, _query)")
@@ -214,7 +215,11 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         val isGeneratedKeys = method.isAnnotationPresent(DbUtils.idAnnotation)
         for (parameter in parameters) {
             if (parameter is QueryParameter.BatchParameter) {
-                if (!isGeneratedKeys) {
+                if (IntArray::class.asTypeName() == returnType.toClassName()) {
+                    return null
+                } else if (LongArray::class.asTypeName() == returnType.toClassName()) {
+                    return null
+                } else if (!isGeneratedKeys) {
                     throw ProcessingErrorException("@Batch method can't return arbitrary values, it can only return: void/UpdateCount or database-generated @Id", method)
                 }
             }
@@ -280,9 +285,11 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
                         .build()
                 )
             } else {
-                constructorBuilder.addParameter(ParameterSpec.builder("_executor", executor)
-                    .addTag(JdbcTypes.jdbcDatabase)
-                    .build())
+                constructorBuilder.addParameter(
+                    ParameterSpec.builder("_executor", executor)
+                        .addTag(JdbcTypes.jdbcDatabase)
+                        .build()
+                )
             }
         }
     }

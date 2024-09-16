@@ -99,7 +99,13 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         var generatedKeys = AnnotationUtils.isAnnotationPresent(method, DbUtils.ID_ANNOTATION);
         if (batchParam != null && !generatedKeys) {
             // either void or update count, no way to parse results from db with jdbc api
-            throw new ProcessingErrorException("@Batch method can't return arbitrary values, it can only return: void/UpdateCount or database-generated @Id", method);
+            if (ArrayTypeName.of(int.class).equals(TypeName.get(returnType))) {
+                return Optional.empty();
+            } else if (ArrayTypeName.of(long.class).equals(TypeName.get(returnType))) {
+                return Optional.empty();
+            } else {
+                throw new ProcessingErrorException("@Batch method can't return arbitrary values, it can only return: void/UpdateCount or database-generated @Id", method);
+            }
         }
         var mappings = CommonUtils.parseMapping(method);
         var mapperType = ParameterizedTypeName.get(JdbcTypes.RESULT_SET_MAPPER, TypeName.get(returnType).box());
