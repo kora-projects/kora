@@ -22,6 +22,8 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             version('kotlinpoet', '1.18.1')
             version('swagger', '2.2.22')
             version('opentelemetry', '1.37.0')
+            version('undertow', '2.3.13.Final')
+            version('camunda7', '7.21.0')
 
             library('jsr305', 'com.google.code.findbugs', 'jsr305').version('3.0.2')
             library('jakarta-annotations', 'jakarta.annotation', 'jakarta.annotation-api').version('2.1.1')
@@ -74,7 +76,8 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
 
             library("jms-api", "javax.jms", "javax.jms-api").version("2.0.1")
 
-            library("undertow-core", "io.undertow", "undertow-core").version("2.3.13.Final")
+            library("undertow-core", "io.undertow", "undertow-core").versionRef("undertow")
+            library("undertow-servlet", "io.undertow", "undertow-servlet").versionRef("undertow")
             library("async-http-client", "org.asynchttpclient", "async-http-client").version("2.12.3")
             library("okhttp", "com.squareup.okhttp3", "okhttp").version("5.0.0-alpha.14")
             library("okio", "com.squareup.okio", "okio").version("3.9.0")
@@ -151,23 +154,29 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             library('kotlinpoet', 'com.squareup', 'kotlinpoet').versionRef('kotlinpoet')
             library('kotlinpoet-ksp', 'com.squareup', 'kotlinpoet-ksp').versionRef('kotlinpoet')
 
-            library('jakarta.xml.ws.api', 'jakarta.xml.ws', 'jakarta.xml.ws-api').version('3.0.1')
             library('jakarta.jws.api', 'jakarta.jws', 'jakarta.jws-api').version('3.0.0')
+            library('jakarta.xml.ws.api', 'jakarta.xml.ws', 'jakarta.xml.ws-api').version('3.0.1')
             library('jakarta.xml.bind.api', 'jakarta.xml.bind', 'jakarta.xml.bind-api').version('3.0.1')
 
             library('glassfish.jaxb.jakarta', 'org.glassfish.jaxb', 'jaxb-runtime').version('3.0.1')
             library('glassfish.jaxb.javax', 'org.glassfish.jaxb', 'jaxb-runtime').version('2.3.0.1')
 
-            library('commons.codec', 'commons-codec', 'commons-codec').version('1.16.1')
-            library('commons.io', 'commons-io', 'commons-io').version('2.16.1')
+            library('commons-codec', 'commons-codec', 'commons-codec').version('1.16.1')
+            library('commons-io', 'commons-io', 'commons-io').version('2.16.1')
 
             library('openapi-generator', 'org.openapitools', 'openapi-generator').version('7.4.0')
             library('swagger-core', 'io.swagger.core.v3', 'swagger-core').versionRef("swagger")
-            library('swagger-annotations', 'io.swagger.core.v3', 'swagger-annotations').versionRef("swagger")
             library('swagger-models', 'io.swagger.core.v3', 'swagger-models').versionRef("swagger")
+            library('swagger-annotations', 'io.swagger.core.v3', 'swagger-annotations').versionRef("swagger")
 
             library('s3client-minio', 'io.minio', 'minio').version("8.5.12")
             library('s3client-aws', 'software.amazon.awssdk', 's3').version("2.27.12")
+
+            library('camunda7-engine', 'org.camunda.bpm', 'camunda-engine').versionRef('camunda7')
+            library('camunda7-rest-jakarta', 'org.camunda.bpm', 'camunda-engine-rest-jakarta').versionRef('camunda7')
+            library('fasterxml-uuidgenerator', 'com.fasterxml.uuid', 'java-uuid-generator').version('5.0.0')
+            library('resteasy-undertow-jakarta', 'org.jboss.resteasy', 'resteasy-undertow').version('6.2.8.Final')
+            library('jakarta-rs-api', 'jakarta.ws.rs', 'jakarta.ws.rs-api').version('3.1.0')
         }
     }
 }

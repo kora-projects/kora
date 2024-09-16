@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.concurrent.Flow;
 
 public class UndertowPrivateApiHandler {
+
     private final PrivateApiHandler privateApiHandler;
 
     public UndertowPrivateApiHandler(PrivateApiHandler privateApiHandler) {

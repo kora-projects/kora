@@ -10,10 +10,34 @@ import java.util.Objects;
 
 @ConfigValueExtractor
 public interface RetryConfig {
+
     String DEFAULT = "default";
 
     default Map<String, NamedConfig> retry() {
         return Map.of();
+    }
+
+    /**
+     * {@link #delay} Attempt initial delay
+     * {@link #delayStep} Delay step used to calculate next delay (previous delay + delay step)
+     * {@link #attempts} Maximum number of retry attempts
+     * {@link #failurePredicateName} {@link RetryPredicate#name()} default is {@link RetryPredicate}
+     */
+    @ConfigValueExtractor
+    interface NamedConfig {
+
+        @Nullable
+        Duration delay();
+
+        @Nullable
+        Duration delayStep();
+
+        @Nullable
+        Integer attempts();
+
+        default String failurePredicateName() {
+            return KoraRetryPredicate.class.getCanonicalName();
+        }
     }
 
     default NamedConfig getNamedConfig(@Nonnull String name) {
@@ -55,27 +79,5 @@ public interface RetryConfig {
             namedConfig.delayStep() == null ? Objects.requireNonNullElse(defaultConfig.delayStep(), Duration.ZERO) : namedConfig.delayStep(),
             namedConfig.attempts() == null ? defaultConfig.attempts() : namedConfig.attempts(),
             namedConfig.failurePredicateName() == null ? defaultConfig.failurePredicateName() : namedConfig.failurePredicateName());
-    }
-
-    /**
-     * {@link #delay} Attempt initial delay
-     * {@link #delayStep} Delay step used to calculate next delay (previous delay + delay step)
-     * {@link #attempts} Maximum number of retry attempts
-     * {@link #failurePredicateName} {@link RetryPredicate#name()} default is {@link RetryPredicate}
-     */
-    @ConfigValueExtractor
-    interface NamedConfig {
-        @Nullable
-        Duration delay();
-
-        @Nullable
-        Duration delayStep();
-
-        @Nullable
-        Integer attempts();
-
-        default String failurePredicateName() {
-            return KoraRetryPredicate.class.getCanonicalName();
-        }
     }
 }

@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.application.graph;
 
 public interface Wrapped<T> {
+
     T value();
 
     class UnwrappedValue<T> implements ValueOf<T> {

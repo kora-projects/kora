@@ -12,7 +12,6 @@ import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor;
 import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTracerFactory;
-import ru.tinkoff.kora.http.server.undertow.pool.KoraByteBufferPool;
 
 public interface UndertowHttpServerModule extends UndertowModule {
 

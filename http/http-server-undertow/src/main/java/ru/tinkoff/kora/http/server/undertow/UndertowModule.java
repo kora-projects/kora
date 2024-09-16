@@ -13,8 +13,6 @@ import ru.tinkoff.kora.http.server.common.HttpServerModule;
 import ru.tinkoff.kora.http.server.common.PrivateApiHandler;
 import ru.tinkoff.kora.http.server.undertow.pool.KoraByteBufferPool;
 
-import java.util.concurrent.ExecutionException;
-
 public interface UndertowModule extends HttpServerModule {
 
     default UndertowPrivateApiHandler undertowPrivateApiHandler(PrivateApiHandler privateApiHandler) {

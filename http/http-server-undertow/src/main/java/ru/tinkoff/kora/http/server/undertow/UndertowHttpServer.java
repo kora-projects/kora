@@ -24,18 +24,19 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
 
     private final AtomicReference<HttpServerState> state = new AtomicReference<>(HttpServerState.INIT);
     private final ValueOf<HttpServerConfig> config;
-    private final ValueOf<UndertowPublicApiHandler> publicApiHandler;
     private final GracefulShutdownHandler gracefulShutdown;
     private final XnioWorker xnioWorker;
     private final ByteBufferPool byteBufferPool;
+
     private volatile Undertow undertow;
 
-    public UndertowHttpServer(ValueOf<HttpServerConfig> config, ValueOf<UndertowPublicApiHandler> publicApiHandler, @Nullable XnioWorker xnioWorker, ByteBufferPool byteBufferPool) {
+    public UndertowHttpServer(ValueOf<HttpServerConfig> config,
+                              ValueOf<UndertowPublicApiHandler> publicApiHandler,
+                              @Nullable XnioWorker xnioWorker, ByteBufferPool byteBufferPool) {
         this.config = config;
         this.xnioWorker = xnioWorker;
-        this.publicApiHandler = publicApiHandler;
         this.byteBufferPool = byteBufferPool;
-        this.gracefulShutdown = new GracefulShutdownHandler(exchange -> this.publicApiHandler.get().handleRequest(exchange));
+        this.gracefulShutdown = new GracefulShutdownHandler(exchange -> publicApiHandler.get().handleRequest(exchange));
     }
 
     @Override

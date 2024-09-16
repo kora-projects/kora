@@ -11,6 +11,8 @@ import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.micrometer.module.cache.MicrometerCacheMetrics;
 import ru.tinkoff.kora.micrometer.module.cache.caffeine.MicrometerCaffeineCacheMetricCollector;
+import ru.tinkoff.kora.micrometer.module.camunda.engine.MicrometerCamundaEngineMetricsFactory;
+import ru.tinkoff.kora.micrometer.module.camunda.rest.MicrometerCamundaRestMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.db.MicrometerDataBaseMetricWriterFactory;
 import ru.tinkoff.kora.micrometer.module.grpc.client.MicrometerGrpcClientMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.grpc.server.MicrometerGrpcServerMetricsFactory;
@@ -27,8 +29,8 @@ import ru.tinkoff.kora.micrometer.module.resilient.MicrometerCircuitBreakerMetri
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerFallbackMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerRetryMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerTimeoutMetrics;
-import ru.tinkoff.kora.micrometer.module.s3.client.OpentelemetryS3ClientMetricsFactory;
-import ru.tinkoff.kora.micrometer.module.s3.client.OpentelemetryS3KoraClientMetricsFactory;
+import ru.tinkoff.kora.micrometer.module.s3.client.MicrometerS3ClientMetricsFactory;
+import ru.tinkoff.kora.micrometer.module.s3.client.MicrometerS3KoraClientMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.scheduling.MicrometerSchedulingMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.soap.client.MicrometerSoapClientMetricsFactory;
 
@@ -139,12 +141,22 @@ public interface MetricsModule {
     }
 
     @DefaultComponent
-    default OpentelemetryS3ClientMetricsFactory micrometerS3ClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
-        return new OpentelemetryS3ClientMetricsFactory(meterRegistry, metricsConfig);
+    default MicrometerS3ClientMetricsFactory micrometerS3ClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
+        return new MicrometerS3ClientMetricsFactory(meterRegistry, metricsConfig);
     }
 
     @DefaultComponent
-    default OpentelemetryS3KoraClientMetricsFactory micrometerS3KoraClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
-        return new OpentelemetryS3KoraClientMetricsFactory(meterRegistry, metricsConfig);
+    default MicrometerS3KoraClientMetricsFactory micrometerS3KoraClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
+        return new MicrometerS3KoraClientMetricsFactory(meterRegistry, metricsConfig);
+    }
+
+    @DefaultComponent
+    default MicrometerCamundaEngineMetricsFactory micrometerCamundaEngineMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
+        return new MicrometerCamundaEngineMetricsFactory(meterRegistry, metricsConfig);
+    }
+
+    @DefaultComponent
+    default MicrometerCamundaRestMetricsFactory micrometerCamundaRestMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
+        return new MicrometerCamundaRestMetricsFactory(meterRegistry, metricsConfig);
     }
 }

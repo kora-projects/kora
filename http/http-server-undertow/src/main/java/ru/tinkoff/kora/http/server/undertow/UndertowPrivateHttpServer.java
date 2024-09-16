@@ -22,12 +22,16 @@ public class UndertowPrivateHttpServer implements PrivateHttpServer {
     private final ValueOf<UndertowPrivateApiHandler> privateApiHandler;
     private final XnioWorker xnioWorker;
     private final ByteBufferPool byteBufferPool;
+
     private volatile Undertow undertow;
 
-    public UndertowPrivateHttpServer(ValueOf<HttpServerConfig> config, ValueOf<UndertowPrivateApiHandler> privateApiHandler, @Nullable XnioWorker xnioWorker, ByteBufferPool byteBufferPool) {
+    public UndertowPrivateHttpServer(ValueOf<HttpServerConfig> config,
+                                     ValueOf<UndertowPrivateApiHandler> privateApiHandler,
+                                     @Nullable XnioWorker xnioWorker,
+                                     ByteBufferPool byteBufferPool) {
         this.config = config;
-        this.xnioWorker = xnioWorker;
         this.privateApiHandler = privateApiHandler;
+        this.xnioWorker = xnioWorker;
         this.byteBufferPool = byteBufferPool;
     }
 

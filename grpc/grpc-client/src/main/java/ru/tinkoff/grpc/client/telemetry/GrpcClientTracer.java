@@ -9,8 +9,8 @@ import ru.tinkoff.kora.common.Context;
 import java.net.URI;
 
 public interface GrpcClientTracer {
-    <RespT, ReqT> GrpcClientSpan callSpan(Context ctx, MethodDescriptor<ReqT, RespT> method, URI uri, ClientCall<ReqT, RespT> call, Metadata headers);
 
+    <RespT, ReqT> GrpcClientSpan callSpan(Context ctx, MethodDescriptor<ReqT, RespT> method, URI uri, ClientCall<ReqT, RespT> call, Metadata headers);
 
     interface GrpcClientSpan {
 
