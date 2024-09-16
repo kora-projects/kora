@@ -9,17 +9,17 @@ dependencies {
     api libs.kotlinpoet
     api libs.kotlinpoet.ksp
     api libs.ksp.api
-    implementation libs.kotlin.reflect
+    api libs.kotlin.reflect
 
     testFixturesApi project(':aop:aop-symbol-processor')
-    testFixturesImplementation libs.classgraph
+    testFixturesApi libs.kotlin.reflect
 
+    testFixturesImplementation libs.classgraph
     testFixturesImplementation libs.kotlin.compiler
     testFixturesImplementation libs.kotlin.compiler
     testFixturesImplementation libs.junit.jupiter
     testFixturesImplementation libs.ksp
     testFixturesImplementation libs.ksp.api
-    testFixturesImplementation libs.kotlin.reflect
     testFixturesImplementation libs.kotlin.coroutines.reactor
     testFixturesImplementation libs.kotlin.coroutines.jdk8
 }
