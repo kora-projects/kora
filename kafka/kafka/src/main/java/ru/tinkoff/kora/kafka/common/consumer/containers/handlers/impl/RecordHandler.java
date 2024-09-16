@@ -4,6 +4,8 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.WakeupException;
+import org.apache.kafka.common.requests.OffsetFetchResponse;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.BaseKafkaRecordsHandler;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.KafkaRecordHandler;
@@ -36,9 +38,23 @@ public class RecordHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
                 try {
                     handler.handle(consumer, recordCtx, record);
                     if (this.shouldCommit && commitAllowed) {
-                        consumer.commitSync(Map.of(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset(), record.leaderEpoch(), "")));
+                        var topicAndOffsetAndMeta = Map.of(new TopicPartition(record.topic(), record.partition()),
+                            new OffsetAndMetadata(record.offset() + 1, record.leaderEpoch(), OffsetFetchResponse.NO_METADATA));
+
+                        try {
+                            consumer.commitSync(topicAndOffsetAndMeta);
+                            recordCtx.close(null);
+                        } catch (WakeupException e) {
+                            // retry commit if thrown on consumer release
+                            consumer.commitSync(topicAndOffsetAndMeta);
+                            recordCtx.close(null);
+                            throw e;
+                        }
+                    } else {
+                        recordCtx.close(null);
                     }
-                    recordCtx.close(null);
+                } catch (WakeupException e) {
+                    throw e;
                 } catch (Exception e) {
                     recordCtx.close(e);
                     throw e;
