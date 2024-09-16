@@ -50,6 +50,8 @@ public class RecordHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
                             recordCtx.close(null);
                             throw e;
                         }
+                    } else {
+                        recordCtx.close(null);
                     }
                 } catch (WakeupException e) {
                     throw e;
