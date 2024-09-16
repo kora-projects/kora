@@ -3,7 +3,7 @@ apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
     compileOnly libs.mockito.core
-    compileOnly "io.mockk:mockk:1.13.10"
+    compileOnly "io.mockk:mockk:1.13.11"
     compileOnly libs.kotlin.reflect
 
     api libs.junit.platform.launcher
@@ -16,7 +16,7 @@ dependencies {
     testImplementation project(":annotation-processors")
     testImplementation project(":config:config-hocon")
 
-    testImplementation "io.mockk:mockk:1.13.8"
+    testImplementation "io.mockk:mockk:1.13.11"
     testImplementation libs.mockito.core
     testImplementation libs.kotlin.stdlib.lib
 }

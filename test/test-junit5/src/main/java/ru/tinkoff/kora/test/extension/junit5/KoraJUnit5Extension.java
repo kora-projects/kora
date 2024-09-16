@@ -614,7 +614,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                 throw new ExtensionConfigurationException(candidate + " expected to have one suitable component, got " + objects.size());
             }
         }
-        throw new ExtensionConfigurationException(candidate + " was not found in graph, please check @KoraAppTest configuration");
+        throw new ExtensionConfigurationException(candidate + " wasn't found in graph, please check @KoraAppTest configuration");
     }
 
     private static boolean doesImplement(Class<?> aClass, ParameterizedType parameterizedType) {

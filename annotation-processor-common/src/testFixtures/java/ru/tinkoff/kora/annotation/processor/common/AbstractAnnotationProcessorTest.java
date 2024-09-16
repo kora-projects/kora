@@ -173,7 +173,7 @@ public abstract class AbstractAnnotationProcessorTest {
                     return method.invoke(target, params);
                 }
             }
-            throw new RuntimeException("Method " + name + " was not found");
+            throw new RuntimeException("Method " + name + " wasn't found");
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

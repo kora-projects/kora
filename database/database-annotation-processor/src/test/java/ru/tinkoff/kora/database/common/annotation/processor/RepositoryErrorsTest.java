@@ -11,7 +11,7 @@ public class RepositoryErrorsTest {
     void testParameterUsage() throws Exception {
         Assertions.assertThatThrownBy(() -> process(InvalidParameterUsage.class))
             .isInstanceOf(TestUtils.CompilationErrorException.class)
-            .hasMessageContaining("Parameter usage was not found in query: param2");
+            .hasMessageContaining("Parameter usage wasn't found in query: param2");
     }
 
     public <T> void process(Class<T> repository) throws Exception {

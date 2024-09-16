@@ -6,22 +6,15 @@ plugins {
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
-    api project(':symbol-processor-common')
-    api libs.kotlin.reflect
-
-    implementation "org.reflections:reflections:0.10.2"
-    implementation libs.ksp.api
-    implementation libs.kotlin.reflect
-    implementation libs.kotlinpoet
-    implementation libs.kotlinpoet.ksp
+    api project(":symbol-processor-common")
     implementation libs.jackson.core
 
-    testImplementation testFixtures(project(':annotation-processor-common'))
-    testImplementation testFixtures(project(':symbol-processor-common'))
+    testImplementation testFixtures(project(":annotation-processor-common"))
+    testImplementation testFixtures(project(":symbol-processor-common"))
 }
 
 test {
-    jvmArgs(['--enable-preview'])
+    jvmArgs(["--enable-preview"])
 }
 
 
@@ -37,10 +30,10 @@ sourceSets {
 
 project.tasks.register("copyModules", Copy) {
     def counter = 0
-    from('..') {
+    from("..") {
         includeEmptyDirs = false
-        include '/**/src/main/resources/modules.json'
-        exclude '**/build/**/*'
+        include "/**/src/main/resources/modules.json"
+        exclude "**/build/**/*"
         rename {
             counter++
             return "module-" + counter + ".json"
@@ -49,17 +42,17 @@ project.tasks.register("copyModules", Copy) {
             path = name
         }
     }
-    into 'build/kora-modules/parts'
+    into "build/kora-modules/parts"
 }
 
 
 project.tasks.register("buildModules") {
-    it.dependsOn('copyModules')
+    it.dependsOn("copyModules")
     it.outputs.file("build/kora-modules/kora-modules.json")
-    it.inputs.dir('build/kora-modules/parts')
+    it.inputs.dir("build/kora-modules/parts")
     doLast {
         def list = new ArrayList<>()
-        fileTree(dir: 'build/kora-modules/parts', include: '*.json').visit {
+        fileTree(dir: "build/kora-modules/parts", include: "*.json").visit {
             def result = new groovy.json.JsonSlurper().parseText(it.file.text)
             list.addAll(result)
         }

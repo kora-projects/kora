@@ -211,7 +211,7 @@ class KoraAppProcessor(
                 .map { it.declaration as KSClassDeclaration }
                 .filter { it.findAnnotation(CommonClassNames.koraSubmodule) != null }
                 .map { resolver.getKSNameFromString(it.qualifiedName!!.asString() + "SubmoduleImpl") }
-                .map { resolver.getClassDeclarationByName(it) ?: throw java.lang.IllegalStateException("Declaration of ${it.asString()} was not found") }
+                .map { resolver.getClassDeclarationByName(it) ?: throw java.lang.IllegalStateException("Declaration of ${it.asString()} wasn't found") }
                 .toList()
             val allModules = (submodules + annotatedModules)
                 .flatMap { it.getAllSuperTypes().map { it.declaration as KSClassDeclaration } + it }
@@ -523,7 +523,11 @@ class KoraAppProcessor(
                 }
             }
             val component = graph[i];
-            currentClass!!.addProperty(component.fieldName, CommonClassNames.node.parameterizedBy(component.type.toTypeName()))
+
+            val aopProxySuperClass = ServiceTypesHelper.findAopProxySuperClass(component.type)
+            val propertyType: TypeName = aopProxySuperClass?.toTypeName() ?: component.type.toTypeName()
+
+            currentClass!!.addProperty(component.fieldName, CommonClassNames.node.parameterizedBy(propertyType))
             val statement = this.generateComponentStatement(allModules, interceptors, graph, component)
             currentConstructor!!.addCode(statement).addCode("\n")
         }

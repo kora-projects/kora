@@ -3,6 +3,7 @@ package ru.tinkoff.kora.kora.app.annotation.processor;
 import org.assertj.core.api.Assertions;
 import org.intellij.lang.annotations.Language;
 import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest;
+import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 
 import java.lang.reflect.InvocationTargetException;
@@ -26,6 +27,22 @@ public abstract class AbstractKoraAppTest extends AbstractAnnotationProcessorTes
         }
 
         Assertions.assertThat(compileResult.warnings()).hasSize(2);
+
+        try {
+            var appClass = compileResult.loadClass("ExampleApplicationGraph");
+            @SuppressWarnings("unchecked")
+            var object = (Supplier<ApplicationGraphDraw>) appClass.getConstructor().newInstance();
+            return object.get();
+        } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    protected ApplicationGraphDraw compileWithAop(@Language("java") String... sources) {
+        var compileResult = compile(List.of(new AopAnnotationProcessor(), new KoraAppProcessor()), sources);
+        if (compileResult.isFailed()) {
+            throw compileResult.compilationException();
+        }
 
         try {
             var appClass = compileResult.loadClass("ExampleApplicationGraph");

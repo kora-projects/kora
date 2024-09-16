@@ -3,9 +3,14 @@ package ru.tinkoff.kora.kora.app.ksp
 import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.processing.Resolver
+import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
+import com.squareup.kotlinpoet.ksp.toTypeName
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.CommonClassNames.isVoid
+import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 
 
 class ServiceTypesHelper(val resolver: Resolver) {
@@ -22,6 +27,30 @@ class ServiceTypesHelper(val resolver: Resolver) {
         .filter { it.simpleName.asString() == "value" && it.parameters.isEmpty() }
         .first()
 
+    companion object {
+
+        fun findAopProxySuperClass(maybeAopProxy: KSType): KSType? {
+            val aopProxyAnnotation = maybeAopProxy.declaration.findAnnotation(CommonClassNames.aopProxy)
+            val proxyDeclaration = maybeAopProxy.declaration
+            if (aopProxyAnnotation != null && proxyDeclaration is KSClassDeclaration) {
+                val proxyParent = (maybeAopProxy.declaration as KSClassDeclaration).superTypes
+                    .map { it.resolve() }
+                    .filter { (it.declaration as? KSClassDeclaration)?.classKind == ClassKind.CLASS }
+                    .firstOrNull()
+
+                if (proxyParent != null) {
+                    val proxyParentDeclaration = proxyParent.declaration
+                    val aopProxyName = proxyParentDeclaration.getOuterClassesAsPrefix() + proxyParentDeclaration.simpleName.asString() + "__AopProxy"
+                    val aopProxyCanonical = proxyParentDeclaration.packageName.asString() + "." + aopProxyName
+                    if (aopProxyCanonical == maybeAopProxy.declaration.qualifiedName!!.asString()) {
+                        return proxyParent
+                    }
+                }
+            }
+
+            return null
+        }
+    }
 
     fun isAssignableToUnwrapped(maybeWrapped: KSType, type: KSType): Boolean {
         if (!wrappedType.isAssignableFrom(maybeWrapped)) {
@@ -42,6 +71,7 @@ class ServiceTypesHelper(val resolver: Resolver) {
         if (!wrappedType.isAssignableFrom(maybeWrapped)) {
             return false
         }
+        //TODO check if also is not working?
         val unwrappedType = wrappedValueFunction.asMemberOf(maybeWrapped).returnType!!
         return unwrappedType.makeNotNullable() == type // platform nullability ruins equality
     }
@@ -51,17 +81,45 @@ class ServiceTypesHelper(val resolver: Resolver) {
             return false
         }
 
-        val interceptsType = interceptorInitFunction.asMemberOf(maybeInterceptor).parameterTypes[0]!!
-        return type == interceptsType.makeNotNullable()
+        return try {
+            val interceptType = interceptType(maybeInterceptor)
+            return isInterceptable(interceptType, type)
+        } catch (e: IllegalArgumentException) {
+            false
+        }
     }
 
+    fun isInterceptable(interceptedType: KSType, targetType: KSType): Boolean {
+        if (targetType == interceptedType.makeNotNullable()) {
+            return true
+        } else if (interceptedType.isAssignableFrom(targetType)) {
+            val aopProxyAnnotation = targetType.declaration.findAnnotation(CommonClassNames.aopProxy)
+            val proxyDeclaration = interceptedType.declaration
+            if (aopProxyAnnotation != null && proxyDeclaration.parentDeclaration != null) {
+                val aopProxyName = proxyDeclaration.getOuterClassesAsPrefix() + proxyDeclaration.simpleName.asString() + "__AopProxy"
+                val aopProxyCanonical = proxyDeclaration.packageName.asString() + "." + aopProxyName
+                return aopProxyCanonical == targetType.declaration.qualifiedName!!.asString()
+            }
+        }
+
+        return false
+    }
 
     fun interceptType(maybeInterceptor: KSType): KSType {
         if (!interceptorType.isAssignableFrom(maybeInterceptor)) {
             throw IllegalArgumentException()
         }
 
-        return interceptorInitFunction.asMemberOf(maybeInterceptor).parameterTypes[0]!!.makeNotNullable()
+        return if (maybeInterceptor.declaration is KSClassDeclaration) {
+            (maybeInterceptor.declaration as KSClassDeclaration).getDeclaredFunctions()
+                .filter { f -> f.simpleName.asString() == "init" && f.parameters.size == 1 && f.returnType != null && !f.returnType!!.isVoid() }
+                .filter { f -> f.parameters.first().type.toTypeName() == f.returnType!!.toTypeName() }
+                .map { it.returnType!!.resolve() }
+                .firstOrNull() ?: throw IllegalArgumentException()
+        } else {
+            val memberOf = interceptorInitFunction.asMemberOf(maybeInterceptor)
+            return memberOf.parameterTypes[0]!!.makeNotNullable()
+        }
     }
 
     fun isInterceptor(type: KSType) = interceptorType.isAssignableFrom(type)

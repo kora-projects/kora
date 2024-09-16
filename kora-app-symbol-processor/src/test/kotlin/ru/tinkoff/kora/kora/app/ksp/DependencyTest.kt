@@ -57,7 +57,7 @@ open class DependencyTest : AbstractKoraAppProcessorTest() {
         Assertions.assertThat(compileResult.isFailed()).isTrue()
 //        Assertions.assertThat<Diagnostic<out JavaFileObject?>>(compileResult.errors()).hasSize(1)
 //        Assertions.assertThat(compileResult.errors().get(0).getMessage(Locale.ENGLISH)).startsWith(
-//            "Required dependency was not found: " +
+//            "Required dependency wasn't found: " +
 //                "@Tag(ru.tinkoff.kora.kora.app.annotation.processor.packageForDependencyTest.testDiscoveredFinalClassDependencyTaggedDependencyNoTagOnClass.ExampleApplication.TestClass1) " +
 //                "ru.tinkoff.kora.kora.app.annotation.processor.packageForDependencyTest.testDiscoveredFinalClassDependencyTaggedDependencyNoTagOnClass.ExampleApplication.TestClass1"
 //        )

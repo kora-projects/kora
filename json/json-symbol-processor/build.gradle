@@ -1,21 +1,15 @@
 plugins {
-    id "me.champeau.jmh" version "0.6.5"
+    id "me.champeau.jmh" version "0.7.2"
     id "java-test-fixtures"
 }
-apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
     api project(':symbol-processor-common')
     api project(':kora-app-symbol-processor')
 
-    implementation libs.ksp.api
-    implementation libs.kotlin.reflect
-    implementation libs.kotlinpoet
-    implementation libs.kotlinpoet.ksp
-
     testImplementation project(':json:json-common')
     testImplementation testFixtures(project(':symbol-processor-common'))
 }
 
-
+apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

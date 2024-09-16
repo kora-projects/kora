@@ -7,11 +7,6 @@ apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 dependencies {
     implementation project(":aop:aop-symbol-processor")
 
-    implementation libs.ksp.api
-    implementation libs.kotlin.reflect
-    implementation libs.kotlinpoet
-    implementation libs.kotlinpoet.ksp
-
     testImplementation libs.prometheus.collector.caffeine
     testImplementation project(":internal:test-logging")
     testImplementation project(":cache:cache-caffeine")

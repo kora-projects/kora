@@ -262,7 +262,7 @@ public class DependencyTest extends AbstractKoraAppTest {
         assertThat(compileResult.errors()).hasSize(1);
         assertThat(compileResult.errors().get(0).getMessage(Locale.ENGLISH)).startsWith(
             """
-                Required dependency type was not found and can't be auto created: ru.tinkoff.kora.kora.app.annotation.processor.packageForDependencyTest.testDiscoveredFinalClassDependencyTaggedDependencyNoTagOnClass.ExampleApplication.TestClass1 with tag @Tag(ru.tinkoff.kora.kora.app.annotation.processor.packageForDependencyTest.testDiscoveredFinalClassDependencyTaggedDependencyNoTagOnClass.ExampleApplication.TestClass1).
+                Required dependency type wasn't found and can't be auto created: ru.tinkoff.kora.kora.app.annotation.processor.packageForDependencyTest.testDiscoveredFinalClassDependencyTaggedDependencyNoTagOnClass.ExampleApplication.TestClass1 with tag @Tag(ru.tinkoff.kora.kora.app.annotation.processor.packageForDependencyTest.testDiscoveredFinalClassDependencyTaggedDependencyNoTagOnClass.ExampleApplication.TestClass1).
                   Please check class for @Component annotation or that required module with component is plugged in.
                 """);
     }
