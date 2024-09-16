@@ -38,6 +38,10 @@ public class RecordHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
                 try {
                     handler.handle(consumer, recordCtx, record);
                     if (this.shouldCommit && commitAllowed) {
+                        /**
+                         * The committed offset should be the next message your application will consume, i.e. lastProcessedMessageOffset + 1
+                         * @see org.apache.kafka.clients.consumer.KafkaConsumer#commitSync(Map)
+                         */
                         var topicAndOffsetAndMeta = Map.of(new TopicPartition(record.topic(), record.partition()),
                             new OffsetAndMetadata(record.offset() + 1, record.leaderEpoch(), OffsetFetchResponse.NO_METADATA));
 
