@@ -169,14 +169,6 @@ public final class TagUtils {
         return annotation.addMember("value", value.build()).build();
     }
 
-    public static AnnotationSpec makeAnnotationSpecInlineTags(Set<String> tags) {
-        List<TypeName> classNames = tags.stream()
-            .<TypeName>map(ClassName::bestGuess)
-            .toList();
-
-        return makeAnnotationSpecForTypes(classNames);
-    }
-
     public static CodeBlock writeTagAnnotationValue(List<TypeMirror> tag) {
         var b = CodeBlock.builder()
             .add("{");
