@@ -6,8 +6,11 @@ import ru.tinkoff.kora.common.KoraSubmodule;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Root;
 
+import java.math.BigDecimal;
+
 @KoraSubmodule
 public interface AppWithAppPart {
+
     @Root
     default Class1 class1(Class2 class2) {
         return new Class1();
@@ -49,6 +52,30 @@ public interface AppWithAppPart {
         @Root
         default Class2 class2() {
             return new Class2();
+        }
+
+        @Tag(Class1.class)
+        @Root
+        default String class3WithDep(Class2 class2) {
+            return "class3-" + class2.getClass().getSimpleName();
+        }
+
+        @Tag(Class2.class)
+        @Root
+        default String class3WithDepNullable(@Nullable BigDecimal bigDecimal) {
+            return "class3-" + (bigDecimal == null ? "0" : bigDecimal.toPlainString());
+        }
+
+        @Tag(Class3.class)
+        @Root
+        default String class3WithTaggedDepNullable(@Tag(BigDecimal.class) @Nullable BigDecimal bigDecimal) {
+            return "class3-" + (bigDecimal == null ? "0" : bigDecimal.toPlainString());
+        }
+
+        @Tag(Class4.class)
+        @Root
+        default String class4WithTaggedDep(@Tag(Class1.class) Class2 class2) {
+            return "class3-" + class2.getClass().getSimpleName();
         }
 
         @Tag(Class1.class)
