@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.annotation.processor.common;
 
 import com.squareup.javapoet.AnnotationSpec;
+import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.TypeName;
 
@@ -106,15 +107,19 @@ public final class TagUtils {
     public static AnnotationSpec makeAnnotationSpecForTypes(Collection<TypeName> tags) {
         var annotation = AnnotationSpec.builder(CommonClassNames.tag);
         var value = CodeBlock.builder();
-        value.add("{");
-        var tagsList = tags.stream().toList();
-        for (int i = 0; i < tagsList.size(); i++) {
-            if (i > 0) {
-                value.add(", ");
+        if (tags.size() == 1) {
+            value.add("$T.class", tags.iterator().next());
+        } else {
+            value.add("{");
+            var tagsList = tags.stream().toList();
+            for (int i = 0; i < tagsList.size(); i++) {
+                if (i > 0) {
+                    value.add(", ");
+                }
+                value.add("$T.class", tagsList.get(i));
             }
-            value.add("$T.class", tagsList.get(i));
+            value.add("}");
         }
-        value.add("}");
         return annotation.addMember("value", value.build()).build();
     }
 
@@ -129,30 +134,38 @@ public final class TagUtils {
     public static AnnotationSpec makeAnnotationSpecForClasses(Collection<Class<?>> tags) {
         var annotation = AnnotationSpec.builder(CommonClassNames.tag);
         var value = CodeBlock.builder();
-        value.add("{");
-        var tagsList = tags.stream().toList();
-        for (int i = 0; i < tagsList.size(); i++) {
-            if (i > 0) {
-                value.add(", ");
+        if(tags.size() == 1) {
+            value.add("$T.class", tags.iterator().next());
+        } else {
+            value.add("{");
+            var tagsList = tags.stream().toList();
+            for (int i = 0; i < tagsList.size(); i++) {
+                if (i > 0) {
+                    value.add(", ");
+                }
+                value.add("$T.class", tagsList.get(i));
             }
-            value.add("$T.class", tagsList.get(i));
+            value.add("}");
         }
-        value.add("}");
         return annotation.addMember("value", value.build()).build();
     }
 
     public static AnnotationSpec makeAnnotationSpec(Set<String> tags) {
         var annotation = AnnotationSpec.builder(CommonClassNames.tag);
         var value = CodeBlock.builder();
-        value.add("{");
-        var tagsList = new ArrayList<>(tags);
-        for (int i = 0; i < tagsList.size(); i++) {
-            if (i > 0) {
-                value.add(", ");
+        if(tags.size() == 1) {
+            value.add("$L.class", tags.iterator().next());
+        } else {
+            value.add("{");
+            var tagsList = new ArrayList<>(tags);
+            for (int i = 0; i < tagsList.size(); i++) {
+                if (i > 0) {
+                    value.add(", ");
+                }
+                value.add("$L.class", tagsList.get(i));
             }
-            value.add("$L.class", tagsList.get(i));
+            value.add("}");
         }
-        value.add("}");
         return annotation.addMember("value", value.build()).build();
     }
 

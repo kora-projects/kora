@@ -661,6 +661,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 var mb = MethodSpec.methodBuilder("_component" + componentNumber++)
                     .returns(TypeName.get(component.asType()))
                     .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT);
+
                 if (component.getTypeParameters().isEmpty()) {
                     mb.addCode("return new $T(", ClassName.get(component));
                 } else {
@@ -677,7 +678,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                         pb.addAnnotation(TagUtils.makeAnnotationSpec(tag));
                     }
                     if (CommonUtils.isNullable(parameter)) {
-                        pb.addAnnotation(Nullable.class);
+                        pb.addAnnotation(CommonClassNames.nullable);
                     }
                     mb.addParameter(pb.build());
                     if (i > 0) {
@@ -724,6 +725,9 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                         var tag = TagUtils.parseTagValue(parameter);
                         if (!tag.isEmpty()) {
                             pb.addAnnotation(TagUtils.makeAnnotationSpec(tag));
+                        }
+                        if (CommonUtils.isNullable(parameter)) {
+                            pb.addAnnotation(CommonClassNames.nullable);
                         }
                         mb.addParameter(pb.build());
                         if (i > 0) {
