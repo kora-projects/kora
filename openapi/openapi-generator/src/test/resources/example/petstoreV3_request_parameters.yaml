@@ -34,34 +34,368 @@ paths:
       tags:
         - pets
       parameters:
-        - name: limit
+        - name: intOptional
           in: query
           description: How many items to return at one time (max 100)
           required: false
           schema:
             type: integer
             format: int32
-        - name: requiredLimit
+        - name: intRequired
           in: query
           description: How many items to return at one time (max 100)
           required: true
           schema:
             type: integer
             format: int32
-        - name: defaultLimit
+        - name: intDefault
           in: query
           description: How many items to return at one time (max 100)
           schema:
             type: integer
             format: int32
             default: 100
-        - name: status
+        - name: longOptional
           in: query
-          style: form
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: longRequired
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: longDefault
+          in: query
+          schema:
+            type: integer
+            format: int64
+            default: 100000
+        - name: doubleOptional
+          in: query
+          required: false
+          schema:
+            type: number
+            format: double
+        - name: doubleRequired
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+        - name: doubleDefault
+          in: query
+          schema:
+            type: number
+            format: double
+            default: 100000.25
+        - name: bigIntOptional
+          in: query
+          required: false
+          schema:
+            type: number
+        - name: bigIntRequired
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: bigIntDefault
+          in: query
+          schema:
+            type: number
+            default: 100
+        - name: booleanOptional
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: booleanRequired
+          in: query
+          required: true
+          schema:
+            type: boolean
+        - name: booleanDefault
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: uriOptional
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uri
+        - name: uriRequired
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uri
+        - name: uriDefault
+          in: query
+          schema:
+            type: string
+            format: uri
+            default: http://localhost:8080/pets
+        - name: dateOptional
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: dateRequired
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: dateDefault
+          in: query
+          schema:
+            type: string
+            format: date
+            default: 2022-10-10
+        - name: dateTimeOptional
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: dateTimeRequired
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: dateTimeDefault
+          in: query
+          schema:
+            type: string
+            format: date-time
+            default: 2022-10-10T01:10:10.000+03:00
+        - name: stringOptional
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: stringRequired
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: stringDefault
+          in: query
+          schema:
+            type: string
+            default: 100
+        - name: intArrayOptional
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+        - name: intArrayRequired
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: integer
+        - name: intArrayDefault
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: integer
+            default: [ 100, 200 ]
+        - name: longArrayOptional
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+        - name: longArrayRequired
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+        - name: longArrayDefault
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+            default: [ 100, 200 ]
+        - name: doubleArrayOptional
+          in: query
+          schema:
+            type: array
+            items:
+              type: number
+              format: double
+        - name: doubleArrayRequired
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: number
+              format: double
+        - name: doubleArrayDefault
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: number
+              format: double
+            default: [ 100.25, 200.25 ]
+        - name: bigIntArrayOptional
+          in: query
+          schema:
+            type: array
+            items:
+              type: number
+        - name: bigIntArrayRequired
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: number
+        - name: bigIntArrayDefault
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: number
+            default: [ 100, 200 ]
+        - name: dateArrayOptional
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              format: date
+        - name: dateArrayRequired
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+              format: date
+        - name: dateArrayDefault
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              format: date
+            default: [ 2022-10-10, 2022-01-01 ]
+        - name: enumModelOptional
+          in: query
+          schema:
+            $ref: "#/components/schemas/PetTypes"
+        - name: enumModelRequired
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/PetTypes"
+        - name: enumModelDefault
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/PetTypesDefaults"
+        - name: enumArrayOptional
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - available
+                - sold
+        - name: enumArrayRequired
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - available
+                - sold
+        - name: enumArrayDefault
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - available
+                - sold
+            default: [ available, sold ]
+        - name: enumModelArrayOptional
+          in: query
           schema:
             type: array
             items:
               $ref: "#/components/schemas/PetTypes"
+        - name: enumModelArrayRequired
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/PetTypes"
+        - name: enumModelArrayDefault
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/PetTypesDefaults"
+            default: [ cat, dog ]
+        - name: enumOptional
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - available
+              - sold
+        - name: enumRequired
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - available
+              - sold
+        - name: enumDefault
+          in: query
+          required: false
+          explode: true
+          schema:
+            type: string
+            default: available
+            enum:
+              - available
+              - pending
+              - sold
       responses:
         '200':
           description: A paged array of pets
@@ -110,6 +444,12 @@ components:
           type: string
     PetTypes:
       type: string
+      enum:
+        - cat
+        - dog
+    PetTypesDefaults:
+      type: string
+      default: cat
       enum:
         - cat
         - dog

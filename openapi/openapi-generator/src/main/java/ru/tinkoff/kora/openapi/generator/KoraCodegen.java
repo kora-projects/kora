@@ -2,7 +2,9 @@ package ru.tinkoff.kora.openapi.generator;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
@@ -35,8 +37,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -987,21 +992,33 @@ public class KoraCodegen extends DefaultCodegen {
     }
 
     @Override
-    public String toDefaultValue(Schema schema) {
-        schema = ModelUtils.getReferencedSchema(this.openAPI, schema);
+    public String toDefaultValue(Schema originalSchema) {
+        Schema schema = ModelUtils.getReferencedSchema(this.openAPI, originalSchema);
+        Object defaultValue = schema.getDefault();
+        return toDefaultSchemaValue(originalSchema, schema, defaultValue);
+    }
+
+    private String toDefaultSchemaValue(Schema originalSchema, Schema schema, Object defaultValue) {
         if (ModelUtils.isArraySchema(schema)) {
-            final String pattern;
-            if (ModelUtils.isSet(schema)) {
-                var mapInstantiationType = instantiationTypes().getOrDefault("set", "LinkedHashSet");
-                pattern = "new " + mapInstantiationType + "<%s>()";
-            } else {
-                var arrInstantiationType = instantiationTypes().getOrDefault("array", "ArrayList");
-                pattern = "new " + arrInstantiationType + "<%s>()";
+            Object def = defaultValue;
+            if (!(def instanceof ArrayNode an)) {
+                return null;
             }
 
-            Schema<?> items = getSchemaItems((ArraySchema) schema);
+            final String pattern;
+            if (ModelUtils.isSet(schema)) {
+                pattern = params.codegenMode.isKotlin()
+                    ? "kotlin.collections.setOf<%s>("
+                    : "java.util.Set.<%s>of(";
+            } else {
+                pattern = params.codegenMode.isKotlin()
+                    ? "kotlin.collections.listOf<%s>("
+                    : "java.util.List.<%s>of(";
+            }
 
-            String typeDeclaration = getTypeDeclaration(ModelUtils.unaliasSchema(this.openAPI, items));
+            Schema<?> itemOriginal = getSchemaItems((ArraySchema) schema);
+            Schema itemSchema = ModelUtils.getReferencedSchema(this.openAPI, itemOriginal);
+            String typeDeclaration = getTypeDeclaration(ModelUtils.unaliasSchema(this.openAPI, itemOriginal));
             Object java8obj = additionalProperties.get("java8");
             if (java8obj != null) {
                 Boolean java8 = Boolean.valueOf(java8obj.toString());
@@ -1010,11 +1027,35 @@ public class KoraCodegen extends DefaultCodegen {
                 }
             }
 
-            return String.format(Locale.ROOT, pattern, typeDeclaration);
+            var builder = new StringBuilder(String.format(Locale.ROOT, pattern, typeDeclaration));
+
+            int items = 0;
+            int i = 1;
+            for (JsonNode node : an) {
+                String itemValue = toDefaultSchemaValue(itemOriginal, itemSchema, node.asText());
+                if (itemValue != null) {
+                    builder.append(itemValue);
+                    items++;
+                    if (i != an.size()) {
+                        builder.append(", ");
+                        i++;
+                    }
+                }
+            }
+
+            if (items == 0) {
+                return null;
+            }
+
+            return builder.append(")").toString();
         } else if (ModelUtils.isMapSchema(schema) && !(schema instanceof ComposedSchema)) {
+            if (defaultValue == null) {
+                return null;
+            }
+
             if (schema.getProperties() != null && schema.getProperties().size() > 0) {
                 // object is complex object with free-form additional properties
-                if (schema.getDefault() != null) {
+                if (defaultValue != null) {
                     return super.toDefaultValue(schema);
                 }
                 return null;
@@ -1039,65 +1080,88 @@ public class KoraCodegen extends DefaultCodegen {
 
             return String.format(Locale.ROOT, pattern, typeDeclaration);
         } else if (ModelUtils.isIntegerSchema(schema)) {
-            if (schema.getDefault() != null) {
+            if (defaultValue != null) {
                 if (SchemaTypeUtil.INTEGER64_FORMAT.equals(schema.getFormat())) {
-                    return schema.getDefault().toString() + "l";
+                    return defaultValue + "L";
                 } else {
-                    return schema.getDefault().toString();
+                    return defaultValue.toString();
                 }
             }
             return null;
         } else if (ModelUtils.isNumberSchema(schema)) {
-            if (schema.getDefault() != null) {
+            if (defaultValue != null) {
                 if (SchemaTypeUtil.FLOAT_FORMAT.equals(schema.getFormat())) {
-                    return schema.getDefault().toString() + "f";
+                    return defaultValue + "f";
                 } else if (SchemaTypeUtil.DOUBLE_FORMAT.equals(schema.getFormat())) {
-                    return schema.getDefault().toString() + "d";
+                    return (params.codegenMode.isKotlin())
+                        ? defaultValue.toString()
+                        : defaultValue + "d";
                 } else {
-                    return "new BigDecimal(\"" + schema.getDefault().toString() + "\")";
+                    return params.codegenMode.isKotlin()
+                        ? "BigDecimal(\"" + defaultValue + "\")"
+                        : "new BigDecimal(\"" + defaultValue + "\")";
                 }
             }
             return null;
         } else if (ModelUtils.isBooleanSchema(schema)) {
-            if (schema.getDefault() != null) {
-                return schema.getDefault().toString();
+            if (defaultValue != null) {
+                return defaultValue.toString();
             }
             return null;
         } else if (ModelUtils.isURISchema(schema)) {
-            if (schema.getDefault() != null) {
-                return "URI.create(\"" + escapeText((String) schema.getDefault()) + "\")";
+            if (defaultValue != null) {
+                String uriValue = escapeText((String) defaultValue);
+                return "java.net.URI.create(\"" + uriValue + "\")";
             }
             return null;
         } else if (ModelUtils.isStringSchema(schema)) {
-            if (schema.getDefault() != null) {
+            if (defaultValue != null) {
                 String _default;
-                if (schema.getDefault() instanceof Date) {
-                    Date date = (Date) schema.getDefault();
+                if (defaultValue instanceof Date date) {
                     LocalDate localDate = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-                    return String.format(Locale.ROOT, localDate.toString(), "");
-                } else if (schema.getDefault() instanceof java.time.OffsetDateTime) {
-                    return "OffsetDateTime.parse(\"" + String.format(Locale.ROOT, ((java.time.OffsetDateTime) schema.getDefault()).atZoneSameInstant(ZoneId.systemDefault()).toString(), "") + "\", java.time.format.DateTimeFormatter.ISO_ZONED_DATE_TIME.withZone(java.time.ZoneId.systemDefault()))";
-                } else if(schema.getDefault() instanceof byte[] vb) {
+                    String dateValue = String.format(Locale.ROOT, localDate.toString(), "");
+                    return "java.time.LocalDate.parse(\"" + dateValue + "\", java.time.format.DateTimeFormatter.ISO_DATE)";
+                } else if (ModelUtils.isDateSchema(schema) && defaultValue instanceof String ds) {
+                    return "java.time.LocalDate.parse(\"" + ds + "\", java.time.format.DateTimeFormatter.ISO_DATE)";
+                } else if (ModelUtils.isDateSchema(schema) && defaultValue instanceof Number dn) {
+                    var date = LocalDate.ofInstant(Instant.ofEpochMilli(dn.longValue()), ZoneId.systemDefault());
+                    String dateValue = String.format(Locale.ROOT, date.format(DateTimeFormatter.ISO_DATE), "");
+                    return "java.time.LocalDate.parse(\"" + dateValue + "\", java.time.format.DateTimeFormatter.ISO_DATE)";
+                } else if (defaultValue instanceof OffsetDateTime offsetDateTime) {
+                    String dateTimeValue = String.format(Locale.ROOT, offsetDateTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), "");
+                    return "java.time.OffsetDateTime.parse(\"" + dateTimeValue + "\", java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)";
+                } else if (ModelUtils.isDateTimeSchema(schema) && defaultValue instanceof String ds) {
+                    return "java.time.OffsetDateTime.parse(\"" + ds + "\", java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)";
+                } else if (ModelUtils.isDateTimeSchema(schema) && defaultValue instanceof Number dn) {
+                    var date = OffsetDateTime.ofInstant(Instant.ofEpochMilli(dn.longValue()), ZoneId.systemDefault());
+                    String dateTimeValue = String.format(Locale.ROOT, date.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), "");
+                    return "java.time.OffsetDateTime.parse(\"" + dateTimeValue + "\", java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)";
+                } else if (defaultValue instanceof byte[] vb) {
                     _default = new String(vb);
                 } else {
-                    _default = (String) schema.getDefault();
+                    _default = (String) defaultValue;
                 }
 
                 if (schema.getEnum() == null) {
                     return "\"" + escapeText(_default) + "\"";
                 } else {
+                    // don't have schema model
+                    if (originalSchema == schema) {
+                        return "\"" + escapeText(_default) + "\"";
+                    }
+
                     // convert to enum var name later in postProcessModels
-                    return _default;
+                    return toModelName(ModelUtils.getSimpleRef(originalSchema.get$ref())) + "." + toEnumVarName(_default, schema.getType());
                 }
             }
             return null;
         } else if (ModelUtils.isObjectSchema(schema)) {
-            if (schema.getDefault() != null) {
+            if (defaultValue != null) {
                 return super.toDefaultValue(schema);
             }
             return null;
         } else if (ModelUtils.isComposedSchema(schema)) {
-            if (schema.getDefault() != null) {
+            if (defaultValue != null) {
                 return super.toDefaultValue(schema);
             }
             return null;
@@ -1112,8 +1176,7 @@ public class KoraCodegen extends DefaultCodegen {
         if (defaultValue == null) {
             return null;
         }
-        // escape quotes
-        return defaultValue.toString().replace("\"", "\\\"");
+        return toDefaultValue(schema);
     }
 
     /**
@@ -1486,11 +1549,11 @@ public class KoraCodegen extends DefaultCodegen {
                         String suffix = params.codegenMode.isKotlin() ? "::class" : ".class";
                         String impl = implValue.endsWith(suffix) ? implValue : implValue + suffix;
                         List<String> tag;
-                        if(i.tag() == null) {
+                        if (i.tag() == null) {
                             tag = null;
-                        } else if(i.tag() instanceof String ts) {
+                        } else if (i.tag() instanceof String ts) {
                             tag = List.of(ts);
-                        } else if(i.tag() instanceof List tls) {
+                        } else if (i.tag() instanceof List tls) {
                             tag = tls.stream()
                                 .<String>map(Object::toString)
                                 .toList();
@@ -1663,7 +1726,7 @@ public class KoraCodegen extends DefaultCodegen {
                     op.vendorExtensions.put("authInterceptorTag", authInterceptorTag);
                 } else {
                     if (op.authMethods.size() == 1 || params.primaryAuth == null) {
-                        if(op.authMethods.size() > 1) {
+                        if (op.authMethods.size() > 1) {
                             Set<String> secSchemes = op.authMethods.stream()
                                 .map(s -> s.name)
                                 .collect(Collectors.toSet());
@@ -1778,8 +1841,8 @@ public class KoraCodegen extends DefaultCodegen {
 
     public static boolean isContentJson(CodegenParameter parameter) {
         return parameter.containerType != null
-            && (parameter.containerType.startsWith("application/json") || parameter.containerType.startsWith("text/json"))
-            || isContentJson(parameter.getContent());
+               && (parameter.containerType.startsWith("application/json") || parameter.containerType.startsWith("text/json"))
+               || isContentJson(parameter.getContent());
     }
 
     public static boolean isContentJson(@Nullable Map<String, CodegenMediaType> content) {
@@ -2164,7 +2227,7 @@ public class KoraCodegen extends DefaultCodegen {
 
         // only process files with java extension
         if ("java".equals(FilenameUtils.getExtension(file.toString()))) {
-            String command = javaPostProcessFile + " " + file.toString();
+            String command = javaPostProcessFile + " " + file;
             try {
                 Process p = Runtime.getRuntime().exec(command);
                 p.waitFor();
