@@ -1082,7 +1082,7 @@ public class KoraCodegen extends DefaultCodegen {
         } else if (ModelUtils.isIntegerSchema(schema)) {
             if (defaultValue != null) {
                 if (SchemaTypeUtil.INTEGER64_FORMAT.equals(schema.getFormat())) {
-                    return defaultValue + "l";
+                    return defaultValue + "L";
                 } else {
                     return defaultValue.toString();
                 }
@@ -1093,7 +1093,9 @@ public class KoraCodegen extends DefaultCodegen {
                 if (SchemaTypeUtil.FLOAT_FORMAT.equals(schema.getFormat())) {
                     return defaultValue + "f";
                 } else if (SchemaTypeUtil.DOUBLE_FORMAT.equals(schema.getFormat())) {
-                    return defaultValue + "d";
+                    return (params.codegenMode.isKotlin())
+                        ? defaultValue.toString()
+                        : defaultValue + "d";
                 } else {
                     return params.codegenMode.isKotlin()
                         ? "BigDecimal(\"" + defaultValue + "\")"

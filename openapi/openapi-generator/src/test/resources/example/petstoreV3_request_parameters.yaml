@@ -55,6 +55,42 @@ paths:
             type: integer
             format: int32
             default: 100
+        - name: longOptional
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: longRequired
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: longDefault
+          in: query
+          schema:
+            type: integer
+            format: int64
+            default: 100000
+        - name: doubleOptional
+          in: query
+          required: false
+          schema:
+            type: number
+            format: double
+        - name: doubleRequired
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+        - name: doubleDefault
+          in: query
+          schema:
+            type: number
+            format: double
+            default: 100000.25
         - name: bigIntOptional
           in: query
           required: false
@@ -175,6 +211,54 @@ paths:
             items:
               type: integer
             default: [ 100, 200 ]
+        - name: longArrayOptional
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+        - name: longArrayRequired
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+        - name: longArrayDefault
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+            default: [ 100, 200 ]
+        - name: doubleArrayOptional
+          in: query
+          schema:
+            type: array
+            items:
+              type: number
+              format: double
+        - name: doubleArrayRequired
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: number
+              format: double
+        - name: doubleArrayDefault
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: number
+              format: double
+            default: [ 100.25, 200.25 ]
         - name: bigIntArrayOptional
           in: query
           schema:
