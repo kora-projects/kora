@@ -11,7 +11,7 @@ import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.micrometer.module.cache.MicrometerCacheMetrics;
 import ru.tinkoff.kora.micrometer.module.cache.caffeine.MicrometerCaffeineCacheMetricCollector;
-import ru.tinkoff.kora.micrometer.module.camunda.engine.MicrometerCamundaEngineMetricsFactory;
+import ru.tinkoff.kora.micrometer.module.camunda.engine.bpmn.MicrometerCamundaEngineBpmnMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.camunda.rest.MicrometerCamundaRestMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.db.MicrometerDataBaseMetricWriterFactory;
 import ru.tinkoff.kora.micrometer.module.grpc.client.MicrometerGrpcClientMetricsFactory;
@@ -151,8 +151,8 @@ public interface MetricsModule {
     }
 
     @DefaultComponent
-    default MicrometerCamundaEngineMetricsFactory micrometerCamundaEngineMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
-        return new MicrometerCamundaEngineMetricsFactory(meterRegistry, metricsConfig);
+    default MicrometerCamundaEngineBpmnMetricsFactory micrometerCamundaEngineBpmnMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
+        return new MicrometerCamundaEngineBpmnMetricsFactory(meterRegistry, metricsConfig);
     }
 
     @DefaultComponent

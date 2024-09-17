@@ -109,7 +109,7 @@ include(
     'experimental:s3-client-common',
     'experimental:s3-client-minio',
     'experimental:s3-client-aws',
-    'experimental:camunda-engine',
+    'experimental:camunda-engine-bpmn',
     'experimental:camunda-rest-undertow',
 )
 
