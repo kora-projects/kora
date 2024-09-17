@@ -26,9 +26,9 @@ interface AppWithAppPart {
     @Root
     class Class3
 
-    @Component
-    @Root
-    class Class4<T : Number?>
+//    @Component
+//    @Root
+//    class Class4<T : Number?>
 
     @Component
     @Root
