@@ -34,34 +34,134 @@ paths:
       tags:
         - pets
       parameters:
-        - name: limit
+        - name: intOptional
           in: query
           description: How many items to return at one time (max 100)
           required: false
           schema:
             type: integer
             format: int32
-        - name: requiredLimit
+        - name: intRequired
           in: query
           description: How many items to return at one time (max 100)
           required: true
           schema:
             type: integer
             format: int32
-        - name: defaultLimit
+        - name: intDefault
           in: query
           description: How many items to return at one time (max 100)
           schema:
             type: integer
             format: int32
             default: 100
-        - name: status
+        - name: stringOptional
           in: query
-          style: form
+          required: false
+          schema:
+            type: string
+        - name: stringRequired
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: stringDefault
+          in: query
+          schema:
+            type: string
+            default: 100
+        - name: enumModelOptional
+          in: query
+          schema:
+            $ref: "#/components/schemas/PetTypes"
+        - name: enumModelRequired
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/PetTypes"
+        - name: enumModelDefault
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/PetTypesDefaults"
+        - name: enumArrayOptional
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - available
+                - sold
+        - name: enumArrayRequired
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - available
+                - sold
+        - name: enumArrayDefault
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - available
+                - sold
+            default: [ available, sold ]
+        - name: enumModelArrayOptional
+          in: query
           schema:
             type: array
             items:
               $ref: "#/components/schemas/PetTypes"
+        - name: enumModelArrayRequired
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/PetTypes"
+        - name: enumModelArrayDefault
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/PetTypesDefaults"
+            default: [ cat, dog ]
+        - name: enumOptional
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - available
+              - sold
+        - name: enumRequired
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - available
+              - sold
+        - name: enumDefault
+          in: query
+          required: false
+          explode: true
+          schema:
+            type: string
+            default: available
+            enum:
+              - available
+              - pending
+              - sold
       responses:
         '200':
           description: A paged array of pets
@@ -110,6 +210,12 @@ components:
           type: string
     PetTypes:
       type: string
+      enum:
+        - cat
+        - dog
+    PetTypesDefaults:
+      type: string
+      default: cat
       enum:
         - cat
         - dog

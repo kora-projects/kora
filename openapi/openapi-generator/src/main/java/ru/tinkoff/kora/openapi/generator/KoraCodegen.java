@@ -2,7 +2,9 @@ package ru.tinkoff.kora.openapi.generator;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
@@ -987,21 +989,28 @@ public class KoraCodegen extends DefaultCodegen {
     }
 
     @Override
-    public String toDefaultValue(Schema schema) {
-        schema = ModelUtils.getReferencedSchema(this.openAPI, schema);
+    public String toDefaultValue(Schema originalSchema) {
+        Schema schema = ModelUtils.getReferencedSchema(this.openAPI, originalSchema);
         if (ModelUtils.isArraySchema(schema)) {
-            final String pattern;
-            if (ModelUtils.isSet(schema)) {
-                var mapInstantiationType = instantiationTypes().getOrDefault("set", "LinkedHashSet");
-                pattern = "new " + mapInstantiationType + "<%s>()";
-            } else {
-                var arrInstantiationType = instantiationTypes().getOrDefault("array", "ArrayList");
-                pattern = "new " + arrInstantiationType + "<%s>()";
+            Object def = schema.getDefault();
+            if (!(def instanceof ArrayNode an)) {
+                return null;
             }
 
-            Schema<?> items = getSchemaItems((ArraySchema) schema);
+            final String pattern;
+            if (ModelUtils.isSet(schema)) {
+                pattern = params.codegenMode.isKotlin()
+                    ? "kotlin.collections.setOf<%s>("
+                    : "java.util.Set.<%s>of(";
+            } else {
+                pattern = params.codegenMode.isKotlin()
+                    ? "kotlin.collections.listOf<%s>("
+                    : "java.util.List.<%s>of(";
+            }
 
-            String typeDeclaration = getTypeDeclaration(ModelUtils.unaliasSchema(this.openAPI, items));
+            Schema<?> itemOriginal = getSchemaItems((ArraySchema) schema);
+            Schema itemSchema = ModelUtils.getReferencedSchema(this.openAPI, itemOriginal);
+            String typeDeclaration = getTypeDeclaration(ModelUtils.unaliasSchema(this.openAPI, itemOriginal));
             Object java8obj = additionalProperties.get("java8");
             if (java8obj != null) {
                 Boolean java8 = Boolean.valueOf(java8obj.toString());
@@ -1010,7 +1019,37 @@ public class KoraCodegen extends DefaultCodegen {
                 }
             }
 
-            return String.format(Locale.ROOT, pattern, typeDeclaration);
+            var builder = new StringBuilder(String.format(Locale.ROOT, pattern, typeDeclaration));
+
+            int i = 1;
+            for (JsonNode node : an) {
+                if (node.isBoolean()) {
+                    builder.append(node.asBoolean());
+                } else if (node.isNumber()) {
+                    builder.append(node.asLong());
+                } else {
+                    String text = node.asText();
+                    if (itemSchema.getEnum() == null) {
+                        builder.append('"').append(escapeText(text)).append('"');
+                    } else {
+                        // don't have schema model
+                        if (itemOriginal == itemSchema) {
+                            builder.append('"').append(escapeText(text)).append('"');
+                        } else {
+                            // convert to enum var name later in postProcessModels
+                            String enumValue = toModelName(ModelUtils.getSimpleRef(itemOriginal.get$ref())) + "." + toEnumVarName(text, itemSchema.getType());
+                            builder.append(enumValue);
+                        }
+                    }
+                }
+
+                if (i != an.size()) {
+                    builder.append(", ");
+                    i++;
+                }
+            }
+
+            return builder.append(")").toString();
         } else if (ModelUtils.isMapSchema(schema) && !(schema instanceof ComposedSchema)) {
             if (schema.getProperties() != null && schema.getProperties().size() > 0) {
                 // object is complex object with free-form additional properties
@@ -1077,7 +1116,7 @@ public class KoraCodegen extends DefaultCodegen {
                     return String.format(Locale.ROOT, localDate.toString(), "");
                 } else if (schema.getDefault() instanceof java.time.OffsetDateTime) {
                     return "OffsetDateTime.parse(\"" + String.format(Locale.ROOT, ((java.time.OffsetDateTime) schema.getDefault()).atZoneSameInstant(ZoneId.systemDefault()).toString(), "") + "\", java.time.format.DateTimeFormatter.ISO_ZONED_DATE_TIME.withZone(java.time.ZoneId.systemDefault()))";
-                } else if(schema.getDefault() instanceof byte[] vb) {
+                } else if (schema.getDefault() instanceof byte[] vb) {
                     _default = new String(vb);
                 } else {
                     _default = (String) schema.getDefault();
@@ -1086,8 +1125,13 @@ public class KoraCodegen extends DefaultCodegen {
                 if (schema.getEnum() == null) {
                     return "\"" + escapeText(_default) + "\"";
                 } else {
+                    // don't have schema model
+                    if (originalSchema == schema) {
+                        return "\"" + escapeText(_default) + "\"";
+                    }
+
                     // convert to enum var name later in postProcessModels
-                    return _default;
+                    return toModelName(ModelUtils.getSimpleRef(originalSchema.get$ref())) + "." + toEnumVarName(_default, schema.getType());
                 }
             }
             return null;
@@ -1107,13 +1151,20 @@ public class KoraCodegen extends DefaultCodegen {
     }
 
     @Override
-    public String toDefaultParameterValue(final Schema<?> schema) {
-        Object defaultValue = schema.getDefault();
-        if (defaultValue == null) {
-            return null;
-        }
-        // escape quotes
-        return defaultValue.toString().replace("\"", "\\\"");
+    public String toDefaultParameterValue(final Schema<?> originalSchema) {
+        return toDefaultValue(originalSchema);
+
+//        Schema schema = ModelUtils.getReferencedSchema(this.openAPI, originalSchema);
+//        Object defaultValue = schema.getDefault();
+//        if (defaultValue == null) {
+//            return null;
+//        }
+//
+//        if (schema instanceof StringSchema) {
+//            return "\"" + escapeText(defaultValue.toString()) + "\"";
+//        } else {
+//            return escapeText(defaultValue.toString());
+//        }
     }
 
     /**
@@ -1486,11 +1537,11 @@ public class KoraCodegen extends DefaultCodegen {
                         String suffix = params.codegenMode.isKotlin() ? "::class" : ".class";
                         String impl = implValue.endsWith(suffix) ? implValue : implValue + suffix;
                         List<String> tag;
-                        if(i.tag() == null) {
+                        if (i.tag() == null) {
                             tag = null;
-                        } else if(i.tag() instanceof String ts) {
+                        } else if (i.tag() instanceof String ts) {
                             tag = List.of(ts);
-                        } else if(i.tag() instanceof List tls) {
+                        } else if (i.tag() instanceof List tls) {
                             tag = tls.stream()
                                 .<String>map(Object::toString)
                                 .toList();
@@ -1663,7 +1714,7 @@ public class KoraCodegen extends DefaultCodegen {
                     op.vendorExtensions.put("authInterceptorTag", authInterceptorTag);
                 } else {
                     if (op.authMethods.size() == 1 || params.primaryAuth == null) {
-                        if(op.authMethods.size() > 1) {
+                        if (op.authMethods.size() > 1) {
                             Set<String> secSchemes = op.authMethods.stream()
                                 .map(s -> s.name)
                                 .collect(Collectors.toSet());
@@ -1778,8 +1829,8 @@ public class KoraCodegen extends DefaultCodegen {
 
     public static boolean isContentJson(CodegenParameter parameter) {
         return parameter.containerType != null
-            && (parameter.containerType.startsWith("application/json") || parameter.containerType.startsWith("text/json"))
-            || isContentJson(parameter.getContent());
+               && (parameter.containerType.startsWith("application/json") || parameter.containerType.startsWith("text/json"))
+               || isContentJson(parameter.getContent());
     }
 
     public static boolean isContentJson(@Nullable Map<String, CodegenMediaType> content) {

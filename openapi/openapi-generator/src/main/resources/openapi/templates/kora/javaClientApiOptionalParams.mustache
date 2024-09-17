@@ -4,7 +4,7 @@
 {{/vendorExtensions.x-optional-params}}
 
         public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}OptArgs() {
-            this({{#vendorExtensions.x-optional-params}}{{#defaultValue}}{{.}}{{/defaultValue}}{{^defaultValue}}null{{/defaultValue}}{{^-last}}, {{/-last}}{{/vendorExtensions.x-optional-params}});
+            this({{#vendorExtensions.x-optional-params}}{{#defaultValue}}{{#isEnum}}{{{enumDefaultValue}}}{{/isEnum}}{{^isEnum}}{{{defaultValue}}}{{/isEnum}}{{/defaultValue}}{{^defaultValue}}null{{/defaultValue}}{{^-last}}, {{/-last}}{{/vendorExtensions.x-optional-params}});
         }
         {{#vendorExtensions.x-optional-params}}
 
