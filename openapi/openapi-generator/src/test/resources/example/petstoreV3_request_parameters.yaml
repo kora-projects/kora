@@ -154,6 +154,72 @@ paths:
           schema:
             type: string
             default: 100
+        - name: intArrayOptional
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+        - name: intArrayRequired
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: integer
+        - name: intArrayDefault
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: integer
+            default: [ 100, 200 ]
+        - name: bigIntArrayOptional
+          in: query
+          schema:
+            type: array
+            items:
+              type: number
+        - name: bigIntArrayRequired
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: number
+        - name: bigIntArrayDefault
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: number
+            default: [ 100, 200 ]
+        - name: dateArrayOptional
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              format: date
+        - name: dateArrayRequired
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+              format: date
+        - name: dateArrayDefault
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              format: date
+            default: [ 2022-10-10, 2022-01-01 ]
         - name: enumModelOptional
           in: query
           schema:

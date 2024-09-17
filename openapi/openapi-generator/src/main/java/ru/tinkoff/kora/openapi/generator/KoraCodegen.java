@@ -37,9 +37,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -992,8 +994,13 @@ public class KoraCodegen extends DefaultCodegen {
     @Override
     public String toDefaultValue(Schema originalSchema) {
         Schema schema = ModelUtils.getReferencedSchema(this.openAPI, originalSchema);
+        Object defaultValue = schema.getDefault();
+        return toDefaultSchemaValue(originalSchema, schema, defaultValue);
+    }
+
+    private String toDefaultSchemaValue(Schema originalSchema, Schema schema, Object defaultValue) {
         if (ModelUtils.isArraySchema(schema)) {
-            Object def = schema.getDefault();
+            Object def = defaultValue;
             if (!(def instanceof ArrayNode an)) {
                 return null;
             }
@@ -1022,43 +1029,33 @@ public class KoraCodegen extends DefaultCodegen {
 
             var builder = new StringBuilder(String.format(Locale.ROOT, pattern, typeDeclaration));
 
+            int items = 0;
             int i = 1;
             for (JsonNode node : an) {
-                if (node.isBoolean()) {
-                    builder.append(node.asBoolean());
-                } else if (node.isNumber()) {
-                    builder.append(node.asLong());
-                } else {
-                    String text = node.asText();
-                    if (itemSchema.getEnum() == null) {
-                        builder.append('"').append(escapeText(text)).append('"');
-                    } else {
-                        // don't have schema model
-                        if (itemOriginal == itemSchema) {
-                            builder.append('"').append(escapeText(text)).append('"');
-                        } else {
-                            // convert to enum var name later in postProcessModels
-                            String enumValue = toModelName(ModelUtils.getSimpleRef(itemOriginal.get$ref())) + "." + toEnumVarName(text, itemSchema.getType());
-                            builder.append(enumValue);
-                        }
+                String itemValue = toDefaultSchemaValue(itemOriginal, itemSchema, node.asText());
+                if (itemValue != null) {
+                    builder.append(itemValue);
+                    items++;
+                    if (i != an.size()) {
+                        builder.append(", ");
+                        i++;
                     }
                 }
+            }
 
-                if (i != an.size()) {
-                    builder.append(", ");
-                    i++;
-                }
+            if (items == 0) {
+                return null;
             }
 
             return builder.append(")").toString();
         } else if (ModelUtils.isMapSchema(schema) && !(schema instanceof ComposedSchema)) {
-            if(schema.getDefault() == null) {
+            if (defaultValue == null) {
                 return null;
             }
 
             if (schema.getProperties() != null && schema.getProperties().size() > 0) {
                 // object is complex object with free-form additional properties
-                if (schema.getDefault() != null) {
+                if (defaultValue != null) {
                     return super.toDefaultValue(schema);
                 }
                 return null;
@@ -1083,52 +1080,64 @@ public class KoraCodegen extends DefaultCodegen {
 
             return String.format(Locale.ROOT, pattern, typeDeclaration);
         } else if (ModelUtils.isIntegerSchema(schema)) {
-            if (schema.getDefault() != null) {
+            if (defaultValue != null) {
                 if (SchemaTypeUtil.INTEGER64_FORMAT.equals(schema.getFormat())) {
-                    return schema.getDefault().toString() + "l";
+                    return defaultValue + "l";
                 } else {
-                    return schema.getDefault().toString();
+                    return defaultValue.toString();
                 }
             }
             return null;
         } else if (ModelUtils.isNumberSchema(schema)) {
-            if (schema.getDefault() != null) {
+            if (defaultValue != null) {
                 if (SchemaTypeUtil.FLOAT_FORMAT.equals(schema.getFormat())) {
-                    return schema.getDefault().toString() + "f";
+                    return defaultValue + "f";
                 } else if (SchemaTypeUtil.DOUBLE_FORMAT.equals(schema.getFormat())) {
-                    return schema.getDefault().toString() + "d";
+                    return defaultValue + "d";
                 } else {
                     return params.codegenMode.isKotlin()
-                        ? "BigDecimal(\"" + schema.getDefault().toString() + "\")"
-                        : "new BigDecimal(\"" + schema.getDefault().toString() + "\")";
+                        ? "BigDecimal(\"" + defaultValue + "\")"
+                        : "new BigDecimal(\"" + defaultValue + "\")";
                 }
             }
             return null;
         } else if (ModelUtils.isBooleanSchema(schema)) {
-            if (schema.getDefault() != null) {
-                return schema.getDefault().toString();
+            if (defaultValue != null) {
+                return defaultValue.toString();
             }
             return null;
         } else if (ModelUtils.isURISchema(schema)) {
-            if (schema.getDefault() != null) {
-                String uriValue = escapeText((String) schema.getDefault());
+            if (defaultValue != null) {
+                String uriValue = escapeText((String) defaultValue);
                 return "java.net.URI.create(\"" + uriValue + "\")";
             }
             return null;
         } else if (ModelUtils.isStringSchema(schema)) {
-            if (schema.getDefault() != null) {
+            if (defaultValue != null) {
                 String _default;
-                if (schema.getDefault() instanceof Date date) {
+                if (defaultValue instanceof Date date) {
                     LocalDate localDate = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
                     String dateValue = String.format(Locale.ROOT, localDate.toString(), "");
                     return "java.time.LocalDate.parse(\"" + dateValue + "\", java.time.format.DateTimeFormatter.ISO_DATE)";
-                } else if (schema.getDefault() instanceof OffsetDateTime offsetDateTime) {
-                    String dateTimeValue = String.format(Locale.ROOT, offsetDateTime.toString(), "");
+                } else if (ModelUtils.isDateSchema(schema) && defaultValue instanceof String ds) {
+                    return "java.time.LocalDate.parse(\"" + ds + "\", java.time.format.DateTimeFormatter.ISO_DATE)";
+                } else if (ModelUtils.isDateSchema(schema) && defaultValue instanceof Number dn) {
+                    var date = LocalDate.ofInstant(Instant.ofEpochMilli(dn.longValue()), ZoneId.systemDefault());
+                    String dateValue = String.format(Locale.ROOT, date.format(DateTimeFormatter.ISO_DATE), "");
+                    return "java.time.LocalDate.parse(\"" + dateValue + "\", java.time.format.DateTimeFormatter.ISO_DATE)";
+                } else if (defaultValue instanceof OffsetDateTime offsetDateTime) {
+                    String dateTimeValue = String.format(Locale.ROOT, offsetDateTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), "");
                     return "java.time.OffsetDateTime.parse(\"" + dateTimeValue + "\", java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)";
-                } else if (schema.getDefault() instanceof byte[] vb) {
+                } else if (ModelUtils.isDateTimeSchema(schema) && defaultValue instanceof String ds) {
+                    return "java.time.OffsetDateTime.parse(\"" + ds + "\", java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)";
+                } else if (ModelUtils.isDateTimeSchema(schema) && defaultValue instanceof Number dn) {
+                    var date = OffsetDateTime.ofInstant(Instant.ofEpochMilli(dn.longValue()), ZoneId.systemDefault());
+                    String dateTimeValue = String.format(Locale.ROOT, date.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), "");
+                    return "java.time.OffsetDateTime.parse(\"" + dateTimeValue + "\", java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)";
+                } else if (defaultValue instanceof byte[] vb) {
                     _default = new String(vb);
                 } else {
-                    _default = (String) schema.getDefault();
+                    _default = (String) defaultValue;
                 }
 
                 if (schema.getEnum() == null) {
@@ -1145,12 +1154,12 @@ public class KoraCodegen extends DefaultCodegen {
             }
             return null;
         } else if (ModelUtils.isObjectSchema(schema)) {
-            if (schema.getDefault() != null) {
+            if (defaultValue != null) {
                 return super.toDefaultValue(schema);
             }
             return null;
         } else if (ModelUtils.isComposedSchema(schema)) {
-            if (schema.getDefault() != null) {
+            if (defaultValue != null) {
                 return super.toDefaultValue(schema);
             }
             return null;
@@ -2216,7 +2225,7 @@ public class KoraCodegen extends DefaultCodegen {
 
         // only process files with java extension
         if ("java".equals(FilenameUtils.getExtension(file.toString()))) {
-            String command = javaPostProcessFile + " " + file.toString();
+            String command = javaPostProcessFile + " " + file;
             try {
                 Process p = Runtime.getRuntime().exec(command);
                 p.waitFor();
