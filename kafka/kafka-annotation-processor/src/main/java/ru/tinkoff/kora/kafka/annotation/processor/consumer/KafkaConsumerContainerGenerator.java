@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.kafka.annotation.processor.consumer;
 
-import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
@@ -59,7 +58,8 @@ public class KafkaConsumerContainerGenerator {
         methodBuilder.addParameter(valueDeserializer.build());
         methodBuilder.addParameter(ParameterizedTypeName.get(kafkaConsumerTelemetryFactory, handlerMethod.keyType(), handlerMethod.valueType()), "telemetryFactory");
         methodBuilder.addParameter(ParameterSpec.builder(consumerRebalanceListener, "rebalanceListener")
-            .addAnnotations(List.of(AnnotationSpec.builder(Nullable.class).build(), tagAnnotation))
+            .addAnnotation(tagAnnotation)
+            .addAnnotation(Nullable.class)
             .build());
 
         methodBuilder.addStatement("var telemetry = telemetryFactory.get(config.driverProperties(), config.telemetry())");

@@ -152,7 +152,7 @@ public class AopProcessor {
 
         var tag = TagUtils.parseTagValue(typeElement);
         if (tag != null && !tag.isEmpty()) {
-            typeBuilder.addAnnotation(TagUtils.makeAnnotationSpec(tag));
+            typeBuilder.addAnnotation(TagUtils.makeAnnotationSpecInlineTags(tag));
         }
         if (AnnotationUtils.isAnnotationPresent(typeElement, CommonClassNames.root)) {
             typeBuilder.addAnnotation(CommonClassNames.root);
@@ -273,7 +273,7 @@ public class AopProcessor {
             var tags = TagUtils.parseTagValue(parameter);
 
             if (!tags.isEmpty()) {
-                parameterSpec = parameterSpec.toBuilder().addAnnotation(TagUtils.makeAnnotationSpec(tags)).build();
+                parameterSpec = parameterSpec.toBuilder().addAnnotation(TagUtils.makeAnnotationSpecInlineTags(tags)).build();
             }
 
             constructorBuilder.addParameter(parameterSpec);

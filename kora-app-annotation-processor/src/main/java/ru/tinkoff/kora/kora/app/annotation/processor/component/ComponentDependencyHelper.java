@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Set;
 
 public class ComponentDependencyHelper {
+
     public static List<DependencyClaim> parseDependencyClaims(ComponentDeclaration componentDeclaration) {
         // TODO switch
         if (componentDeclaration instanceof ComponentDeclaration.FromModuleComponent moduleComponent) {
