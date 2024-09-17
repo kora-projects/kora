@@ -26,13 +26,17 @@ interface AppWithAppPart {
     @Root
     class Class3
 
-//    @Component
-//    @Root
-//    class Class4<T : Number?>
+    @Component
+    @Root
+    class Class4
 
     @Component
     @Root
     class Class5(private val s: String?)
+
+//    @Component
+//    @Root
+//    class Class6<T : Number>
 
     @ru.tinkoff.kora.common.Module
     interface Module {
@@ -52,7 +56,7 @@ interface AppWithAppPart {
         @Root
         fun class3WithTaggedDepNullable(@Tag(BigDecimal::class) bigDecimal: BigDecimal?): String = "class3-" + if (bigDecimal == null) "0" else bigDecimal.toPlainString()
 
-        @Tag(Class4::class)
+        @Tag(Class3::class)
         @Root
         fun class4WithTaggedDep(@Tag(Class1::class) class2: Class2): String = "class3-" + class2::class.simpleName!!
 
@@ -62,6 +66,6 @@ interface AppWithAppPart {
 
 //        @Tag(Class1::class)
 //        @Root
-//        fun <T : Number> class4(): Class4<T> = Class4()
+//        fun <T : Number> class6(): Class6<T> = Class6()
     }
 }
