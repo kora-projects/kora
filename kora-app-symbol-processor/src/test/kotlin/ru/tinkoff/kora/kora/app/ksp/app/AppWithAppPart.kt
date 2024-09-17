@@ -60,8 +60,8 @@ interface AppWithAppPart {
         @Root
         fun class2Tagged(): Class2 = Class2()
 
-        @Tag(Class1::class)
-        @Root
-        fun <T : Number> class4(): Class4<T> = Class4()
+//        @Tag(Class1::class)
+//        @Root
+//        fun <T : Number> class4(): Class4<T> = Class4()
     }
 }
