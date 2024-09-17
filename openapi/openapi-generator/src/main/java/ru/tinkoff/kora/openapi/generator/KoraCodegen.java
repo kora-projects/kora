@@ -1151,20 +1151,12 @@ public class KoraCodegen extends DefaultCodegen {
     }
 
     @Override
-    public String toDefaultParameterValue(final Schema<?> originalSchema) {
-        return toDefaultValue(originalSchema);
-
-//        Schema schema = ModelUtils.getReferencedSchema(this.openAPI, originalSchema);
-//        Object defaultValue = schema.getDefault();
-//        if (defaultValue == null) {
-//            return null;
-//        }
-//
-//        if (schema instanceof StringSchema) {
-//            return "\"" + escapeText(defaultValue.toString()) + "\"";
-//        } else {
-//            return escapeText(defaultValue.toString());
-//        }
+    public String toDefaultParameterValue(final Schema<?> schema) {
+        Object defaultValue = schema.getDefault();
+        if (defaultValue == null) {
+            return null;
+        }
+        return escapeText(defaultValue.toString());
     }
 
     /**
