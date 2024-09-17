@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -1051,6 +1052,10 @@ public class KoraCodegen extends DefaultCodegen {
 
             return builder.append(")").toString();
         } else if (ModelUtils.isMapSchema(schema) && !(schema instanceof ComposedSchema)) {
+            if(schema.getDefault() == null) {
+                return null;
+            }
+
             if (schema.getProperties() != null && schema.getProperties().size() > 0) {
                 // object is complex object with free-form additional properties
                 if (schema.getDefault() != null) {
@@ -1093,7 +1098,9 @@ public class KoraCodegen extends DefaultCodegen {
                 } else if (SchemaTypeUtil.DOUBLE_FORMAT.equals(schema.getFormat())) {
                     return schema.getDefault().toString() + "d";
                 } else {
-                    return "new BigDecimal(\"" + schema.getDefault().toString() + "\")";
+                    return params.codegenMode.isKotlin()
+                        ? "BigDecimal(\"" + schema.getDefault().toString() + "\")"
+                        : "new BigDecimal(\"" + schema.getDefault().toString() + "\")";
                 }
             }
             return null;
@@ -1104,18 +1111,20 @@ public class KoraCodegen extends DefaultCodegen {
             return null;
         } else if (ModelUtils.isURISchema(schema)) {
             if (schema.getDefault() != null) {
-                return "URI.create(\"" + escapeText((String) schema.getDefault()) + "\")";
+                String uriValue = escapeText((String) schema.getDefault());
+                return "java.net.URI.create(\"" + uriValue + "\")";
             }
             return null;
         } else if (ModelUtils.isStringSchema(schema)) {
             if (schema.getDefault() != null) {
                 String _default;
-                if (schema.getDefault() instanceof Date) {
-                    Date date = (Date) schema.getDefault();
+                if (schema.getDefault() instanceof Date date) {
                     LocalDate localDate = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-                    return String.format(Locale.ROOT, localDate.toString(), "");
-                } else if (schema.getDefault() instanceof java.time.OffsetDateTime) {
-                    return "OffsetDateTime.parse(\"" + String.format(Locale.ROOT, ((java.time.OffsetDateTime) schema.getDefault()).atZoneSameInstant(ZoneId.systemDefault()).toString(), "") + "\", java.time.format.DateTimeFormatter.ISO_ZONED_DATE_TIME.withZone(java.time.ZoneId.systemDefault()))";
+                    String dateValue = String.format(Locale.ROOT, localDate.toString(), "");
+                    return "java.time.LocalDate.parse(\"" + dateValue + "\", java.time.format.DateTimeFormatter.ISO_DATE)";
+                } else if (schema.getDefault() instanceof OffsetDateTime offsetDateTime) {
+                    String dateTimeValue = String.format(Locale.ROOT, offsetDateTime.toString(), "");
+                    return "java.time.OffsetDateTime.parse(\"" + dateTimeValue + "\", java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)";
                 } else if (schema.getDefault() instanceof byte[] vb) {
                     _default = new String(vb);
                 } else {
@@ -1156,7 +1165,7 @@ public class KoraCodegen extends DefaultCodegen {
         if (defaultValue == null) {
             return null;
         }
-        return escapeText(defaultValue.toString());
+        return toDefaultValue(schema);
     }
 
     /**
