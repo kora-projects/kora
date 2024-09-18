@@ -107,6 +107,7 @@ class KoraCodegenTest {
                 "skipFormModel", "false"
             ))
             .addAdditionalProperty("mode", mode)
+            .addAdditionalProperty("additionalModelTypeAnnotations", "@ru.tinkoff.kora.json.common.annotation.JsonInclude(ru.tinkoff.kora.json.common.annotation.JsonInclude.IncludeType.ALWAYS)")
             .addAdditionalProperty("interceptors", """
                 {
                   "*": [
