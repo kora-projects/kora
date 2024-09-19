@@ -143,7 +143,10 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
 
             @Override
             public void onNext(ByteBuffer item) {
-                bodyChunks.add(item);
+                var copy = ByteBuffer.allocate(item.remaining());
+                copy.put(item.slice());
+                copy.rewind();
+                bodyChunks.add(copy);
                 subscriber.onNext(item);
             }
 
