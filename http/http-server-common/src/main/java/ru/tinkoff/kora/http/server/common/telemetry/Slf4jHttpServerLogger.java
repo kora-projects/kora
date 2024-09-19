@@ -65,7 +65,7 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
             gen.writeEndObject();
         });
 
-        if (log.isDebugEnabled() && headers != null && headers.size() > 0) {
+        if (log.isDebugEnabled()) {
             var headersString = requestHeaderString(headers);
             var queryParamsString = requestQueryParamsString(queryParams);
             log.debug(marker, "HttpServer received request for {}{}\n{}", operation, queryParamsString, headersString);
@@ -103,7 +103,7 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
             gen.writeEndObject();
         });
 
-        if (log.isDebugEnabled() && headers != null && headers.size() > 0) {
+        if (log.isDebugEnabled()) {
             var headersString = requestHeaderString(headers);
             var queryParamsString = requestQueryParamsString(queryParams);
             if (exception != null) {
@@ -138,7 +138,7 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
         }
     }
 
-    protected String requestHeaderString(HttpHeaders headers) {
+    protected String requestHeaderString(@Nullable HttpHeaders headers) {
         return toMaskedString(headers);
     }
 
@@ -147,8 +147,8 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
         return result.isEmpty() ? result : '?' + result;
     }
 
-    private String toMaskedString(HttpHeaders headers) {
-        if (headers.isEmpty()) {
+    private String toMaskedString(@Nullable HttpHeaders headers) {
+        if (headers == null || headers.isEmpty()) {
             return "";
         }
         var sb = new StringBuilder(headers.size() * AVERAGE_HEADER_SIZE);

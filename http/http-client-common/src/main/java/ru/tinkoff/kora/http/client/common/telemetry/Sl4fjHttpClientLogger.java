@@ -89,13 +89,13 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
             gen.writeEndObject();
         });
 
-        if (this.requestLog.isTraceEnabled() && headers != null && headers.size() > 0 && body != null) {
-            var headersString = this.requestHeaderString(headers);
-            var bodyStr = this.requestBodyString(body);
+        if (this.requestLog.isTraceEnabled()) {
+            var headersString = headers != null ? this.requestHeaderString(headers) : "";
+            var bodyStr = body != null ? this.requestBodyString(body) : "";
             var queryParamsString = this.requestQueryParamsString(queryParams);
             this.requestLog.trace(marker, "HttpClient requesting {}{}\n{}\n{}", operation, queryParamsString, headersString, bodyStr);
-        } else if (this.requestLog.isDebugEnabled() && headers != null && headers.size() > 0) {
-            var headersString = this.requestHeaderString(headers);
+        } else if (this.requestLog.isDebugEnabled()) {
+            var headersString = headers != null ? this.requestHeaderString(headers) : "";
             var queryParamsString = this.requestQueryParamsString(queryParams);
             this.requestLog.debug(marker, "HttpClient requesting {}{}\n{}", operation, queryParamsString, headersString);
         } else {
