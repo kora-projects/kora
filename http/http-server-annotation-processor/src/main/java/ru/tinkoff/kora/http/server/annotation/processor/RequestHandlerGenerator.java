@@ -12,6 +12,7 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
@@ -800,10 +801,11 @@ public class RequestHandlerGenerator {
                 mapperType = TypeName.get(mapper.mapperClass());
             } else {
                 var typeMirror = parameter.type;
+                var argType = (typeMirror instanceof PrimitiveType pt) ? types.boxedClass(pt).asType() : typeMirror;
                 if (isBlocking(requestMappingData)) {
-                    mapperType = ParameterizedTypeName.get(httpServerRequestMapper, TypeName.get(typeMirror));
+                    mapperType = ParameterizedTypeName.get(httpServerRequestMapper, TypeName.get(argType));
                 } else {
-                    mapperType = ParameterizedTypeName.get(httpServerRequestMapper, ParameterizedTypeName.get(ClassName.get(CompletionStage.class), TypeName.get(typeMirror)));
+                    mapperType = ParameterizedTypeName.get(httpServerRequestMapper, ParameterizedTypeName.get(ClassName.get(CompletionStage.class), TypeName.get(argType)));
                 }
             }
             var b = ParameterSpec.builder(mapperType, mapperName);
