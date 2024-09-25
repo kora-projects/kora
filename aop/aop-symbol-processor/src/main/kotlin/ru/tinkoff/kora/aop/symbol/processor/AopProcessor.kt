@@ -101,12 +101,13 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
             }
         }
         KoraSymbolProcessingEnv.logger.logging("Type level aspects for ${classDeclaration.qualifiedName!!.asString()}}: {$typeLevelAspects}", classDeclaration)
-        val typeFieldFactory = TypeFieldFactory(resolver)
-        val aopContext: KoraAspect.AspectContext = KoraAspect.AspectContext(typeFieldFactory)
         val typeBuilder: TypeSpec.Builder = TypeSpec.classBuilder(aopProxyName(classDeclaration))
             .superclass(classDeclaration.toClassName())
             .addModifiers(KModifier.PUBLIC, KModifier.FINAL)
             .addAnnotation(CommonClassNames.aopProxy)
+
+        val typeFieldFactory = TypeFieldFactory(resolver)
+        val aopContext: KoraAspect.AspectContext = KoraAspect.AspectContext(typeBuilder, typeFieldFactory)
 
         classDeclaration.parseTags().let { tags ->
             if (tags.isNotEmpty()) {

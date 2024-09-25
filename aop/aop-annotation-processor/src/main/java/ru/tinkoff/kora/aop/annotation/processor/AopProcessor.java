@@ -4,8 +4,6 @@ import com.squareup.javapoet.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.annotation.processor.common.*;
-import ru.tinkoff.kora.common.Component;
-import ru.tinkoff.kora.common.annotation.Generated;
 
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -142,13 +140,14 @@ public class AopProcessor {
         }
         log.trace("Type level aspects for {}: {}", typeElement, typeLevelAspects);
 
-        var typeFieldFactory = new TypeFieldFactory(this.types);
-        var aopContext = new KoraAspect.AspectContext(typeFieldFactory);
 
         var typeBuilder = TypeSpec.classBuilder(AopUtils.aopProxyName(typeElement))
             .superclass(typeElement.asType())
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addAnnotation(CommonClassNames.aopProxy);
+
+        var typeFieldFactory = new TypeFieldFactory(this.types);
+        var aopContext = new KoraAspect.AspectContext(typeBuilder, typeFieldFactory);
 
         var tag = TagUtils.parseTagValue(typeElement);
         if (tag != null && !tag.isEmpty()) {
@@ -252,12 +251,13 @@ public class AopProcessor {
             .collect(CodeBlock.joining(", ", "{", "}"));
 
         typeBuilder
-            .addAnnotation(AnnotationSpec.builder(Generated.class)
+            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
                 .addMember("value", generated)
                 .build());
 
-        if (typeElement.getAnnotation(Component.class) != null) {
-            typeBuilder.addAnnotation(Component.class);
+
+        if (AnnotationUtils.findAnnotation(typeElement, CommonClassNames.component) != null) {
+            typeBuilder.addAnnotation(CommonClassNames.component);
         }
 
         var constructorBuilder = MethodSpec.constructorBuilder()

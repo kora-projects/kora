@@ -3,9 +3,9 @@ package ru.tinkoff.kora.aop.annotation.processor;
 import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.TypeName;
+import com.squareup.javapoet.TypeSpec;
 
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +34,7 @@ public interface KoraAspect {
         record MethodBody(CodeBlock codeBlock) implements ApplyResult {}
     }
 
-    record AspectContext(FieldFactory fieldFactory) {}
+    record AspectContext(TypeSpec.Builder typeBuilder, FieldFactory fieldFactory) {}
 
     ApplyResult apply(ExecutableElement executableElement, String superCall, AspectContext aspectContext);
 
