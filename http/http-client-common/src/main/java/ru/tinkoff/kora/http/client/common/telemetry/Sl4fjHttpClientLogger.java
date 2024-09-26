@@ -2,6 +2,8 @@ package ru.tinkoff.kora.http.client.common.telemetry;
 
 import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
+import org.slf4j.Marker;
+import org.slf4j.event.Level;
 import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
@@ -9,7 +11,6 @@ import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.stream.Collectors;
@@ -73,9 +74,9 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
     @Override
     public void logRequest(String authority,
                            String method,
-                           @Nullable String path,
-                           @Nullable String pathTemplate,
-                           @Nullable String resolvedUri,
+                           String path,
+                           String pathTemplate,
+                           String resolvedUri,
                            @Nullable String queryParams,
                            @Nullable HttpHeaders headers,
                            @Nullable String body) {
@@ -89,25 +90,20 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
             gen.writeEndObject();
         });
 
-        if (this.requestLog.isTraceEnabled()) {
-            var headersString = headers != null ? this.requestHeaderString(headers) : "";
-            var bodyStr = body != null ? this.requestBodyString(body) : "";
-            var queryParamsString = this.requestQueryParamsString(queryParams);
-            this.requestLog.trace(marker, "HttpClient requesting {}{}\n{}\n{}", operation, queryParamsString, headersString, bodyStr);
-        } else if (this.requestLog.isDebugEnabled()) {
-            var headersString = headers != null ? this.requestHeaderString(headers) : "";
-            var queryParamsString = this.requestQueryParamsString(queryParams);
-            this.requestLog.debug(marker, "HttpClient requesting {}{}\n{}", operation, queryParamsString, headersString);
+        if (requestLog.isTraceEnabled()) {
+            logHttpRequest(marker, Level.TRACE, operation, queryParams, headers, body);
+        } else if (requestLog.isDebugEnabled()) {
+            logHttpRequest(marker, Level.DEBUG, operation, queryParams, headers, null);
         } else {
-            this.requestLog.info(marker, "HttpClient requesting {}", operation);
+            logHttpRequest(marker, Level.INFO, operation, null, null, null);
         }
     }
 
     @Override
     public void logResponse(String authority,
                             String method,
-                            @Nullable String path,
-                            @Nullable String pathTemplate,
+                            String path,
+                            String pathTemplate,
                             long processingTime,
                             @Nullable Integer statusCode,
                             HttpResultCode resultCode,
@@ -136,15 +132,12 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
             gen.writeEndObject();
         });
 
-        if (responseLog.isTraceEnabled() && headers != null && headers.size() > 0 && body != null) {
-            var headersString = this.responseHeaderString(headers);
-            var bodyStr = this.responseBodyString(body);
-            responseLog.trace(marker, "HttpClient received {} from {}\n{}\n{}", statusCode, operation, headersString, bodyStr);
-        } else if (responseLog.isDebugEnabled() && headers != null && headers.size() > 0) {
-            var headersString = this.responseHeaderString(headers);
-            responseLog.debug(marker, "HttpClient received {} from {}\n{}", statusCode, operation, headersString);
+        if (responseLog.isTraceEnabled()) {
+            logHttpResponse(marker, Level.TRACE, statusCode, operation, headers, body);
+        } else if (responseLog.isDebugEnabled()) {
+            logHttpResponse(marker, Level.DEBUG, statusCode, operation, headers, null);
         } else if (statusCode != null) {
-            responseLog.info(marker, "HttpClient received {} from {}", statusCode, operation);
+            logHttpResponse(marker, Level.INFO, statusCode, operation, null, null);
         } else {
             responseLog.info(marker, "HttpClient received No HttpResponse from {}", operation);
         }
@@ -155,7 +148,7 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
     }
 
     public String responseHeaderString(HttpHeaders headers) {
-        return HttpHeaders.toString(headers);
+        return toMaskedString(headers);
     }
 
     public String requestBodyString(String body) {
@@ -166,15 +159,34 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
         return toMaskedString(headers);
     }
 
-    public String requestQueryParamsString(@Nullable String queryParams) {
-        final String result = queryParams != null ? toMaskedString(queryParams) : "";
-        return result.isEmpty() ? result : '?' + result;
+    public String requestQueryParamsString(String queryParams) {
+        return toMaskedString(queryParams);
+    }
+
+    private void logHttpRequest(Marker marker, Level level, String operation,
+                                @Nullable String queryParams, @Nullable HttpHeaders headers, @Nullable String body) {
+        boolean shouldWriteQueryParams = queryParams != null && !queryParams.isEmpty();
+        boolean shouldWriteHeaders = headers != null && !headers.isEmpty();
+        boolean shouldWriteBody = body != null;
+        requestLog.atLevel(level).addMarker(marker)
+            .log("HttpClient requesting {}{}{}{}", operation,
+                 shouldWriteQueryParams ? '?' + requestQueryParamsString(queryParams) : "",
+                 shouldWriteHeaders ? '\n' + requestHeaderString(headers) : "",
+                 shouldWriteBody ? '\n' + requestBodyString(body) : "");
+    }
+
+    private void logHttpResponse(Marker marker, Level level, Integer statusCode, String operation,
+                                 @Nullable HttpHeaders headers, @Nullable String body) {
+        boolean shouldWriteHeaders = headers != null && !headers.isEmpty();
+        boolean shouldWriteBody = body != null;
+        responseLog.atLevel(level).addMarker(marker)
+            .log("HttpClient received {} from {}{}{}",
+                 statusCode, operation,
+                 shouldWriteHeaders ? '\n' + responseHeaderString(headers) : "",
+                 shouldWriteBody ? '\n' + responseBodyString(body) : "");
     }
 
     private String toMaskedString(HttpHeaders headers) {
-        if (headers.isEmpty()) {
-            return "";
-        }
         var sb = new StringBuilder(headers.size() * AVERAGE_HEADER_SIZE);
         headers.forEach((headerEntry) -> {
             // В HttpHeaders все заголовки в нижнем регистре, приведение не требуется
@@ -189,9 +201,6 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
     }
 
     private String toMaskedString(String queryParams) {
-        if (queryParams.isEmpty()) {
-            return "";
-        }
         if (maskedQueryParams.isEmpty()) {
             return queryParams;
         }
@@ -216,7 +225,7 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
         return pathTemplate != null ? !pathTemplate : logger.isTraceEnabled();
     }
 
-    private String getOperation(Logger logger, String method, @Nullable String path, @Nullable String pathTemplate) {
-        return method + ' ' + Objects.requireNonNullElse((shouldWritePath(logger) ? path : pathTemplate), "");
+    private String getOperation(Logger logger, String method, String path, String pathTemplate) {
+        return method + ' ' + (shouldWritePath(logger) ? path : pathTemplate);
     }
 }

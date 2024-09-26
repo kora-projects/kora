@@ -260,9 +260,9 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
                 metrics.record(code, processingTime, request.method(), data.host(), data.scheme(), data.target());
             }
             var resultCode = HttpResultCode.fromStatusCode(code);
-            if (logger != null) {
+            if (logger != null && logger.logResponse()) {
                 var headersStr = logger.logResponseHeaders() ? headers : null;
-                var bodyString = byteBufListToBodyString(body, responseBodyCharset);
+                var bodyString = logger.logResponseBody() ? byteBufListToBodyString(body, responseBodyCharset) : null;
                 var ctx = Context.current();
                 try {
                     this.ctx.inject();

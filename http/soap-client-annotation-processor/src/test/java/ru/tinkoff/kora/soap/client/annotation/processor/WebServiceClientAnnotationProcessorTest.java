@@ -277,7 +277,7 @@ class WebServiceClientAnnotationProcessorTest {
     private Object createClient(ClassLoader cl, String className, String url) throws Exception {
         var type = cl.loadClass(className);
         var constructor = type.getConstructor(HttpClient.class, SoapClientTelemetryFactory.class, SoapServiceConfig.class);
-        var httpClient = this.httpClient.with(new TelemetryInterceptor(new DefaultHttpClientTelemetry(null, null, new Sl4fjHttpClientLogger(log, log, Collections.emptySet(), Collections.emptySet(), "***"))));
+        var httpClient = this.httpClient.with(new TelemetryInterceptor(new DefaultHttpClientTelemetry(null, null, new Sl4fjHttpClientLogger(log, log, Collections.emptySet(), Collections.emptySet(), "***", null))));
         var telemetry = new DefaultSoapClientTelemetryFactory(null);
         return constructor.newInstance(httpClient, telemetry, new SoapServiceConfig() {
             @Override
