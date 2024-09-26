@@ -331,4 +331,15 @@ public interface JdbcModule extends DataBaseModule {
             return value;
         };
     }
+
+    @DefaultComponent
+    default JdbcResultColumnMapper<Instant> instantJdbcColumnMapper() {
+        return (row, index) -> {
+            var value = row.getObject(index, Instant.class);
+            if (row.wasNull()) {
+                return null;
+            }
+            return value;
+        };
+    }
 }
