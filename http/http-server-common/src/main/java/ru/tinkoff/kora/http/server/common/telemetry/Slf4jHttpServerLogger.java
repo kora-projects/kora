@@ -3,6 +3,8 @@ package ru.tinkoff.kora.http.server.common.telemetry;
 import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.Marker;
+import org.slf4j.event.Level;
 import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServer;
@@ -66,11 +68,9 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
         });
 
         if (log.isDebugEnabled()) {
-            var headersString = requestHeaderString(headers);
-            var queryParamsString = requestQueryParamsString(queryParams);
-            log.debug(marker, "HttpServer received request for {}{}\n{}", operation, queryParamsString, headersString);
+            logServerReceivedRequest(marker, Level.DEBUG, operation, queryParams, headers);
         } else {
-            log.info(marker, "HttpServer received request for {}", operation);
+            logServerReceivedRequest(marker, Level.INFO, operation, null, null);
         }
     }
 
@@ -103,54 +103,71 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
             gen.writeEndObject();
         });
 
-        if (log.isDebugEnabled()) {
-            var headersString = requestHeaderString(headers);
-            var queryParamsString = requestQueryParamsString(queryParams);
-            if (exception != null) {
-                if (this.logStacktrace) {
-                    log.warn(marker, "HttpServer responded error {} for {}{}\n{}", statusCode, operation, queryParamsString, headersString, exception);
-                } else {
-                    log.warn(marker, "HttpServer responded error {} for {}{} due to: {} \n{}", statusCode, operation, queryParamsString, exception.getMessage(), headersString);
-                }
-            } else {
-                log.debug(marker, "HttpServer responded {} for {}{}\n{}", statusCode, operation, queryParamsString, headersString);
-            }
-        } else if (statusCode != null) {
-            if (exception != null) {
-                if (this.logStacktrace) {
-                    log.warn(marker, "HttpServer responded error {} for {}", statusCode, operation, exception);
-                } else {
-                    log.warn(marker, "HttpServer responded error {} for {} due to: {}", statusCode, operation, exception.getMessage());
-                }
-            } else {
-                log.info(marker, "HttpServer responded {} for {}", statusCode, operation);
-            }
+        if (exception != null) {
+            logServerRespondedWithException(marker, statusCode, operation, queryParams, headers, exception);
         } else {
-            if (exception != null) {
-                if (this.logStacktrace) {
-                    log.warn(marker, "HttpServer responded error for {}", operation, exception);
-                } else {
-                    log.warn(marker, "HttpServer responded error for {} due to: {}", operation, exception.getMessage());
-                }
-            } else {
-                log.info(marker, "HttpServer responded for {}", operation);
-            }
+            logServerResponded(marker, log.isDebugEnabled() ? Level.DEBUG : Level.INFO,
+                               statusCode, operation, queryParams, headers);
         }
     }
 
-    protected String requestHeaderString(@Nullable HttpHeaders headers) {
+    protected String requestHeaderString(HttpHeaders headers) {
         return toMaskedString(headers);
     }
 
     protected String requestQueryParamsString(Map<String, ? extends Collection<String>> queryParams) {
-        final String result = toMaskedString(queryParams);
-        return result.isEmpty() ? result : '?' + result;
+        return toMaskedString(queryParams);
     }
 
-    private String toMaskedString(@Nullable HttpHeaders headers) {
-        if (headers == null || headers.isEmpty()) {
-            return "";
+    private void logServerReceivedRequest(Marker marker, Level level, String operation,
+                                          @Nullable Map<String, ? extends Collection<String>> queryParams,
+                                          @Nullable HttpHeaders headers) {
+        boolean shouldWriteQueryParams = queryParams != null && !queryParams.isEmpty();
+        boolean shouldWriteHeaders = headers != null && !headers.isEmpty();
+        log.atLevel(level).addMarker(marker)
+            .log("HttpServer received request for {}{}{}", operation,
+                 shouldWriteQueryParams ? '?' + requestQueryParamsString(queryParams) : "",
+                 shouldWriteHeaders ? '\n' + requestHeaderString(headers) : "");
+    }
+
+    private void logServerRespondedWithException(Marker marker, @Nullable Integer statusCode, String operation,
+                                                 @Nullable Map<String, ? extends Collection<String>> queryParams,
+                                                 @Nullable HttpHeaders headers, Throwable exception) {
+        boolean shouldWriteQueryParams = queryParams != null && !queryParams.isEmpty();
+        boolean shouldWriteHeaders = headers != null && !headers.isEmpty();
+        if (logStacktrace) {
+            log.warn(marker,
+                     "HttpServer responded error {}for {}{}{}",
+                     statusCode != null ? statusCode + " " : "",
+                     operation,
+                     shouldWriteQueryParams ? '?' + requestQueryParamsString(queryParams) : "",
+                     shouldWriteHeaders ? '\n' + requestHeaderString(headers) : "",
+                     exception);
+        } else {
+            log.warn(marker,
+                     "HttpServer responded error {}for {}{} due to: {}{}",
+                     statusCode != null ? statusCode + " " : "",
+                     operation,
+                     shouldWriteQueryParams ? '?' + requestQueryParamsString(queryParams) : "",
+                     exception.getMessage(),
+                     shouldWriteHeaders ? '\n' + requestHeaderString(headers) : "");
         }
+    }
+
+    private void logServerResponded(Marker marker, Level level, @Nullable Integer statusCode, String operation,
+                                    @Nullable Map<String, ? extends Collection<String>> queryParams,
+                                    @Nullable HttpHeaders headers) {
+        boolean shouldWriteQueryParams = queryParams != null && !queryParams.isEmpty();
+        boolean shouldWriteHeaders = headers != null && !headers.isEmpty();
+        log.atLevel(level).addMarker(marker)
+            .log("HttpServer responded {}for {}{}{}",
+                 statusCode != null ? statusCode + " " : "",
+                 operation,
+                 shouldWriteQueryParams ? '?' + requestQueryParamsString(queryParams) : "",
+                 shouldWriteHeaders ? '\n' + requestHeaderString(headers) : "");
+    }
+
+    private String toMaskedString(HttpHeaders headers) {
         var sb = new StringBuilder(headers.size() * AVERAGE_HEADER_SIZE);
         headers.forEach((headerEntry) -> {
             // В HttpHeaders все заголовки в нижнем регистре, приведение не требуется
@@ -165,9 +182,6 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
     }
 
     private String toMaskedString(Map<String, ? extends Collection<String>> queryParams) {
-        if (queryParams.isEmpty()) {
-            return "";
-        }
         return queryParams.entrySet().stream()
             .map(e -> {
                 final String key = e.getKey();

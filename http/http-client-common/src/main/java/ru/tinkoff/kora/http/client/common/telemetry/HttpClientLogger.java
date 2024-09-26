@@ -21,16 +21,13 @@ public interface HttpClientLogger {
 
     default void logRequest(String authority,
                             String method,
-                            @Nullable String path,
-                            @Nullable String pathTemplate,
-                            @Nullable String resolvedUri,
+                            String path,
+                            String pathTemplate,
+                            String resolvedUri,
                             @Nullable String queryParams,
                             @Nullable HttpHeaders headers,
                             @Nullable String body) {
-        logRequest(authority, method,
-                   method + ' ' + Objects.requireNonNullElse(pathTemplate, ""),
-                   Objects.requireNonNullElse(resolvedUri, ""),
-                   headers, body);
+        logRequest(authority, method, method + ' ' + pathTemplate, resolvedUri, headers, body);
     }
 
     /**
@@ -42,15 +39,15 @@ public interface HttpClientLogger {
 
     default void logResponse(String authority,
                              String method,
-                             @Nullable String path,
-                             @Nullable String pathTemplate,
+                             String path,
+                             String pathTemplate,
                              long processingTime,
                              @Nullable Integer statusCode,
                              HttpResultCode resultCode,
                              @Nullable Throwable exception,
                              @Nullable HttpHeaders headers,
                              @Nullable String body) {
-        logResponse(authority, method + ' ' + Objects.requireNonNullElse(pathTemplate, ""), processingTime, statusCode, resultCode, exception, headers, body);
+        logResponse(authority, method + ' ' + pathTemplate, processingTime, statusCode, resultCode, exception, headers, body);
     }
 
     /**
