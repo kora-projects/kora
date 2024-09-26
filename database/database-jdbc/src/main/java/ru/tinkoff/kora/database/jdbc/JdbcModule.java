@@ -176,6 +176,17 @@ public interface JdbcModule extends DataBaseModule {
         };
     }
 
+    @DefaultComponent
+    default JdbcRowMapper<Instant> instantJdbcRowMapper() {
+        return rs -> {
+            var value = rs.getObject(1, Instant.class);
+            if (rs.wasNull()) {
+                return null;
+            }
+            return value;
+        };
+    }
+
     // Parameter Mappers
     @DefaultComponent
     default JdbcParameterColumnMapper<BigDecimal> bigDecimalJdbcParameterColumnMapper() {
@@ -245,6 +256,17 @@ public interface JdbcModule extends DataBaseModule {
 
     @DefaultComponent
     default JdbcParameterColumnMapper<OffsetDateTime> offsetDateTimeJdbcParameterColumnMapper() {
+        return (stmt, index, o) -> {
+            if (o == null) {
+                stmt.setNull(index, Types.TIMESTAMP_WITH_TIMEZONE);
+            } else {
+                stmt.setObject(index, o, Types.TIMESTAMP_WITH_TIMEZONE);
+            }
+        };
+    }
+
+    @DefaultComponent
+    default JdbcParameterColumnMapper<Instant> instantJdbcParameterColumnMapper() {
         return (stmt, index, o) -> {
             if (o == null) {
                 stmt.setNull(index, Types.TIMESTAMP_WITH_TIMEZONE);
