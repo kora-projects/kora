@@ -64,6 +64,9 @@ public interface {{classname}} {
     {{/interceptorTags}}
     {{/koraInterceptors}}
     {{#isAsync}}
+    {{#isDeprecated}}
+    @Deprecated
+    {{/isDeprecated}}
     CompletionStage<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {{operationId}}(
     {{/isAsync}}
     {{#isReactive}}
