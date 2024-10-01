@@ -801,11 +801,10 @@ public class RequestHandlerGenerator {
                 mapperType = TypeName.get(mapper.mapperClass());
             } else {
                 var typeMirror = parameter.type;
-                var argType = (typeMirror instanceof PrimitiveType pt) ? types.boxedClass(pt).asType() : typeMirror;
                 if (isBlocking(requestMappingData)) {
-                    mapperType = ParameterizedTypeName.get(httpServerRequestMapper, TypeName.get(argType));
+                    mapperType = ParameterizedTypeName.get(httpServerRequestMapper, TypeName.get(typeMirror).box());
                 } else {
-                    mapperType = ParameterizedTypeName.get(httpServerRequestMapper, ParameterizedTypeName.get(ClassName.get(CompletionStage.class), TypeName.get(argType)));
+                    mapperType = ParameterizedTypeName.get(httpServerRequestMapper, ParameterizedTypeName.get(ClassName.get(CompletionStage.class), TypeName.get(typeMirror).box()));
                 }
             }
             var b = ParameterSpec.builder(mapperType, mapperName);
