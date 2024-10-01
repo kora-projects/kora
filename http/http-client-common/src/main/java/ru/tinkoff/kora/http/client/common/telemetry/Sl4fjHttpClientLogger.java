@@ -168,22 +168,49 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
         boolean shouldWriteQueryParams = queryParams != null && !queryParams.isEmpty();
         boolean shouldWriteHeaders = headers != null && !headers.isEmpty();
         boolean shouldWriteBody = body != null;
-        requestLog.atLevel(level).addMarker(marker)
-            .log("HttpClient requesting {}{}{}{}", operation,
-                 shouldWriteQueryParams ? '?' + requestQueryParamsString(queryParams) : "",
-                 shouldWriteHeaders ? '\n' + requestHeaderString(headers) : "",
-                 shouldWriteBody ? '\n' + requestBodyString(body) : "");
+        if (shouldWriteQueryParams) {
+            if (shouldWriteHeaders && shouldWriteBody) {
+                requestLog.atLevel(level).addMarker(marker)
+                    .log("HttpClient requesting {}?{}\n{}\n{}",
+                         operation, requestQueryParamsString(queryParams), requestHeaderString(headers), requestBodyString(body));
+            } else if (shouldWriteHeaders || shouldWriteBody) {
+                requestLog.atLevel(level).addMarker(marker)
+                    .log("HttpClient requesting {}?{}\n{}",
+                         operation, requestQueryParamsString(queryParams),
+                         shouldWriteHeaders ? requestHeaderString(headers) : requestBodyString(body));
+            } else {
+                requestLog.atLevel(level).addMarker(marker).log("HttpClient requesting {}?{}", operation, requestQueryParamsString(queryParams));
+            }
+        } else {
+            if (shouldWriteHeaders && shouldWriteBody) {
+                requestLog.atLevel(level).addMarker(marker)
+                    .log("HttpClient requesting {}\n{}\n{}",
+                         operation, requestHeaderString(headers), requestBodyString(body));
+            } else if (shouldWriteHeaders || shouldWriteBody) {
+                requestLog.atLevel(level).addMarker(marker)
+                    .log("HttpClient requesting {}\n{}",
+                         operation, shouldWriteHeaders ? requestHeaderString(headers) : requestBodyString(body));
+            } else {
+                requestLog.atLevel(level).addMarker(marker).log("HttpClient requesting {}", operation);
+            }
+        }
     }
 
     private void logHttpResponse(Marker marker, Level level, Integer statusCode, String operation,
                                  @Nullable HttpHeaders headers, @Nullable String body) {
         boolean shouldWriteHeaders = headers != null && !headers.isEmpty();
         boolean shouldWriteBody = body != null;
-        responseLog.atLevel(level).addMarker(marker)
-            .log("HttpClient received {} from {}{}{}",
-                 statusCode, operation,
-                 shouldWriteHeaders ? '\n' + responseHeaderString(headers) : "",
-                 shouldWriteBody ? '\n' + responseBodyString(body) : "");
+        if (shouldWriteHeaders && shouldWriteBody) {
+            responseLog.atLevel(level).addMarker(marker)
+                .log("HttpClient received {} from {}\n{}\n{}", statusCode, operation, responseHeaderString(headers), responseBodyString(body));
+        } else if (shouldWriteHeaders || shouldWriteBody) {
+            responseLog.atLevel(level).addMarker(marker)
+                .log("HttpClient received {} from {}\n{}", statusCode, operation,
+                     shouldWriteHeaders ? responseHeaderString(headers) : responseBodyString(body));
+        } else {
+            responseLog.atLevel(level).addMarker(marker)
+                .log("HttpClient received {} from {}", statusCode, operation);
+        }
     }
 
     private String toMaskedString(HttpHeaders headers) {
@@ -197,7 +224,7 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
                 .append(maskedHeaders.contains(headerKey) ? maskFiller : String.join(", ", headerValues))
                 .append('\n');
         });
-        return sb.toString();
+        return sb.deleteCharAt(sb.length() - 1).toString();
     }
 
     private String toMaskedString(String queryParams) {

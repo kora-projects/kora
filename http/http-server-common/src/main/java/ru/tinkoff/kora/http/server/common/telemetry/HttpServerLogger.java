@@ -23,7 +23,7 @@ public interface HttpServerLogger {
     default void logEnd(String method,
                         String path,
                         String pathTemplate,
-                        Integer statusCode,
+                        int statusCode,
                         HttpResultCode resultCode,
                         long processingTime,
                         Map<String, ? extends Collection<String>> queryParams,
@@ -41,7 +41,7 @@ public interface HttpServerLogger {
     }
 
     /**
-     * @see #logEnd(String, String, String, Integer, HttpResultCode, long, Map, HttpHeaders, Throwable)
+     * @see #logEnd(String, String, String, int, HttpResultCode, long, Map, HttpHeaders, Throwable)
      */
     @Deprecated
     default void logEnd(String operation,
