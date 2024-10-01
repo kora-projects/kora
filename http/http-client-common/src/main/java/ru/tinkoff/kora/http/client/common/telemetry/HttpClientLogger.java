@@ -4,8 +4,6 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
-import java.util.Objects;
-
 public interface HttpClientLogger {
     boolean logRequest();
 
