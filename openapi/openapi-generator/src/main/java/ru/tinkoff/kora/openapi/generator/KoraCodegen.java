@@ -1767,7 +1767,7 @@ public class KoraCodegen extends DefaultCodegen {
                                 .filter(m -> m.name.equals(p.dataType))
                                 .findFirst();
 
-                            if(model.isPresent()) {
+                            if (model.isPresent()) {
                                 for (var child : Objects.requireNonNullElse(model.get().children, List.<CodegenModel>of())) {
                                     for (var variable : child.vars) {
                                         if (variable.hasValidation) {
