@@ -69,10 +69,12 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
 
     private fun generateResultSetMapper(resolver: Resolver, rowSetKSType: KSType): (() -> ExtensionResult)? {
         val rowSetParam = rowSetKSType.arguments[0].type!!.resolve()
+        if (rowSetParam.isMarkedNullable) {
+            return null
+        }
         if (!rowSetParam.isList()) {
             val resultSetMapperDecl = resolver.getClassDeclarationByName(CassandraTypes.resultSetMapper.canonicalName)!!
             val rowMapperDecl = resolver.getClassDeclarationByName(CassandraTypes.rowMapper.canonicalName)!!
-
             val resultSetMapperType = resultSetMapperDecl.asType(listOf(resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(rowSetParam), Variance.INVARIANT)))
             val rowMapperType = rowMapperDecl.asType(listOf(resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(rowSetParam), Variance.INVARIANT)))
 

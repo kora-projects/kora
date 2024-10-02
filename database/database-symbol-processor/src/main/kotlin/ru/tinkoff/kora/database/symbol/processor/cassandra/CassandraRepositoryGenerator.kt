@@ -251,7 +251,7 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         if (returnType == resolver.builtIns.unitType) {
             return null
         }
-        return Mapper(mapperType, mapperName)
+        return Mapper(CassandraTypes.resultSetMapper.parameterizedBy(returnType.toTypeName().copy(false)), mapperName)
     }
 
     override fun repositoryInterface() = repositoryInterface

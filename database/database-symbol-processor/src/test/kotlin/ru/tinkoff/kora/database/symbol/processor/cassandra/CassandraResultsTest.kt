@@ -20,6 +20,7 @@ import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraResultSetMapper
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowMapper
 import java.util.concurrent.CompletableFuture
 import kotlin.reflect.full.findAnnotations
+import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.jvmErasure
 
 class CassandraResultsTest : AbstractCassandraRepositoryTest() {
@@ -72,6 +73,11 @@ class CassandraResultsTest : AbstractCassandraRepositoryTest() {
             }
             
             """.trimIndent())
+        val mapperType = repository.objectClass.primaryConstructor!!.parameters[1].type
+        assertThat(mapperType.jvmErasure.java).isEqualTo(CassandraResultSetMapper::class.java)
+        assertThat(mapperType.arguments.first().type?.classifier).isEqualTo(Int::class)
+        assertThat(mapperType.arguments.first().type?.isMarkedNullable).isFalse()
+
         whenever(mapper.apply(ArgumentMatchers.any())).thenReturn(42)
         var result = repository.invoke<Any>("test")
         assertThat(result).isEqualTo(42)
