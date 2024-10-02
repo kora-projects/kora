@@ -37,10 +37,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
+import java.sql.Timestamp;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -1118,24 +1116,39 @@ public class KoraCodegen extends DefaultCodegen {
             if (defaultValue != null) {
                 String _default;
                 if (defaultValue instanceof Date date) {
-                    LocalDate localDate = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-                    String dateValue = String.format(Locale.ROOT, localDate.toString(), "");
-                    return "java.time.LocalDate.parse(\"" + dateValue + "\", java.time.format.DateTimeFormatter.ISO_DATE)";
+                    var dateDef = LocalDate.ofInstant(date.toInstant(), ZoneId.systemDefault()).format(DateTimeFormatter.ISO_DATE);
+                    return "java.time.LocalDate.parse(\"" + dateDef + "\")";
                 } else if (ModelUtils.isDateSchema(schema) && defaultValue instanceof String ds) {
                     return "java.time.LocalDate.parse(\"" + ds + "\", java.time.format.DateTimeFormatter.ISO_DATE)";
                 } else if (ModelUtils.isDateSchema(schema) && defaultValue instanceof Number dn) {
-                    var date = LocalDate.ofInstant(Instant.ofEpochMilli(dn.longValue()), ZoneId.systemDefault());
-                    String dateValue = String.format(Locale.ROOT, date.format(DateTimeFormatter.ISO_DATE), "");
-                    return "java.time.LocalDate.parse(\"" + dateValue + "\", java.time.format.DateTimeFormatter.ISO_DATE)";
-                } else if (defaultValue instanceof OffsetDateTime offsetDateTime) {
-                    String dateTimeValue = String.format(Locale.ROOT, offsetDateTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), "");
-                    return "java.time.OffsetDateTime.parse(\"" + dateTimeValue + "\", java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)";
-                } else if (ModelUtils.isDateTimeSchema(schema) && defaultValue instanceof String ds) {
-                    return "java.time.OffsetDateTime.parse(\"" + ds + "\", java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)";
-                } else if (ModelUtils.isDateTimeSchema(schema) && defaultValue instanceof Number dn) {
-                    var date = OffsetDateTime.ofInstant(Instant.ofEpochMilli(dn.longValue()), ZoneId.systemDefault());
-                    String dateTimeValue = String.format(Locale.ROOT, date.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), "");
-                    return "java.time.OffsetDateTime.parse(\"" + dateTimeValue + "\", java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)";
+                    return "java.time.LocalDate.ofInstant(java.time.Instant.ofEpochMilli(" + dn.longValue() + "L), java.time.ZoneId.systemDefault())";
+                } else if (defaultValue instanceof OffsetDateTime || ModelUtils.isDateTimeSchema(schema)) {
+                    final String def;
+                    if (defaultValue instanceof OffsetDateTime offsetDateTime) {
+                        String dateTimeValue = String.format(Locale.ROOT, offsetDateTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), "");
+                        def = "java.time.OffsetDateTime.parse(\"" + dateTimeValue + "\", java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)";
+                    } else if (defaultValue instanceof String ds) {
+                        def = "java.time.OffsetDateTime.parse(\"" + ds + "\", java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)";
+                    } else if (defaultValue instanceof Number dn) {
+                        def = "java.time.OffsetDateTime.ofInstant(java.time.Instant.ofEpochMilli(" + dn.longValue() + "L), java.time.ZoneId.systemDefault())";
+                    } else {
+                        return null;
+                    }
+
+                    var dateTimeFormat = typeMapping.getOrDefault("date-time", typeMapping.get("DateTime"));
+                    if (OffsetDateTime.class.getCanonicalName().equals(dateTimeFormat) || OffsetDateTime.class.getSimpleName().equals(dateTimeFormat)) {
+                        return def;
+                    } else if (Instant.class.getCanonicalName().equals(dateTimeFormat) || Instant.class.getSimpleName().equals(dateTimeFormat)) {
+                        return def + ".toInstant()";
+                    } else if (ZonedDateTime.class.getCanonicalName().equals(dateTimeFormat) || ZonedDateTime.class.getSimpleName().equals(dateTimeFormat)) {
+                        return def + ".toZonedDateTime()";
+                    } else if (LocalDateTime.class.getCanonicalName().equals(dateTimeFormat) || LocalDateTime.class.getSimpleName().equals(dateTimeFormat)) {
+                        return def + ".toLocalDateTime()";
+                    } else if (Timestamp.class.getCanonicalName().equals(dateTimeFormat) || Timestamp.class.getSimpleName().equals(dateTimeFormat)) {
+                        return "java.sql.Timestamp.from(" + def + ".toInstant())";
+                    } else {
+                        return null;
+                    }
                 } else if (defaultValue instanceof byte[] vb) {
                     _default = new String(vb);
                 } else {
