@@ -5,6 +5,7 @@ import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.toTypeName
 
 interface KoraAspect {
@@ -25,7 +26,7 @@ interface KoraAspect {
         data class MethodBody(val codeBlock: CodeBlock) : ApplyResult
     }
 
-    data class AspectContext(val fieldFactory: FieldFactory)
+    data class AspectContext(val typeBuilder: TypeSpec.Builder, val fieldFactory: FieldFactory)
 
     fun KSFunctionDeclaration.superCall(superName: String) = superCall(superName, this.parameters.map { it.name?.asString().toString() })
 
