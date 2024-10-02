@@ -63,6 +63,9 @@ public interface {{classname}} {
     @ru.tinkoff.kora.http.common.annotation.InterceptWith({{interceptorImpl}})
     {{/interceptorTags}}
     {{/koraInterceptors}}
+    {{#isDeprecated}}
+    @Deprecated
+    {{/isDeprecated}}
     {{#isAsync}}
     CompletionStage<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {{operationId}}(
     {{/isAsync}}

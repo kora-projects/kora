@@ -54,6 +54,9 @@ interface {{classname}} {
     @ru.tinkoff.kora.http.common.annotation.InterceptWith({{interceptorImpl}})
     {{/interceptorTags}}
     {{/koraInterceptors}}
+    {{#isDeprecated}}
+    @Deprecated(message = "Deprecated")
+    {{/isDeprecated}}
     {{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}({{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse
 
 {{#hasFormParams}}
