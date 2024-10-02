@@ -9,8 +9,10 @@ import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.stream.Collectors;
@@ -215,16 +217,20 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
 
     private String toMaskedString(HttpHeaders headers) {
         var sb = new StringBuilder(headers.size() * AVERAGE_HEADER_SIZE);
-        headers.forEach((headerEntry) -> {
+        final Iterator<Map.Entry<String, List<String>>> iterator = headers.iterator();
+        while (iterator.hasNext()) {
+            final Map.Entry<String, List<String>> headerEntry = iterator.next();
             // В HttpHeaders все заголовки в нижнем регистре, приведение не требуется
             final String headerKey = headerEntry.getKey();
             final List<String> headerValues = headerEntry.getValue();
             sb.append(headerKey)
                 .append(": ")
-                .append(maskedHeaders.contains(headerKey) ? maskFiller : String.join(", ", headerValues))
-                .append('\n');
-        });
-        return sb.deleteCharAt(sb.length() - 1).toString();
+                .append(maskedHeaders.contains(headerKey) ? maskFiller : String.join(", ", headerValues));
+            if (iterator.hasNext()) {
+                sb.append('\n');
+            }
+        }
+        return sb.toString();
     }
 
     private String toMaskedString(String queryParams) {
