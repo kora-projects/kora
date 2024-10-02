@@ -14,7 +14,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             version('kafka', '3.7.0')
             version('vertx', '4.3.8')
             version('testcontainers', '1.18.3')
-            version('cassandra', '4.17.0')
+            version('cassandra', '4.18.1')
             version('grpc-java', '1.65.1')
             version('grpc-kotlin', '1.4.1')
             version('kotlin-testing', '1.5.0')
@@ -46,8 +46,8 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             library('typesafe-config', 'com.typesafe', 'config').version("1.4.3")
             library('snakeyaml-engine', 'org.snakeyaml', 'snakeyaml-engine').version("2.7")
 
-            library('cassandra-driver', 'com.datastax.oss', 'java-driver-core').versionRef('cassandra')
-            library('cassandra-metrics', 'com.datastax.oss', 'java-driver-metrics-micrometer').versionRef('cassandra')
+            library('cassandra-driver', 'org.apache.cassandra', 'java-driver-core').versionRef('cassandra')
+            library('cassandra-metrics', 'org.apache.cassandra', 'java-driver-metrics-micrometer').versionRef('cassandra')
 
             library('reactive-streams', 'org.reactivestreams', 'reactive-streams').version("1.0.4")
             library('reactor-core', 'io.projectreactor', 'reactor-core').versionRef('reactor')

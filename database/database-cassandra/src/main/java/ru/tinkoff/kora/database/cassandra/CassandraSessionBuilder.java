@@ -6,6 +6,9 @@ import com.datastax.oss.driver.internal.core.config.typesafe.DefaultProgrammatic
 import com.datastax.oss.driver.internal.metrics.micrometer.MicrometerMetricsFactory;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 
+import java.time.Duration;
+import java.util.Arrays;
+
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.*;
 
 public class CassandraSessionBuilder {
@@ -84,6 +87,9 @@ public class CassandraSessionBuilder {
             }
         }
 
+        if(config.metrics() != null) {
+            builder.withBoolean(METRICS_GENERATE_AGGREGABLE_HISTOGRAMS, config.metrics().publishPercentileHistogram());
+        }
         if (config.metrics() != null && config.metrics().session() != null) {
             applyMetricsSessionConfig(builder, config.metrics().session());
         }
@@ -123,28 +129,49 @@ public class CassandraSessionBuilder {
     }
 
     private void applyMetricsNodeConfig(DefaultProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.MetricsConfig.NodeConfig node) {
-        if (node.enabled() != null) builder.withStringList(METRICS_NODE_ENABLED, node.enabled());
+        if (node.enabled() != null && !node.enabled().isEmpty()) builder.withStringList(METRICS_NODE_ENABLED, node.enabled());
         if (node.cqlMessages() != null) {
             if (node.cqlMessages().highestLatency() != null) builder.withDuration(METRICS_NODE_CQL_MESSAGES_HIGHEST, node.cqlMessages().highestLatency());
             if (node.cqlMessages().lowestLatency() != null) builder.withDuration(METRICS_NODE_CQL_MESSAGES_LOWEST, node.cqlMessages().lowestLatency());
-            if (node.cqlMessages().refreshInterval() != null) builder.withDuration(METRICS_NODE_CQL_MESSAGES_INTERVAL, node.cqlMessages().refreshInterval());
-            if (node.cqlMessages().significantDigits() != null) builder.withInt(METRICS_NODE_CQL_MESSAGES_DIGITS, node.cqlMessages().significantDigits());
+            if (node.cqlMessages().refreshInterval() != null && !node.cqlMessages().refreshInterval().isZero()) builder.withDuration(METRICS_NODE_CQL_MESSAGES_INTERVAL, node.cqlMessages().refreshInterval());
+            if (node.cqlMessages().significantDigits() != null) {
+                builder.withInt(METRICS_NODE_CQL_MESSAGES_DIGITS, node.cqlMessages().significantDigits());
+            } else {
+                builder.without(METRICS_NODE_CQL_MESSAGES_DIGITS);
+            }
+            if (node.cqlMessages().slo() != null && node.cqlMessages().slo().length > 0) {
+                builder.withDurationList(METRICS_NODE_CQL_MESSAGES_SLO, Arrays.stream(node.cqlMessages().slo()).mapToObj(v -> Duration.ofMillis(((long) (v)))).toList());
+            }
         }
     }
 
     private void applyMetricsSessionConfig(DefaultProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.MetricsConfig.SessionConfig session) {
-        if (session.enabled() != null) builder.withStringList(METRICS_SESSION_ENABLED, session.enabled());
+        if (session.enabled() != null && !session.enabled().isEmpty()) builder.withStringList(METRICS_SESSION_ENABLED, session.enabled());
         if (session.cqlRequests() != null) {
             if (session.cqlRequests().highestLatency() != null) builder.withDuration(METRICS_SESSION_CQL_REQUESTS_HIGHEST, session.cqlRequests().highestLatency());
             if (session.cqlRequests().lowestLatency() != null) builder.withDuration(METRICS_SESSION_CQL_REQUESTS_LOWEST, session.cqlRequests().lowestLatency());
             if (session.cqlRequests().refreshInterval() != null) builder.withDuration(METRICS_SESSION_CQL_REQUESTS_INTERVAL, session.cqlRequests().refreshInterval());
-            if (session.cqlRequests().significantDigits() != null) builder.withInt(METRICS_SESSION_CQL_REQUESTS_DIGITS, session.cqlRequests().significantDigits());
+            if (session.cqlRequests().significantDigits() != null) {
+                builder.withInt(METRICS_SESSION_CQL_REQUESTS_DIGITS, session.cqlRequests().significantDigits());
+            } else {
+                builder.without(METRICS_SESSION_CQL_REQUESTS_DIGITS);
+            }
+            if (session.cqlRequests().slo() != null && session.cqlRequests().slo().length > 0) {
+                builder.withDurationList(METRICS_SESSION_CQL_REQUESTS_SLO, Arrays.stream(session.cqlRequests().slo()).mapToObj(v -> Duration.ofMillis(((long) (v)))).toList());
+            }
         }
         if (session.throttlingDelay() != null) {
             if (session.throttlingDelay().highestLatency() != null) builder.withDuration(METRICS_SESSION_THROTTLING_HIGHEST, session.throttlingDelay().highestLatency());
             if (session.throttlingDelay().lowestLatency() != null) builder.withDuration(METRICS_SESSION_THROTTLING_LOWEST, session.throttlingDelay().lowestLatency());
             if (session.throttlingDelay().refreshInterval() != null) builder.withDuration(METRICS_SESSION_THROTTLING_INTERVAL, session.throttlingDelay().refreshInterval());
-            if (session.throttlingDelay().significantDigits() != null) builder.withInt(METRICS_SESSION_THROTTLING_DIGITS, session.throttlingDelay().significantDigits());
+            if (session.throttlingDelay().significantDigits() != null) {
+                builder.withInt(METRICS_SESSION_THROTTLING_DIGITS, session.throttlingDelay().significantDigits());
+            } else {
+                builder.without(METRICS_SESSION_THROTTLING_DIGITS);
+            }
+            if (session.throttlingDelay().slo() != null && session.throttlingDelay().slo().length > 0) {
+                builder.withDurationList(METRICS_SESSION_THROTTLING_SLO, Arrays.stream(session.throttlingDelay().slo()).mapToObj(v -> Duration.ofMillis(((long) (v)))).toList());
+            }
         }
     }
 

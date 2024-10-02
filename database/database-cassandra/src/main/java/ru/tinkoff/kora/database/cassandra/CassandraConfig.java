@@ -301,6 +301,7 @@ public interface CassandraConfig {
 
         @ConfigValueExtractor
         interface MetricsConfig {
+
             IdGenerator idGenerator();
 
             @Nullable
@@ -309,8 +310,13 @@ public interface CassandraConfig {
             @Nullable
             SessionConfig session();
 
+            default boolean publishPercentileHistogram() {
+                return false;
+            }
+
             @ConfigValueExtractor
             interface IdGenerator {
+
                 default String name() {
                     return "TaggingMetricIdGenerator";
                 }
@@ -337,7 +343,6 @@ public interface CassandraConfig {
                     );
                 }
 
-                @Nullable
                 Config cqlMessages();
             }
 
@@ -353,30 +358,36 @@ public interface CassandraConfig {
                         DefaultSessionMetric.CQL_REQUESTS.getPath(),
                         DefaultSessionMetric.CQL_CLIENT_TIMEOUTS.getPath(),
                         DefaultSessionMetric.CQL_PREPARED_CACHE_SIZE.getPath(),
-                        DefaultSessionMetric.THROTTLING_DELAY.getPath()
+                        DefaultSessionMetric.THROTTLING_DELAY.getPath(),
+                        DefaultSessionMetric.THROTTLING_QUEUE_SIZE.getPath()
                     );
                 }
 
-                @Nullable
                 Config cqlRequests();
 
-                @Nullable
                 Config throttlingDelay();
             }
 
             @ConfigValueExtractor
             interface Config {
-                @Nullable
-                Duration lowestLatency();
 
-                @Nullable
-                Duration highestLatency();
+                default Duration lowestLatency() {
+                    return Duration.ofMillis(1);
+                }
+
+                default Duration highestLatency() {
+                    return Duration.ofSeconds(90);
+                }
 
                 @Nullable
                 Integer significantDigits();
 
                 @Nullable
                 Duration refreshInterval();
+
+                default double[] slo() {
+                    return TelemetryConfig.MetricsConfig.DEFAULT_SLO;
+                }
             }
         }
 
