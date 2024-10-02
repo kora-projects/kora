@@ -1117,7 +1117,7 @@ public class KoraCodegen extends DefaultCodegen {
                 String _default;
                 if (defaultValue instanceof Date date) {
                     var dateDef = LocalDate.ofInstant(date.toInstant(), ZoneId.systemDefault()).format(DateTimeFormatter.ISO_DATE);
-                    return "java.time.LocalDate.parse(\"" + dateDef + "\")";
+                    return "java.time.LocalDate.parse(\"" + dateDef + "\", java.time.format.DateTimeFormatter.ISO_DATE)";
                 } else if (ModelUtils.isDateSchema(schema) && defaultValue instanceof String ds) {
                     return "java.time.LocalDate.parse(\"" + ds + "\", java.time.format.DateTimeFormatter.ISO_DATE)";
                 } else if (ModelUtils.isDateSchema(schema) && defaultValue instanceof Number dn) {
