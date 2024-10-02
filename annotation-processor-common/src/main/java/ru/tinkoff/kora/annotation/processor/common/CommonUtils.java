@@ -41,16 +41,31 @@ public class CommonUtils {
         var isNullable = element.getAnnotationMirrors()
             .stream()
             .anyMatch(a -> a.getAnnotationType().toString().endsWith(".Nullable"));
-
-        if (isNullable || !(element instanceof RecordComponentElement rce)) {
-            return isNullable;
+        if (isNullable) {
+            return true;
         }
+        if (element instanceof ExecutableElement method) {
+            if (method.getReturnType().getKind().isPrimitive()) {
+                return false;
+            }
+            return isNullable(method.getReturnType());
+        }
+        if (element instanceof VariableElement ve) {
+            var type = ve.asType();
+            if (type.getKind().isPrimitive()) {
+                return false;
+            }
+            return isNullable(type);
+        }
+        if (element instanceof RecordComponentElement rce) {
+            return rce.getEnclosingElement().getEnclosedElements()
+                .stream()
+                .filter(e -> e.getKind() == ElementKind.FIELD)
+                .filter(e -> e.getSimpleName().contentEquals(rce.getSimpleName()))
+                .anyMatch(CommonUtils::isNullable);
+        }
+        return false;
 
-        return rce.getEnclosingElement().getEnclosedElements()
-            .stream()
-            .filter(e -> e.getKind() == ElementKind.FIELD)
-            .filter(e -> e.getSimpleName().contentEquals(rce.getSimpleName()))
-            .anyMatch(CommonUtils::isNullable);
     }
 
     public static void safeWriteTo(ProcessingEnvironment processingEnv, JavaFile file) {
@@ -187,8 +202,8 @@ public class CommonUtils {
 
         public boolean isGeneric() {
             return mapperClass instanceof DeclaredType dt
-                   && dt.asElement() instanceof TypeElement te
-                   && !te.getTypeParameters().isEmpty();
+                && dt.asElement() instanceof TypeElement te
+                && !te.getTypeParameters().isEmpty();
         }
 
         public ParameterizedTypeName parameterized(TypeName tn) {
@@ -403,8 +418,8 @@ public class CommonUtils {
         }
         var name = dt.asElement().toString();
         return name.equals(List.class.getCanonicalName())
-               || name.equals(ArrayList.class.getCanonicalName())
-               || name.equals(LinkedList.class.getCanonicalName());
+            || name.equals(ArrayList.class.getCanonicalName())
+            || name.equals(LinkedList.class.getCanonicalName());
     }
 
     public static boolean isSet(TypeMirror type) {
@@ -416,28 +431,28 @@ public class CommonUtils {
         }
         var name = dt.asElement().toString();
         return name.equals(Set.class.getCanonicalName())
-               || name.equals(HashSet.class.getCanonicalName())
-               || name.equals(TreeSet.class.getCanonicalName())
-               || name.equals(SortedSet.class.getCanonicalName())
-               || name.equals(LinkedHashSet.class.getCanonicalName())
-               || name.equals(CopyOnWriteArraySet.class.getCanonicalName())
-               || name.equals(ConcurrentSkipListSet.class.getCanonicalName());
+            || name.equals(HashSet.class.getCanonicalName())
+            || name.equals(TreeSet.class.getCanonicalName())
+            || name.equals(SortedSet.class.getCanonicalName())
+            || name.equals(LinkedHashSet.class.getCanonicalName())
+            || name.equals(CopyOnWriteArraySet.class.getCanonicalName())
+            || name.equals(ConcurrentSkipListSet.class.getCanonicalName());
     }
 
     public static boolean isQueue(TypeMirror type) {
         return type.getKind() == TypeKind.DECLARED
-               && type instanceof DeclaredType dt
-               && (dt.asElement().toString().equals(Queue.class.getCanonicalName())
-                   || dt.asElement().toString().equals(Deque.class.getCanonicalName()));
+            && type instanceof DeclaredType dt
+            && (dt.asElement().toString().equals(Queue.class.getCanonicalName())
+            || dt.asElement().toString().equals(Deque.class.getCanonicalName()));
     }
 
     public static boolean isCollection(TypeMirror type) {
         return type.getKind() == TypeKind.DECLARED
-               && type instanceof DeclaredType dt
-               && (dt.asElement().toString().equals(Collection.class.getCanonicalName())
-                   || isList(type)
-                   || isSet(type)
-                   || isQueue(type));
+            && type instanceof DeclaredType dt
+            && (dt.asElement().toString().equals(Collection.class.getCanonicalName())
+            || isList(type)
+            || isSet(type)
+            || isQueue(type));
     }
 
     public static boolean isMap(TypeMirror type) {
@@ -450,41 +465,41 @@ public class CommonUtils {
         var name = dt.asElement().toString();
 
         return name.equals(Map.class.getCanonicalName())
-               || name.equals(HashMap.class.getCanonicalName())
-               || name.equals(TreeMap.class.getCanonicalName())
-               || name.equals(LinkedHashMap.class.getCanonicalName())
-               || name.equals(ConcurrentMap.class.getCanonicalName())
-               || name.equals(ConcurrentHashMap.class.getCanonicalName())
-               || name.equals(SortedMap.class.getCanonicalName())
-               || name.equals(NavigableMap.class.getCanonicalName())
-               || name.equals(ConcurrentSkipListMap.class.getCanonicalName())
-               || name.equals(IdentityHashMap.class.getCanonicalName())
-               || name.equals(WeakHashMap.class.getCanonicalName())
-               || name.equals(EnumMap.class.getCanonicalName());
+            || name.equals(HashMap.class.getCanonicalName())
+            || name.equals(TreeMap.class.getCanonicalName())
+            || name.equals(LinkedHashMap.class.getCanonicalName())
+            || name.equals(ConcurrentMap.class.getCanonicalName())
+            || name.equals(ConcurrentHashMap.class.getCanonicalName())
+            || name.equals(SortedMap.class.getCanonicalName())
+            || name.equals(NavigableMap.class.getCanonicalName())
+            || name.equals(ConcurrentSkipListMap.class.getCanonicalName())
+            || name.equals(IdentityHashMap.class.getCanonicalName())
+            || name.equals(WeakHashMap.class.getCanonicalName())
+            || name.equals(EnumMap.class.getCanonicalName());
     }
 
     public static boolean isOptional(TypeMirror type) {
         return type.getKind() == TypeKind.DECLARED
-               && type instanceof DeclaredType dt
-               && dt.asElement().toString().equals(Optional.class.getCanonicalName());
+            && type instanceof DeclaredType dt
+            && dt.asElement().toString().equals(Optional.class.getCanonicalName());
     }
 
     public static boolean isMono(TypeMirror type) {
         return type.getKind() == TypeKind.DECLARED
-               && type instanceof DeclaredType dt
-               && dt.asElement().toString().equals(CommonClassNames.mono.canonicalName());
+            && type instanceof DeclaredType dt
+            && dt.asElement().toString().equals(CommonClassNames.mono.canonicalName());
     }
 
     public static boolean isFlux(TypeMirror type) {
         return type.getKind() == TypeKind.DECLARED
-               && type instanceof DeclaredType dt
-               && dt.asElement().toString().equals(CommonClassNames.flux.canonicalName());
+            && type instanceof DeclaredType dt
+            && dt.asElement().toString().equals(CommonClassNames.flux.canonicalName());
     }
 
     public static boolean isPublisher(TypeMirror type) {
         return type.getKind() == TypeKind.DECLARED
-               && type instanceof DeclaredType dt
-               && dt.asElement().toString().equals(CommonClassNames.publisher.canonicalName());
+            && type instanceof DeclaredType dt
+            && dt.asElement().toString().equals(CommonClassNames.publisher.canonicalName());
     }
 
     public static boolean isFuture(TypeMirror type) {
@@ -498,6 +513,6 @@ public class CommonUtils {
 
         final String name = dt.asElement().toString();
         return name.equals(CompletableFuture.class.getCanonicalName())
-               || name.equals(CompletionStage.class.getCanonicalName());
+            || name.equals(CompletionStage.class.getCanonicalName());
     }
 }
