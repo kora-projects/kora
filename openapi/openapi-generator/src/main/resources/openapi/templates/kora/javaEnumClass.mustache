@@ -2,6 +2,9 @@
    * {{^description}}Gets or Sets {{{name}}}{{/description}}{{#description}}{{{description}}}{{/description}}
    */
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora")
+  {{#additionalEnumTypeAnnotations}}
+  {{{.}}}
+  {{/additionalEnumTypeAnnotations}}
   public enum {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{classname}}{{/datatypeWithEnum}} {
         {{#allowableValues}}
             {{#enumVars}}

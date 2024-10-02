@@ -34,6 +34,9 @@ sealed interface {{classname}} {
  * @param {{name}} {{#description}}{{.}}{{/description}}{{^description}}{{name}}{{/description}}{{/allVars}}
  */
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora kotlin")
+{{#additionalModelTypeAnnotations}}
+{{{.}}}
+{{/additionalModelTypeAnnotations}}
 @ru.tinkoff.kora.json.common.annotation.JsonWriter
 {{#vendorExtensions.x-discriminator-value}}@ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorValue(value = {{{vendorExtensions.x-discriminator-value}}}){{/vendorExtensions.x-discriminator-value}}
 {{#vendorExtensions.x-enable-validation}}@ru.tinkoff.kora.validation.common.annotation.Valid{{/vendorExtensions.x-enable-validation}}
