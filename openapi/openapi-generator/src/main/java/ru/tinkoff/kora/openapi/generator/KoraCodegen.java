@@ -1144,8 +1144,6 @@ public class KoraCodegen extends DefaultCodegen {
                         return def + ".toZonedDateTime()";
                     } else if (LocalDateTime.class.getCanonicalName().equals(dateTimeFormat) || LocalDateTime.class.getSimpleName().equals(dateTimeFormat)) {
                         return def + ".toLocalDateTime()";
-                    } else if (Timestamp.class.getCanonicalName().equals(dateTimeFormat) || Timestamp.class.getSimpleName().equals(dateTimeFormat)) {
-                        return "java.sql.Timestamp.from(" + def + ".toInstant())";
                     } else {
                         return null;
                     }
