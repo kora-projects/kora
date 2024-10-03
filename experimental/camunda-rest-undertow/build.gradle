@@ -16,8 +16,10 @@ dependencies {
     api project(":common")
     api libs.camunda7.rest.jakarta
     api libs.jakarta.rs.api
-    api libs.undertow.core
     api libs.undertow.servlet
+    api libs.undertow.core
+    api libs.jboss.threads
+    api libs.jboss.logging
 
     testImplementation libs.jdbc.postgresql
     testImplementation project(":database:database-jdbc")

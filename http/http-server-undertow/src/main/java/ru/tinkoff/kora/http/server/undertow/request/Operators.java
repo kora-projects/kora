@@ -2,7 +2,10 @@ package ru.tinkoff.kora.http.server.undertow.request;
 
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
-public class Operators {
+public final class Operators {
+
+    private Operators() { }
+
     public static <T> long addCap(AtomicLongFieldUpdater<T> updater, T instance, long toAdd) {
         long r, u;
         for (;;) {

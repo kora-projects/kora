@@ -4,7 +4,10 @@ import io.undertow.server.HttpServerExchange;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Context;
 
-public class UndertowContext {
+public final class UndertowContext {
+
+    private UndertowContext() { }
+
     private static final Context.Key<HttpServerExchange> KEY = new Context.Key<>() {
         @Override
         protected HttpServerExchange copy(HttpServerExchange object) {

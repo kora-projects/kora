@@ -2,6 +2,7 @@ package ru.tinkoff.kora.http.server.undertow;
 
 import io.undertow.Undertow;
 import io.undertow.connector.ByteBufferPool;
+import io.undertow.server.DefaultByteBufferPool;
 import org.xnio.XnioWorker;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.application.graph.Wrapped;
@@ -11,7 +12,6 @@ import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.HttpServerModule;
 import ru.tinkoff.kora.http.server.common.PrivateApiHandler;
-import ru.tinkoff.kora.http.server.undertow.pool.KoraByteBufferPool;
 
 public interface UndertowModule extends HttpServerModule {
 
@@ -23,7 +23,7 @@ public interface UndertowModule extends HttpServerModule {
     default UndertowPrivateHttpServer undertowPrivateHttpServer(ValueOf<HttpServerConfig> configValue,
                                                                 ValueOf<UndertowPrivateApiHandler> privateApiHandler,
                                                                 @Tag(Undertow.class) XnioWorker xnioWorker,
-                                                                ByteBufferPool byteBufferPool) {
+                                                                @Tag(UndertowPrivateHttpServer.class) ByteBufferPool byteBufferPool) {
         return new UndertowPrivateHttpServer(configValue, privateApiHandler, xnioWorker, byteBufferPool);
     }
 
@@ -32,20 +32,32 @@ public interface UndertowModule extends HttpServerModule {
         return new XnioLifecycle(configValue);
     }
 
+    @Tag(UndertowPrivateHttpServer.class)
     @DefaultComponent
-    default ByteBufferPool undertowByteBufferPool() {
-        long maxMemory = Runtime.getRuntime().maxMemory();
+    default ByteBufferPool undertowPrivateByteBufferPool() {
+        final long maxMemory = Runtime.getRuntime().maxMemory();
+        final boolean directBuffers;
+        final int bufferSize;
+        final int maxPoolSize;
         //smaller than 64mb of ram we use 512b buffers
         if (maxMemory < 64 * 1024 * 1024) {
-            //use 512b buffers
-            return new KoraByteBufferPool(false, 512, -1, 4);
+            // use 512b buffers
+            maxPoolSize = 32;
+            bufferSize = 512;
+            directBuffers = false;
         } else if (maxMemory < 128 * 1024 * 1024) {
             //use 1k buffers
-            return new KoraByteBufferPool(true, 1024, -1, 4);
+            maxPoolSize = 16;
+            bufferSize = 1024;
+            directBuffers = true;
         } else {
             //use 16k buffers for best performance
             //as 16k is generally the max amount of data that can be sent in a single write() call
-            return new KoraByteBufferPool(true, 1024 * 16 - 20, -1, 4);
+            maxPoolSize = 8;
+            bufferSize = 1024 * 16 - 20;
+            directBuffers = true;
         }
+
+        return new DefaultByteBufferPool(directBuffers, bufferSize, maxPoolSize, 4);
     }
 }

@@ -22,7 +22,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             version('kotlinpoet', '1.18.1')
             version('swagger', '2.2.22')
             version('opentelemetry', '1.37.0')
-            version('undertow', '2.3.13.Final')
+            version('undertow', '2.3.17.Final')
             version('camunda7', '7.21.0')
 
             library('jsr305', 'com.google.code.findbugs', 'jsr305').version('3.0.2')
@@ -76,6 +76,8 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
 
             library("jms-api", "javax.jms", "javax.jms-api").version("2.0.1")
 
+            library("jboss-threads", "org.jboss.threads", "jboss-threads").version("3.5.1.Final")
+            library("jboss-logging", "org.jboss.logging", "jboss-logging").version("3.5.3.Final")
             library("undertow-core", "io.undertow", "undertow-core").versionRef("undertow")
             library("undertow-servlet", "io.undertow", "undertow-servlet").versionRef("undertow")
             library("async-http-client", "org.asynchttpclient", "async-http-client").version("2.12.3")

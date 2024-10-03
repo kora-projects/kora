@@ -1,9 +1,11 @@
 dependencies {
-    api project(':common')
-    api project(':http:http-server-common')
-    api project(':logging:logging-common')
+    api project(":common")
+    api project(":http:http-server-common")
+    api project(":logging:logging-common")
 
     api libs.undertow.core
+    api libs.jboss.threads
+    api libs.jboss.logging
 
     testImplementation testFixtures(project(":http:http-server-common"))
 }
