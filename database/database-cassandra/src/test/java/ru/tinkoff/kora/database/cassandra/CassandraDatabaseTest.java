@@ -48,7 +48,7 @@ class CassandraDatabaseTest {
                 null, null, null, null, null, null, null, null, null,
                 new $CassandraConfig_Advanced_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(
                     new $CassandraConfig_Advanced_MetricsConfig_IdGenerator_ConfigValueExtractor.IdGenerator_Defaults(),
-                    null, null
+                    null, null, false
                 ),
                 null, null, null, null, null, null, null, null, null
             ),
