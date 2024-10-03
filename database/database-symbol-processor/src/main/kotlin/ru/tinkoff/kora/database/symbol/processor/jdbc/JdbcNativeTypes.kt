@@ -122,13 +122,13 @@ object JdbcNativeTypes {
             LocalDate::class.asTypeName(),
             { rsName, i -> CodeBlock.of("%N.getObject(%L, %T::class.java)", rsName, i, LocalDate::class.java) },
             { stmt, variableName, idx -> CodeBlock.of("%N.setObject(%L, %L, %T.DATE)", stmt, idx, variableName, Types::class) },
-            { stmt, idx -> CodeBlock.of("%N.setNull(%L, %T.NUMERIC)", stmt, idx, Types::class) }
+            { stmt, idx -> CodeBlock.of("%N.setNull(%L, %T.DATE)", stmt, idx, Types::class) }
         ),
         JdbcNativeType.of(
             LocalDate::class.asTypeName().copy(true),
             { rsName, i -> CodeBlock.of("%N.getObject(%L, %T::class.java)", rsName, i, LocalDate::class.java) },
             { stmt, variableName, idx -> CodeBlock.of("%N.setObject(%L, %L, %T.DATE)", stmt, idx, variableName, Types::class) },
-            { stmt, idx -> CodeBlock.of("%N.setNull(%L, %T.NUMERIC)", stmt, idx, Types::class) }
+            { stmt, idx -> CodeBlock.of("%N.setNull(%L, %T.DATE)", stmt, idx, Types::class) }
         ),
     )
 
