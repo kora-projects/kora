@@ -2,6 +2,7 @@ package ru.tinkoff.kora.http.server.undertow;
 
 import io.undertow.Undertow;
 import io.undertow.connector.ByteBufferPool;
+import io.undertow.server.DefaultByteBufferPool;
 import jakarta.annotation.Nullable;
 import org.xnio.XnioWorker;
 import ru.tinkoff.kora.application.graph.ValueOf;
@@ -26,12 +27,38 @@ public interface UndertowHttpServerModule extends UndertowModule {
     default UndertowHttpServer undertowHttpServer(ValueOf<HttpServerConfig> config,
                                                   ValueOf<UndertowPublicApiHandler> handler,
                                                   @Tag(Undertow.class) XnioWorker worker,
-                                                  ByteBufferPool byteBufferPool) {
+                                                  @Tag(Undertow.class) ByteBufferPool byteBufferPool) {
         return new UndertowHttpServer(config, handler, worker, byteBufferPool);
     }
 
     @DefaultComponent
     default BlockingRequestExecutor undertowBlockingRequestExecutor(@Tag(Undertow.class) XnioWorker xnioWorker) {
         return new BlockingRequestExecutor.Default(xnioWorker);
+    }
+
+    @Tag(Undertow.class)
+    @DefaultComponent
+    default ByteBufferPool undertowPublicByteBufferPool() {
+        final long maxMemory = Runtime.getRuntime().maxMemory();
+        final boolean directBuffers;
+        final int bufferSize;
+        final int maxPoolSize = -1; //TODO investigate PlatformDependent#estimateMaxDirectMemory() analogs to check for direct buffer max memory limit or MaxDirectMemorySize flag detection
+        //smaller than 64mb of ram we use 512b buffers
+        if (maxMemory < 64 * 1024 * 1024) {
+            // use 512b buffers
+            bufferSize = 512;
+            directBuffers = false;
+        } else if (maxMemory < 128 * 1024 * 1024) {
+            //use 1k buffers
+            bufferSize = 1024;
+            directBuffers = true;
+        } else {
+            //use 16k buffers for best performance
+            //as 16k is generally the max amount of data that can be sent in a single write() call
+            bufferSize = 1024 * 16 - 20;
+            directBuffers = true;
+        }
+
+        return new DefaultByteBufferPool(directBuffers, bufferSize, maxPoolSize, 4);
     }
 }

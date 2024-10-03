@@ -22,7 +22,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             version('kotlinpoet', '1.18.1')
             version('swagger', '2.2.22')
             version('opentelemetry', '1.37.0')
-            version('undertow', '2.3.13.Final')
+            version('undertow', '2.3.17.Final')
             version('camunda7', '7.21.0')
 
             library('jsr305', 'com.google.code.findbugs', 'jsr305').version('3.0.2')

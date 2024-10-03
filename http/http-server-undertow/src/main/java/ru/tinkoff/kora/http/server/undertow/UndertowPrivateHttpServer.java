@@ -63,9 +63,9 @@ public class UndertowPrivateHttpServer implements PrivateHttpServer {
 
     private Undertow createServer() {
         return Undertow.builder()
-            .setByteBufferPool(this.byteBufferPool)
             .addHttpListener(this.config.get().privateApiHttpPort(), "0.0.0.0", exchange -> this.privateApiHandler.get().handleRequest(exchange))
             .setWorker(this.xnioWorker)
+            .setByteBufferPool(this.byteBufferPool)
             .build();
     }
 
