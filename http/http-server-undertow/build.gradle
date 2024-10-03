@@ -3,10 +3,9 @@ dependencies {
     api project(":http:http-server-common")
     api project(":logging:logging-common")
 
-    api "org.jboss.threads:jboss-threads:3.5.1.Final"
-    api(libs.undertow.core) {
-        exclude group: "org.jboss.threads", module: "jboss-threads"
-    }
+    api libs.undertow.core
+    api libs.jboss.threads
+    api libs.jboss.logging
 
     testImplementation testFixtures(project(":http:http-server-common"))
 }
