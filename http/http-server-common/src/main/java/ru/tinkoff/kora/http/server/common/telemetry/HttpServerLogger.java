@@ -9,12 +9,12 @@ public interface HttpServerLogger {
 
     boolean isEnabled();
 
-    void logStart(String operation, @Nullable HttpHeaders headers);
+    void logStart(String operation, HttpHeaders headers);
 
     void logEnd(String operation,
                 Integer statusCode,
                 HttpResultCode resultCode,
                 long processingTime,
-                @Nullable HttpHeaders headers,
+                HttpHeaders headers,
                 @Nullable Throwable exception);
 }
