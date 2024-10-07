@@ -25,12 +25,12 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
     private final Logger responseLog;
     private final Set<String> maskedQueryParams;
     private final Set<String> maskedHeaders;
-    private final String maskFiller;
+    private final String mask;
     private final Boolean pathTemplate;
 
     public Sl4fjHttpClientLogger(Logger requestLog, Logger responseLog,
                                  Set<String> maskedQueryParams, Set<String> maskedHeaders,
-                                 String maskFiller, Boolean pathTemplate) {
+                                 String mask, Boolean pathTemplate) {
         this.requestLog = requestLog;
         this.responseLog = responseLog;
         this.maskedQueryParams = maskedQueryParams.stream()
@@ -39,7 +39,7 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
         this.maskedHeaders = maskedHeaders.stream()
             .map(e -> e.toLowerCase(Locale.ROOT))
             .collect(Collectors.toSet());
-        this.maskFiller = maskFiller;
+        this.mask = mask;
         this.pathTemplate = pathTemplate;
     }
 
@@ -225,7 +225,7 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
             final List<String> headerValues = headerEntry.getValue();
             sb.append(headerKey)
                 .append(": ")
-                .append(maskedHeaders.contains(headerKey) ? maskFiller : String.join(", ", headerValues));
+                .append(maskedHeaders.contains(headerKey) ? mask : String.join(", ", headerValues));
             if (iterator.hasNext()) {
                 sb.append('\n');
             }
@@ -246,7 +246,7 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
                 }
                 final String paramName = str.substring(0, i);
                 if (maskedQueryParams.contains(paramName.toLowerCase(Locale.ROOT))) {
-                    return paramName + '=' + maskFiller;
+                    return paramName + '=' + mask;
                 } else {
                     return str;
                 }

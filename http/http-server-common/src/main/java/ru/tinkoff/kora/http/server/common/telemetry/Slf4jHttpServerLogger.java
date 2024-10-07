@@ -26,13 +26,13 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
     private final boolean logStacktrace;
     private final Set<String> maskedQueryParams;
     private final Set<String> maskedHeaders;
-    private final String maskFiller;
+    private final String mask;
     private final Boolean pathTemplate;
 
     public Slf4jHttpServerLogger(boolean stacktrace,
                                  Set<String> maskedQueryParams,
                                  Set<String> maskedHeaders,
-                                 String maskFiller,
+                                 String mask,
                                  Boolean pathTemplate) {
         this.logStacktrace = stacktrace;
         this.maskedQueryParams = maskedQueryParams.stream()
@@ -41,7 +41,7 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
         this.maskedHeaders = maskedHeaders.stream()
             .map(e -> e.toLowerCase(Locale.ROOT))
             .collect(Collectors.toSet());
-        this.maskFiller = maskFiller;
+        this.mask = mask;
         this.pathTemplate = pathTemplate;
     }
 
@@ -217,7 +217,7 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
             final List<String> headerValues = headerEntry.getValue();
             sb.append(headerKey)
                 .append(": ")
-                .append(maskedHeaders.contains(headerKey) ? maskFiller : String.join(", ", headerValues));
+                .append(maskedHeaders.contains(headerKey) ? mask : String.join(", ", headerValues));
             if (iterator.hasNext()) {
                 sb.append('\n');
             }
@@ -231,7 +231,7 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
                 final String key = e.getKey();
                 final Collection<String> values = e.getValue();
                 if (maskedQueryParams.contains(key.toLowerCase(Locale.ROOT))) {
-                    return key + '=' + maskFiller;
+                    return key + '=' + mask;
                 } else {
                     if (values.isEmpty()) {
                         return key + '=';
