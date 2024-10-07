@@ -77,7 +77,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
                 a.getFirst("traceparent").startsWith("00-" + rootSpan.getSpanContext().getTraceId())
                     && !a.getFirst("traceparent").contains(rootSpan.getSpanContext().getSpanId())),
             eq("test-request"));
-        verify(this.metrics).record(eq(200), HttpResultCode.SUCCESS, eq("http"), eq("localhost"), eq("POST"), eq("/"), any(), ArgumentMatchers.longThat(l -> l > 0), any());
+        verify(this.metrics).record(eq(200), eq(HttpResultCode.SUCCESS), eq("http"), eq("localhost"), eq("POST"), eq("/"), any(), ArgumentMatchers.longThat(l -> l > 0), any());
     }
 
     @ParameterizedTest
@@ -150,7 +150,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
 
         verify(this.metrics).record(
             eq(-1),
-            HttpResultCode.CONNECTION_ERROR,
+            eq(HttpResultCode.CONNECTION_ERROR),
             eq("http"),
             eq("localhost"),
             eq("POST"),
@@ -182,7 +182,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
 
         verify(this.metrics).record(
             eq(-1),
-            HttpResultCode.CONNECTION_ERROR,
+            eq(HttpResultCode.CONNECTION_ERROR),
             eq("http"),
             eq("localhost"),
             eq("POST"),
@@ -256,7 +256,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
 
         verify(this.metrics).record(
             eq(-1),
-            eq(HttpResultCode.SUCCESS),
+            eq(HttpResultCode.CONNECTION_ERROR),
             eq("http"),
             eq("google.com"),
             eq("POST"),
