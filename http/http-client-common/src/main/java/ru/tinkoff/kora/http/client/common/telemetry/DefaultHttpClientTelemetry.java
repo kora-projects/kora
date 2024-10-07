@@ -15,6 +15,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 
@@ -235,17 +236,18 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         }
 
         public void onClose(Throwable throwable) {
+            var cause = (throwable instanceof CompletionException) ? throwable.getCause() : throwable;
             if (span != null) {
-                span.close(-1, throwable);
+                span.close(-1, cause);
             }
             var processingTime = System.nanoTime() - data.startTime();
             if (metrics != null) {
-                metrics.record(-1, HttpResultCode.CONNECTION_ERROR, data.scheme(), data.host(), data.method(), data.pathTemplate(), HttpHeaders.empty(), processingTime, throwable);
+                metrics.record(-1, HttpResultCode.CONNECTION_ERROR, data.scheme(), data.host(), data.method(), data.pathTemplate(), HttpHeaders.empty(), processingTime, cause);
             }
             if (logger != null && logger.logResponse()) {
                 try {
                     this.ctx.inject();
-                    logger.logResponse(data.authority(), data.method(), data.path(), data.pathTemplate(), processingTime, null, HttpResultCode.CONNECTION_ERROR, throwable, null, null);
+                    logger.logResponse(data.authority(), data.method(), data.path(), data.pathTemplate(), processingTime, null, HttpResultCode.CONNECTION_ERROR, cause, null, null);
                 } finally {
                     ctx.inject();
                 }
