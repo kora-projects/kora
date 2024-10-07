@@ -54,8 +54,8 @@ public final class DefaultHttpServerTelemetry implements HttpServerTelemetry {
             var end = System.nanoTime();
             var processingTime = end - start;
             if (metrics != null) {
-                var metricsRouteTemplate = routeTemplate != null ? routeTemplate : UNMATCHED_ROUTE_TEMPLATE;
-                metrics.requestFinished(statusCode, resultCode, host, scheme, method, metricsRouteTemplate, httpHeaders, processingTime, exception);
+                var pathTemplate = routeTemplate != null ? routeTemplate : UNMATCHED_ROUTE_TEMPLATE;
+                metrics.requestFinished(statusCode, resultCode, scheme, host, method, pathTemplate, httpHeaders, processingTime, exception);
             }
 
             if (routeTemplate != null) {

@@ -1049,7 +1049,7 @@ public abstract class HttpServerTestKit {
         verify(metrics, mode).requestStarted(eq(method), eq(route), eq(host), eq(scheme));
         verify(logger, mode).logStart(eq(method), eq(route), eq(route), any(), any());
         verify(logger, mode).logEnd(eq(method), eq(route), eq(route), eq(code), eq(resultCode), duration.getAsLong(), any(), any(), throwable.get());
-        verify(metrics, mode).requestFinished(eq(method), eq(route), eq(host), eq(scheme), eq(code), Mockito.anyLong(), throwable.get());
+        verify(metrics, mode).requestFinished(eq(code), eq(resultCode), eq(scheme), eq(host), eq(method), eq(route), any(), Mockito.anyLong(), throwable.get());
     }
 
 
