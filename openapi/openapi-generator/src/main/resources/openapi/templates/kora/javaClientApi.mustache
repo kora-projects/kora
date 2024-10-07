@@ -43,6 +43,9 @@ public interface {{classname}} {
      * @see <a href="{{url}}">{{summary}} Documentation</a>
     {{/externalDocs}}
      */
+    {{#koraAdditionalContractAnnotations}}
+    {{.}}
+    {{/koraAdditionalContractAnnotations}}
     @ru.tinkoff.kora.http.common.annotation.HttpRoute(method = "{{httpMethod}}", path = "{{path}}"){{#implicitHeaders}}
     @ApiImplicitParams({
     {{#headerParams}}
