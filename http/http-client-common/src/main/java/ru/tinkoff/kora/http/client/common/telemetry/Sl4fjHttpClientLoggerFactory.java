@@ -21,9 +21,9 @@ public class Sl4fjHttpClientLoggerFactory implements HttpClientLoggerFactory {
             var responseLog = LoggerFactory.getLogger(clientName + ".response");
             final Set<String> maskedQueryParams = loggerConfig.maskQueries();
             final Set<String> maskedHeaders = loggerConfig.maskHeaders();
-            final String maskFiller = loggerConfig.maskFiller();
+            final String mask = loggerConfig.mask();
             final Boolean pathTemplate = loggerConfig.pathTemplate();
-            return new Sl4fjHttpClientLogger(requestLog, responseLog, maskedQueryParams, maskedHeaders, maskFiller, pathTemplate);
+            return new Sl4fjHttpClientLogger(requestLog, responseLog, maskedQueryParams, maskedHeaders, mask, pathTemplate);
         } else {
             return null;
         }

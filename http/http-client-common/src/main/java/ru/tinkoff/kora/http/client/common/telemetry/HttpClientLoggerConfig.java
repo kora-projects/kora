@@ -18,7 +18,7 @@ public interface HttpClientLoggerConfig extends TelemetryConfig.LogConfig {
         return Set.of("authorization");
     }
 
-    default String maskFiller() {
+    default String mask() {
         return "***";
     }
 
