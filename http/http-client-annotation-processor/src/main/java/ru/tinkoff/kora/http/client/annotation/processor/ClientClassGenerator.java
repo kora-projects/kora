@@ -39,7 +39,9 @@ public class ClientClassGenerator {
         var methods = this.parseMethods(element);
         var builder = CommonUtils.extendsKeepAop(element, typeName)
             .addOriginatingElement(element)
-            .addAnnotation(AnnotationUtils.generated(ClientClassGenerator.class));
+            .addAnnotation(AnnotationUtils.generated(ClientClassGenerator.class))
+            .addAnnotation(AnnotationSpec.builder(httpClientAnnotation).build());
+        builder.modifiers.remove(Modifier.FINAL);
 
         builder.addMethod(this.buildConstructor(builder, element, methods));
         builder.addField(String.class, "rootUrl", Modifier.PRIVATE, Modifier.FINAL);
