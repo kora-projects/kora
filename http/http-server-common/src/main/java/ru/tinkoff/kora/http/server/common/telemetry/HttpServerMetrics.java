@@ -10,7 +10,7 @@ public interface HttpServerMetrics {
 
     @Deprecated
     default void requestFinished(String method, String pathTemplate, String host, String scheme, int statusCode, long processingTimeNanos) {
-        requestFinished(statusCode, HttpResultCode.SERVER_ERROR, scheme, host, method, pathTemplate, HttpHeaders.empty(), processingTimeNanos, null);
+
     }
 
     @Deprecated
@@ -21,7 +21,7 @@ public interface HttpServerMetrics {
                                  int statusCode,
                                  long processingTimeNanos,
                                  @Nullable Throwable exception) {
-        requestFinished(statusCode, HttpResultCode.SERVER_ERROR, scheme, host, method, pathTemplate, HttpHeaders.empty(), processingTimeNanos, exception);
+
     }
 
     default void requestFinished(int statusCode,
@@ -33,6 +33,10 @@ public interface HttpServerMetrics {
                                  HttpHeaders headers,
                                  long processingTimeNanos,
                                  @Nullable Throwable exception) {
-
+        if (exception == null) {
+            requestFinished(method, pathTemplate, host, scheme, statusCode, processingTimeNanos);
+        } else {
+            requestFinished(method, pathTemplate, host, scheme, statusCode, processingTimeNanos, exception);
+        }
     }
 }

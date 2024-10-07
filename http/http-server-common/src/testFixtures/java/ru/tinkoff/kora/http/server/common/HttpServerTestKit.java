@@ -672,7 +672,7 @@ public abstract class HttpServerTestKit {
         verify(logger, never()).logStart(any(), any(), any(), any(), any());
         verify(logger, never()).logEnd(any(), any(), any(), anyInt(), any(), anyLong().getAsLong(), any(), any(), any());
         verify(metrics, times(1)).requestStarted(eq(GET), eq("UNKNOWN_ROUTE"), eq("localhost"), eq("http"));
-        verify(metrics, timeout(100).times(1)).requestFinished(eq(GET), eq("UNKNOWN_ROUTE"), eq("localhost"), eq("http"), eq(404), Mockito.anyLong(), eq(null));
+        verify(metrics, timeout(100).times(1)).requestFinished(eq(404), eq(HttpResultCode.CLIENT_ERROR), eq("http"), eq("localhost"), eq(GET), eq("UNKNOWN_ROUTE"), Mockito.any(), Mockito.anyLong(), eq(null));
     }
 
     @Test

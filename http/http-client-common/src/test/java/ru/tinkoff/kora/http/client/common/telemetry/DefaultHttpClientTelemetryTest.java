@@ -50,7 +50,7 @@ class DefaultHttpClientTelemetryTest {
                 Assertions.assertThat(wrappedRs).isSameAs(rs);
             }
         }
-        Mockito.verify(metrics).record(anyInt(), anyLong(), anyString(), anyString(), anyString(), anyString());
+        Mockito.verify(metrics).record(anyInt(), any(HttpResultCode.class), anyString(), anyString(), anyString(), anyString(), any(), anyLong(), any());
     }
 
     @Test
@@ -73,7 +73,7 @@ class DefaultHttpClientTelemetryTest {
                 Assertions.assertThat(wrappedRs).isNotSameAs(rs);
             }
         }
-        Mockito.verify(metrics).record(anyInt(), anyLong(), anyString(), anyString(), anyString(), anyString());
+        Mockito.verify(metrics).record(anyInt(), any(HttpResultCode.class), anyString(), anyString(), anyString(), anyString(), any(), anyLong(), any());
     }
 
     @Test

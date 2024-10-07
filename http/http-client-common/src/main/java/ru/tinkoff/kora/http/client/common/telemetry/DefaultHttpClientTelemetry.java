@@ -240,7 +240,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
             }
             var processingTime = System.nanoTime() - data.startTime();
             if (metrics != null) {
-                metrics.record(-1, HttpResultCode.CONNECTION_ERROR, data.scheme(), data.host(), data.method(), data.pathTemplate(), processingTime, throwable);
+                metrics.record(-1, HttpResultCode.CONNECTION_ERROR, data.scheme(), data.host(), data.method(), data.pathTemplate(), HttpHeaders.empty(), processingTime, throwable);
             }
             if (logger != null && logger.logResponse()) {
                 try {
@@ -260,7 +260,8 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
             var processingTime = System.nanoTime() - data.startTime();
             var resultCode = HttpResultCode.fromStatusCode(code);
             if (metrics != null) {
-                metrics.record(code, resultCode, data.scheme(), data.host(), data.method(), data.pathTemplate(), processingTime, null);
+                var metricHeaders = headers == null ? HttpHeaders.empty() : headers;
+                metrics.record(code, resultCode, data.scheme(), data.host(), data.method(), data.pathTemplate(), metricHeaders, processingTime, null);
             }
             if (logger != null && logger.logResponse()) {
                 var headersStr = logger.logResponseHeaders() ? headers : null;
