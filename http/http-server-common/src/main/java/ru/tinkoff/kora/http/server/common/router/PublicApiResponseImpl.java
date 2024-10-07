@@ -30,11 +30,11 @@ final class PublicApiResponseImpl implements PublicApiResponse {
 
     @Override
     public void closeBodyError(int responseCode, Throwable t) {
-        ctx.close(responseCode, HttpResultCode.SERVER_ERROR, null, t);
+        ctx.close(responseCode, HttpResultCode.SERVER_ERROR, HttpHeaders.empty(), t);
     }
 
     @Override
     public void closeConnectionError(int responseCode, Throwable t) {
-        ctx.close(responseCode, HttpResultCode.CONNECTION_ERROR, null, t);
+        ctx.close(responseCode, HttpResultCode.CONNECTION_ERROR, HttpHeaders.empty(), t);
     }
 }

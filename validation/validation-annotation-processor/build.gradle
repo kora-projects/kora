@@ -3,8 +3,7 @@ dependencies {
     implementation project(":kora-app-annotation-processor")
     implementation project(":aop:aop-annotation-processor")
 
-    implementation libs.reactor.core
-
+    testImplementation libs.reactor.core
     testImplementation testFixtures(project(":annotation-processor-common"))
     testImplementation project(":validation:validation-common")
     testImplementation project(":annotation-processor-common")

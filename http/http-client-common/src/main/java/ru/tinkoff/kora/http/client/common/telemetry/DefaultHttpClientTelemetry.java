@@ -35,11 +35,11 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
     @Override
     public boolean isEnabled() {
         return metrics != null
-            || tracing != null
-            || logger != null && (logger.logRequest() || logger.logRequestBody() || logger.logResponse() || logger.logResponseBody());
+               || tracing != null
+               || logger != null && (logger.logRequest() || logger.logRequestBody() || logger.logResponse() || logger.logResponseBody());
     }
 
-    record TelemetryContextData(long startTime, String method, String operation, String host, String scheme, String authority, String target) {
+    record TelemetryContextData(long startTime, String method, String operation, String host, String scheme, String authority, String pathTemplate) {
         public TelemetryContextData(HttpClientRequest request, String operation) {
             this(
                 System.nanoTime(),
@@ -228,10 +228,12 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         }
 
         public void onClose(Throwable throwable) {
-            if (span != null) span.close(-1, throwable);
+            if (span != null) {
+                span.close(-1, throwable);
+            }
             var processingTime = System.nanoTime() - data.startTime();
             if (metrics != null) {
-                metrics.record(-1, processingTime, request.method(), data.host(), data.scheme(), data.target());
+                metrics.record(-1, HttpResultCode.CONNECTION_ERROR, data.scheme(), data.host(), data.method(), data.pathTemplate(), processingTime, throwable);
             }
             if (logger != null && logger.logResponse()) {
                 try {
@@ -249,10 +251,10 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
                 span.close(code, null);
             }
             var processingTime = System.nanoTime() - data.startTime();
-            if (metrics != null) {
-                metrics.record(code, processingTime, request.method(), data.host(), data.scheme(), data.target());
-            }
             var resultCode = HttpResultCode.fromStatusCode(code);
+            if (metrics != null) {
+                metrics.record(code, resultCode, data.scheme(), data.host(), data.method(), data.pathTemplate(), processingTime, null);
+            }
             if (logger != null) {
                 var headersStr = logger.logResponseHeaders() ? headers : null;
                 var bodyString = byteBufListToBodyString(body, responseBodyCharset);
