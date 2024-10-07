@@ -5,6 +5,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.semconv.SemanticAttributes;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientMetrics;
 import ru.tinkoff.kora.http.common.HttpResultCode;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,7 +22,7 @@ public final class Opentelemetry120HttpClientMetrics implements HttpClientMetric
     }
 
     @Override
-    public void record(int statusCode, HttpResultCode resultCode, String scheme, String host, String method, String pathTemplate, long processingTimeNanos, Throwable throwable) {
+    public void record(int statusCode, HttpResultCode resultCode, String scheme, String host, String method, String pathTemplate, HttpHeaders headers, long processingTimeNanos, Throwable throwable) {
         this.duration.computeIfAbsent(new DurationKey(statusCode, method, host, scheme, pathTemplate), this::duration)
             .record((double) processingTimeNanos / 1_000_000);
     }
