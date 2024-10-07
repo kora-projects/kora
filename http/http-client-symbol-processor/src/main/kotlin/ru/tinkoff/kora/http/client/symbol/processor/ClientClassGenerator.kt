@@ -33,7 +33,6 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.extendsKeepAop
-import ru.tinkoff.kora.ksp.common.CommonAopUtils.hasAopAnnotations
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.overridingKeepAop
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.await
@@ -63,10 +62,13 @@ class ClientClassGenerator(private val resolver: Resolver) {
         val methods: List<MethodData> = this.parseMethods(declaration)
         val builder = declaration.extendsKeepAop(typeName)
             .generated(ClientClassGenerator::class)
+        builder.modifiers.remove(KModifier.FINAL)
+        builder.addModifiers(KModifier.OPEN)
 
         if (declaration.findAnnotation(CommonClassNames.component) != null) {
             builder.addAnnotation(CommonClassNames.component)
         }
+        builder.addAnnotation(AnnotationSpec.builder(httpClientAnnotation).build())
 
         builder.primaryConstructor(this.buildConstructor(builder, declaration, methods))
         builder.addProperty("rootUrl", String::class.asClassName(), KModifier.PRIVATE, KModifier.FINAL);
