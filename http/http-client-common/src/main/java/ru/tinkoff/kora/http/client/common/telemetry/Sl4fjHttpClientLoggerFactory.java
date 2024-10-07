@@ -19,11 +19,15 @@ public class Sl4fjHttpClientLoggerFactory implements HttpClientLoggerFactory {
         if (Objects.requireNonNullElse(loggerConfig.enabled(), false)) {
             var requestLog = LoggerFactory.getLogger(clientName + ".request");
             var responseLog = LoggerFactory.getLogger(clientName + ".response");
-            final Set<String> maskedQueryParams = loggerConfig.maskQueries();
-            final Set<String> maskedHeaders = loggerConfig.maskHeaders();
-            final String mask = loggerConfig.mask();
-            final Boolean pathTemplate = loggerConfig.pathTemplate();
-            return new Sl4fjHttpClientLogger(requestLog, responseLog, maskedQueryParams, maskedHeaders, mask, pathTemplate);
+            if (logging instanceof HttpClientLoggerConfig config) {
+                return new Sl4fjHttpClientLogger(requestLog, responseLog, config.maskQueries(), config.maskHeaders(), config.mask(), config.pathTemplate());
+            } else {
+                final Set<String> maskedQueryParams = loggerConfig.maskQueries();
+                final Set<String> maskedHeaders = loggerConfig.maskHeaders();
+                final String mask = loggerConfig.mask();
+                final Boolean pathTemplate = loggerConfig.pathTemplate();
+                return new Sl4fjHttpClientLogger(requestLog, responseLog, maskedQueryParams, maskedHeaders, mask, pathTemplate);
+            }
         } else {
             return null;
         }
