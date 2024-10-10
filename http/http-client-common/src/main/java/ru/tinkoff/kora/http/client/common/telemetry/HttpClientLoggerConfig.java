@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.http.server.common.telemetry;
+package ru.tinkoff.kora.http.client.common.telemetry;
 
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
@@ -8,11 +8,7 @@ import java.util.Collections;
 import java.util.Set;
 
 @ConfigValueExtractor
-public interface HttpServerLoggerConfig extends TelemetryConfig.LogConfig {
-
-    default boolean stacktrace() {
-        return true;
-    }
+public interface HttpClientLoggerConfig extends TelemetryConfig.LogConfig {
 
     default Set<String> maskQueries() {
         return Collections.emptySet();

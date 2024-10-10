@@ -2,7 +2,7 @@ package ru.tinkoff.kora.http.client.common.declarative;
 
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
-import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
+import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryConfig;
 
 import java.time.Duration;
 
@@ -11,5 +11,5 @@ public interface HttpClientOperationConfig {
     @Nullable
     Duration requestTimeout();
 
-    TelemetryConfig telemetry();
+    HttpClientTelemetryConfig telemetry();
 }
