@@ -9,16 +9,18 @@ import ru.tinkoff.kora.config.common.extractor.BooleanConfigValueExtractor
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor
 import ru.tinkoff.kora.config.common.extractor.DoubleArrayConfigValueExtractor
 import ru.tinkoff.kora.config.common.extractor.DurationConfigValueExtractor
+import ru.tinkoff.kora.config.common.extractor.SetConfigValueExtractor
+import ru.tinkoff.kora.config.common.extractor.StringConfigValueExtractor
 import ru.tinkoff.kora.config.common.factory.MapConfigFactory
 import ru.tinkoff.kora.http.client.common.HttpClient
 import ru.tinkoff.kora.http.client.common.declarative.`$HttpClientOperationConfig_ConfigValueExtractor`
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse
+import ru.tinkoff.kora.http.client.common.telemetry.`$HttpClientLoggerConfig_ConfigValueExtractor`
+import ru.tinkoff.kora.http.client.common.telemetry.`$HttpClientTelemetryConfig_ConfigValueExtractor`
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryFactory
 import ru.tinkoff.kora.http.common.body.HttpBody
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
-import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_ConfigValueExtractor`
-import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_LogConfig_ConfigValueExtractor`
 import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_MetricsConfig_ConfigValueExtractor`
 import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_TracingConfig_ConfigValueExtractor`
 import java.nio.ByteBuffer
@@ -83,8 +85,8 @@ abstract class AbstractHttpClientTest : AbstractSymbolProcessorTest() {
 
         val clientClass = compileResult.loadClass("\$TestClient_ClientImpl");
         val durationCVE = DurationConfigValueExtractor();
-        val telemetryCVE = `$TelemetryConfig_ConfigValueExtractor`(
-            `$TelemetryConfig_LogConfig_ConfigValueExtractor`(BooleanConfigValueExtractor()),
+        val telemetryCVE = `$HttpClientTelemetryConfig_ConfigValueExtractor`(
+            `$HttpClientLoggerConfig_ConfigValueExtractor`(SetConfigValueExtractor<String>(StringConfigValueExtractor()), BooleanConfigValueExtractor()),
             `$TelemetryConfig_TracingConfig_ConfigValueExtractor`(BooleanConfigValueExtractor()),
             `$TelemetryConfig_MetricsConfig_ConfigValueExtractor`(BooleanConfigValueExtractor(), DoubleArrayConfigValueExtractor { it.asNumber()!!.toDouble() })
         );
