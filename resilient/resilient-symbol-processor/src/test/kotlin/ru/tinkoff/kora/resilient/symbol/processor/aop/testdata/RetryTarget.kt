@@ -21,21 +21,21 @@ open class RetryTarget {
         check(retryAttempts.getAndDecrement() <= 0) { "Ops" }
     }
 
-    @Retry("custom1")
+    @Retry("custom2")
     open fun retrySync(arg: String): String {
         logger.info("Retry Sync executed for: {}", arg)
         check(retryAttempts.getAndDecrement() <= 0) { "Ops" }
         return arg
     }
 
-    @Retry("custom1")
+    @Retry("custom3")
     open suspend fun retrySuspend(arg: String): String {
         logger.info("Retry Suspend executed for: {}", arg)
         check(retryAttempts.getAndDecrement() <= 0) { "Ops" }
         return arg
     }
 
-    @Retry("custom1")
+    @Retry("custom4")
     open fun retryFlow(arg: String): Flow<String> {
         return flow {
             logger.info("Retry Flow executed for: {}", arg)

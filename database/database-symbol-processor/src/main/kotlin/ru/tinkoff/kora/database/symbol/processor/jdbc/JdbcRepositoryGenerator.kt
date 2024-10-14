@@ -83,6 +83,7 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         }
         val b = method.queryMethodBuilder(resolver)
         if (method.isSuspend()) {
+            b.addStatement("val _ctxCurrent = %T.current()", CommonClassNames.context)
             b.beginControlFlow("return %M(kotlin.coroutines.coroutineContext + this._executor.%M()) {", withContext, asCoroutineDispatcher)
         }
         val returnTypeName = methodType.returnType?.toTypeName()
@@ -106,7 +107,9 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         )
         b.addStatement("val _query = %L", queryContextFieldName)
 
-        b.addStatement("val _ctxCurrent = %T.current()", CommonClassNames.context)
+        if(!method.isSuspend()) {
+            b.addStatement("val _ctxCurrent = %T.current()", CommonClassNames.context)
+        }
         if (method.isSuspend()) {
             b.addStatement("val _ctxFork = _ctxCurrent.fork()")
             b.addStatement("_ctxFork.inject()")
