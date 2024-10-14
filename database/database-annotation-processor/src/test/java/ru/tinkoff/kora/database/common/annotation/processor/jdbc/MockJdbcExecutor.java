@@ -10,6 +10,7 @@ import ru.tinkoff.kora.database.jdbc.RuntimeSqlException;
 
 import jakarta.annotation.Nullable;
 import java.sql.*;
+import java.util.concurrent.CompletionStage;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -45,6 +46,10 @@ public class MockJdbcExecutor implements JdbcConnectionFactory {
         }
     }
 
+    @Override
+    public <T> CompletionStage<T> withConnectionStage(JdbcHelper.SqlFunction1<Connection, CompletionStage<T>> callback) throws RuntimeSqlException {
+        return withConnection(callback);
+    }
 
     @Override
     public Connection currentConnection() {
