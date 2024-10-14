@@ -10,6 +10,7 @@ import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory
 import ru.tinkoff.kora.database.jdbc.JdbcHelper.SqlFunction1
 import ru.tinkoff.kora.database.jdbc.RuntimeSqlException
 import java.sql.*
+import java.util.concurrent.CompletionStage
 
 class MockJdbcExecutor : JdbcConnectionFactory {
     val resultSet = Mockito.mock(ResultSet::class.java)
@@ -39,6 +40,10 @@ class MockJdbcExecutor : JdbcConnectionFactory {
         } catch (e: SQLException) {
             throw RuntimeSqlException(e)
         }
+    }
+
+    override fun <T> withConnectionStage(callback: SqlFunction1<Connection, CompletionStage<T>>): CompletionStage<T> {
+        return withConnection(callback)
     }
 
     override fun currentConnection() = mockConnection!!
