@@ -30,13 +30,13 @@ public class R2dbcDatabase implements R2dbcConnectionFactory, Lifecycle, Readine
     private final Context.Key<Connection> connectionKey = new Context.Key<>() {
         @Override
         protected Connection copy(Connection object) {
-            return null;
+            return object;
         }
     };
     private final Context.Key<Connection> transactionKey = new Context.Key<>() {
         @Override
         protected Connection copy(Connection object) {
-            return null;
+            return object;
         }
     };
     private final ConnectionPool connectionFactory;
@@ -97,7 +97,8 @@ public class R2dbcDatabase implements R2dbcConnectionFactory, Lifecycle, Readine
                                     .then(Mono.error(e)))
                                 .flatMap(r -> Mono.from(c.commitTransaction())
                                     .then(Mono.just(r)))
-                                .switchIfEmpty(Mono.from(c.commitTransaction()).then(Mono.empty()));
+                                .switchIfEmpty(Mono.from(c.commitTransaction())
+                                    .then(Mono.empty()));
                         },
                         c -> Mono.fromRunnable(() -> ctx.remove(this.transactionKey))
                     );
@@ -112,7 +113,8 @@ public class R2dbcDatabase implements R2dbcConnectionFactory, Lifecycle, Readine
                             .then(Mono.error(e)))
                         .flatMap(r -> Mono.from(c.commitTransaction())
                             .then(Mono.just(r)))
-                        .switchIfEmpty(Mono.from(c.commitTransaction()).then(Mono.empty()));
+                        .switchIfEmpty(Mono.from(c.commitTransaction())
+                            .then(Mono.empty()));
                 },
                 c -> Mono.fromRunnable(() -> ctx.remove(this.transactionKey))
             ));
