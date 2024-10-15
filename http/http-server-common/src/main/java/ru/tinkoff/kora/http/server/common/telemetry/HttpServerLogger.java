@@ -41,7 +41,7 @@ public interface HttpServerLogger {
     }
 
     /**
-     * @see #logEnd(String, String, String, int, HttpResultCode, long, Map, HttpHeaders, Throwable)
+     * @see #logEnd(int, HttpResultCode, String, String, String, long, Map, HttpHeaders, Throwable)
      */
     @Deprecated
     default void logEnd(String operation,
