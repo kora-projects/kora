@@ -25,7 +25,7 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
     private final Context.Key<Connection> connectionKey = new Context.Key<>() {
         @Override
         protected Connection copy(Connection object) {
-            return object;
+            return null;
         }
     };
 
