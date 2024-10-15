@@ -18,7 +18,9 @@ suspend inline fun <T> JdbcConnectionFactory.withConnectionSuspend(noinline call
         fork.inject()
 
         val result = withConnection(JdbcHelper.SqlFunction1 {
-            runBlocking { callback.invoke(it) }
+            runBlocking(ctx) {
+                callback.invoke(it)
+            }
         })
 
         old.inject()
@@ -37,7 +39,9 @@ suspend inline fun <T> JdbcConnectionFactory.inTxSuspend(noinline callback: susp
         fork.inject()
 
         val result = inTx(JdbcHelper.SqlFunction1 {
-            runBlocking { callback.invoke(it) }
+            runBlocking(ctx) {
+                callback.invoke(it)
+            }
         })
 
         old.inject()
