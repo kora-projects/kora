@@ -30,13 +30,13 @@ public class R2dbcDatabase implements R2dbcConnectionFactory, Lifecycle, Readine
     private final Context.Key<Connection> connectionKey = new Context.Key<>() {
         @Override
         protected Connection copy(Connection object) {
-            return object;
+            return null;
         }
     };
     private final Context.Key<Connection> transactionKey = new Context.Key<>() {
         @Override
         protected Connection copy(Connection object) {
-            return object;
+            return null;
         }
     };
     private final ConnectionPool connectionFactory;

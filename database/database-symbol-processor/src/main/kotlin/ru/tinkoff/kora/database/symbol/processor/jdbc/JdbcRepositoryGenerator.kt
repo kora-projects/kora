@@ -81,15 +81,19 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         for (parameter in query.parameters.sortedByDescending { it.sqlParameterName.length }) {
             sql = sql.replace(":${parameter.sqlParameterName}", "?")
         }
+
         val b = method.queryMethodBuilder(resolver)
-        if (method.isSuspend()) {
-            b.addStatement("val _ctxCurrent = %T.current()", CommonClassNames.context)
-            b.beginControlFlow("return %M(kotlin.coroutines.coroutineContext + this._executor.%M()) {", withContext, asCoroutineDispatcher)
-        }
-        val returnTypeName = methodType.returnType?.toTypeName()
 
         val connection = parameters.firstOrNull { it is QueryParameter.ConnectionParameter }
             ?.let { CodeBlock.of("%L", it.variable) } ?: CodeBlock.of("_jdbcConnectionFactory.currentConnection()")
+
+        if (method.isSuspend()) {
+            b.addStatement("val _ctxCurrent = %T.current()", CommonClassNames.context)
+            b.addStatement("val _ctxConnection = %L", connection)
+            b.beginControlFlow("return %M(kotlin.coroutines.coroutineContext + this._executor.%M()) {", withContext, asCoroutineDispatcher)
+        }
+
+        val returnTypeName = methodType.returnType?.toTypeName()
 
         val queryContextFieldName = "_queryContext_$methodNumber"
         typeBuilder.addProperty(
@@ -114,10 +118,11 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
             b.addStatement("val _ctxFork = _ctxCurrent.fork()")
             b.addStatement("_ctxFork.inject()")
             b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(_ctxFork, _query)")
+            b.addStatement("var _conToUse = _ctxConnection ?: %L", connection)
         } else {
             b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(_ctxCurrent, _query)")
+            b.addStatement("var _conToUse = %L", connection)
         }
-        b.addStatement("var _conToUse = %L", connection)
         b.addStatement("val _conToClose: %T?", JdbcTypes.connection)
         b.controlFlow("if (_conToUse == null)") {
             addStatement("_conToUse = _jdbcConnectionFactory.newConnection()")
