@@ -13,8 +13,7 @@ suspend inline fun <T> VertxConnectionFactory.withConnectionSuspend(context: Cor
     val ctx = context ?: coroutineContext
     val future = withConnection {
         CoroutineScope(ctx).future {
-            val res = callback.invoke(it)
-            res
+            callback.invoke(it)
         }
     }
     return future.await()
@@ -24,8 +23,7 @@ suspend inline fun <T> VertxConnectionFactory.inTxSuspend(context: CoroutineCont
     val ctx = context ?: coroutineContext
     val future = inTx {
         CoroutineScope(ctx).future<T>(ctx) {
-            val res = callback.invoke(it)
-            res
+            callback.invoke(it)
         }
     }
     return future.await()
