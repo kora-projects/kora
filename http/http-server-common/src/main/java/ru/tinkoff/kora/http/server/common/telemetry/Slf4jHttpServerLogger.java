@@ -155,29 +155,29 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
         if (logStacktrace) {
             if (shouldWriteQueryParams) {
                 if (shouldWriteHeaders) {
-                    log.warn(marker,"HttpServer responded error {} for {}?{}\n{}", statusCode, operation, requestQueryParamsString(queryParams), requestHeaderString(headers), exception);
+                    log.warn(marker, "HttpServer responded error {} for {}?{}\n{}", statusCode, operation, requestQueryParamsString(queryParams), requestHeaderString(headers), exception);
                 } else {
-                    log.warn(marker,"HttpServer responded error {} for {}?{}", statusCode, operation, requestQueryParamsString(queryParams), exception);
-               }
+                    log.warn(marker, "HttpServer responded error {} for {}?{}", statusCode, operation, requestQueryParamsString(queryParams), exception);
+                }
             } else {
                 if (shouldWriteHeaders) {
-                    log.warn(marker,"HttpServer responded error {} for {}\n{}", statusCode, operation, requestHeaderString(headers), exception);
+                    log.warn(marker, "HttpServer responded error {} for {}\n{}", statusCode, operation, requestHeaderString(headers), exception);
                 } else {
-                    log.warn(marker,"HttpServer responded error {} for {}", statusCode, operation, exception);
+                    log.warn(marker, "HttpServer responded error {} for {}", statusCode, operation, exception);
                 }
             }
         } else {
             if (shouldWriteQueryParams) {
                 if (shouldWriteHeaders) {
-                    log.warn(marker,"HttpServer responded error {} for {}?{} due to: {}\n{}", statusCode, operation, requestQueryParamsString(queryParams), exception.getMessage(), requestHeaderString(headers));
+                    log.warn(marker, "HttpServer responded error {} for {}?{} due to: {}\n{}", statusCode, operation, requestQueryParamsString(queryParams), exception.getMessage(), requestHeaderString(headers));
                 } else {
-                    log.warn(marker,"HttpServer responded error {} for {}?{} due to: {}", statusCode, operation, requestQueryParamsString(queryParams), exception.getMessage());
+                    log.warn(marker, "HttpServer responded error {} for {}?{} due to: {}", statusCode, operation, requestQueryParamsString(queryParams), exception.getMessage());
                 }
             } else {
                 if (shouldWriteHeaders) {
-                    log.warn(marker,"HttpServer responded error {} for {} due to: {}\n{}", statusCode, operation, exception.getMessage(), requestHeaderString(headers));
+                    log.warn(marker, "HttpServer responded error {} for {} due to: {}\n{}", statusCode, operation, exception.getMessage(), requestHeaderString(headers));
                 } else {
-                    log.warn(marker,"HttpServer responded error {} for {} due to: {}", statusCode, operation, exception.getMessage());
+                    log.warn(marker, "HttpServer responded error {} for {} due to: {}", statusCode, operation, exception.getMessage());
                 }
             }
         }

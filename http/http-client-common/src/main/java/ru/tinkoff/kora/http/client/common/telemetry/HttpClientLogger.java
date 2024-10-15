@@ -33,6 +33,7 @@ public interface HttpClientLogger {
      */
     @Deprecated
     default void logRequest(String authority, String method, String operation, String resolvedUri, @Nullable HttpHeaders headers, @Nullable String body) {
+
     }
 
     default void logResponse(String authority,
