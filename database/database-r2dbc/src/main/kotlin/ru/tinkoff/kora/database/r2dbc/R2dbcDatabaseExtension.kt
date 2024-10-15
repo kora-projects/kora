@@ -1,29 +1,27 @@
 package ru.tinkoff.kora.database.r2dbc
 
 import io.r2dbc.spi.Connection
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.future.await
-import kotlinx.coroutines.future.future
-import reactor.core.publisher.Mono
+import kotlinx.coroutines.reactor.awaitSingle
+import kotlinx.coroutines.reactor.mono
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
 
 suspend inline fun <T> R2dbcConnectionFactory.withConnectionSuspend(context: CoroutineContext? = null, noinline callback: suspend (Connection) -> T): T {
     val ctx = context ?: coroutineContext
-    val future = withConnection {
-        Mono.fromFuture(CoroutineScope(ctx).future {
+    val mono = withConnection {
+        mono(ctx) {
             callback.invoke(it)
-        })
+        }
     }
-    return future.toFuture().await()
+    return mono.awaitSingle()
 }
 
 suspend inline fun <T> R2dbcConnectionFactory.inTxSuspend(context: CoroutineContext? = null, noinline callback: suspend (Connection) -> T): T {
     val ctx = context ?: coroutineContext
-    val future = inTx {
-        Mono.fromFuture(CoroutineScope(ctx).future(ctx) {
+    val mono = inTx {
+        mono(ctx) {
             callback.invoke(it)
-        })
+        }
     }
-    return future.toFuture().await()
+    return mono.awaitSingle()
 }
