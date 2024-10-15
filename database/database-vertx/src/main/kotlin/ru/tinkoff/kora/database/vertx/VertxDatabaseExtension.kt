@@ -12,11 +12,8 @@ import kotlin.coroutines.coroutineContext
 suspend inline fun <T> VertxConnectionFactory.withConnectionSuspend(context: CoroutineContext? = null, noinline callback: suspend (SqlClient) -> T): T {
     val ctx = context ?: coroutineContext
     val future = withConnection {
-        val current = Context.current()
         CoroutineScope(ctx).future {
-            current.inject()
             val res = callback.invoke(it)
-            Context.clear()
             res
         }
     }
@@ -26,11 +23,8 @@ suspend inline fun <T> VertxConnectionFactory.withConnectionSuspend(context: Cor
 suspend inline fun <T> VertxConnectionFactory.inTxSuspend(context: CoroutineContext? = null, noinline callback: suspend (SqlConnection) -> T): T {
     val ctx = context ?: coroutineContext
     val future = inTx {
-        val current = Context.current()
         CoroutineScope(ctx).future<T>(ctx) {
-            current.inject()
             val res = callback.invoke(it)
-            Context.clear()
             res
         }
     }
