@@ -10,7 +10,6 @@ import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory
 import ru.tinkoff.kora.database.jdbc.JdbcHelper.SqlFunction1
 import ru.tinkoff.kora.database.jdbc.RuntimeSqlException
 import java.sql.*
-import java.util.concurrent.CompletionStage
 
 class MockJdbcExecutor : JdbcConnectionFactory {
     val resultSet = Mockito.mock(ResultSet::class.java)

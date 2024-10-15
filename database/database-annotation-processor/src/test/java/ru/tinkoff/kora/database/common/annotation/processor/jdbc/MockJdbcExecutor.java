@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.database.common.annotation.processor.jdbc;
 
+import jakarta.annotation.Nullable;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.database.common.QueryContext;
@@ -8,9 +9,7 @@ import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory;
 import ru.tinkoff.kora.database.jdbc.JdbcHelper;
 import ru.tinkoff.kora.database.jdbc.RuntimeSqlException;
 
-import jakarta.annotation.Nullable;
 import java.sql.*;
-import java.util.concurrent.CompletionStage;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
