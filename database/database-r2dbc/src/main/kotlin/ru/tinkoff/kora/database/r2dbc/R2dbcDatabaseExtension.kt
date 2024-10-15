@@ -12,11 +12,8 @@ import kotlin.coroutines.coroutineContext
 suspend inline fun <T> R2dbcConnectionFactory.withConnectionSuspend(context: CoroutineContext? = null, noinline callback: suspend (Connection) -> T): T {
     val ctx = context ?: coroutineContext
     val future = withConnection {
-        val current = Context.current()
         Mono.fromFuture(CoroutineScope(ctx).future {
-            current.inject()
             val res = callback.invoke(it)
-            Context.clear()
             res
         })
     }
@@ -26,11 +23,8 @@ suspend inline fun <T> R2dbcConnectionFactory.withConnectionSuspend(context: Cor
 suspend inline fun <T> R2dbcConnectionFactory.inTxSuspend(context: CoroutineContext? = null, noinline callback: suspend (Connection) -> T): T {
     val ctx = context ?: coroutineContext
     val future = inTx {
-        val current = Context.current()
         Mono.fromFuture(CoroutineScope(ctx).future(ctx) {
-            current.inject()
             val res = callback.invoke(it)
-            Context.clear()
             res
         })
     }
