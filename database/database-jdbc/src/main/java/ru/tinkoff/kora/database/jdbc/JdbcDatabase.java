@@ -17,9 +17,6 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.CompletionStage;
 
 public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnectionFactory, ReadinessProbe {
 
@@ -123,47 +120,13 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
                 throw new RuntimeSqlException(e);
             }
         }
+
         try (var connection = ctx.set(this.connectionKey, this.newConnection())) {
             return callback.apply(connection);
         } catch (SQLException e) {
             throw new RuntimeSqlException(e);
         } finally {
             ctx.remove(this.connectionKey);
-        }
-    }
-
-    public <T> CompletionStage<T> withConnectionStage(JdbcHelper.SqlFunction1<Connection, CompletionStage<T>> callback) {
-        var ctx = Context.current();
-        var currentConnection = ctx.get(this.connectionKey);
-        if (currentConnection != null) {
-            try {
-                return callback.apply(currentConnection);
-            } catch (SQLException e) {
-                return CompletableFuture.failedFuture(new RuntimeSqlException(e));
-            }
-        }
-
-        var fork = ctx.fork();
-        var connection = fork.set(this.connectionKey, this.newConnection());
-        try {
-            fork.inject();
-            return callback.apply(connection)
-                .exceptionallyCompose(e -> {
-                    var cause = e;
-                    if (cause instanceof CompletionException ce) {
-                        cause = ce.getCause();
-                    }
-
-                    if (cause instanceof SQLException se) {
-                        return CompletableFuture.failedFuture(new RuntimeSqlException(se));
-                    } else {
-                        return CompletableFuture.failedFuture(e);
-                    }
-                });
-        } catch (SQLException e) {
-            return CompletableFuture.failedFuture(new RuntimeSqlException(e));
-        } finally {
-            ctx.inject();
         }
     }
 
