@@ -5,7 +5,7 @@ dependencies {
 
     compileOnly(libs.reactor.core)
     compileOnly(libs.kotlin.stdlib.lib)
-    compileOnly(libs.kotlin.coroutines.jdk8)
+    compileOnly(libs.kotlin.coroutines.reactor)
 
     api project(":database:database-common")
     api project(":netty-common")
