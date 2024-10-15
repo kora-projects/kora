@@ -37,7 +37,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.sql.Timestamp;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -114,6 +113,8 @@ public class KoraCodegen extends DefaultCodegen {
 
     record Interceptor(@Nullable String type, @Nullable Object tag) {}
 
+    record AdditionalAnnotation(@Nullable String annotation) {}
+
     @Override
     public String getName() {
         return "kora";
@@ -128,6 +129,7 @@ public class KoraCodegen extends DefaultCodegen {
         String securityConfigPrefix,
         Map<String, TagClient> clientTags,
         Map<String, List<Interceptor>> interceptors,
+        Map<String, List<AdditionalAnnotation>> additionalContractAnnotations,
         boolean requestInDelegateParams
     ) {
         static List<CliOption> cliOptions() {
@@ -141,7 +143,7 @@ public class KoraCodegen extends DefaultCodegen {
             cliOptions.add(CliOption.newString(INTERCEPTORS, "Json containing interceptors for HTTP server/client"));
             cliOptions.add(CliOption.newBoolean(ENABLE_VALIDATION, "Generate validation related annotation on models and controllers"));
             cliOptions.add(CliOption.newBoolean(REQUEST_DELEGATE_PARAMS, "Generate HttpServerRequest parameter in delegate methods"));
-
+            cliOptions.add(CliOption.newString(ADDITIONAL_CONTRACT_ANNOTATIONS, "Additional annotations for HTTP client/server methods"));
             return cliOptions;
         }
 
@@ -154,6 +156,7 @@ public class KoraCodegen extends DefaultCodegen {
             var securityConfigPrefix = (String) null;
             var clientTags = new HashMap<String, TagClient>();
             var interceptors = new HashMap<String, List<Interceptor>>();
+            var additionalContractAnnotations = new HashMap<String, List<AdditionalAnnotation>>();
             var requestInDelegateParams = false;
 
             if (additionalProperties.containsKey(CODEGEN_MODE)) {
@@ -180,6 +183,16 @@ public class KoraCodegen extends DefaultCodegen {
                     throw new RuntimeException(e);
                 }
             }
+            if (additionalProperties.containsKey(ADDITIONAL_CONTRACT_ANNOTATIONS)) {
+                var json = additionalProperties.get(ADDITIONAL_CONTRACT_ANNOTATIONS).toString();
+                try {
+                    additionalContractAnnotations = new ObjectMapper().readerFor(TypeFactory.defaultInstance()
+                            .constructType(new TypeReference<Map<String, List<AdditionalAnnotation>>>() {}))
+                        .readValue(json);
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException(e);
+                }
+            }
             if (additionalProperties.containsKey(PRIMARY_AUTH)) {
                 primaryAuth = additionalProperties.get(PRIMARY_AUTH).toString();
             }
@@ -196,7 +209,8 @@ public class KoraCodegen extends DefaultCodegen {
                 requestInDelegateParams = Boolean.parseBoolean(additionalProperties.get(REQUEST_DELEGATE_PARAMS).toString());
             }
 
-            return new CodegenParams(codegenMode, jsonAnnotation, enableServerValidation, primaryAuth, clientConfigPrefix, securityConfigPrefix, clientTags, interceptors, requestInDelegateParams);
+            return new CodegenParams(codegenMode, jsonAnnotation, enableServerValidation, primaryAuth, clientConfigPrefix,
+                securityConfigPrefix, clientTags, interceptors, additionalContractAnnotations, requestInDelegateParams);
         }
 
         void processAdditionalProperties(Map<String, Object> additionalProperties) {
@@ -250,6 +264,7 @@ public class KoraCodegen extends DefaultCodegen {
     public static final String CLIENT_TAGS = "tags";
     public static final String REQUEST_DELEGATE_PARAMS = "requestInDelegateParams";
     public static final String INTERCEPTORS = "interceptors";
+    public static final String ADDITIONAL_CONTRACT_ANNOTATIONS = "additionalContractAnnotations";
 
     protected String invokerPackage = "org.openapitools";
     protected boolean fullJavaUtil;
@@ -1588,6 +1603,27 @@ public class KoraCodegen extends DefaultCodegen {
 
                 if (!interceptorTemplates.isEmpty()) {
                     objs.put("koraInterceptors", interceptorTemplates);
+                }
+            }
+
+            List<AdditionalAnnotation> additionalContractAnnotations = null;
+            for (var entry : params.additionalContractAnnotations.entrySet()) {
+                if (op.tags.stream().anyMatch(t -> t.getName().equals(entry.getKey()))) {
+                    additionalContractAnnotations = entry.getValue();
+                    break;
+                }
+            }
+            if (additionalContractAnnotations == null) {
+                additionalContractAnnotations = params.additionalContractAnnotations.get("*");
+            }
+            if (additionalContractAnnotations != null && !additionalContractAnnotations.isEmpty()) {
+                List<String> annotations = additionalContractAnnotations.stream()
+                    .map(AdditionalAnnotation::annotation)
+                    .filter(a -> a != null && !a.isBlank())
+                    .toList();
+
+                if (!annotations.isEmpty()) {
+                    objs.put("koraAdditionalContractAnnotations", annotations);
                 }
             }
 
