@@ -50,8 +50,8 @@ public abstract class HttpClientTest extends HttpClientTestBase {
             .withBody("test-response", StandardCharsets.UTF_8)
             .withHeaders(Header.header("Content-type", "text/plain; charset=UTF-8"))
         );
-        doNothing().when(this.logger).logRequest(any(), any(), any(), any(), any(), any());
-        doNothing().when(this.logger).logResponse(any(), any(), anyLong(), any(), any(), any(), any(), any());
+        doNothing().when(this.logger).logRequest(any(), any(), any(), any(), any(), any(), any(), any());
+        doNothing().when(this.logger).logResponse(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
         when(this.logger.logRequest()).thenReturn(true);
         when(this.logger.logRequestHeaders()).thenReturn(true);
         when(this.logger.logRequestBody()).thenReturn(true);
@@ -72,7 +72,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
 
         server.verify(expectedRequest);
         var authority = "localhost:" + server.getPort();
-        verify(this.logger).logRequest(eq(authority), eq(POST), eq("POST /"), eq("http://" + authority + "/"), ArgumentMatchers.argThat(a ->
+        verify(this.logger).logRequest(eq(authority), eq(POST), eq("/"), eq("/"), eq("http://" + authority + "/"), eq(null), ArgumentMatchers.argThat(a ->
                 a.getFirst("traceparent").startsWith("00-" + rootSpan.getSpanContext().getTraceId())
                     && !a.getFirst("traceparent").contains(rootSpan.getSpanContext().getSpanId())),
             eq("test-request"));
