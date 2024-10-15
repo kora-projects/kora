@@ -5,7 +5,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.future.future
 import reactor.core.publisher.Mono
-import ru.tinkoff.kora.common.Context
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
 
