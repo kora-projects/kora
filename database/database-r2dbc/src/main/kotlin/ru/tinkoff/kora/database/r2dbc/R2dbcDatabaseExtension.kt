@@ -13,8 +13,7 @@ suspend inline fun <T> R2dbcConnectionFactory.withConnectionSuspend(context: Cor
     val ctx = context ?: coroutineContext
     val future = withConnection {
         Mono.fromFuture(CoroutineScope(ctx).future {
-            val res = callback.invoke(it)
-            res
+            callback.invoke(it)
         })
     }
     return future.toFuture().await()
@@ -24,8 +23,7 @@ suspend inline fun <T> R2dbcConnectionFactory.inTxSuspend(context: CoroutineCont
     val ctx = context ?: coroutineContext
     val future = inTx {
         Mono.fromFuture(CoroutineScope(ctx).future(ctx) {
-            val res = callback.invoke(it)
-            res
+            callback.invoke(it)
         })
     }
     return future.toFuture().await()
