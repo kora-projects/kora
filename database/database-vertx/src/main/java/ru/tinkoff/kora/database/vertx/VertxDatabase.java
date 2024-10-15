@@ -32,13 +32,13 @@ public class VertxDatabase implements Lifecycle, Wrapped<Pool>, VertxConnectionF
     private final Context.Key<SqlConnection> connectionKey = new Context.Key<>() {
         @Override
         protected SqlConnection copy(SqlConnection object) {
-            return object;
+            return null;
         }
     };
     private final Context.Key<Transaction> transactionKey = new Context.Key<>() {
         @Override
         protected Transaction copy(Transaction object) {
-            return object;
+            return null;
         }
     };
     private final Pool pool;
