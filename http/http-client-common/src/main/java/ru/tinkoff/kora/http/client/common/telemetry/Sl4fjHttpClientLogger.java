@@ -8,12 +8,7 @@ import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CancellationException;
 import java.util.stream.Collectors;
 
@@ -102,16 +97,16 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
     }
 
     @Override
-    public void logResponse(String authority,
+    public void logResponse(@Nullable Integer statusCode,
+                            HttpResultCode resultCode,
+                            String authority,
                             String method,
                             String path,
                             String pathTemplate,
                             long processingTime,
-                            @Nullable Integer statusCode,
-                            HttpResultCode resultCode,
-                            @Nullable Throwable exception,
                             @Nullable HttpHeaders headers,
-                            @Nullable String body) {
+                            @Nullable String body,
+                            @Nullable Throwable exception) {
         var exceptionTypeString = exception != null
             ? exception.getClass().getCanonicalName()
             : statusCode != null ? null : CancellationException.class.getCanonicalName();
@@ -122,11 +117,10 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
             gen.writeStartObject();
             gen.writeStringField("authority", authority);
             gen.writeStringField("operation", operation);
-            gen.writeStringField("resultCode", resultCode.name().toLowerCase());
+            gen.writeStringField("resultCode", resultCode.string());
             gen.writeNumberField("processingTime", processingTime / 1_000_000);
             if (statusCode != null) {
-                gen.writeFieldName("statusCode");
-                gen.writeNumber(statusCode);
+                gen.writeNumberField("statusCode", statusCode);
             }
             if (exceptionTypeString != null) {
                 gen.writeStringField("exceptionType", exceptionTypeString);
@@ -174,12 +168,12 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
             if (shouldWriteHeaders && shouldWriteBody) {
                 requestLog.atLevel(level).addMarker(marker)
                     .log("HttpClient requesting {}?{}\n{}\n{}",
-                         operation, requestQueryParamsString(queryParams), requestHeaderString(headers), requestBodyString(body));
+                        operation, requestQueryParamsString(queryParams), requestHeaderString(headers), requestBodyString(body));
             } else if (shouldWriteHeaders || shouldWriteBody) {
                 requestLog.atLevel(level).addMarker(marker)
                     .log("HttpClient requesting {}?{}\n{}",
-                         operation, requestQueryParamsString(queryParams),
-                         shouldWriteHeaders ? requestHeaderString(headers) : requestBodyString(body));
+                        operation, requestQueryParamsString(queryParams),
+                        shouldWriteHeaders ? requestHeaderString(headers) : requestBodyString(body));
             } else {
                 requestLog.atLevel(level).addMarker(marker).log("HttpClient requesting {}?{}", operation, requestQueryParamsString(queryParams));
             }
@@ -187,11 +181,11 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
             if (shouldWriteHeaders && shouldWriteBody) {
                 requestLog.atLevel(level).addMarker(marker)
                     .log("HttpClient requesting {}\n{}\n{}",
-                         operation, requestHeaderString(headers), requestBodyString(body));
+                        operation, requestHeaderString(headers), requestBodyString(body));
             } else if (shouldWriteHeaders || shouldWriteBody) {
                 requestLog.atLevel(level).addMarker(marker)
                     .log("HttpClient requesting {}\n{}",
-                         operation, shouldWriteHeaders ? requestHeaderString(headers) : requestBodyString(body));
+                        operation, shouldWriteHeaders ? requestHeaderString(headers) : requestBodyString(body));
             } else {
                 requestLog.atLevel(level).addMarker(marker).log("HttpClient requesting {}", operation);
             }
@@ -208,7 +202,7 @@ public class Sl4fjHttpClientLogger implements HttpClientLogger {
         } else if (shouldWriteHeaders || shouldWriteBody) {
             responseLog.atLevel(level).addMarker(marker)
                 .log("HttpClient received {} from {}\n{}", statusCode, operation,
-                     shouldWriteHeaders ? responseHeaderString(headers) : responseBodyString(body));
+                    shouldWriteHeaders ? responseHeaderString(headers) : responseBodyString(body));
         } else {
             responseLog.atLevel(level).addMarker(marker)
                 .log("HttpClient received {} from {}", statusCode, operation);

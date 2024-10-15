@@ -40,7 +40,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
                || logger != null && (logger.logRequest() || logger.logRequestBody() || logger.logResponse() || logger.logResponseBody());
     }
 
-    record TelemetryContextData(long startTime, String method, String path, String pathTemplate, String host, String scheme, String authority, String pathTemplate) {
+    record TelemetryContextData(long startTime, String method, String path, String pathTemplate, String host, String scheme, String authority) {
         public TelemetryContextData(HttpClientRequest request, String path, String pathTemplate) {
             this(
                 System.nanoTime(),
@@ -49,8 +49,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
                 pathTemplate,
                 request.uri().getHost(),
                 request.uri().getScheme(),
-                request.uri().getAuthority(),
-                request.uriTemplate()
+                request.uri().getAuthority()
             );
         }
     }
@@ -81,7 +80,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         var path = (isAnyLog)
                     ? request.uri().getPath()
                     : null;
-        var pathTemplate = (isAnyLog)
+        var pathTemplate = (isAnyLog || metrics != null)
                     ? DefaultHttpClientTelemetry.pathTemplate(request.uriTemplate(), request.uri())
                     : null;
         var resolvedUri = (isRequestLog)
@@ -247,7 +246,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
             if (logger != null && logger.logResponse()) {
                 try {
                     this.ctx.inject();
-                    logger.logResponse(data.authority(), data.method(), data.path(), data.pathTemplate(), processingTime, null, HttpResultCode.CONNECTION_ERROR, cause, null, null);
+                    logger.logResponse(-1, HttpResultCode.CONNECTION_ERROR, data.authority(), data.method(), data.path(), data.pathTemplate(), processingTime, HttpHeaders.empty(), null, cause);
                 } finally {
                     ctx.inject();
                 }
@@ -261,17 +260,16 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
             }
             var processingTime = System.nanoTime() - data.startTime();
             var resultCode = HttpResultCode.fromStatusCode(code);
+            var headersResp = headers == null ? HttpHeaders.empty() : headers;
             if (metrics != null) {
-                var metricHeaders = headers == null ? HttpHeaders.empty() : headers;
-                metrics.record(code, resultCode, data.scheme(), data.host(), data.method(), data.pathTemplate(), metricHeaders, processingTime, null);
+                metrics.record(code, resultCode, data.scheme(), data.host(), data.method(), data.pathTemplate(), headersResp, processingTime, null);
             }
             if (logger != null && logger.logResponse()) {
-                var headersStr = logger.logResponseHeaders() ? headers : null;
                 var bodyString = logger.logResponseBody() ? byteBufListToBodyString(body, responseBodyCharset) : null;
                 var ctx = Context.current();
                 try {
                     this.ctx.inject();
-                    logger.logResponse(data.authority(), data.method(), data.path(), data.pathTemplate(), processingTime, code, resultCode, null, headersStr, bodyString);
+                    logger.logResponse(code, resultCode, data.authority(), data.method(), data.path(), data.pathTemplate(), processingTime, headersResp, bodyString, null);
                 } finally {
                     ctx.inject();
                 }

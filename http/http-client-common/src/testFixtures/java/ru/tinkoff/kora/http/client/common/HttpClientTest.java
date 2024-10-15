@@ -52,7 +52,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
             .withHeaders(Header.header("Content-type", "text/plain; charset=UTF-8"))
         );
         doNothing().when(this.logger).logRequest(any(), any(), any(), any(), any(), any(), any(), any());
-        doNothing().when(this.logger).logResponse(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
+        doNothing().when(this.logger).logResponse(any(), any(), any(), any(), any(), any(), anyLong(), any(), any(), any());
         when(this.logger.logRequest()).thenReturn(true);
         when(this.logger.logRequestHeaders()).thenReturn(true);
         when(this.logger.logRequestBody()).thenReturn(true);

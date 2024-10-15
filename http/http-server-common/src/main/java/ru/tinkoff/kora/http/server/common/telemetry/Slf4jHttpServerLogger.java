@@ -10,12 +10,7 @@ import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServer;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class Slf4jHttpServerLogger implements HttpServerLogger {
@@ -76,11 +71,11 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
     }
 
     @Override
-    public void logEnd(String method,
+    public void logEnd(int statusCode,
+                       HttpResultCode resultCode,
+                       String method,
                        String path,
                        String pathTemplate,
-                       int statusCode,
-                       HttpResultCode resultCode,
                        long processingTime,
                        Map<String, ? extends Collection<String>> queryParams,
                        @Nullable HttpHeaders headers,
@@ -94,7 +89,7 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
         var marker = StructuredArgument.marker("httpResponse", gen -> {
             gen.writeStartObject();
             gen.writeStringField("operation", operation);
-            gen.writeStringField("resultCode", resultCode.name().toLowerCase());
+            gen.writeStringField("resultCode", resultCode.string());
             gen.writeNumberField("processingTime", processingTime / 1_000_000);
             gen.writeNumberField("statusCode", statusCode);
             if (exception != null) {

@@ -36,21 +36,21 @@ public interface HttpClientLogger {
 
     }
 
-    default void logResponse(String authority,
+    default void logResponse(@Nullable Integer statusCode,
+                             HttpResultCode resultCode,
+                             String authority,
                              String method,
                              String path,
                              String pathTemplate,
                              long processingTime,
-                             @Nullable Integer statusCode,
-                             HttpResultCode resultCode,
-                             @Nullable Throwable exception,
-                             @Nullable HttpHeaders headers,
-                             @Nullable String body) {
-        logResponse(authority, method + ' ' + pathTemplate, processingTime, statusCode, resultCode, exception, headers, body);
+                             HttpHeaders headers,
+                             @Nullable String body,
+                             @Nullable Throwable exception) {
+        logResponse(authority, method + ' ' + pathTemplate, processingTime, statusCode == -1 ? null : statusCode, resultCode, exception, headers, body);
     }
 
     /**
-     * @see #logResponse(String, String, String, String, long, Integer, HttpResultCode, Throwable, HttpHeaders, String)
+     * @see #logResponse(Integer, HttpResultCode, String, String, String, String, long, HttpHeaders, String, Throwable)
      */
     @Deprecated
     default void logResponse(String authority, String operation, long processingTime, @Nullable Integer statusCode, HttpResultCode resultCode, @Nullable Throwable exception, @Nullable HttpHeaders headers, @Nullable String body) {

@@ -67,9 +67,9 @@ public class Sl4fjHttpClientLoggerTests {
 
         expectLogLevel(responseLogger, level);
 
-        logger.logResponse("postMethod", "POST", "/path/1",
-                           "/path/{id}", 100, 200, HttpResultCode.SUCCESS,
-                           null, headers, body);
+        logger.logResponse(200, HttpResultCode.SUCCESS, "postMethod", "POST", "/path/1",
+                           "/path/{id}", 100,
+                           headers, body, null);
 
         verify(eventBuilder).addMarker(any());
         if (expectedArgs.length > 2) {

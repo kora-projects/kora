@@ -670,7 +670,7 @@ public abstract class HttpServerTestKit {
             assertThat(response.code()).isEqualTo(404);
         }
         verify(logger, never()).logStart(any(), any(), any(), any(), any());
-        verify(logger, never()).logEnd(any(), any(), any(), anyInt(), any(), anyLong().getAsLong(), any(), any(), any());
+        verify(logger, never()).logEnd(anyInt(), any(), any(), any(), any(), anyLong().getAsLong(), any(), any(), any());
         verify(metrics, times(1)).requestStarted(eq(GET), eq("UNKNOWN_ROUTE"), eq("localhost"), eq("http"));
         verify(metrics, timeout(100).times(1)).requestFinished(eq(404), eq(HttpResultCode.CLIENT_ERROR), eq("http"), eq("localhost"), eq(GET), eq("UNKNOWN_ROUTE"), Mockito.any(), Mockito.anyLong(), eq(null));
     }
@@ -1048,7 +1048,7 @@ public abstract class HttpServerTestKit {
     private void verifyResponse(String method, String route, int code, HttpResultCode resultCode, String host, String scheme, Supplier<? extends Throwable> throwable, LongSupplier duration, VerificationMode mode) {
         verify(metrics, mode).requestStarted(eq(method), eq(route), eq(host), eq(scheme));
         verify(logger, mode).logStart(eq(method), eq(route), eq(route), any(), any());
-        verify(logger, mode).logEnd(eq(method), eq(route), eq(route), eq(code), eq(resultCode), duration.getAsLong(), any(), any(), throwable.get());
+        verify(logger, mode).logEnd(eq(code), eq(resultCode), eq(method), eq(route), eq(route), duration.getAsLong(), any(), any(), throwable.get());
         verify(metrics, mode).requestFinished(eq(code), eq(resultCode), eq(scheme), eq(host), eq(method), eq(route), any(), Mockito.anyLong(), throwable.get());
     }
 

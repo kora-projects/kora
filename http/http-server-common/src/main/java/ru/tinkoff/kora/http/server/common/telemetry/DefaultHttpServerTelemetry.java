@@ -33,18 +33,19 @@ public final class DefaultHttpServerTelemetry implements HttpServerTelemetry {
         var scheme = request.scheme();
         var host = request.hostName();
         if (metrics != null) {
-            metrics.requestStarted(method, routeTemplate != null ? routeTemplate : UNMATCHED_ROUTE_TEMPLATE, host, scheme);
+            var pathTemplate = routeTemplate != null ? routeTemplate : UNMATCHED_ROUTE_TEMPLATE;
+            metrics.requestStarted(method, pathTemplate, host, scheme);
         }
 
         final HttpServerTracer.HttpServerSpan span;
         if (routeTemplate != null) {
+            if (logger != null) {
+                logger.logStart(method, request.path(), routeTemplate, request.queryParams(), request.headers());
+            }
             if (tracer != null) {
                 span = tracer.createSpan(routeTemplate, request);
             } else {
                 span = null;
-            }
-            if (logger != null) {
-                logger.logStart(method, request.path(), routeTemplate, request.queryParams(), request.headers());
             }
         } else {
             span = null;
@@ -60,7 +61,7 @@ public final class DefaultHttpServerTelemetry implements HttpServerTelemetry {
 
             if (routeTemplate != null) {
                 if (logger != null) {
-                    logger.logEnd(method, request.path(), routeTemplate, statusCode, resultCode, processingTime, request.queryParams(), httpHeaders, exception);
+                    logger.logEnd(statusCode, resultCode, method, request.path(), routeTemplate, processingTime, request.queryParams(), httpHeaders, exception);
                 }
                 if (span != null) {
                     span.close(statusCode, resultCode, exception);

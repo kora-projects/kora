@@ -11,7 +11,7 @@ public interface HttpClientMetrics {
 
     }
 
-    default void record(int statusCode,
+    default void record(@Nullable Integer statusCode,
                         HttpResultCode resultCode,
                         String scheme,
                         String host,

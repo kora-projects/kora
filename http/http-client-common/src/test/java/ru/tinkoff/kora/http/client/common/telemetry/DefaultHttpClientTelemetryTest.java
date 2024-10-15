@@ -99,7 +99,7 @@ class DefaultHttpClientTelemetryTest {
                 Assertions.assertThat(wrappedRs).isSameAs(rs);
             }
         }
-        Mockito.verify(logger).logResponse(anyString(), anyString(), anyString(), anyString(), anyLong(), any(), eq(HttpResultCode.SUCCESS), any(), any(), eq("test"));
+        Mockito.verify(logger).logResponse(any(), eq(HttpResultCode.SUCCESS), anyString(), anyString(), anyString(), anyString(), anyLong(), any(), eq("test"), any());
     }
 
     @Test
@@ -125,6 +125,6 @@ class DefaultHttpClientTelemetryTest {
                 Assertions.assertThat(wrappedRs).isNotSameAs(rs);
             }
         }
-        Mockito.verify(logger).logResponse(anyString(), anyString(), anyString(), anyString(), anyLong(), any(), eq(HttpResultCode.SUCCESS), any(), any(), eq("test"));
+        Mockito.verify(logger).logResponse(any(), eq(HttpResultCode.SUCCESS), anyString(), anyString(), anyString(), anyString(), anyLong(), any(), eq("test"), any());
     }
 }

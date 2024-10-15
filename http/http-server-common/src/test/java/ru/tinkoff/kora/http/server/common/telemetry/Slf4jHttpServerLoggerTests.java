@@ -70,7 +70,7 @@ public class Slf4jHttpServerLoggerTests {
         Slf4jHttpServerLogger logger = new Slf4jHttpServerLogger(
             true, MASKED_QUERY_PARAMS, MASKED_HEADERS, "***", pathTemplate);
 
-        logger.logEnd("POST", "/path/1", "/path/{id}", 200, HttpResultCode.SUCCESS, 100,
+        logger.logEnd(200, HttpResultCode.SUCCESS, "POST", "/path/1", "/path/{id}", 100,
                       queryParams, headers, null);
 
         final LoggingEvent event = getLoggedEvent();
@@ -89,7 +89,7 @@ public class Slf4jHttpServerLoggerTests {
         Slf4jHttpServerLogger logger = new Slf4jHttpServerLogger(
             stacktrace, MASKED_QUERY_PARAMS, MASKED_HEADERS, "***", pathTemplate);
 
-        logger.logEnd("POST", "/path/1", "/path/{id}", 200, HttpResultCode.SUCCESS, 100,
+        logger.logEnd(200, HttpResultCode.SUCCESS, "POST", "/path/1", "/path/{id}", 100,
                       queryParams, headers, EXCEPTION);
 
         final LoggingEvent event = getLoggedEvent();

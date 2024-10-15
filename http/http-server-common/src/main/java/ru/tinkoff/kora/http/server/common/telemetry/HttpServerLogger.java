@@ -20,11 +20,11 @@ public interface HttpServerLogger {
         logStart(method + ' ' + pathTemplate, headers);
     }
 
-    default void logEnd(String method,
+    default void logEnd(int statusCode,
+                        HttpResultCode resultCode,
+                        String method,
                         String path,
                         String pathTemplate,
-                        int statusCode,
-                        HttpResultCode resultCode,
                         long processingTime,
                         Map<String, ? extends Collection<String>> queryParams,
                         @Nullable HttpHeaders headers,
