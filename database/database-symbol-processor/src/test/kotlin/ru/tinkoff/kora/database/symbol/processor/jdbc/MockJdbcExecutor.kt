@@ -42,10 +42,6 @@ class MockJdbcExecutor : JdbcConnectionFactory {
         }
     }
 
-    override fun <T> withConnectionStage(callback: SqlFunction1<Connection, CompletionStage<T>>): CompletionStage<T> {
-        return withConnection(callback)
-    }
-
     override fun currentConnection() = mockConnection!!
 
     override fun newConnection(): Connection {
