@@ -47,11 +47,6 @@ public class MockJdbcExecutor implements JdbcConnectionFactory {
     }
 
     @Override
-    public <T> CompletionStage<T> withConnectionStage(JdbcHelper.SqlFunction1<Connection, CompletionStage<T>> callback) throws RuntimeSqlException {
-        return withConnection(callback);
-    }
-
-    @Override
     public Connection currentConnection() {
         return mockConnection;
     }
