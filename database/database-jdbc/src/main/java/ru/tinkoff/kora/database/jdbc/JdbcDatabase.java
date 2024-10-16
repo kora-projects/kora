@@ -22,7 +22,7 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
 
     private static final Logger logger = LoggerFactory.getLogger(JdbcDatabase.class);
 
-    private final Context.Key<Connection> connectionKey = new Context.Key<>() {
+    final Context.Key<Connection> connectionKey = new Context.Key<>() {
         @Override
         protected Connection copy(Connection object) {
             return null;

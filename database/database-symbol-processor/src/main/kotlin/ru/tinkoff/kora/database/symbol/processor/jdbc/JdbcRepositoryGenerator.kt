@@ -36,6 +36,7 @@ import java.sql.Statement
 import java.util.concurrent.Executor
 
 class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenerator {
+    private val coroutineConnection = ClassName("ru.tinkoff.kora.database.jdbc", "CoroutineConnection")
     private val withContext = MemberName("kotlinx.coroutines", "withContext")
     private val asCoroutineDispatcher = MemberName("kotlinx.coroutines", "asCoroutineDispatcher")
     private val repositoryInterface = resolver.getClassDeclarationByName(resolver.getKSNameFromString(JdbcTypes.jdbcRepository.canonicalName))?.asStarProjectedType()
@@ -111,14 +112,15 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         )
         b.addStatement("val _query = %L", queryContextFieldName)
 
-        if(!method.isSuspend()) {
+        if (!method.isSuspend()) {
             b.addStatement("val _ctxCurrent = %T.current()", CommonClassNames.context)
         }
         if (method.isSuspend()) {
             b.addStatement("val _ctxFork = _ctxCurrent.fork()")
             b.addStatement("_ctxFork.inject()")
             b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(_ctxFork, _query)")
-            b.addStatement("var _conToUse = _ctxConnection ?: %L", connection)
+            b.addStatement("val _crtConnection = this.coroutineContext[%T]?.connection", coroutineConnection)
+            b.addStatement("var _conToUse = _crtConnection ?: _ctxConnection ?: %L", connection)
         } else {
             b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(_ctxCurrent, _query)")
             b.addStatement("var _conToUse = %L", connection)
