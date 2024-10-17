@@ -256,7 +256,7 @@ fun <T> KSAnnotated.visitFunctionArgument(visitor: (KSValueParameter) -> T) = th
 
 fun parseAnnotationClassValue(target: KSAnnotated, annotationName: String): List<KSType> {
     val annotation = target.annotations.firstOrNull { it.annotationType.resolve().declaration.qualifiedName!!.asString() == annotationName }
-    val arguments = annotation?.arguments?: listOf()
+    val arguments = annotation?.arguments ?: listOf()
     return arguments.asSequence()
         .filter { it.name!!.asString() == "value" }
         .map {
@@ -337,6 +337,10 @@ fun KSAnnotated.getOuterClassesAsPrefix(): String {
 
 fun KSDeclaration.generatedClass(suffix: String): String {
     return this.getOuterClassesAsPrefix() + this.simpleName.asString() + "_" + suffix
+}
+
+fun KSDeclaration.generatedClass(generatedType: ClassName): String {
+    return this.getOuterClassesAsPrefix() + this.simpleName.asString() + "_" + generatedType.simpleName
 }
 
 fun KSClassDeclaration.generatedClassName(postfix: String): String {

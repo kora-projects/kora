@@ -1,17 +1,11 @@
 package ru.tinkoff.kora.database.symbol.processor
 
-import kotlinx.coroutines.async
-import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.database.symbol.processor.jdbc.AbstractJdbcRepositoryTest
 
 class MethodModifiersRepositoryTest : AbstractJdbcRepositoryTest() {
     @Test
     fun testInterfacePublicFun() {
-        runBlocking() {
-            async()
-        }
-
         val repository = compile(listOf<Any>(), """
             @Repository
             interface TestRepository : JdbcRepository {
