@@ -1,20 +1,24 @@
 package ru.tinkoff.kora.database.jdbc
 
-import kotlinx.coroutines.async
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.ApiStatus.Internal
 import ru.tinkoff.kora.common.Context
 import java.sql.Connection
 import java.sql.SQLException
+import java.util.concurrent.Executor
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.coroutineContext
 
 @Internal
 @PublishedApi
 internal object JdbcDatabaseExtension {
 
     fun getConnectionKey(jdbcDatabase: JdbcDatabase): Context.Key<Connection>? = jdbcDatabase.connectionKey
+
+    fun getExecutor(jdbcDatabase: JdbcDatabase): Executor? = jdbcDatabase.executor
 }
 
 @Internal
@@ -27,9 +31,13 @@ data class CoroutineConnection(
     override fun toString(): String = "CoroutineConnection($connection)"
 }
 
-suspend inline fun <T> JdbcConnectionFactory.withConnectionSuspend(context: CoroutineContext? = null, noinline callback: suspend (Connection) -> T): T {
-    val crtContext = context ?: coroutineContext
-    return withContext(crtContext) {
+suspend fun <T> JdbcConnectionFactory.withConnectionSuspend(dispatcher: CoroutineDispatcher? = null, callback: suspend (Connection) -> T): T {
+    val callDispatcher = dispatcher ?: if (this is JdbcDatabase)
+        JdbcDatabaseExtension.getExecutor(this)?.asCoroutineDispatcher() ?: Dispatchers.IO
+    else
+        Dispatchers.IO
+
+    return withContext(callDispatcher) {
         val currentConnection = this.coroutineContext[CoroutineConnection]?.connection
         if (currentConnection != null) {
             try {
@@ -39,21 +47,19 @@ suspend inline fun <T> JdbcConnectionFactory.withConnectionSuspend(context: Coro
             }
         }
 
-        async {
-            try {
-                newConnection().use {
-                    withContext(crtContext + CoroutineConnection(it)) {
-                        callback.invoke(it)
-                    }
+        try {
+            newConnection().use {
+                withContext(callDispatcher + CoroutineConnection(it)) {
+                    callback.invoke(it)
                 }
-            } catch (e: SQLException) {
-                throw RuntimeSqlException(e)
             }
-        }.await()
+        } catch (e: SQLException) {
+            throw RuntimeSqlException(e)
+        }
     }
 }
 
-suspend inline fun <T> JdbcConnectionFactory.inTxSuspend(context: CoroutineContext? = null, noinline callback: suspend (Connection) -> T): T {
+suspend fun <T> JdbcConnectionFactory.inTxSuspend(context: CoroutineDispatcher? = null, callback: suspend (Connection) -> T): T {
     return this.withConnectionSuspend(context) { connection ->
         if (!connection.autoCommit) {
             callback.invoke(connection)
