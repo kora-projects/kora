@@ -1,18 +1,20 @@
 package ru.tinkoff.kora.database.annotation.processor.jdbc.extension;
 
 import com.squareup.javapoet.*;
+import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.GenericTypeResolver;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.database.annotation.processor.DbEntityReadHelper;
+import ru.tinkoff.kora.database.annotation.processor.DbUtils;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
 import ru.tinkoff.kora.database.annotation.processor.jdbc.JdbcNativeTypes;
 import ru.tinkoff.kora.database.annotation.processor.jdbc.JdbcTypes;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.KoraExtension;
 
-import jakarta.annotation.Nullable;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -138,6 +140,9 @@ public class JdbcTypesExtension implements KoraExtension {
                 if (constructors.size() != 1) throw new IllegalStateException();
                 return ExtensionResult.fromExecutable(constructors.get(0));
             }
+            if (AnnotationUtils.findAnnotation(entity.typeElement(), DbUtils.TABLE_ANNOTATION) != null) {
+                return ExtensionResult.nextRound();
+            }
             var type = TypeSpec.classBuilder(mapperName)
                 .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", "$S", JdbcTypesExtension.class.getCanonicalName()).build())
                 .addSuperinterface(ParameterizedTypeName.get(
@@ -173,6 +178,9 @@ public class JdbcTypesExtension implements KoraExtension {
                 var constructors = CommonUtils.findConstructors(maybeGenerated, m -> m.contains(Modifier.PUBLIC));
                 if (constructors.size() != 1) throw new IllegalStateException();
                 return ExtensionResult.fromExecutable(constructors.get(0));
+            }
+            if (AnnotationUtils.findAnnotation(entity.typeElement(), DbUtils.TABLE_ANNOTATION) != null) {
+                return ExtensionResult.nextRound();
             }
             var type = TypeSpec.classBuilder(mapperName)
                 .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", "$S", JdbcTypesExtension.class.getCanonicalName()).build())
