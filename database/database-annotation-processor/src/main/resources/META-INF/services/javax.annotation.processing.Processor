@@ -1,2 +1,3 @@
 ru.tinkoff.kora.database.annotation.processor.RepositoryAnnotationProcessor
 ru.tinkoff.kora.database.annotation.processor.cassandra.CassandraUdtAnnotationProcessor
+ru.tinkoff.kora.database.annotation.processor.TableAnnotationProcessor
