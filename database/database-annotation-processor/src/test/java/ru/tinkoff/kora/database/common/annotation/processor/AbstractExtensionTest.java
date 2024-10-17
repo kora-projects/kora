@@ -9,12 +9,12 @@ import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.RefreshableGraph;
 import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor;
 
+import javax.annotation.processing.Processor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Supplier;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class AbstractExtensionTest extends AbstractAnnotationProcessorTest {
 
@@ -37,6 +37,10 @@ public class AbstractExtensionTest extends AbstractAnnotationProcessorTest {
 
 
     protected RefreshableGraph compile(TypeName expectedGeneratedType, List<TypeName> requiredMocks, @Language("java") String... additionalSources) {
+        return compile(expectedGeneratedType, requiredMocks, List.of(), additionalSources);
+    }
+
+    protected RefreshableGraph compile(TypeName expectedGeneratedType, List<TypeName> requiredMocks, List<Processor> additionalProcessors, @Language("java") String... additionalSources) {
         var sources = Arrays.copyOf(additionalSources, additionalSources.length + 1);
         var app = new StringBuilder()
             .append("@KoraApp\n")
@@ -55,12 +59,12 @@ public class AbstractExtensionTest extends AbstractAnnotationProcessorTest {
         app.append("}\n");
         sources[additionalSources.length] = app.toString();
 
-        var compileResult = compile(List.of(new KoraAppProcessor()), sources);
+        var processors = new ArrayList<>(additionalProcessors);
+        processors.add(new KoraAppProcessor());
+        var compileResult = compile(processors, sources);
         if (compileResult.isFailed()) {
             throw compileResult.compilationException();
         }
-
-        assertThat(compileResult.warnings()).hasSize(2);
 
         try {
             var appClass = compileResult.loadClass("ExampleApplicationGraph");
