@@ -1,35 +1,37 @@
 package ru.tinkoff.kora.database.annotation.processor.jdbc.extension;
 
-import com.squareup.javapoet.*;
+import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.ParameterizedTypeName;
+import com.squareup.javapoet.TypeName;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.GenericTypeResolver;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
-import ru.tinkoff.kora.common.annotation.Generated;
-import ru.tinkoff.kora.database.annotation.processor.DbEntityReadHelper;
-import ru.tinkoff.kora.database.annotation.processor.DbUtils;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
-import ru.tinkoff.kora.database.annotation.processor.jdbc.JdbcNativeTypes;
+import ru.tinkoff.kora.database.annotation.processor.jdbc.JdbcEntityGenerator;
 import ru.tinkoff.kora.database.annotation.processor.jdbc.JdbcTypes;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.KoraExtension;
 
-import javax.annotation.processing.Filer;
+import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.*;
+import javax.tools.Diagnostic;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 // JdbcRowMapper<T>
 // JdbcResultSetMapper<T>
@@ -39,33 +41,25 @@ public class JdbcTypesExtension implements KoraExtension {
 
     private final Types types;
     private final Elements elements;
-    private final Filer filer;
-    private final DbEntityReadHelper rowMapperGenerator;
+    private final JdbcEntityGenerator generator;
+    private final Messager messager;
 
     public JdbcTypesExtension(ProcessingEnvironment env) {
         this.types = env.getTypeUtils();
         this.elements = env.getElementUtils();
-        this.filer = env.getFiler();
-        this.rowMapperGenerator = new DbEntityReadHelper(
-            JdbcTypes.RESULT_COLUMN_MAPPER,
-            this.types,
-            fd -> CodeBlock.of("this.$L.apply(_rs, _$LColumn)", fd.mapperFieldName(), fd.fieldName()),
-            fd -> {
-                var nativeType = JdbcNativeTypes.findNativeType(TypeName.get(fd.type()));
-                if (nativeType != null) {
-                    return nativeType.extract("_rs", CodeBlock.of("_$LColumn", fd.fieldName()));
-                } else {
-                    return null;
-                }
-            },
-            fd -> CodeBlock.builder().beginControlFlow("if (_rs.wasNull())")
-                .add(fd.nullable()
-                    ? CodeBlock.of("$N = null;\n", fd.fieldName())
-                    : CodeBlock.of("throw new $T($S);\n", NullPointerException.class, "Result field %s is not nullable but row %s has null".formatted(fd.fieldName(), fd.columnName())))
-                .endControlFlow()
-                .build()
-        );
+        this.messager = env.getMessager();
+        this.generator = new JdbcEntityGenerator(types, elements, env.getFiler());
+    }
 
+    private KoraExtensionDependencyGenerator fromAnnotationProcessor(ClassName mapperName) {
+        var maybeGenerated = this.elements.getTypeElement(mapperName.canonicalName());
+        if (maybeGenerated != null) {
+            var constructors = CommonUtils.findConstructors(maybeGenerated, m -> m.contains(Modifier.PUBLIC));
+            if (constructors.size() != 1) throw new IllegalStateException();
+            return () -> ExtensionResult.fromExecutable(constructors.get(0));
+        } else {
+            return ExtensionResult::nextRound;
+        }
     }
 
     @Nullable
@@ -83,6 +77,11 @@ public class JdbcTypesExtension implements KoraExtension {
         }
         if (Objects.equals(ptn.rawType, JdbcTypes.ROW_MAPPER)) {
             var rowTypeMirror = declaredType.getTypeArguments().get(0);
+            var rowTypeElement = (TypeElement) ((DeclaredType) rowTypeMirror).asElement();
+            if (AnnotationUtils.isAnnotationPresent(rowTypeElement, JdbcTypes.JDBC_ENTITY)) {
+                return fromAnnotationProcessor(generator.rowMapperName(rowTypeElement));
+            }
+
             var entity = DbEntity.parseEntity(this.types, rowTypeMirror);
             if (entity != null) {
                 return this.entityRowMapper(entity);
@@ -95,6 +94,10 @@ public class JdbcTypesExtension implements KoraExtension {
             var resultTypeMirror = declaredType.getTypeArguments().get(0);
             if (resultTypeName instanceof ParameterizedTypeName rptn && rptn.rawType.equals(LIST_CLASS_NAME) && resultTypeMirror instanceof DeclaredType resultDeclaredType) {
                 var rowTypeMirror = resultDeclaredType.getTypeArguments().get(0);
+                var rowTypeElement = (TypeElement) types.asElement(rowTypeMirror);
+                if (AnnotationUtils.isAnnotationPresent(rowTypeElement, JdbcTypes.JDBC_ENTITY)) {
+                    return fromAnnotationProcessor(generator.listJdbcResultSetMapperName(rowTypeElement));
+                }
                 var entity = DbEntity.parseEntity(this.types, rowTypeMirror);
                 if (entity != null) {
                     return this.entityResultListSetMapper(entity);
@@ -113,6 +116,11 @@ public class JdbcTypesExtension implements KoraExtension {
                     };
                 }
             } else {
+                var resultTypeElement = (TypeElement) types.asElement(resultTypeMirror);
+                if (AnnotationUtils.isAnnotationPresent(resultTypeElement, JdbcTypes.JDBC_ENTITY)) {
+                    return fromAnnotationProcessor(generator.resultSetMapperName(resultTypeElement));
+                }
+
                 return () -> {
                     var singleResultSetMapper = this.elements.getTypeElement(JdbcTypes.RESULT_SET_MAPPER.canonicalName()).getEnclosedElements()
                         .stream()
@@ -140,31 +148,12 @@ public class JdbcTypesExtension implements KoraExtension {
                 if (constructors.size() != 1) throw new IllegalStateException();
                 return ExtensionResult.fromExecutable(constructors.get(0));
             }
-            if (AnnotationUtils.findAnnotation(entity.typeElement(), DbUtils.TABLE_ANNOTATION) != null) {
-                return ExtensionResult.nextRound();
-            }
-            var type = TypeSpec.classBuilder(mapperName)
-                .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", "$S", JdbcTypesExtension.class.getCanonicalName()).build())
-                .addSuperinterface(ParameterizedTypeName.get(
-                    JdbcTypes.ROW_MAPPER, TypeName.get(entity.typeMirror())
-                ))
-                .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
-            var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
-
-            var apply = MethodSpec.methodBuilder("apply")
-                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                .addParameter(TypeName.get(ResultSet.class), "_rs")
-                .addException(TypeName.get(SQLException.class))
-                .returns(TypeName.get(entity.typeMirror()));
-            apply.addCode(this.readColumnIds(entity));
-            var read = this.rowMapperGenerator.readEntity("_result", entity);
-            read.enrich(type, constructor);
-            apply.addCode(read.block());
-            apply.addCode("return _result;\n");
-
-            type.addMethod(constructor.build());
-            type.addMethod(apply.build());
-            JavaFile.builder(packageElement.getQualifiedName().toString(), type.build()).build().writeTo(this.filer);
+            this.messager.printMessage(
+                Diagnostic.Kind.WARNING,
+                "Type is not annotated with @JdbcEntity, but mapper %s is requested by graph. Generating one in graph building process will lead to another round of compiling which will slow down you build",
+                entity.typeElement()
+            );
+            this.generator.generateRowMapper(entity);
             return ExtensionResult.nextRound();
         };
     }
@@ -179,47 +168,13 @@ public class JdbcTypesExtension implements KoraExtension {
                 if (constructors.size() != 1) throw new IllegalStateException();
                 return ExtensionResult.fromExecutable(constructors.get(0));
             }
-            if (AnnotationUtils.findAnnotation(entity.typeElement(), DbUtils.TABLE_ANNOTATION) != null) {
-                return ExtensionResult.nextRound();
-            }
-            var type = TypeSpec.classBuilder(mapperName)
-                .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", "$S", JdbcTypesExtension.class.getCanonicalName()).build())
-                .addSuperinterface(ParameterizedTypeName.get(
-                    JdbcTypes.RESULT_SET_MAPPER, ParameterizedTypeName.get(ClassName.get(List.class), TypeName.get(entity.typeMirror()))
-                ))
-                .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
-            var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
-
-            var apply = MethodSpec.methodBuilder("apply")
-                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                .addParameter(TypeName.get(ResultSet.class), "_rs")
-                .addException(TypeName.get(SQLException.class))
-                .addAnnotation(Nullable.class)
-                .returns(ParameterizedTypeName.get(ClassName.get(List.class), TypeName.get(entity.typeMirror())));
-            apply.addCode("if (!_rs.next()) {\n  return $T.of();\n}\n", List.class);
-            apply.addCode(this.readColumnIds(entity));
-            var row = this.rowMapperGenerator.readEntity("_row", entity);
-            row.enrich(type, constructor);
-            apply.addCode("var _result = new $T<$T>();\n", ArrayList.class, entity.typeMirror());
-            apply.addCode("do {$>\n");
-            apply.addCode(row.block());
-            apply.addCode("_result.add(_row);\n");
-            apply.addCode("$<\n} while (_rs.next());\n");
-            apply.addCode("return _result;\n");
-
-            type.addMethod(constructor.build());
-            type.addMethod(apply.build());
-            JavaFile.builder(packageElement.getQualifiedName().toString(), type.build()).build().writeTo(this.filer);
+            this.messager.printMessage(
+                Diagnostic.Kind.WARNING,
+                "Type is not annotated with @JdbcEntity, but mapper %s is requested by graph. Generating one in graph building process will lead to another round of compiling which will slow down you build",
+                entity.typeElement()
+            );
+            this.generator.generateListResultSetMapper(entity);
             return ExtensionResult.nextRound();
         };
-    }
-
-    private CodeBlock readColumnIds(DbEntity entity) {
-        var b = CodeBlock.builder();
-        for (var entityField : entity.columns()) {
-            var fieldName = entityField.variableName();
-            b.add("var _$LColumn = _rs.findColumn($S);\n", fieldName, entityField.columnName());
-        }
-        return b.build();
     }
 }
