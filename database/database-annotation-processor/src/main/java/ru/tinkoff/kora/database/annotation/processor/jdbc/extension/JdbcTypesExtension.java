@@ -84,7 +84,7 @@ public class JdbcTypesExtension implements KoraExtension {
 
             var entity = DbEntity.parseEntity(this.types, rowTypeMirror);
             if (entity != null) {
-                return this.entityRowMapper(entity);
+                return this.entityRowMapper(typeMirror, entity);
             }
             return null;
         }
@@ -100,7 +100,7 @@ public class JdbcTypesExtension implements KoraExtension {
                 }
                 var entity = DbEntity.parseEntity(this.types, rowTypeMirror);
                 if (entity != null) {
-                    return this.entityResultListSetMapper(entity);
+                    return this.entityResultListSetMapper(typeMirror, entity);
                 } else {
                     return () -> {
                         var listResultSetMapper = this.elements.getTypeElement(JdbcTypes.RESULT_SET_MAPPER.canonicalName()).getEnclosedElements()
@@ -138,7 +138,7 @@ public class JdbcTypesExtension implements KoraExtension {
         return null;
     }
 
-    private KoraExtension.KoraExtensionDependencyGenerator entityRowMapper(DbEntity entity) {
+    private KoraExtension.KoraExtensionDependencyGenerator entityRowMapper(TypeMirror mapperType, DbEntity entity) {
         return () -> {
             var mapperName = NameUtils.generatedType(entity.typeElement(), JdbcTypes.ROW_MAPPER);
             var packageElement = this.elements.getPackageOf(entity.typeElement());
@@ -150,7 +150,7 @@ public class JdbcTypesExtension implements KoraExtension {
             }
             this.messager.printMessage(
                 Diagnostic.Kind.WARNING,
-                "Type is not annotated with @JdbcEntity, but mapper %s is requested by graph. Generating one in graph building process will lead to another round of compiling which will slow down you build",
+                "Type is not annotated with @JdbcEntity, but mapper %s is requested by graph. Generating one in graph building process will lead to another round of compiling which will slow down you build".formatted(mapperType),
                 entity.typeElement()
             );
             this.generator.generateRowMapper(entity);
@@ -158,7 +158,7 @@ public class JdbcTypesExtension implements KoraExtension {
         };
     }
 
-    private KoraExtension.KoraExtensionDependencyGenerator entityResultListSetMapper(DbEntity entity) {
+    private KoraExtension.KoraExtensionDependencyGenerator entityResultListSetMapper(TypeMirror mapperType, DbEntity entity) {
         return () -> {
             var mapperName = NameUtils.generatedType(entity.typeElement(), "ListJdbcResultSetMapper");
             var packageElement = this.elements.getPackageOf(entity.typeElement());
@@ -170,7 +170,7 @@ public class JdbcTypesExtension implements KoraExtension {
             }
             this.messager.printMessage(
                 Diagnostic.Kind.WARNING,
-                "Type is not annotated with @JdbcEntity, but mapper %s is requested by graph. Generating one in graph building process will lead to another round of compiling which will slow down you build",
+                "Type is not annotated with @JdbcEntity, but mapper %s is requested by graph. Generating one in graph building process will lead to another round of compiling which will slow down you build".formatted(mapperType),
                 entity.typeElement()
             );
             this.generator.generateListResultSetMapper(entity);
