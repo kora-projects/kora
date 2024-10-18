@@ -8,11 +8,17 @@ public interface HttpServerMetrics {
 
     void requestStarted(String method, String pathTemplate, String host, String scheme);
 
+    /**
+     * @see #requestFinished(int, HttpResultCode, String, String, String, String, HttpHeaders, long, Throwable)
+     */
     @Deprecated
     default void requestFinished(String method, String pathTemplate, String host, String scheme, int statusCode, long processingTimeNanos) {
 
     }
 
+    /**
+     * @see #requestFinished(int, HttpResultCode, String, String, String, String, HttpHeaders, long, Throwable)
+     */
     @Deprecated
     default void requestFinished(String method,
                                  String pathTemplate,

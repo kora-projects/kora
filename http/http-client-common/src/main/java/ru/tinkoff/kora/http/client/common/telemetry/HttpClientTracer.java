@@ -10,6 +10,9 @@ public interface HttpClientTracer {
 
     interface HttpClientSpan {
 
+        /**
+         * @see #close(Integer, HttpResultCode, HttpHeaders, Throwable)
+         */
         @Deprecated
         default void close(int code, @Nullable Throwable exception) {
 

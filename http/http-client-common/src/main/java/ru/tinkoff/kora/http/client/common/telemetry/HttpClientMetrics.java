@@ -6,6 +6,9 @@ import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 public interface HttpClientMetrics {
 
+    /**
+     * @see #record(Integer, HttpResultCode, String, String, String, String, HttpHeaders, long, Throwable)
+     */
     @Deprecated
     default void record(int statusCode, long processingTimeNanos, String method, String host, String scheme, String pathTemplate) {
 
