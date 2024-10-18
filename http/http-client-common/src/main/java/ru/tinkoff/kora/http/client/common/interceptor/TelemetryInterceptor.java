@@ -8,6 +8,7 @@ import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetry;
 import java.util.concurrent.CompletionStage;
 
 public class TelemetryInterceptor implements HttpClientInterceptor {
+
     private final HttpClientTelemetry telemetry;
 
     public TelemetryInterceptor(HttpClientTelemetry telemetry) {

@@ -20,35 +20,36 @@ public interface HttpServerLogger {
         logStart(method + ' ' + pathTemplate, headers);
     }
 
-    default void logEnd(String method,
+    default void logEnd(int statusCode,
+                        HttpResultCode resultCode,
+                        String method,
                         String path,
                         String pathTemplate,
-                        int statusCode,
-                        HttpResultCode resultCode,
                         long processingTime,
                         Map<String, ? extends Collection<String>> queryParams,
                         @Nullable HttpHeaders headers,
                         @Nullable Throwable exception) {
-        logEnd(method + ' ' + pathTemplate,
-               statusCode, resultCode, processingTime, headers, exception);
+        logEnd(method + ' ' + pathTemplate, statusCode, resultCode, processingTime, headers, exception);
     }
 
     /**
      * @see #logStart(String, String, String, Map, HttpHeaders)
      */
     @Deprecated
-    default void logStart(String operation, @Nullable HttpHeaders headers) {
+    default void logStart(String operation, HttpHeaders headers) {
+
     }
 
     /**
-     * @see #logEnd(String, String, String, int, HttpResultCode, long, Map, HttpHeaders, Throwable)
+     * @see #logEnd(int, HttpResultCode, String, String, String, long, Map, HttpHeaders, Throwable)
      */
     @Deprecated
     default void logEnd(String operation,
-                Integer statusCode,
-                HttpResultCode resultCode,
-                long processingTime,
-                @Nullable HttpHeaders headers,
-                @Nullable Throwable exception) {
+                        Integer statusCode,
+                        HttpResultCode resultCode,
+                        long processingTime,
+                        @Nullable HttpHeaders headers,
+                        @Nullable Throwable exception) {
+
     }
 }
