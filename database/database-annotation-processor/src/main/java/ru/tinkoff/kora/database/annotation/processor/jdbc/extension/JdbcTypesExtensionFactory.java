@@ -11,7 +11,7 @@ public class JdbcTypesExtensionFactory implements ExtensionFactory {
 
     @Override
     public Optional<KoraExtension> create(ProcessingEnvironment processingEnvironment) {
-        var type = processingEnvironment.getElementUtils().getTypeElement(JdbcTypes.ROW_MAPPER.canonicalName());
+        var type = processingEnvironment.getElementUtils().getTypeElement(JdbcTypes.JDBC_ENTITY.canonicalName());
         if (type == null) {
             return Optional.empty();
         }

@@ -25,18 +25,22 @@ abstract class AbstractJdbcEntityTest extends AbstractExtensionTest {
         var rs = Mockito.mock(ResultSet.class);
         var wasNulls = new Boolean[columns.length];
         var wasNullCounter = 0;
+        var hasNext = new Boolean[columns.length];
+        Arrays.fill(hasNext, true);
+        if (columns.length > 0) {
+            hasNext[columns.length - 1] = false;
+        }
         for (int i = 0; i < columns.length; i++) {
             var column = columns[i];
             if (column.primitive()) {
                 wasNulls[wasNullCounter++] = column.value == null;
             }
-            when(rs.next()).thenReturn(true);
             column.mock(rs, i + 1);
         }
         if (wasNulls[0] != null) {
             when(rs.wasNull()).thenReturn(wasNulls[0], Arrays.copyOfRange(wasNulls, 1, wasNullCounter));
         }
-        when(rs.next()).thenReturn(false);
+        when(rs.next()).thenReturn(true, false);
         return rs;
     }
 
