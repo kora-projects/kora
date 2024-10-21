@@ -199,6 +199,7 @@ public class AopProcessor {
             var overridenMethod = MethodSpec.overriding(typeMethod);
             Collections.reverse(aspectsToApply);
 
+            var names = new HashSet<String>();
             for (var aspect : aspectsToApply) {
                 var result = aspect.apply(typeMethod, superCall, aopContext);
                 if (result instanceof KoraAspect.ApplyResult.Noop) {
@@ -206,7 +207,15 @@ public class AopProcessor {
                 }
 
                 var methodBody = (KoraAspect.ApplyResult.MethodBody) result;
+                var methodNameBase = "_" + typeMethod.getSimpleName() + "_AopProxy_" + aspect.getClass().getSimpleName();
                 var methodName = "_" + typeMethod.getSimpleName() + "_AopProxy_" + aspect.getClass().getSimpleName();
+                for (int i = 0; i < Integer.MAX_VALUE; i++) {
+                    if (names.add(methodName)) {
+                        break;
+                    } else {
+                        methodName = methodNameBase + i;
+                    }
+                }
                 superCall = methodName;
                 var m = MethodSpec.methodBuilder(methodName)
                     .addModifiers(Modifier.PRIVATE)
@@ -274,6 +283,9 @@ public class AopProcessor {
 
             if (!tags.isEmpty()) {
                 parameterSpec = parameterSpec.toBuilder().addAnnotation(TagUtils.makeAnnotationSpec(tags)).build();
+            }
+            if (CommonUtils.isNullable(parameter)) {
+                parameterSpec = parameterSpec.toBuilder().addAnnotation(CommonClassNames.nullable).build();
             }
 
             constructorBuilder.addParameter(parameterSpec);
