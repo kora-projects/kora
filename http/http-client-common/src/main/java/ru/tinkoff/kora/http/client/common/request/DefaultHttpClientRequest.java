@@ -16,10 +16,12 @@ public record DefaultHttpClientRequest(
     HttpBodyOutput body,
     @Nullable Duration requestTimeout
 ) implements HttpClientRequest {
+
     public DefaultHttpClientRequest {
         Objects.requireNonNull(method);
         Objects.requireNonNull(uri);
         Objects.requireNonNull(headers);
         Objects.requireNonNull(body);
+        method = method.toUpperCase();
     }
 }

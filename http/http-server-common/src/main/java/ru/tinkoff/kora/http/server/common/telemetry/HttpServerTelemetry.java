@@ -10,7 +10,7 @@ public interface HttpServerTelemetry {
     HttpServerTelemetry EMPTY = (request, routeTemplate) -> EMPTY_CTX;
 
     interface HttpServerTelemetryContext {
-        void close(int statusCode, HttpResultCode resultCode, @Nullable HttpHeaders headers, @Nullable Throwable exception);
+        void close(int statusCode, HttpResultCode resultCode, HttpHeaders headers, @Nullable Throwable exception);
     }
 
     HttpServerTelemetryContext get(PublicApiRequest request, @Nullable String routeTemplate);

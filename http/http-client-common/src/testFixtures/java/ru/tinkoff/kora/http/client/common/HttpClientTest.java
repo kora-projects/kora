@@ -17,6 +17,7 @@ import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.client.common.interceptor.TelemetryInterceptor;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.telemetry.DefaultHttpClientTelemetry;
+import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.opentelemetry.module.http.client.OpentelemetryHttpClientTracer;
@@ -51,7 +52,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
             .withHeaders(Header.header("Content-type", "text/plain; charset=UTF-8"))
         );
         doNothing().when(this.logger).logRequest(any(), any(), any(), any(), any(), any(), any(), any());
-        doNothing().when(this.logger).logResponse(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
+        doNothing().when(this.logger).logResponse(any(), any(), any(), any(), any(), any(), anyLong(), any(), any(), any());
         when(this.logger.logRequest()).thenReturn(true);
         when(this.logger.logRequestHeaders()).thenReturn(true);
         when(this.logger.logRequestBody()).thenReturn(true);
@@ -76,7 +77,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
                 a.getFirst("traceparent").startsWith("00-" + rootSpan.getSpanContext().getTraceId())
                     && !a.getFirst("traceparent").contains(rootSpan.getSpanContext().getSpanId())),
             eq("test-request"));
-        verify(this.metrics).record(eq(200), ArgumentMatchers.longThat(l -> l > 0), eq("POST"), eq("localhost"), eq("http"), eq("/"));
+        verify(this.metrics).record(eq(200), eq(HttpResultCode.SUCCESS), eq("http"), eq("localhost"), eq("POST"), eq("/"), any(), ArgumentMatchers.longThat(l -> l > 0), any());
     }
 
     @ParameterizedTest
@@ -149,12 +150,14 @@ public abstract class HttpClientTest extends HttpClientTestBase {
 
         verify(this.metrics).record(
             eq(-1),
-            AdditionalMatchers.gt(Duration.ofMillis(500).toNanos()),
-            eq("POST"),
-            eq("localhost"),
+            eq(HttpResultCode.CONNECTION_ERROR),
             eq("http"),
-            eq("/")
-        );
+            eq("localhost"),
+            eq("POST"),
+            eq("/"),
+            any(),
+            AdditionalMatchers.gt(Duration.ofMillis(500).toNanos()),
+            any());
     }
 
 
@@ -179,12 +182,14 @@ public abstract class HttpClientTest extends HttpClientTestBase {
 
         verify(this.metrics).record(
             eq(-1),
-            AdditionalMatchers.gt(Duration.ofMillis(200).toNanos()),
-            eq("POST"),
-            eq("localhost"),
+            eq(HttpResultCode.CONNECTION_ERROR),
             eq("http"),
-            eq("/")
-        );
+            eq("localhost"),
+            eq("POST"),
+            eq("/"),
+            any(),
+            AdditionalMatchers.gt(Duration.ofMillis(200).toNanos()),
+            any());
     }
 
     @ParameterizedTest
@@ -209,12 +214,14 @@ public abstract class HttpClientTest extends HttpClientTestBase {
 
         verify(this.metrics).record(
             eq(200),
-            AdditionalMatchers.lt(Duration.ofMillis(500).toNanos()),
-            eq("POST"),
-            eq("localhost"),
+            HttpResultCode.SUCCESS,
             eq("http"),
-            eq("/")
-        );
+            eq("localhost"),
+            eq("POST"),
+            eq("/"),
+            any(),
+            AdditionalMatchers.lt(Duration.ofMillis(500).toNanos()),
+            any());
     }
 
     @ParameterizedTest
@@ -249,11 +256,14 @@ public abstract class HttpClientTest extends HttpClientTestBase {
 
         verify(this.metrics).record(
             eq(-1),
-            ArgumentMatchers.longThat(l -> l > 0),
-            eq("POST"),
-            eq("google.com"),
+            eq(HttpResultCode.CONNECTION_ERROR),
             eq("http"),
-            eq("/foo/{bar}/baz")
+            eq("google.com"),
+            eq("POST"),
+            eq("/foo/{bar}/baz"),
+            any(),
+            ArgumentMatchers.longThat(l -> l > 0),
+            any()
         );
     }
 

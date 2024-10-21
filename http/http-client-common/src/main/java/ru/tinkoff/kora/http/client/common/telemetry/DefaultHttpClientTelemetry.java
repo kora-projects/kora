@@ -15,6 +15,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 
@@ -35,11 +36,11 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
     @Override
     public boolean isEnabled() {
         return metrics != null
-            || tracing != null
-            || logger != null && (logger.logRequest() || logger.logRequestBody() || logger.logResponse() || logger.logResponseBody());
+               || tracing != null
+               || logger != null && (logger.logRequest() || logger.logRequestBody() || logger.logResponse() || logger.logResponseBody());
     }
 
-    record TelemetryContextData(long startTime, String method, String path, String pathTemplate, String host, String scheme, String authority, String target) {
+    record TelemetryContextData(long startTime, String method, String path, String pathTemplate, String host, String scheme, String authority) {
         public TelemetryContextData(HttpClientRequest request, String path, String pathTemplate) {
             this(
                 System.nanoTime(),
@@ -48,8 +49,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
                 pathTemplate,
                 request.uri().getHost(),
                 request.uri().getScheme(),
-                request.uri().getAuthority(),
-                request.uriTemplate()
+                request.uri().getAuthority()
             );
         }
     }
@@ -80,7 +80,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         var path = (isAnyLog)
                     ? request.uri().getPath()
                     : null;
-        var pathTemplate = (isAnyLog)
+        var pathTemplate = (isAnyLog || metrics != null)
                     ? DefaultHttpClientTelemetry.pathTemplate(request.uriTemplate(), request.uri())
                     : null;
         var resolvedUri = (isRequestLog)
@@ -235,15 +235,18 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         }
 
         public void onClose(Throwable throwable) {
-            if (span != null) span.close(-1, throwable);
+            var cause = (throwable instanceof CompletionException) ? throwable.getCause() : throwable;
+            if (span != null) {
+                span.close(-1, cause);
+            }
             var processingTime = System.nanoTime() - data.startTime();
             if (metrics != null) {
-                metrics.record(-1, processingTime, request.method(), data.host(), data.scheme(), data.target());
+                metrics.record(-1, HttpResultCode.CONNECTION_ERROR, data.scheme(), data.host(), data.method(), data.pathTemplate(), HttpHeaders.empty(), processingTime, cause);
             }
             if (logger != null && logger.logResponse()) {
                 try {
                     this.ctx.inject();
-                    logger.logResponse(data.authority(), data.method(), data.path(), data.pathTemplate(), processingTime, null, HttpResultCode.CONNECTION_ERROR, throwable, null, null);
+                    logger.logResponse(-1, HttpResultCode.CONNECTION_ERROR, data.authority(), data.method(), data.path(), data.pathTemplate(), processingTime, HttpHeaders.empty(), null, cause);
                 } finally {
                     ctx.inject();
                 }
@@ -256,17 +259,17 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
                 span.close(code, null);
             }
             var processingTime = System.nanoTime() - data.startTime();
-            if (metrics != null) {
-                metrics.record(code, processingTime, request.method(), data.host(), data.scheme(), data.target());
-            }
             var resultCode = HttpResultCode.fromStatusCode(code);
+            var headersResp = headers == null ? HttpHeaders.empty() : headers;
+            if (metrics != null) {
+                metrics.record(code, resultCode, data.scheme(), data.host(), data.method(), data.pathTemplate(), headersResp, processingTime, null);
+            }
             if (logger != null && logger.logResponse()) {
-                var headersStr = logger.logResponseHeaders() ? headers : null;
                 var bodyString = logger.logResponseBody() ? byteBufListToBodyString(body, responseBodyCharset) : null;
                 var ctx = Context.current();
                 try {
                     this.ctx.inject();
-                    logger.logResponse(data.authority(), data.method(), data.path(), data.pathTemplate(), processingTime, code, resultCode, null, headersStr, bodyString);
+                    logger.logResponse(code, resultCode, data.authority(), data.method(), data.path(), data.pathTemplate(), processingTime, headersResp, bodyString, null);
                 } finally {
                     ctx.inject();
                 }

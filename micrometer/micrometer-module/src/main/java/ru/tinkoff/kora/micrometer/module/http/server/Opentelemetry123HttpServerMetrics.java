@@ -4,6 +4,8 @@ import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.http.common.HttpResultCode;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerMetrics;
 import ru.tinkoff.kora.micrometer.module.http.server.tag.ActiveRequestsKey;
 import ru.tinkoff.kora.micrometer.module.http.server.tag.DurationKey;
@@ -27,8 +29,8 @@ public final class Opentelemetry123HttpServerMetrics implements HttpServerMetric
     }
 
     @Override
-    public void requestStarted(String method, String target, String host, String scheme) {
-        var counter = requestCounters.computeIfAbsent(new ActiveRequestsKey(method, target, host, scheme), activeRequestsKey -> {
+    public void requestStarted(String method, String pathTemplate, String host, String scheme) {
+        var counter = requestCounters.computeIfAbsent(new ActiveRequestsKey(method, pathTemplate, host, scheme), activeRequestsKey -> {
             var c = new AtomicInteger(0);
             this.registerActiveRequestsGauge(activeRequestsKey, c);
             return c;
@@ -37,21 +39,16 @@ public final class Opentelemetry123HttpServerMetrics implements HttpServerMetric
     }
 
     @Override
-    public void requestFinished(String method, String route, String host, String scheme, int statusCode, long processingTimeNano) {
-        this.requestFinished(method, route, host, scheme, statusCode, processingTimeNano, null);
-    }
-
-    @Override
-    public void requestFinished(String method, String route, String host, String scheme, int statusCode, long processingTimeNano, Throwable exception) {
-        var counter = requestCounters.computeIfAbsent(new ActiveRequestsKey(method, route, host, scheme), activeRequestsKey -> {
+    public void requestFinished(int statusCode, HttpResultCode resultCode, String scheme, String host, String method, String pathTemplate, HttpHeaders headers, long processingTimeNanos, Throwable exception) {
+        var counter = requestCounters.computeIfAbsent(new ActiveRequestsKey(method, pathTemplate, host, scheme), activeRequestsKey -> {
             var c = new AtomicInteger(0);
             this.registerActiveRequestsGauge(activeRequestsKey, c);
             return c;
         });
         counter.decrementAndGet();
-        var key = new DurationKey(statusCode, method, route, host, scheme, exception == null ? null : exception.getClass());
+        var key = new DurationKey(statusCode, method, pathTemplate, host, scheme, exception == null ? null : exception.getClass());
         this.duration.computeIfAbsent(key, this::requestDuration)
-            .record(((double) processingTimeNano) / 1_000_000_000);
+            .record(((double) processingTimeNanos) / 1_000_000_000);
     }
 
     private void registerActiveRequestsGauge(ActiveRequestsKey key, AtomicInteger counter) {
