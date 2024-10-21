@@ -3,14 +3,13 @@ package ru.tinkoff.kora.aop.annotation.processor;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest;
-import ru.tinkoff.kora.common.Component;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.util.List;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -215,4 +214,20 @@ class AopAnnotationProcessorTest extends AbstractAnnotationProcessorTest {
         assertThat(aopProxy.getAnnotations()).contains(aopTarget.getAnnotations());
     }
 
+    @Test
+    public void interfacesAreNotBeingProcessedByAopProcessor() {
+        compile(List.of(new AopAnnotationProcessor()), """
+            public interface AopTarget {
+                @ru.tinkoff.kora.aop.annotation.processor.TestAnnotation1("test")
+                void test();
+            }
+            """);
+        assertSuccess();
+
+        var aopTarget = loadClass("AopTarget");
+
+        assertThatThrownBy(() -> loadClass("$AopTarget__AopProxy"))
+            .isInstanceOf(IllegalStateException.class)
+            .hasCauseExactlyInstanceOf(ClassNotFoundException.class);
+    }
 }
