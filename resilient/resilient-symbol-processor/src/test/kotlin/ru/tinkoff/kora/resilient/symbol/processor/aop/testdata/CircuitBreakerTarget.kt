@@ -18,18 +18,18 @@ open class CircuitBreakerTarget {
         return "OK"
     }
 
-    @CircuitBreaker("custom1")
+    @CircuitBreaker("custom2")
     open fun getValueSyncVoid() {
         check(!alwaysFail) { "Failed" }
     }
 
-    @CircuitBreaker("custom2")
+    @CircuitBreaker("custom3")
     open suspend fun getValueSuspend(): String {
         check(!alwaysFail) { "Failed" }
         return "OK"
     }
 
-    @CircuitBreaker("custom3")
+    @CircuitBreaker("custom4")
     open fun getValueFLow(): Flow<String> {
         check(!alwaysFail) { "Failed" }
         return flow {

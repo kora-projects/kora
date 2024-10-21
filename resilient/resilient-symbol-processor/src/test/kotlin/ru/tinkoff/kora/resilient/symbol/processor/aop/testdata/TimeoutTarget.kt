@@ -17,18 +17,18 @@ open class TimeoutTarget {
         return "OK"
     }
 
-    @Timeout("custom1")
+    @Timeout("custom2")
     open fun getValueSyncVoid() {
         Thread.sleep(2000)
     }
 
-    @Timeout("custom1")
+    @Timeout("custom3")
     open suspend fun getValueSuspend(): String {
         delay(2000)
         return "OK"
     }
 
-    @Timeout("custom3")
+    @Timeout("custom4")
     open fun getValueFLow(): Flow<String> {
         return flow {
             delay(2000)
@@ -39,7 +39,7 @@ open class TimeoutTarget {
     // Throws here is an alias for kotlin.jvm.Throws
     // Method should compile normally
     @Throws(IllegalStateException::class)
-    @Timeout("custom1")
+    @Timeout("custom5")
     open fun getValueSyncThrows(): String {
         Thread.sleep(2000)
         return "OK"
