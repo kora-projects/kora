@@ -11,6 +11,7 @@ import ru.tinkoff.kora.annotation.processor.common.LogUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingError;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.common.AopAnnotation;
+import ru.tinkoff.kora.common.util.Either;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -26,8 +27,6 @@ import java.util.stream.Collectors;
 
 public class AopAnnotationProcessor extends AbstractKoraProcessor {
     private static final Logger log = LoggerFactory.getLogger(AopAnnotationProcessor.class);
-    private final List<ProcessingError> errors = new ArrayList<>();
-    private final Set<TypeElementWithEquals> classesToProcess = new HashSet<>();
     private List<KoraAspect> aspects;
     private TypeElement[] annotations;
     private AopProcessor aopProcessor;
@@ -81,13 +80,11 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
         }
     }
 
-    private record TypeElementWithEquals(Types types, TypeElement te) {
+    private record TypeElementWithEquals(TypeElement te) {
         @Override
         public boolean equals(Object obj) {
             if (obj instanceof TypeElementWithEquals that) {
-                var type = this.te.asType();
-                var thatType = that.te.asType();
-                return this.types.isSameType(type, thatType);
+                return this.te.getQualifiedName().contentEquals(that.te.getQualifiedName());
             }
             return false;
         }
@@ -101,31 +98,27 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         var elements = roundEnv.getElementsAnnotatedWithAny(this.annotations);
+        var classesToProcess = new HashSet<TypeElementWithEquals>();
+
         for (var element : elements) {
             var typeElement = this.findTypeElement(element);
-            if (typeElement != null) {
-                this.classesToProcess.add(new TypeElementWithEquals(this.types, typeElement));
+            if (typeElement.isRight()) {
+                typeElement.right().print(processingEnv);
+            } else if (typeElement.isLeft() && typeElement.left() != null) {
+                classesToProcess.add(new TypeElementWithEquals(typeElement.left()));
             }
         }
 
-        for (var error : this.errors) {
-            error.print(this.processingEnv);
-        }
-        if (!this.errors.isEmpty()) {
-            return false;
-        }
-
-        var processedClasses = new ArrayList<TypeElementWithEquals>();
-        if (!this.classesToProcess.isEmpty()) {
+        if (!classesToProcess.isEmpty()) {
             if (log.isInfoEnabled()) {
-                List<TypeElement> elems = this.classesToProcess.stream()
+                var elems = classesToProcess.stream()
                     .map(c -> c.te)
                     .toList();
                 LogUtils.logElementsFull(log, Level.INFO, "Components with aspects found", elems);
             }
         }
 
-        for (var ctp : this.classesToProcess) {
+        for (var ctp : classesToProcess) {
             var te = ctp.te();
             TypeSpec typeSpec;
             try {
@@ -136,53 +129,46 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
             }
 
             var packageElement = this.elements.getPackageOf(te);
-            var javaFile = JavaFile.builder(packageElement.getQualifiedName().toString(), typeSpec).build();
+            var javaFile = JavaFile.builder(packageElement.getQualifiedName().toString(), typeSpec.toBuilder().addOriginatingElement(te).build()).build();
             try {
                 javaFile.writeTo(this.processingEnv.getFiler());
-                processedClasses.add(ctp);
             } catch (IOException e) {
-                this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Error on writing file: " + e.getMessage(), te);
+                throw new RuntimeException(e);
             }
         }
-        processedClasses.forEach(this.classesToProcess::remove);
         return false;
     }
 
     @Nullable
-    private TypeElement findTypeElement(Element element) {
+    private Either<TypeElement, ProcessingError> findTypeElement(Element element) {
         if (element.getKind() == ElementKind.INTERFACE) {
-            return null;
+            return Either.left(null);
         }
         if (element.getKind() == ElementKind.CLASS) {
             if (element.getModifiers().contains(Modifier.ABSTRACT)) {
-                return null;
+                return Either.left(null);
             }
             if (element.getModifiers().contains(Modifier.FINAL)) {
-                this.errors.add(new ProcessingError("Aspects can't be applied to final classes, but " + element.getSimpleName() + " is final", element));
-                return null;
+                return Either.right(new ProcessingError("Aspects can't be applied to final classes, but " + element.getSimpleName() + " is final", element));
             }
             var typeElement = (TypeElement) element;
             var constructor = AopUtils.findAopConstructor(typeElement);
             if (constructor == null) {
-                this.errors.add(new ProcessingError("Can't find constructor suitable for aop proxy for " + element.getSimpleName(), element));
-                return null;
+                return Either.right(new ProcessingError("Can't find constructor suitable for aop proxy for " + element.getSimpleName(), element));
             }
-            return typeElement;
+            return Either.left(typeElement);
         }
         if (element.getKind() == ElementKind.PARAMETER) {
             return this.findTypeElement(element.getEnclosingElement());
         }
         if (element.getKind() != ElementKind.METHOD) {
-            this.errors.add(new ProcessingError("Aspects can be applied only to classes or methods, got %s".formatted(element.getKind()), element));
-            return null;
+            return Either.right(new ProcessingError("Aspects can be applied only to classes or methods, got %s".formatted(element.getKind()), element));
         }
         if (element.getModifiers().contains(Modifier.FINAL)) {
-            this.errors.add(new ProcessingError("Aspects can't be applied to final methods, but method " + element.getEnclosingElement().getSimpleName() + "#" + element.getSimpleName() + "() is final", element));
-            return null;
+            return Either.right(new ProcessingError("Aspects can't be applied to final methods, but method " + element.getEnclosingElement().getSimpleName() + "#" + element.getSimpleName() + "() is final", element));
         }
         if (element.getModifiers().contains(Modifier.PRIVATE)) {
-            this.errors.add(new ProcessingError("Aspects can't be applied to private methods, but method " + element.getEnclosingElement().getSimpleName() + "#" + element.getSimpleName() + "() is private", element));
-            return null;
+            return Either.right(new ProcessingError("Aspects can't be applied to private methods, but method " + element.getEnclosingElement().getSimpleName() + "#" + element.getSimpleName() + "() is private", element));
         }
         return this.findTypeElement(element.getEnclosingElement());
     }
