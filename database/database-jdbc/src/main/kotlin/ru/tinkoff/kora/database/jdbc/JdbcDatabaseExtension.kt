@@ -19,7 +19,7 @@ internal object JdbcDatabaseExtension {
 }
 
 @Internal
-internal data class CoroutineConnection(
+data class CoroutineConnection(
     val connection: Connection
 ) : AbstractCoroutineContextElement(CoroutineConnection) {
 
