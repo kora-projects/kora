@@ -5,7 +5,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.ApiStatus.Internal
-import ru.tinkoff.kora.common.Context
 import java.sql.Connection
 import java.sql.SQLException
 import java.util.concurrent.Executor
@@ -16,13 +15,11 @@ import kotlin.coroutines.CoroutineContext
 @PublishedApi
 internal object JdbcDatabaseExtension {
 
-    fun getConnectionKey(jdbcDatabase: JdbcDatabase): Context.Key<Connection>? = jdbcDatabase.connectionKey
-
     fun getExecutor(jdbcDatabase: JdbcDatabase): Executor? = jdbcDatabase.executor
 }
 
 @Internal
-data class CoroutineConnection(
+internal data class CoroutineConnection(
     val connection: Connection
 ) : AbstractCoroutineContextElement(CoroutineConnection) {
 
