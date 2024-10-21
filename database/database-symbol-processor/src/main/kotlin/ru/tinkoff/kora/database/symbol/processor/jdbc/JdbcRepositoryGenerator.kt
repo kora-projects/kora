@@ -90,7 +90,6 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
 
         if (method.isSuspend()) {
             b.addStatement("val _ctxCurrent = %T.current()", CommonClassNames.context)
-            b.addStatement("val _ctxConnection = %L", connection)
             b.beginControlFlow("return %M(kotlin.coroutines.coroutineContext + this._executor.%M()) {", withContext, asCoroutineDispatcher)
         }
 
@@ -120,7 +119,7 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
             b.addStatement("_ctxFork.inject()")
             b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(_ctxFork, _query)")
             b.addStatement("val _crtConnection = this.coroutineContext[%T]?.connection", coroutineConnection)
-            b.addStatement("var _conToUse = _crtConnection ?: _ctxConnection ?: %L", connection)
+            b.addStatement("var _conToUse = _crtConnection ?: %L", connection)
         } else {
             b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(_ctxCurrent, _query)")
             b.addStatement("var _conToUse = %L", connection)
