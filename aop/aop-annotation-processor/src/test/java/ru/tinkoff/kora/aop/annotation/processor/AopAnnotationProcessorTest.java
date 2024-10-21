@@ -3,7 +3,9 @@ package ru.tinkoff.kora.aop.annotation.processor;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest;
+import ru.tinkoff.kora.common.Component;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.util.List;
 import java.util.stream.Stream;
@@ -175,7 +177,6 @@ class AopAnnotationProcessorTest extends AbstractAnnotationProcessorTest {
         order.verifyNoMoreInteractions();
     }
 
-
     @Test
     public void testTaggedConstructorParamsPropagetedToProxy() {
         compile(List.of(new AopAnnotationProcessor()), """
@@ -196,6 +197,22 @@ class AopAnnotationProcessorTest extends AbstractAnnotationProcessorTest {
             var proxyParam = aopProxyConstructor.getParameters()[i];
             assertThat(targetParam.getAnnotations()).containsExactly(proxyParam.getAnnotations());
         }
+    }
+
+    @Test
+    public void componentAnnotationPropagadedOnProxy() {
+        compile(List.of(new AopAnnotationProcessor()), """
+            @Component
+            public class AopTarget {
+                @ru.tinkoff.kora.aop.annotation.processor.TestAnnotation1("test")
+                public void test() {}
+            }
+            """);
+        assertSuccess();
+        var aopTarget = loadClass("AopTarget");
+        var aopProxy = loadClass("$AopTarget__AopProxy");
+
+        assertThat(aopProxy.getAnnotations()).contains(aopTarget.getAnnotations());
     }
 
 }
