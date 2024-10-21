@@ -110,11 +110,12 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         b.addStatement("val _query = %L", queryContextFieldName)
 
         if (method.isSuspend()) {
+            b.addStatement("var _conToUse = %L ?: this.coroutineContext[%T]?.connection", connection, coroutineConnection)
             b.addStatement("val _ctxFork = _ctxCurrent.fork()")
             b.addStatement("_ctxFork.inject()")
             b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(_ctxFork, _query)")
-            b.addStatement("val _crtConnection = this.coroutineContext[%T]?.connection", coroutineConnection)
-            b.addStatement("var _conToUse = _crtConnection ?: %L", connection)
+//            b.addStatement("val _crtConnection = this.coroutineContext[%T]?.connection", coroutineConnection)
+//            b.addStatement("var _conToUse = _crtConnection ?: %L", connection)
         } else {
             b.addStatement("val _ctxCurrent = %T.current()", CommonClassNames.context)
             b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(_ctxCurrent, _query)")
