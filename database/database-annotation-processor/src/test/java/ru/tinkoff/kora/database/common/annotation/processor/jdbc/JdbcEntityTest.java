@@ -18,7 +18,7 @@ public class JdbcEntityTest extends AbstractJdbcEntityTest {
         var expectedType = ParameterizedTypeName.get(ClassName.get(JdbcRowMapper.class), className("TestRecord"));
 
         var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
-            "@ru.tinkoff.kora.database.jdbc.JdbcEntity public record TestRecord(Integer f1, Integer f2){}"
+            "import ru.tinkoff.kora.database.jdbc.EntityJdbc;@EntityJdbc public record TestRecord(Integer f1, Integer f2){}"
         );
         assertThat(draw.getNodes()).hasSize(2);
 
@@ -30,7 +30,7 @@ public class JdbcEntityTest extends AbstractJdbcEntityTest {
         var expectedType = ParameterizedTypeName.get(ClassName.get(JdbcResultSetMapper.class), className("TestRecord"));
 
         var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
-            "@ru.tinkoff.kora.database.jdbc.JdbcEntity public record TestRecord(Integer f1, Integer f2){}"
+            "import ru.tinkoff.kora.database.jdbc.EntityJdbc;@EntityJdbc public record TestRecord(Integer f1, Integer f2){}"
         );
         assertThat(draw.getNodes()).hasSize(2);
 
@@ -42,7 +42,7 @@ public class JdbcEntityTest extends AbstractJdbcEntityTest {
         var expectedType = ParameterizedTypeName.get(ClassName.get(JdbcResultSetMapper.class), ParameterizedTypeName.get(ClassName.get(List.class), className("TestRecord")));
 
         var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
-            "@ru.tinkoff.kora.database.jdbc.JdbcEntity public record TestRecord(Integer f1, Integer f2){}"
+            "import ru.tinkoff.kora.database.jdbc.EntityJdbc;@EntityJdbc public record TestRecord(Integer f1, Integer f2){}"
         );
         assertThat(draw.getNodes()).hasSize(2);
 

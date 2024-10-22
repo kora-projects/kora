@@ -16,5 +16,5 @@ public class JdbcTypes {
     public static final String PARAMETER_PACKAGE = "ru.tinkoff.kora.database.jdbc.mapper.parameter";
     public static final ClassName PARAMETER_COLUMN_MAPPER = ClassName.get(PARAMETER_PACKAGE, "JdbcParameterColumnMapper");
 
-    public static final ClassName JDBC_ENTITY = ClassName.get("ru.tinkoff.kora.database.jdbc", "JdbcEntity");
+    public static final ClassName JDBC_ENTITY = ClassName.get("ru.tinkoff.kora.database.jdbc", "EntityJdbc");
 }

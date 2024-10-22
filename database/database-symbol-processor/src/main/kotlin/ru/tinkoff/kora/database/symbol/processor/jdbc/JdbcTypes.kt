@@ -5,7 +5,7 @@ import com.squareup.kotlinpoet.ClassName
 object JdbcTypes {
     val connection = ClassName("java.sql", "Connection")
     val resultSet = ClassName("java.sql", "ResultSet")
-    val jdbcEntity = ClassName("ru.tinkoff.kora.database.jdbc", "JdbcEntity")
+    val jdbcEntity = ClassName("ru.tinkoff.kora.database.jdbc", "EntityJdbc")
     val connectionFactory = ClassName("ru.tinkoff.kora.database.jdbc", "JdbcConnectionFactory")
     val jdbcDatabase = ClassName("ru.tinkoff.kora.database.jdbc", "JdbcDatabase")
     val jdbcRepository = ClassName("ru.tinkoff.kora.database.jdbc", "JdbcRepository")
