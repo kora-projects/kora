@@ -9,8 +9,11 @@ import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.writeTo
-import ru.tinkoff.kora.ksp.common.*
+import ru.tinkoff.kora.common.util.Either
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
+import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
+import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.KoraSymbolProcessingEnv
 import ru.tinkoff.kora.ksp.common.exception.ProcessingError
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import java.util.*
@@ -19,135 +22,94 @@ class AopSymbolProcessor(
     environment: SymbolProcessorEnvironment,
 ) : BaseSymbolProcessor(environment) {
     private val codeGenerator: CodeGenerator = environment.codeGenerator
-    private val errors: MutableList<ProcessingError> = mutableListOf()
-    private val classesToProcess = mutableMapOf<KSClassDeclaration, KSAnnotated>()
-    private lateinit var aspects: List<KoraAspect>
-    private lateinit var annotations: List<KSClassDeclaration>
-    private lateinit var aopProcessor: AopProcessor
 
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
         val aspectsFactories = ServiceLoader.load(KoraAspectFactory::class.java, KoraAspectFactory::class.java.classLoader)
-        aspects = aspectsFactories
+        val aspects = aspectsFactories
             .mapNotNull { it.create(resolver) }
-
-
-        aopProcessor = AopProcessor(aspects, resolver)
-        annotations = aspects.asSequence()
+        val aopProcessor = AopProcessor(aspects, resolver)
+        val annotations = aspects.asSequence()
             .map { it.getSupportedAnnotationTypes() }
             .flatten()
             .mapNotNull { resolver.getClassDeclarationByName(it) }
             .toList()
 
-        val noAopAnnotation = annotations.filter { !it.isAnnotationPresent(CommonClassNames.aopAnnotation) }
+        annotations
+            .filter { !it.isAnnotationPresent(CommonClassNames.aopAnnotation) }
+            .forEach { KoraSymbolProcessingEnv.logger.warn("Annotation ${it.simpleName.asString()} has no @AopAnnotation marker, it will not be handled by some util methods") }
 
-        noAopAnnotation.forEach { noAop ->
-            KoraSymbolProcessingEnv.logger.warn("Annotation ${noAop.simpleName.asString()} has no @AopAnnotation marker, it will not be handled by some util methods" )
-        }
+        val deferred = mutableListOf<KSAnnotated>()
+        val errors = mutableListOf<ProcessingError>()
+        val symbolsToProcess = mutableMapOf<String, KSClassDeclaration>()
 
-        val symbols = this.annotations
-            .map { annotation -> resolver.getSymbolsWithAnnotation(annotation.qualifiedName!!.asString()).toList() }
-            .flatten()
+        for (annotation in annotations) {
+            val symbols = resolver.getSymbolsWithAnnotation(annotation.qualifiedName!!.asString())
+            for (symbol in symbols) {
+                when (val classDeclaration = symbol.findKsClassDeclaration()) {
+                    is Either.Left -> classDeclaration.left().let {
+                        when {
+                            it == null -> {}
+                            it.validate() -> symbolsToProcess[it.qualifiedName!!.asString()] = it
+                            else -> deferred.add(symbol)
+                        }
+                    }
 
-        val unableToProcess = symbols.filterNot { it.validate() }.toMutableList()
-        symbols.forEach { symbol ->
-            symbol.visitFunctionArgument { ksFunctionArgument ->
-                findKsClassDeclaration(ksFunctionArgument)?.let {
-                    classesToProcess.put(it, symbol)
+                    is Either.Right -> errors.add(classDeclaration.right())
                 }
-            }
-            symbol.visitFunction { ksFunctionDeclaration ->
-                findKsClassDeclaration(ksFunctionDeclaration)?.let {
-                    classesToProcess.put(it, symbol)
-                }
-            }
-            symbol.visitClass { declaration ->
-                findKsClassDeclaration(declaration)?.let {
-                    classesToProcess.put(it, symbol)
-                }
+
             }
         }
+
         errors.forEach { error ->
             error.print(this.kspLogger)
         }
-        if (errors.isNotEmpty()) {
-            return symbols
-        }
 
-        classesToProcess.forEach { declarationEntry ->
-            KoraSymbolProcessingEnv.logger.info("Processing type ${declarationEntry.key.qualifiedName!!.asString()} with aspects")
+        for (declarationEntry in symbolsToProcess) {
+            KoraSymbolProcessingEnv.logger.info("Processing type ${declarationEntry.key} with aspects", declarationEntry.value)
             val typeSpec: TypeSpec
             try {
-                typeSpec = this.aopProcessor.applyAspects(declarationEntry.key)
+                typeSpec = aopProcessor.applyAspects(declarationEntry.value)
             } catch (e: ProcessingErrorException) {
                 e.printError(this.kspLogger)
-                unableToProcess += declarationEntry.value
-                return@forEach
+                continue
             }
-            val containingFile = declarationEntry.key.containingFile!!
+            val containingFile = declarationEntry.value.containingFile!!
             val packageName = containingFile.packageName.asString()
             val fileSpec = FileSpec.builder(
                 packageName = packageName,
                 fileName = typeSpec.name!!
             )
             try {
-                fileSpec.addType(typeSpec).build().writeTo(codeGenerator = codeGenerator, aggregating = false)
+                fileSpec.addType(typeSpec).build().writeTo(codeGenerator = codeGenerator, aggregating = false, originatingKSFiles = listOfNotNull(containingFile))
             } catch (_: FileAlreadyExistsException) {
             }
         }
 
-        return unableToProcess
+        return deferred
     }
 
-    private fun findKsClassDeclaration(declaration: KSAnnotated): KSClassDeclaration? {
-        when (declaration) {
-            is KSValueParameter -> {
-                return when (val declarationParent = declaration.parent) {
-                    is KSFunctionDeclaration -> {
-                        findKsClassDeclaration(declarationParent)
-                    }
-                    is KSClassDeclaration -> {
-                        findKsClassDeclaration(declarationParent)
-                    }
-                    else -> null
-                }
-            }
-            is KSClassDeclaration -> {
-                return when (declaration.classKind) {
-                    ClassKind.INTERFACE -> {
-                        null
-                    }
-                    ClassKind.CLASS -> {
-                        if (declaration.isAbstract()) {
-                            errors.add(ProcessingError("Aspects can't be applied to abstract classes, but $declaration is abstract", declaration))
-                            return null
-                        }
-                        if (!declaration.isOpen()) {
-                            errors.add(ProcessingError("Aspects can be applied only to open classes, but $declaration is not open", declaration))
-                            return null
-                        }
-                        val constructor = findAopConstructor(declaration)
-                        if (constructor == null) {
-                            errors.add(ProcessingError("Can't find constructor suitable for aop proxy for $declaration", declaration))
-                            return null
-                        }
-                        return declaration
-                    }
-                    else -> null
-                }
-            }
-            is KSFunctionDeclaration -> {
-                return if (!declaration.isOpen()) {
-                    errors.add(ProcessingError("Aspects applied only to open functions, but function ${declaration.parentDeclaration}#$declaration is not open", declaration))
-                    return null
-                } else if (declaration.parentDeclaration is KSClassDeclaration) {
-                    findKsClassDeclaration(declaration.parentDeclaration as KSClassDeclaration)
-                } else {
-                    errors.add(ProcessingError("Can't apply aspects to top level function", declaration))
-                    null
-                }
-            }
-            else -> return null
+    private fun KSAnnotated.findKsClassDeclaration(): Either<KSClassDeclaration?, ProcessingError> = when (this) {
+        is KSValueParameter -> when (val declarationParent = this.parent) {
+            is KSFunctionDeclaration -> declarationParent.findKsClassDeclaration()
+            is KSClassDeclaration -> declarationParent.findKsClassDeclaration()
+            else -> Either.left(null)
         }
+
+        is KSClassDeclaration -> when {
+            classKind == ClassKind.CLASS && isAbstract() -> Either.right(ProcessingError("Aspects can't be applied to abstract classes, but $this is abstract", this))
+            classKind == ClassKind.CLASS && !isOpen() -> Either.right(ProcessingError("Aspects can be applied only to open classes, but $this is not open", this))
+            classKind == ClassKind.CLASS && findAopConstructor() == null -> Either.right(ProcessingError("Can't find constructor suitable for aop proxy for $this", this))
+            classKind == ClassKind.CLASS -> Either.left(this)
+            else -> Either.left(null)
+        }
+
+        is KSFunctionDeclaration -> when {
+            !isOpen() -> Either.right(ProcessingError("Aspects applied only to open functions, but function ${parentDeclaration}#$this is not open", this))
+            parentDeclaration is KSClassDeclaration -> (parentDeclaration as KSClassDeclaration).findKsClassDeclaration()
+            else -> Either.right(ProcessingError("Can't apply aspects to top level function", this))
+        }
+
+        else -> Either.left(null)
     }
 }
 

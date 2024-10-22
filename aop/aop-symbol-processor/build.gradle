@@ -4,6 +4,7 @@ dependencies {
     api(project(":symbol-processor-common"))
 
     testImplementation testFixtures(project(':symbol-processor-common'))
+    testImplementation libs.mockito.kotlin
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
