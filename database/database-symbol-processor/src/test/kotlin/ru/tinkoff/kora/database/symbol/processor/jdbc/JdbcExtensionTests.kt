@@ -16,7 +16,7 @@ class JdbcExtensionTests : AbstractJdbcRepositoryTest() {
             }
             """.trimIndent(),
             """
-            @ru.tinkoff.kora.database.jdbc.JdbcEntity
+            @ru.tinkoff.kora.database.jdbc.EntityJdbc
             data class TestRow(val id: Int)
             """.trimIndent()
         )

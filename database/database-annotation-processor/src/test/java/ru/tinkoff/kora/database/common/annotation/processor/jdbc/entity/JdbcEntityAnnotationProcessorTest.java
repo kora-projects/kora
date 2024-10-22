@@ -18,7 +18,7 @@ public class JdbcEntityAnnotationProcessorTest extends AbstractAnnotationProcess
     @Test
     public void testRecordMappersGenerated() {
         compile(List.of(new JdbcEntityAnnotationProcessor()), """
-            import ru.tinkoff.kora.database.jdbc.JdbcEntity;
+            import ru.tinkoff.kora.database.jdbc.EntityJdbc;
             
             @JdbcEntity
             public record TestRecord(int id){}
@@ -38,7 +38,7 @@ public class JdbcEntityAnnotationProcessorTest extends AbstractAnnotationProcess
     @Test
     public void testUnknownFieldTypeRequiresMapper() {
         compile(List.of(new JdbcEntityAnnotationProcessor()), """
-            import ru.tinkoff.kora.database.jdbc.JdbcEntity;
+            import ru.tinkoff.kora.database.jdbc.EntityJdbc;
             
             @JdbcEntity
             public record TestRecord(TestRecord id){}
@@ -62,7 +62,7 @@ public class JdbcEntityAnnotationProcessorTest extends AbstractAnnotationProcess
     @Test
     public void testJavaBeanMappersGenerated() {
         compile(List.of(new JdbcEntityAnnotationProcessor()), """
-            import ru.tinkoff.kora.database.jdbc.JdbcEntity;
+            import ru.tinkoff.kora.database.jdbc.EntityJdbc;
             
             @JdbcEntity
             public class TestClass {
