@@ -11,9 +11,11 @@ import ru.tinkoff.kora.aop.ksp.aoptarget.AopTarget2
 import ru.tinkoff.kora.aop.ksp.aoptarget.AopTarget3
 import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
 import ru.tinkoff.kora.common.Tag
+import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 import ru.tinkoff.kora.ksp.common.symbolProcess
 
-class AopAnnotationProcessorTest {
+class AopAnnotationProcessorTest :AbstractSymbolProcessorTest() {
+
     @Test
     fun testAop1() {
         val classLoader: ClassLoader = symbolProcess(AopTarget1::class, AopSymbolProcessorProvider())
