@@ -11,7 +11,7 @@ class JdbcEntitySymbolProcessorTest : AbstractSymbolProcessorTest() {
     fun testMappersGenerated() {
         compile0(
             """
-            @ru.tinkoff.kora.database.jdbc.JdbcEntity
+            @ru.tinkoff.kora.database.jdbc.EntityJdbc
             data class TestRow(val id: Int)
             """.trimIndent()
         )
