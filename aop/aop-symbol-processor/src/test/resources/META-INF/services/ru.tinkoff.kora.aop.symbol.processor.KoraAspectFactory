@@ -3,3 +3,5 @@ ru.tinkoff.kora.aop.ksp.aoptarget.AopAliasTarget$AspectAliasesFactory
 ru.tinkoff.kora.aop.ksp.aoptarget.AopTarget2$Aspect21Factory
 ru.tinkoff.kora.aop.ksp.aoptarget.AopTarget2$Aspect22Factory
 ru.tinkoff.kora.aop.ksp.aoptarget.AopTarget3$Aspect3Factory
+ru.tinkoff.kora.aop.ksp.TestAnnotation1$TestAnnotationAspectFactory
+ru.tinkoff.kora.aop.ksp.TestAnnotation2$TestAnnotationAspectFactory

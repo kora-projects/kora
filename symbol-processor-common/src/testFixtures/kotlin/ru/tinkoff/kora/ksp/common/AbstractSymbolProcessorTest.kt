@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.ksp.common
 
+import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import io.github.classgraph.ClassGraph
 import kotlinx.coroutines.runBlocking
 import org.intellij.lang.annotations.Language
@@ -81,7 +82,13 @@ abstract class AbstractSymbolProcessorTest {
             """.trimIndent()
     }
 
+    @Deprecated("k2 will require to pass processors", replaceWith = ReplaceWith("compile0(processors, sources)"))
     protected fun compile0(@Language("kotlin") vararg sources: String): CompileResult {
+        return compile0(listOf(), *sources)
+    }
+
+    // processors will be used in k2
+    protected fun compile0(processors: List<SymbolProcessorProvider>, @Language("kotlin") vararg sources: String): CompileResult {
         val testPackage = testPackage()
         val testClass: Class<*> = testInfo.testClass.get()
         val testMethod: Method = testInfo.testMethod.get()
@@ -127,7 +134,7 @@ abstract class AbstractSymbolProcessorTest {
 
         fun compilationException(): Throwable {
             val errorMessages = mutableListOf<String>()
-            val indexOfFirst = messages.indexOfFirst { it.contains("error: ") }
+            val indexOfFirst = messages.indexOfFirst { it.contains("error: ") || it.contains("exception: ") }
             if (indexOfFirst >= 0) {
                 errorMessages.add(messages[indexOfFirst])
                 for (i in indexOfFirst + 1 until messages.size) {

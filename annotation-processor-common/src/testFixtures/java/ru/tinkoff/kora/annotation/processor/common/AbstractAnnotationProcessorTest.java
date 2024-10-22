@@ -203,6 +203,13 @@ public abstract class AbstractAnnotationProcessorTest {
         T get();
     }
 
+    protected void assertSuccess() {
+        compileResult.assertSuccess();
+    }
+
+    public Class<?> loadClass(String className) {
+        return compileResult.loadClass(className);
+    }
 
     public GraphContainer loadGraph(String appName) {
         try {

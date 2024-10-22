@@ -82,7 +82,7 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
     }
 
     fun applyAspects(classDeclaration: KSClassDeclaration): TypeSpec {
-        val constructor = findAopConstructor(classDeclaration)
+        val constructor = classDeclaration.findAopConstructor()
             ?: throw ProcessingErrorException("Class has no aop suitable constructor", classDeclaration)
 
         val typeLevelAspects: ArrayList<KoraAspect> = ArrayList()
@@ -101,7 +101,7 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
             }
         }
         KoraSymbolProcessingEnv.logger.logging("Type level aspects for ${classDeclaration.qualifiedName!!.asString()}}: {$typeLevelAspects}", classDeclaration)
-        val typeBuilder: TypeSpec.Builder = TypeSpec.classBuilder(aopProxyName(classDeclaration))
+        val typeBuilder: TypeSpec.Builder = TypeSpec.classBuilder(classDeclaration.aopProxyName())
             .superclass(classDeclaration.toClassName())
             .addModifiers(KModifier.PUBLIC, KModifier.FINAL)
             .addAnnotation(CommonClassNames.aopProxy)
@@ -178,6 +178,7 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
             }
 
             aspectsToApply.reverse()
+            val generatedMethodNames = mutableSetOf<String>()
             for (aspect in aspectsToApply) {
                 val result: KoraAspect.ApplyResult = aspect.apply(function, superCall, aopContext)
                 if (result is KoraAspect.ApplyResult.Noop) {
@@ -185,7 +186,17 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
                 }
 
                 val methodBody: KoraAspect.ApplyResult.MethodBody = result as KoraAspect.ApplyResult.MethodBody
-                val methodName = "_" + function.simpleName.asString() + "_AopProxy_" + aspect::class.simpleName
+                val baseMethodName = "_" + function.simpleName.asString() + "_AopProxy_" + aspect::class.simpleName
+                var methodName = baseMethodName
+                if (!generatedMethodNames.add(methodName)) {
+                    for (i in 0..Int.MAX_VALUE) {
+                        methodName = baseMethodName + i
+                        if (generatedMethodNames.add(methodName)) {
+                            break
+                        }
+                    }
+                }
+
                 superCall = methodName
                 val f = FunSpec.builder(methodName)
                     .addModifiers(KModifier.PRIVATE)
