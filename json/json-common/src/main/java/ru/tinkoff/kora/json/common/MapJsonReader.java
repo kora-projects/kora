@@ -37,8 +37,8 @@ public class MapJsonReader<T> implements JsonReader<Map<String, T>> {
             var fieldName = parser.currentName();
             token = parser.nextToken();
             var element = this.reader.read(parser);
-            token = parser.nextToken();
             result.put(fieldName, element);
+            token = parser.nextToken();
         }
 
         return result;

@@ -32,8 +32,8 @@ public class SetJsonReader<T> implements JsonReader<Set<T>> {
         Set<T> result = new LinkedHashSet<>();
         while (token != JsonToken.END_ARRAY) {
             var element = this.reader.read(parser);
-            token = parser.nextToken();
             result.add(element);
+            token = parser.nextToken();
         }
 
         return result;

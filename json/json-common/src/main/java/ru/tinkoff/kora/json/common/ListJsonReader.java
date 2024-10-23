@@ -32,8 +32,8 @@ public class ListJsonReader<T> implements JsonReader<List<T>> {
         List<T> result = new ArrayList<>();
         while (token != JsonToken.END_ARRAY) {
             var element = this.reader.read(parser);
-            token = parser.nextToken();
             result.add(element);
+            token = parser.nextToken();
         }
 
         return result;
