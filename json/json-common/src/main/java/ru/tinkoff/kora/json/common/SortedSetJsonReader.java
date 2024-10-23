@@ -31,8 +31,8 @@ public class SortedSetJsonReader<T extends Comparable<T>> implements JsonReader<
         var result = new TreeSet<T>();
         while (token != JsonToken.END_ARRAY) {
             var element = this.reader.read(parser);
-            token = parser.nextToken();
             result.add(element);
+            token = parser.nextToken();
         }
 
         return result;
