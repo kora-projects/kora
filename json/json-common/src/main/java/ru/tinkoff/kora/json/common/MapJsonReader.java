@@ -5,7 +5,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class MapJsonReader<T> implements JsonReader<Map<String, T>> {
@@ -28,7 +28,8 @@ public class MapJsonReader<T> implements JsonReader<Map<String, T>> {
         if (token == JsonToken.END_OBJECT) {
             return Map.of();
         }
-        var result = new HashMap<String, T>();
+
+        Map<String, T> result = null;
         while (token != JsonToken.END_OBJECT) {
             if (token != JsonToken.FIELD_NAME) {
                 throw new JsonParseException(parser, "Expecting FIELD_NAME token, got " + token);
@@ -36,8 +37,17 @@ public class MapJsonReader<T> implements JsonReader<Map<String, T>> {
             var fieldName = parser.currentName();
             token = parser.nextToken();
             var element = this.reader.read(parser);
-            result.put(fieldName, element);
             token = parser.nextToken();
+
+            if (result == null) {
+                if (token == JsonToken.END_OBJECT) {
+                    return Map.of(fieldName, element);
+                } else {
+                    result = new LinkedHashMap<>();
+                }
+            }
+
+            result.put(fieldName, element);
         }
 
         return result;
