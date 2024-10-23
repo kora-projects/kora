@@ -10,7 +10,7 @@ public class EnumConfigValueExtractor<T extends Enum<T>> implements ConfigValueE
     public EnumConfigValueExtractor(Class<T> type) {
         this.map = new HashMap<>();
         for (T enumConstant : type.getEnumConstants()) {
-            this.map.put(enumConstant.name(), enumConstant);
+            this.map.put(enumConstant.toString(), enumConstant);
         }
     }
 
