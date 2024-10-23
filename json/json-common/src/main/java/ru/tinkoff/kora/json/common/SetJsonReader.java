@@ -29,19 +29,10 @@ public class SetJsonReader<T> implements JsonReader<Set<T>> {
             return Set.of();
         }
 
-        Set<T> result = null;
+        Set<T> result = new LinkedHashSet<>();
         while (token != JsonToken.END_ARRAY) {
             var element = this.reader.read(parser);
             token = parser.nextToken();
-
-            if (result == null) {
-                if (token == JsonToken.END_ARRAY) {
-                    return Set.of(element);
-                } else {
-                    result = new LinkedHashSet<>();
-                }
-            }
-
             result.add(element);
         }
 

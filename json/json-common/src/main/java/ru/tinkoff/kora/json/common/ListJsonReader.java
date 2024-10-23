@@ -29,18 +29,10 @@ public class ListJsonReader<T> implements JsonReader<List<T>> {
             return List.of();
         }
 
-        List<T> result = null;
+        List<T> result = new ArrayList<>();
         while (token != JsonToken.END_ARRAY) {
             var element = this.reader.read(parser);
             token = parser.nextToken();
-
-            if (result == null) {
-                if (token == JsonToken.END_ARRAY) {
-                    return List.of(element);
-                } else {
-                    result = new ArrayList<>(8);
-                }
-            }
             result.add(element);
         }
 

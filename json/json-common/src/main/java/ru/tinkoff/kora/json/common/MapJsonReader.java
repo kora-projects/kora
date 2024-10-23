@@ -29,7 +29,7 @@ public class MapJsonReader<T> implements JsonReader<Map<String, T>> {
             return Map.of();
         }
 
-        Map<String, T> result = null;
+        Map<String, T> result = new LinkedHashMap<>();
         while (token != JsonToken.END_OBJECT) {
             if (token != JsonToken.FIELD_NAME) {
                 throw new JsonParseException(parser, "Expecting FIELD_NAME token, got " + token);
@@ -38,15 +38,6 @@ public class MapJsonReader<T> implements JsonReader<Map<String, T>> {
             token = parser.nextToken();
             var element = this.reader.read(parser);
             token = parser.nextToken();
-
-            if (result == null) {
-                if (token == JsonToken.END_OBJECT) {
-                    return Map.of(fieldName, element);
-                } else {
-                    result = new LinkedHashMap<>();
-                }
-            }
-
             result.put(fieldName, element);
         }
 
