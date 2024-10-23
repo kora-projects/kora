@@ -67,6 +67,10 @@ final class KoraRetry implements Retry {
 
     @Override
     public <T> CompletionStage<T> retry(@NotNull Supplier<CompletionStage<T>> supplier) {
+        if (attempts == 0) {
+            return supplier.get();
+        }
+
         var result = new CompletableFuture<T>();
         var retryState = asState();
         var retryCallback = new BiConsumer<T, Throwable>() {
@@ -79,7 +83,7 @@ final class KoraRetry implements Retry {
                 }
 
                 var state = retryState.onException(ex);
-                if(state == Retry.RetryState.RetryStatus.ACCEPTED) {
+                if (state == Retry.RetryState.RetryStatus.ACCEPTED) {
                     CompletableFuture.delayedExecutor(retryState.getDelayNanos(), TimeUnit.NANOSECONDS).execute(() -> {
                         try {
                             var resultRetry = supplier.get();
@@ -88,7 +92,7 @@ final class KoraRetry implements Retry {
                             CompletableFuture.<T>failedFuture(se).whenComplete(this);
                         }
                     });
-                } else if(state == Retry.RetryState.RetryStatus.REJECTED) {
+                } else if (state == Retry.RetryState.RetryStatus.REJECTED) {
                     retryState.close();
                     result.completeExceptionally(ex);
                 } else {
@@ -109,6 +113,10 @@ final class KoraRetry implements Retry {
     }
 
     private <T, E extends Throwable> T internalRetry(RetrySupplier<T, E> consumer, @Nullable RetrySupplier<T, E> fallback) throws E {
+        if (attempts == 0) {
+            return consumer.get();
+        }
+
         final List<Exception> suppressed = new ArrayList<>();
         try (var state = asState()) {
             while (true) {
