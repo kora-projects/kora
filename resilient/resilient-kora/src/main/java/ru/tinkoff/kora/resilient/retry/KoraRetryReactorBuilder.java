@@ -80,6 +80,10 @@ public final class KoraRetryReactorBuilder {
                         return Mono.error(new IllegalStateException("Retry.RetrySignal#failure() not expected to be null"));
                     }
 
+                    if (attempts == 0) {
+                        return Mono.empty();
+                    }
+
                     if (!failurePredicate.test(currentFailure)) {
                         logger.trace("RetryReactor '{}' rejected throwable: {}", name, currentFailure.getClass().getCanonicalName());
                         return Mono.error(currentFailure);
