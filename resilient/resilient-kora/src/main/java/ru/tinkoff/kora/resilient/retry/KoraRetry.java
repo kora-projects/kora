@@ -3,6 +3,7 @@ package ru.tinkoff.kora.resilient.retry;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.jetbrains.annotations.NotNull;
+import ru.tinkoff.kora.application.graph.internal.loom.VirtualThreadExecutorHolder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -73,6 +74,7 @@ final class KoraRetry implements Retry {
 
         var result = new CompletableFuture<T>();
         var retryState = asState();
+        var virtualExecutorService = VirtualThreadExecutorHolder.executorService();
         var retryCallback = new BiConsumer<T, Throwable>() {
             @Override
             public void accept(T r, Throwable e) {
@@ -84,7 +86,11 @@ final class KoraRetry implements Retry {
 
                 var state = retryState.onException(ex);
                 if (state == Retry.RetryState.RetryStatus.ACCEPTED) {
-                    CompletableFuture.delayedExecutor(retryState.getDelayNanos(), TimeUnit.NANOSECONDS).execute(() -> {
+                    var delayedExecutor = virtualExecutorService != null
+                        ? CompletableFuture.delayedExecutor(retryState.getDelayNanos(), TimeUnit.NANOSECONDS, virtualExecutorService)
+                        : CompletableFuture.delayedExecutor(retryState.getDelayNanos(), TimeUnit.NANOSECONDS);
+
+                    delayedExecutor.execute(() -> {
                         try {
                             var resultRetry = supplier.get();
                             resultRetry.whenComplete(this);
