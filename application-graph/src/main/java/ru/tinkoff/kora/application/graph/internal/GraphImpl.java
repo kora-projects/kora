@@ -101,7 +101,7 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
         final long started = log.isDebugEnabled() ? started() : 0;
         try {
             this.initializeSubgraph(root).toCompletableFuture().join();
-            if(log.isDebugEnabled()) {
+            if (log.isDebugEnabled()) {
                 log.debug("Dependency container refreshed in {}", tookForLogging(started));
             }
         } catch (Throwable e) {
@@ -182,6 +182,11 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
         });
         try {
             f.toCompletableFuture().join();
+
+            var virtualExecutorService = VirtualThreadExecutorHolder.executorService();
+            if (virtualExecutorService != null) {
+                closeExecutorService(virtualExecutorService);
+            }
         } catch (CompletionException e) {
             if (e.getCause() instanceof RuntimeException re) {
                 throw re;
@@ -190,6 +195,27 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                 throw re;
             }
             throw e;
+        }
+    }
+
+    private static void closeExecutorService(ExecutorService executorService) {
+        boolean terminated = executorService.isTerminated();
+        if (!terminated) {
+            executorService.shutdown();
+            boolean interrupted = false;
+            while (!terminated) {
+                try {
+                    terminated = executorService.awaitTermination(30, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    if (!interrupted) {
+                        executorService.shutdownNow();
+                        interrupted = true;
+                    }
+                }
+            }
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 
@@ -559,7 +585,7 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                     dependencies.incrementAndGet(i);
                     var node = (NodeImpl<?>) nodes.get(i);
                     visitor.apply(node);
-                } else if (!visitor.processed.get(i)){
+                } else if (!visitor.processed.get(i)) {
                     dependencies.set(i, -1);
                 }
             }

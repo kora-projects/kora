@@ -29,16 +29,18 @@ record KoraTimeout(String name, long delayMaxNanos, TimeoutMetrics metrics, Exec
     }
 
     private <T> T internalExecute(Function<ExecutorService, Future<T>> consumer) throws TimeoutExhaustedException {
-        try {
-            if (logger.isTraceEnabled()) {
-                final Duration timeout = timeout();
-                logger.trace("KoraTimeout '{}' starting await for {}", name, timeout);
-            }
+        if (logger.isTraceEnabled()) {
+            final Duration timeout = timeout();
+            logger.trace("KoraTimeout '{}' starting await for {}", name, timeout);
+        }
 
-            return consumer.apply(executor).get(delayMaxNanos, TimeUnit.NANOSECONDS);
+        final Future<T> handler = consumer.apply(executor);
+        try {
+            return handler.get(delayMaxNanos, TimeUnit.NANOSECONDS);
         } catch (ExecutionException e) {
             KoraTimeouterUtils.doThrow(e.getCause());
         } catch (java.util.concurrent.TimeoutException e) {
+            handler.cancel(true);
             final Duration timeout = timeout();
             logger.debug("KoraTimeout '{}' registered timeout after: {}", name, timeout);
             metrics.recordTimeout(name, delayMaxNanos);
