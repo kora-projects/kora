@@ -205,7 +205,7 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
             boolean interrupted = false;
             while (!terminated) {
                 try {
-                    terminated = executorService.awaitTermination(30, TimeUnit.SECONDS);
+                    terminated = executorService.awaitTermination(60, TimeUnit.SECONDS);
                 } catch (InterruptedException e) {
                     if (!interrupted) {
                         executorService.shutdownNow();
