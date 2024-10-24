@@ -55,8 +55,8 @@ public interface RetryConfig {
         if (mergedConfig.attempts() == null)
             throw new IllegalArgumentException("Retry 'attempts' is not configured in either '" + name + "' or '" + DEFAULT + "' config");
 
-        if (mergedConfig.attempts() < 1)
-            throw new IllegalArgumentException("Retry '" + name + "' attempts can't be less 1, but was " + mergedConfig.attempts());
+        if (mergedConfig.attempts() < 0)
+            throw new IllegalArgumentException("Retry '" + name + "' attempts can't be less 0, but was " + mergedConfig.attempts());
 
         return mergedConfig;
     }

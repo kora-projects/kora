@@ -11,12 +11,13 @@ import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isCompletionStage
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
-import ru.tinkoff.kora.ksp.common.FunctionUtils.isCompletionStage
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import java.util.concurrent.CompletionStage
@@ -28,6 +29,8 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
     companion object {
         private val ANNOTATION_TYPE = ClassName("ru.tinkoff.kora.resilient.retry.annotation", "Retry")
 
+        private val RETRY_RUNNER = ClassName("ru.tinkoff.kora.resilient.retry", "Retry", "RetryRunnable")
+        private val RETRY_SUPPLIER = ClassName("ru.tinkoff.kora.resilient.retry", "Retry", "RetrySupplier")
         private val MEMBER_RETRY_STATUS = ClassName("ru.tinkoff.kora.resilient.retry", "Retry", "RetryState", "RetryStatus")
         private val MEMBER_RETRY_EXCEPTION = MemberName("ru.tinkoff.kora.resilient.retry", "RetryExhaustedException")
         private val MEMBER_DELAY = MemberName("kotlinx.coroutines", "delay")
@@ -66,7 +69,7 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
         val body = if (method.isFlow()) {
             buildBodyFlow(method, superCall, fieldRetrier)
         } else if (method.isSuspend()) {
-            buildBodySync(method, superCall, fieldRetrier)
+            buildBodySuspend(method, superCall, fieldRetrier)
         } else {
             buildBodySync(method, superCall, fieldRetrier)
         }
@@ -75,10 +78,25 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
     }
 
     private fun buildBodySync(method: KSFunctionDeclaration, superCall: String, fieldRetrier: String): CodeBlock {
+        val builder = CodeBlock.builder()
+
+        if (method.isVoid()) {
+            builder.addStatement("%L.retry(%T { %L })", fieldRetrier, RETRY_RUNNER, buildMethodCall(method, superCall))
+        } else {
+            builder.addStatement("return %L.retry(%T { %L })", fieldRetrier, RETRY_SUPPLIER, buildMethodCall(method, superCall))
+        }
+
+        return builder.build()
+    }
+
+    private fun buildBodySuspend(method: KSFunctionDeclaration, superCall: String, fieldRetrier: String): CodeBlock {
         return CodeBlock.builder()
             .add("%L.asState()", fieldRetrier).indent().add("\n")
             .controlFlow(".use { _state ->", fieldRetrier) {
-                addStatement("val _suppressed = %T<Exception>();", ArrayList::class)
+                controlFlow("if (_state.attemptsMax == 0)") {
+                    addStatement(buildMethodCall(method, superCall).toString())
+                }
+                addStatement("val _suppressed = %T<Exception>()", ArrayList::class)
                 controlFlow("while (true)") {
                     controlFlow("try") {
                         add("return ").add(buildMethodCall(method, superCall)).add("\n")
@@ -118,6 +136,9 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
     private fun buildBodyFlow(method: KSFunctionDeclaration, superCall: String, fieldRetrier: String): CodeBlock {
         return CodeBlock.builder().controlFlow("return %M", MEMBER_FLOW) {
             controlFlow("return@flow %L.asState().use { _state ->", fieldRetrier) {
+                controlFlow("if (_state.attemptsMax == 0)") {
+                    addStatement(buildMethodCall(method, superCall).toString())
+                }
                 add("%M (", MEMBER_FLOW_EMIT).indent()
                 add(buildMethodCall(method, superCall)).add(".").controlFlow("%M { _cause, _ ->", MEMBER_FLOW_RETRY) {
                     addStatement("val _status = _state.onException(_cause)")
