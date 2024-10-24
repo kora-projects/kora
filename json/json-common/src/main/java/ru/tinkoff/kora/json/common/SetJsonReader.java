@@ -5,7 +5,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 
 import java.io.IOException;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 public class SetJsonReader<T> implements JsonReader<Set<T>> {
@@ -28,7 +28,8 @@ public class SetJsonReader<T> implements JsonReader<Set<T>> {
         if (token == JsonToken.END_ARRAY) {
             return Set.of();
         }
-        var result = new HashSet<T>();
+
+        Set<T> result = new LinkedHashSet<>();
         while (token != JsonToken.END_ARRAY) {
             var element = this.reader.read(parser);
             result.add(element);
