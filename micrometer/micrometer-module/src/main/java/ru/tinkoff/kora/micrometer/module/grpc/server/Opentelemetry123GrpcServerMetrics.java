@@ -11,12 +11,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 public final class Opentelemetry123GrpcServerMetrics implements GrpcServerMetrics {
-    private final Map<Status, DistributionSummary> duration = new ConcurrentHashMap<>();
-    private final Function<Status, DistributionSummary> durationFactory;
+    private final Map<Integer, DistributionSummary> duration = new ConcurrentHashMap<>();
+    private final Function<Integer, DistributionSummary> durationFactory;
     private final Counter requestsPerRpc;
     private final Counter responsesPerRpc;
 
-    public Opentelemetry123GrpcServerMetrics(Function<Status, DistributionSummary> durationFactory, Counter requestsPerRpc, Counter responsesPerRpc) {
+    public Opentelemetry123GrpcServerMetrics(Function<Integer, DistributionSummary> durationFactory, Counter requestsPerRpc, Counter responsesPerRpc) {
         this.durationFactory = durationFactory;
         this.requestsPerRpc = requestsPerRpc;
         this.responsesPerRpc = responsesPerRpc;
@@ -26,7 +26,7 @@ public final class Opentelemetry123GrpcServerMetrics implements GrpcServerMetric
     public void onClose(Status status, Throwable exception, long processingTimeNano) {
         var durationValue = ((double) processingTimeNano) / 1_000_000_000;
         var finalStatus = Objects.requireNonNullElse(status, Status.UNKNOWN);
-        duration.computeIfAbsent(finalStatus, durationFactory).record(durationValue);
+        duration.computeIfAbsent(finalStatus.getCode().value(), durationFactory).record(durationValue);
     }
 
     @Override

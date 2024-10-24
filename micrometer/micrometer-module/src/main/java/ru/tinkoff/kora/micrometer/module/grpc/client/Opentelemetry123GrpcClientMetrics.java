@@ -38,7 +38,7 @@ public final class Opentelemetry123GrpcClientMetrics implements GrpcClientMetric
         this.uri = uri;
     }
 
-    record MetricsKey(String serviceName, String bareMethodName, @Nullable Status status, @Nullable Class<? extends Throwable> errorType) {}
+    record MetricsKey(String serviceName, String bareMethodName, @Nullable Integer code, @Nullable Class<? extends Throwable> errorType) {}
 
     record Metrics(DistributionSummary duration, DistributionSummary requestsByRpc, DistributionSummary responsesByRpc) {}
 
@@ -88,8 +88,8 @@ public final class Opentelemetry123GrpcClientMetrics implements GrpcClientMetric
         list.add(Tag.of(SemanticAttributes.RPC_SYSTEM.getKey(), SemanticAttributes.RpcSystemValues.GRPC));
         list.add(Tag.of(SemanticAttributes.SERVER_ADDRESS.getKey(), serverAddress));
         list.add(Tag.of(SemanticAttributes.SERVER_PORT.getKey(), String.valueOf(serverPort)));
-        if (key.status != null) {
-            list.add(Tag.of(SemanticAttributes.RPC_GRPC_STATUS_CODE.getKey(), String.valueOf(key.status.getCode().value())));
+        if (key.code != null) {
+            list.add(Tag.of(SemanticAttributes.RPC_GRPC_STATUS_CODE.getKey(), String.valueOf(key.code)));
         }
         if (key.errorType != null) {
             list.add(Tag.of(SemanticAttributes.ERROR_TYPE.getKey(), key.errorType.getCanonicalName()));
@@ -99,7 +99,8 @@ public final class Opentelemetry123GrpcClientMetrics implements GrpcClientMetric
 
     @Override
     public <RespT, ReqT> void recordEnd(MethodDescriptor<ReqT, RespT> method, long startTime, Status status, Metadata trailers) {
-        var key = new MetricsKey(this.service.getName(), method.getBareMethodName(), status, null);
+        var code = (status == null) ? null : status.getCode().value();
+        var key = new MetricsKey(this.service.getName(), method.getBareMethodName(), code, null);
         var metrics = this.metrics.computeIfAbsent(key, this::buildMetrics);
         var processingTime = ((double) (System.nanoTime() - startTime) / 1_000_000);
 
