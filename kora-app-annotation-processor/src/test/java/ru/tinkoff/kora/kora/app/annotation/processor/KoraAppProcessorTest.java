@@ -241,6 +241,11 @@ class KoraAppProcessorTest {
     }
 
     @Test
+    void appWithFactoryWithIntersectedGenerics() throws Throwable {
+        testClass(AppWithFactories13.class).init();
+    }
+
+    @Test
     void appWithExtension() throws Throwable {
         var graphDraw = testClass(AppWithExtension.class);
         Assertions.assertThat(graphDraw.getNodes()).hasSize(3);
@@ -444,7 +449,11 @@ class KoraAppProcessorTest {
             return constructors[0].newInstance().get();
         } catch (Exception e) {
             if (e.getCause() != null) {
-                throw (Exception) e.getCause();
+                if(e.getCause() instanceof Exception ee) {
+                    throw ee;
+                } else {
+                    throw new IllegalStateException(e.getCause());
+                }
             }
             throw e;
         }

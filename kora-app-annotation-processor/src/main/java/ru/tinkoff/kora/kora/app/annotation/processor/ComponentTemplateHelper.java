@@ -35,11 +35,25 @@ public class ComponentTemplateHelper {
     private static boolean match(ProcessingContext ctx, TypeMirror declarationTypeParameter, TypeMirror requiredTypeParameter, IdentityHashMap<TypeVariable, TypeMirror> map) {
         if (declarationTypeParameter.getKind() == TypeKind.TYPEVAR) {
             var dtv = (TypeVariable) declarationTypeParameter;
-            if (ctx.types.isAssignable(requiredTypeParameter, ctx.types.erasure(dtv.getUpperBound()))) {
+            TypeMirror upperBound = dtv.getUpperBound();
+            if(upperBound instanceof IntersectionType it) {
+                for (TypeMirror sectionBound : it.getBounds()) {
+                    TypeMirror sectionBoundErasure = ctx.types.erasure(sectionBound);
+                    if (!ctx.types.isAssignable(requiredTypeParameter, sectionBoundErasure)) {
+                        return false;
+                    }
+                }
+
                 map.put(dtv, requiredTypeParameter);
                 return true;
             } else {
-                return false;
+                TypeMirror upperBoundErasure = ctx.types.erasure(upperBound);
+                if (ctx.types.isAssignable(requiredTypeParameter, upperBoundErasure)) {
+                    map.put(dtv, requiredTypeParameter);
+                    return true;
+                } else {
+                    return false;
+                }
             }
         }
         if (ctx.types.isAssignable(declarationTypeParameter, requiredTypeParameter)) {
