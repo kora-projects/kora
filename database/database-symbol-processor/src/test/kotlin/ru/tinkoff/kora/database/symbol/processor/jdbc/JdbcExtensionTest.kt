@@ -70,7 +70,7 @@ class JdbcExtensionTest {
                 typeOf<JdbcResultSetMapper<List<TestRow>>>(),
             )
         )!!
-        val k = cl.loadClass("ru.tinkoff.kora.database.symbol.processor.jdbc.\$JdbcExtensionTest_TestRow_JdbcListResultSetMapper")
+        val k = cl.loadClass("ru.tinkoff.kora.database.symbol.processor.jdbc.\$JdbcExtensionTest_TestRow_ListJdbcResultSetMapper")
         val mapper = k.constructors[0].newInstance() as JdbcResultSetMapper<List<TestRow>>
         val rs = mock<ResultSet>()
 
