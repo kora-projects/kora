@@ -394,7 +394,9 @@ public class GraphBuilder {
         var dependencyClaim = prevComponent.dependenciesToFind().get(prevComponent.currentDependency());
         var dependencyClaimType = dependencyClaim.type();
         var dependencyClaimTypeElement = ctx.types.asElement(dependencyClaimType);
-        assert ctx.types.isAssignable(declaration.type(), dependencyClaim.type()) || ctx.serviceTypeHelper.isAssignableToUnwrapped(declaration.type(), dependencyClaim.type()) || ctx.serviceTypeHelper.isInterceptor(declaration.type());
+        if(!(ctx.types.isAssignable(declaration.type(), dependencyClaimType) || ctx.serviceTypeHelper.isAssignableToUnwrapped(declaration.type(), dependencyClaimType) || ctx.serviceTypeHelper.isInterceptor(declaration.type()))) {
+            throw new CircularDependencyException(List.of(prevComponent.declaration().toString(), declaration.toString()), declaration);
+        }
         for (var inStackFrame : processing.resolutionStack()) {
             if (!(inStackFrame instanceof ProcessingState.ResolutionFrame.Component componentFrame) || componentFrame.declaration() != declaration) {
                 continue;
