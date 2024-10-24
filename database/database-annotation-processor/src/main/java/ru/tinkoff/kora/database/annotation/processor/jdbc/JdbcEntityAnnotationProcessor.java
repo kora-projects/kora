@@ -16,7 +16,7 @@ public class JdbcEntityAnnotationProcessor extends AbstractKoraProcessor {
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
-        return Set.of("ru.tinkoff.kora.database.jdbc.JdbcEntity");
+        return Set.of("ru.tinkoff.kora.database.jdbc.EntityJdbc");
     }
 
     @Override
