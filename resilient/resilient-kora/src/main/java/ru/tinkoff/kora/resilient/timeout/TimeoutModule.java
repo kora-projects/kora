@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.resilient.timeout;
 
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.application.graph.internal.loom.VirtualThreadExecutorHolder;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
@@ -23,6 +24,8 @@ public interface TimeoutModule {
 
     @DefaultComponent
     default TimeoutExecutor koraTimeoutExecutorService() {
-        return new TimeoutExecutor(Executors.newCachedThreadPool());
+        return (VirtualThreadExecutorHolder.status() == VirtualThreadExecutorHolder.VirtualThreadStatus.ENABLED)
+            ? new TimeoutExecutor(VirtualThreadExecutorHolder.executor())
+            : new TimeoutExecutor(Executors.newCachedThreadPool());
     }
 }

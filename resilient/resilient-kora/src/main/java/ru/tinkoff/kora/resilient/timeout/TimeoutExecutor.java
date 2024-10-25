@@ -3,19 +3,20 @@ package ru.tinkoff.kora.resilient.timeout;
 import jakarta.annotation.Nonnull;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class TimeoutExecutor implements Lifecycle {
 
-    private final ExecutorService executorService;
+    private final Executor executorService;
 
-    public TimeoutExecutor(ExecutorService executorService) {
+    public TimeoutExecutor(Executor executorService) {
         this.executorService = executorService;
     }
 
     @Nonnull
-    public ExecutorService executor() {
+    public Executor executor() {
         return executorService;
     }
 
@@ -26,8 +27,8 @@ public class TimeoutExecutor implements Lifecycle {
 
     @Override
     public void release() {
-        if(executorService != null) {
-            closeExecutorService(executorService);
+        if (executorService instanceof ExecutorService es) {
+            closeExecutorService(es);
         }
     }
 
