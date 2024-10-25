@@ -33,7 +33,7 @@ public final class MicrometerGrpcServerMetricsFactory implements GrpcServerMetri
     }
 
     private GrpcServerMetrics buildMetrics(TelemetryConfig.MetricsConfig config, MetricsKey metricsKey) {
-        var duration = (Function<Status, DistributionSummary>) status -> DistributionSummary.builder("rpc.server.duration")
+        var duration = (Function<Integer, DistributionSummary>) code -> DistributionSummary.builder("rpc.server.duration")
             .serviceLevelObjectives(config.slo(metricsConfig.opentelemetrySpec()))
             .baseUnit(switch (metricsConfig.opentelemetrySpec()) {
                 case V120 -> "milliseconds";
@@ -42,7 +42,7 @@ public final class MicrometerGrpcServerMetricsFactory implements GrpcServerMetri
             .tag(SemanticAttributes.RPC_SYSTEM.getKey(), SemanticAttributes.RpcSystemValues.GRPC)
             .tag(SemanticAttributes.RPC_SERVICE.getKey(), metricsKey.serviceName)
             .tag(SemanticAttributes.RPC_METHOD.getKey(), metricsKey.methodName)
-            .tag(SemanticAttributes.RPC_GRPC_STATUS_CODE.getKey(), Integer.toString(status.getCode().value()))
+            .tag(SemanticAttributes.RPC_GRPC_STATUS_CODE.getKey(), Integer.toString(code))
             .register(this.meterRegistry);
         var requestsPerRpc = Counter.builder("rpc.server.requests_per_rpc")
             .baseUnit("messages")
