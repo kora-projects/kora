@@ -30,12 +30,30 @@ public interface TimeoutModule {
     @DefaultComponent
     default TimeoutExecutor koraTimeoutExecutorService() {
         return (VirtualThreadExecutorHolder.status() == VirtualThreadExecutorHolder.VirtualThreadStatus.ENABLED)
-            ? new TimeoutExecutor(createVirtualExecutorService())
+            ? createVirtualExecutorService()
             : new TimeoutExecutor(Executors.newCachedThreadPool());
     }
 
     @Nullable
-    private static ExecutorService createVirtualExecutorService() {
+    private static TimeoutExecutor createVirtualExecutorService() {
+
+        class VirtualTimeoutExecutor extends TimeoutExecutor {
+
+            public VirtualTimeoutExecutor(ExecutorService executorService) {
+                super(executorService);
+            }
+
+            @Override
+            public void init() {
+                // do nothing
+            }
+
+            @Override
+            public void release() {
+                // do nothing
+            }
+        }
+
         try {
             var lookup = MethodHandles.publicLookup();
             var methodLoomExecutor = lookup.findStatic(Executors.class, "newThreadPerTaskExecutor", MethodType.methodType(ExecutorService.class, ThreadFactory.class));
@@ -47,7 +65,8 @@ public interface TimeoutModule {
             var builder = methodLoomBuilder.invoke();
             builder = methodLoomName.invoke(builder, "TES-VThread-", 1);
             final ThreadFactory loomFactory = (ThreadFactory) methodLoomFactory.invoke(builder);
-            return (ExecutorService) methodLoomExecutor.invoke(Objects.requireNonNull(loomFactory));
+            ExecutorService executor = (ExecutorService) methodLoomExecutor.invoke(Objects.requireNonNull(loomFactory));
+            return new VirtualTimeoutExecutor(executor);
         } catch (Throwable t) {
             return null;
         }
