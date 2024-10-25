@@ -8,7 +8,7 @@ import java.time.Duration;
 import java.util.concurrent.*;
 import java.util.function.Function;
 
-record KoraTimeout(String name, long delayMaxNanos, TimeoutMetrics metrics, ExecutorService executor) implements Timeout {
+record KoraTimeout(String name, long delayMaxNanos, TimeoutMetrics metrics, Executor executor) implements Timeout {
 
     private static final Logger logger = LoggerFactory.getLogger(KoraTimeout.class);
 
@@ -20,15 +20,37 @@ record KoraTimeout(String name, long delayMaxNanos, TimeoutMetrics metrics, Exec
 
     @Override
     public void execute(@Nonnull Runnable runnable) throws TimeoutExhaustedException {
-        internalExecute(e -> e.submit(runnable));
+        internalExecute(e -> {
+            var future = new CompletableFuture<Void>();
+            e.execute(() -> {
+                try {
+                    runnable.run();
+                    future.complete(null);
+                } catch (Throwable ex) {
+                    future.completeExceptionally(ex);
+                }
+            });
+            return future;
+        });
     }
 
     @Override
     public <T> T execute(@Nonnull Callable<T> callable) throws TimeoutExhaustedException {
-        return internalExecute(e -> e.submit(callable));
+        return internalExecute(e -> {
+            var future = new CompletableFuture<T>();
+            e.execute(() -> {
+                try {
+                    var result = callable.call();
+                    future.complete(result);
+                } catch (Throwable ex) {
+                    future.completeExceptionally(ex);
+                }
+            });
+            return future;
+        });
     }
 
-    private <T> T internalExecute(Function<ExecutorService, Future<T>> consumer) throws TimeoutExhaustedException {
+    private <T> T internalExecute(Function<Executor, Future<T>> consumer) throws TimeoutExhaustedException {
         if (logger.isTraceEnabled()) {
             final Duration timeout = timeout();
             logger.trace("KoraTimeout '{}' starting await for {}", name, timeout);
