@@ -3,6 +3,7 @@ package ru.tinkoff.kora.resilient.timeout;
 import jakarta.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.tinkoff.kora.common.Context;
 
 import java.time.Duration;
 import java.util.concurrent.*;
@@ -22,12 +23,17 @@ record KoraTimeout(String name, long delayMaxNanos, TimeoutMetrics metrics, Exec
     public void execute(@Nonnull Runnable runnable) throws TimeoutExhaustedException {
         internalExecute(e -> {
             var future = new CompletableFuture<Void>();
+            Context current = Context.current();
             e.execute(() -> {
+                Context old = Context.current();
                 try {
+                    current.inject();
                     runnable.run();
                     future.complete(null);
                 } catch (Throwable ex) {
                     future.completeExceptionally(ex);
+                } finally {
+                    old.inject();
                 }
             });
             return future;
@@ -38,12 +44,17 @@ record KoraTimeout(String name, long delayMaxNanos, TimeoutMetrics metrics, Exec
     public <T> T execute(@Nonnull Callable<T> callable) throws TimeoutExhaustedException {
         return internalExecute(e -> {
             var future = new CompletableFuture<T>();
+            Context current = Context.current();
             e.execute(() -> {
+                Context old = Context.current();
                 try {
+                    current.inject();
                     var result = callable.call();
                     future.complete(result);
                 } catch (Throwable ex) {
                     future.completeExceptionally(ex);
+                } finally {
+                    old.inject();
                 }
             });
             return future;
