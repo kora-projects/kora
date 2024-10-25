@@ -1,0 +1,2 @@
+ru.tinkoff.kora.database.annotation.processor.RepositoryAnnotationProcessor,isolating
+ru.tinkoff.kora.database.annotation.processor.jdbc.JdbcEntityAnnotationProcessor,isolating
