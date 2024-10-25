@@ -74,7 +74,7 @@ final class KoraRetry implements Retry {
 
         var result = new CompletableFuture<T>();
         var retryState = asState();
-        var virtualExecutorService = VirtualThreadExecutorHolder.executorService();
+        var virtualExecutor = VirtualThreadExecutorHolder.executor();
         var retryCallback = new BiConsumer<T, Throwable>() {
             @Override
             public void accept(T r, Throwable e) {
@@ -86,8 +86,8 @@ final class KoraRetry implements Retry {
 
                 var state = retryState.onException(ex);
                 if (state == Retry.RetryState.RetryStatus.ACCEPTED) {
-                    var delayedExecutor = virtualExecutorService != null
-                        ? CompletableFuture.delayedExecutor(retryState.getDelayNanos(), TimeUnit.NANOSECONDS, virtualExecutorService)
+                    var delayedExecutor = virtualExecutor != null
+                        ? CompletableFuture.delayedExecutor(retryState.getDelayNanos(), TimeUnit.NANOSECONDS, virtualExecutor)
                         : CompletableFuture.delayedExecutor(retryState.getDelayNanos(), TimeUnit.NANOSECONDS);
 
                     delayedExecutor.execute(() -> {

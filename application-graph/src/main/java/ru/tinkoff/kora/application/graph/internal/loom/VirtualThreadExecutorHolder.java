@@ -24,15 +24,12 @@ public final class VirtualThreadExecutorHolder {
     @Nullable
     private static final Executor executor;
 
-    @Nullable
-    private static final ExecutorService executorService;
     private static final VirtualThreadStatus status;
 
     static {
         var loomEnabled = System.getProperty("kora.loom.enabled");
         if (loomEnabled != null && !Boolean.parseBoolean(loomEnabled)) {
             executor = null;
-            executorService = null;
             status = VirtualThreadStatus.DISABLED;
         } else {
             if (loomEnabled == null) {
@@ -42,8 +39,6 @@ public final class VirtualThreadExecutorHolder {
             if (Boolean.parseBoolean(loomEnabled)) {
                 final ThreadFactory loomThreadFactory = createLoomThreadFactory("E-VThread-");
                 executor = createExecutor(loomThreadFactory);
-                final ThreadFactory loomServiceFactory = createLoomThreadFactory("ES-VThread-");
-                executorService = createExecutorService(loomServiceFactory);
                 if (executor != null) {
                     status = VirtualThreadStatus.ENABLED;
                 } else {
@@ -51,7 +46,6 @@ public final class VirtualThreadExecutorHolder {
                 }
             } else {
                 executor = null;
-                executorService = null;
                 status = VirtualThreadStatus.UNAVAILABLE;
             }
         }
@@ -65,11 +59,6 @@ public final class VirtualThreadExecutorHolder {
     @Nullable
     public static Executor executor() {
         return executor;
-    }
-
-    @Nullable
-    public static ExecutorService executorService() {
-        return executorService;
     }
 
     @Nullable

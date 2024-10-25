@@ -182,11 +182,6 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
         });
         try {
             f.toCompletableFuture().join();
-
-            var virtualExecutorService = VirtualThreadExecutorHolder.executorService();
-            if (virtualExecutorService != null) {
-                closeExecutorService(virtualExecutorService);
-            }
         } catch (CompletionException e) {
             if (e.getCause() instanceof RuntimeException re) {
                 throw re;
@@ -195,27 +190,6 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                 throw re;
             }
             throw e;
-        }
-    }
-
-    private static void closeExecutorService(ExecutorService executorService) {
-        boolean terminated = executorService.isTerminated();
-        if (!terminated) {
-            executorService.shutdown();
-            boolean interrupted = false;
-            while (!terminated) {
-                try {
-                    terminated = executorService.awaitTermination(60, TimeUnit.SECONDS);
-                } catch (InterruptedException e) {
-                    if (!interrupted) {
-                        executorService.shutdownNow();
-                        interrupted = true;
-                    }
-                }
-            }
-            if (interrupted) {
-                Thread.currentThread().interrupt();
-            }
         }
     }
 
