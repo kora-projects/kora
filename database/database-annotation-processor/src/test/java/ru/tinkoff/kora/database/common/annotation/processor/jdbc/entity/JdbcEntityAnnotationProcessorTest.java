@@ -20,7 +20,7 @@ public class JdbcEntityAnnotationProcessorTest extends AbstractAnnotationProcess
         compile(List.of(new JdbcEntityAnnotationProcessor()), """
             import ru.tinkoff.kora.database.jdbc.EntityJdbc;
             
-            @JdbcEntity
+            @EntityJdbc
             public record TestRecord(int id){}
             """);
 
@@ -40,7 +40,7 @@ public class JdbcEntityAnnotationProcessorTest extends AbstractAnnotationProcess
         compile(List.of(new JdbcEntityAnnotationProcessor()), """
             import ru.tinkoff.kora.database.jdbc.EntityJdbc;
             
-            @JdbcEntity
+            @EntityJdbc
             public record TestRecord(TestRecord id){}
             """);
 
@@ -64,7 +64,7 @@ public class JdbcEntityAnnotationProcessorTest extends AbstractAnnotationProcess
         compile(List.of(new JdbcEntityAnnotationProcessor()), """
             import ru.tinkoff.kora.database.jdbc.EntityJdbc;
             
-            @JdbcEntity
+            @EntityJdbc
             public class TestClass {
                 private int id;
             
