@@ -6,6 +6,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -118,6 +119,94 @@ public final class KoraGraphModification {
             modifications.add(new GraphReplacementWithDeps<>(replacementSupplier, new GraphCandidate(typeToReplace, tags)));
             return this;
         }
+    }
+
+    /**
+     * Component that should replace existing one with new one AND keeps its dependencies in graph, original component is also available
+     */
+    @Nonnull
+    public <T> KoraGraphModification proxyComponent(@Nonnull Type typeToReplace,
+                                                    @Nonnull Function<T, ? extends T> proxyFunction) {
+        modifications.add(new GraphProxy<T>((original, graph) -> proxyFunction.apply(original), new GraphCandidate(typeToReplace)));
+        return this;
+    }
+
+    /**
+     * Component that should replace existing one with new one AND keeps its dependencies in graph, original component is also available
+     */
+    @Nonnull
+    public <T> KoraGraphModification proxyComponent(@Nonnull Type typeToReplace,
+                                                    @Nonnull List<Class<?>> tags,
+                                                    @Nonnull Function<T, ? extends T> proxyFunction) {
+        if (tags.isEmpty()) {
+            return proxyComponent(typeToReplace, proxyFunction);
+        } else {
+            modifications.add(new GraphProxy<T>((original, graph) -> proxyFunction.apply(original), new GraphCandidate(typeToReplace, tags)));
+            return this;
+        }
+    }
+
+    /**
+     * Component that should replace existing one with new one AND keeps its dependencies in graph, original component is also available
+     */
+    @Nonnull
+    public <T> KoraGraphModification proxyComponent(@Nonnull Type typeToReplace,
+                                                    @Nonnull BiFunction<T, KoraAppGraph, ? extends T> proxyFunction) {
+        modifications.add(new GraphProxy<T>(proxyFunction, new GraphCandidate(typeToReplace)));
+        return this;
+    }
+
+    /**
+     * Component that should replace existing one with new one AND keeps its dependencies in graph, original component is also available
+     */
+    @Nonnull
+    public <T> KoraGraphModification proxyComponent(@Nonnull Type typeToReplace,
+                                                    @Nonnull List<Class<?>> tags,
+                                                    @Nonnull BiFunction<T, KoraAppGraph, ? extends T> proxyFunction) {
+        if (tags.isEmpty()) {
+            return proxyComponent(typeToReplace, proxyFunction);
+        } else {
+            modifications.add(new GraphProxy<T>(proxyFunction, new GraphCandidate(typeToReplace, tags)));
+            return this;
+        }
+    }
+
+    /**
+     * Component that should replace existing one with new one AND keeps its dependencies in graph, original component is also available
+     */
+    @Nonnull
+    public <T> KoraGraphModification proxyComponent(@Nonnull Class<T> typeToReplace,
+                                                    @Nonnull Function<T, ? extends T> proxyFunction) {
+        return proxyComponent(((Type) typeToReplace), proxyFunction);
+    }
+
+    /**
+     * Component that should replace existing one with new one AND keeps its dependencies in graph, original component is also available
+     */
+    @Nonnull
+    public <T> KoraGraphModification proxyComponent(@Nonnull Class<T> typeToReplace,
+                                                    @Nonnull List<Class<?>> tags,
+                                                    @Nonnull Function<T, ? extends T> proxyFunction) {
+        return proxyComponent(((Type) typeToReplace), tags, proxyFunction);
+    }
+
+    /**
+     * Component that should replace existing one with new one AND keeps its dependencies in graph, original component is also available
+     */
+    @Nonnull
+    public <T> KoraGraphModification proxyComponent(@Nonnull Class<T> typeToReplace,
+                                                    @Nonnull BiFunction<T, KoraAppGraph, ? extends T> proxyFunction) {
+        return proxyComponent(((Type) typeToReplace), proxyFunction);
+    }
+
+    /**
+     * Component that should replace existing one with new one AND keeps its dependencies in graph, original component is also available
+     */
+    @Nonnull
+    public <T> KoraGraphModification proxyComponent(@Nonnull Class<T> typeToReplace,
+                                                    @Nonnull List<Class<?>> tags,
+                                                    @Nonnull BiFunction<T, KoraAppGraph, ? extends T> proxyFunction) {
+        return proxyComponent(((Type) typeToReplace), tags, proxyFunction);
     }
 
     /**
