@@ -25,15 +25,12 @@ record KoraTimeout(String name, long delayMaxNanos, TimeoutMetrics metrics, Exec
             var future = new CompletableFuture<Void>();
             Context current = Context.current();
             e.execute(() -> {
-                Context old = Context.current();
                 try {
                     current.inject();
                     runnable.run();
                     future.complete(null);
                 } catch (Throwable ex) {
                     future.completeExceptionally(ex);
-                } finally {
-                    old.inject();
                 }
             });
             return future;
@@ -46,15 +43,12 @@ record KoraTimeout(String name, long delayMaxNanos, TimeoutMetrics metrics, Exec
             var future = new CompletableFuture<T>();
             Context current = Context.current();
             e.execute(() -> {
-                Context old = Context.current();
                 try {
                     current.inject();
                     var result = callable.call();
                     future.complete(result);
                 } catch (Throwable ex) {
                     future.completeExceptionally(ex);
-                } finally {
-                    old.inject();
                 }
             });
             return future;
