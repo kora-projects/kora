@@ -272,7 +272,11 @@ class KoraAppKspTest {
 //            } delete or fix?
 
         testClass(AppWithFactories12::class).init()
+    }
 
+    @Test
+    fun appWithFactoryWithIntersectedGenerics() {
+        testClass(AppWithFactories13::class).init()
     }
 
     @Test
