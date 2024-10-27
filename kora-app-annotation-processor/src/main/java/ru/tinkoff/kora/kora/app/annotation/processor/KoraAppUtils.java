@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
+import ru.tinkoff.kora.common.KoraApp;
 import ru.tinkoff.kora.common.KoraSubmodule;
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclaration;
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ModuleDeclaration;
@@ -101,7 +102,7 @@ public class KoraAppUtils {
         }
     }
 
-    public static List<TypeElement> findKoraSubmoduleModules(Elements elements, Set<TypeElement> interfaces) {
+    public static List<TypeElement> findKoraSubmoduleModules(Elements elements, Set<TypeElement> interfaces, TypeElement koraAppElement) {
         var result = new ArrayList<TypeElement>();
         for (var typeElement : interfaces) {
             if (typeElement.getAnnotation(KoraSubmodule.class) != null) {
@@ -110,6 +111,15 @@ public class KoraAppUtils {
                 if (module == null) {
                     throw new ProcessingErrorException("Submodule `" + name + "` was not generated yet", typeElement);
                 } else {
+                    result.add(module);
+                }
+            }
+
+            if (typeElement.getAnnotation(KoraApp.class) != null && !typeElement.equals(koraAppElement)) {
+                var name = typeElement.getQualifiedName().toString() + "SubmoduleImpl";
+                var module = elements.getTypeElement(name);
+                // ignore if null, KoraAppSubmodule prob was off to generate
+                if (module != null) {
                     result.add(module);
                 }
             }

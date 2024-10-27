@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils.CompilationErrorException;
+import ru.tinkoff.kora.annotation.processor.common.TestUtils.ProcessorOptions;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Node;
 import ru.tinkoff.kora.application.graph.internal.NodeImpl;
@@ -388,6 +389,25 @@ class KoraAppProcessorTest {
 
         classLoader = TestUtils.annotationProcessFiles(List.of(targetFile1, targetFile2), false, new KoraAppProcessor());
         var appClazz = classLoader.loadClass(AppWithAppPartApp.class.getName() + "Graph");
+        assertThat(appClazz).isNotNull();
+    }
+
+    @Test
+    void appPartAndAppSubmodule() throws Exception {
+        var classLoader = TestUtils.annotationProcessWithOptions(AppWithAppPart.class, List.of(ProcessorOptions.SUBMODULE_GENERATION), new KoraAppProcessor());
+        var clazz = classLoader.loadClass(AppWithAppPart.class.getName() + "SubmoduleImpl");
+        Assertions.assertThat(clazz).isNotNull()
+            .isInterface()
+            .hasDeclaredMethods("_component0", "_component1")
+            .matches(Predicate.not(AppWithAppPart.Module.class::isAssignableFrom));
+        var targetFile1 = "src/test/java/" + AppWithAppPartAppWithSubmodule.class.getName().replace('.', '/') + ".java";
+        var targetFile2 = "in-test-generated/classes/" + clazz.getCanonicalName().replace('.', '/') + ".class";
+
+        classLoader = TestUtils.annotationProcessFiles(List.of(targetFile1, targetFile2), List.of(), false, p -> true, List.of(new KoraAppProcessor()), List.of(ProcessorOptions.SUBMODULE_GENERATION));
+        var appClazz = classLoader.loadClass(AppWithAppPartAppWithSubmodule.class.getName() + "Graph");
+        assertThat(appClazz).isNotNull();
+        var appClazzSubmodule = classLoader.loadClass(AppWithAppPartAppWithSubmodule.class.getName() + "SubmoduleImpl");
+        assertThat(appClazzSubmodule).isNotNull();
     }
 
     @Test

@@ -21,7 +21,19 @@ import java.util.stream.Stream;
 
 
 public class TestUtils {
+
     public static List<String> classpath;
+
+    public enum ProcessorOptions {
+
+        SUBMODULE_GENERATION("-Akora.app.submodule.enabled=true");
+
+        private final String value;
+
+        ProcessorOptions(String value) {
+            this.value = value;
+        }
+    }
 
     static {
         var classGraph = new ClassGraph()
@@ -96,6 +108,18 @@ public class TestUtils {
         return annotationProcess(List.of(targetClass), processors);
     }
 
+    public static ClassLoader annotationProcessWithOptions(Class<?> targetClass, List<ProcessorOptions> processorOptions, Processor... processors) throws Exception {
+        var files = List.of(targetClass).stream()
+            .map(tc -> {
+                var targetFile = tc.getName().replace('.', '/') + ".java";
+                var root = "src/test/java/";
+                return root + targetFile;
+            })
+            .toList();
+
+        return annotationProcessFiles(files, List.of(), true, p -> true, Arrays.stream(processors).toList(), processorOptions);
+    }
+
     public static ClassLoader annotationProcess(List<Class<?>> targetClasses, Processor... processors) throws Exception {
         var files = targetClasses.stream()
             .map(targetClass -> {
@@ -136,6 +160,10 @@ public class TestUtils {
     }
 
     public static ClassLoader annotationProcessFiles(List<String> targetFiles, List<String> targetClasses, boolean clearClasses, Predicate<Path> clearClassesPredicate, List<Processor> processors) throws Exception {
+        return annotationProcessFiles(targetFiles, targetClasses, clearClasses, clearClassesPredicate, processors, Collections.emptyList());
+    }
+
+    public static ClassLoader annotationProcessFiles(List<String> targetFiles, List<String> targetClasses, boolean clearClasses, Predicate<Path> clearClassesPredicate, List<Processor> processors, List<ProcessorOptions> processorOptions) throws Exception {
         var compiler = ToolProvider.getSystemJavaCompiler();
         var out = new StringWriter();
         var diagnostics = new ArrayList<Diagnostic<? extends JavaFileObject>>();
@@ -181,7 +209,9 @@ public class TestUtils {
             cp.add(outClasses);
             standardFileManager.setLocationFromPaths(StandardLocation.CLASS_PATH, cp);
 
-            var task = compiler.getTask(out, standardFileManager, l, List.of("-parameters", "-g", "--enable-preview", "--source", "17", "-XprintRounds"), targetClasses, inputSourceFiles);
+            var defaultOptions = new LinkedHashSet<>(List.of("-parameters", "-g", "--enable-preview", "--source", "17", "-XprintRounds"));
+            defaultOptions.addAll(processorOptions.stream().map(o -> o.value).toList());
+            var task = compiler.getTask(out, standardFileManager, l, defaultOptions, targetClasses, inputSourceFiles);
             task.setProcessors(processors);
             try {
                 task.call();

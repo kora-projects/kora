@@ -33,6 +33,9 @@ import java.util.stream.Stream;
 
 @SupportedOptions("koraLogLevel")
 public class KoraAppProcessor extends AbstractKoraProcessor {
+
+    private static final String OPTION_SUBMODULE_GENERATION = "kora.app.submodule.enabled";
+
     public static final int COMPONENTS_PER_HOLDER_CLASS = 500;
 
     private static final Logger log = LoggerFactory.getLogger(KoraAppProcessor.class);
@@ -46,6 +49,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
     private final List<TypeElement> components = new ArrayList<>();
     private final ArrayList<TypeElement> appParts = new ArrayList<>();
     private volatile boolean initialized = false;
+    private volatile boolean isKoraAppSubmoduleEnabled = false;
     private TypeElement koraAppElement;
     private TypeElement moduleElement;
     private TypeElement koraSubmoduleElement;
@@ -63,6 +67,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         this.koraSubmoduleElement = this.elements.getTypeElement(CommonClassNames.koraSubmodule.canonicalName());
         this.componentElement = this.elements.getTypeElement(CommonClassNames.component.canonicalName());
         this.initialized = true;
+        this.isKoraAppSubmoduleEnabled = Boolean.parseBoolean(processingEnv.getOptions().getOrDefault(OPTION_SUBMODULE_GENERATION, "false"));
         this.ctx = new ProcessingContext(processingEnv);
         log.info("@KoraApp processor started");
     }
@@ -73,6 +78,11 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             return Set.of();
         }
         return Set.of(CommonClassNames.koraApp.canonicalName(), CommonClassNames.module.canonicalName(), CommonClassNames.component.canonicalName(), CommonClassNames.koraSubmodule.canonicalName(), CommonClassNames.koraGenerated.canonicalName());
+    }
+
+    @Override
+    public Set<String> getSupportedOptions() {
+        return Set.of(OPTION_SUBMODULE_GENERATION);
     }
 
     @Override
@@ -310,7 +320,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             if (log.isTraceEnabled()) {
                 log.trace("Effective methods of {}:\n{}", classElement, mixedInModuleComponents.stream().map(Object::toString).sorted().collect(Collectors.joining("\n")).indent(4));
             }
-            var submodules = KoraAppUtils.findKoraSubmoduleModules(this.elements, interfaces);
+            var submodules = KoraAppUtils.findKoraSubmoduleModules(this.elements, interfaces, type);
             var discoveredModules = this.modules.stream().flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream());
             var allModules = Stream.concat(discoveredModules, submodules.stream()).sorted(Comparator.comparing(Objects::toString)).toList();
             var annotatedModulesComponents = KoraAppUtils.parseComponents(this.ctx, allModules.stream().map(ModuleDeclaration.AnnotatedModule::new).toList());
@@ -644,6 +654,14 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             .filter(e -> e.getKind().isInterface())
             .map(TypeElement.class::cast)
             .forEach(this.appParts::add);
+
+        if (isKoraAppSubmoduleEnabled) {
+            roundEnv.getElementsAnnotatedWith(this.koraAppElement)
+                .stream()
+                .filter(e -> e.getKind().isInterface())
+                .map(TypeElement.class::cast)
+                .forEach(this.appParts::add);
+        }
     }
 
     private void generateAppParts() throws IOException {
