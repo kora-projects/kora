@@ -542,7 +542,6 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                     throw new ExtensionConfigurationException("@KoraAppTest(modules = %s.class) is not an interface, only interfaces can be a module".formatted(c.getCanonicalName()));
                 }
             })
-            .flatMap(c -> Stream.concat(Stream.of(c), Arrays.stream(c.getInterfaces())))
             .collect(Collectors.toSet());
 
         final Set<GraphCandidate> factoryCandidates = new HashSet<>();
