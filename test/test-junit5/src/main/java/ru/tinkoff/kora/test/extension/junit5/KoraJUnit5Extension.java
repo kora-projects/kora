@@ -249,33 +249,39 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         var started = TimeUtils.started();
 
         var koraTestContext = getKoraTestContext(context);
-        final boolean isReady = koraTestContext.metadata != null && koraTestContext.graph != null;
+        final boolean haveMetadata = koraTestContext.metadata != null;
+        final boolean haveGraph = koraTestContext.graph != null;
+        final boolean isReady = haveMetadata && haveGraph;
+        final String testTarget = (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_METHOD)
+            ? "method '" + getTestMethodName(context) + "'"
+            : "class '" + getTestClassName(context) + "'";
+
         if (!isReady) {
-            if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_METHOD) {
-                logger.info("@KoraAppTest test method '{}' setup started...", getTestMethodName(context));
-            } else {
-                logger.info("@KoraAppTest test class '{}' setup started...", getTestClassName(context));
-            }
+            logger.info("@KoraAppTest test {} setup started...", testTarget);
         }
 
-        if (koraTestContext.metadata == null) {
-            logger.trace("@KoraAppTest class metadata extracting started...");
-            long startedMeta = TimeUtils.started();
+        var startedMeta = TimeUtils.started();
+        if (!haveMetadata) {
+            logger.debug("@KoraAppTest test class '{}' metadata scan started...", getTestClassName(context));
+
             koraTestContext.metadata = getClassMetadata(koraTestContext, initializeOrigin, context);
-            logger.debug("@KoraAppTest class metadata extracting took: {}", TimeUtils.tookForLogging(startedMeta));
+            logger.debug("@KoraAppTest test class '{}' metadata scan took: {}",
+                getTestClassName(context), TimeUtils.tookForLogging(startedMeta));
         }
 
-        if (koraTestContext.graph == null) {
+        var startedGraph = TimeUtils.started();
+        if (!haveGraph) {
+            logger.debug("@KoraAppTest test {} graph initialization started...", testTarget);
+
             koraTestContext.graph = generateTestGraph(koraTestContext.metadata, context);
             koraTestContext.graph.initialize();
+            logger.debug("@KoraAppTest test {} graph initialization took: {}",
+                testTarget, TimeUtils.tookForLogging(startedGraph));
         }
 
         if (!isReady) {
-            if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_METHOD) {
-                logger.info("@KoraAppTest test method '{}' setup took: {}", getTestMethodName(context), TimeUtils.tookForLogging(started));
-            } else {
-                logger.info("@KoraAppTest test class '{}' setup took: {}", getTestClassName(context), TimeUtils.tookForLogging(started));
-            }
+            logger.info("@KoraAppTest test {} setup took: {}",
+                testTarget, TimeUtils.tookForLogging(started));
         }
 
         return koraTestContext;
@@ -300,11 +306,14 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         var koraTestContext = getKoraTestContext(context);
         if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_METHOD) {
             if (koraTestContext.graph != null) {
-                logger.debug("@KoraAppTest test method '{}' cleanup started...", getTestMethodName(context));
+                logger.debug("@KoraAppTest test method '{}' cleanup started...",
+                    getTestMethodName(context));
+
                 var started = TimeUtils.started();
                 koraTestContext.graph.close();
                 koraTestContext.graph = null;
-                logger.info("@KoraAppTest test method '{}' cleanup took: {}", getTestMethodName(context), TimeUtils.tookForLogging(started));
+                logger.info("@KoraAppTest test method '{}' cleanup took: {}",
+                    getTestMethodName(context), TimeUtils.tookForLogging(started));
             }
         }
     }
@@ -315,10 +324,13 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_CLASS) {
             if (!context.getRequiredTestClass().isAnnotationPresent(Nested.class)) {
                 if (koraTestContext.graph != null) {
+                    logger.debug("@KoraAppTest test class '{}' cleanup started...",
+                        getTestClassName(context));
+
                     var started = TimeUtils.started();
-                    logger.debug("@KoraAppTest test class '{}' cleanup started...", getTestClassName(context));
                     koraTestContext.graph.close();
-                    logger.info("@KoraAppTest test class '{}' cleanup took: {}", getTestClassName(context), TimeUtils.tookForLogging(started));
+                    logger.info("@KoraAppTest test class '{}' cleanup took: {}",
+                        getTestClassName(context), TimeUtils.tookForLogging(started));
                 }
             }
         }
@@ -826,7 +838,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                 var clazz = KoraJUnit5Extension.class.getClassLoader().loadClass(applicationClass.getName() + "Graph");
                 var constructors = (Constructor<? extends Supplier<? extends ApplicationGraphDraw>>[]) clazz.getConstructors();
                 var supplier = (Supplier<ApplicationGraphDraw>) constructors[0].newInstance();
-                logger.info("Instantiated and cached @KoraApp application '{}' graph in {}", applicationClass.getSimpleName(), TimeUtils.tookForLogging(started));
+                logger.info("@KoraApp application '{}' graph class loading took: {}", applicationClass.getSimpleName(), TimeUtils.tookForLogging(started));
                 return supplier;
             } catch (ClassNotFoundException e) {
                 throw new ExtensionConfigurationException("@KoraAppTest#value must be annotated with @KoraApp, can't find generated application graph: " + applicationClass, e);
