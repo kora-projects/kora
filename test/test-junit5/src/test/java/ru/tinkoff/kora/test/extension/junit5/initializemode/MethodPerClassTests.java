@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.test.extension.junit5.initializemode;
 
 import org.junit.jupiter.api.*;
-import ru.tinkoff.kora.test.extension.junit5.KoraAppGraph;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
 import ru.tinkoff.kora.test.extension.junit5.TestComponent;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplication;

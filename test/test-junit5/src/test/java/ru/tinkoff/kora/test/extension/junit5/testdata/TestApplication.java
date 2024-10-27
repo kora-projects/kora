@@ -8,7 +8,8 @@ import ru.tinkoff.kora.common.annotation.Root;
 import java.util.function.Function;
 
 @KoraApp
-public interface TestApplication {
+public interface TestApplication extends TestExtendModule {
+
     @Root
     default GenericComponent<String> genericComponent1() {
         return new GenericComponent.StringGenericComponent();

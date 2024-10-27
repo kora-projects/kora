@@ -26,4 +26,9 @@ public @interface KoraAppTest {
      * @return {@link Component} that should be included in Context initialization in addition to {@link TestComponent} found in tests
      */
     Class<?>[] components() default {};
+
+    /**
+     * @return Modules that should be included in Context initialization in addition to {@link TestComponent} found in tests
+     */
+    Class<?>[] modules() default {};
 }

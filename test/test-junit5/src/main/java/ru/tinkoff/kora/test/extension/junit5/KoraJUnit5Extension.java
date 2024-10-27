@@ -62,6 +62,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         public Set<GraphCandidate> getComponents() {
             final Set<GraphCandidate> roots = new HashSet<>();
             roots.addAll(classMetadata.annotationComponents);
+            roots.addAll(classMetadata.annotationComponentsFromModules);
             roots.addAll(classMetadata.fieldComponents);
             roots.addAll(parameterComponents);
             roots.addAll(classMetadata.constructorComponents);
@@ -95,6 +96,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                              InitializeOrigin initializeOrigin,
                              Config config,
                              Set<GraphCandidate> annotationComponents,
+                             Set<GraphCandidate> annotationComponentsFromModules,
                              List<Field> fieldsForInjection,
                              Set<GraphCandidate> fieldComponents,
                              Set<GraphModification> fieldMocks,
@@ -344,8 +346,8 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     @Override
     public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext context) throws ParameterResolutionException {
         return isCandidate(parameterContext.getParameter())
-            || parameterContext.getParameter().getType().equals(KoraAppGraph.class)
-            || parameterContext.getParameter().getType().equals(Graph.class);
+               || parameterContext.getParameter().getType().equals(KoraAppGraph.class)
+               || parameterContext.getParameter().getType().equals(Graph.class);
     }
 
     @Override
@@ -464,6 +466,8 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             .map(GraphCandidate::new)
             .collect(Collectors.toSet());
 
+        final Set<GraphCandidate> koraModulesCandidates = getKoraModulesCandidates(koraAppTest);
+
         final TestClassMetadata.Config koraAppConfig = context.getTestInstance()
             .filter(inst -> inst instanceof KoraAppTestConfigModifier)
             .map(inst -> {
@@ -523,8 +527,49 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             }
         }
 
-        return new TestClassMetadata(testClass, koraAppTest.annotation, koraAppTest.lifecycle, initializeOrigin, koraAppConfig, annotationCandidates,
-            fieldsForInjection, fieldComponents, fieldMocks, constructorComponents, constructorMocks);
+        return new TestClassMetadata(testClass, koraAppTest.annotation, koraAppTest.lifecycle, initializeOrigin, koraAppConfig,
+            annotationCandidates, koraModulesCandidates,
+            fieldsForInjection, fieldComponents, fieldMocks,
+            constructorComponents, constructorMocks);
+    }
+
+    private static Set<GraphCandidate> getKoraModulesCandidates(KoraTestContext koraAppTest) {
+        final Set<Class<?>> moduleInterfaces = Arrays.stream(koraAppTest.annotation.modules())
+            .filter(c -> {
+                if (c.isInterface()) {
+                    return true;
+                } else {
+                    throw new ExtensionConfigurationException("@KoraAppTest(modules = %s.class) is not an interface, only interfaces can be a module".formatted(c.getCanonicalName()));
+                }
+            })
+            .flatMap(c -> Stream.concat(Stream.of(c), Arrays.stream(c.getInterfaces())))
+            .collect(Collectors.toSet());
+
+        final Set<GraphCandidate> factoryCandidates = new HashSet<>();
+        for (Class<?> module : moduleInterfaces) {
+            final Method[] declaredMethods = module.getDeclaredMethods();
+            final List<Method> factoryMethods;
+            if (Arrays.stream(module.getAnnotations()).anyMatch(a -> a.annotationType().getName().equals("kotlin.Metadata"))) {
+                // assume all kotlin interface methods are factories
+                factoryMethods = Arrays.stream(declaredMethods).toList();
+            } else {
+                factoryMethods = Arrays.stream(declaredMethods)
+                    .filter(Method::isDefault)
+                    .toList();
+            }
+
+            for (Method factoryMethod : factoryMethods) {
+                Type returnType = factoryMethod.getGenericReturnType();
+                Tag tag = factoryMethod.getAnnotation(Tag.class);
+                if (tag == null) {
+                    factoryCandidates.add(new GraphCandidate(returnType));
+                } else {
+                    factoryCandidates.add(new GraphCandidate(returnType, tag.value()));
+                }
+            }
+        }
+
+        return factoryCandidates;
     }
 
     private static GraphCandidate getGraphCandidate(ParameterContext parameterContext) {
@@ -567,7 +612,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                     } else if (Arrays.equals(candidate.tagsAsArray(), node.tags())) {
                         objects.add(object);
                     }
-                } else if(object instanceof Wrapped<?> wo && clazz.isInstance(wo.value())) {
+                } else if (object instanceof Wrapped<?> wo && clazz.isInstance(wo.value())) {
                     if (candidate.tags().isEmpty() && node.tags().length == 0) {
                         objects.add(wo.value());
                     } else if (candidate.tags().size() == 1 && candidate.tags().get(0).getCanonicalName().equals("ru.tinkoff.kora.common.Tag.Any")) {
@@ -764,7 +809,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                 metadata.classMetadata.constructorMocks)
             .flatMap(Collection::stream)
             .filter(m -> m instanceof GraphMockitoSpy spy && spy.isSpyGraph()
-                || m instanceof GraphMockkSpyk spyk && spyk.isSpyGraph())
+                         || m instanceof GraphMockkSpyk spyk && spyk.isSpyGraph())
             .map(GraphModification::candidate)
             .collect(Collectors.toSet());
 
@@ -785,7 +830,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                 logger.info("Instantiated and cached @KoraApp application '{}' graph in {}", applicationClass.getSimpleName(), TimeUtils.tookForLogging(started));
                 return supplier;
             } catch (ClassNotFoundException e) {
-                throw new ExtensionConfigurationException("@KoraAppTest#value must be annotated with @KoraApp, but probably wasn't: " + applicationClass, e);
+                throw new ExtensionConfigurationException("@KoraAppTest#value must be annotated with @KoraApp, can't find generated application graph: " + applicationClass, e);
             } catch (Exception e) {
                 throw new IllegalStateException(e);
             }
@@ -800,9 +845,9 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             .collect(Collectors.toSet());
 
         var mockCandidates = methodMetadata.getGraphMockCandidates(m -> m instanceof GraphMockitoMock
-            || m instanceof GraphMockkMock
-            || m instanceof GraphMockitoSpy spy && !spy.isSpyGraph()
-            || m instanceof GraphMockkSpyk spyk && !spyk.isSpyGraph());
+                                                                        || m instanceof GraphMockkMock
+                                                                        || m instanceof GraphMockitoSpy spy && !spy.isSpyGraph()
+                                                                        || m instanceof GraphMockkSpyk spyk && !spyk.isSpyGraph());
 
         var mocks = new ArrayList<Node<?>>();
         for (GraphCandidate mockCandidate : mockCandidates) {
