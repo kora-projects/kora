@@ -38,7 +38,7 @@ import javax.annotation.processing.SupportedOptions
 
 @SupportedOptions("koraLogLevel")
 class KoraAppProcessor(
-    environment: SymbolProcessorEnvironment
+    private val environment: SymbolProcessorEnvironment
 ) : BaseSymbolProcessor(environment) {
     companion object {
         const val COMPONENTS_PER_HOLDER_CLASS = 500
