@@ -135,7 +135,6 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
                         addStatement("_stmt.executeBatch()")
                     } else {
                         addStatement("_stmt.execute()")
-                        addStatement("_stmt.getUpdateCount()")
                     }
                     addStatement("_telemetry.close(null)")
                 } else if (returnTypeName == updateCount) {

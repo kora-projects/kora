@@ -203,10 +203,9 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             || isFuture && MethodUtils.isVoidGeneric(methodType.getReturnType())) {
 
             if (batchParam != null) {
-                b.addStatement("var _batchResult = _stmt.executeBatch()");
+                b.addStatement("_stmt.executeBatch()");
             } else {
                 b.addStatement("_stmt.execute()");
-                b.addStatement("var updateCount = _stmt.getUpdateCount()");
             }
             b.addStatement("_telemetry.close(null)");
             if (isMono) {
