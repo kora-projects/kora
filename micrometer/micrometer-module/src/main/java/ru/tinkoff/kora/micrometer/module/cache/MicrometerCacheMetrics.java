@@ -73,6 +73,7 @@ public final class MicrometerCacheMetrics implements CacheMetrics {
 
                 var counter = missCounters.computeIfAbsent(operationKey, k -> {
                     var builder = Counter.builder(METRIC_CACHE_MISS)
+                        .description("!!! DEPRECATED !!! Please use cache.ratio metric")
                         .tag(TAG_CACHE_NAME, k.cacheName())
                         .tag(TAG_ORIGIN, k.origin());
 
@@ -84,6 +85,7 @@ public final class MicrometerCacheMetrics implements CacheMetrics {
 
                 var counter = hitCounters.computeIfAbsent(operationKey, k -> {
                     var builder = Counter.builder(METRIC_CACHE_HIT)
+                        .description("!!! DEPRECATED !!! Please use cache.ratio metric")
                         .tag(TAG_CACHE_NAME, k.cacheName())
                         .tag(TAG_ORIGIN, k.origin());
 
