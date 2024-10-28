@@ -90,6 +90,10 @@ class JdbcEntityGenerator(val codeGenerator: CodeGenerator) {
             .addParameter("_rs", JdbcTypes.resultSet)
             .returns(entityTypeName.copy(true))
 
+        apply.controlFlow("if (!_rs.next())") {
+            addStatement("return null")
+        }
+
         val read = this.entityReader.readEntity("_result", entity)
         read.enrich(type, constructor)
         apply.addCode(parseIndexes(entity, "_rs"))
@@ -122,6 +126,11 @@ class JdbcEntityGenerator(val codeGenerator: CodeGenerator) {
 
         val read = this.entityReader.readEntity("_result", entity)
         read.enrich(type, constructor)
+        if (entity.type.isMarkedNullable) {
+            apply.controlFlow("if (!_rs.next())") {
+                addStatement("return null")
+            }
+        }
         apply.addCode(parseIndexes(entity, "_rs"))
         apply.addCode(read.block)
         apply.addStatement("return _result")

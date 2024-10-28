@@ -158,30 +158,28 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
                     }
                     controlFlow("_stmt.generatedKeys.use { _rs ->") {
                         addStatement("val _result = %N.apply(_rs)", resultMapperName!!)
+                        if (!methodType.returnType!!.isMarkedNullable) {
+                            addStatement("  ?: throw NullPointerException(%S)", "Result mapping is expected non-null, but was null")
+                        }
                         addStatement("_telemetry.close(null)")
                         addCode("return")
                         if (method.isSuspend()) {
                             addCode("@withContext")
                         }
-                        addCode(" _result")
-                        if (!methodType.returnType!!.isMarkedNullable) {
-                            addCode("!!")
-                        }
-                        addCode("\n")
+                        addStatement(" _result")
                     }
                 } else {
                     controlFlow("_stmt.executeQuery().use { _rs ->") {
                         addStatement("val _result = %N.apply(_rs)", resultMapperName!!)
+                        if (!methodType.returnType!!.isMarkedNullable) {
+                            addStatement("  ?: throw NullPointerException(%S)", "Result mapping is expected non-null, but was null")
+                        }
                         addStatement("_telemetry.close(null)")
                         addCode("return")
                         if (method.isSuspend()) {
                             addCode("@withContext")
                         }
-                        addCode(" _result")
-                        if (!methodType.returnType!!.isMarkedNullable) {
-                            addCode("!!")
-                        }
-                        addCode("\n")
+                        addStatement(" _result")
                     }
                 }
 
