@@ -24,4 +24,9 @@ public record DefaultHttpClientRequest(
         Objects.requireNonNull(body);
         method = method.toUpperCase();
     }
+
+    @Override
+    public String toString() {
+        return method + " " + uri;
+    }
 }

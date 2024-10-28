@@ -84,4 +84,9 @@ class LazyRequest implements HttpServerRequest {
     public HttpBodyInput body() {
         return this.publicApiRequest.body();
     }
+
+    @Override
+    public String toString() {
+        return method + " " + path;
+    }
 }

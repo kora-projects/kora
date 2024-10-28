@@ -40,4 +40,13 @@ public class StreamingAsyncHttpClientResponse implements HttpClientResponse {
     public void close() throws IOException {
         this.body.close();
     }
+
+    @Override
+    public String toString() {
+        return "HttpClientResponse{code=" + code() +
+               ", headers=" + headers() +
+               ", bodyLength=" + body.contentLength() +
+               ", bodyType=" + body.contentType() +
+               '}';
+    }
 }

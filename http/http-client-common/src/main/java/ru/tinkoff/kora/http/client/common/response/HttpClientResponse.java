@@ -28,5 +28,14 @@ public interface HttpClientResponse extends Closeable {
                 throw e.getCause();
             }
         }
+
+        @Override
+        public String toString() {
+            return "HttpClientResponse{code=" + code() +
+                   ", headers=" + headers() +
+                   ", bodyLength=" + ((body != null) ? body.contentLength() : -1) +
+                   ", bodyType=" + ((body != null) ? body.contentType() : -1) +
+                   '}';
+        }
     }
 }

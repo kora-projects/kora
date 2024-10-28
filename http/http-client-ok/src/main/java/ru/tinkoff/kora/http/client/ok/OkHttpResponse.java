@@ -5,8 +5,6 @@ import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
-import java.io.IOException;
-
 public final class OkHttpResponse implements HttpClientResponse {
     private final Response response;
 
@@ -32,5 +30,14 @@ public final class OkHttpResponse implements HttpClientResponse {
     @Override
     public void close() {
         this.response.close();
+    }
+
+    @Override
+    public String toString() {
+        return "HttpClientResponse{code=" + code() +
+               ", headers=" + response.headers().toMultimap() +
+               ", bodyLength=" + response.body().contentLength() +
+               ", bodyType=" + response.body().contentType() +
+               '}';
     }
 }
