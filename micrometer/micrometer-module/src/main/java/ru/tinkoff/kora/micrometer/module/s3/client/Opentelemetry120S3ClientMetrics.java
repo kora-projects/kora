@@ -2,14 +2,13 @@ package ru.tinkoff.kora.micrometer.module.s3.client;
 
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Tag;
 import io.opentelemetry.api.common.AttributeKey;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.s3.client.telemetry.S3ClientMetrics;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
-import java.util.ArrayList;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
@@ -44,19 +43,15 @@ public class Opentelemetry120S3ClientMetrics implements S3ClientMetrics {
     }
 
     private DistributionSummary duration(DurationKey key) {
-        var list = new ArrayList<Tag>(5);
-        if (key.errorCode() != null) {
-            list.add(Tag.of(ERROR_CODE.getKey(), key.errorCode()));
-        }
-        list.add(Tag.of(CLIENT_NAME.getKey(), client.getSimpleName()));
-        list.add(Tag.of(AWS_S3_BUCKET.getKey(), key.bucket()));
-        list.add(Tag.of("http.method", key.method()));
-        list.add(Tag.of("http.status_code", Integer.toString(key.statusCode())));
-
         var builder = DistributionSummary.builder("s3.client.duration")
             .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V120))
             .baseUnit("milliseconds")
-            .tags(list);
+            .tag(CLIENT_NAME.getKey(), client.getSimpleName())
+            .tag(AWS_S3_BUCKET.getKey(), key.bucket())
+            .tag("http.method", key.method())
+            .tag("http.status_code", Integer.toString(key.statusCode()))
+            .tag(ERROR_CODE.getKey(), Objects.requireNonNullElse(key.errorCode(), "NONE"));
+
         return builder.register(meterRegistry);
     }
 

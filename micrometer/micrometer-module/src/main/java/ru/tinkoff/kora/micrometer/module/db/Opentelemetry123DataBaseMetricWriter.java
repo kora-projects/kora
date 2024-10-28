@@ -2,6 +2,7 @@ package ru.tinkoff.kora.micrometer.module.db;
 
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tag;
 import io.opentelemetry.semconv.SemanticAttributes;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.database.common.QueryContext;
@@ -47,9 +48,13 @@ public final class Opentelemetry123DataBaseMetricWriter implements DataBaseMetri
             .tag(SemanticAttributes.POOL_NAME.getKey(), this.poolName)
             .tag(SemanticAttributes.DB_STATEMENT.getKey(), key.queryId())
             .tag(SemanticAttributes.DB_OPERATION.getKey(), key.operation());
+
         if (key.error != null) {
             builder.tag(SemanticAttributes.ERROR_TYPE.getKey(), key.error.getCanonicalName());
+        } else {
+            builder.tag(SemanticAttributes.ERROR_TYPE.getKey(), "NONE");
         }
+
         return new DbMetrics(builder.register(this.meterRegistry));
     }
 }

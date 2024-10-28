@@ -73,7 +73,10 @@ public final class Micrometer120CamundaEngineBpmnMetrics implements CamundaEngin
         var list = new ArrayList<Tag>(3);
         if (key.errorType() != null) {
             list.add(Tag.of(SemanticAttributes.ERROR_TYPE.getKey(), key.errorType().getCanonicalName()));
+        } else {
+            list.add(Tag.of(SemanticAttributes.ERROR_TYPE.getKey(), "NONE"));
         }
+
         list.add(Tag.of("delegate", key.javaDelegateName()));
         list.add(Tag.of("business.key", key.businessKey()));
 

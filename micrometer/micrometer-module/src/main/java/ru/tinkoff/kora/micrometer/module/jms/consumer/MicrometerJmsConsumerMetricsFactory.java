@@ -23,6 +23,7 @@ public class MicrometerJmsConsumerMetricsFactory implements JmsConsumerMetricsFa
             .tag(SemanticAttributes.MESSAGING_SYSTEM.getKey(), "jms")
             .tag(SemanticAttributes.MESSAGING_DESTINATION_NAME.getKey(), queueName)
             .tag(SemanticAttributes.MESSAGING_DESTINATION_KIND.getKey(), "queue");
+
         var distributionSummary = builder.register(this.meterRegistry);
         return new MicrometerJmsConsumerMetrics(distributionSummary);
     }

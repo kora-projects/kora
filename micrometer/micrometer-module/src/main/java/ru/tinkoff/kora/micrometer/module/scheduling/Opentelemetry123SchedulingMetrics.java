@@ -32,9 +32,13 @@ public class Opentelemetry123SchedulingMetrics implements SchedulingMetrics {
             .baseUnit("s")
             .tag(SemanticAttributes.CODE_FUNCTION.getKey(), this.methodName)
             .tag("code.class", this.className);
+
         if (error != null) {
             builder.tag(SemanticAttributes.ERROR_TYPE.getKey(), error.getCanonicalName());
+        } else {
+            builder.tag(SemanticAttributes.ERROR_TYPE.getKey(), "NONE");
         }
+
         return builder.register(this.meterRegistry);
     }
 

@@ -38,20 +38,17 @@ public class Opentelemetry120KafkaConsumerMetrics implements KafkaConsumerMetric
     private record DurationKey(String topic, int partition) {}
 
     private DistributionSummary metrics(DurationKey key) {
+        var clientId = driverProperties.get(ProducerConfig.CLIENT_ID_CONFIG);
+        var groupId = driverProperties.get(ConsumerConfig.GROUP_ID_CONFIG);
+
         var builder = DistributionSummary.builder("messaging.receive.duration")
             .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V120))
             .baseUnit("milliseconds")
             .tag(SemanticAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
-            .tag(SemanticAttributes.MESSAGING_DESTINATION_NAME.getKey(), key.topic());
+            .tag(SemanticAttributes.MESSAGING_DESTINATION_NAME.getKey(), key.topic())
+            .tag(SemanticAttributes.MESSAGING_CLIENT_ID.getKey(), Objects.requireNonNullElse(clientId, "NONE").toString())
+            .tag(SemanticAttributes.MESSAGING_KAFKA_CONSUMER_GROUP.getKey(), Objects.requireNonNullElse(groupId, "NONE").toString());
 
-        var clientId = driverProperties.get(ProducerConfig.CLIENT_ID_CONFIG);
-        if (clientId != null) {
-            builder.tag(SemanticAttributes.MESSAGING_CLIENT_ID.getKey(), clientId.toString());
-        }
-        var groupId = driverProperties.get(ConsumerConfig.GROUP_ID_CONFIG);
-        if (groupId != null) {
-            builder.tag(SemanticAttributes.MESSAGING_KAFKA_CONSUMER_GROUP.getKey(), groupId.toString());
-        }
         return builder.register(this.meterRegistry);
     }
 

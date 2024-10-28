@@ -39,24 +39,24 @@ public final class Opentelemetry123KafkaConsumerMetrics implements KafkaConsumer
     private record DurationKey(String topic, int partition, @Nullable Class<? extends Throwable> errorType) {}
 
     private DistributionSummary metrics(DurationKey key) {
+        var clientId = driverProperties.get(ProducerConfig.CLIENT_ID_CONFIG);
+        var groupId = driverProperties.get(ConsumerConfig.GROUP_ID_CONFIG);
+
         var builder = DistributionSummary.builder("messaging.receive.duration")
             .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
             .baseUnit("s")
             .tag(SemanticAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
             .tag(SemanticAttributes.MESSAGING_DESTINATION_NAME.getKey(), key.topic())
-            .tag(SemanticAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION.getKey(), String.valueOf(key.partition()));
+            .tag(SemanticAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION.getKey(), String.valueOf(key.partition()))
+            .tag(SemanticAttributes.MESSAGING_CLIENT_ID.getKey(), Objects.requireNonNullElse(clientId, "NONE").toString())
+            .tag(SemanticAttributes.MESSAGING_KAFKA_CONSUMER_GROUP.getKey(), Objects.requireNonNullElse(groupId, "NONE").toString());
 
-        var clientId = driverProperties.get(ProducerConfig.CLIENT_ID_CONFIG);
-        if (clientId != null) {
-            builder.tag(SemanticAttributes.MESSAGING_CLIENT_ID.getKey(), clientId.toString());
-        }
-        var groupId = driverProperties.get(ConsumerConfig.GROUP_ID_CONFIG);
-        if (groupId != null) {
-            builder.tag(SemanticAttributes.MESSAGING_KAFKA_CONSUMER_GROUP.getKey(), groupId.toString());
-        }
         if (key.errorType != null) {
             builder.tag(SemanticAttributes.ERROR_TYPE.getKey(), key.errorType().getCanonicalName());
+        } else {
+            builder.tag(SemanticAttributes.ERROR_TYPE.getKey(), "NONE");
         }
+
         return builder.register(this.meterRegistry);
     }
 
