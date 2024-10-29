@@ -1,9 +1,9 @@
 name: Kora test action
 description: Kora test action
 inputs:
-  test-task-name:
-    description: 'Test task name'
-    default: 'test'
+  task-target:
+    description: 'Task target name'
+    default: 'other'
 runs:
   using: "composite"
   steps:
@@ -20,6 +20,18 @@ runs:
         cache-read-only: ${{ github.ref != 'refs/heads/master' }}
         gradle-home-cache-cleanup: ${{ github.ref == 'refs/heads/master' }}
 
-    - name: Execute Gradle build
-      run: ./gradlew ${{ inputs.test-task-name }} --scan --no-daemon
+    - name: Gradle classes
+      run: ./gradlew classes-${{ inputs.task-target }} --scan --no-daemon
+      shell: bash
+
+    - name: Gradle javadoc
+      run: ./gradlew javadoc-${{ inputs.task-target }} --scan --no-daemon
+      shell: bash
+
+    - name: Gradle test classes
+      run: ./gradlew testClasses-${{ inputs.task-target }} --scan --no-daemon
+      shell: bash
+
+    - name: Gradle test
+      run: ./gradlew test-${{ inputs.task-target }} --scan --no-daemon
       shell: bash

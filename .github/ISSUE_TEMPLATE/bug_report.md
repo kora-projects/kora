@@ -8,7 +8,7 @@ labels: bug
 **Kora version:**
 - 1.0.0
 
-**Java or Kotlin version:**
+**Java or Kotlin and KSP version:**
 - Java 17
 
 **Lombok usage:**

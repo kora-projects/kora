@@ -17,19 +17,16 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        task: [ 'postgres', 'cassandra', 'redis', 'kafka', 'openapi', 'kotlin-codegen', 'java-codegen', 'other' ]
+        task: [ 'postgres', 'cassandra', 'redis', 'kafka', 'openapi', 'codegen-kotlin', 'codegen-java', 'other' ]
     steps:
-    - uses: actions/checkout@v4
-    - uses: ./.github/workflows/test-job
-      name: Run ${{ matrix.task }} tests
-      with:
-        test-task-name: "test-${{ matrix.task }}"
-    - name: Publish ${{ matrix.task }} Test Report
-      uses: EnricoMi/publish-unit-test-result-action@v2
-      with:
-        files: |
-          **/test-results/**/*.xml
+      - uses: actions/checkout@v4
+      - uses: ./.github/workflows/test-job
+        name: Run ${{ matrix.task }} tests
+        with:
+          task-target: "${{ matrix.task }}"
 
-    - name: Gradle javadoc
-      run: ./gradlew javadoc
-      shell: bash
+      - name: Publish ${{ matrix.task }} Test Report
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: |
+            **/test-results/**/*.xml

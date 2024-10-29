@@ -11,10 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        task: [ 'postgres', 'cassandra', 'redis', 'kafka', 'openapi', 'kotlin-codegen', 'java-codegen', 'other' ]
+        task: [ 'postgres', 'cassandra', 'redis', 'kafka', 'openapi', 'codegen-kotlin', 'codegen-java', 'other' ]
     steps:
-    - uses: actions/checkout@v4
-    - uses: ./.github/workflows/test-job
-      name: Run ${{ matrix.task }} tests
-      with:
-        test-task-name: "test-${{ matrix.task }}"
+      - uses: actions/checkout@v4
+      - uses: ./.github/workflows/test-job
+        name: Run ${{ matrix.task }} tasks
+        with:
+          task-target: "${{ matrix.task }}"

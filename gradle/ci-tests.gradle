@@ -1,98 +1,115 @@
-def nonOtherTests = new HashSet<String>()
+def nonOtherModules = new HashSet<String>()
+nonOtherModules.add("internal")
+nonOtherModules.add("internal:test-cassandra")
+nonOtherModules.add("internal:test-kafka")
+nonOtherModules.add("internal:test-logging")
+nonOtherModules.add("internal:test-postgres")
+nonOtherModules.add("internal:test-redis")
 
-def addDependency = { TaskProvider taskProvider, String dependency ->
-    taskProvider.configure { Task task ->
-        task.dependsOn(dependency)
+def getProjectFullName = { Project pj ->
+    def fullName = pj.name
+    def parent = pj.parent
+    while (parent != null && parent.name != rootProject.name) {
+        fullName = parent.name + ":" + fullName
+        parent = parent.parent
     }
-    nonOtherTests.add(dependency)
+    return fullName
 }
 
-def testPostgres = tasks.register("test-postgres") {
-    group("verification")
-    description("Run tests with postgresql container")
+def addDependencies = { List<TaskProvider> taskProviders, String dependency ->
+    taskProviders.forEach { taskProvider ->
+        taskProvider.configure { Task task ->
+            def taskPrefix = task.name.split("-")[0]
+            task.dependsOn(":$dependency:$taskPrefix")
+        }
+    }
+    nonOtherModules.add(dependency)
 }
-addDependency(testPostgres, ':database:database-flyway:test')
-addDependency(testPostgres, ':database:database-jdbc:test')
-addDependency(testPostgres, ':database:database-r2dbc:test')
-addDependency(testPostgres, ':database:database-vertx:test')
 
-def testCassandra = tasks.register("test-cassandra") {
-    group("verification")
-    description("Run tests with cassandra container")
+def addDependenciesByPattern = { List<TaskProvider> taskProviders, String namePattern ->
+    rootProject.allprojects.forEach {
+        if (it.name != rootProject.name && it.name.contains(namePattern) && !nonOtherModules.contains(it.name)) {
+            def fullName = getProjectFullName(it)
+            taskProviders.forEach { taskProvider ->
+                taskProvider.configure { Task task ->
+                    def taskPrefix = task.name.split("-")[0]
+                    task.dependsOn(":$fullName:$taskPrefix")
+                }
+            }
+            nonOtherModules.add(fullName)
+        }
+    }
 }
-addDependency(testCassandra, ':database:database-cassandra:test')
 
-def testRedis = tasks.register("test-redis") {
-    group("verification")
-    description("Run tests with redis container")
-}
-addDependency(testRedis, ':cache:cache-redis:test')
+def createTasks = { String type ->
+    def classesByType = tasks.register("classes-$type") {
+        group("build")
+        description("Build classes for $type")
+    }
 
-def testKafka = tasks.register("test-kafka") {
-    group("verification")
-    description("Run tests with kafka container")
-}
-addDependency(testKafka, ':kafka:kafka:test')
+    def testClassesByType = tasks.register("testClasses-$type") {
+        group("build")
+        description("Build testClasses for $type")
+    }
 
-def testOpenapi = tasks.register('test-openapi') {
-    group('verification')
-    description('Run openapi tests')
-}
-addDependency(testOpenapi, ':openapi:openapi-generator:test')
+    def testByType = tasks.register("test-$type") {
+        group("verification")
+        description("Run tests with $type")
+    }
 
-def testJavaCodegen = tasks.register('test-java-codegen') {
-    group('verification')
-    description('Run java codegen tests')
-}
-addDependency(testJavaCodegen, ':kora-app-annotation-processor:test')
-addDependency(testJavaCodegen, ':aop:aop-annotation-processor:test')
-addDependency(testJavaCodegen, ':config:config-annotation-processor:test')
-addDependency(testJavaCodegen, ':json:json-annotation-processor:test')
-addDependency(testJavaCodegen, ':http:http-server-annotation-processor:test')
-addDependency(testJavaCodegen, ':http:http-client-annotation-processor:test')
-addDependency(testJavaCodegen, ':http:soap-client-annotation-processor:test')
-addDependency(testJavaCodegen, ':database:database-annotation-processor:test')
-addDependency(testJavaCodegen, ':kafka:kafka-annotation-processor:test')
-addDependency(testJavaCodegen, ':scheduling:scheduling-annotation-processor:test')
-addDependency(testJavaCodegen, ':resilient:resilient-annotation-processor:test')
-addDependency(testJavaCodegen, ':cache:cache-annotation-processor:test')
-addDependency(testJavaCodegen, ':validation:validation-annotation-processor:test')
-addDependency(testJavaCodegen, ':mapstruct:mapstruct-java-extension:test')
-addDependency(testJavaCodegen, ':logging:declarative-logging:declarative-logging-annotation-processor:test')
-addDependency(testJavaCodegen, ':grpc:grpc-client-annotation-processor:test')
-addDependency(testJavaCodegen, ':experimental:s3-client-annotation-processor:test')
+    def javadocByType = tasks.register("javadoc-$type") {
+        group("documentation")
+        description("Javadoc for $type")
+    }
 
-def testKotlinCodegen = tasks.register('test-kotlin-codegen') {
-    group('verification')
-    description('Run kotlin codegen tests')
+    return [classesByType, testClassesByType, testByType, javadocByType]
 }
-addDependency(testKotlinCodegen, ':kora-app-symbol-processor:test')
-addDependency(testKotlinCodegen, ':aop:aop-symbol-processor:test')
-addDependency(testKotlinCodegen, ':config:config-symbol-processor:test')
-addDependency(testKotlinCodegen, ':json:json-symbol-processor:test')
-addDependency(testKotlinCodegen, ':http:http-server-symbol-processor:test')
-addDependency(testKotlinCodegen, ':http:http-client-symbol-processor:test')
-addDependency(testKotlinCodegen, ':http:soap-client-symbol-processor:test')
-addDependency(testKotlinCodegen, ':database:database-symbol-processor:test')
-addDependency(testKotlinCodegen, ':kafka:kafka-symbol-processor:test')
-addDependency(testKotlinCodegen, ':scheduling:scheduling-ksp:test')
-addDependency(testKotlinCodegen, ':resilient:resilient-symbol-processor:test')
-addDependency(testKotlinCodegen, ':cache:cache-symbol-processor:test')
-addDependency(testKotlinCodegen, ':validation:validation-symbol-processor:test')
-addDependency(testKotlinCodegen, ':mapstruct:mapstruct-ksp-extension:test')
-addDependency(testKotlinCodegen, ':logging:declarative-logging:declarative-logging-symbol-processor:test')
-addDependency(testKotlinCodegen, ':grpc:grpc-client-symbol-processor:test')
-addDependency(testKotlinCodegen, ':experimental:s3-client-symbol-processor:test')
 
-def testOther = tasks.register("test-other") {
-    group("verification")
-    description("Run other tests")
-    finalizedBy 'jacocoRootReport'
-}
+def tasksPostgres = createTasks("postgres")
+def tasksCassandra = createTasks("cassandra")
+def tasksRedis = createTasks("redis")
+def tasksKafka = createTasks("kafka")
+def tasksOpenapi = createTasks("openapi")
+def tasksCodegenJava = createTasks("codegen-java")
+def tasksCodegenKotlin = createTasks("codegen-kotlin")
+def tasksOther = createTasks("other")
+
+// Postgres
+addDependencies(tasksPostgres, "database:database-common")
+addDependencies(tasksPostgres, "database:database-jdbc")
+addDependencies(tasksPostgres, "database:database-jdbi")
+addDependencies(tasksPostgres, "database:database-r2dbc")
+addDependencies(tasksPostgres, "database:database-vertx")
+addDependencies(tasksPostgres, "database:database-flyway")
+addDependencies(tasksPostgres, "database:database-liquibase")
+addDependencies(tasksPostgres, "experimental:camunda-engine-bpmn")
+
+// Cassandra
+addDependencies(tasksCassandra, "database:database-cassandra")
+
+// Redis
+addDependencies(tasksRedis, "cache:cache-redis")
+
+// Kafka
+addDependencies(tasksKafka, "kafka:kafka")
+
+// OpenAPI
+addDependencies(tasksOpenapi, "openapi:openapi-generator")
+addDependencies(tasksOpenapi, "openapi:openapi-management")
+
+// Codegen Java
+addDependenciesByPattern(tasksCodegenJava, "annotation-processor")
+addDependencies(tasksCodegenJava, "mapstruct:mapstruct-java-extension")
+
+// Codegen Kotlin
+addDependenciesByPattern(tasksCodegenKotlin, "symbol-processor")
+addDependenciesByPattern(tasksCodegenKotlin, "ksp")
+addDependencies(tasksCodegenKotlin, "scheduling:scheduling-ksp")
+addDependencies(tasksCodegenKotlin, "mapstruct:mapstruct-ksp-extension")
 
 def jacocoRootReport = tasks.register("jacocoRootReport", JacocoReport) {
-    group = 'verification'
-    executionData project.fileTree(dir: '.', include: '**/build/jacoco/test.exec')
+    group = "verification"
+    executionData project.fileTree(dir: ".", include: "**/build/jacoco/test.exec")
 
     reports {
         xml.required.set(true)
@@ -102,18 +119,19 @@ def jacocoRootReport = tasks.register("jacocoRootReport", JacocoReport) {
     }
 }
 
+rootProject.allprojects.forEach {
+    if (it.name != rootProject.name && it.name != "maven-parent" && it.childProjects.isEmpty()) {
+        def fullName = getProjectFullName(it)
+        if (!nonOtherModules.contains(fullName)) {
+            addDependencies(tasksOther, fullName)
+        }
+    }
+}
 
 subprojects {
-    tasks.configureEach { task ->
-        if (task.name == "test") {
-            if (nonOtherTests.add(task.path)) {
-                testOther.configure {
-                    it.dependsOn(task)
-                }
-            }
-        }
-        if (task.name == "jacocoTestReport") {
-            def report = (JacocoReport) task
+    tasks.configureEach { dependency ->
+        if (dependency.name == "jacocoTestReport") {
+            def report = (JacocoReport) dependency
             jacocoRootReport.configure { root ->
                 root.additionalClassDirs report.allClassDirs
                 root.additionalSourceDirs report.allSourceDirs
