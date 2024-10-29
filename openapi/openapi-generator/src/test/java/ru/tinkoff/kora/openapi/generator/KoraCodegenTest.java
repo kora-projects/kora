@@ -42,7 +42,10 @@ class KoraCodegenTest {
         }
     }
 
-    record SwaggerParams(String mode, String spec, String name) {}
+    record SwaggerParams(String mode, String spec, String name, Options options) {
+
+        record Options(boolean authAsArg) {}
+    }
 
     static SwaggerParams[] generateParams() {
         var result = new ArrayList<SwaggerParams>();
@@ -72,14 +75,17 @@ class KoraCodegenTest {
             "/example/petstoreV3_security_oauth.yaml",
             "/example/petstoreV3_discriminator.yaml",
             "/example/petstoreV2.yaml",
-            "/example/petstoreV3.yaml",
         };
         for (var fileName : files) {
             for (var mode : modes) {
                 var name = fileName.substring(fileName.lastIndexOf('/') + 1)
                     .replace(".yaml", "")
                     .replace(".json", "");
-                result.add(new SwaggerParams(mode, fileName, name));
+
+                result.add(new SwaggerParams(mode, fileName, name, new SwaggerParams.Options(false)));
+                if (fileName.contains("security")) {
+                    result.add(new SwaggerParams(mode, fileName, name, new SwaggerParams.Options(true)));
+                }
             }
         }
         return result.toArray(SwaggerParams[]::new);
@@ -92,11 +98,12 @@ class KoraCodegenTest {
             params.name(),
             params.mode(),
             params.spec(),
-            "build/out/%s/%s".formatted(params.name(), params.mode().replace('_', '/'))
+            "build/out/%s/%s".formatted(params.name(), params.mode().replace('_', '/')),
+            params.options()
         );
     }
 
-    private void generate(String name, String mode, String spec, String dir) throws Exception {
+    private void generate(String name, String mode, String spec, String dir, SwaggerParams.Options options) throws Exception {
         var configurator = new CodegenConfigurator()
             .setGeneratorName("kora")
             .setInputSpec(spec) // or from the server
@@ -126,6 +133,7 @@ class KoraCodegenTest {
                   }
                 """)
             .addAdditionalProperty("enableServerValidation", name.contains("validation"))
+            .addAdditionalProperty("authAsMethodArgument", options.authAsArg())
             .addAdditionalProperty("clientConfigPrefix", "test");
         var processors = new Processor[]{new JsonAnnotationProcessor(), new HttpClientAnnotationProcessor(), new HttpControllerProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()};
 

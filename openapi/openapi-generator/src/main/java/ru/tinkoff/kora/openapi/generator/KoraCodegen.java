@@ -124,6 +124,7 @@ public class KoraCodegen extends DefaultCodegen {
         Mode codegenMode,
         String jsonAnnotation,
         boolean enableValidation,
+        boolean authAsMethodArgument,
         String primaryAuth,
         String clientConfigPrefix,
         String securityConfigPrefix,
@@ -144,6 +145,7 @@ public class KoraCodegen extends DefaultCodegen {
             cliOptions.add(CliOption.newBoolean(ENABLE_VALIDATION, "Generate validation related annotation on models and controllers"));
             cliOptions.add(CliOption.newBoolean(REQUEST_DELEGATE_PARAMS, "Generate HttpServerRequest parameter in delegate methods"));
             cliOptions.add(CliOption.newString(ADDITIONAL_CONTRACT_ANNOTATIONS, "Additional annotations for HTTP client/server methods"));
+            cliOptions.add(CliOption.newBoolean(AUTH_AS_METHOD_ARGUMENT, "HTTP client authorization as method argument"));
             return cliOptions;
         }
 
@@ -151,6 +153,7 @@ public class KoraCodegen extends DefaultCodegen {
             var codegenMode = Mode.JAVA_CLIENT;
             var jsonAnnotation = "ru.tinkoff.kora.json.common.annotation.Json";
             var enableServerValidation = false;
+            var authAsMethodArgument = false;
             var primaryAuth = (String) null;
             var clientConfigPrefix = (String) null;
             var securityConfigPrefix = (String) null;
@@ -196,6 +199,9 @@ public class KoraCodegen extends DefaultCodegen {
             if (additionalProperties.containsKey(PRIMARY_AUTH)) {
                 primaryAuth = additionalProperties.get(PRIMARY_AUTH).toString();
             }
+            if (additionalProperties.containsKey(AUTH_AS_METHOD_ARGUMENT)) {
+                authAsMethodArgument = Boolean.parseBoolean(additionalProperties.get(AUTH_AS_METHOD_ARGUMENT).toString());
+            }
             if (additionalProperties.containsKey(CLIENT_CONFIG_PREFIX)) {
                 clientConfigPrefix = additionalProperties.get(CLIENT_CONFIG_PREFIX).toString();
             }
@@ -209,7 +215,7 @@ public class KoraCodegen extends DefaultCodegen {
                 requestInDelegateParams = Boolean.parseBoolean(additionalProperties.get(REQUEST_DELEGATE_PARAMS).toString());
             }
 
-            return new CodegenParams(codegenMode, jsonAnnotation, enableServerValidation, primaryAuth, clientConfigPrefix,
+            return new CodegenParams(codegenMode, jsonAnnotation, enableServerValidation, authAsMethodArgument, primaryAuth, clientConfigPrefix,
                 securityConfigPrefix, clientTags, interceptors, additionalContractAnnotations, requestInDelegateParams);
         }
 
@@ -265,6 +271,7 @@ public class KoraCodegen extends DefaultCodegen {
     public static final String REQUEST_DELEGATE_PARAMS = "requestInDelegateParams";
     public static final String INTERCEPTORS = "interceptors";
     public static final String ADDITIONAL_CONTRACT_ANNOTATIONS = "additionalContractAnnotations";
+    public static final String AUTH_AS_METHOD_ARGUMENT = "authAsMethodArgument";
 
     protected String invokerPackage = "org.openapitools";
     protected boolean fullJavaUtil;
@@ -1782,17 +1789,29 @@ public class KoraCodegen extends DefaultCodegen {
                                 secSchemes, op.httpMethod, op.path);
                         }
 
-                        var authName = camelize(toVarName(op.authMethods.get(0).name));
-                        tags.add(upperCase(authName));
-                        op.vendorExtensions.put("authInterceptorTag", authName);
+                        CodegenSecurity authMethod = op.authMethods.get(0);
+                        if (params.authAsMethodArgument) {
+                            CodegenParameter fakeAuthParameter = getAuthArgumentParameter(authMethod);
+                            op.allParams.add(fakeAuthParameter);
+                        } else {
+                            var authName = camelize(toVarName(authMethod.name));
+                            tags.add(upperCase(authName));
+                            op.vendorExtensions.put("authInterceptorTag", authName);
+                        }
                     } else {
-                        var authMethod = op.authMethods.stream()
+                        CodegenSecurity authMethod = op.authMethods.stream()
                             .filter(a -> a.name.equals(params.primaryAuth))
                             .findFirst()
                             .orElseThrow(() -> new IllegalArgumentException("Can't find OpenAPI securitySchema named: " + params.primaryAuth));
-                        var authName = camelize(toVarName(authMethod.name));
-                        tags.add(upperCase(authName));
-                        op.vendorExtensions.put("authInterceptorTag", authName);
+
+                        if (params.authAsMethodArgument) {
+                            CodegenParameter fakeAuthParameter = getAuthArgumentParameter(authMethod);
+                            op.allParams.add(fakeAuthParameter);
+                        } else {
+                            var authName = camelize(toVarName(authMethod.name));
+                            tags.add(upperCase(authName));
+                            op.vendorExtensions.put("authInterceptorTag", authName);
+                        }
                     }
                 }
             }
@@ -1891,6 +1910,46 @@ public class KoraCodegen extends DefaultCodegen {
             objs.put("annotationParams", annotationParams);
         }
         return objs;
+    }
+
+    private CodegenParameter getAuthArgumentParameter(CodegenSecurity authMethod) {
+        CodegenParameter fakeAuthParameter = new CodegenParameter();
+
+        fakeAuthParameter.paramName = authMethod.name;
+        fakeAuthParameter.baseName = authMethod.name;
+        fakeAuthParameter.nameInLowerCase = authMethod.name.toLowerCase(Locale.ROOT);
+        if (authMethod.isKeyInQuery) {
+            fakeAuthParameter.isQueryParam = true;
+        } else if (authMethod.isKeyInHeader) {
+            fakeAuthParameter.isHeaderParam = true;
+        } else if (authMethod.isKeyInCookie) {
+            fakeAuthParameter.isCookieParam = true;
+        } else if (authMethod.isOAuth
+                   || authMethod.isOpenId
+                   || authMethod.isBasicBearer
+                   || authMethod.isBasic
+                   || authMethod.isBasicBasic) {
+            fakeAuthParameter.isHeaderParam = true;
+            fakeAuthParameter.paramName = "Authorization";
+            fakeAuthParameter.baseName = "Authorization";
+            fakeAuthParameter.nameInLowerCase = "Authorization".toLowerCase(Locale.ROOT);
+        } else {
+            throw new IllegalStateException("Auth argument can be in Query, Header or Cookie, but wasn't unknown");
+        }
+
+        fakeAuthParameter.dataType = "String";
+        fakeAuthParameter.baseType = "String";
+        fakeAuthParameter.description = authMethod.description;
+        fakeAuthParameter.unescapedDescription = authMethod.description;
+        fakeAuthParameter.required = true;
+        fakeAuthParameter.isString = true;
+        fakeAuthParameter.isNull = false;
+        fakeAuthParameter.isNullable = false;
+
+        Schema schema = SchemaTypeUtil.createSchema("String", null);
+        CodegenProperty codegenProperty = fromProperty(authMethod.name, schema);
+        fakeAuthParameter.setSchema(codegenProperty);
+        return fakeAuthParameter;
     }
 
     public static boolean isContentJson(CodegenParameter parameter) {
