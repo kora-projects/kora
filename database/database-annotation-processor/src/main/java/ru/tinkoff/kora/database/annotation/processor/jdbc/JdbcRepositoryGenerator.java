@@ -230,7 +230,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             } else if (generatedKeys) {
                 var result = CommonUtils.isNullable(method) || method.getReturnType().getKind().isPrimitive() || isMono || isFuture
                     ? CodeBlock.of("_result")
-                    : CodeBlock.of("$T.requireNonNull(_result)", Objects.class);
+                    : CodeBlock.of("$T.requireNonNull(_result, $S)", Objects.class, "Result mapping is expected non-null, but was null");
 
                 b.addStatement("var _batchResult = _stmt.executeBatch()");
                 b.addCode("try (var _rs = _stmt.getGeneratedKeys()) {$>\n")
@@ -250,7 +250,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         } else if (generatedKeys) {
             var result = CommonUtils.isNullable(method) || method.getReturnType().getKind().isPrimitive() || isMono || isFuture
                 ? CodeBlock.of("_result")
-                : CodeBlock.of("$T.requireNonNull(_result)", Objects.class);
+                : CodeBlock.of("$T.requireNonNull(_result, $S)", Objects.class, "Result mapping is expected non-null, but was null");
 
             b.addCode("_stmt.execute();\n");
             b.addCode("try (var _rs = _stmt.getGeneratedKeys()) {$>\n")
@@ -261,7 +261,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         } else {
             var result = CommonUtils.isNullable(method) || method.getReturnType().getKind().isPrimitive() || isMono || isFuture
                 ? CodeBlock.of("_result")
-                : CodeBlock.of("$T.requireNonNull(_result)", Objects.class);
+                : CodeBlock.of("$T.requireNonNull(_result, $S)", Objects.class, "Result mapping is expected non-null, but was null");
 
             Objects.requireNonNull(resultMapperName, () -> "Illegal State occurred when expected to get result mapper, but got null in " + method.getEnclosingElement().getSimpleName() + "#" + method.getSimpleName());
 
