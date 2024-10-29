@@ -41,6 +41,11 @@ import kotlin.reflect.full.memberFunctions
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 abstract class AbstractSymbolProcessorTest {
+
+    enum class ProcessorOptions(val value: String) {
+        SUBMODULE_GENERATION("kora.app.submodule.enabled=true")
+    }
+
     protected lateinit var testInfo: TestInfo
     protected lateinit var compileResult: CompileResult
 
@@ -156,32 +161,37 @@ abstract class AbstractSymbolProcessorTest {
         }
     }
 
-    @OptIn(ExperimentalPathApi::class)
     protected fun symbolProcessFiles(srcFiles: List<String>): CompileResult {
-        val k2JvmArgs = K2JVMCompilerArguments();
-        val kotlinOutPath = Path.of("build/in-test-generated-ksp").toAbsolutePath();
+        return symbolProcessFiles(srcFiles, listOf())
+    }
+
+    @OptIn(ExperimentalPathApi::class)
+    protected fun symbolProcessFiles(srcFiles: List<String>, processorOptions: List<ProcessorOptions>): CompileResult {
+        val k2JvmArgs = K2JVMCompilerArguments()
+        val kotlinOutPath = Path.of("build/in-test-generated-ksp").toAbsolutePath()
         val inTestGeneratedDestination = kotlinOutPath.resolveSibling("in-test-generated-destination")
         val kotlinOutputDir = kotlinOutPath.resolveSibling("in-test-generated-kotlinOutputDir")
         inTestGeneratedDestination.deleteRecursively()
         kotlinOutputDir.deleteRecursively()
         kotlinOutputDir.createDirectories()
 
-        k2JvmArgs.noReflect = true;
-        k2JvmArgs.noStdlib = true;
-        k2JvmArgs.noJdk = false;
-        k2JvmArgs.includeRuntime = false;
-        k2JvmArgs.script = false;
-        k2JvmArgs.disableStandardScript = true;
-        k2JvmArgs.help = false;
-        k2JvmArgs.compileJava = true;
+        k2JvmArgs.noReflect = true
+        k2JvmArgs.noStdlib = true
+        k2JvmArgs.noJdk = false
+        k2JvmArgs.includeRuntime = false
+        k2JvmArgs.script = false
+        k2JvmArgs.disableStandardScript = true
+        k2JvmArgs.help = false
+        k2JvmArgs.compileJava = true
         k2JvmArgs.allowNoSourceFiles = false
-        k2JvmArgs.expression = null;
-        k2JvmArgs.destination = inTestGeneratedDestination.toString();
-        k2JvmArgs.jvmTarget = "17";
-        k2JvmArgs.jvmDefault = "all";
-        k2JvmArgs.freeArgs = srcFiles;
+        k2JvmArgs.expression = null
+        k2JvmArgs.destination = inTestGeneratedDestination.toString()
+        k2JvmArgs.jvmTarget = "17"
+        k2JvmArgs.jvmDefault = "all"
+        k2JvmArgs.freeArgs = srcFiles
         k2JvmArgs.assertionsMode
-        k2JvmArgs.classpath = classpath.joinToString(File.pathSeparator);
+        k2JvmArgs.classpath = classpath.joinToString(File.pathSeparator)
+        k2JvmArgs.javacArguments = processorOptions.map { o -> o.value }.toTypedArray()
 
         val pluginClassPath = classpath.asSequence()
             .filter { it.contains("symbol-processing") }
@@ -190,8 +200,8 @@ abstract class AbstractSymbolProcessorTest {
         val processors = classpath.stream()
             .filter { it.contains("symbol-processor") || it.contains("scheduling-ksp") }
             .collect(Collectors.joining(File.pathSeparator))
-        k2JvmArgs.pluginClasspaths = pluginClassPath;
-        val ksp = "plugin:com.google.devtools.ksp.symbol-processing:";
+        k2JvmArgs.pluginClasspaths = pluginClassPath
+        val ksp = "plugin:com.google.devtools.ksp.symbol-processing:"
         k2JvmArgs.pluginOptions = arrayOf(
             ksp + "kotlinOutputDir=" + kotlinOutputDir,
             ksp + "kspOutputDir=" + kotlinOutPath.resolveSibling("in-test-generated-kspOutputDir"),
@@ -203,14 +213,15 @@ abstract class AbstractSymbolProcessorTest {
             ksp + "resourceOutputDir=" + kotlinOutPath.resolveSibling("in-test-generated-resourceOutputDir"),
             ksp + "cachesDir=" + kotlinOutPath.resolveSibling("in-test-generated-cachesDir"),
             ksp + "apclasspath=" + processors
-        );
+        )
+        k2JvmArgs.pluginOptions = k2JvmArgs.pluginOptions!! + processorOptions.map { o -> ksp + "apoption=" + o.value }.toTypedArray()
 
-        val sw = ByteArrayOutputStream();
+        val sw = ByteArrayOutputStream()
         val collector = PrintingMessageCollector(
             PrintStream(sw, true, StandardCharsets.UTF_8), MessageRenderer.SYSTEM_INDEPENDENT_RELATIVE_PATHS, false
         )
-        val co = K2JVMCompiler();
-        var code = co.exec(collector, Services.EMPTY, k2JvmArgs);
+        val co = K2JVMCompiler()
+        var code = co.exec(collector, Services.EMPTY, k2JvmArgs)
         kotlinOutPath.resolve("sources").createDirectories()
         kotlinOutputDir.copyToRecursively(
             kotlinOutPath.resolve("sources"),
@@ -287,17 +298,17 @@ abstract class AbstractSymbolProcessorTest {
                 .enableSystemJarsAndModules()
                 .removeTemporaryFilesAfterScan()
 
-            val classpaths = classGraph.classpathFiles;
+            val classpaths = classGraph.classpathFiles
             val modules = classGraph.modules
                 .asSequence()
                 .filterNotNull()
-                .map { it.locationFile };
+                .map { it.locationFile }
 
             classpath = (classpaths.asSequence() + modules)
                 .filterNotNull()
                 .map { it.toString() }
                 .distinct()
-                .toList();
+                .toList()
         }
     }
 

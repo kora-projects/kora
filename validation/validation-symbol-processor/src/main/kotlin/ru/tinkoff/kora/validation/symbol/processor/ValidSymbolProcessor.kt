@@ -8,7 +8,8 @@ import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.TypeSpec
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 
-class ValidSymbolProcessor(private val environment: SymbolProcessorEnvironment) : BaseSymbolProcessor(environment) {
+class ValidSymbolProcessor(environment: SymbolProcessorEnvironment) : BaseSymbolProcessor(environment) {
+
     private val gen = ValidatorGenerator(environment.codeGenerator)
 
     data class ValidatorSpec(val meta: ValidatorMeta, val spec: TypeSpec, val parameterSpecs: List<ParameterSpec>)

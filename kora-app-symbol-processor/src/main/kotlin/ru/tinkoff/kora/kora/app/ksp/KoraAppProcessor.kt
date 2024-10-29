@@ -38,10 +38,11 @@ import javax.annotation.processing.SupportedOptions
 
 @SupportedOptions("koraLogLevel")
 class KoraAppProcessor(
-    environment: SymbolProcessorEnvironment
+    private val environment: SymbolProcessorEnvironment
 ) : BaseSymbolProcessor(environment) {
     companion object {
         const val COMPONENTS_PER_HOLDER_CLASS = 500
+        const val OPTION_SUBMODULE_GENERATION = "kora.app.submodule.enabled"
     }
 
     private val processedDeclarations = hashMapOf<String, Pair<KSClassDeclaration, ProcessingState>>()
@@ -54,6 +55,7 @@ class KoraAppProcessor(
 
     private lateinit var resolver: Resolver
     private var ctx: ProcessingContext? = null
+    private var isKoraAppSubmoduleEnabled = false
 
     override fun finish() {
         for (element in processedDeclarations.entries) {
@@ -98,6 +100,7 @@ class KoraAppProcessor(
     }
 
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
+        this.isKoraAppSubmoduleEnabled = environment.options.getOrDefault(OPTION_SUBMODULE_GENERATION, "false").toBoolean()
         this.resolver = resolver
 
         if (ctx == null) {
@@ -207,12 +210,8 @@ class KoraAppProcessor(
                 .filter(filterObjectMethods)
                 .toMutableList()
 
-            val submodules = declaration.getAllSuperTypes()
-                .map { it.declaration as KSClassDeclaration }
-                .filter { it.findAnnotation(CommonClassNames.koraSubmodule) != null }
-                .map { resolver.getKSNameFromString(it.qualifiedName!!.asString() + "SubmoduleImpl") }
-                .map { resolver.getClassDeclarationByName(it) ?: throw java.lang.IllegalStateException("Declaration of ${it.asString()} wasn't found") }
-                .toList()
+            val allInterfaces = declaration.getAllSuperTypes().toList()
+            val submodules = findKoraSubmoduleModules(allInterfaces, declaration)
             val allModules = (submodules + annotatedModules)
                 .flatMap { it.getAllSuperTypes().map { it.declaration as KSClassDeclaration } + it }
                 .filter { it.qualifiedName?.asString() != "kotlin.Any" }
@@ -259,11 +258,39 @@ class KoraAppProcessor(
         }
     }
 
+    private fun findKoraSubmoduleModules(supers: List<KSType>, koraApp: KSClassDeclaration): List<KSClassDeclaration> {
+        return supers
+            .map { it.declaration as KSClassDeclaration }
+            .filter {
+                when {
+                    it.findAnnotation(CommonClassNames.koraSubmodule) != null -> true
+                    it.findAnnotation(CommonClassNames.koraApp) != null && it != koraApp -> true
+                    else -> false
+                }
+            }
+            .mapNotNull {
+                val ksName = resolver.getKSNameFromString(it.qualifiedName!!.asString() + "SubmoduleImpl")
+                if (it.findAnnotation(CommonClassNames.koraApp) != null) {
+                    resolver.getClassDeclarationByName(ksName)
+                } else {
+                    resolver.getClassDeclarationByName(ksName) ?: throw ProcessingErrorException("Declaration of ${ksName.asString()} wasn't found", it)
+                }
+            }
+            .toList()
+    }
+
     private fun processAppParts(resolver: Resolver) {
         resolver.getSymbolsWithAnnotation(CommonClassNames.koraSubmodule.canonicalName)
             .filterIsInstance<KSClassDeclaration>()
             .filter { it.classKind == ClassKind.INTERFACE }
             .forEach { appParts.add(it) }
+
+        if (isKoraAppSubmoduleEnabled) {
+            resolver.getSymbolsWithAnnotation(CommonClassNames.koraApp.canonicalName)
+                .filterIsInstance<KSClassDeclaration>()
+                .filter { it.classKind == ClassKind.INTERFACE }
+                .forEach { appParts.add(it) }
+        }
     }
 
     private fun processModules(resolver: Resolver): Boolean {
