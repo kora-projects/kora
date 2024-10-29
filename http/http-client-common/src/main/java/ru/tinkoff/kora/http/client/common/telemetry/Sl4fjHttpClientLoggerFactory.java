@@ -16,7 +16,7 @@ public class Sl4fjHttpClientLoggerFactory implements HttpClientLoggerFactory {
 
     @Override
     public HttpClientLogger get(TelemetryConfig.LogConfig logging, String clientName) {
-        if (Objects.requireNonNullElse(loggerConfig.enabled(), false)) {
+        if (Objects.requireNonNullElse(logging.enabled(), false)) {
             var requestLog = LoggerFactory.getLogger(clientName + ".request");
             var responseLog = LoggerFactory.getLogger(clientName + ".response");
             if (logging instanceof HttpClientLoggerConfig config) {
