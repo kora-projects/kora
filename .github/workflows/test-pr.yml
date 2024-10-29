@@ -20,32 +20,32 @@ jobs:
         task: [ 'postgres', 'cassandra', 'redis', 'kafka', 'openapi', 'codegen-kotlin', 'codegen-java', 'other' ]
     steps:
       - uses: actions/checkout@v4
-      - name: Set up JDK 17
+      - name: JDK 17 setup
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'adopt'
 
-      - name: Setup Gradle
+      - name: Gradle setup
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/master' }}
           gradle-home-cache-cleanup: ${{ github.ref == 'refs/heads/master' }}
 
-      - name: Gradle classes
-        run: ./gradlew classes-${{ inputs.task-target }} --scan --no-daemon
+      - name: Gradle ${{ matrix.task }} classes
+        run: ./gradlew classes-${{ matrix.task }} --scan
         shell: bash
 
-      - name: Gradle javadoc
-        run: ./gradlew javadoc-${{ inputs.task-target }} --scan --no-daemon
+      - name: Gradle ${{ matrix.task }} javadoc
+        run: ./gradlew javadoc-${{ matrix.task }} --scan
         shell: bash
 
-      - name: Gradle test classes
-        run: ./gradlew testClasses-${{ inputs.task-target }} --scan --no-daemon
+      - name: Gradle ${{ matrix.task }} test classes
+        run: ./gradlew testClasses-${{ matrix.task }} --scan
         shell: bash
 
-      - name: Gradle test
-        run: ./gradlew test-${{ inputs.task-target }} --scan --no-daemon
+      - name: Gradle ${{ matrix.task }} test
+        run: ./gradlew test-${{ matrix.task }} --scan
         shell: bash
 
       - name: Publish ${{ matrix.task }} test report

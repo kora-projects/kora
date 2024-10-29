@@ -11,7 +11,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up JDK 17
+      - name: JDK 17 setup
         uses: actions/setup-java@v4
         with:
           java-version: '17'
@@ -34,15 +34,15 @@ jobs:
         env:
           KORA_VERSION: ${{ github.event.release.tag_name }}
 
-      - name: Setup Gradle
+      - name: Gradle setup
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Execute Gradle build
+      - name: Gradle artifact
         uses: gradle/actions/setup-gradle@v4
         with:
           arguments: assemble jar
 
-      - name: Execute Gradle Publish to OSS
+      - name: Gradle publish
         uses: gradle/actions/setup-gradle@v4
         with:
           arguments: publishToSonatype closeAndReleaseSonatypeStagingRepository -Psigning.secretKeyRingFile=/tmp/secring.gpg

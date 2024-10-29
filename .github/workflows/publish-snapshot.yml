@@ -10,7 +10,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up JDK 17
+      - name: JDK 17 setup
         uses: actions/setup-java@v4
         with:
           java-version: '17'
@@ -28,15 +28,15 @@ jobs:
           mkdir -p ~/.gradle
           echo -en "$SIGN_OSSRH_GRADLE_PROPERTIES" | base64 --decode > ~/.gradle/gradle.properties
 
-      - name: Setup Gradle
+      - name: Gradle setup
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Execute Gradle build
+      - name: Gradle artifact
         uses: gradle/actions/setup-gradle@v4
         with:
           arguments: assemble
 
-      - name: Execute Gradle publish
+      - name: Gradle publish
         uses: gradle/actions/setup-gradle@v4
         with:
           arguments: publish -Psigning.secretKeyRingFile=/tmp/secring.gpg
