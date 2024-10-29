@@ -50,6 +50,13 @@ public class JdkHttpClientResponse implements HttpClientResponse {
         this.body.close();
     }
 
+    @Override
+    public String toString() {
+        return "HttpClientResponse{code=" + code() +
+               ", bodyLength=" + body.contentLength() +
+               ", bodyType=" + body.contentType() +
+               '}';
+    }
 
     private static final class BodyPublisher extends AtomicBoolean implements HttpBodyInput {
         private static final String EMPTY = "";

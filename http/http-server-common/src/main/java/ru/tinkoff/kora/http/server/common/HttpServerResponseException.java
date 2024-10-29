@@ -7,7 +7,6 @@ import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.common.header.MutableHttpHeaders;
 
 import java.nio.ByteBuffer;
-import java.util.function.Supplier;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -67,9 +66,9 @@ public class HttpServerResponseException extends RuntimeException implements Htt
 
     @Override
     public String toString() {
-        return "HttpResponseException{message=" + getMessage() +
-            ", code=" + code +
-            ", headers=" + headers +
-            '}';
+        return "HttpServerResponseException{code=" + code() +
+               ", bodyLength=" + body.position() +
+               ", bodyType=" + contentType +
+               '}';
     }
 }

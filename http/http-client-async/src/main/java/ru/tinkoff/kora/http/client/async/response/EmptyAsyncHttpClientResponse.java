@@ -32,7 +32,13 @@ public class EmptyAsyncHttpClientResponse implements HttpClientResponse {
     }
 
     @Override
-    public void close() {
-    }
+    public void close() {}
 
+    @Override
+    public String toString() {
+        return "HttpClientResponse{code=" + code() +
+               ", bodyLength=-1" +
+               ", bodyType=null" +
+               '}';
+    }
 }

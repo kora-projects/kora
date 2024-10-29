@@ -38,4 +38,12 @@ public class DefaultHttpClientTelemetryResponseWrapper implements HttpClientResp
             delegate.close();
         }
     }
+
+    @Override
+    public String toString() {
+        return "HttpClientResponse{code=" + code() +
+               ", bodyLength=" + delegate.body().contentLength() +
+               ", bodyType=" + delegate.body().contentType() +
+               '}';
+    }
 }

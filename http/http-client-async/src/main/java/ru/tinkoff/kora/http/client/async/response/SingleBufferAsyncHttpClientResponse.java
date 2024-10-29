@@ -38,7 +38,13 @@ public class SingleBufferAsyncHttpClientResponse implements HttpClientResponse {
     }
 
     @Override
-    public void close() {
-    }
+    public void close() { }
 
+    @Override
+    public String toString() {
+        return "HttpClientResponse{code=" + code() +
+               ", bodyLength=" + body.contentLength() +
+               ", bodyType=" + body.contentType() +
+               '}';
+    }
 }
