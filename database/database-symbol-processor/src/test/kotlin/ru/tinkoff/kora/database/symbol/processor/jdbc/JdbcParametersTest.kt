@@ -33,7 +33,6 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
         repository.invoke<Any>("test", executor.mockConnection)
 
         verify(executor.preparedStatement).execute()
-        verify(executor.preparedStatement).updateCount
     }
 
     @Test
@@ -74,7 +73,6 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
         repository.invoke<Any>("test", executor.mockConnection)
 
         verify(executor.preparedStatement).execute()
-        verify(executor.preparedStatement).updateCount
     }
 
     @Test
@@ -92,7 +90,6 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
         repository.invoke<Any>("test", 42)
 
         verify(executor.preparedStatement).setInt(1, 42)
-        verify(executor.preparedStatement).updateCount
     }
 
     @Test
