@@ -35,7 +35,6 @@ public final class OkHttpResponse implements HttpClientResponse {
     @Override
     public String toString() {
         return "HttpClientResponse{code=" + code() +
-               ", headers=" + response.headers().toMultimap() +
                ", bodyLength=" + response.body().contentLength() +
                ", bodyType=" + response.body().contentType() +
                '}';

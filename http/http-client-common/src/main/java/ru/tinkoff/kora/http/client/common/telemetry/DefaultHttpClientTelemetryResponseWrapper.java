@@ -42,7 +42,6 @@ public class DefaultHttpClientTelemetryResponseWrapper implements HttpClientResp
     @Override
     public String toString() {
         return "HttpClientResponse{code=" + code() +
-               ", headers=" + headers() +
                ", bodyLength=" + delegate.body().contentLength() +
                ", bodyType=" + delegate.body().contentType() +
                '}';

@@ -53,7 +53,6 @@ public class JdkHttpClientResponse implements HttpClientResponse {
     @Override
     public String toString() {
         return "HttpClientResponse{code=" + code() +
-               ", headers=" + headers() +
                ", bodyLength=" + body.contentLength() +
                ", bodyType=" + body.contentType() +
                '}';

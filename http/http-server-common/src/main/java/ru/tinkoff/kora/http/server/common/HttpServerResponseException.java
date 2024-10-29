@@ -67,7 +67,6 @@ public class HttpServerResponseException extends RuntimeException implements Htt
     @Override
     public String toString() {
         return "HttpServerResponseException{code=" + code() +
-               ", headers=" + headers() +
                ", bodyLength=" + body.position() +
                ", bodyType=" + contentType +
                '}';

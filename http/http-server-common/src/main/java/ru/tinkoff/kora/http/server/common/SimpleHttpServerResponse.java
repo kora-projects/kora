@@ -10,7 +10,6 @@ public record SimpleHttpServerResponse(int code, MutableHttpHeaders headers, @Nu
     @Override
     public String toString() {
         return "HttpServerResponseException{code=" + code() +
-               ", headers=" + headers() +
                ", bodyLength=" + ((body != null) ? body.contentLength() : -1) +
                ", bodyType=" + ((body != null) ? body.contentType() : -1) +
                '}';
