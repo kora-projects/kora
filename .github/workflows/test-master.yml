@@ -14,7 +14,7 @@ jobs:
         task: [ 'postgres', 'cassandra', 'redis', 'kafka', 'openapi', 'codegen-kotlin', 'codegen-java', 'other' ]
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/workflows/test-job
+      - uses: ./.github/workflows/test-job/action.yml
         name: Run ${{ matrix.task }} tasks
         with:
           task-target: "${{ matrix.task }}"

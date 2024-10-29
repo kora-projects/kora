@@ -15,7 +15,7 @@ runs:
         distribution: 'adopt'
 
     - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
+      uses: gradle/actions/setup-gradle@v4
       with:
         cache-read-only: ${{ github.ref != 'refs/heads/master' }}
         gradle-home-cache-cleanup: ${{ github.ref == 'refs/heads/master' }}
