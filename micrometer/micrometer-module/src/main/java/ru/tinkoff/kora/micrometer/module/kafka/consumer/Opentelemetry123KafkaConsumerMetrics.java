@@ -48,13 +48,13 @@ public final class Opentelemetry123KafkaConsumerMetrics implements KafkaConsumer
             .tag(SemanticAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
             .tag(SemanticAttributes.MESSAGING_DESTINATION_NAME.getKey(), key.topic())
             .tag(SemanticAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION.getKey(), String.valueOf(key.partition()))
-            .tag(SemanticAttributes.MESSAGING_CLIENT_ID.getKey(), Objects.requireNonNullElse(clientId, "NONE").toString())
-            .tag(SemanticAttributes.MESSAGING_KAFKA_CONSUMER_GROUP.getKey(), Objects.requireNonNullElse(groupId, "NONE").toString());
+            .tag(SemanticAttributes.MESSAGING_CLIENT_ID.getKey(), Objects.requireNonNullElse(clientId, "").toString())
+            .tag(SemanticAttributes.MESSAGING_KAFKA_CONSUMER_GROUP.getKey(), Objects.requireNonNullElse(groupId, "").toString());
 
         if (key.errorType != null) {
             builder.tag(SemanticAttributes.ERROR_TYPE.getKey(), key.errorType().getCanonicalName());
         } else {
-            builder.tag(SemanticAttributes.ERROR_TYPE.getKey(), "NONE");
+            builder.tag(SemanticAttributes.ERROR_TYPE.getKey(), "");
         }
 
         return builder.register(this.meterRegistry);

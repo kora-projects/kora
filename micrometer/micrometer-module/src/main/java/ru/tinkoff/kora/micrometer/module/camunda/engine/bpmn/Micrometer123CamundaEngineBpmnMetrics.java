@@ -74,7 +74,7 @@ public final class Micrometer123CamundaEngineBpmnMetrics implements CamundaEngin
         if (key.errorType() != null) {
             list.add(Tag.of(SemanticAttributes.ERROR_TYPE.getKey(), key.errorType().getCanonicalName()));
         } else {
-            list.add(Tag.of(SemanticAttributes.ERROR_TYPE.getKey(), "NONE"));
+            list.add(Tag.of(SemanticAttributes.ERROR_TYPE.getKey(), ""));
         }
 
         list.add(Tag.of("delegate", key.javaDelegateName()));

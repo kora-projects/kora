@@ -36,7 +36,7 @@ public class Opentelemetry123SchedulingMetrics implements SchedulingMetrics {
         if (error != null) {
             builder.tag(SemanticAttributes.ERROR_TYPE.getKey(), error.getCanonicalName());
         } else {
-            builder.tag(SemanticAttributes.ERROR_TYPE.getKey(), "NONE");
+            builder.tag(SemanticAttributes.ERROR_TYPE.getKey(), "");
         }
 
         return builder.register(this.meterRegistry);

@@ -46,8 +46,8 @@ public class Opentelemetry120KafkaConsumerMetrics implements KafkaConsumerMetric
             .baseUnit("milliseconds")
             .tag(SemanticAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
             .tag(SemanticAttributes.MESSAGING_DESTINATION_NAME.getKey(), key.topic())
-            .tag(SemanticAttributes.MESSAGING_CLIENT_ID.getKey(), Objects.requireNonNullElse(clientId, "NONE").toString())
-            .tag(SemanticAttributes.MESSAGING_KAFKA_CONSUMER_GROUP.getKey(), Objects.requireNonNullElse(groupId, "NONE").toString());
+            .tag(SemanticAttributes.MESSAGING_CLIENT_ID.getKey(), Objects.requireNonNullElse(clientId, "").toString())
+            .tag(SemanticAttributes.MESSAGING_KAFKA_CONSUMER_GROUP.getKey(), Objects.requireNonNullElse(groupId, "").toString());
 
         return builder.register(this.meterRegistry);
     }

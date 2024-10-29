@@ -67,7 +67,7 @@ public final class Micrometer123CamundaRestMetrics implements CamundaRestMetrics
         if (key.errorType() != null) {
             list.add(Tag.of(SemanticAttributes.ERROR_TYPE.getKey(), key.errorType().getCanonicalName()));
         } else {
-            list.add(Tag.of(SemanticAttributes.ERROR_TYPE.getKey(), "NONE"));
+            list.add(Tag.of(SemanticAttributes.ERROR_TYPE.getKey(), ""));
         }
         list.add(Tag.of(SemanticAttributes.HTTP_REQUEST_METHOD.getKey(), key.method()));
         list.add(Tag.of(SemanticAttributes.HTTP_RESPONSE_STATUS_CODE.getKey(), Integer.toString(key.statusCode())));

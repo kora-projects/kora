@@ -51,7 +51,7 @@ public final class Opentelemetry120DataBaseMetricWriter implements DataBaseMetri
         if (key.error != null) {
             builder.tag("error", key.error.getCanonicalName());
         } else {
-            builder.tag("error", "NONE");
+            builder.tag("error", "");
         }
 
         return new DbMetrics(builder.register(this.meterRegistry));

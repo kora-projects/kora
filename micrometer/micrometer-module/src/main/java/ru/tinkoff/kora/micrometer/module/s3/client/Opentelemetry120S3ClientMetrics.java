@@ -50,7 +50,7 @@ public class Opentelemetry120S3ClientMetrics implements S3ClientMetrics {
             .tag(AWS_S3_BUCKET.getKey(), key.bucket())
             .tag("http.method", key.method())
             .tag("http.status_code", Integer.toString(key.statusCode()))
-            .tag(ERROR_CODE.getKey(), Objects.requireNonNullElse(key.errorCode(), "NONE"));
+            .tag(ERROR_CODE.getKey(), Objects.requireNonNullElse(key.errorCode(), ""));
 
         return builder.register(meterRegistry);
     }

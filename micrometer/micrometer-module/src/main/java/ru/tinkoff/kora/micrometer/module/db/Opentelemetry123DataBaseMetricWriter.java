@@ -52,7 +52,7 @@ public final class Opentelemetry123DataBaseMetricWriter implements DataBaseMetri
         if (key.error != null) {
             builder.tag(SemanticAttributes.ERROR_TYPE.getKey(), key.error.getCanonicalName());
         } else {
-            builder.tag(SemanticAttributes.ERROR_TYPE.getKey(), "NONE");
+            builder.tag(SemanticAttributes.ERROR_TYPE.getKey(), "");
         }
 
         return new DbMetrics(builder.register(this.meterRegistry));

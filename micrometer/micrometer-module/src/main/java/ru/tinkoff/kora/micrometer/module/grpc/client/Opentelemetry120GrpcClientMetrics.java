@@ -93,13 +93,13 @@ public final class Opentelemetry120GrpcClientMetrics implements GrpcClientMetric
         if (key.code != null) {
             list.add(Tag.of(SemanticAttributes.RPC_GRPC_STATUS_CODE.getKey(), String.valueOf(key.code)));
         } else {
-            list.add(Tag.of(SemanticAttributes.RPC_GRPC_STATUS_CODE.getKey(), "NONE"));
+            list.add(Tag.of(SemanticAttributes.RPC_GRPC_STATUS_CODE.getKey(), ""));
         }
 
         if (key.errorType != null) {
             list.add(Tag.of(SemanticAttributes.ERROR_TYPE.getKey(), key.errorType.getCanonicalName()));
         } else {
-            list.add(Tag.of(SemanticAttributes.ERROR_TYPE.getKey(), "NONE"));
+            list.add(Tag.of(SemanticAttributes.ERROR_TYPE.getKey(), ""));
         }
 
         return list;

@@ -87,13 +87,13 @@ public class Opentelemetry123KafkaProducerMetrics implements KafkaProducerMetric
             .tag(SemanticAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
             .tag(SemanticAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION.getKey(), Integer.toString(key.partition()))
             .tag(SemanticAttributes.MESSAGING_DESTINATION_NAME.getKey(), key.topic())
-            .tag(SemanticAttributes.MESSAGING_CLIENT_ID.getKey(), Objects.requireNonNullElse(clientId, "NONE").toString());
+            .tag(SemanticAttributes.MESSAGING_CLIENT_ID.getKey(), Objects.requireNonNullElse(clientId, "").toString());
 
         var errorType = key.errorType();
         if (errorType != null) {
             builder.tag(SemanticAttributes.ERROR_TYPE.getKey(), errorType.getCanonicalName());
         } else {
-            builder.tag(SemanticAttributes.ERROR_TYPE.getKey(), "NONE");
+            builder.tag(SemanticAttributes.ERROR_TYPE.getKey(), "");
         }
 
         return builder.register(this.meterRegistry);
