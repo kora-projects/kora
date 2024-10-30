@@ -9,5 +9,10 @@ import javax.lang.model.type.TypeMirror;
 import java.util.List;
 
 public record JsonClassReaderMeta(TypeMirror typeMirror, TypeElement typeElement, List<FieldMeta> fields) {
-    public record FieldMeta(VariableElement parameter, String jsonName, TypeName typeName, @Nullable ReaderFieldType typeMeta, @Nullable TypeMirror reader) {}
+
+    public record FieldMeta(VariableElement parameter,
+                            String jsonName,
+                            TypeName typeName,
+                            @Nullable ReaderFieldType typeMeta,
+                            @Nullable TypeMirror reader) {}
 }

@@ -1,10 +1,16 @@
 package ru.tinkoff.kora.json.annotation.processor.writer;
 
-import com.squareup.javapoet.TypeName;
 import ru.tinkoff.kora.json.annotation.processor.KnownType;
 
-public sealed interface WriterFieldType {
-    record KnownWriterFieldType(KnownType.KnownTypesEnum knownType) implements WriterFieldType {}
+import javax.lang.model.type.TypeMirror;
 
-    record UnknownWriterFieldType(TypeName type) implements WriterFieldType {}
+public sealed interface WriterFieldType {
+
+    boolean isJsonNullable();
+
+    TypeMirror typeMirror();
+
+    record KnownWriterFieldType(KnownType.KnownTypesEnum knownType, TypeMirror typeMirror, boolean isJsonNullable) implements WriterFieldType {}
+
+    record UnknownWriterFieldType(TypeMirror typeMirror, boolean isJsonNullable) implements WriterFieldType {}
 }

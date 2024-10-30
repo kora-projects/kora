@@ -13,7 +13,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class JsonObjectCodec {
+public final class JsonObjectCodec {
+
+    private JsonObjectCodec() { }
+
     public static Object parse(JsonParser parser) throws IOException {
         var token = parser.currentToken();
         if (token == JsonToken.VALUE_NULL) {
