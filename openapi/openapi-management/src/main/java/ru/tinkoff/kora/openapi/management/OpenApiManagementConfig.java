@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.openapi.management;
 
-import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
 import java.util.List;
@@ -18,10 +17,8 @@ public interface OpenApiManagementConfig {
         return "/openapi";
     }
 
-    @Nullable
     SwaggerUIConfig swaggerui();
 
-    @Nullable
     RapidocConfig rapidoc();
 
     @ConfigValueExtractor

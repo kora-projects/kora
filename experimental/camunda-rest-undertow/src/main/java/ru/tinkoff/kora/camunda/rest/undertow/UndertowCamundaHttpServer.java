@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.camunda.rest.CamundaRestConfig;
+import ru.tinkoff.kora.camunda.rest.telemetry.CamundaRestTelemetryFactory;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
 import ru.tinkoff.kora.common.util.TimeUtils;

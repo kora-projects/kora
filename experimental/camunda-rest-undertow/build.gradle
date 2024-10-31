@@ -11,11 +11,13 @@ dependencies {
     implementation project(":config:config-common")
     implementation project(":logging:logging-common")
     implementation libs.resteasy.undertow.jakarta
+    implementation project(":openapi:openapi-management")
     implementation project(":http:http-server-undertow")
 
     api project(":telemetry:telemetry-common")
     api project(":common")
     api libs.camunda7.rest.jakarta
+    api libs.camunda7.openapi
     api libs.jakarta.rs.api
     api libs.undertow.servlet
     api libs.undertow.core

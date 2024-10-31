@@ -8,20 +8,24 @@ import ru.tinkoff.kora.http.server.common.HttpServerResponseException;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 
-final class OpenApiHttpServerHandler implements HttpServerRequestHandler.HandlerFunction {
+public final class OpenApiHttpServerHandler implements HttpServerRequestHandler.HandlerFunction {
 
     record OpenapiFile(String fileName, String filePath, String contentType, AtomicReference<byte[]> content) {}
 
     private final Map<String, OpenapiFile> openapiFiles = new ConcurrentHashMap<>();
+    private final Function<byte[], byte[]> openApiMapper;
 
-    OpenApiHttpServerHandler(OpenApiManagementConfig config) {
-        for (String filePath : config.file()) {
+    public OpenApiHttpServerHandler(List<String> openapiFiles, Function<byte[], byte[]> openApiMapper) {
+        this.openApiMapper = openApiMapper;
+        for (String filePath : openapiFiles) {
             var contentType = filePath.endsWith(".json")
                 ? "text/json; charset=utf-8"
                 : "text/x-yaml; charset=utf-8";
@@ -31,8 +35,10 @@ final class OpenApiHttpServerHandler implements HttpServerRequestHandler.Handler
     }
 
     @Override
-    public CompletionStage<HttpServerResponse> apply(Context context, HttpServerRequest request) throws Exception {
-        final String fileName = (openapiFiles.size() == 1) ? openapiFiles.keySet().iterator().next() : request.pathParams().get("file");
+    public CompletionStage<HttpServerResponse> apply(Context context, HttpServerRequest request) {
+        final String fileName = (openapiFiles.size() == 1)
+            ? openapiFiles.keySet().iterator().next()
+            : request.pathParams().get("file");
         if (fileName == null || fileName.isEmpty()) {
             return CompletableFuture.completedFuture(HttpServerResponse.of(400, HttpBody.plaintext("OpenAPI file not specified")));
         }
@@ -49,12 +55,13 @@ final class OpenApiHttpServerHandler implements HttpServerRequestHandler.Handler
 
         return CompletableFuture.supplyAsync(() -> {
             byte[] fileContent = loadOpenapi(openapiFile.filePath());
-            openapiFile.content().set(fileContent);
-            return HttpServerResponse.of(200, HttpBody.of(openapiFile.contentType(), fileContent));
+            byte[] fileResult = openApiMapper.apply(fileContent);
+            openapiFile.content().set(fileResult);
+            return HttpServerResponse.of(200, HttpBody.of(openapiFile.contentType(), fileResult));
         });
     }
 
-    private static byte[] loadOpenapi(String filePath) {
+    private byte[] loadOpenapi(String filePath) {
         try {
             var openapiAsStream = ResourceUtils.getFileAsStream(filePath);
             if (openapiAsStream == null) {
