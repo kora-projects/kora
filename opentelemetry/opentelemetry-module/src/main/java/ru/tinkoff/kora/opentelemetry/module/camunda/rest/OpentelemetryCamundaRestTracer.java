@@ -6,14 +6,18 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.semconv.SemanticAttributes;
-import io.undertow.util.HeaderMap;
-import io.undertow.util.HttpString;
 import ru.tinkoff.kora.camunda.rest.telemetry.CamundaRestTracer;
 import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.http.common.HttpResultCode;
+import ru.tinkoff.kora.http.common.body.HttpBodyInput;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 
+import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 import static io.opentelemetry.context.Context.root;
 
@@ -26,23 +30,41 @@ public final class OpentelemetryCamundaRestTracer implements CamundaRestTracer {
     }
 
     @Override
-    public CamundaRestSpan createSpan(String method, String path, HeaderMap headerMap) {
+    public <T> void inject(Context context, T headers, HeadersSetter<T> headersSetter) {
+        W3CTraceContextPropagator.getInstance().inject(
+            OpentelemetryContext.get(context).getContext(),
+            headers,
+            headersSetter::set
+        );
+    }
 
+    @Override
+    public CamundaRestSpan createSpan(String scheme,
+                               String host,
+                               String method,
+                               String path,
+                               String pathTemplate,
+                               HttpHeaders headers,
+                               Map<String, ? extends Collection<String>> queryParams,
+                               HttpBodyInput body) {
         var context = Context.current();
-        var parentCtx = W3CTraceContextPropagator.getInstance().extract(root(), headerMap, PublicApiRequestTextMapGetter.INSTANCE);
+        var parentCtx = W3CTraceContextPropagator.getInstance().extract(root(), headers, HttpHeadersTextMapGetter.INSTANCE);
         var span = this.tracer
-            .spanBuilder(method + " " + path)
+            .spanBuilder(method + " " + pathTemplate)
             .setSpanKind(SpanKind.SERVER)
             .setParent(parentCtx)
             .setAttribute(SemanticAttributes.HTTP_REQUEST_METHOD, method)
+            .setAttribute(SemanticAttributes.URL_SCHEME, scheme)
+            .setAttribute(SemanticAttributes.SERVER_ADDRESS, host)
             .setAttribute(SemanticAttributes.URL_PATH, path)
-            .setAttribute(SemanticAttributes.HTTP_ROUTE, path)
+            .setAttribute(SemanticAttributes.HTTP_ROUTE, pathTemplate)
             .startSpan();
 
         OpentelemetryContext.set(context, OpentelemetryContext.get(context).add(span));
 
-        return (statusCode, exception) -> {
-            if (statusCode >= 400 || exception != null) {
+        return (statusCode, resultCode, exception) -> {
+            if (statusCode >= 500 || resultCode == HttpResultCode.CONNECTION_ERROR || exception != null && !(exception instanceof HttpServerResponse)) {
+                span.setAttribute("http.response.result_code", resultCode.string());
                 span.setStatus(StatusCode.ERROR);
             }
             if (exception != null) {
@@ -55,13 +77,14 @@ public final class OpentelemetryCamundaRestTracer implements CamundaRestTracer {
         };
     }
 
-    private static class PublicApiRequestTextMapGetter implements TextMapGetter<HeaderMap> {
-        private static final PublicApiRequestTextMapGetter INSTANCE = new PublicApiRequestTextMapGetter();
+    private static class HttpHeadersTextMapGetter implements TextMapGetter<HttpHeaders> {
+
+        private static final HttpHeadersTextMapGetter INSTANCE = new HttpHeadersTextMapGetter();
 
         @Override
-        public Iterable<String> keys(HeaderMap carrier) {
+        public Iterable<String> keys(HttpHeaders carrier) {
             return () -> new Iterator<>() {
-                final Iterator<HttpString> i = carrier.getHeaderNames().iterator();
+                final Iterator<Map.Entry<String, List<String>>> i = carrier.iterator();
 
                 @Override
                 public boolean hasNext() {
@@ -70,15 +93,14 @@ public final class OpentelemetryCamundaRestTracer implements CamundaRestTracer {
 
                 @Override
                 public String next() {
-                    return i.next().toString();
+                    return i.next().getKey();
                 }
             };
         }
 
         @Override
-        public String get(HeaderMap carrier, String key) {
+        public String get(HttpHeaders carrier, String key) {
             return carrier.getFirst(key);
         }
     }
-
 }

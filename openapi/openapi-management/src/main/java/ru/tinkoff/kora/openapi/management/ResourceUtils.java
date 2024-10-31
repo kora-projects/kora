@@ -2,17 +2,16 @@ package ru.tinkoff.kora.openapi.management;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.Optional;
 
 final class ResourceUtils {
 
-    private ResourceUtils() {
-    }
+    private ResourceUtils() { }
 
     @Nullable
     public static InputStream getFileAsStream(@Nonnull String path) {

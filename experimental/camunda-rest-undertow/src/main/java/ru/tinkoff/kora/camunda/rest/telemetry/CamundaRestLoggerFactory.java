@@ -6,5 +6,5 @@ import ru.tinkoff.kora.camunda.rest.CamundaRestConfig;
 public interface CamundaRestLoggerFactory {
 
     @Nullable
-    CamundaRestLogger get(CamundaRestConfig.CamundaRestLogConfig logging);
+    CamundaRestLogger get(CamundaRestConfig.CamundaRestLoggerConfig logging);
 }
