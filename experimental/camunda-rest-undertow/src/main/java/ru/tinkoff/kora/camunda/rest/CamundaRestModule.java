@@ -3,6 +3,7 @@ package ru.tinkoff.kora.camunda.rest;
 import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.Application;
 import org.camunda.bpm.engine.rest.impl.CamundaRestResources;
+import org.jetbrains.annotations.ApiStatus.Experimental;
 import ru.tinkoff.kora.camunda.rest.telemetry.*;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.Tag;
@@ -12,6 +13,7 @@ import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import java.util.HashSet;
 import java.util.Set;
 
+@Experimental
 public interface CamundaRestModule {
 
     @DefaultComponent

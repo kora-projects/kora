@@ -8,10 +8,11 @@ import org.camunda.bpm.engine.authorization.Resources;
 import org.camunda.bpm.engine.identity.Group;
 import org.camunda.bpm.engine.identity.User;
 import org.camunda.bpm.engine.impl.persistence.entity.AuthorizationEntity;
+import org.jetbrains.annotations.ApiStatus.Experimental;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.tinkoff.kora.camunda.engine.bpmn.CamundaEngineDataSource;
 import ru.tinkoff.kora.camunda.engine.bpmn.CamundaEngineBpmnConfig;
+import ru.tinkoff.kora.camunda.engine.bpmn.CamundaEngineDataSource;
 import ru.tinkoff.kora.common.util.TimeUtils;
 
 import static org.camunda.bpm.engine.authorization.Authorization.ANY;
@@ -20,6 +21,7 @@ import static org.camunda.bpm.engine.authorization.Groups.CAMUNDA_ADMIN;
 import static org.camunda.bpm.engine.authorization.Groups.GROUP_TYPE_SYSTEM;
 import static org.camunda.bpm.engine.authorization.Permissions.ALL;
 
+@Experimental
 public final class AdminUserProcessEngineConfigurator implements ProcessEngineConfigurator {
 
     private static final Logger logger = LoggerFactory.getLogger(AdminUserProcessEngineConfigurator.class);

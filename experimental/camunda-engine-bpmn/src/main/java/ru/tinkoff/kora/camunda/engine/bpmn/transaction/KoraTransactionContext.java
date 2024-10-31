@@ -4,12 +4,14 @@ import org.camunda.bpm.engine.impl.cfg.TransactionContext;
 import org.camunda.bpm.engine.impl.cfg.TransactionListener;
 import org.camunda.bpm.engine.impl.cfg.TransactionState;
 import org.camunda.bpm.engine.impl.interceptor.CommandContext;
+import org.jetbrains.annotations.ApiStatus.Experimental;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+@Experimental
 public final class KoraTransactionContext implements TransactionContext {
 
     private static final Logger logger = LoggerFactory.getLogger(KoraTransactionContext.class);

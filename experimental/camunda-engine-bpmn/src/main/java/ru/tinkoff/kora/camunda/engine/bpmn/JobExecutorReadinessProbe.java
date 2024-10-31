@@ -2,9 +2,11 @@ package ru.tinkoff.kora.camunda.engine.bpmn;
 
 import jakarta.annotation.Nullable;
 import org.camunda.bpm.engine.impl.jobexecutor.JobExecutor;
+import org.jetbrains.annotations.ApiStatus.Experimental;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
 
+@Experimental
 public final class JobExecutorReadinessProbe implements ReadinessProbe {
 
     private final JobExecutor jobExecutor;

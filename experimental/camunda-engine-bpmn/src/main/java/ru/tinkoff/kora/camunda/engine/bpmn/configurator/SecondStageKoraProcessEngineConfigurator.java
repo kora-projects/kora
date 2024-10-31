@@ -4,6 +4,7 @@ import org.apache.ibatis.session.Configuration;
 import org.camunda.bpm.engine.ProcessEngine;
 import org.camunda.bpm.engine.ProcessEngineConfiguration;
 import org.camunda.bpm.engine.impl.jobexecutor.JobExecutor;
+import org.jetbrains.annotations.ApiStatus.Experimental;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.camunda.engine.bpmn.CamundaEngineBpmnConfig;
@@ -13,6 +14,7 @@ import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+@Experimental
 public final class SecondStageKoraProcessEngineConfigurator implements ProcessEngineConfigurator {
 
     private static final Logger logger = LoggerFactory.getLogger(KoraProcessEngine.class);
