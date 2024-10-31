@@ -16,6 +16,7 @@ import jakarta.ws.rs.core.Application;
 import org.jboss.resteasy.core.ResteasyDeploymentImpl;
 import org.jboss.resteasy.plugins.server.undertow.UndertowJaxrsServer;
 import org.jboss.resteasy.spi.ResteasyDeployment;
+import org.jetbrains.annotations.ApiStatus.Internal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xnio.IoUtils;
@@ -48,6 +49,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
+@Internal
 final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHandler> {
 
     private static final Logger logger = LoggerFactory.getLogger(UndertowCamundaRestHttpHandler.class);

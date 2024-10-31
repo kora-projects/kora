@@ -3,11 +3,13 @@ package ru.tinkoff.kora.camunda.engine.bpmn;
 import org.camunda.bpm.engine.ArtifactFactory;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
 import org.camunda.bpm.engine.impl.DefaultArtifactFactory;
+import org.jetbrains.annotations.ApiStatus.Experimental;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Experimental
 public final class KoraArtifactFactory implements ArtifactFactory {
 
     private final ArtifactFactory defaultArtifactFactory = new DefaultArtifactFactory();

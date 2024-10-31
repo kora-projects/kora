@@ -23,6 +23,7 @@ import org.camunda.bpm.engine.runtime.CaseExecution;
 import org.camunda.bpm.engine.runtime.CaseExecutionQuery;
 import org.camunda.bpm.engine.runtime.CaseInstance;
 import org.camunda.bpm.engine.runtime.CaseInstanceQuery;
+import org.jetbrains.annotations.ApiStatus.Experimental;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.camunda.engine.bpmn.telemetry.CamundaEngineBpmnMetricsFactory;
@@ -39,6 +40,7 @@ import java.util.Properties;
 import static java.util.Collections.emptyList;
 import static org.camunda.bpm.engine.impl.history.HistoryLevel.HISTORY_LEVEL_FULL;
 
+@Experimental
 public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationImpl {
 
     private static final Logger logger = LoggerFactory.getLogger(KoraProcessEngineConfiguration.class);

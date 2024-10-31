@@ -3,9 +3,11 @@ package ru.tinkoff.kora.camunda.engine.bpmn.telemetry;
 import jakarta.annotation.Nullable;
 import org.camunda.bpm.engine.impl.telemetry.TelemetryRegistry;
 import org.camunda.bpm.engine.impl.telemetry.dto.ApplicationServerImpl;
+import org.jetbrains.annotations.ApiStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@ApiStatus.Experimental
 public final class KoraEngineTelemetryRegistry extends TelemetryRegistry {
 
     private static final String INTEGRATION_NAME = "kora-camunda";

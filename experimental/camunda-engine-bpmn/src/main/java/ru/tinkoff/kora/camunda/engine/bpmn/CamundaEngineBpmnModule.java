@@ -11,6 +11,7 @@ import org.camunda.bpm.engine.impl.persistence.StrongUuidGenerator;
 import org.camunda.bpm.engine.impl.telemetry.TelemetryRegistry;
 import org.camunda.bpm.engine.impl.telemetry.dto.ApplicationServerImpl;
 import org.camunda.bpm.impl.juel.jakarta.el.ELResolver;
+import org.jetbrains.annotations.ApiStatus.Experimental;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.camunda.engine.bpmn.configurator.AdminUserProcessEngineConfigurator;
 import ru.tinkoff.kora.camunda.engine.bpmn.configurator.DeploymentProcessEngineConfigurator;
@@ -30,6 +31,7 @@ import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import javax.sql.DataSource;
 import java.util.Optional;
 
+@Experimental
 public interface CamundaEngineBpmnModule {
 
     default CamundaEngineBpmnConfig camundaEngineBpmnConfig(Config config, ConfigValueExtractor<CamundaEngineBpmnConfig> extractor) {

@@ -2,7 +2,9 @@ package ru.tinkoff.kora.camunda.engine.bpmn.transaction;
 
 import org.camunda.bpm.engine.impl.interceptor.Command;
 import org.camunda.bpm.engine.impl.interceptor.CommandInterceptor;
+import org.jetbrains.annotations.ApiStatus;
 
+@ApiStatus.Experimental
 public final class KoraTransactionInterceptor extends CommandInterceptor {
 
     private final CamundaTransactionManager transactionManager;

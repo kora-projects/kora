@@ -2,6 +2,7 @@ package ru.tinkoff.kora.camunda.engine.bpmn;
 
 import org.camunda.bpm.engine.impl.ProcessEngineImpl;
 import org.camunda.bpm.engine.impl.jobexecutor.DefaultJobExecutor;
+import org.jetbrains.annotations.ApiStatus.Experimental;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -9,6 +10,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+@Experimental
 public final class KoraJobExecutor extends DefaultJobExecutor {
 
     private final CamundaEngineBpmnConfig engineConfig;

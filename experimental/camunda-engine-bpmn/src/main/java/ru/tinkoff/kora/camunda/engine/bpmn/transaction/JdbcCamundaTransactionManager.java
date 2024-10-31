@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.camunda.engine.bpmn.transaction;
 
+import org.jetbrains.annotations.ApiStatus.Experimental;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.database.jdbc.RuntimeSqlException;
 
@@ -8,6 +9,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.function.Supplier;
 
+@Experimental
 public class JdbcCamundaTransactionManager implements CamundaTransactionManager {
 
     private final Context.Key<Connection> camundaConnectionKey = new Context.Key<>() {
