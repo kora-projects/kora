@@ -38,14 +38,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Gradle artifact
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          arguments: assemble jar
+        run: ./gradlew assemble jar
 
       - name: Gradle publish
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          arguments: publishToSonatype closeAndReleaseSonatypeStagingRepository -Psigning.secretKeyRingFile=/tmp/secring.gpg
+        run: ./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository -Psigning.secretKeyRingFile=/tmp/secring.gpg
         env:
           REPO_USER: ${{ secrets.SONATYPE_USERNAME }}
           REPO_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
