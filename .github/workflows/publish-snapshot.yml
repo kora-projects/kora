@@ -32,14 +32,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Gradle artifact
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          arguments: assemble
+        run: ./gradlew assemble
 
       - name: Gradle publish
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          arguments: publish -Psigning.secretKeyRingFile=/tmp/secring.gpg
+        run: ./gradlew publish -Psigning.secretKeyRingFile=/tmp/secring.gpg
         env:
           REPO_URL: https://oss.sonatype.org/content/repositories/snapshots
           REPO_USER: ${{ secrets.SONATYPE_USERNAME }}
