@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.json.common.JsonNullable;
 import ru.tinkoff.kora.json.common.JsonWriter;
 import ru.tinkoff.kora.json.common.ListJsonWriter;
-import ru.tinkoff.kora.json.common.annotation.JsonInclude;
 
 import java.io.IOException;
 import java.sql.Timestamp;
@@ -37,7 +36,7 @@ public class JsonNullableWriteTests extends AbstractJsonAnnotationProcessorTest 
             public record TestRecord(@JsonField("test_field") JsonNullable<String> testField){}
             """);
 
-        var o = writer("TestRecord").toStringUnchecked(newObject("TestRecord", JsonNullable.nullable()));
+        var o = writer("TestRecord").toStringUnchecked(newObject("TestRecord", JsonNullable.nullValue()));
 
         assertThat(o).isEqualTo("""
             {"test_field":null}""");
@@ -94,7 +93,7 @@ public class JsonNullableWriteTests extends AbstractJsonAnnotationProcessorTest 
             }
         };
 
-        var o = writer("TestRecord", timeWriter).toStringUnchecked(newObject("TestRecord", JsonNullable.nullable()));
+        var o = writer("TestRecord", timeWriter).toStringUnchecked(newObject("TestRecord", JsonNullable.nullValue()));
 
         assertThat(o).isEqualTo("""
             {"test_field":null}""");
@@ -159,4 +158,43 @@ public class JsonNullableWriteTests extends AbstractJsonAnnotationProcessorTest 
         assertThat(o).isEqualTo("""
             {"test_field":[1]}""");
     }
+
+    @Test
+    public void jsonWriterUserNullableAlwaysIsEmpty() {
+        compile("""
+            @JsonWriter
+            public record TestRecord(@JsonInclude(IncludeType.ALWAYS) @JsonField("test_field") JsonNullable<java.util.List<java.sql.Timestamp>> testField){}
+            """);
+
+        var timeWriter = new ListJsonWriter<>((JsonWriter<Timestamp>) (generator, object) -> {
+            if (object != null) {
+                generator.writeNumber(object.getTime());
+            }
+        });
+
+        var o = writer("TestRecord", timeWriter).toStringUnchecked(newObject("TestRecord", JsonNullable.of(List.of())));
+
+        assertThat(o).isEqualTo("""
+            {"test_field":[]}""");
+    }
+
+    @Test
+    public void jsonWriterUserNullableAlwaysIsPresent() {
+        compile("""
+            @JsonWriter
+            public record TestRecord(@JsonInclude(IncludeType.ALWAYS) @JsonField("test_field") JsonNullable<java.util.List<java.sql.Timestamp>> testField){}
+            """);
+
+        var timeWriter = new ListJsonWriter<>((JsonWriter<Timestamp>) (generator, object) -> {
+            if (object != null) {
+                generator.writeNumber(object.getTime());
+            }
+        });
+
+        var o = writer("TestRecord", timeWriter).toStringUnchecked(newObject("TestRecord", JsonNullable.of(List.of(Timestamp.from(Instant.ofEpochMilli(1))))));
+
+        assertThat(o).isEqualTo("""
+            {"test_field":[1]}""");
+    }
+
 }

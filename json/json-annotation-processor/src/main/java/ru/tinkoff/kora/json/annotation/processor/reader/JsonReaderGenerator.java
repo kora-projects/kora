@@ -354,7 +354,7 @@ public class JsonReaderGenerator {
         if (field.typeMeta() != null && field.typeMeta().isJsonNullable()) {
             method.addCode("""
                 if (__token == $T.VALUE_NULL) {
-                  return $T.nullable();
+                  return $T.nullValue();
                 }
                 """, JsonTypes.jsonToken, JsonTypes.jsonNullable);
         } else if (isNullable(field)) {
@@ -450,7 +450,7 @@ public class JsonReaderGenerator {
         };
         method.add(code);
         if (jsonNullable) {
-            method.add(" else if (__token == $T.VALUE_NULL) {$>\nreturn $T.nullable();$<\n}", JsonTypes.jsonToken, JsonTypes.jsonNullable);
+            method.add(" else if (__token == $T.VALUE_NULL) {$>\nreturn $T.nullValue();$<\n}", JsonTypes.jsonToken, JsonTypes.jsonNullable);
         } else if (nullable) {
             method.add(" else if (__token == $T.VALUE_NULL) {$>\nreturn null;$<\n}", JsonTypes.jsonToken);
         }

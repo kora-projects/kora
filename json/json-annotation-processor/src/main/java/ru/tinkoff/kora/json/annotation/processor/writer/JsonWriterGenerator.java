@@ -142,7 +142,7 @@ public class JsonWriterGenerator {
         method.addCode("_gen.writeFieldName($L);\n", this.jsonNameStaticName(field));
         if (field.writer() == null && field.writerTypeMeta() instanceof WriterFieldType.KnownWriterFieldType typeMeta) {
             if (typeMeta.isJsonNullable()) {
-                method.beginControlFlow("if (_object.$L.isNullable())", field.accessor());
+                method.beginControlFlow("if (_object.$L.isNull())", field.accessor());
                 method.addStatement("_gen.writeNull()");
                 method.nextControlFlow("else");
                 method.addCode(this.writeKnownType(typeMeta.knownType(), CodeBlock.of("_object.$L.value()", field.accessor())));
@@ -158,7 +158,7 @@ public class JsonWriterGenerator {
             }
         } else {
             if (field.writerTypeMeta().isJsonNullable()) {
-                method.beginControlFlow("if (_object.$L.isNullable())", field.accessor());
+                method.beginControlFlow("if (_object.$L.isNull())", field.accessor());
                 method.addStatement("_gen.writeNull()");
                 method.nextControlFlow("else");
                 method.addStatement("$L.write(_gen, _object.$L.value())", this.writerFieldName(field), field.accessor());

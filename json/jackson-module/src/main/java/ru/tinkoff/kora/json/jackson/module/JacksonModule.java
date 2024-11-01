@@ -14,6 +14,7 @@ import ru.tinkoff.kora.json.jackson.module.http.server.JacksonHttpServerResponse
 import java.util.concurrent.CompletionStage;
 
 public interface JacksonModule {
+
     default <T> HttpServerRequestMapper<T> jacksonHttpServerRequestMapper(ObjectMapper objectMapper, TypeRef<T> type) {
         return new JacksonHttpServerRequestMapper<>(objectMapper, type);
     }

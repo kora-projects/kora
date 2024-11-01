@@ -3,6 +3,10 @@ package ru.tinkoff.kora.json.ksp.writer
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.toTypeName
+import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import ru.tinkoff.kora.common.naming.NameConverter
 import ru.tinkoff.kora.json.ksp.JsonTypes
 import ru.tinkoff.kora.json.ksp.KnownType
@@ -61,7 +65,7 @@ class WriterTypeMetaParser(val resolver: Resolver) {
         val jsonName = parseJsonName(field, jsonField, fieldNameConverter)
         val accessor = field.simpleName.asString()
         val writer = jsonField?.findValueNoDefault<KSType>("writer")
-        val typeMeta = parseWriterFieldType(type, resolvedType)
+        val typeMeta = parseWriterFieldType(jsonClassDeclaration, resolvedType)
 
         val includeType = ((field.findAnnotation(JsonTypes.jsonInclude)
             ?: jsonClassDeclaration.findAnnotation(JsonTypes.jsonInclude))
@@ -72,19 +76,34 @@ class WriterTypeMetaParser(val resolver: Resolver) {
         return JsonClassWriterMeta.FieldMeta(field.simpleName, jsonName, type.resolve(), typeMeta, writer, accessor, includeType)
     }
 
-    private fun parseWriterFieldType(type: KSTypeReference, resolvedType: KSType): WriterFieldType {
-        val realType = if (resolvedType.nullability == Nullability.PLATFORM) {
+    private fun parseWriterFieldType(jsonClass: KSClassDeclaration, resolvedType: KSType): WriterFieldType {
+        var realType = if (resolvedType.nullability == Nullability.PLATFORM) {
             resolvedType.makeNullable()
         } else {
             resolvedType
         }
+
+        var isJsonNullable = false
+        val resolvedFieldTypeName: TypeName
+
+        if (isJsonNullable(realType)) {
+            realType = realType.arguments[0].type!!.resolve()
+            isJsonNullable = true
+            resolvedFieldTypeName = realType.toTypeName(jsonClass.typeParameters.toTypeParameterResolver())
+        } else {
+            resolvedFieldTypeName = realType.toTypeName(jsonClass.typeParameters.toTypeParameterResolver())
+        }
+
         val knownType = knownTypes.detect(realType)
         return if (knownType != null) {
-            WriterFieldType.KnownWriterFieldType(knownType, realType.isMarkedNullable)
+            WriterFieldType.KnownWriterFieldType(realType, resolvedFieldTypeName, isJsonNullable, knownType)
         } else {
-            WriterFieldType.UnknownWriterFieldType(type)
+            WriterFieldType.UnknownWriterFieldType(realType, resolvedFieldTypeName, isJsonNullable)
         }
     }
+
+    private fun isJsonNullable(type: KSType) = type.declaration is KSClassDeclaration
+        && JsonTypes.jsonNullable == (type.declaration as KSClassDeclaration).toClassName()
 
     private fun parseJsonName(param: KSDeclaration, jsonField: KSAnnotation?, nameConverter: NameConverter?): String {
         if (jsonField == null) {
@@ -99,5 +118,4 @@ class WriterTypeMetaParser(val resolver: Resolver) {
             jsonFieldValue
         } else param.simpleName.asString()
     }
-
 }

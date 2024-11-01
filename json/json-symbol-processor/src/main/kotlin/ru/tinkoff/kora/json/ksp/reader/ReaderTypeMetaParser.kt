@@ -93,22 +93,35 @@ class ReaderTypeMetaParser(
 
     private fun parseField(jsonClass: KSClassDeclaration, parameter: KSValueParameter, jsonField: KSAnnotation?, nameConverter: NameConverter?): JsonClassReaderMeta.FieldMeta {
         val jsonName = parseJsonName(parameter, jsonField, nameConverter)
-        val fieldType = parameter.type.resolve()
-        val typeName = parameter.type.toTypeName(jsonClass.typeParameters.toTypeParameterResolver())
         val reader = jsonField?.findValueNoDefault<KSType>("reader")
-        val typeMeta = this.parseReaderFieldType(fieldType, typeName)
-        return JsonClassReaderMeta.FieldMeta(parameter, jsonName, typeName, typeMeta, reader)
+        val typeMeta = this.parseReaderFieldType(jsonClass, parameter)
+        val fieldTypeName = parameter.type.toTypeName(jsonClass.typeParameters.toTypeParameterResolver())
+        return JsonClassReaderMeta.FieldMeta(parameter, jsonName, fieldTypeName, typeMeta, reader)
     }
 
-    private fun parseReaderFieldType(resolvedFieldType: KSType, resolvedFieldTypeName: TypeName): ReaderFieldType {
-        val knownType = knownType.detect(resolvedFieldType)
-        return if (knownType != null) {
-            ReaderFieldType.KnownTypeReaderMeta(knownType, resolvedFieldTypeName)
+    private fun parseReaderFieldType(jsonClass: KSClassDeclaration, parameter: KSValueParameter): ReaderFieldType {
+        var isJsonNullable = false
+        var realType = parameter.type.resolve()
+        val resolvedFieldTypeName: TypeName
+
+        if (isJsonNullable(realType)) {
+            realType = realType.arguments[0].type!!.resolve()
+            isJsonNullable = true
+            resolvedFieldTypeName = realType.toTypeName(jsonClass.typeParameters.toTypeParameterResolver())
         } else {
-            ReaderFieldType.UnknownTypeReaderMeta(resolvedFieldTypeName)
+            resolvedFieldTypeName = realType.toTypeName(jsonClass.typeParameters.toTypeParameterResolver())
+        }
+
+        val knownType = knownType.detect(realType)
+        return if (knownType != null) {
+            ReaderFieldType.KnownTypeReaderMeta(realType, resolvedFieldTypeName, isJsonNullable, knownType)
+        } else {
+            ReaderFieldType.UnknownTypeReaderMeta(realType, resolvedFieldTypeName, isJsonNullable)
         }
     }
 
+    private fun isJsonNullable(type: KSType) = type.declaration is KSClassDeclaration
+        && JsonTypes.jsonNullable == (type.declaration as KSClassDeclaration).toClassName()
 
     private fun parseJsonName(param: KSValueParameter, jsonField: KSAnnotation?, nameConverter: NameConverter?): String {
         if (jsonField == null) {
