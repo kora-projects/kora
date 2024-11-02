@@ -1,12 +1,14 @@
 package ru.tinkoff.kora.validation.annotation.processor;
 
 import com.squareup.javapoet.*;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 
-import jakarta.annotation.Nullable;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.AnnotatedConstruct;
 import javax.lang.model.element.*;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -16,7 +18,11 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static ru.tinkoff.kora.validation.annotation.processor.ValidTypes.*;
+import static ru.tinkoff.kora.validation.annotation.processor.ValidUtils.isNotNull;
+
 public class ValidatorGenerator {
+
     private final Types types;
     private final Elements elements;
     private final Filer filer;
@@ -48,9 +54,9 @@ public class ValidatorGenerator {
     private void generateForSealed(TypeElement validatedElement) {
         assert validatedElement.getModifiers().contains(Modifier.SEALED);
         var validatedTypeName = TypeName.get(validatedElement.asType());
-        var validatorType = ParameterizedTypeName.get(ValidMeta.VALIDATOR_TYPE, validatedTypeName);
+        var validatorType = ParameterizedTypeName.get(VALIDATOR_TYPE, validatedTypeName);
 
-        var validatorSpecBuilder = TypeSpec.classBuilder(NameUtils.generatedType(validatedElement, ValidMeta.VALIDATOR_TYPE))
+        var validatorSpecBuilder = TypeSpec.classBuilder(NameUtils.generatedType(validatedElement, VALIDATOR_TYPE))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(validatorType)
             .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
@@ -63,16 +69,16 @@ public class ValidatorGenerator {
         var method = MethodSpec.methodBuilder("validate")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addAnnotation(Override.class)
-            .returns(ParameterizedTypeName.get(CommonClassNames.list, ValidMeta.VIOLATION_TYPE))
+            .returns(ParameterizedTypeName.get(CommonClassNames.list, VIOLATION_TYPE))
             .addParameter(ParameterSpec.builder(validatedTypeName, "value").addAnnotation(Nullable.class).build())
-            .addParameter(ValidMeta.CONTEXT_TYPE, "context");
+            .addParameter(CONTEXT_TYPE, "context");
 
         var subclasses = SealedTypeUtils.collectFinalPermittedSubtypes(types, elements, validatedElement);
         for (int i = 0; i < subclasses.size(); i++) { // TODO recursive subclasses
             var permittedSubclass = subclasses.get(i);
             var name = "_validator" + (i + 1);
             var subclassTypeName = TypeName.get(permittedSubclass.asType());
-            var fieldValidator = ParameterizedTypeName.get(ValidMeta.VALIDATOR_TYPE, subclassTypeName);
+            var fieldValidator = ParameterizedTypeName.get(VALIDATOR_TYPE, subclassTypeName);
             validatorSpecBuilder.addField(fieldValidator, name, Modifier.PRIVATE, Modifier.FINAL);
             constructor.addParameter(fieldValidator, name);
             constructor.addStatement("this.$N = $N", name, name);
@@ -111,41 +117,53 @@ public class ValidatorGenerator {
             final ValidMeta.Field field = meta.fields().get(i - 1);
             final String contextField = "_context" + i;
 
-            final boolean canBeNullable = field.isNotNull() && !field.isPrimitive();
-            if (canBeNullable) {
-                fieldConstraintBuilder.add(CodeBlock.of("""
-                    if(value.$L == null) {
-                        var $L = context.addPath($S);
-                        if(context.isFailFast()) {
-                            return List.of($L.violates(\"Should be not null, but was null\"));
-                        } else {
-                            _violations.add($L.violates(\"Should be not null, but was null\"));
-                        }
-                    }""", field.accessor(), contextField, field.name(), contextField, contextField));
+            final boolean isNotNullable = !field.isNullable() && !field.isPrimitive();
+            var checkBuilder = CodeBlock.builder();
+            if (field.isJsonNullable() && field.isNotNull()) {
+                checkBuilder.beginControlFlow("if (value.$L == null || !value.$L.isDefined() || value.$L.isNull())",
+                    field.accessor(), field.accessor(), field.accessor());
+            } else if (isNotNullable) {
+                checkBuilder.beginControlFlow("if (value.$L == null)", field.accessor());
             }
 
-            if(!field.constraint().isEmpty() || !field.validates().isEmpty()) {
-                if(canBeNullable) {
-                    fieldConstraintBuilder.add(CodeBlock.of("else {$>", field.accessor()));
-                } else if (!field.isPrimitive()) {
-                    fieldConstraintBuilder.add(CodeBlock.of("if(value.$L != null) {$>", field.accessor()));
+            if ((field.isJsonNullable() && field.isNotNull()) || isNotNullable) {
+                checkBuilder.addStatement("var $L = context.addPath($S)", contextField, field.name());
+                checkBuilder.beginControlFlow("if (context.isFailFast())");
+                checkBuilder.addStatement("return $T.of($L.violates(\"Must be non null, but was null\"))", List.class, contextField);
+                checkBuilder.nextControlFlow("else");
+                checkBuilder.addStatement("_violations.add($L.violates(\"Must be non null, but was null\"))", contextField);
+                checkBuilder.endControlFlow();
+            }
+
+            if (!field.constraint().isEmpty() || !field.validates().isEmpty()) {
+                if (!field.isPrimitive()) {
+                    if (field.isJsonNullable() && field.isNotNull()) {
+                        checkBuilder.nextControlFlow("else");
+                    } else if (isNotNullable && field.isJsonNullable()) {
+                        checkBuilder.nextControlFlow("else if (value.$L.isDefined())", field.accessor());
+                    } else if (isNotNullable) {
+                        checkBuilder.nextControlFlow("else");
+                    } else if (field.isJsonNullable()) {
+                        checkBuilder.beginControlFlow("if (value.$L != null && value.$L.isDefined())", field.accessor(), field.accessor());
+                    } else {
+                        checkBuilder.beginControlFlow("if (value.$L != null)", field.accessor());
+                    }
                 }
 
-                fieldConstraintBuilder.add(CodeBlock.of("var $L = context.addPath($S);", contextField, field.name()));
+                checkBuilder.addStatement("var $L = context.addPath($S)", contextField, field.name());
                 for (int j = 1; j <= field.constraint().size(); j++) {
                     final ValidMeta.Constraint constraint = field.constraint().get(j - 1);
                     final String suffix = i + "_" + j;
                     final String constraintField = constraintToFieldName.computeIfAbsent(constraint.factory(), (k) -> "_constraint" + suffix);
                     final String constraintResultField = "_constraintResult_" + suffix;
-                    fieldConstraintBuilder.add(CodeBlock.of("""
+                    checkBuilder.add("""
                         var $N = $L.validate(value.$L, $L);
-                        if(!$N.isEmpty()) {
-                            if(context.isFailFast()) {
-                                return $N;
-                            } else {
-                                _violations.addAll($N);
-                            }
-                        }""", constraintResultField, constraintField, field.accessor(), contextField, constraintResultField, constraintResultField, constraintResultField));
+                        if (!$N.isEmpty() && context.isFailFast()) {
+                            return $N;
+                        } else {
+                            _violations.addAll($N);
+                        }
+                        """, constraintResultField, constraintField, field.valueAccessor(), contextField, constraintResultField, constraintResultField, constraintResultField);
                 }
 
                 for (int j = 1; j <= field.validates().size(); j++) {
@@ -154,23 +172,24 @@ public class ValidatorGenerator {
                     final String validatorField = validatedToFieldName.computeIfAbsent(validated, (k) -> "_validator" + suffix);
                     final String validatorResultField = "_validatorResult_" + suffix;
 
-                    fieldConstraintBuilder.add(CodeBlock.of("""
+                    checkBuilder.add("""
                         var $N = $L.validate(value.$L, $L);
-                        if(!$N.isEmpty()) {
-                            if(context.isFailFast()) {
-                                return $N;
-                            } else {
-                                _violations.addAll($N);
-                            }
-                        }""", validatorResultField, validatorField, field.accessor(), contextField, validatorResultField, validatorResultField, validatorResultField));
+                        if (!$N.isEmpty() && context.isFailFast()) {
+                            return $N;
+                        } else {
+                            _violations.addAll($N);
+                        }
+                        """, validatorResultField, validatorField, field.valueAccessor(), contextField, validatorResultField, validatorResultField, validatorResultField);
                 }
 
                 if (!field.isPrimitive()) {
-                    fieldConstraintBuilder.add(CodeBlock.of("$<}"));
+                    checkBuilder.endControlFlow();
                 }
+            } else if ((field.isJsonNullable() && field.isNotNull()) || isNotNullable) {
+                checkBuilder.endControlFlow();
             }
 
-            fieldConstraintBuilder.add(CodeBlock.of(""));
+            fieldConstraintBuilder.add(checkBuilder.build());
         }
 
         final MethodSpec.Builder constructorSpecBuilder = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
@@ -208,17 +227,17 @@ public class ValidatorGenerator {
         final MethodSpec.Builder validateMethodSpecBuilder = MethodSpec.methodBuilder("validate")
             .addAnnotation(Override.class)
             .addModifiers(Modifier.PUBLIC)
-            .returns(ValidMeta.Type.ofClass(List.class, List.of(ValidMeta.Type.ofName(ValidMeta.VIOLATION_TYPE.canonicalName()))).asPoetType(processingEnv))
+            .returns(ValidMeta.Type.ofClass(List.class, List.of(ValidMeta.Type.ofName(VIOLATION_TYPE.canonicalName()))).asPoetType(processingEnv))
             .addParameter(ParameterSpec.builder(meta.source().asPoetType(processingEnv), "value").build())
-            .addParameter(ParameterSpec.builder(ValidMeta.Type.ofName(ValidMeta.CONTEXT_TYPE.canonicalName()).asPoetType(processingEnv), "context").build())
+            .addParameter(ParameterSpec.builder(ValidMeta.Type.ofName(CONTEXT_TYPE.canonicalName()).asPoetType(processingEnv), "context").build())
             .addCode(CodeBlock.join(List.of(
                     CodeBlock.of("""
-                            if(value == null) {
-                                return $T.of(context.violates(\"$L input value should be not null, but was null\"));
+                            if (value == null) {
+                                return $T.of(context.violates(\"$L input must be non null, but was null\"));
                             }
-                            
-                            final $T<Violation> _violations = new $T<>();""",
-                        List.class, meta.source().simpleName(), List.class, ArrayList.class),
+                                                        
+                            final $T<$T> _violations = new $T<>();""",
+                        List.class, meta.source().simpleName(), List.class, ValidTypes.violation, ArrayList.class),
                     CodeBlock.join(fieldConstraintBuilder, "\n"),
                     CodeBlock.of("return _violations;")),
                 "\n\n"));
@@ -238,17 +257,30 @@ public class ValidatorGenerator {
             final List<ValidMeta.Constraint> constraints = getValidatedByConstraints(processingEnv, fieldElement);
             final List<ValidMeta.Validated> validateds = getValidated(fieldElement);
 
-            final boolean isNullable = CommonUtils.isNullable(fieldElement);
-            if (!isNullable || !constraints.isEmpty() || !validateds.isEmpty()) {
+            final boolean isNotNull = isNotNull(fieldElement);
+            final boolean isJsonNullable;
+            final TypeMirror targetType;
+            if (fieldElement.asType() instanceof DeclaredType dt && jsonNullable.canonicalName().equals(dt.asElement().toString())) {
+                targetType = dt.getTypeArguments().get(0);
+                isJsonNullable = true;
+            } else {
+                targetType = fieldElement.asType();
+                isJsonNullable = false;
+            }
+
+            if (!constraints.isEmpty() || !validateds.isEmpty() || (isJsonNullable && isNotNull)) {
+                final boolean isNullable = CommonUtils.isNullable(fieldElement);
                 final boolean isPrimitive = fieldElement.asType() instanceof PrimitiveType;
                 final boolean isRecord = element.getKind() == ElementKind.RECORD;
-                final TypeMirror fieldType = ValidUtils.getBoxType(fieldElement.asType(), processingEnv);
 
+                final TypeMirror fieldType = ValidUtils.getBoxType(targetType, processingEnv);
                 final ValidMeta.Field fieldMeta = new ValidMeta.Field(
                     ValidMeta.Type.ofType(fieldType),
                     fieldElement.getSimpleName().toString(),
                     isRecord,
                     isNullable,
+                    isNotNull,
+                    isJsonNullable,
                     isPrimitive,
                     constraints,
                     validateds);
@@ -276,7 +308,7 @@ public class ValidatorGenerator {
     }
 
     private static List<ValidMeta.Validated> getValidated(VariableElement field) {
-        if (field.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals(ValidMeta.VALID_TYPE.canonicalName()))) {
+        if (field.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName()))) {
             return List.of(new ValidMeta.Validated(ValidMeta.Type.ofType(field.asType())));
         }
 

@@ -8,6 +8,11 @@ public final class ViolationException extends RuntimeException {
     private String _message;
     private final List<Violation> violations;
 
+    public ViolationException(@Nonnull Violation violation) {
+        super();
+        this.violations = List.of(violation);
+    }
+
     public ViolationException(@Nonnull List<Violation> violations) {
         super();
         this.violations = violations;

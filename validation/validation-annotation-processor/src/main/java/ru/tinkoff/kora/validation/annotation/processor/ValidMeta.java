@@ -16,14 +16,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public record ValidMeta(Type source, Validator validator, TypeElement sourceElement, List<Field> fields) {
+import static ru.tinkoff.kora.validation.annotation.processor.ValidTypes.VALIDATOR_TYPE;
 
-    public static final ClassName VALID_TYPE = ClassName.get("ru.tinkoff.kora.validation.common.annotation", "Valid");
-    public static final ClassName VALIDATED_BY_TYPE = ClassName.get("ru.tinkoff.kora.validation.common.annotation", "ValidatedBy");
-    public static final ClassName CONTEXT_TYPE = ClassName.get("ru.tinkoff.kora.validation.common", "ValidationContext");
-    public static final ClassName VALIDATOR_TYPE = ClassName.get("ru.tinkoff.kora.validation.common", "Validator");
-    public static final ClassName VIOLATION_TYPE = ClassName.get("ru.tinkoff.kora.validation.common", "Violation");
-    public static final ClassName EXCEPTION_TYPE = ClassName.get("ru.tinkoff.kora.validation.common", "ViolationException");
+public record ValidMeta(Type source, Validator validator, TypeElement sourceElement, List<Field> fields) {
 
     public ValidMeta(Type source, TypeElement sourceElement, List<Field> fields) {
         this(source,
@@ -43,16 +38,21 @@ public record ValidMeta(Type source, Validator validator, TypeElement sourceElem
 
     public record Validator(Type contract, Type implementation) {}
 
-    public record Field(Type type, String name, boolean isRecord, boolean isNullable, boolean isPrimitive, List<Constraint> constraint, List<Validated> validates) {
-
-        public boolean isNotNull() {
-            return !isNullable;
-        }
+    public record Field(Type type, String name, boolean isRecord, boolean isNullable, boolean isNotNull, boolean isJsonNullable, boolean isPrimitive, List<Constraint> constraint,
+                        List<Validated> validates) {
 
         public String accessor() {
             return (isRecord)
                 ? name + "()"
                 : "get" + name.substring(0, 1).toUpperCase() + name.substring(1) + "()";
+        }
+
+        public String valueAccessor() {
+            if (isJsonNullable) {
+                return accessor() + ".value()";
+            } else {
+                return accessor();
+            }
         }
     }
 

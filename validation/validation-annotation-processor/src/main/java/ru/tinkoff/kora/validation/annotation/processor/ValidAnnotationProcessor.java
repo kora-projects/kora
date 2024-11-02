@@ -13,6 +13,8 @@ import javax.lang.model.element.TypeElement;
 import java.util.List;
 import java.util.Set;
 
+import static ru.tinkoff.kora.validation.annotation.processor.ValidTypes.VALID_TYPE;
+
 public final class ValidAnnotationProcessor extends AbstractKoraProcessor {
 
     private ValidatorGenerator generator;
@@ -21,7 +23,7 @@ public final class ValidAnnotationProcessor extends AbstractKoraProcessor {
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(ValidMeta.VALID_TYPE.canonicalName());
+        return Set.of(VALID_TYPE.canonicalName());
     }
 
     @Override
@@ -46,7 +48,7 @@ public final class ValidAnnotationProcessor extends AbstractKoraProcessor {
     }
 
     private List<TypeElement> getValidatedTypeElements(ProcessingEnvironment processEnv, RoundEnvironment roundEnv) {
-        final TypeElement annotation = processEnv.getElementUtils().getTypeElement(ValidMeta.VALID_TYPE.canonicalName());
+        final TypeElement annotation = processEnv.getElementUtils().getTypeElement(VALID_TYPE.canonicalName());
 
         return roundEnv.getElementsAnnotatedWith(annotation).stream()
             .filter(a -> a instanceof TypeElement)
