@@ -30,13 +30,18 @@ public class SoapRequestExecutor {
     private final SoapClientTelemetry telemetry;
     private final Duration timeout;
 
+    @Deprecated
     public SoapRequestExecutor(HttpClient httpClient, SoapClientTelemetryFactory telemetryFactory, XmlTools xmlTools, String service, SoapServiceConfig config, String method, @Nullable String soapAction) {
+        this(httpClient, telemetryFactory, xmlTools, "ru.tinkoff.kora.soap.client." + service, service, config, method, soapAction);
+    }
+
+    public SoapRequestExecutor(HttpClient httpClient, SoapClientTelemetryFactory telemetryFactory, XmlTools xmlTools, String serviceClass, String service, SoapServiceConfig config, String method, @Nullable String soapAction) {
         this.httpClient = httpClient;
         this.xmlTools = xmlTools;
         this.url = config.url();
         this.timeout = config.timeout();
         this.soapAction = soapAction;
-        this.telemetry = telemetryFactory.get(config.telemetry(), service, method, url);
+        this.telemetry = telemetryFactory.get(config.telemetry(), serviceClass, service, method, url);
     }
 
     public SoapResult call(SoapEnvelope requestEnvelope) throws SoapException {

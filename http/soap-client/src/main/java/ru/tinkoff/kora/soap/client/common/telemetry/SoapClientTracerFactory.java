@@ -6,5 +6,5 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 public interface SoapClientTracerFactory {
 
     @Nullable
-    SoapClientTracer get(TelemetryConfig.TracingConfig config, String serviceName, String soapMethod, String url);
+    SoapClientTracer get(TelemetryConfig.TracingConfig config, String serviceClass, String serviceName, String soapMethod, String url);
 }

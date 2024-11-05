@@ -35,10 +35,10 @@ public class DefaultSoapClientTelemetryFactory implements SoapClientTelemetryFac
     }
 
     @Override
-    public SoapClientTelemetry get(TelemetryConfig config, String serviceName, String soapMethod, String url) {
-        var tracing = this.tracingFactory == null ? null : this.tracingFactory.get(config.tracing(), serviceName, soapMethod, url);
-        var metrics = this.metricsFactory == null ? null : this.metricsFactory.get(config.metrics(), serviceName, soapMethod, url);
-        var logger = this.loggerFactory == null ? null : this.loggerFactory.get(config.logging(), serviceName, soapMethod, url);
+    public SoapClientTelemetry get(TelemetryConfig config, String serviceClass, String serviceName, String soapMethod, String url) {
+        var tracing = this.tracingFactory == null ? null : this.tracingFactory.get(config.tracing(), serviceClass, serviceName, soapMethod, url);
+        var metrics = this.metricsFactory == null ? null : this.metricsFactory.get(config.metrics(), serviceClass, serviceName, soapMethod, url);
+        var logger = this.loggerFactory == null ? null : this.loggerFactory.get(config.logging(), serviceClass, serviceName, soapMethod, url);
         if (tracing == null && metrics == null && logger == null) {
             return envelope -> NOOP_CTX;
         }

@@ -18,9 +18,9 @@ public class OpentelemetrySoapClientTracerFactory implements SoapClientTracerFac
 
     @Nullable
     @Override
-    public SoapClientTracer get(TelemetryConfig.TracingConfig config, String serviceName, String soapMethod, String url) {
+    public SoapClientTracer get(TelemetryConfig.TracingConfig config, String serviceClass, String serviceName, String soapMethod, String url) {
         if (Objects.requireNonNullElse(config.enabled(), true)) {
-            return new OpentelemetrySoapClientTracer(this.tracer, serviceName, serviceName, url);
+            return new OpentelemetrySoapClientTracer(this.tracer, serviceName, soapMethod, url);
         } else {
             return null;
         }

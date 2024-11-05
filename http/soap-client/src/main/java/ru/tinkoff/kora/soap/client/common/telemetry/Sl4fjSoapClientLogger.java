@@ -8,16 +8,18 @@ import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetry.SoapTele
 
 public class Sl4fjSoapClientLogger implements SoapClientLogger {
 
+    private final String serviceName;
     private final String soapMethod;
     private final String url;
 
     private final Logger requestLog;
     private final Logger responseLog;
 
-    public Sl4fjSoapClientLogger(Logger requestLog, Logger responseLog, String soapMethod, String url) {
+    public Sl4fjSoapClientLogger(Logger requestLog, Logger responseLog, String serviceName, String soapMethod, String url) {
         this.requestLog = requestLog;
         this.responseLog = responseLog;
 
+        this.serviceName = serviceName;
         this.soapMethod = soapMethod;
         this.url = url;
     }
@@ -26,7 +28,8 @@ public class Sl4fjSoapClientLogger implements SoapClientLogger {
     public void logRequest(SoapEnvelope requestEnvelope) {
         var marker = StructuredArgument.marker("soapRequest", gen -> {
             gen.writeStartObject();
-            gen.writeStringField("method", soapMethod);
+            gen.writeStringField("soapMethod", soapMethod);
+            gen.writeStringField("soapService", serviceName);
             gen.writeEndObject();
         });
 
@@ -50,8 +53,9 @@ public class Sl4fjSoapClientLogger implements SoapClientLogger {
     public void logSuccess(SoapResult.Success result) {
         var marker = StructuredArgument.marker("soapResponse", gen -> {
             gen.writeStartObject();
-            gen.writeStringField("method", soapMethod);
-            gen.writeStringField("status", "success");
+            gen.writeStringField("soapMethod", soapMethod);
+            gen.writeStringField("soapService", serviceName);
+            gen.writeStringField("soapStatus", "success");
             gen.writeEndObject();
         });
 
@@ -66,14 +70,15 @@ public class Sl4fjSoapClientLogger implements SoapClientLogger {
     public void logFailure(SoapClientFailure failure) {
         var marker = StructuredArgument.marker("soapResponse", gen -> {
             gen.writeStartObject();
-            gen.writeStringField("method", soapMethod);
-            gen.writeStringField("status", "failure");
+            gen.writeStringField("soapMethod", soapMethod);
+            gen.writeStringField("soapService", serviceName);
+            gen.writeStringField("soapStatus", "success");
 
             if (failure instanceof SoapClientFailure.InvalidHttpCode ie) {
-                gen.writeNumberField("httpCode", ie.code());
+                gen.writeNumberField("soapHttpCode", ie.code());
             } else if (failure instanceof SoapClientFailure.InternalServerError se) {
-                gen.writeStringField("faultCode", se.result().fault().getFaultcode().toString());
-                gen.writeStringField("faultActor", se.result().fault().getFaultactor());
+                gen.writeStringField("soapFaultCode", se.result().fault().getFaultcode().toString());
+                gen.writeStringField("soapFaultActor", se.result().fault().getFaultactor());
             } else if (failure instanceof SoapClientFailure.ProcessException pe) {
                 gen.writeStringField("exceptionType", pe.throwable().getClass().getCanonicalName());
             }

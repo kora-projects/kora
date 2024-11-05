@@ -21,13 +21,13 @@ public class OpentelemetrySoapClientTracer implements SoapClientTracer {
 
     private final Tracer tracer;
 
-    private final String serviceSimpleName;
+    private final String serviceName;
     private final String soapMethod;
     private final String url;
 
-    public OpentelemetrySoapClientTracer(Tracer tracer, String serviceSimpleName, String soapMethod, String url) {
+    public OpentelemetrySoapClientTracer(Tracer tracer, String serviceName, String soapMethod, String url) {
         this.tracer = tracer;
-        this.serviceSimpleName = serviceSimpleName;
+        this.serviceName = serviceName;
         this.soapMethod = soapMethod;
         this.url = url;
     }
@@ -36,11 +36,11 @@ public class OpentelemetrySoapClientTracer implements SoapClientTracer {
     public SoapClientSpan createSpan(Context ctx, SoapEnvelope requestEnvelope) {
         var otctx = OpentelemetryContext.get(ctx);
 
-        var builder = this.tracer.spanBuilder("SOAP " + serviceSimpleName + " " + soapMethod)
+        var builder = this.tracer.spanBuilder("SOAP " + serviceName + " " + soapMethod)
             .setSpanKind(SpanKind.CLIENT)
             .setParent(otctx.getContext());
 
-        builder.setAttribute(SemanticAttributes.RPC_SERVICE, serviceSimpleName);
+        builder.setAttribute(SemanticAttributes.RPC_SERVICE, serviceName);
         builder.setAttribute(SemanticAttributes.RPC_METHOD, soapMethod);
         builder.setAttribute(SemanticAttributes.RPC_SYSTEM, url);
 
