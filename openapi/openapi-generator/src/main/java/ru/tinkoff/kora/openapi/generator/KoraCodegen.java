@@ -1805,7 +1805,7 @@ public class KoraCodegen extends DefaultCodegen {
                             .orElseThrow(() -> new IllegalArgumentException("Can't find OpenAPI securitySchema named: " + params.primaryAuth));
 
                         if (params.authAsMethodArgument) {
-                            CodegenParameter fakeAuthParameter = getAuthArgumentParameter(authMethod);
+                            CodegenParameter fakeAuthParameter = getAuthArgumentParameter(authMethod, op.allParams);
                             op.allParams.add(fakeAuthParameter);
                         } else {
                             var authName = camelize(toVarName(authMethod.name));
