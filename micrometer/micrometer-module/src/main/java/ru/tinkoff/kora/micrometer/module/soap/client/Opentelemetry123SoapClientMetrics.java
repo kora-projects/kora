@@ -27,6 +27,7 @@ public class Opentelemetry123SoapClientMetrics implements SoapClientMetrics {
             .tag("rpc.result", rpcResult)
             .tag(SemanticAttributes.SERVER_ADDRESS.getKey(), host)
             .tag(SemanticAttributes.SERVER_PORT.getKey(), Integer.toString(port));
+
         return builder.register(meterRegistry);
     }
 

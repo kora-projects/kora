@@ -38,6 +38,7 @@ public final class Opentelemetry123HttpClientMetrics implements HttpClientMetric
             .tag(SemanticAttributes.URL_SCHEME.getKey(), key.scheme)
             .tag(SemanticAttributes.HTTP_ROUTE.getKey(), key.target)
             .tag("http.status_code", Integer.toString(key.statusCode()));
+
         return builder.register(meterRegistry);
     }
 

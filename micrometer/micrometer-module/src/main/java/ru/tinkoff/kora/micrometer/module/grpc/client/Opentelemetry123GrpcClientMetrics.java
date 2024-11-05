@@ -57,16 +57,17 @@ public final class Opentelemetry123GrpcClientMetrics implements GrpcClientMetric
     private Metrics buildMetrics(MetricsKey method) {
         var tags = tags(method);
 
-
         var duration = DistributionSummary.builder("rpc.client.duration")
             .tags(tags)
             .baseUnit("s")
             .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
             .register(this.registry);
+
         var requestsByRpc = DistributionSummary.builder("rpc.client.requests_per_rpc")
             .tags(tags)
             .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
             .register(this.registry);
+
         var responsesByRpc = DistributionSummary.builder("rpc.client.responses_per_rpc")
             .tags(tags)
             .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
@@ -88,12 +89,19 @@ public final class Opentelemetry123GrpcClientMetrics implements GrpcClientMetric
         list.add(Tag.of(SemanticAttributes.RPC_SYSTEM.getKey(), SemanticAttributes.RpcSystemValues.GRPC));
         list.add(Tag.of(SemanticAttributes.SERVER_ADDRESS.getKey(), serverAddress));
         list.add(Tag.of(SemanticAttributes.SERVER_PORT.getKey(), String.valueOf(serverPort)));
+
         if (key.code != null) {
             list.add(Tag.of(SemanticAttributes.RPC_GRPC_STATUS_CODE.getKey(), String.valueOf(key.code)));
+        } else {
+            list.add(Tag.of(SemanticAttributes.RPC_GRPC_STATUS_CODE.getKey(), ""));
         }
+
         if (key.errorType != null) {
             list.add(Tag.of(SemanticAttributes.ERROR_TYPE.getKey(), key.errorType.getCanonicalName()));
+        } else {
+            list.add(Tag.of(SemanticAttributes.ERROR_TYPE.getKey(), ""));
         }
+
         return list;
     }
 

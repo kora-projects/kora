@@ -53,7 +53,7 @@ public class Opentelemetry123KafkaProducerMetrics implements KafkaProducerMetric
     public void sendEnd(ProducerRecord<?, ?> record, long durationNanos, Throwable e) {
         var key = new DurationKey(record.topic(), Objects.requireNonNullElse(record.partition(), -1), e.getClass());
         var m = this.metrics.computeIfAbsent(key, this::metrics);
-        m.record((double) durationNanos / 1_000_000_000 );
+        m.record((double) durationNanos / 1_000_000_000);
     }
 
     @Override
@@ -64,7 +64,7 @@ public class Opentelemetry123KafkaProducerMetrics implements KafkaProducerMetric
     }
 
     @Override
-    public void close() throws Exception {
+    public void close() {
         this.micrometerMetrics.close();
         for (var i = this.metrics.entrySet().iterator(); i.hasNext(); ) {
             var entry = i.next();
@@ -79,21 +79,23 @@ public class Opentelemetry123KafkaProducerMetrics implements KafkaProducerMetric
     private record DurationKey(String topic, int partition, @Nullable Class<? extends Throwable> errorType) {}
 
     private DistributionSummary metrics(DurationKey key) {
+        var clientId = this.properties.get(ProducerConfig.CLIENT_ID_CONFIG);
+
         var builder = DistributionSummary.builder("messaging.publish.duration")
             .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
             .baseUnit("s")
             .tag(SemanticAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
             .tag(SemanticAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION.getKey(), Integer.toString(key.partition()))
-            .tag(SemanticAttributes.MESSAGING_DESTINATION_NAME.getKey(), key.topic());
-        var clientId = this.properties.get(ProducerConfig.CLIENT_ID_CONFIG);
-        if (clientId != null) {
-            builder.tag(SemanticAttributes.MESSAGING_CLIENT_ID.getKey(), clientId.toString());
-        }
+            .tag(SemanticAttributes.MESSAGING_DESTINATION_NAME.getKey(), key.topic())
+            .tag(SemanticAttributes.MESSAGING_CLIENT_ID.getKey(), Objects.requireNonNullElse(clientId, "").toString());
+
         var errorType = key.errorType();
         if (errorType != null) {
             builder.tag(SemanticAttributes.ERROR_TYPE.getKey(), errorType.getCanonicalName());
+        } else {
+            builder.tag(SemanticAttributes.ERROR_TYPE.getKey(), "");
         }
+
         return builder.register(this.meterRegistry);
     }
-
 }

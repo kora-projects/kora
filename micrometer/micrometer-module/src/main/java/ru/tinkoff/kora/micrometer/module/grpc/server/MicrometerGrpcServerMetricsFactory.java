@@ -44,18 +44,21 @@ public final class MicrometerGrpcServerMetricsFactory implements GrpcServerMetri
             .tag(SemanticAttributes.RPC_METHOD.getKey(), metricsKey.methodName)
             .tag(SemanticAttributes.RPC_GRPC_STATUS_CODE.getKey(), Integer.toString(code))
             .register(this.meterRegistry);
+
         var requestsPerRpc = Counter.builder("rpc.server.requests_per_rpc")
             .baseUnit("messages")
             .tag(SemanticAttributes.RPC_SYSTEM.getKey(), SemanticAttributes.RpcSystemValues.GRPC)
             .tag(SemanticAttributes.RPC_SERVICE.getKey(), metricsKey.serviceName)
             .tag(SemanticAttributes.RPC_METHOD.getKey(), metricsKey.methodName)
             .register(this.meterRegistry);
+
         var responsesPerRpc = Counter.builder("rpc.server.responses_per_rpc")
             .baseUnit("messages")
             .tag(SemanticAttributes.RPC_SYSTEM.getKey(), SemanticAttributes.RpcSystemValues.GRPC)
             .tag(SemanticAttributes.RPC_SERVICE.getKey(), metricsKey.serviceName)
             .tag(SemanticAttributes.RPC_METHOD.getKey(), metricsKey.methodName)
             .register(this.meterRegistry);
+
         return switch (metricsConfig.opentelemetrySpec()) {
             case V120 -> new Opentelemetry120GrpcServerMetrics(duration, requestsPerRpc, responsesPerRpc);
             case V123 -> new Opentelemetry123GrpcServerMetrics(duration, requestsPerRpc, responsesPerRpc);
