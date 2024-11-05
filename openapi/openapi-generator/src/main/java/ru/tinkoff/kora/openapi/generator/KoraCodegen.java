@@ -1791,7 +1791,7 @@ public class KoraCodegen extends DefaultCodegen {
 
                         CodegenSecurity authMethod = op.authMethods.get(0);
                         if (params.authAsMethodArgument) {
-                            CodegenParameter fakeAuthParameter = getAuthArgumentParameter(authMethod);
+                            CodegenParameter fakeAuthParameter = getAuthArgumentParameter(authMethod, op.allParams);
                             op.allParams.add(fakeAuthParameter);
                         } else {
                             var authName = camelize(toVarName(authMethod.name));
@@ -1912,12 +1912,24 @@ public class KoraCodegen extends DefaultCodegen {
         return objs;
     }
 
-    private CodegenParameter getAuthArgumentParameter(CodegenSecurity authMethod) {
+    private static String getAuthName(String name, List<CodegenParameter> parameters) {
+        for (CodegenParameter parameter : parameters) {
+            if (name.equals(parameter.paramName)) {
+                return getAuthName("_" + name, parameters);
+            }
+        }
+
+        return name;
+    }
+
+    private CodegenParameter getAuthArgumentParameter(CodegenSecurity authMethod, List<CodegenParameter> parameters) {
         CodegenParameter fakeAuthParameter = new CodegenParameter();
 
-        fakeAuthParameter.paramName = authMethod.name;
-        fakeAuthParameter.baseName = authMethod.name;
-        fakeAuthParameter.nameInLowerCase = authMethod.name.toLowerCase(Locale.ROOT);
+        String authName = getAuthName(authMethod.name, parameters);
+
+        fakeAuthParameter.paramName = authName;
+        fakeAuthParameter.baseName = authName;
+        fakeAuthParameter.nameInLowerCase = authName.toLowerCase(Locale.ROOT);
         if (authMethod.isKeyInQuery) {
             fakeAuthParameter.isQueryParam = true;
         } else if (authMethod.isKeyInHeader) {
@@ -1930,6 +1942,13 @@ public class KoraCodegen extends DefaultCodegen {
                    || authMethod.isBasic
                    || authMethod.isBasicBasic) {
             fakeAuthParameter.isHeaderParam = true;
+
+            for (CodegenParameter parameter : parameters) {
+                if ("Authorization".equalsIgnoreCase(parameter.paramName)) {
+                    throw new IllegalArgumentException("Authorization argument as method parameter can't be set, cause parameter named 'Authorization' already is present");
+                }
+            }
+
             fakeAuthParameter.paramName = "Authorization";
             fakeAuthParameter.baseName = "Authorization";
             fakeAuthParameter.nameInLowerCase = "Authorization".toLowerCase(Locale.ROOT);
@@ -1947,7 +1966,7 @@ public class KoraCodegen extends DefaultCodegen {
         fakeAuthParameter.isNullable = false;
 
         Schema schema = SchemaTypeUtil.createSchema("String", null);
-        CodegenProperty codegenProperty = fromProperty(authMethod.name, schema);
+        CodegenProperty codegenProperty = fromProperty(authName, schema);
         fakeAuthParameter.setSchema(codegenProperty);
         return fakeAuthParameter;
     }
