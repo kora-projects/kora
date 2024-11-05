@@ -2,6 +2,7 @@ package ru.tinkoff.kora.opentelemetry.module.kafka.consumer;
 
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.propagation.TextMapGetter;
@@ -97,6 +98,9 @@ public final class OpentelemetryKafkaConsumerTracer implements KafkaConsumerTrac
         @Override
         public void close(@Nullable Throwable ex) {
             for (var span : this.spans.values()) {
+                if(ex != null) {
+                    span.setStatus(StatusCode.ERROR);
+                }
                 span.end();
             }
             this.rootSpan.end();
@@ -135,6 +139,9 @@ public final class OpentelemetryKafkaConsumerTracer implements KafkaConsumerTrac
 
         @Override
         public void close(@Nullable Throwable ex) {
+            if(ex != null) {
+                this.recordSpan.setStatus(StatusCode.ERROR);
+            }
             this.recordSpan.end();
             OpentelemetryContext.set(Context.current(), this.rootCtx);
         }
