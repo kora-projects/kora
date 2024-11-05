@@ -34,7 +34,7 @@ import java.util.Objects;
  *  );
  * }
  * </pre>
- * If JsonNullable.undefined() is fully omitted cause it is undefined  →
+ * JsonNullable.undefined() is fully omitted cause it is undefined  →
  * <pre>{@code
  * { "definedNonNull": "Interstellar", "definedNull": null }
  * }</pre>
@@ -68,7 +68,9 @@ public sealed interface JsonNullable<T> {
     }
 
     static <T> JsonNullable<T> ofNullable(@Nullable T value) {
-        return new Defined<>(value);
+        return (value == null)
+            ? nullValue()
+            : new Defined<>(value);
     }
 
     record Defined<T>(@Nullable T value) implements JsonNullable<T> {
