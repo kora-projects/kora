@@ -3,8 +3,8 @@ package ru.tinkoff.kora.soap.client.common.telemetry;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
-public interface SoapClientMetricsFactory {
+public interface SoapClientTracerFactory {
 
     @Nullable
-    SoapClientMetrics get(TelemetryConfig.MetricsConfig config, String serviceName, String soapMethod, String url);
+    SoapClientTracer get(TelemetryConfig.TracingConfig config, String serviceName, String soapMethod, String url);
 }

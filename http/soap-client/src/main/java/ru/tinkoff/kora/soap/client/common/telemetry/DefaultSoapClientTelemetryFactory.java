@@ -1,13 +1,15 @@
 package ru.tinkoff.kora.soap.client.common.telemetry;
 
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.soap.client.common.SoapResult;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 public class DefaultSoapClientTelemetryFactory implements SoapClientTelemetryFactory {
+
     private static final SoapClientTelemetry.SoapTelemetryContext NOOP_CTX = new SoapClientTelemetry.SoapTelemetryContext() {
         @Override
-        public void success(SoapResult.Success result) {
+        public void success(SoapResult.Success success) {
 
         }
 
@@ -18,18 +20,69 @@ public class DefaultSoapClientTelemetryFactory implements SoapClientTelemetryFac
     };
 
     @Nullable
+    private final SoapClientLoggerFactory loggerFactory;
+    @Nullable
     private final SoapClientMetricsFactory metricsFactory;
+    @Nullable
+    private final SoapClientTracerFactory tracingFactory;
 
-    public DefaultSoapClientTelemetryFactory(@Nullable SoapClientMetricsFactory metricsFactory) {
+    public DefaultSoapClientTelemetryFactory(@Nullable SoapClientLoggerFactory loggerFactory,
+                                             @Nullable SoapClientMetricsFactory metricsFactory,
+                                             @Nullable SoapClientTracerFactory tracingFactory) {
+        this.loggerFactory = loggerFactory;
         this.metricsFactory = metricsFactory;
+        this.tracingFactory = tracingFactory;
     }
 
     @Override
     public SoapClientTelemetry get(TelemetryConfig config, String serviceName, String soapMethod, String url) {
-        if (this.metricsFactory == null) {
+        var tracing = this.tracingFactory == null ? null : this.tracingFactory.get(config.tracing(), serviceName, soapMethod, url);
+        var metrics = this.metricsFactory == null ? null : this.metricsFactory.get(config.metrics(), serviceName, soapMethod, url);
+        var logger = this.loggerFactory == null ? null : this.loggerFactory.get(config.logging(), serviceName, soapMethod, url);
+        if (tracing == null && metrics == null && logger == null) {
             return envelope -> NOOP_CTX;
         }
-        var metrics = this.metricsFactory.get(config.metrics(), serviceName, soapMethod, url);
-        return requestEnvelope -> new DefaultSoapTelemetryContext(metrics);
+
+        return requestEnvelope -> {
+            var start = System.nanoTime();
+            if(logger != null) {
+                logger.logRequest(requestEnvelope);
+            }
+
+            var span = (tracing == null)
+                ? null
+                : tracing.createSpan(Context.current(), requestEnvelope);
+
+            return new SoapClientTelemetry.SoapTelemetryContext() {
+
+                @Override
+                public void success(SoapResult.Success success) {
+                    var processingTime = System.nanoTime() - start;
+                    if (metrics != null) {
+                        metrics.recordSuccess(success, processingTime);
+                    }
+                    if (span != null) {
+                        span.success(success);
+                    }
+                    if (logger != null) {
+                        logger.logSuccess(success);
+                    }
+                }
+
+                @Override
+                public void failure(SoapClientFailure failure) {
+                    var processingTime = System.nanoTime() - start;
+                    if (metrics != null) {
+                        metrics.recordFailure(failure, processingTime);
+                    }
+                    if (span != null) {
+                        span.failure(failure);
+                    }
+                    if (logger != null) {
+                        logger.logFailure(failure);
+                    }
+                }
+            };
+        };
     }
 }

@@ -31,12 +31,12 @@ public class Opentelemetry120SoapClientMetrics implements SoapClientMetrics {
     }
 
     @Override
-    public void recordSuccess(SoapResult.Success result, long processingTime) {
-        this.successDuration.record(((double) processingTime) / 1_000_000);
+    public void recordSuccess(SoapResult.Success result, long processingTimeNanos) {
+        this.successDuration.record(((double) processingTimeNanos) / 1_000_000);
     }
 
     @Override
-    public void recordFailure(SoapClientTelemetry.SoapTelemetryContext.SoapClientFailure failure, long processingTime) {
-        this.failureDuration.record(((double) processingTime) / 1_000_000);
+    public void recordFailure(SoapClientTelemetry.SoapTelemetryContext.SoapClientFailure failure, long processingTimeNanos) {
+        this.failureDuration.record(((double) processingTimeNanos) / 1_000_000);
     }
 }

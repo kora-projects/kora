@@ -4,10 +4,12 @@ import ru.tinkoff.kora.soap.client.common.SoapResult;
 import ru.tinkoff.kora.soap.client.common.envelope.SoapEnvelope;
 
 public interface SoapClientTelemetry {
+
     SoapTelemetryContext get(SoapEnvelope requestEnvelope);
 
     interface SoapTelemetryContext {
-        void success(SoapResult.Success result);
+
+        void success(SoapResult.Success success);
 
         void failure(SoapClientFailure failure);
 

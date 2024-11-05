@@ -11,6 +11,7 @@ import java.net.URI;
 import java.util.Objects;
 
 public class MicrometerSoapClientMetricsFactory implements SoapClientMetricsFactory {
+
     private final MeterRegistry meterRegistry;
     private final MetricsConfig metricsConfig;
 
@@ -19,8 +20,8 @@ public class MicrometerSoapClientMetricsFactory implements SoapClientMetricsFact
         this.metricsConfig = metricsConfig;
     }
 
-    @Override
     @Nullable
+    @Override
     public SoapClientMetrics get(TelemetryConfig.MetricsConfig config, String serviceName, String soapMethod, String url) {
         if (Objects.requireNonNullElse(config.enabled(), true)) {
             var uri = URI.create(url);
@@ -31,9 +32,15 @@ public class MicrometerSoapClientMetricsFactory implements SoapClientMetricsFact
                 case "https" -> 443;
                 default -> -1;
             };
+
+            int packageEnd = serviceName.lastIndexOf('.');
+            String serviceSimpleName = (packageEnd == -1)
+                ? serviceName
+                : serviceName.substring(packageEnd);
+
             return switch (this.metricsConfig.opentelemetrySpec()) {
-                case V120 -> new Opentelemetry120SoapClientMetrics(this.meterRegistry, config, serviceName, soapMethod, host, port);
-                case V123 -> new Opentelemetry123SoapClientMetrics(this.meterRegistry, config, serviceName, soapMethod, host, port);
+                case V120 -> new Opentelemetry120SoapClientMetrics(this.meterRegistry, config, serviceSimpleName, soapMethod, host, port);
+                case V123 -> new Opentelemetry123SoapClientMetrics(this.meterRegistry, config, serviceSimpleName, soapMethod, host, port);
             };
         } else {
             return null;
