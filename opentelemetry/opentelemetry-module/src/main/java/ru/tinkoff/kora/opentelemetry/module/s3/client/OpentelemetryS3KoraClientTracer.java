@@ -2,7 +2,6 @@ package ru.tinkoff.kora.opentelemetry.module.s3.client;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.semconv.SemanticAttributes;
 import jakarta.annotation.Nullable;
@@ -51,7 +50,6 @@ public final class OpentelemetryS3KoraClientTracer implements S3KoraClientTracer
         return exception -> {
             if (exception != null) {
                 span.setAttribute(ERROR_CODE.getKey(), exception.getErrorCode());
-                span.setStatus(StatusCode.ERROR);
                 span.recordException(exception);
             }
             span.end();

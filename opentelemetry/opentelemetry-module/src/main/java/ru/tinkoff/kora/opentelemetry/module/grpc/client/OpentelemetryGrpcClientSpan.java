@@ -6,7 +6,6 @@ import io.grpc.ServiceDescriptor;
 import io.grpc.Status;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
 import ru.tinkoff.grpc.client.telemetry.GrpcClientTracer;
 import ru.tinkoff.kora.common.Context;
@@ -36,15 +35,14 @@ public final class OpentelemetryGrpcClientSpan implements GrpcClientTracer.GrpcC
 
     @Override
     public void close(Exception e) {
-        this.span.recordException(e);
-        this.span.setStatus(StatusCode.ERROR);
-        this.span.end();
+        this.span.recordException(e).end();
     }
 
     @Override
     public void close(Status status, Metadata trailers) {
         this.span.end();
     }
+
 
     @Override
     public <RespT, ReqT> GrpcClientTracer.GrpcClientRequestSpan reqSpan(Context ctx, MethodDescriptor<ReqT, RespT> method, ReqT req) {

@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.opentelemetry.module.scheduling;
 
 import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.semconv.SemanticAttributes;
 import ru.tinkoff.kora.common.Context;
@@ -34,7 +33,6 @@ public class OpentelemetrySchedulingTracer implements SchedulingTracer {
         return (exception) -> {
             if (exception != null) {
                 span.recordException(exception);
-                span.setStatus(StatusCode.ERROR);
             }
             span.end();
         };
