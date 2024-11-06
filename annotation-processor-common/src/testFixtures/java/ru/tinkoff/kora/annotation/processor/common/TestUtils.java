@@ -2,7 +2,6 @@ package ru.tinkoff.kora.annotation.processor.common;
 
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ModuleRef;
-import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest.ProcessorOptions;
 import ru.tinkoff.kora.application.graph.TypeRef;
 
 import javax.annotation.processing.Processor;
