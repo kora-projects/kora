@@ -4,6 +4,7 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.http.client.common.telemetry.$HttpClientLoggerConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientLoggerConfig;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryConfig;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.Objects;
 import java.util.Set;
@@ -13,8 +14,40 @@ public final class HttpClientOperationTelemetryConfig implements HttpClientTelem
     private final OperationMetricConfig metrics;
     private final OperationTracingConfig tracing;
 
-    public HttpClientOperationTelemetryConfig(HttpClientTelemetryConfig client, HttpClientTelemetryConfig operation) {
-        this.logging = new OperationLogConfig(client.logging(), operation.logging());
+    public HttpClientOperationTelemetryConfig(TelemetryConfig client, TelemetryConfig operation) {
+        var loggingClientConfig = (client instanceof HttpClientTelemetryConfig hcc)
+            ? hcc.logging()
+            : new HttpClientLoggerConfig() {
+            @Nullable
+            @Override
+            public Boolean pathTemplate() {
+                return null;
+            }
+
+            @Nullable
+            @Override
+            public Boolean enabled() {
+                return client.logging().enabled();
+            }
+        };
+
+        var loggingOperationConfig = (operation instanceof HttpClientTelemetryConfig hcc)
+            ? hcc.logging()
+            : new HttpClientLoggerConfig() {
+            @Nullable
+            @Override
+            public Boolean pathTemplate() {
+                return null;
+            }
+
+            @Nullable
+            @Override
+            public Boolean enabled() {
+                return operation.logging().enabled();
+            }
+        };
+
+        this.logging = new OperationLogConfig(loggingClientConfig, loggingOperationConfig);
         this.metrics = new OperationMetricConfig(client.metrics(), operation.metrics());
         this.tracing = new OperationTracingConfig(client.tracing(), operation.tracing());
     }

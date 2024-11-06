@@ -20,6 +20,7 @@ object HttpClientClassNames {
     val httpClientUnknownException = ClassName("ru.tinkoff.kora.http.client.common", "HttpClientUnknownException")
     val httpClientOperationConfig = ClassName("ru.tinkoff.kora.http.client.common.declarative", "HttpClientOperationConfig")
     val declarativeHttpClientConfig = ClassName("ru.tinkoff.kora.http.client.common.declarative", "DeclarativeHttpClientConfig")
+    val telemetryHttpClientConfig = ClassName("ru.tinkoff.kora.http.client.common.telemetry", "HttpClientTelemetryConfig")
     val interceptWithClassName = ClassName("ru.tinkoff.kora.http.common.annotation", "InterceptWith")
     val interceptWithContainerClassName = ClassName("ru.tinkoff.kora.http.common.annotation", "InterceptWith", "InterceptWithContainer")
 
