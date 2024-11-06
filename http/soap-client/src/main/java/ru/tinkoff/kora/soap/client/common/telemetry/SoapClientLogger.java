@@ -19,10 +19,10 @@ public interface SoapClientLogger {
 
     interface SoapClientLoggerBodyMapper {
 
-        String mapRequest(byte[] requestAsBytes);
+        String mapRequest(String serviceName, String soapMethod, byte[] requestAsBytes);
 
-        String mapResponseSuccess(byte[] responseAsBytes);
+        String mapResponseSuccess(String serviceName, String soapMethod, byte[] responseAsBytes);
 
-        String mapResponseFailure(byte[] responseAsBytes);
+        String mapResponseFailure(String serviceName, String soapMethod, byte[] responseAsBytes);
     }
 }

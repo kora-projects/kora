@@ -42,7 +42,7 @@ public class Sl4fjSoapClientLogger implements SoapClientLogger {
 
         if (requestLog.isTraceEnabled() && requestAsBytes != null) {
             requestLog.trace(marker, "SoapService requesting method: {}\n{}", soapMethod,
-                mapper.mapRequest(requestAsBytes));
+                mapper.mapRequest(serviceName, soapMethod, requestAsBytes));
         } else {
             requestLog.info(marker, "SoapService requesting method: {}", soapMethod);
         }
@@ -61,7 +61,7 @@ public class Sl4fjSoapClientLogger implements SoapClientLogger {
 
         if (responseLog.isTraceEnabled() && responseAsBytes != null) {
             responseLog.trace(marker, "SoapService received 'success' for method: {}\n{}", soapMethod,
-                mapper.mapResponseSuccess(responseAsBytes));
+                mapper.mapResponseSuccess(serviceName, soapMethod, responseAsBytes));
         } else {
             responseLog.info(marker, "SoapService received 'success' for method: {}", soapMethod);
         }
@@ -91,7 +91,7 @@ public class Sl4fjSoapClientLogger implements SoapClientLogger {
         if (failure instanceof SoapClientFailure.InternalServerError se) {
             if (responseLog.isTraceEnabled() && responseAsBytes != null) {
                 responseLog.trace(marker, "SoapService received 'failure' for method '{}' and message: {}\n{}",
-                    soapMethod, se.result().faultMessage(), mapper.mapResponseFailure(responseAsBytes));
+                    soapMethod, se.result().faultMessage(), mapper.mapResponseFailure(serviceName, soapMethod, responseAsBytes));
             } else {
                 responseLog.info(marker, "SoapService received 'failure' for method '{}' and message: {}",
                     soapMethod, se.result().faultMessage());

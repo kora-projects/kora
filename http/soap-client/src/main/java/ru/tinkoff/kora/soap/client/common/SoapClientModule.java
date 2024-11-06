@@ -12,17 +12,17 @@ public interface SoapClientModule {
     default SoapClientLogger.SoapClientLoggerBodyMapper defaultSoapClientLoggerBodyMapper() {
         return new SoapClientLogger.SoapClientLoggerBodyMapper() {
             @Override
-            public String mapRequest(byte[] requestAsBytes) {
+            public String mapRequest(String serviceName, String soapMethod,byte[] requestAsBytes) {
                 return new String(requestAsBytes, StandardCharsets.UTF_8);
             }
 
             @Override
-            public String mapResponseSuccess(byte[] responseAsBytes) {
+            public String mapResponseSuccess(String serviceName, String soapMethod,byte[] responseAsBytes) {
                 return new String(responseAsBytes, StandardCharsets.UTF_8);
             }
 
             @Override
-            public String mapResponseFailure(byte[] responseAsBytes) {
+            public String mapResponseFailure(String serviceName, String soapMethod,byte[] responseAsBytes) {
                 return new String(responseAsBytes, StandardCharsets.UTF_8);
             }
         };
