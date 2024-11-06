@@ -150,7 +150,7 @@ public class JdbcTypesExtension implements KoraExtension {
             }
             this.messager.printMessage(
                 Diagnostic.Kind.WARNING,
-                "Type is not annotated with @JdbcEntity, but mapper %s is requested by graph. Generating one in graph building process will lead to another round of compiling which will slow down you build".formatted(mapperType),
+                "Type is not annotated with @EntityJdbc, but mapper %s is requested by graph. Generating one in graph building process will lead to another round of compiling which will slow down you build".formatted(mapperType),
                 entity.typeElement()
             );
             this.generator.generateRowMapper(entity);
@@ -170,7 +170,7 @@ public class JdbcTypesExtension implements KoraExtension {
             }
             this.messager.printMessage(
                 Diagnostic.Kind.WARNING,
-                "Type is not annotated with @JdbcEntity, but mapper %s is requested by graph. Generating one in graph building process will lead to another round of compiling which will slow down you build".formatted(mapperType),
+                "Type is not annotated with @EntityJdbc, but mapper %s is requested by graph. Generating one in graph building process will lead to another round of compiling which will slow down you build".formatted(mapperType),
                 entity.typeElement()
             );
             this.generator.generateListResultSetMapper(entity);
