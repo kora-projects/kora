@@ -30,7 +30,7 @@ public class JdbcEntityAnnotationProcessor extends AbstractKoraProcessor {
         for (var annotation : annotations) {
             for (var element : roundEnv.getElementsAnnotatedWith(annotation)) {
                 if (element.getKind() != ElementKind.RECORD && element.getKind() != ElementKind.CLASS) {
-                    this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "@JdbcEntity only works on records and java bean like classes");
+                    this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "@EntityJdbc only works on records and java bean like classes");
                     continue;
                 }
                 try {

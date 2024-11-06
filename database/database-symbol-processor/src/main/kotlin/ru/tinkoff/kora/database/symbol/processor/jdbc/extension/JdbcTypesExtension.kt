@@ -48,7 +48,7 @@ class JdbcTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val c
             }
         } else {
             return {
-                kspLogger.warn("Type is not annotated with @JdbcEntity, but mapper $mapperType is requested by graph. Generating one in graph building process will lead to another round of compiling which will slow down you build")
+                kspLogger.warn("Type is not annotated with @EntityJdbc, but mapper $mapperType is requested by graph. Generating one in graph building process will lead to another round of compiling which will slow down you build")
                 generator()
                 ExtensionResult.RequiresCompilingResult
             }
