@@ -1,12 +1,11 @@
 package ru.tinkoff.kora.soap.client.common.telemetry;
 
+import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 import ru.tinkoff.kora.soap.client.common.SoapResult;
 import ru.tinkoff.kora.soap.client.common.envelope.SoapEnvelope;
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetry.SoapTelemetryContext.SoapClientFailure;
-
-import java.nio.charset.StandardCharsets;
 
 public class Sl4fjSoapClientLogger implements SoapClientLogger {
 
@@ -27,7 +26,13 @@ public class Sl4fjSoapClientLogger implements SoapClientLogger {
     }
 
     @Override
-    public void logRequest(SoapEnvelope requestEnvelope, byte[] requestEnvelopeAsBytes) {
+    public boolean logResponseBody() {
+        return responseLog.isTraceEnabled();
+    }
+
+    @Override
+    public void logRequest(SoapEnvelope requestEnvelope,
+                           byte[] requestAsBytes) {
         var marker = StructuredArgument.marker("soapRequest", gen -> {
             gen.writeStartObject();
             gen.writeStringField("soapMethod", soapMethod);
@@ -35,16 +40,17 @@ public class Sl4fjSoapClientLogger implements SoapClientLogger {
             gen.writeEndObject();
         });
 
-        if (requestLog.isTraceEnabled()) {
+        if (requestLog.isTraceEnabled() && requestAsBytes != null) {
             requestLog.trace(marker, "SoapService requesting method: {}\n{}", soapMethod,
-                mapper.mapRequest(requestEnvelopeAsBytes));
+                mapper.mapRequest(requestAsBytes));
         } else {
             requestLog.info(marker, "SoapService requesting method: {}", soapMethod);
         }
     }
 
     @Override
-    public void logSuccess(SoapResult.Success result) {
+    public void logSuccess(SoapResult.Success result,
+                           @Nullable byte[] responseAsBytes) {
         var marker = StructuredArgument.marker("soapResponse", gen -> {
             gen.writeStartObject();
             gen.writeStringField("soapMethod", soapMethod);
@@ -53,16 +59,17 @@ public class Sl4fjSoapClientLogger implements SoapClientLogger {
             gen.writeEndObject();
         });
 
-        if (responseLog.isTraceEnabled()) {
+        if (responseLog.isTraceEnabled() && responseAsBytes != null) {
             responseLog.trace(marker, "SoapService received 'success' for method: {}\n{}", soapMethod,
-                mapper.mapResponseSuccess(result.bodyAsBytes()));
+                mapper.mapResponseSuccess(responseAsBytes));
         } else {
             responseLog.info(marker, "SoapService received 'success' for method: {}", soapMethod);
         }
     }
 
     @Override
-    public void logFailure(SoapClientFailure failure) {
+    public void logFailure(SoapClientFailure failure,
+                           @Nullable byte[] responseAsBytes) {
         var marker = StructuredArgument.marker("soapResponse", gen -> {
             gen.writeStartObject();
             gen.writeStringField("soapMethod", soapMethod);
@@ -82,9 +89,9 @@ public class Sl4fjSoapClientLogger implements SoapClientLogger {
         });
 
         if (failure instanceof SoapClientFailure.InternalServerError se) {
-            if (responseLog.isTraceEnabled()) {
+            if (responseLog.isTraceEnabled() && responseAsBytes != null) {
                 responseLog.trace(marker, "SoapService received 'failure' for method '{}' and message: {}\n{}",
-                    soapMethod, se.result().faultMessage(), mapper.mapResponseFailure(se.result().bodyAsBytes()));
+                    soapMethod, se.result().faultMessage(), mapper.mapResponseFailure(responseAsBytes));
             } else {
                 responseLog.info(marker, "SoapService received 'failure' for method '{}' and message: {}",
                     soapMethod, se.result().faultMessage());

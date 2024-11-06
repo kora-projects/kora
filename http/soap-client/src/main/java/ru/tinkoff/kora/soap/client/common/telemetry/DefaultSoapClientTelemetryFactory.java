@@ -11,13 +11,18 @@ public class DefaultSoapClientTelemetryFactory implements SoapClientTelemetryFac
     private static final SoapClientTelemetry.SoapTelemetryContext NOOP_CTX = new SoapClientTelemetry.SoapTelemetryContext() {
 
         @Override
-        public void prepared(SoapEnvelope requestEnvelope, byte[] requestEnvelopeAsBytes) {}
+        public boolean prepareResponseBody() {
+            return false;
+        }
 
         @Override
-        public void success(SoapResult.Success success) {}
+        public void prepared(SoapEnvelope requestEnvelope, byte[] requestAsBytes) {}
 
         @Override
-        public void failure(SoapClientFailure failure) {}
+        public void success(SoapResult.Success success, @Nullable byte[] responseAsBytes) {}
+
+        @Override
+        public void failure(SoapClientFailure failure, @Nullable byte[] responseAsBytes) {}
     };
 
     @Nullable
@@ -54,14 +59,19 @@ public class DefaultSoapClientTelemetryFactory implements SoapClientTelemetryFac
             return new SoapClientTelemetry.SoapTelemetryContext() {
 
                 @Override
-                public void prepared(SoapEnvelope requestEnvelope, byte[] requestEnvelopeAsBytes) {
+                public boolean prepareResponseBody() {
+                    return logger != null && logger.logResponseBody();
+                }
+
+                @Override
+                public void prepared(SoapEnvelope requestEnvelope, byte[] requestAsBytes) {
                     if (logger != null) {
-                        logger.logRequest(requestEnvelope, requestEnvelopeAsBytes);
+                        logger.logRequest(requestEnvelope, requestAsBytes);
                     }
                 }
 
                 @Override
-                public void success(SoapResult.Success success) {
+                public void success(SoapResult.Success success, @Nullable byte[] responseAsBytes) {
                     var processingTime = System.nanoTime() - start;
                     if (metrics != null) {
                         metrics.recordSuccess(success, processingTime);
@@ -70,12 +80,12 @@ public class DefaultSoapClientTelemetryFactory implements SoapClientTelemetryFac
                         span.success(success);
                     }
                     if (logger != null) {
-                        logger.logSuccess(success);
+                        logger.logSuccess(success, responseAsBytes);
                     }
                 }
 
                 @Override
-                public void failure(SoapClientFailure failure) {
+                public void failure(SoapClientFailure failure, @Nullable byte[] responseAsBytes) {
                     var processingTime = System.nanoTime() - start;
                     if (metrics != null) {
                         metrics.recordFailure(failure, processingTime);
@@ -84,7 +94,7 @@ public class DefaultSoapClientTelemetryFactory implements SoapClientTelemetryFac
                         span.failure(failure);
                     }
                     if (logger != null) {
-                        logger.logFailure(failure);
+                        logger.logFailure(failure, responseAsBytes);
                     }
                 }
             };

@@ -1,15 +1,21 @@
 package ru.tinkoff.kora.soap.client.common.telemetry;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.soap.client.common.SoapResult;
 import ru.tinkoff.kora.soap.client.common.envelope.SoapEnvelope;
 
 public interface SoapClientLogger {
 
-    void logRequest(SoapEnvelope requestEnvelope, byte[] requestEnvelopeAsBytes);
+    boolean logResponseBody();
 
-    void logSuccess(SoapResult.Success result);
+    void logRequest(SoapEnvelope requestEnvelope,
+                    byte[] requestAsBytes);
 
-    void logFailure(SoapClientTelemetry.SoapTelemetryContext.SoapClientFailure failure);
+    void logSuccess(SoapResult.Success result,
+                    @Nullable byte[] responseAsBytes);
+
+    void logFailure(SoapClientTelemetry.SoapTelemetryContext.SoapClientFailure failure,
+                    @Nullable byte[] responseAsBytes);
 
     interface SoapClientLoggerBodyMapper {
 
