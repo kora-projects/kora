@@ -10,6 +10,7 @@ import org.reactivestreams.FlowAdapters;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import ru.tinkoff.kora.annotation.processor.common.TestUtils.ProcessorOptions;
 import ru.tinkoff.kora.annotation.processor.common.compile.ByteArrayJavaFileObject;
 import ru.tinkoff.kora.annotation.processor.common.compile.KoraCompileTestJavaFileManager;
 import ru.tinkoff.kora.application.graph.*;
@@ -36,17 +37,6 @@ import java.util.stream.IntStream;
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public abstract class AbstractAnnotationProcessorTest {
-
-    public enum ProcessorOptions {
-
-        SUBMODULE_GENERATION("-Akora.app.submodule.enabled=true");
-
-        public final String value;
-
-        ProcessorOptions(String value) {
-            this.value = value;
-        }
-    }
 
     protected TestInfo testInfo;
     protected CompileResult compileResult;
@@ -132,7 +122,7 @@ public abstract class AbstractAnnotationProcessorTest {
         try (var delegate = javaCompiler.getStandardFileManager(diagnostic::add, Locale.US, StandardCharsets.UTF_8);
              var manager = new KoraCompileTestJavaFileManager(this.testInfo, delegate, sourceList.toArray(ByteArrayJavaFileObject[]::new))) {
 
-            var defaultOptions = new LinkedHashSet<>(List.of("-parameters", "-g", "--enable-preview", "--release", "17", "-XprintRounds"));
+            var defaultOptions = new LinkedHashSet<>(List.of("--release", "17", "-XprintRounds"));
             defaultOptions.addAll(processorOptions.stream().map(o -> o.value).toList());
 
             var task = javaCompiler.getTask(

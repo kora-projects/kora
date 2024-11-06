@@ -25,6 +25,17 @@ public class TestUtils {
 
     public static List<String> classpath;
 
+    public enum ProcessorOptions {
+
+        SUBMODULE_GENERATION("-Akora.app.submodule.enabled=true");
+
+        public final String value;
+
+        ProcessorOptions(String value) {
+            this.value = value;
+        }
+    }
+
     static {
         var classGraph = new ClassGraph()
             .enableSystemJarsAndModules()
