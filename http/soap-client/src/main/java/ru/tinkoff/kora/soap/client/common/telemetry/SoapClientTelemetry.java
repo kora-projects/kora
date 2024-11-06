@@ -10,9 +10,21 @@ public interface SoapClientTelemetry {
 
     interface SoapTelemetryContext {
 
-        boolean prepareResponseBody();
+        boolean logResponseBody();
 
         void prepared(SoapEnvelope requestEnvelope, byte[] requestAsBytes);
+
+        void success(SoapResult.Success success, @Nullable byte[] responseAsBytes);
+
+        void failure(SoapClientFailure failure, @Nullable byte[] responseAsBytes);
+
+        sealed interface SoapClientFailure {
+            record InvalidHttpCode(int code) implements SoapClientFailure {}
+
+            record InternalServerError(SoapResult.Failure result) implements SoapClientFailure {}
+
+            record ProcessException(Throwable throwable) implements SoapClientFailure {}
+        }
 
         /**
          * @see #success(SoapResult.Success, byte[])
@@ -28,18 +40,6 @@ public interface SoapClientTelemetry {
         @Deprecated
         default void failure(SoapClientFailure failure) {
             // do nothing
-        }
-
-        void success(SoapResult.Success success, @Nullable byte[] responseAsBytes);
-
-        void failure(SoapClientFailure failure, @Nullable byte[] responseAsBytes);
-
-        sealed interface SoapClientFailure {
-            record InvalidHttpCode(int code) implements SoapClientFailure {}
-
-            record InternalServerError(SoapResult.Failure result) implements SoapClientFailure {}
-
-            record ProcessException(Throwable throwable) implements SoapClientFailure {}
         }
     }
 }

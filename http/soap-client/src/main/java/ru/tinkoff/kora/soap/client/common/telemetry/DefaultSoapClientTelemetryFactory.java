@@ -11,7 +11,7 @@ public class DefaultSoapClientTelemetryFactory implements SoapClientTelemetryFac
     private static final SoapClientTelemetry.SoapTelemetryContext NOOP_CTX = new SoapClientTelemetry.SoapTelemetryContext() {
 
         @Override
-        public boolean prepareResponseBody() {
+        public boolean logResponseBody() {
             return false;
         }
 
@@ -59,7 +59,7 @@ public class DefaultSoapClientTelemetryFactory implements SoapClientTelemetryFac
             return new SoapClientTelemetry.SoapTelemetryContext() {
 
                 @Override
-                public boolean prepareResponseBody() {
+                public boolean logResponseBody() {
                     return logger != null && logger.logResponseBody();
                 }
 
