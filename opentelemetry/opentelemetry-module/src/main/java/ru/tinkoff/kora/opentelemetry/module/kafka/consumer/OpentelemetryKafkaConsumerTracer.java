@@ -100,6 +100,7 @@ public final class OpentelemetryKafkaConsumerTracer implements KafkaConsumerTrac
             for (var span : this.spans.values()) {
                 if(ex != null) {
                     span.setStatus(StatusCode.ERROR);
+                    span.recordException(ex);
                 }
                 span.end();
             }
@@ -141,6 +142,7 @@ public final class OpentelemetryKafkaConsumerTracer implements KafkaConsumerTrac
         public void close(@Nullable Throwable ex) {
             if(ex != null) {
                 this.recordSpan.setStatus(StatusCode.ERROR);
+                this.recordSpan.recordException(ex);
             }
             this.recordSpan.end();
             OpentelemetryContext.set(Context.current(), this.rootCtx);
