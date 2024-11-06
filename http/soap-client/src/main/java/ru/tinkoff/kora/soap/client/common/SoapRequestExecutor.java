@@ -47,6 +47,7 @@ public class SoapRequestExecutor {
     public SoapResult call(SoapEnvelope requestEnvelope) throws SoapException {
         var telemetry = this.telemetry.get(requestEnvelope);
         var requestXml = this.xmlTools.marshal(requestEnvelope);
+        telemetry.prepared(requestEnvelope, requestXml);
         var httpClientRequest = HttpClientRequest.post(this.url)
             .body(HttpBody.of("text/xml", requestXml))
             .requestTimeout((int) timeout.toMillis());
@@ -62,16 +63,14 @@ public class SoapRequestExecutor {
                  var is = body.asInputStream()) {
                 if (httpClientResponse.code() == 200) {
                     var contentType = httpClientResponse.headers().getFirst("content-type");
+                    final SoapResult.Success result;
                     if (contentType != null && contentType.toLowerCase().startsWith("multipart")) {
-                        var result = readMultipart(contentType, is);
-                        telemetry.success(result);
-                        return result;
+                        result = readMultipart(contentType, is);
                     } else {
-                        var responseEnvelope = this.xmlTools.unmarshal(is);
-                        var result = new SoapResult.Success(responseEnvelope.getBody().getAny().get(0));
-                        telemetry.success(result);
-                        return result;
+                        result = readSuccess(is);
                     }
+                    telemetry.success(result);
+                    return result;
                 }
                 var result = readFailure(is);
                 telemetry.failure(new InternalServerError(result));
@@ -101,6 +100,7 @@ public class SoapRequestExecutor {
     public CompletionStage<SoapResult> callAsync(SoapEnvelope requestEnvelope) {
         var telemetry = this.telemetry.get(requestEnvelope);
         var requestXml = this.xmlTools.marshal(requestEnvelope);
+        telemetry.prepared(requestEnvelope, requestXml);
         var httpClientRequest = HttpClientRequest.post(this.url)
             .body(HttpBody.of("text/xml", requestXml));
         if (this.soapAction != null) {
@@ -129,16 +129,15 @@ public class SoapRequestExecutor {
                         try {
                             if (httpClientResponse.code() == 200) {
                                 var contentType = httpClientResponse.headers().getFirst("content-type");
+                                final SoapResult.Success result;
                                 if (contentType != null && contentType.toLowerCase().startsWith("multipart")) {
-                                    var result = readMultipart(contentType, new ByteArrayInputStream(body));
-                                    telemetry.success(result);
-                                    return result;
+                                    result = readMultipart(contentType, new ByteArrayInputStream(body));
                                 } else {
                                     var responseEnvelope = this.xmlTools.unmarshal(new ByteArrayInputStream(body));
-                                    var result = new SoapResult.Success(responseEnvelope.getBody().getAny().get(0));
-                                    telemetry.success(result);
-                                    return result;
+                                    result = new SoapResult.Success(responseEnvelope.getBody().getAny().get(0), body);
                                 }
+                                telemetry.success(result);
+                                return result;
                             }
 
                             var result = readFailure(new ByteArrayInputStream(body));
@@ -155,26 +154,38 @@ public class SoapRequestExecutor {
     private SoapException parseInvalidHttpCodeResponse(HttpClientResponse httpClientResponse) {
         try (var body = httpClientResponse.body();
              var is = body.asInputStream()) {
-            var responseBody = is.readAllBytes();
-            return new InvalidHttpResponseSoapException(httpClientResponse.code(), responseBody);
+            var bodyAsBytes = is.readAllBytes();
+            return new InvalidHttpResponseSoapException(httpClientResponse.code(), bodyAsBytes);
         } catch (IOException e) {
             return new SoapException(e);
         }
     }
 
+    private SoapResult.Success readSuccess(InputStream body) throws IOException {
+        var bodyAsBytes = body.readAllBytes();
+        try (var bi = new ByteArrayInputStream(bodyAsBytes)) {
+            var responseEnvelope = this.xmlTools.unmarshal(bi);
+            return new SoapResult.Success(responseEnvelope.getBody().getAny().get(0), bodyAsBytes);
+        }
+    }
+
     private SoapResult.Success readMultipart(String contentType, InputStream body) throws IOException {
         var multipartMeta = MultipartParser.parseMeta(contentType);
-        var parts = MultipartParser.parse(body.readAllBytes(), multipartMeta.boundary());
+        var bodyAsBytes = body.readAllBytes();
+        var parts = MultipartParser.parse(bodyAsBytes, multipartMeta.boundary());
         var xmlPartId = multipartMeta.start();
         var responseEnvelope = (SoapEnvelope) this.xmlTools.unmarshal(parts, xmlPartId);
         var responseBody = responseEnvelope.getBody().getAny().get(0);
-        return new SoapResult.Success(responseBody);
+        return new SoapResult.Success(responseBody, bodyAsBytes);
     }
 
     private SoapResult.Failure readFailure(InputStream body) throws IOException {
-        var responseEnvelope = this.xmlTools.unmarshal(body);
-        var fault = (SoapFault) responseEnvelope.getBody().getAny().get(0);
-        var faultMessage = fault.getFaultcode().toString() + " " + fault.getFaultstring();
-        return new SoapResult.Failure(fault, faultMessage);
+        var bodyAsBytes = body.readAllBytes();
+        try (var bi = new ByteArrayInputStream(bodyAsBytes)) {
+            var responseEnvelope = this.xmlTools.unmarshal(bi);
+            var fault = (SoapFault) responseEnvelope.getBody().getAny().get(0);
+            var faultMessage = fault.getFaultcode().toString() + " " + fault.getFaultstring();
+            return new SoapResult.Failure(fault, faultMessage, bodyAsBytes);
+        }
     }
 }

@@ -6,26 +6,28 @@ import ru.tinkoff.kora.soap.client.common.SoapResult;
 import ru.tinkoff.kora.soap.client.common.envelope.SoapEnvelope;
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetry.SoapTelemetryContext.SoapClientFailure;
 
+import java.nio.charset.StandardCharsets;
+
 public class Sl4fjSoapClientLogger implements SoapClientLogger {
 
     private final String serviceName;
     private final String soapMethod;
-    private final String url;
 
+    private final SoapClientLoggerBodyMapper mapper;
     private final Logger requestLog;
     private final Logger responseLog;
 
-    public Sl4fjSoapClientLogger(Logger requestLog, Logger responseLog, String serviceName, String soapMethod, String url) {
+    public Sl4fjSoapClientLogger(SoapClientLoggerBodyMapper mapper, Logger requestLog, Logger responseLog, String serviceName, String soapMethod) {
+        this.mapper = mapper;
         this.requestLog = requestLog;
         this.responseLog = responseLog;
 
         this.serviceName = serviceName;
         this.soapMethod = soapMethod;
-        this.url = url;
     }
 
     @Override
-    public void logRequest(SoapEnvelope requestEnvelope) {
+    public void logRequest(SoapEnvelope requestEnvelope, byte[] requestEnvelopeAsBytes) {
         var marker = StructuredArgument.marker("soapRequest", gen -> {
             gen.writeStartObject();
             gen.writeStringField("soapMethod", soapMethod);
@@ -34,16 +36,8 @@ public class Sl4fjSoapClientLogger implements SoapClientLogger {
         });
 
         if (requestLog.isTraceEnabled()) {
-            if (!requestEnvelope.getHeader().getAny().isEmpty()) {
-                requestLog.trace(marker, "SoapService requesting method: {}\n{}", soapMethod,
-                    requestEnvelope.getBody().getAny());
-            } else {
-                requestLog.trace(marker, "SoapService requesting method: {}\n{}\n{}", soapMethod,
-                    requestEnvelope.getHeader().getAny(),
-                    requestEnvelope.getBody().getAny());
-            }
-        } else if (requestLog.isDebugEnabled() && !requestEnvelope.getHeader().getAny().isEmpty()) {
-            requestLog.debug(marker, "SoapService requesting method: {}\n{}", soapMethod, requestEnvelope.getHeader().getAny());
+            requestLog.trace(marker, "SoapService requesting method: {}\n{}", soapMethod,
+                mapper.mapRequest(requestEnvelopeAsBytes));
         } else {
             requestLog.info(marker, "SoapService requesting method: {}", soapMethod);
         }
@@ -60,7 +54,8 @@ public class Sl4fjSoapClientLogger implements SoapClientLogger {
         });
 
         if (responseLog.isTraceEnabled()) {
-            responseLog.trace(marker, "SoapService received 'success' for method: {}\n{}", soapMethod, result.body());
+            responseLog.trace(marker, "SoapService received 'success' for method: {}\n{}", soapMethod,
+                mapper.mapResponseSuccess(result.bodyAsBytes()));
         } else {
             responseLog.info(marker, "SoapService received 'success' for method: {}", soapMethod);
         }
@@ -87,13 +82,20 @@ public class Sl4fjSoapClientLogger implements SoapClientLogger {
         });
 
         if (failure instanceof SoapClientFailure.InternalServerError se) {
-            responseLog.info(marker, "SoapService received 'failure' for method '{}' and message: {}",
-                soapMethod, se.result().faultMessage());
+            if (responseLog.isTraceEnabled()) {
+                responseLog.trace(marker, "SoapService received 'failure' for method '{}' and message: {}\n{}",
+                    soapMethod, se.result().faultMessage(), mapper.mapResponseFailure(se.result().bodyAsBytes()));
+            } else {
+                responseLog.info(marker, "SoapService received 'failure' for method '{}' and message: {}",
+                    soapMethod, se.result().faultMessage());
+            }
         } else if (failure instanceof SoapClientFailure.ProcessException pe) {
             if (responseLog.isTraceEnabled()) {
-                responseLog.info(marker, "SoapService received 'failure' for method '{}' and cause:", soapMethod, pe.throwable());
+                responseLog.trace(marker, "SoapService received 'failure' for method '{}' and cause:",
+                    soapMethod, pe.throwable());
             } else {
-                responseLog.info(marker, "SoapService received 'failure' for method '{}' and cause: {}", soapMethod, pe.throwable().getMessage());
+                responseLog.info(marker, "SoapService received 'failure' for method '{}' and cause: {}",
+                    soapMethod, pe.throwable().getMessage());
             }
         } else {
             responseLog.info(marker, "SoapService received 'failure' for method: {}", soapMethod);

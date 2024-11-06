@@ -3,20 +3,21 @@ package ru.tinkoff.kora.soap.client.common.telemetry;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.soap.client.common.SoapResult;
+import ru.tinkoff.kora.soap.client.common.envelope.SoapEnvelope;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 public class DefaultSoapClientTelemetryFactory implements SoapClientTelemetryFactory {
 
     private static final SoapClientTelemetry.SoapTelemetryContext NOOP_CTX = new SoapClientTelemetry.SoapTelemetryContext() {
-        @Override
-        public void success(SoapResult.Success success) {
-
-        }
 
         @Override
-        public void failure(SoapClientFailure failure) {
+        public void prepared(SoapEnvelope requestEnvelope, byte[] requestEnvelopeAsBytes) {}
 
-        }
+        @Override
+        public void success(SoapResult.Success success) {}
+
+        @Override
+        public void failure(SoapClientFailure failure) {}
     };
 
     @Nullable
@@ -45,15 +46,19 @@ public class DefaultSoapClientTelemetryFactory implements SoapClientTelemetryFac
 
         return requestEnvelope -> {
             var start = System.nanoTime();
-            if(logger != null) {
-                logger.logRequest(requestEnvelope);
-            }
 
             var span = (tracing == null)
                 ? null
                 : tracing.createSpan(Context.current(), requestEnvelope);
 
             return new SoapClientTelemetry.SoapTelemetryContext() {
+
+                @Override
+                public void prepared(SoapEnvelope requestEnvelope, byte[] requestEnvelopeAsBytes) {
+                    if (logger != null) {
+                        logger.logRequest(requestEnvelope, requestEnvelopeAsBytes);
+                    }
+                }
 
                 @Override
                 public void success(SoapResult.Success success) {

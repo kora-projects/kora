@@ -9,6 +9,8 @@ public interface SoapClientTelemetry {
 
     interface SoapTelemetryContext {
 
+        void prepared(SoapEnvelope requestEnvelope, byte[] requestEnvelopeAsBytes);
+
         void success(SoapResult.Success success);
 
         void failure(SoapClientFailure failure);
