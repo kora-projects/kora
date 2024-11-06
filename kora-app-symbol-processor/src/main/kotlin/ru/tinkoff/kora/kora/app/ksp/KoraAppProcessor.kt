@@ -128,7 +128,7 @@ class KoraAppProcessor(
         for (symbol in koraAppElements) {
             symbol.visitClass { declaration ->
                 if (declaration.classKind == ClassKind.INTERFACE) {
-                    log.info("@KoraApp found: {}", declaration.toClassName().canonicalName)
+                    kspLogger.info("@KoraApp found: ${declaration.qualifiedName!!.asString()}", declaration)
                     val key = declaration.qualifiedName!!.asString()
                     processedDeclarations.computeIfAbsent(key) {
                         declaration to parseNone(declaration)
@@ -271,7 +271,16 @@ class KoraAppProcessor(
             .mapNotNull {
                 val ksName = resolver.getKSNameFromString(it.qualifiedName!!.asString() + "SubmoduleImpl")
                 if (it.findAnnotation(CommonClassNames.koraApp) != null) {
-                    resolver.getClassDeclarationByName(ksName)
+                    val classDeclarationByName = resolver.getClassDeclarationByName(ksName)
+                    if (classDeclarationByName == null) {
+                        kspLogger.warn(
+                            """
+                                Expected @KoraApp as SubModule, but Submodule implementation not found for: ${it.toClassName().canonicalName}
+                                Check that @KoraApp was generated with KSP argument: kora.app.submodule.enabled=true
+                                """.trimIndent(), it
+                        )
+                    }
+                    classDeclarationByName
                 } else {
                     resolver.getClassDeclarationByName(ksName) ?: throw ProcessingErrorException("Declaration of ${ksName.asString()} wasn't found", it)
                 }
@@ -283,13 +292,21 @@ class KoraAppProcessor(
         resolver.getSymbolsWithAnnotation(CommonClassNames.koraSubmodule.canonicalName)
             .filterIsInstance<KSClassDeclaration>()
             .filter { it.classKind == ClassKind.INTERFACE }
-            .forEach { appParts.add(it) }
+            .forEach {
+                if (appParts.none { a -> a.toClassName() == it.toClassName() }) {
+                    appParts.add(it)
+                }
+            }
 
         if (isKoraAppSubmoduleEnabled) {
             resolver.getSymbolsWithAnnotation(CommonClassNames.koraApp.canonicalName)
                 .filterIsInstance<KSClassDeclaration>()
                 .filter { it.classKind == ClassKind.INTERFACE }
-                .forEach { appParts.add(it) }
+                .forEach {
+                    if (appParts.none { a -> a.toClassName() == it.toClassName() }) {
+                        appParts.add(it)
+                    }
+                }
         }
     }
 
@@ -298,7 +315,7 @@ class KoraAppProcessor(
         for (moduleSymbol in moduleOfSymbols) {
             moduleSymbol.visitClass { moduleDeclaration ->
                 if (moduleDeclaration.classKind == ClassKind.INTERFACE) {
-                    log.info("Module found: {}", moduleDeclaration.toClassName().canonicalName)
+                    kspLogger.info("Module found: ${moduleDeclaration.qualifiedName!!.asString()}", moduleDeclaration)
                     annotatedModules.add(moduleDeclaration)
                 }
             }

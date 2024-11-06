@@ -11,6 +11,8 @@ dependencies {
     api libs.ksp.api
     api libs.kotlin.reflect
 
+    implementation libs.slf4j.api
+
     testFixturesApi project(':aop:aop-symbol-processor')
     testFixturesApi libs.kotlin.reflect
 

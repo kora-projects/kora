@@ -2,6 +2,7 @@ package ru.tinkoff.kora.annotation.processor.common;
 
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ModuleRef;
+import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest.ProcessorOptions;
 import ru.tinkoff.kora.application.graph.TypeRef;
 
 import javax.annotation.processing.Processor;
@@ -23,17 +24,6 @@ import java.util.stream.Stream;
 public class TestUtils {
 
     public static List<String> classpath;
-
-    public enum ProcessorOptions {
-
-        SUBMODULE_GENERATION("-Akora.app.submodule.enabled=true");
-
-        private final String value;
-
-        ProcessorOptions(String value) {
-            this.value = value;
-        }
-    }
 
     static {
         var classGraph = new ClassGraph()

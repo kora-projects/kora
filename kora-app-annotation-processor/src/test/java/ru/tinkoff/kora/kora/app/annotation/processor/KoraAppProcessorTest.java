@@ -6,9 +6,9 @@ import org.assertj.core.api.Assertions;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest.ProcessorOptions;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils.CompilationErrorException;
-import ru.tinkoff.kora.annotation.processor.common.TestUtils.ProcessorOptions;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Node;
 import ru.tinkoff.kora.application.graph.internal.NodeImpl;
@@ -408,6 +408,25 @@ class KoraAppProcessorTest {
         assertThat(appClazz).isNotNull();
         var appClazzSubmodule = classLoader.loadClass(AppWithAppPartAppWithSubmodule.class.getName() + "SubmoduleImpl");
         assertThat(appClazzSubmodule).isNotNull();
+    }
+
+    @Test
+    void appAndKoraApp() throws Exception {
+        var classLoader = TestUtils.annotationProcessWithOptions(App.class, List.of(ProcessorOptions.SUBMODULE_GENERATION), new KoraAppProcessor());
+        var clazz = classLoader.loadClass(App.class.getName() + "SubmoduleImpl");
+        Assertions.assertThat(clazz).isNotNull()
+            .isInterface()
+            .hasDeclaredMethods("_component0");
+
+        var targetFile1 = "src/test/java/" + AppWithApp.class.getName().replace('.', '/') + ".java";
+        var targetFile2 = "in-test-generated/classes/" + clazz.getCanonicalName().replace('.', '/') + ".class";
+        classLoader = TestUtils.annotationProcessFiles(List.of(targetFile1, targetFile2), List.of(), false, p -> true, List.of(new KoraAppProcessor()));
+        var appClazz = classLoader.loadClass(AppWithApp.class.getName() + "Graph");
+        assertThat(appClazz).isNotNull();
+
+        var constructors = (Constructor<? extends Supplier<? extends ApplicationGraphDraw>>[]) appClazz.getConstructors();
+        ApplicationGraphDraw graphDraw = constructors[0].newInstance().get();
+        Assertions.assertThat(graphDraw.getNodes().size()).isEqualTo(4);
     }
 
     @Test
