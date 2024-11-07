@@ -385,7 +385,7 @@ class KoraAppProcessor(
     private fun generateImpl(declaration: KSClassDeclaration, modules: List<KSClassDeclaration>): FileSpec {
         val containingFile = declaration.containingFile!!
         val packageName = containingFile.packageName.asString()
-        val moduleName = "${declaration.toClassName().simpleName}Impl"
+        val moduleName = "\$${declaration.toClassName().simpleName}Impl"
 
         val fileSpec = FileSpec.builder(
             packageName = packageName,
@@ -512,7 +512,7 @@ class KoraAppProcessor(
             fileName = graphName
         )
 
-        val implClass = ClassName(packageName, "${declaration.simpleName.asString()}Impl")
+        val implClass = ClassName(packageName, "\$${declaration.simpleName.asString()}Impl")
         val supplierSuperInterface = supplier.toClassName().parameterizedBy(CommonClassNames.applicationGraphDraw)
         val classBuilder = TypeSpec.classBuilder(graphName)
             .addOriginatingKSFile(containingFile)
