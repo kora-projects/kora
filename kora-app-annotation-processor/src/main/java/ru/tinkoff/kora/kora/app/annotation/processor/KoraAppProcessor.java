@@ -384,10 +384,9 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 
     private JavaFile generateApplicationGraph(Element classElement, List<TypeElement> allModules, ComponentInterceptors interceptors, List<ResolvedComponent> components) {
         var packageElement = (PackageElement) classElement.getEnclosingElement();
-        var implClass = ClassName.get(packageElement.getQualifiedName().toString(), classElement.getSimpleName().toString() + "Impl");
+        var implClass = ClassName.get(packageElement.getQualifiedName().toString(), "$" + classElement.getSimpleName().toString() + "Impl");
         var graphName = classElement.getSimpleName().toString() + "Graph";
         var graphTypeName = ClassName.get(packageElement.getQualifiedName().toString(), graphName);
-
         var classBuilder = TypeSpec.classBuilder(graphName)
             .addAnnotation(AnnotationUtils.generated(KoraAppProcessor.class))
             .addOriginatingElement(classElement)
@@ -624,8 +623,8 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 
     private JavaFile generateImpl(TypeElement classElement, List<TypeElement> modules) throws IOException {
         var typeMirror = classElement.asType();
-        var className = classElement.getSimpleName().toString() + "Impl";
         var packageElement = (PackageElement) classElement.getEnclosingElement();
+        var className = "$" + classElement.getSimpleName().toString() + "Impl";
         var classBuilder = TypeSpec.classBuilder(className)
             .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", CodeBlock.of("$S", KoraAppProcessor.class.getCanonicalName())).build())
             .addOriginatingElement(classElement)
