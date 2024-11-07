@@ -6,6 +6,7 @@ import ru.tinkoff.kora.common.KoraSubmodule;
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclaration;
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ModuleDeclaration;
 
+import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
@@ -14,6 +15,7 @@ import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
+import javax.tools.Diagnostic;
 import java.util.*;
 
 public class KoraAppUtils {
@@ -102,7 +104,7 @@ public class KoraAppUtils {
         }
     }
 
-    public static List<TypeElement> findKoraSubmoduleModules(Elements elements, Set<TypeElement> interfaces, TypeElement koraAppElement) {
+    public static List<TypeElement> findKoraSubmoduleModules(Elements elements, Set<TypeElement> interfaces, TypeElement koraAppElement, ProcessingEnvironment processingEnv) {
         var result = new ArrayList<TypeElement>();
         for (var typeElement : interfaces) {
             if (typeElement.getAnnotation(KoraSubmodule.class) != null) {
@@ -118,9 +120,11 @@ public class KoraAppUtils {
             if (typeElement.getAnnotation(KoraApp.class) != null && !typeElement.equals(koraAppElement)) {
                 var name = typeElement.getQualifiedName().toString() + "SubmoduleImpl";
                 var module = elements.getTypeElement(name);
-                // ignore if null, KoraAppSubmodule prob was off to generate
                 if (module != null) {
                     result.add(module);
+                } else {
+                    processingEnv.getMessager().printMessage(Diagnostic.Kind.MANDATORY_WARNING, "Expected @KoraApp as SubModule, but Submodule implementation not found for: " + typeElement
+                                                                                                + "\nCheck that @KoraApp was generated with compile annotation processor option: -Akora.app.submodule.enabled=true", typeElement);
                 }
             }
         }

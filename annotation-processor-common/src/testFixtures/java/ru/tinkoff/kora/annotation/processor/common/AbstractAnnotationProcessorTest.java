@@ -10,6 +10,7 @@ import org.reactivestreams.FlowAdapters;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import ru.tinkoff.kora.annotation.processor.common.TestUtils.ProcessorOptions;
 import ru.tinkoff.kora.annotation.processor.common.compile.ByteArrayJavaFileObject;
 import ru.tinkoff.kora.annotation.processor.common.compile.KoraCompileTestJavaFileManager;
 import ru.tinkoff.kora.application.graph.*;
@@ -36,6 +37,7 @@ import java.util.stream.IntStream;
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public abstract class AbstractAnnotationProcessorTest {
+
     protected TestInfo testInfo;
     protected CompileResult compileResult;
 
@@ -77,6 +79,10 @@ public abstract class AbstractAnnotationProcessorTest {
     }
 
     protected CompileResult compile(List<Processor> processors, @Language("java") String... sources) {
+        return compile(processors, Collections.emptyList(), sources);
+    }
+
+    protected CompileResult compile(List<Processor> processors, List<ProcessorOptions> processorOptions, @Language("java") String... sources) {
         var javaCompiler = ToolProvider.getSystemJavaCompiler();
         var w = new StringWriter();
         var diagnostic = new ArrayList<Diagnostic<? extends JavaFileObject>>();
@@ -114,12 +120,16 @@ public abstract class AbstractAnnotationProcessorTest {
             })
             .toList();
         try (var delegate = javaCompiler.getStandardFileManager(diagnostic::add, Locale.US, StandardCharsets.UTF_8);
-             var manager = new KoraCompileTestJavaFileManager(this.testInfo, delegate, sourceList.toArray(ByteArrayJavaFileObject[]::new));) {
+             var manager = new KoraCompileTestJavaFileManager(this.testInfo, delegate, sourceList.toArray(ByteArrayJavaFileObject[]::new))) {
+
+            var defaultOptions = new LinkedHashSet<>(List.of("--release", "17", "-XprintRounds"));
+            defaultOptions.addAll(processorOptions.stream().map(o -> o.value).toList());
+
             var task = javaCompiler.getTask(
                 w,
                 manager,
                 diagnostic::add,
-                List.of("--release", "17"),
+                defaultOptions,
                 null,
                 sourceList
             );

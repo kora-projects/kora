@@ -28,7 +28,7 @@ public class TestUtils {
 
         SUBMODULE_GENERATION("-Akora.app.submodule.enabled=true");
 
-        private final String value;
+        public final String value;
 
         ProcessorOptions(String value) {
             this.value = value;

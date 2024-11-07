@@ -411,6 +411,25 @@ class KoraAppProcessorTest {
     }
 
     @Test
+    void appAndKoraApp() throws Exception {
+        var classLoader = TestUtils.annotationProcessWithOptions(App.class, List.of(ProcessorOptions.SUBMODULE_GENERATION), new KoraAppProcessor());
+        var clazz = classLoader.loadClass(App.class.getName() + "SubmoduleImpl");
+        Assertions.assertThat(clazz).isNotNull()
+            .isInterface()
+            .hasDeclaredMethods("_component0");
+
+        var targetFile1 = "src/test/java/" + AppWithApp.class.getName().replace('.', '/') + ".java";
+        var targetFile2 = "in-test-generated/classes/" + clazz.getCanonicalName().replace('.', '/') + ".class";
+        classLoader = TestUtils.annotationProcessFiles(List.of(targetFile1, targetFile2), List.of(), false, p -> true, List.of(new KoraAppProcessor()));
+        var appClazz = classLoader.loadClass(AppWithApp.class.getName() + "Graph");
+        assertThat(appClazz).isNotNull();
+
+        var constructors = (Constructor<? extends Supplier<? extends ApplicationGraphDraw>>[]) appClazz.getConstructors();
+        ApplicationGraphDraw graphDraw = constructors[0].newInstance().get();
+        Assertions.assertThat(graphDraw.getNodes().size()).isEqualTo(4);
+    }
+
+    @Test
     void appWithDefaultComponent() throws Throwable {
         var graphDraw = testClass(AppWithDefaultComponent.class);
         Assertions.assertThat(graphDraw.getNodes()).hasSize(3);
