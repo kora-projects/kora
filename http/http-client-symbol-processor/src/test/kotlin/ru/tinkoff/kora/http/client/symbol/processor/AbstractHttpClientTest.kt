@@ -23,6 +23,7 @@ import ru.tinkoff.kora.http.common.body.HttpBody
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_MetricsConfig_ConfigValueExtractor`
 import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_TracingConfig_ConfigValueExtractor`
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig
 import java.nio.ByteBuffer
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Flow
@@ -83,20 +84,20 @@ abstract class AbstractHttpClientTest : AbstractSymbolProcessorTest() {
             throw compileResult.compilationException()
         }
 
-        val clientClass = compileResult.loadClass("\$TestClient_ClientImpl");
-        val durationCVE = DurationConfigValueExtractor();
+        val clientClass = compileResult.loadClass("\$TestClient_ClientImpl")
+        val durationCVE = DurationConfigValueExtractor()
         val telemetryCVE = `$HttpClientTelemetryConfig_ConfigValueExtractor`(
-            `$HttpClientLoggerConfig_ConfigValueExtractor`(SetConfigValueExtractor<String>(StringConfigValueExtractor()), BooleanConfigValueExtractor()),
+            `$HttpClientLoggerConfig_ConfigValueExtractor`(SetConfigValueExtractor(StringConfigValueExtractor()), BooleanConfigValueExtractor()),
             `$TelemetryConfig_TracingConfig_ConfigValueExtractor`(BooleanConfigValueExtractor()),
             `$TelemetryConfig_MetricsConfig_ConfigValueExtractor`(BooleanConfigValueExtractor(), DoubleArrayConfigValueExtractor { it.asNumber()!!.toDouble() })
-        );
-        val configCVE = `$HttpClientOperationConfig_ConfigValueExtractor`(durationCVE, telemetryCVE);
+        ) as ConfigValueExtractor<TelemetryConfig>
+        val configCVE = `$HttpClientOperationConfig_ConfigValueExtractor`(durationCVE, telemetryCVE)
 
 
-        val configValueExtractor = new("\$\$TestClient_Config_ConfigValueExtractor", configCVE, telemetryCVE, durationCVE) as ConfigValueExtractor<*>
+        val configValueExtractor = new("\$\$TestClient_Config_ConfigValueExtractor", telemetryCVE, configCVE, durationCVE) as ConfigValueExtractor<*>
         val config = configValueExtractor.extract(MapConfigFactory.fromMap(mapOf(
             "url" to "http://test-url:8080"
-        )).root());
+        )).root())
 
 
         val realArgs = arrayOfNulls<Any>(arguments.size + 3)

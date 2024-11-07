@@ -22,8 +22,9 @@ public class HttpClientClassNames {
     public static final ClassName httpHeaders = ClassName.get("ru.tinkoff.kora.http.common.header", "HttpHeaders");
     public static final ClassName httpRoute = ClassName.get("ru.tinkoff.kora.http.common.annotation", "HttpRoute");
     public static final ClassName httpClientUnknownException = ClassName.get("ru.tinkoff.kora.http.client.common", "HttpClientUnknownException");
-    public static final ClassName httpClientOperationConfig  = ClassName.get("ru.tinkoff.kora.http.client.common.declarative", "HttpClientOperationConfig");
-    public static final ClassName declarativeHttpClientConfig  = ClassName.get("ru.tinkoff.kora.http.client.common.declarative", "DeclarativeHttpClientConfig");
+    public static final ClassName httpClientOperationConfig = ClassName.get("ru.tinkoff.kora.http.client.common.declarative", "HttpClientOperationConfig");
+    public static final ClassName declarativeHttpClientConfig = ClassName.get("ru.tinkoff.kora.http.client.common.declarative", "DeclarativeHttpClientConfig");
+    public static final ClassName telemetryHttpClientConfig = ClassName.get("ru.tinkoff.kora.http.client.common.telemetry", "HttpClientTelemetryConfig");
     public static final ClassName interceptWithClassName = ClassName.get("ru.tinkoff.kora.http.common.annotation", "InterceptWith");
     public static final ClassName interceptWithContainerClassName = ClassName.get("ru.tinkoff.kora.http.common.annotation", "InterceptWith", "InterceptWithContainer");
 

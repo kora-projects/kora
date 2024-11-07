@@ -23,6 +23,11 @@ class ConfigClassGenerator {
             .addSuperinterface(declarativeHttpClientConfig)
             .addAnnotation(configValueExtractorAnnotation)
 
+        tb.addFunction(FunSpec.builder("telemetry")
+            .addModifiers(KModifier.ABSTRACT, KModifier.OVERRIDE)
+            .returns(HttpClientClassNames.telemetryHttpClientConfig)
+            .build())
+
         functions.forEach { function ->
             tb.addFunction(FunSpec.builder(function)
                 .returns(httpClientOperationConfig)

@@ -12,8 +12,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 
-import static ru.tinkoff.kora.http.client.annotation.processor.HttpClientClassNames.declarativeHttpClientConfig;
-import static ru.tinkoff.kora.http.client.annotation.processor.HttpClientClassNames.httpClientOperationConfig;
+import static ru.tinkoff.kora.http.client.annotation.processor.HttpClientClassNames.*;
 
 public class ConfigClassGenerator {
 
@@ -30,6 +29,13 @@ public class ConfigClassGenerator {
             .addModifiers(Modifier.PUBLIC)
             .addSuperinterface(declarativeHttpClientConfig)
             .addAnnotation(CommonClassNames.configValueExtractorAnnotation);
+
+        b.addMethod(MethodSpec.methodBuilder("telemetry")
+            .addAnnotation(Override.class)
+            .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+            .returns(telemetryHttpClientConfig)
+            .build());
+
         for (var enclosedElement : element.getEnclosedElements()) {
             if (enclosedElement.getKind() != ElementKind.METHOD || enclosedElement.getModifiers().contains(Modifier.STATIC) || enclosedElement.getModifiers().contains(Modifier.DEFAULT)) {
                 continue;

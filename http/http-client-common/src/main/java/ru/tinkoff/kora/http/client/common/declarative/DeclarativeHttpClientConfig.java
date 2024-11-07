@@ -5,13 +5,15 @@ import ru.tinkoff.kora.http.client.common.HttpClient;
 import ru.tinkoff.kora.http.client.common.interceptor.TelemetryInterceptor;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryConfig;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryFactory;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.time.Duration;
 
 public interface DeclarativeHttpClientConfig {
+
     String url();
 
-    HttpClientTelemetryConfig telemetry();
+    TelemetryConfig telemetry();
 
     @Nullable
     Duration requestTimeout();
