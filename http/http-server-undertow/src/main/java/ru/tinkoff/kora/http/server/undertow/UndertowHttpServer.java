@@ -50,10 +50,10 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
         try {
             logger.debug("Public HTTP Server (Undertow) awaiting graceful shutdown...");
             if (!this.gracefulShutdown.awaitShutdown(shutdownAwait.toMillis())) {
-                logger.warn("Public HTTP Server (Undertow) failed waiting for graceful shutdown in {}", shutdownAwait);
+                logger.warn("Public HTTP Server (Undertow) failed completing graceful shutdown in {}", shutdownAwait);
             }
         } catch (InterruptedException e) {
-            logger.warn("Public HTTP Server (Undertow) failed waiting for graceful shutdown in {}", shutdownAwait);
+            logger.warn("Public HTTP Server (Undertow) failed completing graceful shutdown in {}", shutdownAwait);
             e.printStackTrace();
         }
 

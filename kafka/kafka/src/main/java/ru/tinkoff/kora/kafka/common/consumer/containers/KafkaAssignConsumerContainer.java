@@ -286,31 +286,27 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
             }
             consumers.clear();
             if (executorService != null) {
-                shutdownExecutorService(executorService, config.shutdownAwait());
+                if(!shutdownExecutorService(executorService, config.shutdownAwait())) {
+                    logger.warn("Kafka Consumer '{}' failed completing graceful shutdown in {}", consumerPrefix, config.shutdownAwait());
+                }
             }
 
             logger.info("Kafka Consumer '{}' stopped in {}", consumerPrefix, TimeUtils.tookForLogging(started));
         }
     }
 
-    private static void shutdownExecutorService(ExecutorService executorService, Duration shutdownAwait) {
+    private static boolean shutdownExecutorService(ExecutorService executorService, Duration shutdownAwait) {
         boolean terminated = executorService.isTerminated();
         if (!terminated) {
             executorService.shutdown();
-            boolean interrupted = false;
-            while (!terminated) {
-                try {
-                    terminated = executorService.awaitTermination(shutdownAwait.toMillis(), TimeUnit.MILLISECONDS);
-                } catch (InterruptedException e) {
-                    if (!interrupted) {
-                        executorService.shutdownNow();
-                        interrupted = true;
-                    }
-                }
+            try {
+                return executorService.awaitTermination(shutdownAwait.toMillis(), TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                executorService.shutdownNow();
+                return false;
             }
-            if (interrupted) {
-                Thread.currentThread().interrupt();
-            }
+        } else {
+            return true;
         }
     }
 }
