@@ -7,13 +7,13 @@ import ru.tinkoff.kora.scheduling.common.SchedulingModule;
 
 public interface SchedulingJdkModule extends SchedulingModule {
 
-    default SchedulingJdkConfig scheduledExecutorServiceConfig(Config config, ConfigValueExtractor<SchedulingJdkConfig> extractor) {
+    default ScheduledExecutorServiceConfig scheduledExecutorServiceConfig(Config config, ConfigValueExtractor<ScheduledExecutorServiceConfig> extractor) {
         var value = config.get("scheduling");
         return extractor.extract(value);
     }
 
     @DefaultComponent
-    default JdkSchedulingExecutor scheduledExecutorServiceLifecycle(SchedulingJdkConfig config) {
+    default JdkSchedulingExecutor scheduledExecutorServiceLifecycle(ScheduledExecutorServiceConfig config) {
         return new DefaultJdkSchedulingExecutor(config);
     }
 }

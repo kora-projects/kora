@@ -17,6 +17,10 @@ public class KoraQuartzJobRegistrar implements Lifecycle {
     private final Scheduler scheduler;
     private final ValueOf<SchedulingQuartzConfig> config;
 
+    public KoraQuartzJobRegistrar(List<KoraQuartzJob> quartzJobList, Scheduler scheduler) {
+        this(quartzJobList, scheduler, ValueOf.valueOfNull());
+    }
+
     public KoraQuartzJobRegistrar(List<KoraQuartzJob> quartzJobList,
                                   Scheduler scheduler,
                                   ValueOf<SchedulingQuartzConfig> config) {
@@ -81,7 +85,7 @@ public class KoraQuartzJobRegistrar implements Lifecycle {
         var started = System.nanoTime();
 
         try {
-            final boolean waitForComplete = config.get().waitForJobComplete();
+            final boolean waitForComplete = config.get() != null && config.get().waitForJobComplete();
             if (waitForComplete) {
                 logger.debug("Quartz Jobs {} awaiting graceful shutdown...", quartzJobsNames);
             }

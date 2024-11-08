@@ -22,10 +22,10 @@ public final class DefaultJdkSchedulingExecutor implements Lifecycle, JdkSchedul
         "service"
     );
 
-    private final SchedulingJdkConfig config;
+    private final ScheduledExecutorServiceConfig config;
     private volatile ScheduledThreadPoolExecutor service;
 
-    public DefaultJdkSchedulingExecutor(SchedulingJdkConfig config) {
+    public DefaultJdkSchedulingExecutor(ScheduledExecutorServiceConfig config) {
         this.config = config;
     }
 
