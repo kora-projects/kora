@@ -65,6 +65,7 @@ public interface KafkaListenerConfig {
             backoffTimeout(),
             threads(),
             partitionRefreshInterval(),
+            shutdownAwait(),
             telemetry()
         );
     }
