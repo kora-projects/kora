@@ -4,6 +4,8 @@ import ru.tinkoff.kora.common.util.Size;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
+import java.time.Duration;
+
 @ConfigValueExtractor
 public interface GrpcServerConfig {
 
@@ -17,6 +19,10 @@ public interface GrpcServerConfig {
 
     default Size maxMessageSize() {
         return Size.of(4, Size.Type.MiB);
+    }
+
+    default Duration shutdownAwait() {
+        return Duration.ofSeconds(30);
     }
 
     TelemetryConfig telemetry();

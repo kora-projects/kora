@@ -16,6 +16,7 @@ import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
 import java.net.InetSocketAddress;
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class UndertowHttpServer implements HttpServer, ReadinessProbe {
@@ -43,18 +44,16 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
     public void release() {
         logger.debug("Public HTTP Server (Undertow) stopping...");
         this.state.set(HttpServerState.SHUTDOWN);
-        try {
-            //TODO ожидать после shutdown уже мб?
-            Thread.sleep(this.config.get().shutdownWait().toMillis());
-        } catch (InterruptedException e) {
-            // ignore
-        }
         final long started = TimeUtils.started();
         this.gracefulShutdown.shutdown();
+        final Duration shutdownAwait = this.config.get().shutdownWait();
         try {
             logger.debug("Public HTTP Server (Undertow) awaiting graceful shutdown...");
-            this.gracefulShutdown.awaitShutdown();
+            if (!this.gracefulShutdown.awaitShutdown(shutdownAwait.toMillis())) {
+                logger.warn("Public HTTP Server (Undertow) failed waiting for graceful shutdown in {}", shutdownAwait);
+            }
         } catch (InterruptedException e) {
+            logger.warn("Public HTTP Server (Undertow) failed waiting for graceful shutdown in {}", shutdownAwait);
             e.printStackTrace();
         }
 

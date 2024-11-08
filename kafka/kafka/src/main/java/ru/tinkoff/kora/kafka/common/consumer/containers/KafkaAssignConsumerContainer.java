@@ -18,10 +18,12 @@ import ru.tinkoff.kora.kafka.common.consumer.KafkaListenerConfig;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.BaseKafkaRecordsHandler;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -284,10 +286,31 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
             }
             consumers.clear();
             if (executorService != null) {
-                executorService.shutdownNow();
+                shutdownExecutorService(executorService, config.shutdownAwait());
             }
 
             logger.info("Kafka Consumer '{}' stopped in {}", consumerPrefix, TimeUtils.tookForLogging(started));
+        }
+    }
+
+    private static void shutdownExecutorService(ExecutorService executorService, Duration shutdownAwait) {
+        boolean terminated = executorService.isTerminated();
+        if (!terminated) {
+            executorService.shutdown();
+            boolean interrupted = false;
+            while (!terminated) {
+                try {
+                    terminated = executorService.awaitTermination(shutdownAwait.toMillis(), TimeUnit.MILLISECONDS);
+                } catch (InterruptedException e) {
+                    if (!interrupted) {
+                        executorService.shutdownNow();
+                        interrupted = true;
+                    }
+                }
+            }
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 }

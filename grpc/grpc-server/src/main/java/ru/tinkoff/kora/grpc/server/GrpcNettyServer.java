@@ -9,9 +9,11 @@ import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
 import ru.tinkoff.kora.common.util.TimeUtils;
+import ru.tinkoff.kora.grpc.server.config.GrpcServerConfig;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class GrpcNettyServer implements Lifecycle, ReadinessProbe {
@@ -22,9 +24,12 @@ public class GrpcNettyServer implements Lifecycle, ReadinessProbe {
     private Server server;
 
     private final AtomicReference<GrpcServerState> state = new AtomicReference<>(GrpcServerState.INIT);
+    private final ValueOf<GrpcServerConfig> config;
 
-    public GrpcNettyServer(ValueOf<NettyServerBuilder> nettyServerBuilder) {
+    public GrpcNettyServer(ValueOf<NettyServerBuilder> nettyServerBuilder,
+                           ValueOf<GrpcServerConfig> config) {
         this.nettyServerBuilder = nettyServerBuilder;
+        this.config = config;
     }
 
     @Override
@@ -46,6 +51,16 @@ public class GrpcNettyServer implements Lifecycle, ReadinessProbe {
 
         state.set(GrpcServerState.SHUTDOWN);
         server.shutdown();
+        final Duration shutdownAwait = config.get().shutdownAwait();
+        try {
+            logger.debug("gRPC Server awaiting graceful shutdown...");
+            if (!server.awaitTermination(shutdownAwait.toMillis(), TimeUnit.MILLISECONDS)) {
+                logger.warn("gRPC Server failed waiting for graceful shutdown in {}", shutdownAwait);
+            }
+        } catch (InterruptedException e) {
+            logger.warn("gRPC Server failed waiting for graceful shutdown in {}", shutdownAwait);
+            e.printStackTrace();
+        }
 
         logger.info("gRPC Server stopped in {}", TimeUtils.tookForLogging(started));
     }
