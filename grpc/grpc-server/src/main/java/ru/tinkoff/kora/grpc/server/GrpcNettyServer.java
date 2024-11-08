@@ -51,7 +51,7 @@ public class GrpcNettyServer implements Lifecycle, ReadinessProbe {
 
         state.set(GrpcServerState.SHUTDOWN);
         server.shutdown();
-        final Duration shutdownAwait = config.get().shutdownAwait();
+        final Duration shutdownAwait = config.get().shutdownWait();
         try {
             logger.debug("gRPC Server awaiting graceful shutdown...");
             if (!server.awaitTermination(shutdownAwait.toMillis(), TimeUnit.MILLISECONDS)) {

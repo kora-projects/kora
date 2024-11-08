@@ -21,7 +21,7 @@ public interface GrpcServerConfig {
         return Size.of(4, Size.Type.MiB);
     }
 
-    default Duration shutdownAwait() {
+    default Duration shutdownWait() {
         return Duration.ofSeconds(30);
     }
 

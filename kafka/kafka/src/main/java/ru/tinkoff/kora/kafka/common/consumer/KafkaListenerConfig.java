@@ -45,7 +45,7 @@ public interface KafkaListenerConfig {
         return Duration.ofMinutes(1);
     }
 
-    default Duration shutdownAwait() {
+    default Duration shutdownWait() {
         return Duration.ofSeconds(30);
     }
 
@@ -65,7 +65,7 @@ public interface KafkaListenerConfig {
             backoffTimeout(),
             threads(),
             partitionRefreshInterval(),
-            shutdownAwait(),
+            shutdownWait(),
             telemetry()
         );
     }
