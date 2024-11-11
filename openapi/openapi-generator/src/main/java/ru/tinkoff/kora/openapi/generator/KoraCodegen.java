@@ -433,6 +433,7 @@ public class KoraCodegen extends DefaultCodegen {
             }
         }
         this.vendorExtensions.put("enableValidation", params.enableValidation());
+        this.vendorExtensions.put("allowAspects", params.enableValidation() || !params.additionalContractAnnotations.isEmpty());
 
         embeddedTemplateDir = templateDir = "openapi/templates/kora";
         if (!params.codegenMode.isJava()) {
