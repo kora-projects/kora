@@ -12,8 +12,7 @@ import javax.lang.model.type.TypeMirror;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static ru.tinkoff.kora.validation.annotation.processor.ValidTypes.VALIDATED_BY_TYPE;
-import static ru.tinkoff.kora.validation.annotation.processor.ValidTypes.jsonNullable;
+import static ru.tinkoff.kora.validation.annotation.processor.ValidTypes.*;
 
 public final class ValidUtils {
 
@@ -68,10 +67,14 @@ public final class ValidUtils {
                             ? env.getTypeUtils().getDeclaredType((TypeElement) factoryRawType.asElement())
                             : env.getTypeUtils().getDeclaredType((TypeElement) factoryRawType.asElement(), fieldType);
 
-                        final ValidMeta.Type factoryGenericType = ValidMeta.Type.ofType(factoryDeclaredType);
-                        final ValidMeta.Constraint.Factory constraintFactory = new ValidMeta.Constraint.Factory(factoryGenericType, parameters);
+                        final TypeElement validatorElement = env.getElementUtils().getTypeElement(VALIDATOR_TYPE.canonicalName());
+                        final DeclaredType validatorType = env.getTypeUtils().getDeclaredType(validatorElement, fieldType);
 
-                        final ValidMeta.Type annotationType = ValidMeta.Type.ofType(annotation.getAnnotationType().asElement().asType());
+                        final ValidMeta.Constraint.Factory constraintFactory = new ValidMeta.Constraint.Factory(
+                            ValidMeta.Type.ofElement(factoryDeclaredType.asElement(), factoryDeclaredType),
+                            ValidMeta.Type.ofElement(validatorType.asElement(), validatorType), parameters);
+
+                        final ValidMeta.Type annotationType = ValidMeta.Type.ofElement(annotation.getAnnotationType().asElement(), annotation.getAnnotationType());
                         return new ValidMeta.Constraint(annotationType, constraintFactory);
                     })))
             .toList();
@@ -90,17 +93,20 @@ public final class ValidUtils {
                         ? env.getTypeUtils().getDeclaredType((TypeElement) factoryRawType.asElement())
                         : env.getTypeUtils().getDeclaredType((TypeElement) factoryRawType.asElement(), fieldType);
 
-                    final ValidMeta.Type factoryGenericType = ValidMeta.Type.ofType(factoryDeclaredType);
-                    final ValidMeta.Constraint.Factory constraintFactory = new ValidMeta.Constraint.Factory(factoryGenericType, Collections.emptyMap());
+                    final TypeElement validatorElement = env.getElementUtils().getTypeElement(VALIDATOR_TYPE.canonicalName());
+                    final DeclaredType validatorType = env.getTypeUtils().getDeclaredType(validatorElement, fieldType);
 
-                    final ValidMeta.Type annotationType = ValidMeta.Type.ofType(validatedBy.getAnnotationType().asElement().asType());
+                    final ValidMeta.Constraint.Factory constraintFactory = new ValidMeta.Constraint.Factory(
+                        ValidMeta.Type.ofElement(factoryDeclaredType.asElement(), factoryDeclaredType),
+                        ValidMeta.Type.ofElement(validatorType.asElement(), validatorType), Collections.emptyMap());
+
+                    final ValidMeta.Type annotationType = ValidMeta.Type.ofElement(validatedBy.getAnnotationType().asElement(), validatedBy.getAnnotationType());
                     return new ValidMeta.Constraint(annotationType, constraintFactory);
                 }))
             .toList();
 
         var constraints = new ArrayList<>(innerAnnotationConstraints);
         constraints.addAll(selfAnnotationConstraints);
-        constraints.sort(Comparator.comparing(c -> c.factory().type().toString()));
         return constraints;
     }
 

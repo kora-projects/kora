@@ -9,8 +9,8 @@ import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.generatedClass
-import ru.tinkoff.kora.validation.symbol.processor.VALIDATOR_TYPE
-import ru.tinkoff.kora.validation.symbol.processor.VALID_TYPE
+import ru.tinkoff.kora.validation.symbol.processor.ValidTypes.VALIDATOR_TYPE
+import ru.tinkoff.kora.validation.symbol.processor.ValidTypes.VALID_TYPE
 import ru.tinkoff.kora.validation.symbol.processor.ValidatorGenerator
 
 class ValidKoraExtension(resolver: Resolver, codeGenerator: CodeGenerator) : KoraExtension {
@@ -43,7 +43,7 @@ class ValidKoraExtension(resolver: Resolver, codeGenerator: CodeGenerator) : Kor
         if (argumentTypeClass.findAnnotation(VALID_TYPE) != null) {
             return ExtensionResult.RequiresCompilingResult
         }
-        gen.generate(argumentTypeClass)
+        gen.generate(argumentTypeClass, resolver)
         return ExtensionResult.RequiresCompilingResult
     }
 

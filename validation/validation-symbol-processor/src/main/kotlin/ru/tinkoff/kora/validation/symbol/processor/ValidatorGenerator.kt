@@ -1,24 +1,29 @@
 package ru.tinkoff.kora.validation.symbol.processor
 
 import com.google.devtools.ksp.processing.CodeGenerator
+import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
-import com.squareup.kotlinpoet.ksp.toTypeName
-import com.squareup.kotlinpoet.ksp.toTypeVariableName
-import com.squareup.kotlinpoet.ksp.writeTo
+import com.squareup.kotlinpoet.ksp.*
+import jakarta.annotation.Nonnull
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.collectFinalSealedSubtypes
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.generatedClassName
 import ru.tinkoff.kora.ksp.common.visitClass
+import ru.tinkoff.kora.validation.symbol.processor.ValidTypes.CONTEXT_TYPE
+import ru.tinkoff.kora.validation.symbol.processor.ValidTypes.VALIDATOR_TYPE
+import ru.tinkoff.kora.validation.symbol.processor.ValidTypes.VALID_TYPE
+import ru.tinkoff.kora.validation.symbol.processor.ValidTypes.VIOLATION_TYPE
 import ru.tinkoff.kora.validation.symbol.processor.ValidUtils.getConstraints
 
 class ValidatorGenerator(val codeGenerator: CodeGenerator) {
-    fun getValidatorSpec(meta: ValidatorMeta): ValidSymbolProcessor.ValidatorSpec {
+
+    private fun getValidatorSpec(meta: ValidatorMeta): ValidSymbolProcessor.ValidatorSpec {
         val parameterSpecs = ArrayList<ParameterSpec>()
         val typeName = meta.validator.contract
         val validatorSpecBuilder = TypeSpec.classBuilder(meta.sourceDeclaration.generatedClassName("Validator"))
@@ -29,21 +34,47 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
                     .build()
             )
 
-        val constraintToFieldName = HashMap<Constraint.Factory, String>()
-        val validatedToFieldName = HashMap<Validated, String>()
-        val constraintBuilder = ArrayList<CodeBlock>()
+        for (typeParameter in meta.sourceDeclaration.typeParameters) {
+            validatorSpecBuilder.addTypeVariable(typeParameter.toTypeVariableName())
+        }
+
+        val constraintToFieldName = LinkedHashMap<Constraint.Factory, String>()
+        val validatedToFieldName = LinkedHashMap<Validated, String>()
+        val constraintBuilder = CodeBlock.builder()
         for (i in meta.fields.indices) {
             val field = meta.fields[i]
+
+            if (field.isNullable && field.isJsonNullable) {
+                if (field.isNotNull) {
+                    constraintBuilder.beginControlFlow(
+                        "if(value.%L != null && value.%L.isDefined() && !value.%L.isNull())",
+                        field.accessor(), field.accessor(), field.accessor(),
+                    )
+                } else {
+                    constraintBuilder.beginControlFlow(
+                        "if(value.%L != null && value.%L.isDefined())",
+                        field.accessor(), field.accessor()
+                    )
+                }
+            } else if (field.isNullable) {
+                constraintBuilder.beginControlFlow("if(value.%L != null)", field.accessor())
+            } else if (field.isJsonNullable) {
+                if (field.isNotNull) {
+                    constraintBuilder.beginControlFlow("if(value.%L.isDefined() && !value.%L.isNull())", field.accessor(), field.accessor())
+                } else {
+                    constraintBuilder.beginControlFlow("if(value.%L.isDefined())", field.accessor())
+                }
+            }
+
             val contextField = "_context$i"
-            constraintBuilder.add(
-                CodeBlock.of(
+            if (field.constraint.isNotEmpty() || field.validates.isNotEmpty()) {
+                constraintBuilder.add(
                     """
-                        
                     val %L = context.addPath(%S)
                     
                     """.trimIndent(), contextField, field.name
                 )
-            )
+            }
 
             for (j in field.constraint.indices) {
                 val constraint = field.constraint[j]
@@ -52,8 +83,7 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
                 val constraintResultField = "_constraintResult_$suffix"
 
                 constraintBuilder.add(
-                    CodeBlock.of(
-                        """
+                    """
                         val %N = %L.validate(value.%L, %L)
                         if(context.isFailFast && %N.isNotEmpty()) {
                             return %N
@@ -61,8 +91,7 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
                         _violations.addAll(%N)
                         
                         """.trimIndent(),
-                        constraintResultField, constraintField, field.accessor(), contextField, constraintResultField, constraintResultField, constraintResultField
-                    )
+                    constraintResultField, constraintField, field.accessorValue(), contextField, constraintResultField, constraintResultField, constraintResultField
                 )
             }
 
@@ -71,10 +100,9 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
                 val suffix = i.toString() + "_" + j
                 val validatorField = validatedToFieldName.computeIfAbsent(validated) { "_validator$suffix" }
                 val validatorResultField = "_validatorResult_$suffix"
-                if (field.isNotNull()) {
+                if (!field.isNullable) {
                     constraintBuilder.add(
-                        CodeBlock.of(
-                            """
+                        """
                             val %N = %L.validate(value.%L, %L)
                             if(context.isFailFast && %N.isNotEmpty()) {
                                 return %N
@@ -82,13 +110,11 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
                             _violations.addAll(%N)
                             
                             """.trimIndent(),
-                            validatorResultField, validatorField, field.accessor(), contextField, validatorResultField, validatorResultField, validatorResultField
-                        )
+                        validatorResultField, validatorField, field.accessorValue(), contextField, validatorResultField, validatorResultField, validatorResultField
                     )
                 } else {
                     constraintBuilder.add(
-                        CodeBlock.of(
-                            """
+                        """
                             if(value.%L != null) {
                                 val %N = %L.validate(value.%L, %L)
                                 if(context.isFailFast && %N.isNotEmpty()) {
@@ -98,10 +124,26 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
                             }
                             
                             """.trimIndent(),
-                            field.accessor(), validatorResultField, validatorField, field.accessor(), contextField, validatorResultField, validatorResultField, validatorResultField
-                        )
+                        field.accessor(), validatorResultField, validatorField, field.accessorValue(), contextField, validatorResultField, validatorResultField, validatorResultField
                     )
                 }
+            }
+
+            if (field.isJsonNullable && field.isNotNull) {
+                constraintBuilder.nextControlFlow("else")
+                constraintBuilder.add(
+                    """
+                    val %L = context.addPath(%S)
+                    if(context.isFailFast) {
+                        return %M(%L.violates("Must be non null, but was null"))
+                    }
+                    _violations.add(%L.violates("Must be non null, but was null"))
+                    
+                    """.trimIndent(), contextField, field.name, ValidTypes.MEMBER_LIST_OF, contextField, contextField
+                )
+                constraintBuilder.endControlFlow()
+            } else if (field.isNullable || field.isJsonNullable) {
+                constraintBuilder.endControlFlow()
             }
         }
 
@@ -152,8 +194,7 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
             .addParameter(ParameterSpec.builder("value", meta.source.copy(true)).build())
             .addParameter(ParameterSpec.builder("context", CONTEXT_TYPE.canonicalName.asType().asPoetType()).build())
             .addCode(
-                CodeBlock.of(
-                    """
+                """
                     if(value == null) {
                         return mutableListOf(context.violates("Input value is null"))
                     }
@@ -161,11 +202,10 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
                     val _violations = %M<Violation>()
                     
                     """.trimIndent(), memberList
-                )
             )
 
-        constraintBuilder.forEach { b -> validateMethodSpecBuilder.addCode(b) }
-        validateMethodSpecBuilder.addCode(CodeBlock.of("return _violations"))
+        validateMethodSpecBuilder.addCode(constraintBuilder.build())
+        validateMethodSpecBuilder.addStatement("return _violations")
 
         val typeSpec = validatorSpecBuilder
             .addFunction(constructorSpecBuilder.build())
@@ -175,7 +215,7 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
         return ValidSymbolProcessor.ValidatorSpec(meta, typeSpec, parameterSpecs)
     }
 
-    private fun getValidatorMeta(declaration: KSClassDeclaration): ValidatorMeta {
+    private fun getValidatorMeta(declaration: KSClassDeclaration, resolver: Resolver): ValidatorMeta {
         if (declaration.classKind == ClassKind.INTERFACE || declaration.classKind == ClassKind.ENUM_CLASS) {
             throw ProcessingErrorException("Validation can't be generated for: ${declaration.classKind}", declaration)
         }
@@ -189,14 +229,21 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
         for (fieldProperty in elementFields) {
             val constraints = fieldProperty.getConstraints()
             val validateds = getValid(fieldProperty)
-            val isNullable = fieldProperty.type.resolve().isMarkedNullable
-            if (constraints.isNotEmpty() || validateds.isNotEmpty()) {
+            val resolvedType = fieldProperty.type.resolve()
+            val isNullable = resolvedType.isMarkedNullable
+            val isNotNull = fieldProperty.isAnnotationPresent(Nonnull::class.asClassName())
+            val isJsonNullable = resolvedType.toClassName() == ValidTypes.jsonNullable
+
+            if (constraints.isNotEmpty() || validateds.isNotEmpty() || (isJsonNullable && isNotNull)) {
+                val realType = if (isJsonNullable) resolvedType.arguments[0].type else fieldProperty.type
                 fields.add(
                     Field(
-                        fieldProperty.type.asType(),
+                        realType!!.asType(),
                         fieldProperty.simpleName.asString(),
                         declaration.modifiers.any { m -> m == Modifier.DATA },
                         isNullable,
+                        isNotNull,
+                        isJsonNullable,
                         constraints,
                         validateds
                     )
@@ -204,13 +251,11 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
             }
         }
 
-        val source = declaration.asType(listOf()).toTypeName()
+        val source = declaration.toTypeName()
         return ValidatorMeta(
             source,
             declaration,
-            ValidatorType(
-                VALIDATOR_TYPE.parameterizedBy(declaration.asType(listOf()).toTypeName().copy(false))
-            ),
+            ValidatorType(VALIDATOR_TYPE.parameterizedBy(source.copy(false))),
             fields
         )
     }
@@ -219,22 +264,20 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
         if (field.isAnnotationPresent(VALID_TYPE)) {
             return listOf(Validated(field.type.asType()))
         }
+
         val parentClass = field.parentDeclaration as KSClassDeclaration
-        parentClass.primaryConstructor?.parameters
+        return parentClass.primaryConstructor?.parameters
             ?.filter { it.name?.asString() == field.simpleName.asString() }
             ?.firstOrNull { it.isAnnotationPresent(VALID_TYPE) }
-            ?.let {
-                return listOf(Validated(field.type.asType()))
-            }
-
-        return emptyList()
+            ?.let { return listOf(Validated(field.type.asType())) }
+            ?: emptyList()
     }
 
-    fun generate(symbol: KSAnnotated) {
+    fun generate(symbol: KSAnnotated, resolver: Resolver) {
         if (symbol is KSClassDeclaration && symbol.classKind == ClassKind.INTERFACE && symbol.modifiers.contains(Modifier.SEALED)) {
             return this.generateForSealed(symbol)
         }
-        val meta = symbol.visitClass { clazz -> getValidatorMeta(clazz) }
+        val meta = symbol.visitClass { clazz -> getValidatorMeta(clazz, resolver) }
         if (meta == null) {
             return
         }

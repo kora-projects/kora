@@ -6,7 +6,6 @@ import ru.tinkoff.kora.annotation.processor.common.*;
 
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
-import javax.lang.model.AnnotatedConstruct;
 import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.PrimitiveType;
@@ -102,16 +101,20 @@ public class ValidatorGenerator {
     private ValidAnnotationProcessor.ValidatorSpec getValidatorSpecs(ValidMeta meta) {
         final List<ParameterSpec> parameterSpecs = new ArrayList<>();
 
-        final TypeName typeName = meta.validator().contract().asPoetType(processingEnv);
-        final TypeSpec.Builder validatorSpecBuilder = TypeSpec.classBuilder(meta.validator().implementation().simpleName())
+        final TypeName typeName = meta.validator(processingEnv).asPoetType();
+        final TypeSpec.Builder validatorSpecBuilder = TypeSpec.classBuilder(meta.validatorImplementationName())
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(typeName)
             .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
                 .addMember("value", "$S", this.getClass().getCanonicalName())
                 .build());
 
-        final Map<ValidMeta.Constraint.Factory, String> constraintToFieldName = new HashMap<>();
-        final Map<ValidMeta.Validated, String> validatedToFieldName = new HashMap<>();
+        for (TypeParameterElement typeParameter : meta.sourceElement().getTypeParameters()) {
+            validatorSpecBuilder.addTypeVariable(TypeVariableName.get(typeParameter));
+        }
+
+        final Map<ValidMeta.Constraint.Factory, String> constraintToFieldName = new LinkedHashMap<>();
+        final Map<ValidMeta.Validated, String> validatedToFieldName = new LinkedHashMap<>();
         final List<CodeBlock> fieldConstraintBuilder = new ArrayList<>();
         for (int i = 1; i <= meta.fields().size(); i++) {
             final ValidMeta.Field field = meta.fields().get(i - 1);
@@ -201,11 +204,11 @@ public class ValidatorGenerator {
                 .collect(Collectors.joining(", "));
 
             validatorSpecBuilder.addField(FieldSpec.builder(
-                factory.validator().asPoetType(processingEnv),
+                factory.validator().asPoetType(),
                 fieldName,
                 Modifier.PRIVATE, Modifier.FINAL).build());
 
-            final ParameterSpec parameterSpec = ParameterSpec.builder(factory.type().asPoetType(processingEnv), fieldName).build();
+            final ParameterSpec parameterSpec = ParameterSpec.builder(factory.type().asPoetType(), fieldName).build();
             parameterSpecs.add(parameterSpec);
             constructorSpecBuilder
                 .addParameter(parameterSpec)
@@ -214,7 +217,7 @@ public class ValidatorGenerator {
 
         for (var validatedToField : validatedToFieldName.entrySet()) {
             final String fieldName = validatedToField.getValue();
-            final TypeName fieldType = validatedToField.getKey().validator().asPoetType(processingEnv);
+            final TypeName fieldType = validatedToField.getKey().validator(processingEnv).asPoetType();
             validatorSpecBuilder.addField(FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL).build());
 
             final ParameterSpec parameterSpec = ParameterSpec.builder(fieldType, fieldName).build();
@@ -227,9 +230,9 @@ public class ValidatorGenerator {
         final MethodSpec.Builder validateMethodSpecBuilder = MethodSpec.methodBuilder("validate")
             .addAnnotation(Override.class)
             .addModifiers(Modifier.PUBLIC)
-            .returns(ValidMeta.Type.ofClass(List.class, List.of(ValidMeta.Type.ofName(VIOLATION_TYPE.canonicalName()))).asPoetType(processingEnv))
-            .addParameter(ParameterSpec.builder(meta.source().asPoetType(processingEnv), "value").build())
-            .addParameter(ParameterSpec.builder(ValidMeta.Type.ofName(CONTEXT_TYPE.canonicalName()).asPoetType(processingEnv), "context").build())
+            .returns(ParameterizedTypeName.get(ClassName.get(List.class), VIOLATION_TYPE))
+            .addParameter(ParameterSpec.builder(meta.source().asPoetType(), "value").build())
+            .addParameter(ParameterSpec.builder(CONTEXT_TYPE, "context").build())
             .addCode(CodeBlock.join(List.of(
                     CodeBlock.of("""
                             if (value == null) {
@@ -237,7 +240,7 @@ public class ValidatorGenerator {
                             }
                                                         
                             final $T<$T> _violations = new $T<>();""",
-                        List.class, meta.source().simpleName(), List.class, ValidTypes.violation, ArrayList.class),
+                        List.class, meta.sourceElement().getSimpleName(), List.class, ValidTypes.violation, ArrayList.class),
                     CodeBlock.join(fieldConstraintBuilder, "\n"),
                     CodeBlock.of("return _violations;")),
                 "\n\n"));
@@ -269,13 +272,13 @@ public class ValidatorGenerator {
             }
 
             if (!constraints.isEmpty() || !validateds.isEmpty() || (isJsonNullable && isNotNull)) {
-                final boolean isNullable = CommonUtils.isNullable(fieldElement);
+                final boolean isNullable = CommonUtils.isNullable(element) || CommonUtils.isNullable(fieldElement);
                 final boolean isPrimitive = fieldElement.asType() instanceof PrimitiveType;
                 final boolean isRecord = element.getKind() == ElementKind.RECORD;
 
                 final TypeMirror fieldType = ValidUtils.getBoxType(targetType, processingEnv);
                 final ValidMeta.Field fieldMeta = new ValidMeta.Field(
-                    ValidMeta.Type.ofType(fieldType),
+                    ValidMeta.Type.ofElement(processingEnv.getTypeUtils().asElement(fieldType), fieldType),
                     fieldElement.getSimpleName().toString(),
                     isRecord,
                     isNullable,
@@ -288,13 +291,14 @@ public class ValidatorGenerator {
                 fields.add(fieldMeta);
             }
         }
-        return new ValidMeta(ValidMeta.Type.ofType(element.asType()), element, fields);
+        return new ValidMeta(element, fields);
     }
 
     private static List<ValidMeta.Constraint> getValidatedByConstraints(ProcessingEnvironment env, VariableElement field) {
         if (field.asType().getKind() == TypeKind.ERROR) {
             throw new ProcessingErrorException("Type is error in this round", field);
         }
+
         return ValidUtils.getValidatedByConstraints(env, field.asType(), field.getAnnotationMirrors());
     }
 
@@ -309,7 +313,7 @@ public class ValidatorGenerator {
 
     private static List<ValidMeta.Validated> getValidated(VariableElement field) {
         if (field.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName()))) {
-            return List.of(new ValidMeta.Validated(ValidMeta.Type.ofType(field.asType())));
+            return List.of(new ValidMeta.Validated(ValidMeta.Type.ofElement(field, field.asType())));
         }
 
         return Collections.emptyList();

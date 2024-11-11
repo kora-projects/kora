@@ -21,7 +21,7 @@ public class ValidationJsonNullableArgumentSyncTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public void test(JsonNullable<String> value) { }
+                    public void test(JsonNullable<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -40,7 +40,7 @@ public class ValidationJsonNullableArgumentSyncTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public void test(JsonNullable<String> value) { }
+                    public void test(JsonNullable<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -59,7 +59,7 @@ public class ValidationJsonNullableArgumentSyncTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public void test(JsonNullable<String> value) { }
+                    public void test(JsonNullable<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -78,7 +78,7 @@ public class ValidationJsonNullableArgumentSyncTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public void test(@Nonnull JsonNullable<String> value) { }
+                    public void test(@Nonnull JsonNullable<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -97,7 +97,7 @@ public class ValidationJsonNullableArgumentSyncTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public void test(@Nonnull JsonNullable<String> value) { }
+                    public void test(@Nonnull JsonNullable<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -116,7 +116,7 @@ public class ValidationJsonNullableArgumentSyncTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public void test(@Nonnull JsonNullable<String> value) { }
+                    public void test(@Nonnull JsonNullable<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -135,7 +135,7 @@ public class ValidationJsonNullableArgumentSyncTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public void test(@NotBlank @NotEmpty JsonNullable<String> value) { }
+                    public void test(@NotBlank @NotEmpty JsonNullable<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -154,7 +154,7 @@ public class ValidationJsonNullableArgumentSyncTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public void test(@NotBlank @NotEmpty JsonNullable<String> value) { }
+                    public void test(@NotBlank @NotEmpty JsonNullable<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -174,7 +174,7 @@ public class ValidationJsonNullableArgumentSyncTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public void test(@NotBlank @NotEmpty JsonNullable<String> value) { }
+                    public void test(@NotBlank @NotEmpty JsonNullable<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -193,7 +193,7 @@ public class ValidationJsonNullableArgumentSyncTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate(failFast = true)
-                    public void test(@NotBlank @NotEmpty JsonNullable<String> value) { }
+                    public void test(@NotBlank @NotEmpty JsonNullable<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -212,7 +212,7 @@ public class ValidationJsonNullableArgumentSyncTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate(failFast = true)
-                    public void test(@NotBlank @NotEmpty JsonNullable<String> value) { }
+                    public void test(@NotBlank @NotEmpty JsonNullable<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -232,7 +232,7 @@ public class ValidationJsonNullableArgumentSyncTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate(failFast = true)
-                    public void test(@NotBlank @NotEmpty JsonNullable<String> value) { }
+                    public void test(@NotBlank @NotEmpty JsonNullable<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();

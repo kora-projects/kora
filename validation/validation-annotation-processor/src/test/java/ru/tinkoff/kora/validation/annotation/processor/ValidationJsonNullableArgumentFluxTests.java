@@ -21,7 +21,7 @@ public class ValidationJsonNullableArgumentFluxTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Flux<Void> test(JsonNullable<String> value) {
+                    public Flux<Void> test(JsonNullable<String> arg) {
                         return Flux.empty();
                     }
                 }
@@ -42,7 +42,7 @@ public class ValidationJsonNullableArgumentFluxTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Flux<Void> test(JsonNullable<String> value) {
+                    public Flux<Void> test(JsonNullable<String> arg) {
                         return Flux.empty();
                     }
                 }
@@ -63,7 +63,7 @@ public class ValidationJsonNullableArgumentFluxTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Flux<Void> test(JsonNullable<String> value) {
+                    public Flux<Void> test(JsonNullable<String> arg) {
                         return Flux.empty();
                     }
                 }
@@ -84,7 +84,7 @@ public class ValidationJsonNullableArgumentFluxTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Flux<Void> test(@Nonnull JsonNullable<String> value) {
+                    public Flux<Void> test(@Nonnull JsonNullable<String> arg) {
                         return Flux.empty();
                     }
                 }
@@ -105,7 +105,7 @@ public class ValidationJsonNullableArgumentFluxTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Flux<Void> test(@Nonnull JsonNullable<String> value) {
+                    public Flux<Void> test(@Nonnull JsonNullable<String> arg) {
                         return Flux.empty();
                     }
                 }
@@ -126,7 +126,7 @@ public class ValidationJsonNullableArgumentFluxTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Flux<Void> test(@Nonnull JsonNullable<String> value) {
+                    public Flux<Void> test(@Nonnull JsonNullable<String> arg) {
                         return Flux.empty();
                     }
                 }
@@ -147,7 +147,7 @@ public class ValidationJsonNullableArgumentFluxTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Flux<Void> test(@NotBlank @NotEmpty JsonNullable<String> value) {
+                    public Flux<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
                         return Flux.empty();
                     }
                 }
@@ -168,7 +168,7 @@ public class ValidationJsonNullableArgumentFluxTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Flux<Void> test(@NotBlank @NotEmpty JsonNullable<String> value) {
+                    public Flux<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
                         return Flux.empty();
                     }
                 }
@@ -190,7 +190,7 @@ public class ValidationJsonNullableArgumentFluxTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Flux<Void> test(@NotBlank @NotEmpty JsonNullable<String> value) {
+                    public Flux<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
                         return Flux.empty();
                     }
                 }
@@ -211,7 +211,7 @@ public class ValidationJsonNullableArgumentFluxTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate(failFast = true)
-                    public Flux<Void> test(@NotBlank @NotEmpty JsonNullable<String> value) {
+                    public Flux<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
                         return Flux.empty();
                     }
                 }
@@ -232,7 +232,7 @@ public class ValidationJsonNullableArgumentFluxTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate(failFast = true)
-                    public Flux<Void> test(@NotBlank @NotEmpty JsonNullable<String> value) {
+                    public Flux<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
                         return Flux.empty();
                     }
                 }
@@ -254,7 +254,7 @@ public class ValidationJsonNullableArgumentFluxTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate(failFast = true)
-                    public Flux<Void> test(@NotBlank @NotEmpty JsonNullable<String> value) {
+                    public Flux<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
                         return Flux.empty();
                     }
                 }

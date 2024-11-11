@@ -89,7 +89,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
 
         final List<ValidMeta.Constraint> constraints = ValidUtils.getValidatedByConstraints(env, returnType, method.getAnnotationMirrors());
         final List<Validated> validates = (method.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName())))
-            ? List.of(new ValidMeta.Validated(ValidMeta.Type.ofType(returnType)))
+            ? List.of(new ValidMeta.Validated(ValidMeta.Type.ofElement(env.getTypeUtils().asElement(returnType), returnType)))
             : Collections.emptyList();
 
         var isPrimitive = returnType instanceof PrimitiveType;
@@ -175,8 +175,8 @@ public class ValidateMethodKoraAspect implements KoraAspect {
 
         for (int i = 1; i <= constraints.size(); i++) {
             var constraint = constraints.get(i - 1);
-            var constraintFactory = aspectContext.fieldFactory().constructorParam(constraint.factory().type().asMirror(env), List.of());
-            var constraintType = constraint.factory().validator().asMirror(env);
+            var constraintFactory = aspectContext.fieldFactory().constructorParam(constraint.factory().type().typeMirror(), List.of());
+            var constraintType = constraint.factory().validator().typeMirror();
 
             final CodeBlock createExec = CodeBlock.builder()
                 .add("$N.create", constraintFactory)
@@ -214,7 +214,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
 
         for (int i = 1; i <= validates.size(); i++) {
             var validated = validates.get(i - 1);
-            var validatorType = validated.validator().asMirror(env);
+            var validatorType = validated.validator(env).typeMirror();
             var validatorField = aspectContext.fieldFactory().constructorParam(validatorType, List.of());
             var validatedResultField = "_returnValidatorResult_" + i;
             builder.addStatement("var $N = $N.validate($L, _returnCtx)", validatedResultField, validatorField, resultAccessor);
@@ -340,7 +340,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                 } else if (isJsonNullable) {
                     builder.beginControlFlow("if($N != null && $N.isDefined())", paramName);
                     builder.addStatement("var $N = _argCtx.addPath($S)", argumentContext, paramName);
-                } else if(isNullable) {
+                } else if (isNullable) {
                     builder.beginControlFlow("if($N != null)", paramName);
                     builder.addStatement("var $N = _argCtx.addPath($S)", argumentContext, paramName);
                 } else {
@@ -349,8 +349,8 @@ public class ValidateMethodKoraAspect implements KoraAspect {
 
                 for (int i = 1; i <= constraints.size(); i++) {
                     var constraint = constraints.get(i - 1);
-                    var constraintFactory = aspectContext.fieldFactory().constructorParam(constraint.factory().type().asMirror(env), List.of());
-                    var constraintType = constraint.factory().validator().asMirror(env);
+                    var constraintFactory = aspectContext.fieldFactory().constructorParam(constraint.factory().type().typeMirror(), List.of());
+                    var constraintType = constraint.factory().validator().typeMirror();
 
                     final CodeBlock createExec = CodeBlock.builder()
                         .add("$N.create", constraintFactory)
@@ -386,7 +386,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
 
                 for (int i = 1; i <= validates.size(); i++) {
                     var validated = validates.get(i - 1);
-                    var validatorType = validated.validator().asMirror(env);
+                    var validatorType = validated.validator(env).typeMirror();
 
                     var validatorField = aspectContext.fieldFactory().constructorParam(validatorType, List.of());
                     var validatorResultField = "_argValidatorResult_" + parameter + "_" + i;
@@ -455,7 +455,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
 
     private List<ValidMeta.Validated> getValidForArguments(VariableElement parameter) {
         if (parameter.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName()))) {
-            return List.of(new ValidMeta.Validated(ValidMeta.Type.ofType(parameter.asType())));
+            return List.of(new ValidMeta.Validated(ValidMeta.Type.ofElement(parameter, parameter.asType())));
         }
 
         return Collections.emptyList();

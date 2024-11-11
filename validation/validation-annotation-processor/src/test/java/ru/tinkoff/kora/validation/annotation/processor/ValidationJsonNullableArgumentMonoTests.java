@@ -21,7 +21,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Mono<Void> test(JsonNullable<String> value) {
+                    public Mono<Void> test(JsonNullable<String> arg) {
                         return Mono.empty();
                     }
                 }
@@ -42,7 +42,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Mono<Void> test(JsonNullable<String> value) {
+                    public Mono<Void> test(JsonNullable<String> arg) {
                         return Mono.empty();
                     }
                 }
@@ -63,7 +63,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Mono<Void> test(JsonNullable<String> value) {
+                    public Mono<Void> test(JsonNullable<String> arg) {
                         return Mono.empty();
                     }
                 }
@@ -84,7 +84,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Mono<Void> test(@Nonnull JsonNullable<String> value) {
+                    public Mono<Void> test(@Nonnull JsonNullable<String> arg) {
                         return Mono.empty();
                     }
                 }
@@ -105,7 +105,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Mono<Void> test(@Nonnull JsonNullable<String> value) {
+                    public Mono<Void> test(@Nonnull JsonNullable<String> arg) {
                         return Mono.empty();
                     }
                 }
@@ -126,7 +126,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Mono<Void> test(@Nonnull JsonNullable<String> value) {
+                    public Mono<Void> test(@Nonnull JsonNullable<String> arg) {
                         return Mono.empty();
                     }
                 }
@@ -147,7 +147,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Mono<Void> test(@NotBlank @NotEmpty JsonNullable<String> value) {
+                    public Mono<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
                         return Mono.empty();
                     }
                 }
@@ -168,7 +168,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Mono<Void> test(@NotBlank @NotEmpty JsonNullable<String> value) {
+                    public Mono<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
                         return Mono.empty();
                     }
                 }
@@ -190,7 +190,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Mono<Void> test(@NotBlank @NotEmpty JsonNullable<String> value) {
+                    public Mono<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
                         return Mono.empty();
                     }
                 }
@@ -211,7 +211,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate(failFast = true)
-                    public Mono<Void> test(@NotBlank @NotEmpty JsonNullable<String> value) {
+                    public Mono<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
                         return Mono.empty();
                     }
                 }
@@ -232,7 +232,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate(failFast = true)
-                    public Mono<Void> test(@NotBlank @NotEmpty JsonNullable<String> value) {
+                    public Mono<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
                         return Mono.empty();
                     }
                 }
@@ -254,7 +254,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate(failFast = true)
-                    public Mono<Void> test(@NotBlank @NotEmpty JsonNullable<String> value) {
+                    public Mono<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
                         return Mono.empty();
                     }
                 }

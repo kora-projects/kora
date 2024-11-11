@@ -21,7 +21,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate
-                    public CompletableFuture<Void> test(JsonNullable<String> value) {
+                    public CompletableFuture<Void> test(JsonNullable<String> arg) {
                         return CompletableFuture.completedFuture(null);
                     }
                 }
@@ -42,7 +42,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate
-                    public CompletableFuture<Void> test(JsonNullable<String> value) {
+                    public CompletableFuture<Void> test(JsonNullable<String> arg) {
                         return CompletableFuture.completedFuture(null);
                     }
                 }
@@ -63,7 +63,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate
-                    public CompletableFuture<Void> test(JsonNullable<String> value) {
+                    public CompletableFuture<Void> test(JsonNullable<String> arg) {
                         return CompletableFuture.completedFuture(null);
                     }
                 }
@@ -84,7 +84,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate
-                    public CompletableFuture<Void> test(@Nonnull JsonNullable<String> value) {
+                    public CompletableFuture<Void> test(@Nonnull JsonNullable<String> arg) {
                         return CompletableFuture.completedFuture(null);
                     }
                 }
@@ -105,7 +105,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate
-                    public CompletableFuture<Void> test(@Nonnull JsonNullable<String> value) {
+                    public CompletableFuture<Void> test(@Nonnull JsonNullable<String> arg) {
                         return CompletableFuture.completedFuture(null);
                     }
                 }
@@ -126,7 +126,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate
-                    public CompletableFuture<Void> test(@Nonnull JsonNullable<String> value) {
+                    public CompletableFuture<Void> test(@Nonnull JsonNullable<String> arg) {
                         return CompletableFuture.completedFuture(null);
                     }
                 }
@@ -147,7 +147,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate
-                    public CompletableFuture<Void> test(@NotBlank @NotEmpty JsonNullable<String> value) {
+                    public CompletableFuture<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
                         return CompletableFuture.completedFuture(null);
                     }
                 }
@@ -168,7 +168,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate
-                    public CompletableFuture<Void> test(@NotBlank @NotEmpty JsonNullable<String> value) {
+                    public CompletableFuture<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
                         return CompletableFuture.completedFuture(null);
                     }
                 }
@@ -190,7 +190,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate
-                    public CompletableFuture<Void> test(@NotBlank @NotEmpty JsonNullable<String> value) {
+                    public CompletableFuture<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
                         return CompletableFuture.completedFuture(null);
                     }
                 }
@@ -211,7 +211,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate(failFast = true)
-                    public CompletableFuture<Void> test(@NotBlank @NotEmpty JsonNullable<String> value) {
+                    public CompletableFuture<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
                         return CompletableFuture.completedFuture(null);
                     }
                 }
@@ -232,7 +232,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate(failFast = true)
-                    public CompletableFuture<Void> test(@NotBlank @NotEmpty JsonNullable<String> value) {
+                    public CompletableFuture<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
                         return CompletableFuture.completedFuture(null);
                     }
                 }
@@ -254,7 +254,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate(failFast = true)
-                    public CompletableFuture<Void> test(@NotBlank @NotEmpty JsonNullable<String> value) {
+                    public CompletableFuture<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
                         return CompletableFuture.completedFuture(null);
                     }
                 }

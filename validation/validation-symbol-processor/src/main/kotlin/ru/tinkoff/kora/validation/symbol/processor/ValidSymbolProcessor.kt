@@ -7,6 +7,7 @@ import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.TypeSpec
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
+import ru.tinkoff.kora.validation.symbol.processor.ValidTypes.VALID_TYPE
 
 class ValidSymbolProcessor(environment: SymbolProcessorEnvironment) : BaseSymbolProcessor(environment) {
 
@@ -17,10 +18,9 @@ class ValidSymbolProcessor(environment: SymbolProcessorEnvironment) : BaseSymbol
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
         val symbols = resolver.getSymbolsWithAnnotation(VALID_TYPE.canonicalName).toList()
         for (symbol in symbols) {
-            if (!symbol.validate()) {
-                continue
+            if (symbol.validate()) {
+                gen.generate(symbol, resolver)
             }
-            gen.generate(symbol)
         }
 
         return symbols.filterNot { it.validate() }.toList()

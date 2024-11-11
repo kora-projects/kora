@@ -117,7 +117,10 @@ abstract class AbstractSymbolProcessorTest {
                         }
                         .filter { it.second >= 0 }
                         .minBy { it.second }
-                    val className = s.substring(classNameLocation.first - 1, classNameLocation.second).trim()
+                    val className = s.substring(classNameLocation.first - 1, classNameLocation.second)
+                        .trim()
+                        .replaceFirst(Regex("<.*>"), "")
+                        .trim()
                     val fileName = "build/in-test-generated-ksp/sources/${testPackage.replace('.', '/')}/$className.kt"
                     Files.createDirectories(File(fileName).toPath().parent)
                     Files.deleteIfExists(Paths.get(fileName))
@@ -249,6 +252,12 @@ abstract class AbstractSymbolProcessorTest {
 
     protected fun newGenerated(name: String, vararg args: Any?) = object : GeneratedObject<Any> {
         override fun invoke() = compileResult.loadClass(name).constructors[0].newInstance(*args)!!
+    }
+
+    protected fun newObject(name: String, vararg args: Any?): TestObject {
+        val loadClass = compileResult.loadClass(name)
+        val inst = loadClass.constructors[0].newInstance(*args)!!
+        return TestObject(loadClass.kotlin, inst)
     }
 
     class TestObject(
