@@ -432,7 +432,6 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("kotlinServerResponseMappers.mustache", "ServerResponseMappers.kt");
             }
         }
-        this.vendorExtensions.put("enableValidation", params.enableValidation());
         this.vendorExtensions.put("allowAspects", params.enableValidation() || !params.additionalContractAnnotations.isEmpty());
 
         embeddedTemplateDir = templateDir = "openapi/templates/kora";
