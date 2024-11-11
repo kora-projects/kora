@@ -85,6 +85,7 @@ public class KoraCompileTestJavaFileManager extends ForwardingJavaFileManager<St
 
     @Override
     public void close() throws IOException {
+        super.flush();
         super.close();
     }
 

@@ -117,6 +117,7 @@ public abstract class AbstractAnnotationProcessorTest {
                 return new ByteArrayJavaFileObject(JavaFileObject.Kind.SOURCE, testPackage + "." + firstClass, s.getBytes(StandardCharsets.UTF_8));
             })
             .toList();
+
         try (var delegate = javaCompiler.getStandardFileManager(diagnostic::add, Locale.US, StandardCharsets.UTF_8);
              var manager = new KoraCompileTestJavaFileManager(this.testInfo, delegate, sourceList.toArray(ByteArrayJavaFileObject[]::new))) {
 
