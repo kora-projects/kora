@@ -20,6 +20,7 @@ import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.parameters.RequestBody;
 import io.swagger.v3.oas.models.servers.Server;
+import io.swagger.v3.oas.models.tags.Tag;
 import io.swagger.v3.parser.util.SchemaTypeUtil;
 import jakarta.annotation.Nullable;
 import org.apache.commons.io.FilenameUtils;
@@ -1816,7 +1817,18 @@ public class KoraCodegen extends DefaultCodegen {
                 }
             }
             if (params.enableValidation) {
-                op.vendorExtensions.put("enableValidation", params.enableValidation);
+                List<AdditionalAnnotation> additionalAnnotations = List.of();
+                for (Tag tag : op.tags) {
+                    additionalAnnotations = params.additionalContractAnnotations.get(tag.getName());
+                    if(additionalAnnotations != null) {
+                        break;
+                    }
+                }
+                if (additionalAnnotations == null) {
+                    additionalAnnotations = params.additionalContractAnnotations.get("*");
+                }
+                op.vendorExtensions.put("allowAspects", params.enableValidation() || !additionalAnnotations.isEmpty());
+
                 for (var p : op.allParams) {
                     var validation = false;
                     if (p.isModel) {
