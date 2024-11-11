@@ -3,8 +3,8 @@ package ru.tinkoff.kora.json.annotation.processor;
 import com.squareup.javapoet.ArrayTypeName;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.TypeName;
-
 import jakarta.annotation.Nullable;
+
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.math.BigDecimal;
@@ -37,14 +37,13 @@ public class KnownType {
         );
     }
 
-
     @Nullable
     public KnownTypesEnum detect(TypeMirror typeMirror) {
         if (typeMirror.getKind() == TypeKind.ERROR) {
             return null;
         }
-        return knownTypes.get(TypeName.get(typeMirror));
 
+        return knownTypes.get(TypeName.get(typeMirror));
     }
 
     public enum KnownTypesEnum {

@@ -12,6 +12,7 @@ import ru.tinkoff.kora.json.annotation.processor.reader.ReaderFieldType.KnownTyp
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.*;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import java.util.ArrayList;
@@ -51,11 +52,18 @@ public class ReaderTypeMetaParser {
 
     @Nullable
     public ReaderFieldType parseReaderFieldType(TypeMirror jsonClass) {
-        var knownType = this.knownTypes.detect(jsonClass);
+        boolean isJsonNullable = false;
+        TypeMirror realType = jsonClass;
+        if (jsonClass instanceof DeclaredType dt && JsonTypes.jsonNullable.canonicalName().equals((dt.asElement()).toString())) {
+            realType = dt.getTypeArguments().get(0);
+            isJsonNullable = true;
+        }
+
+        var knownType = this.knownTypes.detect(realType);
         if (knownType != null) {
-            return new KnownTypeReaderMeta(knownType, jsonClass);
+            return new KnownTypeReaderMeta(knownType, realType, isJsonNullable);
         } else {
-            return new ReaderFieldType.UnknownTypeReaderMeta(jsonClass);
+            return new ReaderFieldType.UnknownTypeReaderMeta(realType, isJsonNullable);
         }
     }
 

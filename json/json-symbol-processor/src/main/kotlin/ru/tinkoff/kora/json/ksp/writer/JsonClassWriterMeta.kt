@@ -27,7 +27,7 @@ data class JsonClassWriterMeta(val type: KSClassDeclaration, val fields: List<Fi
         val fieldSimpleName: KSName,
         val jsonName: String,
         val type: KSType,
-        val typeMeta: WriterFieldType?,
+        val typeMeta: WriterFieldType,
         val writer: KSType?,
         val accessor: String,
         val includeType: IncludeType

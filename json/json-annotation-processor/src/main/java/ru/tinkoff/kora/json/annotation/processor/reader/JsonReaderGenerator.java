@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.json.annotation.processor.reader;
 
 import com.squareup.javapoet.*;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
@@ -9,7 +10,6 @@ import ru.tinkoff.kora.json.annotation.processor.KnownType;
 import ru.tinkoff.kora.json.annotation.processor.reader.JsonClassReaderMeta.FieldMeta;
 import ru.tinkoff.kora.json.annotation.processor.reader.ReaderFieldType.KnownTypeReaderMeta;
 
-import jakarta.annotation.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -37,6 +37,9 @@ public class JsonReaderGenerator {
     private boolean isNullable(JsonClassReaderMeta.FieldMeta field) {
         if (field.parameter().asType().getKind().isPrimitive()) {
             return false;
+        }
+        if (field.typeMeta() != null && field.typeMeta().isJsonNullable()) {
+            return true;
         }
 
         return CommonUtils.isNullable(field.parameter());
@@ -240,6 +243,8 @@ public class JsonReaderGenerator {
                 } else {
                     method.addCode(" = 0;\n");
                 }
+            } else if (field.typeMeta() != null && field.typeMeta().isJsonNullable()) {
+                method.addCode(" = $T.undefined();\n", JsonTypes.jsonNullable);
             } else {
                 method.addCode(" = null;\n");
             }
@@ -285,7 +290,7 @@ public class JsonReaderGenerator {
                 constructor.addStatement("this.$L = $L", fieldName, fieldName);
             } else if (field.typeMeta() instanceof ReaderFieldType.UnknownTypeReaderMeta) {
                 var fieldName = this.readerFieldName(field);
-                var fieldType = ParameterizedTypeName.get(JsonTypes.jsonReader, field.typeName());
+                var fieldType = ParameterizedTypeName.get(JsonTypes.jsonReader, TypeName.get(field.typeMeta().typeMirror()));
                 var readerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
                 constructor.addParameter(fieldType, fieldName);
                 constructor.addStatement("this.$L = $L", fieldName, fieldName);
@@ -332,12 +337,27 @@ public class JsonReaderGenerator {
                 block.add("__receivedFields[0] = __receivedFields[0] | (1 << $L);\n", index);
             }
 
-            block.add(readKnownType(field.jsonName(), CodeBlock.of("return "), meta.knownType(), isNullable(field), meta.typeMirror()));
+            CodeBlock prefix = field.typeMeta().isJsonNullable()
+                ? CodeBlock.of("return $T.ofNullable(", JsonTypes.jsonNullable)
+                : CodeBlock.of("return ");
+
+            CodeBlock suffix = field.typeMeta().isJsonNullable()
+                ? CodeBlock.of(")")
+                : CodeBlock.of("");
+
+            boolean isJsonNullable = field.typeMeta().isJsonNullable();
+            block.add(readKnownType(field.jsonName(), prefix, suffix, meta.knownType(), isNullable(field), isJsonNullable, meta.typeMirror()));
             method.addCode(block.build());
             return method.build();
         }
 
-        if (isNullable(field)) {
+        if (field.typeMeta() != null && field.typeMeta().isJsonNullable()) {
+            method.addCode("""
+                if (__token == $T.VALUE_NULL) {
+                  return $T.nullValue();
+                }
+                """, JsonTypes.jsonToken, JsonTypes.jsonNullable);
+        } else if (isNullable(field)) {
             method.addCode("""
                 if (__token == $T.VALUE_NULL) {
                   return null;
@@ -354,7 +374,12 @@ public class JsonReaderGenerator {
                 method.addCode("__receivedFields[0] = __receivedFields[0] | (1 << $L);\n", index);
             }
         }
-        method.addStatement("return $L.read(__parser)", readerFieldName(field));
+
+        if (field.typeMeta() != null && field.typeMeta().isJsonNullable()) {
+            method.addStatement("return $T.ofNullable($L.read(__parser))", JsonTypes.jsonNullable, readerFieldName(field));
+        } else {
+            method.addStatement("return $L.read(__parser)", readerFieldName(field));
+        }
         return method.build();
     }
 
@@ -362,72 +387,74 @@ public class JsonReaderGenerator {
         return "read_" + field.parameter().getSimpleName().toString();
     }
 
-    private CodeBlock readKnownType(String jsonName, CodeBlock parameterName, KnownType.KnownTypesEnum knownType, boolean nullable, TypeMirror typeMirror) {
+    private CodeBlock readKnownType(String jsonName, CodeBlock prefix, CodeBlock suffix, KnownType.KnownTypesEnum knownType, boolean nullable, boolean jsonNullable, TypeMirror typeMirror) {
         var method = CodeBlock.builder();
         var code = switch (knownType) {
             case STRING -> CodeBlock.of("""
-                if (__token == $T.VALUE_STRING) {
-                  $L __parser.getText();
-                }
-                """, JsonTypes.jsonToken, parameterName);
+                    if (__token == $T.VALUE_STRING) {
+                      $L__parser.getText()$L;
+                    }""",
+                JsonTypes.jsonToken, prefix, suffix);
             case BOOLEAN_OBJECT, BOOLEAN_PRIMITIVE -> CodeBlock.of("""
-                if (__token == $T.VALUE_TRUE) {
-                  $L true;
-                } else if (__token == $T.VALUE_FALSE) {
-                  $L false;
-                }
-                """, JsonTypes.jsonToken, parameterName, JsonTypes.jsonToken, parameterName);
+                    if (__token == $T.VALUE_TRUE) {
+                      $Ltrue$L;
+                    } else if (__token == $T.VALUE_FALSE) {
+                      $Lfalse$L;
+                    }""",
+                JsonTypes.jsonToken, prefix, suffix, JsonTypes.jsonToken, prefix, suffix);
             case INTEGER_OBJECT, INTEGER_PRIMITIVE -> CodeBlock.of("""
-                if (__token == $T.VALUE_NUMBER_INT) {
-                  $L __parser.getIntValue();
-                }
-                """, JsonTypes.jsonToken, parameterName);
+                    if (__token == $T.VALUE_NUMBER_INT) {
+                      $L__parser.getIntValue()$L;
+                    }""",
+                JsonTypes.jsonToken, prefix, suffix);
             case BIG_INTEGER -> CodeBlock.of("""
-                if (__token == $T.VALUE_NUMBER_INT) {
-                  $L __parser.getBigIntegerValue();
-                }
-                """, JsonTypes.jsonToken, parameterName);
+                    if (__token == $T.VALUE_NUMBER_INT) {
+                      $L__parser.getBigIntegerValue()$L;
+                    }""",
+                JsonTypes.jsonToken, prefix, suffix);
             case BIG_DECIMAL -> CodeBlock.of("""
-                if (__token == $T.VALUE_NUMBER_INT || __token == $T.VALUE_NUMBER_FLOAT) {
-                  $L __parser.getDecimalValue();
-                }
-                """, JsonTypes.jsonToken, JsonTypes.jsonToken, parameterName);
+                    if (__token == $T.VALUE_NUMBER_INT || __token == $T.VALUE_NUMBER_FLOAT) {
+                      $L__parser.getDecimalValue()$L;
+                    }""",
+                JsonTypes.jsonToken, JsonTypes.jsonToken, prefix, suffix);
             case DOUBLE_OBJECT, DOUBLE_PRIMITIVE -> CodeBlock.of("""
-                if (__token == $T.VALUE_NUMBER_FLOAT || __token == $T.VALUE_NUMBER_INT) {
-                  $L __parser.getDoubleValue();
-                }
-                """, JsonTypes.jsonToken, JsonTypes.jsonToken, parameterName);
+                    if (__token == $T.VALUE_NUMBER_FLOAT || __token == $T.VALUE_NUMBER_INT) {
+                      $L__parser.getDoubleValue()$L;
+                    }""",
+                JsonTypes.jsonToken, JsonTypes.jsonToken, prefix, suffix);
             case FLOAT_OBJECT, FLOAT_PRIMITIVE -> CodeBlock.of("""
-                if (__token == $T.VALUE_NUMBER_FLOAT || __token == $T.VALUE_NUMBER_INT) {
-                  $L __parser.getFloatValue();
-                }
-                """, JsonTypes.jsonToken, JsonTypes.jsonToken, parameterName);
+                    if (__token == $T.VALUE_NUMBER_FLOAT || __token == $T.VALUE_NUMBER_INT) {
+                      $L__parser.getFloatValue()$L;
+                    }""",
+                JsonTypes.jsonToken, JsonTypes.jsonToken, prefix, suffix);
             case LONG_OBJECT, LONG_PRIMITIVE -> CodeBlock.of("""
-                if (__token == $T.VALUE_NUMBER_INT) {
-                  $L __parser.getLongValue();
-                }
-                """, JsonTypes.jsonToken, parameterName);
+                    if (__token == $T.VALUE_NUMBER_INT) {
+                      $L__parser.getLongValue()$L;
+                    }""",
+                JsonTypes.jsonToken, prefix, suffix);
             case SHORT_OBJECT, SHORT_PRIMITIVE -> CodeBlock.of("""
-                if (__token == $T.VALUE_NUMBER_INT) {
-                  $L __parser.getShortValue();
-                }
-                """, JsonTypes.jsonToken, parameterName);
+                    if (__token == $T.VALUE_NUMBER_INT) {
+                      $L__parser.getShortValue()$L;
+                    }""",
+                JsonTypes.jsonToken, prefix, suffix);
             case BINARY -> CodeBlock.of("""
-                if (__token == $T.VALUE_STRING) {
-                  $L __parser.getBinaryValue();
-                }
-                """, JsonTypes.jsonToken, parameterName);
+                    if (__token == $T.VALUE_STRING) {
+                      $L__parser.getBinaryValue()$L;
+                    }""",
+                JsonTypes.jsonToken, prefix, suffix);
             case UUID -> CodeBlock.of("""
-                if (__token == $T.VALUE_STRING) {
-                  $L $T.fromString(__parser.getText());
-                }
-                """, JsonTypes.jsonToken, parameterName, UUID.class);
+                    if (__token == $T.VALUE_STRING) {
+                      $L$T.fromString(__parser.getText())$L;
+                    }""",
+                JsonTypes.jsonToken, prefix, UUID.class, suffix);
         };
         method.add(code);
-        if (nullable) {
-            method.add("else if (__token == $T.VALUE_NULL) {$>\n$L null;}$<\n", JsonTypes.jsonToken, parameterName);
+        if (jsonNullable) {
+            method.add(" else if (__token == $T.VALUE_NULL) {$>\nreturn $T.nullValue();$<\n}", JsonTypes.jsonToken, JsonTypes.jsonNullable);
+        } else if (nullable) {
+            method.add(" else if (__token == $T.VALUE_NULL) {$>\nreturn null;$<\n}", JsonTypes.jsonToken);
         }
-        method.add("else {$>\nthrow new $T(__parser, $S + __token);$<\n}", JsonTypes.jsonParseException, "Expecting %s token for field '%s', got ".formatted(Arrays.toString(expectedTokens(knownType, nullable)), jsonName));
+        method.add(" else {$>\nthrow new $T(__parser, $S + __token);$<\n}", JsonTypes.jsonParseException, "Expecting %s token for field '%s', got ".formatted(Arrays.toString(expectedTokens(knownType, nullable)), jsonName));
         return method.build();
     }
 

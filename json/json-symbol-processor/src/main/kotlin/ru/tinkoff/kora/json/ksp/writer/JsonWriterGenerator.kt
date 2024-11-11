@@ -114,32 +114,61 @@ class JsonWriterGenerator(private val resolver: Resolver) {
 
     private fun addWriteParam(function: CodeBlock.Builder, field: JsonClassWriterMeta.FieldMeta) {
         val read = CodeBlock.builder()
-            .add("_gen.writeFieldName(%N)\n", jsonNameStaticName(field))
-        if (field.writer == null && field.typeMeta is WriterFieldType.KnownWriterFieldType) {
-            read.add(writeKnownType(field.typeMeta.knownType))
+
+        if (field.typeMeta.isJsonNullable) {
+            read.beginControlFlow("if (it.isDefined())")
+            read.addStatement("_gen.writeFieldName(%N)\n", jsonNameStaticName(field))
         } else {
-            read.addStatement("%L.write(_gen, it)", writerFieldName(field))
+            read.add("_gen.writeFieldName(%N)\n", jsonNameStaticName(field))
         }
-        if (!field.type.isMarkedNullable) {
-            function.controlFlow("_object.%N.let {", field.accessor) {
-                if (field.includeType == JsonClassWriterMeta.IncludeType.NON_EMPTY && (field.type.isCollection() || field.type.isMap())) {
-                    controlFlow("if (it.%M())", CommonClassNames.isNotEmpty) {
+
+        if (field.writer == null && field.typeMeta is WriterFieldType.KnownWriterFieldType) {
+            if (field.typeMeta.isJsonNullable) {
+                read.beginControlFlow("if (it.isNull)");
+                read.addStatement("_gen.writeNull()")
+                read.nextControlFlow("else")
+                read.add(writeKnownType(field.typeMeta.knownType, field.typeMeta))
+                read.endControlFlow()
+            } else {
+                read.add(writeKnownType(field.typeMeta.knownType, field.typeMeta))
+            }
+        } else {
+            if (field.typeMeta.isJsonNullable) {
+                read.beginControlFlow("if (it.isNull)");
+                read.addStatement("_gen.writeNull()")
+                read.nextControlFlow("else")
+                read.addStatement("%L.write(_gen, it.value())", writerFieldName(field))
+                read.endControlFlow()
+            } else {
+                read.addStatement("%L.write(_gen, it)", writerFieldName(field))
+            }
+        }
+
+        if (field.typeMeta.isJsonNullable) {
+            read.endControlFlow()
+        }
+
+        if (field.includeType == JsonClassWriterMeta.IncludeType.NON_EMPTY && (field.typeMeta.type.isCollection() || field.typeMeta.type.isMap())) {
+            val letAccessor = if(field.type.isMarkedNullable) "?.let" else ".let"
+            function.controlFlow("_object.%N%L {", field.accessor, letAccessor) {
+                if (field.typeMeta.isJsonNullable) {
+                    controlFlow("if (!it.isNull && it.value().%M())", CommonClassNames.isNotEmpty) {
                         add(read.build())
                     }
                 } else {
-                    add(read.build())
-                }
-            }
-            return
-        }
-        if (field.includeType == JsonClassWriterMeta.IncludeType.NON_EMPTY && (field.type.isCollection() || field.type.isMap())) {
-            function.controlFlow("_object.%N?.let {", field.accessor) {
-                controlFlow("if (it.%M())", CommonClassNames.isNotEmpty) {
-                    add(read.build())
+                    controlFlow("if (it.%M())", CommonClassNames.isNotEmpty) {
+                        add(read.build())
+                    }
                 }
             }
         } else if (field.includeType != JsonClassWriterMeta.IncludeType.ALWAYS) {
-            function.controlFlow("_object.%N?.let {", field.accessor) {
+            val letAccessor = if(field.type.isMarkedNullable) "?.let" else ".let"
+            function.controlFlow("_object.%N%L {", field.accessor, letAccessor) {
+                add(read.build())
+            }
+        } else if(field.typeMeta.isJsonNullable) {
+            val letAccessor = if(field.type.isMarkedNullable) "?.let" else ".let"
+            function.controlFlow("_object.%N%L {", field.accessor, letAccessor) {
                 add(read.build())
             }
         } else {
@@ -149,7 +178,7 @@ class JsonWriterGenerator(private val resolver: Resolver) {
                     controlFlow("if (it == null)") {
                         add("_gen.writeNull()")
                         nextControlFlow("else")
-                        add(writeKnownType(field.typeMeta.knownType))
+                        add(writeKnownType(field.typeMeta.knownType, field.typeMeta))
                     }
                 } else {
                     addStatement("%L.write(_gen, it)", writerFieldName(field))
@@ -162,14 +191,17 @@ class JsonWriterGenerator(private val resolver: Resolver) {
         return "_" + field.fieldSimpleName.asString() + "_optimized_field_name"
     }
 
-    private fun writeKnownType(knownType: KnownTypesEnum) = when (knownType) {
-        KnownTypesEnum.STRING -> CodeBlock.of("_gen.writeString(it)\n")
-        KnownTypesEnum.BOOLEAN -> CodeBlock.of("_gen.writeBoolean(it)\n")
-        INTEGER, BIG_INTEGER, BIG_DECIMAL, KnownTypesEnum.DOUBLE, KnownTypesEnum.FLOAT, KnownTypesEnum.LONG, KnownTypesEnum.SHORT -> CodeBlock.of(
-            "_gen.writeNumber(it)\n"
-        )
+    private fun writeKnownType(knownType: KnownTypesEnum, fieldMeta: WriterFieldType): CodeBlock {
+        val param = if (fieldMeta.isJsonNullable) "it.value()" else "it"
+        return when (knownType) {
+            KnownTypesEnum.STRING -> CodeBlock.of("_gen.writeString($param)\n")
+            KnownTypesEnum.BOOLEAN -> CodeBlock.of("_gen.writeBoolean($param)\n")
+            INTEGER, BIG_INTEGER, BIG_DECIMAL, KnownTypesEnum.DOUBLE, KnownTypesEnum.FLOAT, KnownTypesEnum.LONG, KnownTypesEnum.SHORT -> CodeBlock.of(
+                "_gen.writeNumber($param)\n"
+            )
 
-        BINARY -> CodeBlock.of("_gen.writeBinary(it)\n")
-        UUID -> CodeBlock.of("_gen.writeString(it.toString())\n")
+            BINARY -> CodeBlock.of("_gen.writeBinary($param)\n")
+            UUID -> CodeBlock.of("_gen.writeString($param.toString())\n")
+        }
     }
 }

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.json.annotation.processor.writer;
 
-import com.squareup.javapoet.TypeName;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.common.naming.NameConverter;
@@ -8,9 +8,9 @@ import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
 import ru.tinkoff.kora.json.annotation.processor.KnownType;
 import ru.tinkoff.kora.json.annotation.processor.writer.JsonClassWriterMeta.FieldMeta;
 
-import jakarta.annotation.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.*;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
@@ -84,12 +84,19 @@ public class WriterTypeMetaParser {
         return new FieldMeta(field, fieldTypeMirror, typeMeta, jsonName, includeType, accessorMethod, writer);
     }
 
-    private WriterFieldType parseWriterFieldType(TypeMirror typeMirror) {
-        var knownType = this.knownTypes.detect(typeMirror);
+    private WriterFieldType parseWriterFieldType(TypeMirror jsonClass) {
+        boolean isJsonNullable = false;
+        TypeMirror realType = jsonClass;
+        if (jsonClass instanceof DeclaredType dt && JsonTypes.jsonNullable.canonicalName().equals((dt.asElement()).toString())) {
+            realType = dt.getTypeArguments().get(0);
+            isJsonNullable = true;
+        }
+
+        var knownType = this.knownTypes.detect(realType);
         if (knownType != null) {
-            return new WriterFieldType.KnownWriterFieldType(knownType);
+            return new WriterFieldType.KnownWriterFieldType(knownType, realType, isJsonNullable);
         } else {
-            return new WriterFieldType.UnknownWriterFieldType(TypeName.get(typeMirror));
+            return new WriterFieldType.UnknownWriterFieldType(realType, isJsonNullable);
         }
     }
 

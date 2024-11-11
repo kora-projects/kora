@@ -9,7 +9,7 @@ object JsonTypes {
     val jsonDiscriminatorField = ClassName("ru.tinkoff.kora.json.common.annotation", "JsonDiscriminatorField")
     val jsonDiscriminatorValue = ClassName("ru.tinkoff.kora.json.common.annotation", "JsonDiscriminatorValue")
 
-
+    val jsonNullable = ClassName("ru.tinkoff.kora.json.common", "JsonNullable")
     val jsonReaderAnnotation = ClassName("ru.tinkoff.kora.json.common.annotation", "JsonReader")
     val jsonWriterAnnotation = ClassName("ru.tinkoff.kora.json.common.annotation", "JsonWriter")
 
