@@ -17,7 +17,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
 
     @Test
     public void fieldJsonNullableIsUndefined() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
             """
                     
                     @Valid
@@ -35,7 +35,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
 
     @Test
     public void fieldJsonNullableIsNull() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
             """
                     
                     @Valid
@@ -53,7 +53,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
 
     @Test
     public void fieldJsonNullableIsPresent() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
             """
                     
                     @Valid
@@ -72,7 +72,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
 
     @Test
     public void fieldJsonNullableGenericIsUndefined() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
             """
                     
                     @Valid
@@ -90,7 +90,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
 
     @Test
     public void fieldJsonNullableGenericIsNull() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
             """
                     
                     @Valid
@@ -108,7 +108,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
 
     @Test
     public void fieldJsonNullableGenericIsPresent() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
             """
                     
                     @Valid
@@ -126,7 +126,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
 
     @Test
     public void fieldJsonNullableNonNullIsUndefined() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
             """
                     
                     @Valid
@@ -144,7 +144,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
 
     @Test
     public void fieldJsonNullableNonNullIsNull() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
             """
                     
                     @Valid
@@ -162,7 +162,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
 
     @Test
     public void fieldJsonNullableNonNullIsPresent() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
             """
                     
                     @Valid
@@ -180,7 +180,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
 
     @Test
     public void fieldJsonNullableWithValidatorIsUndefined() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
             """
                     
                     @Valid
@@ -199,7 +199,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
 
     @Test
     public void fieldJsonNullableWithValidatorIsNull() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
             """
                     
                     @Valid
@@ -218,7 +218,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
 
     @Test
     public void fieldJsonNullableWithValidatorIsPresent() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
             """
                     
                     @Valid
@@ -237,7 +237,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
 
     @Test
     public void fieldJsonNullableWithValidatorFailFastIsUndefined() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
             """
                     
                     @Valid
@@ -256,7 +256,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
 
     @Test
     public void fieldJsonNullableWithValidatorFailFastIsNull() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
             """
                     
                     @Valid
@@ -275,7 +275,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
 
     @Test
     public void fieldJsonNullableWithValidatorFailFastIsPresent() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
             """
                     @Valid
                     record TestRecord(@NotBlank @NotEmpty JsonNullable<String> field) {}

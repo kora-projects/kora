@@ -16,7 +16,7 @@ public class ValidationJsonNullableArgumentComletionStageTests extends AbstractV
 
     @Test
     public void argumentJsonNullableIsUndefined() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
@@ -37,7 +37,7 @@ public class ValidationJsonNullableArgumentComletionStageTests extends AbstractV
 
     @Test
     public void argumentJsonNullableIsNull() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
@@ -58,7 +58,7 @@ public class ValidationJsonNullableArgumentComletionStageTests extends AbstractV
 
     @Test
     public void argumentJsonNullableIsPresent() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
@@ -79,7 +79,7 @@ public class ValidationJsonNullableArgumentComletionStageTests extends AbstractV
 
     @Test
     public void argumentJsonNullableNonNullIsUndefined() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
@@ -100,7 +100,7 @@ public class ValidationJsonNullableArgumentComletionStageTests extends AbstractV
 
     @Test
     public void argumentJsonNullableNonNullIsNull() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
@@ -121,7 +121,7 @@ public class ValidationJsonNullableArgumentComletionStageTests extends AbstractV
 
     @Test
     public void argumentJsonNullableNonNullIsPresent() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
@@ -142,7 +142,7 @@ public class ValidationJsonNullableArgumentComletionStageTests extends AbstractV
 
     @Test
     public void argumentJsonNullableWithValidatorIsUndefined() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
@@ -163,7 +163,7 @@ public class ValidationJsonNullableArgumentComletionStageTests extends AbstractV
 
     @Test
     public void argumentJsonNullableWithValidatorIsNull() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
@@ -185,7 +185,7 @@ public class ValidationJsonNullableArgumentComletionStageTests extends AbstractV
 
     @Test
     public void argumentJsonNullableWithValidatorIsPresent() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
@@ -206,7 +206,7 @@ public class ValidationJsonNullableArgumentComletionStageTests extends AbstractV
 
     @Test
     public void argumentJsonNullableWithValidatorFailFastIsUndefined() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
@@ -227,7 +227,7 @@ public class ValidationJsonNullableArgumentComletionStageTests extends AbstractV
 
     @Test
     public void argumentJsonNullableWithValidatorFailFastIsNull() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
@@ -249,7 +249,7 @@ public class ValidationJsonNullableArgumentComletionStageTests extends AbstractV
 
     @Test
     public void argumentJsonNullableWithValidatorFailFastIsPresent() {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {

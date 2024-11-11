@@ -11,8 +11,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class ValidationExtensionTest extends AbstractValidationAnnotationProcessorTest {
 
     @Test
-    public void testExtension() throws Exception {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+    public void testExtension() {
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
             """
                 @Valid
                 public record TestRecord(@Size(min = 1, max = 5) java.util.List<String> list){}
@@ -32,8 +32,8 @@ public class ValidationExtensionTest extends AbstractValidationAnnotationProcess
     }
 
     @Test
-    public void testExtensionNoAnnotationProcessor() throws Exception {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+    public void testExtensionNoAnnotationProcessor() {
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
             """
                 public record TestRecord(@Size(min = 1, max = 5) java.util.List<String> list){}
                 """, """
