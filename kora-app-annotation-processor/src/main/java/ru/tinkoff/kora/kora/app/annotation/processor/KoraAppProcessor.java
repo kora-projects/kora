@@ -58,6 +58,10 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
+        loggedComponents.clear();
+        loggedApplicationModules.clear();
+        loggedExternalModules.clear();
+
         super.init(processingEnv);
         this.koraAppElement = this.elements.getTypeElement(CommonClassNames.koraApp.canonicalName());
         if (this.koraAppElement == null) {

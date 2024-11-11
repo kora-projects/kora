@@ -17,6 +17,7 @@ import ru.tinkoff.kora.application.graph.*;
 
 import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
+import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
 import javax.tools.ToolProvider;
 import java.io.IOException;
@@ -35,6 +36,8 @@ import java.util.stream.IntStream;
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public abstract class AbstractAnnotationProcessorTest {
+
+    private final JavaCompiler javaCompiler = ToolProvider.getSystemJavaCompiler();
 
     protected TestInfo testInfo;
     protected CompileResult compileResult;
@@ -81,7 +84,6 @@ public abstract class AbstractAnnotationProcessorTest {
     }
 
     protected CompileResult compile(List<Processor> processors, List<ProcessorOptions> processorOptions, @Language("java") String... sources) {
-        var javaCompiler = ToolProvider.getSystemJavaCompiler();
         var w = new StringWriter();
         var diagnostic = new ArrayList<Diagnostic<? extends JavaFileObject>>();
         var testPackage = testPackage();
@@ -135,6 +137,7 @@ public abstract class AbstractAnnotationProcessorTest {
             task.setProcessors(processors);
             task.setLocale(Locale.US);
             task.call();
+            w.close();
             return this.compileResult = new CompileResult(testPackage, diagnostic, manager);
         } catch (IOException e) {
             throw new RuntimeException(e);
