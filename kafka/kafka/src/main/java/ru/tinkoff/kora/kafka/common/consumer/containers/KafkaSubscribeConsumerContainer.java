@@ -215,7 +215,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
         try {
             if (config.topicsPattern() != null) {
                 if (rebalanceListener != null) {
-                    consumer.subscribe(config.topicsPattern(),  new ConsumerRebalanceListener() {
+                    consumer.subscribe(config.topicsPattern(), new ConsumerRebalanceListener() {
                         @Override
                         public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
                             rebalanceListener.onPartitionsRevoked(consumer, partitions);
@@ -237,7 +237,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
             } else if (config.topics() != null) {
                 if (rebalanceListener != null) {
 
-                    consumer.subscribe(config.topics(),  new ConsumerRebalanceListener() {
+                    consumer.subscribe(config.topics(), new ConsumerRebalanceListener() {
                         @Override
                         public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
                             rebalanceListener.onPartitionsRevoked(consumer, partitions);
