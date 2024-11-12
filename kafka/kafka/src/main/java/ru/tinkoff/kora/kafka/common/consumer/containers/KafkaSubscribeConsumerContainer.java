@@ -232,7 +232,6 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
                         }
                     };
 
-                    rebalanceListener.onPartitionsPrepared(consumer, null, config.topicsPattern());
                     consumer.subscribe(config.topicsPattern(), listener);
                 } else {
                     consumer.subscribe(config.topicsPattern());
@@ -256,7 +255,6 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
                         }
                     };
 
-                    rebalanceListener.onPartitionsPrepared(consumer, config.topics(), null);
                     consumer.subscribe(config.topics(), listener);
                 } else {
                     consumer.subscribe(config.topics());
