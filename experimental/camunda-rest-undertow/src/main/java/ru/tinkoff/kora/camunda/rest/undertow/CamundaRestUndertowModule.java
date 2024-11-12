@@ -3,7 +3,6 @@ package ru.tinkoff.kora.camunda.rest.undertow;
 import io.undertow.server.HttpHandler;
 import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.Application;
-import jdk.jfr.Experimental;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.ValueOf;
@@ -17,7 +16,6 @@ import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Root;
 
-@Experimental
 public interface CamundaRestUndertowModule extends CamundaRestModule {
 
     @Tag(CamundaRest.class)
