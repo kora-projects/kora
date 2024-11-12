@@ -44,7 +44,7 @@ class KoraCodegenTest {
 
     record SwaggerParams(String mode, String spec, String name, Options options) {
 
-        record Options(boolean authAsArg) {}
+        record Options(boolean authAsArg, boolean jsonNullable) {}
     }
 
     static SwaggerParams[] generateParams() {
@@ -61,6 +61,7 @@ class KoraCodegenTest {
             KoraCodegen.Mode.KOTLIN_SERVER.getMode(),
             KoraCodegen.Mode.KOTLIN_SUSPEND_SERVER.getMode(),
         };
+
         var files = new String[]{
             "/example/petstoreV3_enum.yaml",
             "/example/petstoreV3_form.yaml",
@@ -74,20 +75,28 @@ class KoraCodegenTest {
             "/example/petstoreV3_security_bearer.yaml",
             "/example/petstoreV3_security_oauth.yaml",
             "/example/petstoreV3_discriminator.yaml",
+            "/example/petstoreV3_nullable.yaml",
+            "/example/petstoreV3.yaml",
             "/example/petstoreV2.yaml",
         };
+
         for (var fileName : files) {
             for (var mode : modes) {
                 var name = fileName.substring(fileName.lastIndexOf('/') + 1)
                     .replace(".yaml", "")
                     .replace(".json", "");
 
-                result.add(new SwaggerParams(mode, fileName, name, new SwaggerParams.Options(false)));
+                result.add(new SwaggerParams(mode, fileName, name, new SwaggerParams.Options(false, false)));
                 if (fileName.contains("security")) {
-                    result.add(new SwaggerParams(mode, fileName, name, new SwaggerParams.Options(true)));
+                    result.add(new SwaggerParams(mode, fileName, name + "_auth_arg", new SwaggerParams.Options(true, false)));
+                }
+
+                if (fileName.contains("discriminator") || fileName.contains("validation") || fileName.contains("nullable")) {
+                    result.add(new SwaggerParams(mode, fileName, name + "_enable_json_nullable", new SwaggerParams.Options(false, true)));
                 }
             }
         }
+
         return result.toArray(SwaggerParams[]::new);
     }
 
@@ -134,17 +143,18 @@ class KoraCodegenTest {
                 """)
             .addAdditionalProperty("enableServerValidation", name.contains("validation"))
             .addAdditionalProperty("authAsMethodArgument", options.authAsArg())
+            .addAdditionalProperty("enableJsonNullable", options.jsonNullable())
             .addAdditionalProperty("clientConfigPrefix", "test");
-        var processors = new Processor[]{new JsonAnnotationProcessor(), new HttpClientAnnotationProcessor(), new HttpControllerProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()};
 
+        var processors = new Processor[]{new JsonAnnotationProcessor(), new HttpClientAnnotationProcessor(), new HttpControllerProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()};
         var clientOptInput = configurator.toClientOptInput();
         var generator = new DefaultGenerator();
-
         var files = generator.opts(clientOptInput).generate()
             .stream()
             .map(File::getAbsolutePath)
             .map(String::toString)
             .toList();
+
         if (mode.contains("kotlin")) {
             compileKotlin(files.stream().filter(f -> f.endsWith(".kt")).toList());
         } else {
