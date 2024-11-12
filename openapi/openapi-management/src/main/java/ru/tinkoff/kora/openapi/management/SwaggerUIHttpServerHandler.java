@@ -8,60 +8,55 @@ import ru.tinkoff.kora.http.server.common.HttpServerResponseException;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicReference;
 
-public final class SwaggerUIHttpServerHandler implements HttpServerRequestHandler.HandlerFunction {
+final class SwaggerUIHttpServerHandler implements HttpServerRequestHandler.HandlerFunction {
 
     private static final String FILE_PATH = "kora/openapi/management/swagger-ui/index.html";
     private static final String HTML_CONTENT_TYPE = "text/html; charset=utf-8";
 
     private final AtomicReference<byte[]> content = new AtomicReference<>();
-    private final String openapiPath;
-    private final String swaggeruiPath;
-    private final List<String> openapiFiles;
+    private final OpenApiManagementConfig config;
 
-    public SwaggerUIHttpServerHandler(String openapiPath, String swaggeruiPath, List<String> openapiFiles) {
-        this.openapiPath = openapiPath;
-        this.swaggeruiPath = swaggeruiPath;
-        this.openapiFiles = openapiFiles;
+    SwaggerUIHttpServerHandler(OpenApiManagementConfig config) {
+        this.config = config;
     }
 
     @Override
-    public CompletionStage<HttpServerResponse> apply(Context context, HttpServerRequest request) {
+    public CompletionStage<HttpServerResponse> apply(Context context, HttpServerRequest request) throws Exception {
         byte[] bytes = content.get();
         if (bytes != null) {
             return CompletableFuture.completedFuture(HttpServerResponse.of(200, HttpBody.of(HTML_CONTENT_TYPE, bytes)));
         }
 
         return CompletableFuture.supplyAsync(() -> {
-            byte[] loadedBytes = loadSwagger();
+            byte[] loadedBytes = loadSwagger(config);
             content.set(loadedBytes);
             return HttpServerResponse.of(200, HttpBody.of(HTML_CONTENT_TYPE, loadedBytes));
         });
     }
 
-    private byte[] loadSwagger() {
+    private static byte[] loadSwagger(OpenApiManagementConfig config) {
         return ResourceUtils.getFileAsString(FILE_PATH)
             .map(file -> {
-                if (openapiFiles.size() == 1) {
+                if (config.file().size() == 1) {
                     String replacement = """
                         url: window.location.href.substring(0, window.location.href.lastIndexOf("#") === -1 ? window.location.href.length : window.location.href.lastIndexOf("#")).replace("%s", "%s")
-                        """.formatted(swaggeruiPath, openapiPath);
+                        """.formatted(config.swaggerui().endpoint(), config.endpoint());
 
                     var tagSwagger = "${swaggerUrls}";
                     int ri = file.lastIndexOf(tagSwagger);
                     return file.substring(0, ri) + replacement + file.substring(ri + tagSwagger.length());
                 } else {
                     final StringBuilder replacement = new StringBuilder("urls: [");
-                    for (String filePath : openapiFiles) {
+                    for (String filePath : config.file()) {
                         final String fileName = ResourceUtils.getFileName(filePath);
                         replacement.append("""
                             { url: window.location.href.substring(0, window.location.href.lastIndexOf("#") === -1 ? window.location.href.length : window.location.href.lastIndexOf("#")).replace("%s", "%s"),
                               name: "%s" },
-                              """.formatted(swaggeruiPath, openapiPath + "/" + fileName, fileName));
+                             """.formatted(config.swaggerui().endpoint(), config.endpoint() + "/" + fileName, fileName));
                     }
                     replacement.append("]");
 

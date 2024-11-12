@@ -21,7 +21,7 @@ public interface OpenApiManagementModule {
                 (context, request) -> CompletableFuture.completedFuture(HttpServerResponse.of(404)));
         }
 
-        var handler = new OpenApiHttpServerHandler(config.file(), f -> f);
+        var handler = new OpenApiHttpServerHandler(config);
         return HttpServerRequestHandlerImpl.get(path, handler);
     }
 
@@ -34,7 +34,7 @@ public interface OpenApiManagementModule {
                 (context, request) -> CompletableFuture.completedFuture(HttpServerResponse.of(404)));
         }
 
-        var handler = new SwaggerUIHttpServerHandler(config.endpoint(), config.swaggerui().endpoint(), config.file());
+        var handler = new SwaggerUIHttpServerHandler(config);
         return HttpServerRequestHandlerImpl.get(config.swaggerui().endpoint(), handler);
     }
 
@@ -47,7 +47,7 @@ public interface OpenApiManagementModule {
                 (context, request) -> CompletableFuture.completedFuture(HttpServerResponse.of(404)));
         }
 
-        var handler = new RapidocHttpServerHandler(config.endpoint(), config.rapidoc().endpoint(), config.file());
+        var handler = new RapidocHttpServerHandler(config);
         return HttpServerRequestHandlerImpl.get(config.rapidoc().endpoint(), handler);
     }
 }

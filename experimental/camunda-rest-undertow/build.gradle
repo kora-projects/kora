@@ -16,7 +16,6 @@ dependencies {
     api project(":telemetry:telemetry-common")
     api project(":common")
     api libs.camunda7.rest.jakarta
-    api libs.camunda7.openapi
     api libs.jakarta.rs.api
     api libs.undertow.servlet
     api libs.undertow.core
