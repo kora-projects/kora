@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.util.TimeUtils;
+import ru.tinkoff.kora.kafka.common.KafkaUtils;
 import ru.tinkoff.kora.kafka.common.KafkaUtils.NamedThreadFactory;
 import ru.tinkoff.kora.kafka.common.consumer.ConsumerAwareRebalanceListener;
 import ru.tinkoff.kora.kafka.common.consumer.KafkaListenerConfig;
@@ -27,8 +28,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-
-import static ru.tinkoff.kora.kafka.common.KafkaUtils.getConsumerPrefix;
 
 public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
 
@@ -70,7 +69,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
         this.handler = handler;
         this.rebalanceListener = rebalanceListener;
         this.backoffTimeout = new AtomicLong(config.backoffTimeout().toMillis());
-        this.consumerPrefix = getConsumerPrefix(config);
+        this.consumerPrefix = KafkaUtils.getConsumerPrefix(config);
         var autoCommit = config.driverProperties().get(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG);
         if (autoCommit == null) {
             config = config.withDriverPropertiesOverrides(Map.of(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false));
@@ -237,7 +236,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
                 }
             } else if (config.topics() != null) {
                 if (rebalanceListener != null) {
-                    consumer.subscribe(config.topicsPattern(), new ConsumerRebalanceListener() {
+                    consumer.subscribe(config.topics(), new ConsumerRebalanceListener() {
                         @Override
                         public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
                             rebalanceListener.onPartitionsRevoked(consumer, partitions);
