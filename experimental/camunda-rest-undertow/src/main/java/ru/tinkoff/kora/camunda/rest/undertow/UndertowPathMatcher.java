@@ -1,12 +1,10 @@
 package ru.tinkoff.kora.camunda.rest.undertow;
 
 import jakarta.annotation.Nullable;
-import org.jetbrains.annotations.ApiStatus.Internal;
 import ru.tinkoff.kora.http.server.common.router.PathTemplateMatcher;
 
 import java.util.*;
 
-@Internal
 final class UndertowPathMatcher {
 
     private final Map<String, PathTemplateMatcher<String>> pathTemplateMatcher = new HashMap<>();

@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.camunda.engine.bpmn;
 
 import jakarta.annotation.Nullable;
+import jdk.jfr.Experimental;
 import org.camunda.bpm.engine.*;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
 import org.camunda.bpm.engine.impl.cfg.IdGenerator;
@@ -30,6 +31,7 @@ import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import javax.sql.DataSource;
 import java.util.Optional;
 
+@Experimental
 public interface CamundaEngineBpmnModule {
 
     default CamundaEngineBpmnConfig camundaEngineBpmnConfig(Config config, ConfigValueExtractor<CamundaEngineBpmnConfig> extractor) {

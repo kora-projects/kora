@@ -6,8 +6,6 @@ import org.camunda.bpm.impl.juel.SimpleContext;
 import org.camunda.bpm.impl.juel.jakarta.el.ELResolver;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
-import ru.tinkoff.kora.camunda.engine.bpmn.KoraDelegate;
-import ru.tinkoff.kora.camunda.engine.bpmn.KoraELResolver;
 
 import java.util.List;
 

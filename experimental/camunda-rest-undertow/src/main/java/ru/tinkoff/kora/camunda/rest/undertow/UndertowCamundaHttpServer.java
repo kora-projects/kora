@@ -3,7 +3,6 @@ package ru.tinkoff.kora.camunda.rest.undertow;
 import io.undertow.Undertow;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.handlers.GracefulShutdownHandler;
-import org.jetbrains.annotations.ApiStatus.Internal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
@@ -16,7 +15,6 @@ import ru.tinkoff.kora.common.util.TimeUtils;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicReference;
 
-@Internal
 final class UndertowCamundaHttpServer implements Lifecycle, ReadinessProbe {
 
     private static final Logger logger = LoggerFactory.getLogger(UndertowCamundaHttpServer.class);

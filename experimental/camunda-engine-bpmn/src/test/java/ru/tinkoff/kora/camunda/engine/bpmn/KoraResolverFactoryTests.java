@@ -5,8 +5,6 @@ import org.camunda.bpm.engine.delegate.JavaDelegate;
 import org.camunda.bpm.engine.impl.scripting.engine.Resolver;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
-import ru.tinkoff.kora.camunda.engine.bpmn.KoraDelegate;
-import ru.tinkoff.kora.camunda.engine.bpmn.KoraResolverFactory;
 
 import java.util.List;
 
