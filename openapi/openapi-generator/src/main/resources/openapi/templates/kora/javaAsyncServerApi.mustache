@@ -18,9 +18,9 @@ import java.util.Map;
 import jakarta.annotation.Nullable;
 
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
-@ru.tinkoff.kora.http.server.common.annotation.HttpController{{#vendorExtensions.enableValidation}}
-@ru.tinkoff.kora.common.Component{{/vendorExtensions.enableValidation}}
-public{{^vendorExtensions.enableValidation}} final{{/vendorExtensions.enableValidation}} class {{classname}}Controller {
+@ru.tinkoff.kora.http.server.common.annotation.HttpController{{#vendorExtensions.allowAspects}}
+@ru.tinkoff.kora.common.Component{{/vendorExtensions.allowAspects}}
+public{{^vendorExtensions.allowAspects}} final{{/vendorExtensions.allowAspects}} class {{classname}}Controller {
     private final {{classname}}Delegate delegate;
 
     public {{classname}}Controller({{classname}}Delegate delegate) {

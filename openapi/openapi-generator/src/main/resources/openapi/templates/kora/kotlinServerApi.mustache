@@ -15,9 +15,9 @@ import ru.tinkoff.kora.http.server.common.HttpServerRequest
 {{/requestInDelegateParams}}
 
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
-@ru.tinkoff.kora.http.server.common.annotation.HttpController{{#vendorExtensions.enableValidation}}
-@ru.tinkoff.kora.common.Component{{/vendorExtensions.enableValidation}}
-{{#vendorExtensions.enableValidation}}open {{/vendorExtensions.enableValidation}}class {{classname}}Controller(private val delegate: {{classname}}Delegate) {
+@ru.tinkoff.kora.http.server.common.annotation.HttpController{{#vendorExtensions.allowAspects}}
+@ru.tinkoff.kora.common.Component{{/vendorExtensions.allowAspects}}
+{{#vendorExtensions.allowAspects}}open {{/vendorExtensions.allowAspects}}class {{classname}}Controller(private val delegate: {{classname}}Delegate) {
 {{#operations}}
 {{#operation}}
     /**
@@ -63,7 +63,7 @@ import ru.tinkoff.kora.http.server.common.HttpServerRequest
     {{/interceptorTags}}
     {{/koraInterceptors}}
     @ru.tinkoff.kora.common.Mapping({{classname}}ServerResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ResponseMapper::class)
-    {{#vendorExtensions.enableValidation}}open {{/vendorExtensions.enableValidation}}{{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest: HttpServerRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}{{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {
+    {{#vendorExtensions.allowAspects}}open {{/vendorExtensions.allowAspects}}{{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest: HttpServerRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}{{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {
       return this.delegate.{{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}
         {{#allParams}}{{#lambda.trim}}
         {{#hasFormParams}}{{^isFormParam}}{{paramName}},{{/isFormParam}}{{/hasFormParams}}
