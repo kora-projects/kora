@@ -34,6 +34,7 @@ final class UndertowCamundaHttpServer implements Lifecycle, ReadinessProbe {
             } catch (Exception e) {
                 exch.setStatusCode(500);
                 exch.endExchange();
+                e.printStackTrace();
             }
         });
     }
