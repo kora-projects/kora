@@ -3,7 +3,6 @@ package ru.tinkoff.kora.camunda.engine.bpmn;
 import org.camunda.bpm.engine.ProcessEngine;
 import org.camunda.bpm.engine.ProcessEngineConfiguration;
 import org.camunda.bpm.engine.ProcessEngines;
-import org.jetbrains.annotations.ApiStatus.Experimental;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
@@ -14,7 +13,6 @@ import ru.tinkoff.kora.common.util.TimeUtils;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-@Experimental
 public final class KoraProcessEngine implements Lifecycle, Wrapped<ProcessEngine> {
 
     private static final Logger logger = LoggerFactory.getLogger(KoraProcessEngine.class);

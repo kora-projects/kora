@@ -4,7 +4,6 @@ import org.camunda.bpm.engine.ProcessEngineException;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
 import org.camunda.bpm.impl.juel.jakarta.el.ELContext;
 import org.camunda.bpm.impl.juel.jakarta.el.ELResolver;
-import org.jetbrains.annotations.ApiStatus.Experimental;
 
 import java.beans.FeatureDescriptor;
 import java.util.HashMap;
@@ -12,7 +11,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-@Experimental
 public class KoraELResolver extends ELResolver {
 
     private final Map<String, Object> componentByKey;

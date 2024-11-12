@@ -1,11 +1,9 @@
 package ru.tinkoff.kora.camunda.engine.bpmn.transaction;
 
-import org.jetbrains.annotations.ApiStatus.Experimental;
 import ru.tinkoff.kora.database.jdbc.RuntimeSqlException;
 
 import java.util.function.Supplier;
 
-@Experimental
 public interface CamundaTransactionManager {
 
     <T> T inContinueTx(Supplier<T> supplier) throws RuntimeSqlException;

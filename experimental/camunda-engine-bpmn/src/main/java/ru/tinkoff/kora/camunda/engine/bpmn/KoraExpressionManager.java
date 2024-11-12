@@ -5,9 +5,7 @@ import org.camunda.bpm.engine.impl.el.VariableContextElResolver;
 import org.camunda.bpm.engine.impl.el.VariableScopeElResolver;
 import org.camunda.bpm.engine.test.mock.MockElResolver;
 import org.camunda.bpm.impl.juel.jakarta.el.*;
-import org.jetbrains.annotations.ApiStatus.Experimental;
 
-@Experimental
 public final class KoraExpressionManager extends JuelExpressionManager {
 
     private final ELResolver koraELResolver;
