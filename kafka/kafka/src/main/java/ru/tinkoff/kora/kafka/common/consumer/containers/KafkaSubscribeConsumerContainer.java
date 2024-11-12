@@ -215,7 +215,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
         try {
             if (config.topicsPattern() != null) {
                 if (rebalanceListener != null) {
-                    var listener = new ConsumerRebalanceListener() {
+                    consumer.subscribe(config.topicsPattern(),  new ConsumerRebalanceListener() {
                         @Override
                         public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
                             rebalanceListener.onPartitionsRevoked(consumer, partitions);
@@ -230,15 +230,14 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
                         public void onPartitionsLost(Collection<TopicPartition> partitions) {
                             rebalanceListener.onPartitionsLost(consumer, partitions);
                         }
-                    };
-
-                    consumer.subscribe(config.topicsPattern(), listener);
+                    });
                 } else {
                     consumer.subscribe(config.topicsPattern());
                 }
             } else if (config.topics() != null) {
                 if (rebalanceListener != null) {
-                    var listener = new ConsumerRebalanceListener() {
+
+                    consumer.subscribe(config.topics(),  new ConsumerRebalanceListener() {
                         @Override
                         public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
                             rebalanceListener.onPartitionsRevoked(consumer, partitions);
@@ -253,9 +252,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
                         public void onPartitionsLost(Collection<TopicPartition> partitions) {
                             rebalanceListener.onPartitionsLost(consumer, partitions);
                         }
-                    };
-
-                    consumer.subscribe(config.topics(), listener);
+                    });
                 } else {
                     consumer.subscribe(config.topics());
                 }
