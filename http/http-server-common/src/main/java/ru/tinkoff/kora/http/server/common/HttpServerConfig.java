@@ -7,23 +7,42 @@ import java.time.Duration;
 
 @ConfigValueExtractor
 public interface HttpServerConfig {
-    default int publicApiHttpPort() {return 8080;}
 
-    default int privateApiHttpPort() {return 8085;}
+    default int publicApiHttpPort() {
+        return 8080;
+    }
 
-    default String privateApiHttpMetricsPath() {return "/metrics";}
+    default int privateApiHttpPort() {
+        return 8085;
+    }
 
-    default String privateApiHttpReadinessPath() {return "/system/readiness";}
+    default String privateApiHttpMetricsPath() {
+        return "/metrics";
+    }
 
-    default String privateApiHttpLivenessPath() {return "/system/liveness";}
+    default String privateApiHttpReadinessPath() {
+        return "/system/readiness";
+    }
 
-    default boolean ignoreTrailingSlash() {return false;}
+    default String privateApiHttpLivenessPath() {
+        return "/system/liveness";
+    }
 
-    default int ioThreads() {return Math.max(Runtime.getRuntime().availableProcessors(), 2);}
+    default boolean ignoreTrailingSlash() {
+        return false;
+    }
 
-    default int blockingThreads() {return Math.min(Math.max(Runtime.getRuntime().availableProcessors(), 2) * 8, 200);}
+    default int ioThreads() {
+        return Math.max(Runtime.getRuntime().availableProcessors(), 2);
+    }
 
-    default Duration shutdownWait() {return Duration.ofMillis(100);}
+    default int blockingThreads() {
+        return Math.min(Math.max(Runtime.getRuntime().availableProcessors(), 2) * 8, 200);
+    }
+
+    default Duration shutdownWait() {
+        return Duration.ofSeconds(30);
+    }
 
     HttpServerTelemetryConfig telemetry();
 }

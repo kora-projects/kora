@@ -5,6 +5,8 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.common.util.TimeUtils;
 
+import java.time.Duration;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -51,16 +53,31 @@ public final class DefaultJdkSchedulingExecutor implements Lifecycle, JdkSchedul
     }
 
     @Override
-    public void release() throws InterruptedException {
-
+    public void release() {
         var service = SERVICE.getAndSet(this, null);
         if (service != null) {
             logger.debug("JdkSchedulingExecutor stopping...");
             var started = System.nanoTime();
-
-            service.shutdownNow();
-            service.awaitTermination(10, TimeUnit.SECONDS);
+            if (!shutdownExecutorService(service, config.shutdownWait())) {
+                logger.warn("JdkSchedulingExecutor failed completing graceful shutdown in {}", config.shutdownWait());
+            }
             logger.info("JdkSchedulingExecutor stopped in {}", TimeUtils.tookForLogging(started));
+        }
+    }
+
+    private boolean shutdownExecutorService(ExecutorService executorService, Duration shutdownAwait) {
+        boolean terminated = executorService.isTerminated();
+        if (!terminated) {
+            executorService.shutdown();
+            try {
+                logger.debug("JdkSchedulingExecutor awaiting graceful shutdown...");
+                return executorService.awaitTermination(shutdownAwait.toMillis(), TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                executorService.shutdownNow();
+                return false;
+            }
+        } else {
+            return true;
         }
     }
 

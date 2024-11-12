@@ -2,6 +2,7 @@ package ru.tinkoff.kora.scheduling.quartz;
 
 import org.quartz.Scheduler;
 import ru.tinkoff.kora.application.graph.All;
+import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.config.common.Config;
@@ -35,6 +36,11 @@ public interface QuartzModule extends SchedulingModule {
         return props;
     }
 
+    default SchedulingQuartzConfig scheduledExecutorServiceConfig(Config config, ConfigValueExtractor<SchedulingQuartzConfig> extractor) {
+        var value = config.get("scheduling");
+        return extractor.extract(value);
+    }
+
     default KoraQuartzJobFactory koraQuartzJobFactory(All<KoraQuartzJob> jobs) {
         return new KoraQuartzJobFactory(jobs);
     }
@@ -45,7 +51,7 @@ public interface QuartzModule extends SchedulingModule {
     }
 
     @Root
-    default KoraQuartzJobRegistrar koraQuartzJobRegistrar(All<KoraQuartzJob> jobs, Scheduler scheduler) {
-        return new KoraQuartzJobRegistrar(jobs, scheduler);
+    default KoraQuartzJobRegistrar koraQuartzJobRegistrar(All<KoraQuartzJob> jobs, Scheduler scheduler, ValueOf<SchedulingQuartzConfig> config) {
+        return new KoraQuartzJobRegistrar(jobs, scheduler, config);
     }
 }

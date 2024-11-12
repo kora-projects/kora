@@ -3,10 +3,7 @@ package ru.tinkoff.kora.scheduling.jdk;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
-import ru.tinkoff.kora.config.common.factory.MapConfigFactory;
 import ru.tinkoff.kora.scheduling.common.SchedulingModule;
-
-import java.util.Map;
 
 public interface SchedulingJdkModule extends SchedulingModule {
 

@@ -31,8 +31,9 @@ public interface GrpcServerModule extends NettyCommonModule {
     }
 
     @Root
-    default GrpcNettyServer grpcNettyServer(ValueOf<NettyServerBuilder> serverBuilder) {
-        return new GrpcNettyServer(serverBuilder);
+    default GrpcNettyServer grpcNettyServer(ValueOf<NettyServerBuilder> serverBuilder,
+                                            ValueOf<GrpcServerConfig> config) {
+        return new GrpcNettyServer(serverBuilder, config);
     }
 
     @DefaultComponent

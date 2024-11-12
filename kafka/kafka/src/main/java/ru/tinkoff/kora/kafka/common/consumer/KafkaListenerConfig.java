@@ -45,6 +45,10 @@ public interface KafkaListenerConfig {
         return Duration.ofMinutes(1);
     }
 
+    default Duration shutdownWait() {
+        return Duration.ofSeconds(30);
+    }
+
     TelemetryConfig telemetry();
 
     default KafkaListenerConfig withDriverPropertiesOverrides(Map<String, Object> overrides) {
@@ -61,6 +65,7 @@ public interface KafkaListenerConfig {
             backoffTimeout(),
             threads(),
             partitionRefreshInterval(),
+            shutdownWait(),
             telemetry()
         );
     }

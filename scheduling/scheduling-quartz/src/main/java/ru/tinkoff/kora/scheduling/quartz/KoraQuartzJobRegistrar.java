@@ -4,9 +4,9 @@ import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
+import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.util.TimeUtils;
 
-import java.time.Duration;
 import java.util.List;
 
 public class KoraQuartzJobRegistrar implements Lifecycle {
@@ -15,10 +15,18 @@ public class KoraQuartzJobRegistrar implements Lifecycle {
 
     private final List<KoraQuartzJob> quartzJobList;
     private final Scheduler scheduler;
+    private final ValueOf<SchedulingQuartzConfig> config;
 
     public KoraQuartzJobRegistrar(List<KoraQuartzJob> quartzJobList, Scheduler scheduler) {
+        this(quartzJobList, scheduler, ValueOf.valueOfNull());
+    }
+
+    public KoraQuartzJobRegistrar(List<KoraQuartzJob> quartzJobList,
+                                  Scheduler scheduler,
+                                  ValueOf<SchedulingQuartzConfig> config) {
         this.quartzJobList = quartzJobList;
         this.scheduler = scheduler;
+        this.config = config;
     }
 
     @Override
@@ -69,5 +77,24 @@ public class KoraQuartzJobRegistrar implements Lifecycle {
 
     @Override
     public final void release() {
+        final List<String> quartzJobsNames = quartzJobList.stream()
+            .map(q -> q.getClass().getCanonicalName())
+            .toList();
+
+        logger.debug("Quartz Jobs {} stopping...", quartzJobsNames);
+        var started = System.nanoTime();
+
+        try {
+            final boolean waitForComplete = config.get() != null && config.get().waitForJobComplete();
+            if (waitForComplete) {
+                logger.debug("Quartz Jobs {} awaiting graceful shutdown...", quartzJobsNames);
+            }
+            scheduler.shutdown(waitForComplete);
+        } catch (SchedulerException e) {
+            logger.warn("Quartz Jobs {} failed completing graceful shutdown", quartzJobsNames);
+            e.printStackTrace();
+        }
+
+        logger.info("Quartz Jobs {} stopped in {}", quartzJobsNames, TimeUtils.tookForLogging(started));
     }
 }
