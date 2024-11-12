@@ -11,7 +11,6 @@ dependencies {
     implementation project(":config:config-common")
     implementation project(":logging:logging-common")
     implementation libs.resteasy.undertow.jakarta
-    implementation project(":openapi:openapi-management")
     implementation project(":http:http-server-undertow")
 
     api project(":telemetry:telemetry-common")

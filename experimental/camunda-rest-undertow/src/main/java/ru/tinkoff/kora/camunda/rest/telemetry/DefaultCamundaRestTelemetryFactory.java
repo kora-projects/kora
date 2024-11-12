@@ -5,6 +5,9 @@ import ru.tinkoff.kora.camunda.rest.CamundaRestConfig;
 
 public final class DefaultCamundaRestTelemetryFactory implements CamundaRestTelemetryFactory {
 
+    private static final CamundaRestTelemetry.CamundaRestTelemetryContext EMPTY_CTX = (s, r, h, ex) -> {};
+    private static final CamundaRestTelemetry EMPTY = (s, host, m, p, pt, h, q, b) -> EMPTY_CTX;
+
     @Nullable
     private final CamundaRestLoggerFactory logger;
     @Nullable
@@ -26,7 +29,7 @@ public final class DefaultCamundaRestTelemetryFactory implements CamundaRestTele
         var logging = this.logger == null ? null : this.logger.get(config.logging());
         var tracer = this.tracer == null ? null : this.tracer.get(config.tracing());
         if (metrics == null && logging == null && tracer == null) {
-            return CamundaRestTelemetry.EMPTY;
+            return EMPTY;
         }
 
         return new DefaultCamundaRestTelemetry(metrics, logging, tracer);

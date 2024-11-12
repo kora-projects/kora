@@ -27,10 +27,8 @@ public interface CamundaRestConfig {
     }
 
     default Duration shutdownWait() {
-        return Duration.ofMillis(100);
+        return Duration.ofSeconds(30);
     }
-
-    CamundaOpenApiConfig openapi();
 
     CamundaRestTelemetryConfig telemetry();
 
@@ -62,49 +60,5 @@ public interface CamundaRestConfig {
 
         @Nullable
         Boolean pathTemplate();
-    }
-
-    @ConfigValueExtractor
-    interface CamundaOpenApiConfig {
-
-        default List<String> file() {
-            return List.of("openapi.json");
-        }
-
-        default boolean enabled() {
-            return false;
-        }
-
-        default String endpoint() {
-            return "/openapi";
-        }
-
-        SwaggerUIConfig swaggerui();
-
-        RapidocConfig rapidoc();
-
-        @ConfigValueExtractor
-        interface SwaggerUIConfig {
-
-            default boolean enabled() {
-                return false;
-            }
-
-            default String endpoint() {
-                return "/swagger-ui";
-            }
-        }
-
-        @ConfigValueExtractor
-        interface RapidocConfig {
-
-            default boolean enabled() {
-                return false;
-            }
-
-            default String endpoint() {
-                return "/rapidoc";
-            }
-        }
     }
 }

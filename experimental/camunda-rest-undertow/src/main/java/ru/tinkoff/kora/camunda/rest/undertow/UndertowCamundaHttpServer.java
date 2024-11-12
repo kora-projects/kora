@@ -13,6 +13,7 @@ import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
 import ru.tinkoff.kora.common.util.TimeUtils;
 
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Internal
@@ -59,18 +60,16 @@ final class UndertowCamundaHttpServer implements Lifecycle, ReadinessProbe {
     public void release() {
         if (this.undertow != null) {
             this.state.set(HttpServerState.SHUTDOWN);
-            try {
-                Thread.sleep(this.config.get().shutdownWait().toMillis());
-            } catch (InterruptedException e) {
-                // ignore
-            }
-            logger.debug("Camunda HTTP Server (Undertow) stopping...");
             final long started = TimeUtils.started();
             this.gracefulShutdown.shutdown();
+            final Duration shutdownAwait = this.config.get().shutdownWait();
             try {
                 logger.debug("Camunda HTTP Server (Undertow) awaiting graceful shutdown...");
-                this.gracefulShutdown.awaitShutdown();
+                if (!this.gracefulShutdown.awaitShutdown(shutdownAwait.toMillis())) {
+                    logger.warn("Camunda HTTP Server (Undertow) failed completing graceful shutdown in {}", shutdownAwait);
+                }
             } catch (InterruptedException e) {
+                logger.warn("Camunda HTTP Server (Undertow) failed completing graceful shutdown in {}", shutdownAwait);
                 e.printStackTrace();
             }
 

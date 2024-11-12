@@ -9,6 +9,8 @@ import java.util.Map;
 
 public final class DefaultCamundaRestTelemetry implements CamundaRestTelemetry {
 
+    private static final CamundaRestTelemetryContext EMPTY_CTX = (s, r, h, ex) -> {};
+
     private static final String UNMATCHED_ROUTE_TEMPLATE = "UNKNOWN_ROUTE";
 
     @Nullable
