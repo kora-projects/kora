@@ -42,6 +42,16 @@ public interface ValidationContext {
         return new SimpleValidationContext.SimpleBuilder(SimpleValidationContext.SimpleFieldPath.ROOT, false);
     }
 
+    static ValidationContext full() {
+        return new SimpleValidationContext.SimpleBuilder(SimpleValidationContext.SimpleFieldPath.ROOT, false)
+            .build();
+    }
+
+    static ValidationContext failFast() {
+        return new SimpleValidationContext.SimpleBuilder(SimpleValidationContext.SimpleFieldPath.ROOT, true)
+            .build();
+    }
+
     /**
      * Indicates deep object path for violation and validation context
      */

@@ -65,7 +65,6 @@ public class CommonUtils {
                 .anyMatch(CommonUtils::isNullable);
         }
         return false;
-
     }
 
     public static void safeWriteTo(ProcessingEnvironment processingEnv, JavaFile file) {

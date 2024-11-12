@@ -6,15 +6,8 @@ import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeName
+import ru.tinkoff.kora.validation.symbol.processor.ValidTypes.VALIDATOR_TYPE
 import java.util.stream.Collectors
-
-val VALID_TYPE = ClassName("ru.tinkoff.kora.validation.common.annotation", "Valid")
-val VALIDATE_TYPE = ClassName("ru.tinkoff.kora.validation.common.annotation", "Validate")
-val VALIDATED_BY_TYPE = ClassName("ru.tinkoff.kora.validation.common.annotation", "ValidatedBy")
-val CONTEXT_TYPE = ClassName("ru.tinkoff.kora.validation.common", "ValidationContext")
-val VALIDATOR_TYPE = ClassName("ru.tinkoff.kora.validation.common", "Validator")
-val VIOLATION_TYPE = ClassName("ru.tinkoff.kora.validation.common", "Violation")
-val EXCEPTION_TYPE = ClassName("ru.tinkoff.kora.validation.common", "ViolationException")
 
 data class ValidatorMeta(
     val source: TypeName,
@@ -34,13 +27,15 @@ data class Field(
     val name: String,
     val isDataClass: Boolean,
     val isNullable: Boolean,
+    val isNotNull: Boolean,
+    val isJsonNullable: Boolean,
     val constraint: List<Constraint>,
     val validates: List<Validated>
 ) {
 
     fun accessor(): String = name
 
-    fun isNotNull(): Boolean = !isNullable
+    fun accessorValue(): String = if(isJsonNullable) "$name.value()" else name
 }
 
 data class Constraint(val annotation: Type, val factory: Factory) {

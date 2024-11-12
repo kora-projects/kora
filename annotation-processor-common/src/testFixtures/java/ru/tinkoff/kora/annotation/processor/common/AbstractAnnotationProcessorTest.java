@@ -17,6 +17,7 @@ import ru.tinkoff.kora.application.graph.*;
 
 import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
+import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
 import javax.tools.ToolProvider;
 import java.io.IOException;
@@ -28,15 +29,15 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Flow;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public abstract class AbstractAnnotationProcessorTest {
+
+    private final JavaCompiler javaCompiler = ToolProvider.getSystemJavaCompiler();
 
     protected TestInfo testInfo;
     protected CompileResult compileResult;
@@ -83,7 +84,6 @@ public abstract class AbstractAnnotationProcessorTest {
     }
 
     protected CompileResult compile(List<Processor> processors, List<ProcessorOptions> processorOptions, @Language("java") String... sources) {
-        var javaCompiler = ToolProvider.getSystemJavaCompiler();
         var w = new StringWriter();
         var diagnostic = new ArrayList<Diagnostic<? extends JavaFileObject>>();
         var testPackage = testPackage();
@@ -108,7 +108,7 @@ public abstract class AbstractAnnotationProcessorTest {
                             .getAsInt();
                         var className = s.substring(classStart, classEnd).trim();
                         int generic = className.indexOf('<');
-                        if(generic == -1) {
+                        if (generic == -1) {
                             return className;
                         } else {
                             return className.substring(0, generic);
@@ -119,6 +119,7 @@ public abstract class AbstractAnnotationProcessorTest {
                 return new ByteArrayJavaFileObject(JavaFileObject.Kind.SOURCE, testPackage + "." + firstClass, s.getBytes(StandardCharsets.UTF_8));
             })
             .toList();
+
         try (var delegate = javaCompiler.getStandardFileManager(diagnostic::add, Locale.US, StandardCharsets.UTF_8);
              var manager = new KoraCompileTestJavaFileManager(this.testInfo, delegate, sourceList.toArray(ByteArrayJavaFileObject[]::new))) {
 
@@ -136,6 +137,7 @@ public abstract class AbstractAnnotationProcessorTest {
             task.setProcessors(processors);
             task.setLocale(Locale.US);
             task.call();
+            w.close();
             return this.compileResult = new CompileResult(testPackage, diagnostic, manager);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -183,9 +185,63 @@ public abstract class AbstractAnnotationProcessorTest {
                     return method.invoke(target, params);
                 }
             }
-            throw new RuntimeException("Method " + name + " wasn't found");
+            throw new IllegalArgumentException("Method " + name + " wasn't found");
         } catch (Exception e) {
+            throw (e.getCause() instanceof RuntimeException re)
+                ? re
+                : new RuntimeException(e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> T invokeAndCast(Object target, String name, Object... params) {
+        try {
+            for (var method : target.getClass().getMethods()) {
+                if (method.getName().equals(name) && method.getParameterCount() == params.length) {
+                    method.setAccessible(true);
+                    var result = method.invoke(target, params);
+                    if (result instanceof Mono<?> mono) {
+                        return (T) mono.block();
+                    }
+                    if (result instanceof Flux<?> flux) {
+                        return (T) flux.blockFirst();
+                    }
+                    if (result instanceof Publisher<?> mono) {
+                        return (T) Mono.from(mono).block();
+                    }
+                    if (result instanceof Flow.Publisher<?> mono) {
+                        return (T) Mono.from(FlowAdapters.toPublisher(mono)).block();
+                    }
+                    if (result instanceof Future<?> future) {
+                        return (T) future.get();
+                    }
+                    if (result instanceof CompletionStage<?> stage) {
+                        return (T) stage.toCompletableFuture().get();
+                    }
+                    return (T) result;
+                }
+            }
+
+            throw new IllegalArgumentException("Method " + name + " wasn't found");
+        } catch (InvocationTargetException e) {
+            if (e.getTargetException() instanceof RuntimeException re) {
+                throw re;
+            }
             throw new RuntimeException(e);
+        } catch (ExecutionException | CompletionException | InterruptedException e) {
+            throw (e.getCause() instanceof RuntimeException re)
+                ? re
+                : new RuntimeException(e);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        } catch (Exception e) {
+            if (e instanceof RuntimeException) {
+                throw e;
+            } else if (e.getCause() instanceof RuntimeException re) {
+                throw re;
+            } else {
+                throw new RuntimeException(e);
+            }
         }
     }
 

@@ -6,6 +6,9 @@ import com.google.devtools.ksp.symbol.KSValueParameter
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
+import com.squareup.kotlinpoet.asClassName
+import com.squareup.kotlinpoet.ksp.toClassName
+import jakarta.annotation.Nonnull
 import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotations
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
@@ -17,9 +20,18 @@ import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
+import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
-import ru.tinkoff.kora.validation.symbol.processor.*
+import ru.tinkoff.kora.validation.symbol.processor.ValidTypes
+import ru.tinkoff.kora.validation.symbol.processor.ValidTypes.CONTEXT_TYPE
+import ru.tinkoff.kora.validation.symbol.processor.ValidTypes.EXCEPTION_TYPE
+import ru.tinkoff.kora.validation.symbol.processor.ValidTypes.VALIDATED_BY_TYPE
+import ru.tinkoff.kora.validation.symbol.processor.ValidTypes.VALIDATE_TYPE
+import ru.tinkoff.kora.validation.symbol.processor.ValidTypes.VALID_TYPE
+import ru.tinkoff.kora.validation.symbol.processor.ValidTypes.VIOLATION_TYPE
 import ru.tinkoff.kora.validation.symbol.processor.ValidUtils.getConstraints
+import ru.tinkoff.kora.validation.symbol.processor.Validated
+import ru.tinkoff.kora.validation.symbol.processor.asType
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.Future
 
@@ -35,15 +47,15 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
         val validationOutputCode = buildValidationOutputCode(method, aspectContext)
         if (validationOutputCode != null) {
             if (method.isFuture()) {
-                throw ProcessingErrorException("@Validate Return Value can't be applied for types assignable from ${Future::class.java}", method)
+                throw ProcessingErrorException("@Validate return value can't be applied for types assignable from ${Future::class.java}", method)
             } else if (method.isCompletionStage()) {
-                throw ProcessingErrorException("@Validate Return Value can't be applied for types assignable from ${CompletionStage::class.java}", method)
+                throw ProcessingErrorException("@Validate return value can't be applied for types assignable from ${CompletionStage::class.java}", method)
             } else if (method.isMono()) {
-                throw ProcessingErrorException("@Validate Return Value can't be applied for types assignable from ${CommonClassNames.mono}", method)
+                throw ProcessingErrorException("@Validate return value can't be applied for types assignable from ${CommonClassNames.mono}", method)
             } else if (method.isFlux()) {
-                throw ProcessingErrorException("@Validate Return Value can't be applied for types assignable from ${CommonClassNames.flux}", method)
+                throw ProcessingErrorException("@Validate return value can't be applied for types assignable from ${CommonClassNames.flux}", method)
             } else if (method.isVoid()) {
-                throw ProcessingErrorException("@Validate Return Value can't be applied for types assignable from ${Void::class.java}", method)
+                throw ProcessingErrorException("@Validate return value can't be applied for types assignable from ${Void::class.java}", method)
             }
         }
 
@@ -79,17 +91,29 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             emptyList()
         }
 
-        if (constraints.isEmpty() && validates.isEmpty()) {
+        val resolvedType = returnTypeReference.resolve()
+        val isNullable = resolvedType.isMarkedNullable
+        val isNotNull = method.isAnnotationPresent(Nonnull::class.asClassName())
+        val isJsonNullable = resolvedType.toClassName() == ValidTypes.jsonNullable
+
+        if (constraints.isEmpty() && validates.isEmpty() && !(isJsonNullable && isNotNull)) {
             return null
         }
 
-        val isNullable = if (method.isFlow())
-            method.returnType!!.resolve().arguments.first().type!!.resolve().isMarkedNullable
-        else
-            method.returnType!!.resolve().isMarkedNullable
-
+        val memberList = MemberName("kotlin.collections", "mutableListOf")
         val builder = CodeBlock.builder()
-        if (isNullable) {
+
+        if (isJsonNullable && isNotNull && isNullable && constraints.isEmpty() && validates.isEmpty()) {
+            builder.beginControlFlow("if(_result == null || !_result.isDefined() || _result.isNull())")
+        } else if (isJsonNullable && isNotNull && constraints.isEmpty() && validates.isEmpty()) {
+            builder.beginControlFlow("if(!_result.isDefined() || _result.isNull())")
+        } else if (isJsonNullable && isNullable && isNotNull) {
+            builder.beginControlFlow("if(%_result != null && _result.isDefined() && !_result.isNull())")
+        } else if (isJsonNullable && isNullable) {
+            builder.beginControlFlow("if(_result != null && _result.isDefined())")
+        } else if (isJsonNullable) {
+            builder.beginControlFlow("if(_result.isDefined())")
+        } else if (isNullable) {
             builder.beginControlFlow("if(_result != null)")
         }
 
@@ -99,14 +123,17 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
                     .filter { arg -> arg.name?.asString() == "failFast" }
                     .map { arg -> arg.value ?: false }
                     .map { it as Boolean }
-            }
-            .firstOrNull() ?: false
+            }.firstOrNull() ?: false
 
-        val memberList = MemberName("kotlin.collections", "mutableListOf")
-        builder.addStatement("val _returnValueContext = %T.builder().failFast(%L).build()", CONTEXT_TYPE, failFast)
+        if (failFast) {
+            builder.addStatement("val _returnContext = %T.failFast()", CONTEXT_TYPE)
+        } else {
+            builder.addStatement("val _returnContext = %T.full()", CONTEXT_TYPE)
+        }
 
+        val returnAccessor = if (isJsonNullable) "_result.value()" else "_result"
         if (!failFast) {
-            builder.addStatement("val _returnValueViolations = %M<%T>()", memberList, VIOLATION_TYPE)
+            builder.addStatement("val _returnViolations = %M<%T>()", memberList, VIOLATION_TYPE)
         }
 
         for ((i, constraint) in constraints.withIndex()) {
@@ -131,14 +158,14 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
                 .build()
 
             val constraintField = aspectContext.fieldFactory.constructorInitialized(constraintType, createCodeBlock)
-            val constraintResultField = "_returnConstraintResult_${i + 1}"
+            val constraintResultField = "_returnConstResult_${i + 1}"
             if (failFast) {
-                builder.addStatement("val %N = %N.validate(_result, _returnValueContext)", constraintResultField, constraintField)
+                builder.addStatement("val %N = %N.validate(%L, _returnContext)", constraintResultField, constraintField, returnAccessor)
                     .beginControlFlow("if (%N.isNotEmpty())", constraintResultField)
                     .addStatement("throw %T(%N)", EXCEPTION_TYPE, constraintResultField)
                     .endControlFlow()
             } else {
-                builder.addStatement("_returnValueViolations.addAll(%N.validate(_result, _returnValueContext))", constraintField)
+                builder.addStatement("_returnViolations.addAll(%N.validate(%L, _returnContext))", constraintField, returnAccessor)
             }
         }
 
@@ -146,23 +173,38 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             val validatorType = validated.validator().asKSType(resolver)
             val validatorField = aspectContext.fieldFactory.constructorParam(validatorType, listOf())
             val validatorResultField = "_returnValidatorResult_${i + 1}"
-            builder.addStatement("val %N = %N.validate(_result, _returnValueContext)", validatorResultField, validatorField)
+            builder.addStatement("val %N = %N.validate(%L, _returnContext)", validatorResultField, validatorField, returnAccessor)
             if (failFast) {
                 builder.beginControlFlow("if (%N.isNotEmpty())", validatorResultField)
                     .addStatement("throw %T(%N)", EXCEPTION_TYPE, validatorResultField)
                     .endControlFlow()
             } else {
-                builder.addStatement("_returnValueViolations.addAll(%N)", validatorResultField)
+                builder.addStatement("_returnViolations.addAll(%N)", validatorResultField)
+            }
+        }
+
+        val errorNullMsg = "Result must be non null, but was null"
+        if (isJsonNullable && isNotNull && constraints.isEmpty() && validates.isEmpty()) {
+            if (failFast) {
+                builder.addStatement("throw %T(_returnContext.violates(%S))", EXCEPTION_TYPE, errorNullMsg)
+            } else {
+                builder.addStatement("_returnViolations.add(_returnContext.violates(%S))", errorNullMsg)
             }
         }
 
         if (!failFast) {
-            builder.beginControlFlow("if (_returnValueViolations.isNotEmpty())")
-                .addStatement("throw %T(_returnValueViolations)", EXCEPTION_TYPE)
-                .endControlFlow()
+            builder.controlFlow("if (_returnViolations.isNotEmpty())") {
+                addStatement("throw %T(_returnViolations)", EXCEPTION_TYPE)
+            }
         }
 
-        if (isNullable) {
+        if (isJsonNullable && isNotNull && (constraints.isNotEmpty() || validates.isNotEmpty())) {
+            builder.nextControlFlow("else")
+            builder.addStatement("throw %T(_returnContext.violates(%S))", EXCEPTION_TYPE, errorNullMsg)
+            builder.endControlFlow()
+        } else if (isJsonNullable) {
+            builder.endControlFlow()
+        } else if (isNullable) {
             builder.endControlFlow()
         }
 
@@ -187,21 +229,45 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             .firstOrNull() ?: false
 
         val memberList = MemberName("kotlin.collections", "mutableListOf")
-        val builder = CodeBlock.builder()
-            .addStatement("val _argumentsContext = %T.builder().failFast(%L).build()", CONTEXT_TYPE, failFast)
+        val builder = if (failFast)
+            CodeBlock.builder().addStatement("val _argsContext = %T.failFast()", CONTEXT_TYPE)
+        else
+            CodeBlock.builder().addStatement("val _argsContext = %T.full()", CONTEXT_TYPE)
 
         if (!failFast) {
-            builder.addStatement("val _argumentsViolations = %M<%T>()", memberList, VIOLATION_TYPE)
+            builder.addStatement("val _argsViolations = %M<%T>()", memberList, VIOLATION_TYPE)
         }
+        builder.add("\n")
 
         for (parameter in method.parameters.filter { it.isValidatable() }) {
-            val isNullable = parameter.type.resolve().isMarkedNullable
+            val resolvedType = parameter.type.resolve()
+            val isNullable = resolvedType.isMarkedNullable
+            val isNotNull = parameter.isAnnotationPresent(Nonnull::class.asClassName())
+            val isJsonNullable = resolvedType.toClassName() == ValidTypes.jsonNullable
+
             val constraints = parameter.getConstraints()
+            val validates = getValidForArguments(parameter)
 
             val parameterName = parameter.name!!.asString()
-            val argumentContext = "_argumentsContext_" + parameterName
+            val parameterAccessor = if (isJsonNullable) "${parameter.name!!.asString()}.value()" else parameter.name!!.asString()
+            val argumentContext = "_argsContext_" + parameterName
+
+            if (isJsonNullable && isNotNull && isNullable && constraints.isEmpty() && validates.isEmpty()) {
+                builder.beginControlFlow("if(%N == null || !%N.isDefined() || %N.isNull())", parameterName, parameterName, parameterName)
+            } else if (isJsonNullable && isNotNull && constraints.isEmpty() && validates.isEmpty()) {
+                builder.beginControlFlow("if(!%N.isDefined() || %N.isNull())", parameterName, parameterName)
+            } else if (isJsonNullable && isNullable && isNotNull) {
+                builder.beginControlFlow("if(%N != null && %N.isDefined() && !%N.isNull())", parameterName, parameterName, parameterName)
+            } else if (isJsonNullable && isNullable) {
+                builder.beginControlFlow("if(%N != null && %N.isDefined())", parameterName, parameterName)
+            } else if (isJsonNullable) {
+                builder.beginControlFlow("if(%N.isDefined())", parameterName)
+            } else if (isNullable) {
+                builder.beginControlFlow("if(%N != null)", parameterName)
+            }
+
             builder.addStatement(
-                "val %N = _argumentsContext.addPath(%S)",
+                "val %N = _argsContext.addPath(%S)",
                 argumentContext, parameterName
             )
 
@@ -226,53 +292,56 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
                     .build()
 
                 val constraintField = aspectContext.fieldFactory.constructorInitialized(constraintType, createCodeBlock)
-                val constraintResultField = "_argumentConstraintResult_${parameterName}_${i + 1}"
-                if (isNullable) {
-                    builder.beginControlFlow("if(%N != null)", parameterName)
-                }
-
+                val constraintResultField = "_argConstResult_${parameterName}_${i + 1}"
                 if (failFast) {
-                    builder.addStatement("val %N = %N.validate(%N, %N)", constraintResultField, constraintField, parameterName, argumentContext)
+                    builder.addStatement("val %N = %N.validate(%L, %N)", constraintResultField, constraintField, parameterAccessor, argumentContext)
                         .beginControlFlow("if(%N.isNotEmpty())", constraintResultField)
                         .addStatement("throw %T(%N)", EXCEPTION_TYPE, constraintResultField)
                         .endControlFlow()
                 } else {
-                    builder.addStatement("_argumentsViolations.addAll(%N.validate(%N, %N))", constraintField, parameterName, argumentContext)
-                }
-
-                if (isNullable) {
-                    builder.endControlFlow()
+                    builder.addStatement("_argsViolations.addAll(%N.validate(%L, %N))", constraintField, parameterAccessor, argumentContext)
                 }
             }
 
-            val validates = getValidForArguments(parameter)
             for ((i, validated) in validates.withIndex()) {
                 val validatorType = validated.validator().asKSType(resolver)
                 val validatorField = aspectContext.fieldFactory.constructorParam(validatorType, listOf())
-                val validatorResultField = "_argumentValidatorResult_${parameterName}_${i + 1}"
-                if (isNullable) {
-                    builder.beginControlFlow("if(%N != null)", parameterName)
-                }
+                val validatorResultField = "_argValidResult_${parameterName}_${i + 1}"
 
                 if (failFast) {
-                    builder.addStatement("val %N = %N.validate(%N, %N)", validatorResultField, validatorField, parameterName, argumentContext)
+                    builder.addStatement("val %N = %N.validate(%L, %N)", validatorResultField, validatorField, parameterAccessor, argumentContext)
                         .beginControlFlow("if(%N.isNotEmpty())", validatorResultField)
                         .addStatement("throw %T(%N)", EXCEPTION_TYPE, validatorResultField)
                         .endControlFlow()
                 } else {
-                    builder.addStatement("_argumentsViolations.addAll(%N.validate(%N, %N))", validatorField, parameterName, argumentContext)
+                    builder.addStatement("_argsViolations.addAll(%N.validate(%L, %N))", validatorField, parameterAccessor, argumentContext)
                 }
+            }
 
-                if (isNullable) {
-                    builder.endControlFlow()
+            if (isJsonNullable && isNotNull) {
+                if (constraints.isNotEmpty() || validates.isNotEmpty()) {
+                    builder.nextControlFlow("else")
+                    builder.addStatement("val %N = _argsContext.addPath(%S)", argumentContext, parameterName)
                 }
+                val errorMsg = "Parameter '${parameterName}' must be non null, but was null"
+                if (failFast) {
+                    builder.addStatement("throw %T(%N.violates(%S))", EXCEPTION_TYPE, argumentContext, errorMsg)
+                } else {
+                    builder.addStatement("_argsViolations.add(%N.violates(%S))", argumentContext, errorMsg)
+                }
+                builder.endControlFlow()
+            } else if (isJsonNullable) {
+                builder.endControlFlow()
+            } else if (isNullable) {
+                builder.endControlFlow()
             }
         }
 
         if (!failFast) {
-            builder.beginControlFlow("if (_argumentsViolations.isNotEmpty())")
-                .addStatement("throw %T(_argumentsViolations)", EXCEPTION_TYPE)
-                .endControlFlow()
+            builder.add("\n")
+                .controlFlow("if (_argsViolations.isNotEmpty())") {
+                    addStatement("throw %T(_argsViolations)", EXCEPTION_TYPE)
+                }
         }
 
         return builder.build()
@@ -291,7 +360,11 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
                 }
             }
         }
-        return false
+
+        val resolvedType = type.resolve()
+        val isNotNull = isAnnotationPresent(Nonnull::class.asClassName())
+        val isJsonNullable = resolvedType.toClassName() == ValidTypes.jsonNullable
+        return isJsonNullable && isNotNull
     }
 
     private fun getValidForArguments(parameter: KSValueParameter): List<Validated> {

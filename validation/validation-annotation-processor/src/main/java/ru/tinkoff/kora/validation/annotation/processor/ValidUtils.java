@@ -1,8 +1,10 @@
 package ru.tinkoff.kora.validation.annotation.processor;
 
+import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 
 import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.AnnotatedConstruct;
 import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.PrimitiveType;
@@ -10,12 +12,14 @@ import javax.lang.model.type.TypeMirror;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static ru.tinkoff.kora.validation.annotation.processor.ValidTypes.*;
+
 public final class ValidUtils {
 
     public static List<ValidMeta.Constraint> getValidatedByConstraints(ProcessingEnvironment env, TypeMirror parameterType, List<? extends AnnotationMirror> annotations) {
         var innerAnnotationConstraints = annotations.stream()
             .flatMap(annotation -> annotation.getAnnotationType().asElement().getAnnotationMirrors().stream()
-                .filter(validatedBy -> validatedBy.getAnnotationType().toString().equals(ValidMeta.VALIDATED_BY_TYPE.canonicalName()))
+                .filter(validatedBy -> validatedBy.getAnnotationType().toString().equals(VALIDATED_BY_TYPE.canonicalName()))
                 .flatMap(validatedBy -> validatedBy.getElementValues().entrySet().stream()
                     .filter(entry -> entry.getKey().getSimpleName().contentEquals("value"))
                     .map(en -> en.getValue().getValue())
@@ -51,21 +55,32 @@ public final class ValidUtils {
                                                                                 + "#create() method with " + parameters.size() + " parameters, but was didn't find such", factoryRawType.asElement(), annotation));
                         }
 
-                        final TypeMirror fieldType = getBoxType(parameterType, env);
+                        final TypeMirror targetType;
+                        if (parameterType instanceof DeclaredType dt && jsonNullable.canonicalName().equals(dt.asElement().toString())) {
+                            targetType = dt.getTypeArguments().get(0);
+                        } else {
+                            targetType = parameterType;
+                        }
+
+                        final TypeMirror fieldType = getBoxType(targetType, env);
                         final DeclaredType factoryDeclaredType = ((DeclaredType) factoryRawType.asElement().asType()).getTypeArguments().isEmpty()
                             ? env.getTypeUtils().getDeclaredType((TypeElement) factoryRawType.asElement())
                             : env.getTypeUtils().getDeclaredType((TypeElement) factoryRawType.asElement(), fieldType);
 
-                        final ValidMeta.Type factoryGenericType = ValidMeta.Type.ofType(factoryDeclaredType);
-                        final ValidMeta.Constraint.Factory constraintFactory = new ValidMeta.Constraint.Factory(factoryGenericType, parameters);
+                        final TypeElement validatorElement = env.getElementUtils().getTypeElement(VALIDATOR_TYPE.canonicalName());
+                        final DeclaredType validatorType = env.getTypeUtils().getDeclaredType(validatorElement, fieldType);
 
-                        final ValidMeta.Type annotationType = ValidMeta.Type.ofType(annotation.getAnnotationType().asElement().asType());
+                        final ValidMeta.Constraint.Factory constraintFactory = new ValidMeta.Constraint.Factory(
+                            ValidMeta.Type.ofElement(factoryDeclaredType.asElement(), factoryDeclaredType),
+                            ValidMeta.Type.ofElement(validatorType.asElement(), validatorType), parameters);
+
+                        final ValidMeta.Type annotationType = ValidMeta.Type.ofElement(annotation.getAnnotationType().asElement(), annotation.getAnnotationType());
                         return new ValidMeta.Constraint(annotationType, constraintFactory);
                     })))
             .toList();
 
         var selfAnnotationConstraints = annotations.stream()
-            .filter(validatedBy -> validatedBy.getAnnotationType().toString().equals(ValidMeta.VALIDATED_BY_TYPE.canonicalName()))
+            .filter(validatedBy -> validatedBy.getAnnotationType().toString().equals(VALIDATED_BY_TYPE.canonicalName()))
             .flatMap(validatedBy -> validatedBy.getElementValues().entrySet().stream()
                 .filter(entry -> entry.getKey().getSimpleName().contentEquals("value"))
                 .map(en -> en.getValue().getValue())
@@ -78,17 +93,20 @@ public final class ValidUtils {
                         ? env.getTypeUtils().getDeclaredType((TypeElement) factoryRawType.asElement())
                         : env.getTypeUtils().getDeclaredType((TypeElement) factoryRawType.asElement(), fieldType);
 
-                    final ValidMeta.Type factoryGenericType = ValidMeta.Type.ofType(factoryDeclaredType);
-                    final ValidMeta.Constraint.Factory constraintFactory = new ValidMeta.Constraint.Factory(factoryGenericType, Collections.emptyMap());
+                    final TypeElement validatorElement = env.getElementUtils().getTypeElement(VALIDATOR_TYPE.canonicalName());
+                    final DeclaredType validatorType = env.getTypeUtils().getDeclaredType(validatorElement, fieldType);
 
-                    final ValidMeta.Type annotationType = ValidMeta.Type.ofType(validatedBy.getAnnotationType().asElement().asType());
+                    final ValidMeta.Constraint.Factory constraintFactory = new ValidMeta.Constraint.Factory(
+                        ValidMeta.Type.ofElement(factoryDeclaredType.asElement(), factoryDeclaredType),
+                        ValidMeta.Type.ofElement(validatorType.asElement(), validatorType), Collections.emptyMap());
+
+                    final ValidMeta.Type annotationType = ValidMeta.Type.ofElement(validatedBy.getAnnotationType().asElement(), validatedBy.getAnnotationType());
                     return new ValidMeta.Constraint(annotationType, constraintFactory);
                 }))
             .toList();
 
         var constraints = new ArrayList<>(innerAnnotationConstraints);
         constraints.addAll(selfAnnotationConstraints);
-        constraints.sort(Comparator.comparing(c -> c.factory().type().toString()));
         return constraints;
     }
 
@@ -120,5 +138,39 @@ public final class ValidUtils {
         return (mirror instanceof PrimitiveType primitive)
             ? env.getTypeUtils().boxedClass(primitive).asType()
             : mirror;
+    }
+
+    public static boolean isNotNull(AnnotatedConstruct element) {
+        var isNotNull = element.getAnnotationMirrors()
+            .stream()
+            .anyMatch(a -> a.getAnnotationType().toString().endsWith(".Nonnull") || a.getAnnotationType().toString().endsWith(".NotNull"));
+
+        if (isNotNull) {
+            return true;
+        }
+
+        if (element instanceof ExecutableElement method) {
+            if (method.getReturnType().getKind().isPrimitive()) {
+                return false;
+            }
+            return isNotNull(method.getReturnType());
+        }
+
+        if (element instanceof VariableElement ve) {
+            var type = ve.asType();
+            if (type.getKind().isPrimitive()) {
+                return false;
+            }
+            return isNotNull(type);
+        }
+
+        if (element instanceof RecordComponentElement rce) {
+            return rce.getEnclosingElement().getEnclosedElements()
+                .stream()
+                .filter(e -> e.getKind() == ElementKind.FIELD)
+                .filter(e -> e.getSimpleName().contentEquals(rce.getSimpleName()))
+                .anyMatch(CommonUtils::isNullable);
+        }
+        return false;
     }
 }

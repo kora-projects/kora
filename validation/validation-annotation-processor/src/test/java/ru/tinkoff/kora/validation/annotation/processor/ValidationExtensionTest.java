@@ -8,22 +8,15 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ValidationExtensionTest extends AbstractAnnotationProcessorTest {
+public class ValidationExtensionTest extends AbstractValidationAnnotationProcessorTest {
 
     @Test
-    public void testExtension() throws Exception {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+    public void testExtension() {
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
             """
-                import ru.tinkoff.kora.validation.common.annotation.Size;
-                import ru.tinkoff.kora.validation.common.annotation.Valid;
                 @Valid
                 public record TestRecord(@Size(min = 1, max = 5) java.util.List<String> list){}
-                """,
-            """
-                import ru.tinkoff.kora.common.KoraApp;
-                import ru.tinkoff.kora.common.annotation.Root;
-                import ru.tinkoff.kora.validation.common.Validator;
-                import ru.tinkoff.kora.validation.common.constraint.ValidatorModule;
+                """, """
                 @KoraApp
                 public interface TestApp extends ValidatorModule{
                    @Root
@@ -39,18 +32,11 @@ public class ValidationExtensionTest extends AbstractAnnotationProcessorTest {
     }
 
     @Test
-    public void testExtensionNoAnnotationProcessor() throws Exception {
-        compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+    public void testExtensionNoAnnotationProcessor() {
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
             """
-                import ru.tinkoff.kora.validation.common.annotation.Size;
-
                 public record TestRecord(@Size(min = 1, max = 5) java.util.List<String> list){}
-                """,
-            """
-                import ru.tinkoff.kora.common.KoraApp;
-                import ru.tinkoff.kora.common.annotation.Root;
-                import ru.tinkoff.kora.validation.common.Validator;
-                import ru.tinkoff.kora.validation.common.constraint.ValidatorModule;
+                """, """
                 @KoraApp
                 public interface TestApp extends ValidatorModule{
                    @Root

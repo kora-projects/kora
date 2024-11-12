@@ -2,24 +2,29 @@ package ru.tinkoff.kora.validation.annotation.processor.aop;
 
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
-import ru.tinkoff.kora.annotation.processor.common.*;
+import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
+import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
+import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 import ru.tinkoff.kora.validation.annotation.processor.ValidMeta;
+import ru.tinkoff.kora.validation.annotation.processor.ValidTypes;
 import ru.tinkoff.kora.validation.annotation.processor.ValidUtils;
-
-import jakarta.annotation.Nullable;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeMirror;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 
 import static com.squareup.javapoet.CodeBlock.joining;
-import static ru.tinkoff.kora.validation.annotation.processor.ValidMeta.*;
+import static ru.tinkoff.kora.validation.annotation.processor.ValidMeta.Validated;
+import static ru.tinkoff.kora.validation.annotation.processor.ValidTypes.*;
+import static ru.tinkoff.kora.validation.annotation.processor.ValidUtils.isNotNull;
 
 public class ValidateMethodKoraAspect implements KoraAspect {
 
@@ -42,8 +47,8 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         final boolean isFlux = MethodUtils.isFlux(method);
         final boolean isFuture = MethodUtils.isFuture(method);
         final TypeMirror returnType = (isMono || isFlux || isFuture)
-                ? MethodUtils.getGenericType(method.getReturnType()).orElseThrow()
-                : method.getReturnType();
+            ? MethodUtils.getGenericType(method.getReturnType()).orElseThrow()
+            : method.getReturnType();
 
         var validationReturnCode = buildValidationReturnCode(method, returnType, aspectContext);
         var validationArgumentCode = buildValidationArgumentCode(method, aspectContext);
@@ -84,57 +89,105 @@ public class ValidateMethodKoraAspect implements KoraAspect {
 
         final List<ValidMeta.Constraint> constraints = ValidUtils.getValidatedByConstraints(env, returnType, method.getAnnotationMirrors());
         final List<Validated> validates = (method.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName())))
-                ? List.of(new ValidMeta.Validated(ValidMeta.Type.ofType(returnType)))
-                : Collections.emptyList();
+            ? List.of(new ValidMeta.Validated(ValidMeta.Type.ofElement(env.getTypeUtils().asElement(returnType), returnType)))
+            : Collections.emptyList();
 
-        if (constraints.isEmpty() && validates.isEmpty()) {
+        var isPrimitive = returnType instanceof PrimitiveType;
+        final boolean isNullable;
+        if (isFuture) {
+            isNullable = MethodUtils.getGenericType(method.getReturnType())
+                             .map(CommonUtils::isNullable)
+                             .orElseGet(() -> CommonUtils.isNullable(method)) || CommonUtils.isVoid(returnType);
+        } else {
+            isNullable = (CommonUtils.isNullable(method) && !isPrimitive && !isMono && !isFlux) || CommonUtils.isVoid(returnType);
+        }
+
+        final boolean isNotNullable = !isNullable && !isPrimitive;
+        final boolean isNotNull = isNotNull(method);
+        final boolean isJsonNullable = returnType instanceof DeclaredType dt && jsonNullable.canonicalName().equals(dt.asElement().toString());
+        var haveValidators = !constraints.isEmpty() || !validates.isEmpty();
+        if (CommonUtils.isVoid(returnType) && !haveValidators && !isJsonNullable && isNotNullable) {
             return Optional.empty();
         }
 
-        final boolean isNullable;
-        if(isFuture) {
-            isNullable = MethodUtils.getGenericType(method.getReturnType())
-                    .map(CommonUtils::isNullable)
-                    .orElseGet(() -> CommonUtils.isNullable(method));
-        } else {
-            isNullable = CommonUtils.isNullable(method);
+        if (!(haveValidators || ((isJsonNullable || isNotNullable) && !CommonUtils.isVoid(returnType)))) {
+            return Optional.empty();
         }
-
-        var isPrimitive = returnType instanceof PrimitiveType;
 
         var builder = CodeBlock.builder();
-        if (isNullable && !isPrimitive && !isMono && !isFlux) {
-            builder.beginControlFlow("if(_result != null) ");
-        }
 
         final boolean isFailFast = method.getAnnotationMirrors().stream()
-                .filter(a -> a.getAnnotationType().toString().equals(VALIDATE_TYPE.canonicalName()))
-                .flatMap(a -> env.getElementUtils().getElementValuesWithDefaults(a).entrySet().stream()
-                        .filter(e -> "failFast".equals(e.getKey().getSimpleName().toString()))
-                        .map(e -> Boolean.parseBoolean(e.getValue().getValue().toString())))
-                .findFirst()
-                .orElse(false);
+            .filter(a -> a.getAnnotationType().toString().equals(VALIDATE_TYPE.canonicalName()))
+            .flatMap(a -> env.getElementUtils().getElementValuesWithDefaults(a).entrySet().stream()
+                .filter(e -> "failFast".equals(e.getKey().getSimpleName().toString()))
+                .map(e -> Boolean.parseBoolean(e.getValue().getValue().toString())))
+            .findFirst()
+            .orElse(false);
 
-        builder.addStatement("var _returnValueContext = $T.builder().failFast($L).build()", CONTEXT_TYPE, isFailFast);
-        if (!isFailFast) {
-            builder.addStatement("var _returnValueViolations = new $T<$T>()", ArrayList.class, VIOLATION_TYPE);
+        final CodeBlock resultCtxBlock = (isFailFast)
+            ? CodeBlock.of("var _returnCtx = $T.failFast();\n", CONTEXT_TYPE)
+            : CodeBlock.of("var _returnCtx = $T.full();\n", CONTEXT_TYPE);
+
+        final String resultAccessor = (isJsonNullable) ? "_result.value()" : "_result";
+        if ((isJsonNullable && isNotNull) || isNotNullable) {
+            if (isJsonNullable && isNotNull) {
+                builder.beginControlFlow("if (_result == null || !_result.isDefined() || _result.isNull())");
+            } else {
+                builder.beginControlFlow("if (_result == null)");
+            }
+            builder.add(resultCtxBlock);
+            if (MethodUtils.isFuture(method)) {
+                builder.addStatement("throw new $T(_returnCtx.violates(\"Result must be non null, but was null\"))", ValidTypes.violationException);
+            } else if (MethodUtils.isMono(method)) {
+                builder.addStatement("_sink.error(new $T(_returnCtx.violates(\"Result must be non null, but was null\")))", ValidTypes.violationException);
+                builder.addStatement("return");
+            } else if (MethodUtils.isFlux(method)) {
+                builder.addStatement("_sink.error(new $T(_returnCtx.violates(\"Result must be non null, but was null\")))", ValidTypes.violationException);
+                builder.addStatement("return");
+            } else {
+                builder.addStatement("throw new $T(_returnCtx.violates(\"Result must be non null, but was null\"))", ValidTypes.violationException);
+            }
+
+            if (haveValidators) {
+                if (isJsonNullable) {
+                    builder.nextControlFlow("else if(_result.isDefined())");
+                } else {
+                    builder.nextControlFlow("else");
+                }
+                builder.add(resultCtxBlock);
+                if (!isFailFast) {
+                    builder.addStatement("var _returnViolations = new $T<$T>()", ArrayList.class, VIOLATION_TYPE);
+                }
+            }
+        } else if (isJsonNullable) {
+            builder.beginControlFlow("if(_result != null && _result.isDefined())");
+            builder.add(resultCtxBlock);
+            if (!isFailFast) {
+                builder.addStatement("var _returnViolations = new $T<$T>()", ArrayList.class, VIOLATION_TYPE);
+            }
+        } else {
+            builder.beginControlFlow("if(_result != null)");
+            builder.add(resultCtxBlock);
+            if (!isFailFast) {
+                builder.addStatement("var _returnViolations = new $T<$T>()", ArrayList.class, VIOLATION_TYPE);
+            }
         }
 
         for (int i = 1; i <= constraints.size(); i++) {
             var constraint = constraints.get(i - 1);
-            var constraintFactory = aspectContext.fieldFactory().constructorParam(constraint.factory().type().asMirror(env), List.of());
-            var constraintType = constraint.factory().validator().asMirror(env);
+            var constraintFactory = aspectContext.fieldFactory().constructorParam(constraint.factory().type().typeMirror(), List.of());
+            var constraintType = constraint.factory().validator().typeMirror();
 
             final CodeBlock createExec = CodeBlock.builder()
-                    .add("$N.create", constraintFactory)
-                    .add(constraint.factory().parameters().values().stream()
-                            .map(fp -> CodeBlock.of("$L", fp))
-                            .collect(joining(", ", "(", ")")))
-                    .build();
+                .add("$N.create", constraintFactory)
+                .add(constraint.factory().parameters().values().stream()
+                    .map(fp -> CodeBlock.of("$L", fp))
+                    .collect(joining(", ", "(", ")")))
+                .build();
 
             var constraintField = aspectContext.fieldFactory().constructorInitialized(constraintType, createExec);
-            var constraintResultField = "_returnConstraintResult_" + i;
-            builder.addStatement("var $N = $N.validate(_result, _returnValueContext)", constraintResultField, constraintField);
+            var constraintResultField = "_returnConstResult_" + i;
+            builder.addStatement("var $N = $N.validate($L, _returnCtx)", constraintResultField, constraintField, resultAccessor);
             if (isFailFast) {
                 builder.beginControlFlow("if (!$N.isEmpty())", constraintResultField);
                 if (MethodUtils.isFuture(method)) {
@@ -151,17 +204,20 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                 builder.endControlFlow();
             } else {
                 builder.beginControlFlow("if (!$N.isEmpty())", constraintResultField)
-                        .addStatement("_returnValueViolations.addAll($N)", constraintResultField)
-                        .endControlFlow();
+                    .addStatement("_returnViolations.addAll($N)", constraintResultField)
+                    .endControlFlow();
+            }
+            if (i + 1 < constraints.size()) {
+                builder.add("\n");
             }
         }
 
         for (int i = 1; i <= validates.size(); i++) {
             var validated = validates.get(i - 1);
-            var validatorType = validated.validator().asMirror(env);
+            var validatorType = validated.validator(env).typeMirror();
             var validatorField = aspectContext.fieldFactory().constructorParam(validatorType, List.of());
             var validatedResultField = "_returnValidatorResult_" + i;
-            builder.addStatement("var $N = $N.validate(_result, _returnValueContext)", validatedResultField, validatorField);
+            builder.addStatement("var $N = $N.validate($L, _returnCtx)", validatedResultField, validatorField, resultAccessor);
             if (isFailFast) {
                 builder.beginControlFlow("if (!$N.isEmpty())", validatedResultField);
                 if (MethodUtils.isFuture(method)) {
@@ -178,28 +234,35 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                 builder.endControlFlow();
             } else {
                 builder.beginControlFlow("if (!$N.isEmpty())", validatedResultField)
-                        .addStatement("_returnValueViolations.addAll($N)", validatedResultField)
-                        .endControlFlow();
+                    .addStatement("_returnViolations.addAll($N)", validatedResultField)
+                    .endControlFlow();
+            }
+            if (i + 1 < validates.size()) {
+                builder.add("\n");
             }
         }
 
-        if (!isFailFast) {
-            builder.beginControlFlow("if (!_returnValueViolations.isEmpty())");
+        if (haveValidators && !isFailFast) {
+            builder.add("\n");
+            builder.beginControlFlow("if (!_returnViolations.isEmpty())");
             if (MethodUtils.isFuture(method)) {
-                builder.addStatement("throw new $T(_returnValueViolations)", EXCEPTION_TYPE);
+                builder.addStatement("throw new $T(_returnViolations)", EXCEPTION_TYPE);
             } else if (MethodUtils.isMono(method)) {
-                builder.addStatement("_sink.error(new $T(_returnValueViolations))", EXCEPTION_TYPE);
+                builder.addStatement("_sink.error(new $T(_returnViolations))", EXCEPTION_TYPE);
                 builder.addStatement("return");
             } else if (MethodUtils.isFlux(method)) {
-                builder.addStatement("_sink.error(new $T(_returnValueViolations))", EXCEPTION_TYPE);
+                builder.addStatement("_sink.error(new $T(_returnViolations))", EXCEPTION_TYPE);
                 builder.addStatement("return");
             } else {
-                builder.addStatement("throw new $T(_returnValueViolations)", EXCEPTION_TYPE);
+                builder.addStatement("throw new $T(_returnViolations)", EXCEPTION_TYPE);
             }
             builder.endControlFlow();
         }
 
-        if (isNullable && !isPrimitive && !isMono && !isFlux) {
+        if ((isJsonNullable && isNotNull) || isNotNullable) {
+            builder.endControlFlow();
+        }
+        if (isNullable) {
             builder.endControlFlow();
         }
 
@@ -207,81 +270,129 @@ public class ValidateMethodKoraAspect implements KoraAspect {
     }
 
     private Optional<CodeBlock> buildValidationArgumentCode(ExecutableElement method, AspectContext aspectContext) {
-        final boolean isAnyParameterValidated = method.getParameters().stream().anyMatch(this::isParameterValidatable);
-        if (!isAnyParameterValidated) {
+        final boolean haveNoValidatable = method.getParameters().stream().noneMatch(this::isParameterValidatable);
+        final boolean allParamsNullable = method.getParameters().stream().allMatch(CommonUtils::isNullable);
+        if (allParamsNullable && haveNoValidatable) {
             return Optional.empty();
         }
 
         final boolean isFailFast = method.getAnnotationMirrors().stream()
-                .filter(a -> a.getAnnotationType().toString().equals(VALIDATE_TYPE.canonicalName()))
-                .flatMap(a -> env.getElementUtils().getElementValuesWithDefaults(a).entrySet().stream()
-                        .filter(e -> "failFast".equals(e.getKey().getSimpleName().toString()))
-                        .map(e -> Boolean.parseBoolean(e.getValue().getValue().toString())))
-                .findFirst()
-                .orElse(false);
+            .filter(a -> a.getAnnotationType().toString().equals(VALIDATE_TYPE.canonicalName()))
+            .flatMap(a -> env.getElementUtils().getElementValuesWithDefaults(a).entrySet().stream()
+                .filter(e -> "failFast".equals(e.getKey().getSimpleName().toString()))
+                .map(e -> Boolean.parseBoolean(e.getValue().getValue().toString())))
+            .findFirst()
+            .orElse(false);
 
         var builder = CodeBlock.builder()
-                .addStatement("var _argumentsContext = $T.builder().failFast($L).build()", CONTEXT_TYPE, isFailFast);
+            .addStatement("var _argCtx = $T.builder().failFast($L).build()", CONTEXT_TYPE, isFailFast);
 
         if (!isFailFast) {
-            builder.addStatement("var _argumentsViolations = new $T<$T>()", ArrayList.class, VIOLATION_TYPE);
+            builder.addStatement("var _argViolations = new $T<$T>()", ArrayList.class, VIOLATION_TYPE);
+            builder.add("\n");
         }
 
         for (var parameter : method.getParameters()) {
-            var isNullable = CommonUtils.isNullable(parameter);
             var isPrimitive = parameter.asType() instanceof PrimitiveType;
-            if (isParameterValidatable(parameter)) {
-                var constraints = ValidUtils.getValidatedByConstraints(env, parameter.asType(), parameter.getAnnotationMirrors());
-                var validates = getValidForArguments(parameter);
+            var isNullable = CommonUtils.isNullable(parameter) && !isPrimitive;
+            final boolean isNotNullable = !CommonUtils.isNullable(parameter) && !isPrimitive;
 
-                if (isNullable && !isPrimitive) {
-                    builder.beginControlFlow("if($N != null)", parameter.getSimpleName());
+            final boolean isNotNull = isNotNull(parameter);
+            final boolean isJsonNullable = parameter.asType() instanceof DeclaredType dt && jsonNullable.canonicalName().equals(dt.asElement().toString());
+
+            var constraints = ValidUtils.getValidatedByConstraints(env, parameter.asType(), parameter.getAnnotationMirrors());
+            var validates = getValidForArguments(parameter);
+            var haveValidators = !constraints.isEmpty() || !validates.isEmpty();
+            if (haveValidators || isJsonNullable || isNotNullable) {
+                final String paramName = parameter.getSimpleName().toString();
+                final String paramAccessor = (isJsonNullable) ? paramName + ".value()" : paramName;
+
+                if (isJsonNullable && isNotNull) {
+                    builder.beginControlFlow("if ($L == null || !$L.isDefined() || $L.isNull())",
+                        paramName, paramName, paramName);
+                } else if (isNotNullable) {
+                    builder.beginControlFlow("if ($L == null)", paramName);
                 }
 
-                var argumentsContext = "_argumentContext_" + parameter;
-                builder.addStatement("var $N = _argumentsContext.addPath($S)", argumentsContext, parameter.getSimpleName());
+                var argumentContext = "_argCtx_" + parameter;
+
+                if ((isJsonNullable && isNotNull) || isNotNullable) {
+                    builder.addStatement("var $N = _argCtx.addPath($S)", argumentContext, paramName);
+                    if (isFailFast) {
+                        if (MethodUtils.isFuture(method)) {
+                            builder.addStatement("return $T.failedFuture(new $T($L.violates(\"Parameter '$L' must be non null, but was null\")))", CompletableFuture.class, ValidTypes.violationException, argumentContext, paramName);
+                        } else {
+                            builder.addStatement("throw new $T($L.violates(\"Parameter '$L' must be non null, but was null\"))", ValidTypes.violationException, argumentContext, paramName);
+                        }
+                    } else {
+                        builder.addStatement("_argViolations.add($L.violates(\"Parameter '$L' must be non null, but was null\"))", argumentContext, paramName);
+                    }
+
+                    if (haveValidators) {
+                        if (isJsonNullable) {
+                            builder.nextControlFlow("else if($N.isDefined())", paramName);
+                            builder.addStatement("var $N = _argCtx.addPath($S)", argumentContext, paramName);
+                        } else {
+                            builder.nextControlFlow("else");
+                            builder.addStatement("var $N = _argCtx.addPath($S)", argumentContext, paramName);
+                        }
+                    }
+                } else if (isJsonNullable) {
+                    builder.beginControlFlow("if($N != null && $N.isDefined())", paramName);
+                    builder.addStatement("var $N = _argCtx.addPath($S)", argumentContext, paramName);
+                } else if (isNullable) {
+                    builder.beginControlFlow("if($N != null)", paramName);
+                    builder.addStatement("var $N = _argCtx.addPath($S)", argumentContext, paramName);
+                } else {
+                    builder.addStatement("var $N = _argCtx.addPath($S)", argumentContext, paramName);
+                }
+
                 for (int i = 1; i <= constraints.size(); i++) {
                     var constraint = constraints.get(i - 1);
-                    var constraintFactory = aspectContext.fieldFactory().constructorParam(constraint.factory().type().asMirror(env), List.of());
-                    var constraintType = constraint.factory().validator().asMirror(env);
+                    var constraintFactory = aspectContext.fieldFactory().constructorParam(constraint.factory().type().typeMirror(), List.of());
+                    var constraintType = constraint.factory().validator().typeMirror();
 
                     final CodeBlock createExec = CodeBlock.builder()
-                            .add("$N.create", constraintFactory)
-                            .add(constraint.factory().parameters().values().stream()
-                                    .map(fp -> CodeBlock.of("$L", fp))
-                                    .collect(joining(", ", "(", ")")))
-                            .build();
+                        .add("$N.create", constraintFactory)
+                        .add(constraint.factory().parameters().values().stream()
+                            .map(fp -> CodeBlock.of("$L", fp))
+                            .collect(joining(", ", "(", ")")))
+                        .build();
 
                     var constraintField = aspectContext.fieldFactory().constructorInitialized(constraintType, createExec);
-                    var constraintResultField = "_argumentConstraintResult_" + parameter + "_" + i;
+                    var constraintResultField = "_argConstResult_" + parameter + "_" + i;
 
                     builder.addStatement("var $N = $N.validate($N, $N)",
-                            constraintResultField, constraintField, parameter.getSimpleName(), argumentsContext);
+                        constraintResultField, constraintField, paramAccessor, argumentContext);
                     if (isFailFast) {
                         builder.beginControlFlow("if (!$N.isEmpty())", constraintResultField);
                         if (MethodUtils.isFuture(method)) {
-                            builder.addStatement("$T.failedFuture(new $T($N))", CompletableFuture.class, EXCEPTION_TYPE, constraintResultField);
+                            builder.addStatement("return $T.failedFuture(new $T($N))", CompletableFuture.class, EXCEPTION_TYPE, constraintResultField);
                         } else {
                             builder.addStatement("throw new $T($N)", EXCEPTION_TYPE, constraintResultField);
                         }
                         builder.endControlFlow();
                     } else {
                         builder
-                                .beginControlFlow("if (!$N.isEmpty())", constraintResultField)
-                                .addStatement("_argumentsViolations.addAll($N)", constraintResultField)
-                                .endControlFlow();
+                            .beginControlFlow("if (!$N.isEmpty())", constraintResultField)
+                            .addStatement("_argViolations.addAll($N)", constraintResultField)
+                            .endControlFlow();
+                    }
+
+                    if (i + 1 < constraints.size()) {
+                        builder.add("\n");
                     }
                 }
 
                 for (int i = 1; i <= validates.size(); i++) {
                     var validated = validates.get(i - 1);
-                    var validatorType = validated.validator().asMirror(env);
+                    var validatorType = validated.validator(env).typeMirror();
 
                     var validatorField = aspectContext.fieldFactory().constructorParam(validatorType, List.of());
-                    var validatorResultField = "_argumentValidatorResult_" + parameter + "_" + i;
+                    var validatorResultField = "_argValidatorResult_" + parameter + "_" + i;
 
                     builder.addStatement("var $N = $N.validate($N, $N)",
-                            validatorResultField, validatorField, parameter.getSimpleName(), argumentsContext);
+                        validatorResultField, validatorField, paramAccessor, argumentContext);
                     if (isFailFast) {
                         builder.beginControlFlow("if (!$N.isEmpty())", validatorResultField);
                         if (MethodUtils.isFuture(method)) {
@@ -292,24 +403,32 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                         builder.endControlFlow();
                     } else {
                         builder
-                                .beginControlFlow("if (!$N.isEmpty())", validatorResultField)
-                                .addStatement("_argumentsViolations.addAll($N)", validatorResultField)
-                                .endControlFlow();
+                            .beginControlFlow("if (!$N.isEmpty())", validatorResultField)
+                            .addStatement("_argViolations.addAll($N)", validatorResultField)
+                            .endControlFlow();
+                    }
+
+                    if (i + 1 < validates.size()) {
+                        builder.add("\n");
                     }
                 }
 
-                if (isNullable && !isPrimitive) {
+                if ((isJsonNullable && isNotNull) || isNotNullable) {
+                    builder.endControlFlow();
+                }
+                if (isNullable) {
                     builder.endControlFlow();
                 }
             }
         }
 
         if (!isFailFast) {
-            builder.beginControlFlow("if (!_argumentsViolations.isEmpty())");
+            builder.add("\n");
+            builder.beginControlFlow("if (!_argViolations.isEmpty())");
             if (MethodUtils.isFuture(method)) {
-                builder.addStatement("return $T.failedFuture(new $T(_argumentsViolations))", CompletableFuture.class, EXCEPTION_TYPE);
+                builder.addStatement("return $T.failedFuture(new $T(_argViolations))", CompletableFuture.class, EXCEPTION_TYPE);
             } else {
-                builder.addStatement("throw new $T(_argumentsViolations)", EXCEPTION_TYPE);
+                builder.addStatement("throw new $T(_argViolations)", EXCEPTION_TYPE);
             }
             builder.endControlFlow();
         }
@@ -336,7 +455,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
 
     private List<ValidMeta.Validated> getValidForArguments(VariableElement parameter) {
         if (parameter.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName()))) {
-            return List.of(new ValidMeta.Validated(ValidMeta.Type.ofType(parameter.asType())));
+            return List.of(new ValidMeta.Validated(ValidMeta.Type.ofElement(parameter, parameter.asType())));
         }
 
         return Collections.emptyList();
@@ -366,8 +485,8 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             }
 
             return builder
-                    .add("return _result;")
-                    .build();
+                .add("return _result;")
+                .build();
         }
     }
 
@@ -410,10 +529,10 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         if (validationReturnCode != null) {
             builder.add("return $L.handle((_result, _sink) -> {\n", superMethod.toString());
             builder.indent().indent().indent().indent()
-                    .add(validationReturnCode)
-                    .add("_sink.next(_result);")
-                    .unindent().unindent().unindent().unindent()
-                    .add("\n\n});\n");
+                .add(validationReturnCode)
+                .add("_sink.next(_result);")
+                .unindent().unindent().unindent().unindent()
+                .add("\n\n});\n");
         } else {
             builder.addStatement("return $L", superMethod.toString());
         }

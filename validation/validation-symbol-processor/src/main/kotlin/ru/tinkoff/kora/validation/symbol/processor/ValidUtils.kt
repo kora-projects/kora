@@ -3,21 +3,24 @@ package ru.tinkoff.kora.validation.symbol.processor
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.ksp.toClassName
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
+import ru.tinkoff.kora.validation.symbol.processor.ValidTypes.VALIDATED_BY_TYPE
 
 object ValidUtils {
+
     fun KSPropertyDeclaration.getConstraints(): List<Constraint> {
         val type = this.type
-        val constraints = getConstraints(type, this.annotations)
+        val constraints = getConstraints(type.resolve(), this.annotations)
         if (constraints.isNotEmpty()) {
             return constraints
         }
+
         val classDecl = this.parentDeclaration as KSClassDeclaration
         classDecl.primaryConstructor?.let {
             it.parameters
                 .filter { it.name?.asString() == this.simpleName.asString() }
                 .firstOrNull()
                 ?.let {
-                    return getConstraints(type, it.annotations)
+                    return getConstraints(type.resolve(), it.annotations)
                 }
         }
         return listOf()
@@ -25,7 +28,7 @@ object ValidUtils {
 
     fun KSValueParameter.getConstraints(): List<Constraint> {
         val type = this.type
-        return getConstraints(type, this.annotations)
+        return getConstraints(type.resolve(), this.annotations)
     }
 
     fun KSFunctionDeclaration.getConstraints(): List<Constraint> {
@@ -34,11 +37,13 @@ object ValidUtils {
         else
             this.returnType!!
 
-        return getConstraints(returnTypeReference, this.annotations)
+        return getConstraints(returnTypeReference.resolve(), this.annotations)
     }
 
+    private fun getConstraints(type: KSType, annotation: Sequence<KSAnnotation>): List<Constraint> {
+        val isJsonNullable = type.toClassName() == ValidTypes.jsonNullable
+        val realType = if (isJsonNullable) type.arguments[0].type!!.resolve() else type
 
-    private fun getConstraints(type: KSTypeReference, annotation: Sequence<KSAnnotation>): List<Constraint> {
         return annotation
             .mapNotNull { origin ->
                 origin.annotationType.resolve().declaration.annotations
@@ -52,7 +57,7 @@ object ValidUtils {
 
                         Constraint(
                             origin.annotationType.asType(),
-                            Constraint.Factory(factory.declaration.qualifiedName!!.asString().asType(listOf(type.resolve().makeNotNullable().asType())), parameters)
+                            Constraint.Factory(factory.declaration.qualifiedName!!.asString().asType(listOf(realType.makeNotNullable().asType())), parameters)
                         )
                     }
                     .firstOrNull()

@@ -40,9 +40,9 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(KoraAppProcessor.class);
 
-    private static final Set<TypeElement> loggedComponents = new LinkedHashSet<>();
-    private static final Set<TypeElement> loggedApplicationModules = new LinkedHashSet<>();
-    private static final Set<TypeElement> loggedExternalModules = new LinkedHashSet<>();
+    private final Set<TypeElement> loggedComponents = new LinkedHashSet<>();
+    private final Set<TypeElement> loggedApplicationModules = new LinkedHashSet<>();
+    private final Set<TypeElement> loggedExternalModules = new LinkedHashSet<>();
 
     private final Map<TypeElement, ProcessingState> annotatedElements = new HashMap<>();
     private final List<TypeElement> modules = new ArrayList<>();

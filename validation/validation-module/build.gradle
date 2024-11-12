@@ -1,4 +1,5 @@
 dependencies {
-    api project(':validation:validation-common')
-    compileOnly project(':http:http-server-common')
+    compileOnly project(":http:http-server-common")
+
+    api project(":validation:validation-common")
 }
