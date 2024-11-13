@@ -107,7 +107,7 @@ public final class Opentelemetry123KafkaConsumerMetrics implements KafkaConsumer
     }
 
     @Override
-    public void onRecordsProcessed(String consumerName, ConsumerRecords<?, ?> records, Map<MetricName, ? extends Metric> consumerMetrics, long duration, @Nullable Throwable ex) {
+    public void onRecordsProcessed(String consumerName, ConsumerRecords<?, ?> records, long duration, @Nullable Throwable ex) {
         double durationDouble = ((double) duration) / 1_000_000_000;
         var key = new DurationBatchKey(consumerName, ex != null ? ex.getClass() : null);
 

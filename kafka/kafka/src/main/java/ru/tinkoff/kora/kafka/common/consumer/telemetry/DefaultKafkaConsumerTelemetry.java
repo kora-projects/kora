@@ -88,13 +88,13 @@ public class DefaultKafkaConsumerTelemetry<K, V> implements KafkaConsumerTelemet
         }
 
         @Override
-        public void close(Map<MetricName, ? extends Metric> consumerMetrics, @Nullable Throwable ex) {
+        public void close(@Nullable Throwable ex) {
             var duration = System.nanoTime() - this.start;
             if (this.span != null) {
                 this.span.close(ex);
             }
             if (this.metrics != null) {
-                this.metrics.onRecordsProcessed(consumerName, this.records, consumerMetrics, duration, ex);
+                this.metrics.onRecordsProcessed(consumerName, this.records, duration, ex);
             }
             if (this.logger != null) {
                 this.logger.logRecordsProcessed(this.records, ex);
