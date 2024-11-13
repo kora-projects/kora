@@ -59,6 +59,7 @@ class KafkaAssignConsumerContainerTest {
             Integer.valueOf(2),
             Duration.ofSeconds(1),
             Duration.ofMillis(10000),
+            true,
             new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
                 new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
                 new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),

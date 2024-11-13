@@ -49,6 +49,10 @@ public interface KafkaListenerConfig {
         return Duration.ofSeconds(30);
     }
 
+    default boolean allowEmptyRecords() {
+        return false;
+    }
+
     TelemetryConfig telemetry();
 
     default KafkaListenerConfig withDriverPropertiesOverrides(Map<String, Object> overrides) {
@@ -66,6 +70,7 @@ public interface KafkaListenerConfig {
             threads(),
             partitionRefreshInterval(),
             shutdownWait(),
+            allowEmptyRecords(),
             telemetry()
         );
     }
