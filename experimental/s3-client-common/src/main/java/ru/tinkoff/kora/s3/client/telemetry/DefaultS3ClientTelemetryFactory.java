@@ -4,8 +4,6 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
-import java.net.URI;
-
 public final class DefaultS3ClientTelemetryFactory implements S3ClientTelemetryFactory {
 
     private static final S3ClientTelemetry.S3ClientTelemetryContext EMPTY_CTX = new S3ClientTelemetry.S3ClientTelemetryContext() {

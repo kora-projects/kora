@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.s3.client.minio;
 
-import jakarta.annotation.Nullable;
 import org.jetbrains.annotations.ApiStatus;
 import ru.tinkoff.kora.common.util.Size;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;

@@ -3,9 +3,6 @@ package ru.tinkoff.kora.s3.client.telemetry;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.s3.client.S3Exception;
 
-import java.net.URI;
-import java.util.concurrent.atomic.AtomicReference;
-
 public final class DefaultS3ClientTelemetry implements S3ClientTelemetry {
 
     private final S3ClientLogger logger;

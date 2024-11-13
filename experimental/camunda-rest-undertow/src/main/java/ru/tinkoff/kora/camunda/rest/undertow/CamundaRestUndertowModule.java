@@ -10,37 +10,31 @@ import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.camunda.rest.CamundaRest;
 import ru.tinkoff.kora.camunda.rest.CamundaRestConfig;
 import ru.tinkoff.kora.camunda.rest.CamundaRestModule;
-import ru.tinkoff.kora.camunda.rest.telemetry.*;
+import ru.tinkoff.kora.camunda.rest.telemetry.CamundaRestTelemetryFactory;
+import ru.tinkoff.kora.camunda.rest.telemetry.CamundaRestTracerFactory;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Root;
 
 public interface CamundaRestUndertowModule extends CamundaRestModule {
 
-    @DefaultComponent
-    default CamundaRestLoggerFactory defaultCamundaRestLoggerFactory() {
-        return new DefaultCamundaRestLoggerFactory();
-    }
-
-    @DefaultComponent
-    default CamundaRestTelemetryFactory defaultCamundaRestTelemetryFactory(@Nullable CamundaRestLoggerFactory logger,
-                                                                           @Nullable CamundaRestMetricsFactory metrics,
-                                                                           @Nullable CamundaRestTracerFactory tracer) {
-        return new DefaultCamundaRestTelemetryFactory(logger, metrics, tracer);
-    }
-
     @Tag(CamundaRest.class)
     @DefaultComponent
     default Wrapped<HttpHandler> camundaRestUndertowHttpHandler(@Tag(CamundaRest.class) All<Application> applications,
-                                                                CamundaRestConfig camundaRestConfig) {
-        return new UndertowCamundaRestHttpHandler(applications, camundaRestConfig);
+                                                                CamundaRestConfig camundaRestConfig,
+                                                                CamundaRestTelemetryFactory telemetryFactory,
+                                                                @Nullable CamundaRestTracerFactory tracerFactory) {
+        var telemetry = telemetryFactory.get(camundaRestConfig.telemetry());
+        var tracer = (tracerFactory == null)
+            ? null
+            : tracerFactory.get(camundaRestConfig.telemetry().tracing());
+        return new UndertowCamundaRestHttpHandler(applications, camundaRestConfig, telemetry, tracer);
     }
 
     @Tag(CamundaRest.class)
     @Root
     default Lifecycle camundaRestUndertowHttpServer(@Tag(CamundaRest.class) ValueOf<HttpHandler> camundaHttpHandler,
-                                                    ValueOf<CamundaRestConfig> camundaRestConfig,
-                                                    CamundaRestTelemetryFactory telemetryFactory) {
-        return new UndertowCamundaHttpServer(camundaRestConfig, camundaHttpHandler, telemetryFactory);
+                                                    ValueOf<CamundaRestConfig> camundaRestConfig) {
+        return new UndertowCamundaHttpServer(camundaRestConfig, camundaHttpHandler);
     }
 }

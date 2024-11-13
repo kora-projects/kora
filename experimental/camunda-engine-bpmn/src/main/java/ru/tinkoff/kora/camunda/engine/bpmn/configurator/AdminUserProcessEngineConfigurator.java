@@ -10,8 +10,8 @@ import org.camunda.bpm.engine.identity.User;
 import org.camunda.bpm.engine.impl.persistence.entity.AuthorizationEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.tinkoff.kora.camunda.engine.bpmn.CamundaEngineDataSource;
 import ru.tinkoff.kora.camunda.engine.bpmn.CamundaEngineBpmnConfig;
+import ru.tinkoff.kora.camunda.engine.bpmn.CamundaEngineDataSource;
 import ru.tinkoff.kora.common.util.TimeUtils;
 
 import static org.camunda.bpm.engine.authorization.Authorization.ANY;

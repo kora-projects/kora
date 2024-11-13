@@ -4,7 +4,6 @@ import org.camunda.bpm.engine.ArtifactFactory;
 import org.camunda.bpm.engine.delegate.DelegateExecution;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
 import org.junit.jupiter.api.Test;
-import ru.tinkoff.kora.camunda.engine.bpmn.KoraArtifactFactory;
 
 import java.util.List;
 
