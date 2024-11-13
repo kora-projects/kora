@@ -10,6 +10,9 @@ import java.util.Map;
 
 public interface CamundaRestTelemetry {
 
+    CamundaRestTelemetryContext EMPTY_CTX = (s, r, h, ex) -> {};
+    CamundaRestTelemetry EMPTY = (s, host, m, p, pt, h, q, b) -> EMPTY_CTX;
+
     interface CamundaRestTelemetryContext {
 
         void close(int statusCode, HttpResultCode resultCode, HttpHeaders headers, @Nullable Throwable exception);
