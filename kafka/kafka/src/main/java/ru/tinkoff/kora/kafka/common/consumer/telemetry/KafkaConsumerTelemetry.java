@@ -15,7 +15,6 @@ public interface KafkaConsumerTelemetry<K, V> {
 
         KafkaConsumerRecordTelemetryContext<K, V> get(ConsumerRecord<K, V> record);
 
-        @Deprecated
         void close(@Nullable Throwable ex);
     }
 
