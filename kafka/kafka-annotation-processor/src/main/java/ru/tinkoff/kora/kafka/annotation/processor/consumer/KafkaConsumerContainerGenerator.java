@@ -4,14 +4,17 @@ import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.TagUtils;
 import ru.tinkoff.kora.kafka.annotation.processor.consumer.KafkaConsumerHandlerGenerator.HandlerMethod;
 
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.util.Elements;
 import java.util.List;
+import java.util.Objects;
 
 import static ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames.*;
 import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.getConsumerTags;
@@ -19,7 +22,7 @@ import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.prepar
 
 public class KafkaConsumerContainerGenerator {
 
-    public MethodSpec generate(Elements elements, ExecutableElement executableElement, HandlerMethod handlerMethod, List<ConsumerParameter> parameters) {
+    public MethodSpec generate(Elements elements, ExecutableElement executableElement, AnnotationMirror listenerAnnotation, HandlerMethod handlerMethod, List<ConsumerParameter> parameters) {
         var consumerTags = getConsumerTags(elements, executableElement);
         var tagAnnotation = TagUtils.makeAnnotationSpecForTypes(consumerTags);
 
@@ -62,7 +65,11 @@ public class KafkaConsumerContainerGenerator {
             .addAnnotation(Nullable.class)
             .build());
 
-        methodBuilder.addStatement("var telemetry = telemetryFactory.get(config.driverProperties(), config.telemetry())");
+        var configPath = Objects.requireNonNull(AnnotationUtils.parseAnnotationValueWithoutDefault(listenerAnnotation, "value")).toString();
+        var consumerName = configPath
+            .replace(".", "-")
+            .replace("_", "-");
+        methodBuilder.addStatement("var telemetry = telemetryFactory.get($S, config.driverProperties(), config.telemetry())", consumerName);
 
         var consumerParameter = parameters.stream().filter(r -> r instanceof ConsumerParameter.Consumer).map(ConsumerParameter.Consumer.class::cast).findFirst();
         if (handlerTypeName.rawType.equals(recordHandler)) {
