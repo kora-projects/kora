@@ -15,17 +15,8 @@ public interface KafkaConsumerTelemetry<K, V> {
 
         KafkaConsumerRecordTelemetryContext<K, V> get(ConsumerRecord<K, V> record);
 
-        /**
-         * @see #close(Map, Throwable)
-         */
         @Deprecated
-        default void close(@Nullable Throwable ex) {
-
-        }
-
-        default void close(Map<MetricName, ? extends Metric> consumerMetrics, @Nullable Throwable ex) {
-            close(ex);
-        }
+        void close(@Nullable Throwable ex);
     }
 
     interface KafkaConsumerRecordTelemetryContext<K, V> {

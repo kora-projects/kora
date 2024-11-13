@@ -14,14 +14,14 @@ public interface KafkaConsumerMetrics {
     void onRecordsReceived(ConsumerRecords<?, ?> records);
 
     /**
-     * @see #onRecordsProcessed(String, ConsumerRecords, Map, long, Throwable)
+     * @see #onRecordsProcessed(String, ConsumerRecords, long, Throwable)
      */
     @Deprecated
     default void onRecordsProcessed(ConsumerRecords<?, ?> records, long duration, @Nullable Throwable ex) {
 
     }
 
-    default void onRecordsProcessed(String consumerName, ConsumerRecords<?, ?> records, Map<MetricName, ? extends Metric> consumerMetrics, long duration, @Nullable Throwable ex) {
+    default void onRecordsProcessed(String consumerName, ConsumerRecords<?, ?> records, long duration, @Nullable Throwable ex) {
         onRecordsProcessed(records, duration, ex);
     }
 
