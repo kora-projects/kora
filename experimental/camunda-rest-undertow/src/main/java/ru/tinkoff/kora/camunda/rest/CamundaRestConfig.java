@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.camunda.rest;
 
 import jakarta.annotation.Nullable;
-import org.jetbrains.annotations.ApiStatus.Experimental;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
@@ -10,7 +9,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
-@Experimental
 @ConfigValueExtractor
 public interface CamundaRestConfig {
 

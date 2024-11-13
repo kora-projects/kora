@@ -5,7 +5,6 @@ import org.camunda.bpm.engine.ProcessEngine;
 import org.camunda.bpm.engine.RepositoryService;
 import org.camunda.bpm.engine.repository.Deployment;
 import org.camunda.bpm.engine.repository.DeploymentBuilder;
-import org.jetbrains.annotations.ApiStatus.Experimental;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.camunda.engine.bpmn.CamundaEngineBpmnConfig;
@@ -28,7 +27,6 @@ import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-@Experimental
 public final class DeploymentProcessEngineConfigurator implements ProcessEngineConfigurator {
 
     private static final Logger logger = LoggerFactory.getLogger(DeploymentProcessEngineConfigurator.class);

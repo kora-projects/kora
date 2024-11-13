@@ -4,14 +4,12 @@ import org.camunda.bpm.engine.delegate.JavaDelegate;
 import org.camunda.bpm.engine.delegate.VariableScope;
 import org.camunda.bpm.engine.impl.scripting.engine.Resolver;
 import org.camunda.bpm.engine.impl.scripting.engine.ResolverFactory;
-import org.jetbrains.annotations.ApiStatus.Experimental;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-@Experimental
 public final class KoraResolverFactory implements ResolverFactory, Resolver {
 
     private final Map<String, Object> componentByKey;

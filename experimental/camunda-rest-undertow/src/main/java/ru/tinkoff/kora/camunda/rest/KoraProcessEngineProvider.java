@@ -3,11 +3,9 @@ package ru.tinkoff.kora.camunda.rest;
 import org.camunda.bpm.engine.ProcessEngine;
 import org.camunda.bpm.engine.ProcessEngines;
 import org.camunda.bpm.engine.rest.spi.ProcessEngineProvider;
-import org.jetbrains.annotations.ApiStatus.Experimental;
 
 import java.util.Set;
 
-@Experimental
 public final class KoraProcessEngineProvider implements ProcessEngineProvider {
 
     @Override

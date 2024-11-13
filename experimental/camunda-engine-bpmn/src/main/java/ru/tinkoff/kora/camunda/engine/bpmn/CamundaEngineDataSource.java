@@ -1,11 +1,9 @@
 package ru.tinkoff.kora.camunda.engine.bpmn;
 
-import org.jetbrains.annotations.ApiStatus.Experimental;
 import ru.tinkoff.kora.camunda.engine.bpmn.transaction.CamundaTransactionManager;
 
 import javax.sql.DataSource;
 
-@Experimental
 public interface CamundaEngineDataSource {
 
     CamundaTransactionManager transactionManager();
