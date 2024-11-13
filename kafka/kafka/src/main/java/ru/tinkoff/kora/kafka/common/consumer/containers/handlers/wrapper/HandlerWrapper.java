@@ -39,9 +39,9 @@ public final class HandlerWrapper {
             var ctx = telemetry.get(records);
             try {
                 realHandler.get().handle(records, consumer, commitAllowed);
-                ctx.close(null);
+                ctx.close(consumer.metrics(), null);
             } catch (Exception e) {
-                ctx.close(e);
+                ctx.close(consumer.metrics(), e);
                 throw e;
             }
         };

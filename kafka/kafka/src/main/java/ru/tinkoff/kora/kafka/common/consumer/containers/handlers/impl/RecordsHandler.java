@@ -43,9 +43,9 @@ public class RecordsHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
                     consumer.commitSync();
                 }
             }
-            ctx.close(null);
+            ctx.close(consumer.metrics(), null);
         } catch (Exception e) {
-            ctx.close(e);
+            ctx.close(consumer.metrics(), e);
             throw e;
         }
     }
