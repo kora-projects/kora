@@ -588,6 +588,9 @@ public class KoraCodegen extends DefaultCodegen {
                         variable.vendorExtensions.put("x-json-nullable", true);
                     } else {
                         variable.vendorExtensions.put("x-json-include-always", true);
+                        //TODO remove in 2.0 and make default behavior that ENABLE_JSON_NULLABLE is enabled
+                        LOGGER.warn("Detected isNullable and NonRequired field: {}#{}\nYou may want add option '{}' in configOptions to treat it as JsonNullable<T>, this will be default behavior in 2.0",
+                            model.name, variable.name, ENABLE_JSON_NULLABLE);
                     }
                 }
             }
@@ -609,6 +612,9 @@ public class KoraCodegen extends DefaultCodegen {
                         variable.vendorExtensions.put("x-json-nullable", true);
                     } else {
                         variable.vendorExtensions.put("x-json-include-always", true);
+                        //TODO remove in 2.0 and make default behavior that ENABLE_JSON_NULLABLE is enabled
+                        LOGGER.warn("Detected isNullable and NonRequired field: {}#{}\nYou may want add option '{}' in configOptions to treat it as JsonNullable<T>, this will be default behavior in 2.0",
+                            model.name, variable.name, ENABLE_JSON_NULLABLE);
                     }
                 }
             }
