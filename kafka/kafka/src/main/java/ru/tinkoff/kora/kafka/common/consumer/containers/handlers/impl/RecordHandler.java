@@ -64,9 +64,9 @@ public class RecordHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
                     throw e;
                 }
             }
-            ctx.close(consumer.metrics(), null);
+            ctx.close(null);
         } catch (Exception e) {
-            ctx.close(consumer.metrics(), e);
+            ctx.close(e);
             throw e;
         }
     }
