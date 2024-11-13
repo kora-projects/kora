@@ -79,7 +79,9 @@ class KafkaPublisherSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseS
                 if (supertypes.isEmpty()) {
                     val publishMethods = producer.getAllFunctions()
                         .filter { it.findOverridee()?.parentDeclaration?.qualifiedName?.asString() != "kotlin.Any" }
+                        .filter { it.isAbstract }
                         .toList()
+
                     val topicConfig = publisherGenerator.generateConfig(producer, publishMethods)
                     publisherGenerator.generatePublisherImpl(producer, publishMethods, topicConfig)
 
@@ -116,8 +118,6 @@ class KafkaPublisherSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseS
             } catch (e: ProcessingErrorException) {
                 e.printError(env.logger)
             }
-
-
         }
 
         return deferred
