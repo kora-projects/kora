@@ -41,7 +41,7 @@ class KafkaContainerGenerator {
         if (handlerType.rawType == KafkaClassNames.recordHandler) {
             funBuilder.addStatement("val wrappedHandler = %T.wrapHandlerRecord(telemetry, %L, handler)", KafkaClassNames.handlerWrapper, consumerParameter == null)
         } else {
-            funBuilder.addStatement("val wrappedHandler = %T.wrapHandlerRecords(telemetry, %L, handler)", KafkaClassNames.handlerWrapper, consumerParameter == null)
+            funBuilder.addStatement("val wrappedHandler = %T.wrapHandlerRecords(telemetry, %L, handler, config.allowEmptyRecords())", KafkaClassNames.handlerWrapper, consumerParameter == null)
         }
         funBuilder.controlFlow("if (config.driverProperties().getProperty(%T.GROUP_ID_CONFIG) == null)", KafkaClassNames.commonClientConfigs) {
             addStatement("val topics = config.topics()")

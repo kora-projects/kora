@@ -2,31 +2,32 @@ package ru.tinkoff.kora.kafka.common.consumer.containers.handlers.impl;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
-import org.apache.kafka.common.requests.OffsetFetchResponse;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.BaseKafkaRecordsHandler;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.KafkaRecordsHandler;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
 
-import java.util.Map;
-
 public class RecordsHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
     private final KafkaConsumerTelemetry<K, V> telemetry;
     private final ValueOf<KafkaRecordsHandler<K, V>> handler;
     private final boolean shouldCommit;
+    private final boolean allowEmptyRecords;
 
     public RecordsHandler(KafkaConsumerTelemetry<K, V> telemetry, boolean shouldCommit, ValueOf<KafkaRecordsHandler<K, V>> handler) {
+        this(telemetry, shouldCommit, handler, false);
+    }
+
+    public RecordsHandler(KafkaConsumerTelemetry<K, V> telemetry, boolean shouldCommit, ValueOf<KafkaRecordsHandler<K, V>> handler, boolean allowEmptyRecords) {
         this.telemetry = telemetry;
         this.handler = handler;
         this.shouldCommit = shouldCommit;
+        this.allowEmptyRecords = allowEmptyRecords;
     }
 
     @Override
     public void handle(ConsumerRecords<K, V> records, Consumer<K, V> consumer, boolean commitAllowed) {
-        if (records.isEmpty()) {
+        if (records.isEmpty() && !allowEmptyRecords) {
             return;
         }
 

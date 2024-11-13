@@ -68,7 +68,7 @@ public class KafkaConsumerContainerGenerator {
         if (handlerTypeName.rawType.equals(recordHandler)) {
             methodBuilder.addCode("var wrappedHandler = $T.wrapHandlerRecord(telemetry, $L, handler);\n", handlerWrapper, consumerParameter.isEmpty());
         } else {
-            methodBuilder.addCode("var wrappedHandler = $T.wrapHandlerRecords(telemetry, $L, handler);\n", handlerWrapper, consumerParameter.isEmpty());
+            methodBuilder.addCode("var wrappedHandler = $T.wrapHandlerRecords(telemetry, $L, handler, config.allowEmptyRecords());\n", handlerWrapper, consumerParameter.isEmpty());
         }
         methodBuilder.addCode("if (config.driverProperties().getProperty($T.GROUP_ID_CONFIG) == null) {$>\n", commonClientConfigs);
         methodBuilder.beginControlFlow("if (config.topics() == null || config.topics().size() != 1)"); // todo allow list?
