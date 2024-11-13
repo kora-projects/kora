@@ -297,9 +297,11 @@ public class UndertowExchangeProcessor implements Runnable {
         }
 
         if (this.isInBlockingThread()) {
-            try (var os = exchange.startBlocking().getOutputStream()) {
+            if (!exchange.isBlocking()) {
+                exchange.startBlocking();
+            }
+            try (var os = exchange.getOutputStream()) {
                 body.write(os);
-                return;
             } catch (IOException e) {
                 if (!exchange.isResponseStarted()) {
                     exchange.setStatusCode(500);
@@ -311,8 +313,11 @@ public class UndertowExchangeProcessor implements Runnable {
                     }
                 }
                 response.closeBodyError(exchange.getStatusCode(), e);
+                exchange.endExchange();
                 return;
             }
+            response.closeSendResponseSuccess(exchange.getStatusCode(), rs.headers(), error);
+            return;
         }
         sendStreamingBody(response, HttpHeaders.empty(), body, error);
     }
