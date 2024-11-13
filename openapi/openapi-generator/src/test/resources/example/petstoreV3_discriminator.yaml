@@ -52,21 +52,33 @@ components:
     ValidationErrorDto:
       title: ValidationErrorDto
       type: object
+      required:
+        - fieldRequired
+        - fieldRequiredNullable
+        - fieldRequiredNonNullable
       properties:
-        fieldNonRequired:
+        type:
           type: string
         fieldRequired:
           type: string
-        type:
+          example: 123
+        fieldNullable:
           type: string
+          nullable: true
+          example: 123
+        fieldRequiredNullable:
+          type: string
+          nullable: true
+          example: 123
+        fieldRequiredNonNullable:
+          type: string
+          example: 123
       discriminator:
         propertyName: type
         mapping:
           'Block.Error1': '#/components/schemas/BlockValidationErrorDto'
           'Block.Error2': '#/components/schemas/BlockValidationErrorDto'
           'Prop.Error': '#/components/schemas/PropValidationErrorDto'
-      required:
-        - fieldRequired
 
     PropValidationErrorDto:
       title: PropValidationErrorDto

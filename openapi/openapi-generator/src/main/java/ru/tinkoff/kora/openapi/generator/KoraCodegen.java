@@ -132,7 +132,8 @@ public class KoraCodegen extends DefaultCodegen {
         Map<String, TagClient> clientTags,
         Map<String, List<Interceptor>> interceptors,
         Map<String, List<AdditionalAnnotation>> additionalContractAnnotations,
-        boolean requestInDelegateParams
+        boolean requestInDelegateParams,
+        boolean enableJsonNullable
     ) {
         static List<CliOption> cliOptions() {
             var cliOptions = new ArrayList<CliOption>();
@@ -147,6 +148,7 @@ public class KoraCodegen extends DefaultCodegen {
             cliOptions.add(CliOption.newBoolean(REQUEST_DELEGATE_PARAMS, "Generate HttpServerRequest parameter in delegate methods"));
             cliOptions.add(CliOption.newString(ADDITIONAL_CONTRACT_ANNOTATIONS, "Additional annotations for HTTP client/server methods"));
             cliOptions.add(CliOption.newBoolean(AUTH_AS_METHOD_ARGUMENT, "HTTP client authorization as method argument"));
+            cliOptions.add(CliOption.newBoolean(ENABLE_JSON_NULLABLE, "If enabled then wraps Nullable and NonRequired fields with JsonNullable type"));
             return cliOptions;
         }
 
@@ -162,6 +164,7 @@ public class KoraCodegen extends DefaultCodegen {
             var interceptors = new HashMap<String, List<Interceptor>>();
             var additionalContractAnnotations = new HashMap<String, List<AdditionalAnnotation>>();
             var requestInDelegateParams = false;
+            var enableJsonNullable = false;
 
             if (additionalProperties.containsKey(CODEGEN_MODE)) {
                 codegenMode = Mode.ofMode(additionalProperties.get(CODEGEN_MODE).toString());
@@ -215,9 +218,12 @@ public class KoraCodegen extends DefaultCodegen {
             if (additionalProperties.containsKey(REQUEST_DELEGATE_PARAMS) && codegenMode.isServer()) {
                 requestInDelegateParams = Boolean.parseBoolean(additionalProperties.get(REQUEST_DELEGATE_PARAMS).toString());
             }
+            if (additionalProperties.containsKey(ENABLE_JSON_NULLABLE)) {
+                enableJsonNullable = Boolean.parseBoolean(additionalProperties.get(ENABLE_JSON_NULLABLE).toString());
+            }
 
             return new CodegenParams(codegenMode, jsonAnnotation, enableServerValidation, authAsMethodArgument, primaryAuth, clientConfigPrefix,
-                securityConfigPrefix, clientTags, interceptors, additionalContractAnnotations, requestInDelegateParams);
+                securityConfigPrefix, clientTags, interceptors, additionalContractAnnotations, requestInDelegateParams, enableJsonNullable);
         }
 
         void processAdditionalProperties(Map<String, Object> additionalProperties) {
@@ -273,6 +279,7 @@ public class KoraCodegen extends DefaultCodegen {
     public static final String INTERCEPTORS = "interceptors";
     public static final String ADDITIONAL_CONTRACT_ANNOTATIONS = "additionalContractAnnotations";
     public static final String AUTH_AS_METHOD_ARGUMENT = "authAsMethodArgument";
+    public static final String ENABLE_JSON_NULLABLE = "enableJsonNullable";
 
     protected String invokerPackage = "org.openapitools";
     protected boolean fullJavaUtil;
@@ -563,8 +570,10 @@ public class KoraCodegen extends DefaultCodegen {
         Map<String, CodegenModel> allModels = getAllModels(objs);
         for (var model : allModels.values()) {
             model.vendorExtensions.put("x-enable-validation", params.enableValidation);
-            if (params.enableValidation) {
-                for (var variable : model.allVars) {
+
+            // All-vars visit
+            for (var variable : model.allVars) {
+                if (params.enableValidation) {
                     if (variable.getRef() != null) {
                         var variableModelField = allModels.get(variable.openApiType);
                         if (variableModelField != null) {
@@ -573,7 +582,43 @@ public class KoraCodegen extends DefaultCodegen {
                     }
                     this.visitVariableValidation(variable, variable.openApiType, variable.dataFormat, variable.vendorExtensions);
                 }
+
+                if (variable.isNullable && !variable.required) {
+                    if (params.enableJsonNullable) {
+                        variable.vendorExtensions.put("x-json-nullable", true);
+                    } else {
+                        variable.vendorExtensions.put("x-json-include-always", true);
+                        //TODO remove in 2.0 and make default behavior that ENABLE_JSON_NULLABLE is enabled
+                        LOGGER.warn("Detected isNullable and NonRequired field: {}#{}\nYou may want add option '{}' in configOptions to treat it as JsonNullable<T>, this will be default behavior in 2.0",
+                            model.name, variable.name, ENABLE_JSON_NULLABLE);
+                    }
+                }
             }
+
+            // Optional-vars visit
+            for (var variable : model.optionalVars) {
+                if (params.enableValidation) {
+                    if (variable.getRef() != null) {
+                        var variableModelField = allModels.get(variable.openApiType);
+                        if (variableModelField != null) {
+                            variable.vendorExtensions.put("x-has-valid-model", true);
+                        }
+                    }
+                    this.visitVariableValidation(variable, variable.openApiType, variable.dataFormat, variable.vendorExtensions);
+                }
+
+                if (variable.isNullable && !variable.required) {
+                    if (params.enableJsonNullable) {
+                        variable.vendorExtensions.put("x-json-nullable", true);
+                    } else {
+                        variable.vendorExtensions.put("x-json-include-always", true);
+                        //TODO remove in 2.0 and make default behavior that ENABLE_JSON_NULLABLE is enabled
+                        LOGGER.warn("Detected isNullable and NonRequired field: {}#{}\nYou may want add option '{}' in configOptions to treat it as JsonNullable<T>, this will be default behavior in 2.0",
+                            model.name, variable.name, ENABLE_JSON_NULLABLE);
+                    }
+                }
+            }
+
             if (model.discriminator != null) {
                 var map = model.discriminator.getMappedModels().stream()
                     .collect(Collectors.toMap(CodegenDiscriminator.MappedModel::getModelName, m -> List.of(m.getMappingName()), (l1, l2) -> {
@@ -1820,7 +1865,7 @@ public class KoraCodegen extends DefaultCodegen {
                 List<AdditionalAnnotation> additionalAnnotations = List.of();
                 for (Tag tag : op.tags) {
                     additionalAnnotations = params.additionalContractAnnotations.get(tag.getName());
-                    if(additionalAnnotations != null) {
+                    if (additionalAnnotations != null) {
                         break;
                     }
                 }
