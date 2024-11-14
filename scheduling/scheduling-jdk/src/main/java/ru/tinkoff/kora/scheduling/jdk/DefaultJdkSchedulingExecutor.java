@@ -71,7 +71,11 @@ public final class DefaultJdkSchedulingExecutor implements Lifecycle, JdkSchedul
             executorService.shutdown();
             try {
                 logger.debug("JdkSchedulingExecutor awaiting graceful shutdown...");
-                return executorService.awaitTermination(shutdownAwait.toMillis(), TimeUnit.MILLISECONDS);
+                terminated = executorService.awaitTermination(shutdownAwait.toMillis(), TimeUnit.MILLISECONDS);
+                if (!terminated) {
+                    executorService.shutdownNow();
+                }
+                return terminated;
             } catch (InterruptedException e) {
                 executorService.shutdownNow();
                 return false;
