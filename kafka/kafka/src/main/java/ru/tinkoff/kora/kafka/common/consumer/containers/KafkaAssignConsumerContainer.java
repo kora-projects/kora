@@ -301,7 +301,11 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
             executorService.shutdown();
             try {
                 logger.debug("Kafka Consumer '{}' awaiting graceful shutdown...", consumerPrefix);
-                return executorService.awaitTermination(shutdownAwait.toMillis(), TimeUnit.MILLISECONDS);
+                terminated = executorService.awaitTermination(shutdownAwait.toMillis(), TimeUnit.MILLISECONDS);
+                if (!terminated) {
+                    executorService.shutdownNow();
+                }
+                return terminated;
             } catch (InterruptedException e) {
                 executorService.shutdownNow();
                 return false;

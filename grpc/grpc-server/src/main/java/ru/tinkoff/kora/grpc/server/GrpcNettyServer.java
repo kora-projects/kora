@@ -56,9 +56,11 @@ public class GrpcNettyServer implements Lifecycle, ReadinessProbe {
             logger.debug("gRPC Server awaiting graceful shutdown...");
             if (!server.awaitTermination(shutdownAwait.toMillis(), TimeUnit.MILLISECONDS)) {
                 logger.warn("gRPC Server failed completing graceful shutdown in {}", shutdownAwait);
+                server.shutdownNow();
             }
         } catch (InterruptedException e) {
             logger.warn("gRPC Server failed completing graceful shutdown in {}", shutdownAwait);
+            server.shutdownNow();
             e.printStackTrace();
         }
 
