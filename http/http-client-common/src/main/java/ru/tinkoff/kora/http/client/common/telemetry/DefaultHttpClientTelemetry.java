@@ -36,8 +36,8 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
     @Override
     public boolean isEnabled() {
         return metrics != null
-               || tracing != null
-               || logger != null && (logger.logRequest() || logger.logRequestBody() || logger.logResponse() || logger.logResponseBody());
+            || tracing != null
+            || logger != null && (logger.logRequest() || logger.logRequestBody() || logger.logResponse() || logger.logResponseBody());
     }
 
     record TelemetryContextData(long startTime, String method, String path, String pathTemplate, String host, String scheme, String authority) {
@@ -78,14 +78,14 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         final boolean isAnyLog = logger != null && (logger.logRequest() || logger.logResponse());
         var method = request.method();
         var path = (isAnyLog)
-                    ? request.uri().getPath()
-                    : null;
+            ? request.uri().getPath()
+            : null;
         var pathTemplate = (isAnyLog || metrics != null)
-                    ? DefaultHttpClientTelemetry.pathTemplate(request.uriTemplate(), request.uri())
-                    : null;
+            ? DefaultHttpClientTelemetry.pathTemplate(request.uriTemplate(), request.uri())
+            : null;
         var resolvedUri = (isRequestLog)
-                    ? request.uri().toString()
-                    : null;
+            ? request.uri().toString()
+            : null;
         var data = new TelemetryContextData(request, path, pathTemplate);
         var authority = data.authority();
 
@@ -237,7 +237,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         public void onClose(Throwable throwable) {
             var cause = (throwable instanceof CompletionException) ? throwable.getCause() : throwable;
             if (span != null) {
-                span.close(-1, cause);
+                span.close(null, HttpResultCode.CONNECTION_ERROR, null, cause);
             }
             var processingTime = System.nanoTime() - data.startTime();
             if (metrics != null) {
@@ -255,11 +255,11 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
 
         public void onClose(int code, @Nullable HttpHeaders headers, @Nullable String contentType, @Nullable List<ByteBuffer> body) {
             var responseBodyCharset = logger == null || !logger.logResponseBody() ? null : detectCharset(contentType);
+            var resultCode = HttpResultCode.fromStatusCode(code);
             if (span != null) {
-                span.close(code, null);
+                span.close(code, resultCode, headers, null);
             }
             var processingTime = System.nanoTime() - data.startTime();
-            var resultCode = HttpResultCode.fromStatusCode(code);
             var headersResp = headers == null ? HttpHeaders.empty() : headers;
             if (metrics != null) {
                 metrics.record(code, resultCode, data.scheme(), data.host(), data.method(), data.pathTemplate(), headersResp, processingTime, null);
