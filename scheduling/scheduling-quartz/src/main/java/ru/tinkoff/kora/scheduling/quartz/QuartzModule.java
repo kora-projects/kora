@@ -36,7 +36,7 @@ public interface QuartzModule extends SchedulingModule {
         return props;
     }
 
-    default SchedulingQuartzConfig scheduledExecutorServiceConfig(Config config, ConfigValueExtractor<SchedulingQuartzConfig> extractor) {
+    default SchedulingQuartzConfig schedulingQuartzConfig(Config config, ConfigValueExtractor<SchedulingQuartzConfig> extractor) {
         var value = config.get("scheduling");
         return extractor.extract(value);
     }
