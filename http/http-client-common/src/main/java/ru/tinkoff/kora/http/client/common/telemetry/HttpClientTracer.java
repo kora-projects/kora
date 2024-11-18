@@ -20,7 +20,7 @@ public interface HttpClientTracer {
 
         default void close(@Nullable Integer statusCode,
                            HttpResultCode resultCode,
-                           HttpHeaders headers,
+                           @Nullable HttpHeaders headers,
                            @Nullable Throwable exception) {
             close(statusCode == null ? -1 : statusCode, exception);
         }
