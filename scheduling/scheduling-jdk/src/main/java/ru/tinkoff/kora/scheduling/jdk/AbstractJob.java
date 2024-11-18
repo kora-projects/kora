@@ -65,7 +65,7 @@ public abstract class AbstractJob implements Lifecycle {
 
             var f = this.scheduledFuture;
             this.scheduledFuture = null;
-            f.cancel(true);
+            f.cancel(false);
 
             logger.info("Scheduled Job '{}#{}' stopped in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(), TimeUtils.tookForLogging(started));
         }
