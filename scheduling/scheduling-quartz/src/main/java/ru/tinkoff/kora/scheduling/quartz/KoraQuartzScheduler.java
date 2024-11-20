@@ -18,11 +18,16 @@ public class KoraQuartzScheduler implements Wrapped<Scheduler>, Lifecycle {
 
     private final KoraQuartzJobFactory jobFactory;
     private final Properties properties;
+    private final SchedulingQuartzConfig config;
+
     private volatile Scheduler scheduler = null;
 
-    public KoraQuartzScheduler(KoraQuartzJobFactory jobFactory, Properties properties) {
+    public KoraQuartzScheduler(KoraQuartzJobFactory jobFactory,
+                               Properties properties,
+                               SchedulingQuartzConfig config) {
         this.jobFactory = jobFactory;
         this.properties = properties;
+        this.config = config;
     }
 
     @Override
@@ -42,17 +47,26 @@ public class KoraQuartzScheduler implements Wrapped<Scheduler>, Lifecycle {
     }
 
     @Override
-    public void release() throws SchedulerException {
+    public void release() {
         if (this.scheduler != null) {
             logger.debug("KoraQuartzScheduler stopping...");
             var started = System.nanoTime();
 
-            this.scheduler.shutdown(true);
+            try {
+                final boolean waitForComplete = config.waitForJobComplete();
+                if (waitForComplete) {
+                    logger.debug("KoraQuartzScheduler awaiting graceful shutdown...");
+                }
+                scheduler.shutdown(waitForComplete);
+            } catch (SchedulerException e) {
+                logger.warn("KoraQuartzScheduler failed completing graceful shutdown");
+                e.printStackTrace();
+            }
 
             logger.info("KoraQuartzScheduler stopped in {}", TimeUtils.tookForLogging(started));
+            this.scheduler = null;
         }
     }
-
 
     @Override
     public Scheduler value() {

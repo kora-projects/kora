@@ -4,7 +4,6 @@ import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
-import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.util.List;
@@ -16,18 +15,10 @@ public class KoraQuartzJobRegistrar implements Lifecycle {
 
     private final List<KoraQuartzJob> quartzJobList;
     private final Scheduler scheduler;
-    private final ValueOf<SchedulingQuartzConfig> config;
 
     public KoraQuartzJobRegistrar(List<KoraQuartzJob> quartzJobList, Scheduler scheduler) {
-        this(quartzJobList, scheduler, ValueOf.valueOfNull());
-    }
-
-    public KoraQuartzJobRegistrar(List<KoraQuartzJob> quartzJobList,
-                                  Scheduler scheduler,
-                                  ValueOf<SchedulingQuartzConfig> config) {
         this.quartzJobList = quartzJobList;
         this.scheduler = scheduler;
-        this.config = config;
     }
 
     @Override
@@ -85,15 +76,20 @@ public class KoraQuartzJobRegistrar implements Lifecycle {
         logger.debug("Quartz Jobs {} stopping...", quartzJobsNames);
         var started = System.nanoTime();
 
-        try {
-            final boolean waitForComplete = config.get() != null && config.get().waitForJobComplete();
-            if (waitForComplete) {
-                logger.debug("Quartz Jobs {} awaiting graceful shutdown...", quartzJobsNames);
+        for (var koraQuartzJob : this.quartzJobList) {
+            try {
+                var job = JobBuilder.newJob(koraQuartzJob.getClass())
+                    .withIdentity(koraQuartzJob.getClass().getCanonicalName())
+                    .build();
+
+                var triggers = this.scheduler.getTriggersOfJob(job.getKey());
+                var triggerKeys = triggers.stream().map(Trigger::getKey).toList();
+                this.scheduler.unscheduleJobs(triggerKeys);
+                this.scheduler.deleteJob(job.getKey());
+            } catch (SchedulerException e) {
+                logger.warn("Quartz Job {} failed completing graceful shutdown", koraQuartzJob.getClass().getCanonicalName());
+                e.printStackTrace();
             }
-            scheduler.shutdown(waitForComplete);
-        } catch (SchedulerException e) {
-            logger.warn("Quartz Jobs {} failed completing graceful shutdown", quartzJobsNames);
-            e.printStackTrace();
         }
 
         logger.info("Quartz Jobs {} stopped in {}", quartzJobsNames, TimeUtils.tookForLogging(started));
