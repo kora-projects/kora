@@ -69,28 +69,6 @@ public class KoraQuartzJobRegistrar implements Lifecycle {
 
     @Override
     public final void release() {
-        final List<String> quartzJobsNames = quartzJobList.stream()
-            .map(q -> q.getClass().getCanonicalName())
-            .toList();
 
-        logger.debug("Quartz Jobs {} stopping...", quartzJobsNames);
-        var started = System.nanoTime();
-
-        for (var koraQuartzJob : this.quartzJobList) {
-            try {
-                var job = JobBuilder.newJob(koraQuartzJob.getClass())
-                    .withIdentity(koraQuartzJob.getClass().getCanonicalName())
-                    .build();
-
-                var triggers = this.scheduler.getTriggersOfJob(job.getKey());
-                var triggerKeys = triggers.stream().map(Trigger::getKey).toList();
-                this.scheduler.unscheduleJobs(triggerKeys);
-                this.scheduler.deleteJob(job.getKey());
-            } catch (SchedulerException e) {
-                logger.warn("Quartz Job {} failed completing graceful shutdown", koraQuartzJob.getClass().getCanonicalName(), e);
-            }
-        }
-
-        logger.info("Quartz Jobs {} stopped in {}", quartzJobsNames, TimeUtils.tookForLogging(started));
     }
 }
