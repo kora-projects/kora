@@ -8,6 +8,7 @@ import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.util.List;
+import java.util.Objects;
 
 public class KoraQuartzJobRegistrar implements Lifecycle {
 
@@ -61,8 +62,8 @@ public class KoraQuartzJobRegistrar implements Lifecycle {
         if (oldTrigger.getClass() != newTrigger.getClass()) {
             return false;
         }
-        if (!oldTrigger.getStartTime().equals(newTrigger.getStartTime())) return false;
-        if (!oldTrigger.getEndTime().equals(oldTrigger.getEndTime())) return false;
+        if (!Objects.equals(oldTrigger.getStartTime(), newTrigger.getStartTime())) return false;
+        if (!Objects.equals(oldTrigger.getEndTime(), newTrigger.getEndTime())) return false;
         if (oldTrigger instanceof CronTrigger oldCron && newTrigger instanceof CronTrigger newCron) {
             return oldCron.getCronExpression().equals(newCron.getCronExpression());
         }
