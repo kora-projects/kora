@@ -59,8 +59,7 @@ public class KoraQuartzScheduler implements Wrapped<Scheduler>, Lifecycle {
                 }
                 scheduler.shutdown(waitForComplete);
             } catch (SchedulerException e) {
-                logger.warn("KoraQuartzScheduler failed completing graceful shutdown");
-                e.printStackTrace();
+                logger.warn("KoraQuartzScheduler failed completing graceful shutdown", e);
             }
 
             logger.info("KoraQuartzScheduler stopped in {}", TimeUtils.tookForLogging(started));

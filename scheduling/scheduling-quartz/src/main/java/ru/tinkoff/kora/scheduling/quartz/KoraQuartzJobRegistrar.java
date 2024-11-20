@@ -87,8 +87,7 @@ public class KoraQuartzJobRegistrar implements Lifecycle {
                 this.scheduler.unscheduleJobs(triggerKeys);
                 this.scheduler.deleteJob(job.getKey());
             } catch (SchedulerException e) {
-                logger.warn("Quartz Job {} failed completing graceful shutdown", koraQuartzJob.getClass().getCanonicalName());
-                e.printStackTrace();
+                logger.warn("Quartz Job {} failed completing graceful shutdown", koraQuartzJob.getClass().getCanonicalName(), e);
             }
         }
 
