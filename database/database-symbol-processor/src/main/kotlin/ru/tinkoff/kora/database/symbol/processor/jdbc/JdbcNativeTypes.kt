@@ -98,13 +98,13 @@ object JdbcNativeTypes {
             ByteArray::class.asTypeName(),
             { rsName, i -> CodeBlock.of("%N.getBytes(%L)", rsName, i) },
             { stmt, variableName, idx -> CodeBlock.of("%N.setBytes(%L, %L)", stmt, idx, variableName) },
-            { stmt, idx -> CodeBlock.of("%N.setNull(%L, %T.NUMERIC)", stmt, idx, Types::class) }
+            { stmt, idx -> CodeBlock.of("%N.setNull(%L, %T.VARBINARY)", stmt, idx, Types::class) }
         ),
         JdbcNativeType.of(
             ByteArray::class.asTypeName().copy(true),
             { rsName, i -> CodeBlock.of("%N.getBytes(%L)", rsName, i) },
             { stmt, variableName, idx -> CodeBlock.of("%N.setBytes(%L, %L)", stmt, idx, variableName) },
-            { stmt, idx -> CodeBlock.of("%N.setNull(%L, %T.NUMERIC)", stmt, idx, Types::class) }
+            { stmt, idx -> CodeBlock.of("%N.setNull(%L, %T.VARBINARY)", stmt, idx, Types::class) }
         ),
         JdbcNativeType.of(
             LocalDateTime::class.asTypeName(),

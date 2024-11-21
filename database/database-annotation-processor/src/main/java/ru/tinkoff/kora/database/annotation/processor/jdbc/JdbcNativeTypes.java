@@ -75,7 +75,7 @@ public class JdbcNativeTypes {
             ArrayTypeName.of(TypeName.BYTE),
             (rsName, i) -> CodeBlock.of("$L.getBytes($L)", rsName, i),
             (stmt, var, i) -> CodeBlock.of("$L.setBytes($L, $L)", stmt, i, var),
-            (stmtName, i) -> CodeBlock.of("$L.setNull($L, $T.BINARY)", stmtName, i, java.sql.Types.class)
+            (stmtName, i) -> CodeBlock.of("$L.setNull($L, $T.VARBINARY)", stmtName, i, java.sql.Types.class)
         );
         var localDateTime = JdbcNativeType.of(
             TypeName.get(LocalDateTime.class),
