@@ -49,11 +49,10 @@ public abstract class AbstractJob implements Lifecycle {
 
     private void runJob() {
         this.lock.lock();
-        if (!this.started) {
-            return;
-        }
         try {
-            this.started = false;
+            if (!this.started) {
+                return;
+            }
             MDC.clear();
             Context.clear();
             var ctx = Context.current();
@@ -82,6 +81,7 @@ public abstract class AbstractJob implements Lifecycle {
             if (!this.started) {
                 return;
             }
+            this.started = false;
 
             var f = this.scheduledFuture;
             this.scheduledFuture = null;
