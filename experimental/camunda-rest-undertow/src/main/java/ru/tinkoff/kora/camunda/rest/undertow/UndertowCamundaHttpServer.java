@@ -68,8 +68,7 @@ final class UndertowCamundaHttpServer implements Lifecycle, ReadinessProbe {
                     logger.warn("Camunda HTTP Server (Undertow) failed completing graceful shutdown in {}", shutdownAwait);
                 }
             } catch (InterruptedException e) {
-                logger.warn("Camunda HTTP Server (Undertow) failed completing graceful shutdown in {}", shutdownAwait);
-                e.printStackTrace();
+                logger.warn("Camunda HTTP Server (Undertow) failed completing graceful shutdown in {}", shutdownAwait, e);
             }
 
             this.undertow.stop();
