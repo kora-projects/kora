@@ -76,6 +76,9 @@ public class KoraQuartzJobRegistrar implements Lifecycle, RefreshListener {
                     .build();
                 this.scheduler.scheduleJob(triggerToSchedule);
             }
+            for (var entry: existingTriggers.entrySet()) {
+                this.scheduler.unscheduleJob(entry.getKey());
+            }
         }
     }
 
