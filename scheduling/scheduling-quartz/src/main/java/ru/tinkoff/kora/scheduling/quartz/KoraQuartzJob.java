@@ -16,9 +16,7 @@ public abstract class KoraQuartzJob implements Job {
     private final SchedulingTelemetry telemetry;
 
     public KoraQuartzJob(SchedulingTelemetry telemetry, Consumer<JobExecutionContext> job, Trigger trigger) {
-        this.job = job;
-        this.trigger = List.of(trigger);
-        this.telemetry = telemetry;
+        this(telemetry, job, List.of(trigger));
     }
 
     public KoraQuartzJob(SchedulingTelemetry telemetry, Consumer<JobExecutionContext> job, List<Trigger> trigger) {
