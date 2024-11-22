@@ -41,7 +41,7 @@ public interface QuartzModule extends SchedulingModule {
         return extractor.extract(value);
     }
 
-    default KoraQuartzJobFactory koraQuartzJobFactory(All<KoraQuartzJob> jobs) {
+    default KoraQuartzJobFactory koraQuartzJobFactory(All<ValueOf<KoraQuartzJob>> jobs) {
         return new KoraQuartzJobFactory(jobs);
     }
 
@@ -53,7 +53,7 @@ public interface QuartzModule extends SchedulingModule {
     }
 
     @Root
-    default KoraQuartzJobRegistrar koraQuartzJobRegistrar(All<KoraQuartzJob> jobs, Scheduler scheduler) {
+    default KoraQuartzJobRegistrar koraQuartzJobRegistrar(All<ValueOf<KoraQuartzJob>> jobs, Scheduler scheduler) {
         return new KoraQuartzJobRegistrar(jobs, scheduler);
     }
 }

@@ -2,20 +2,26 @@ package ru.tinkoff.kora.scheduling.quartz;
 
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
 import org.quartz.Trigger;
 import org.slf4j.MDC;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.scheduling.common.telemetry.SchedulingTelemetry;
 
+import java.util.List;
 import java.util.function.Consumer;
 
 public abstract class KoraQuartzJob implements Job {
     private final Consumer<JobExecutionContext> job;
-    private final Trigger trigger;
+    private final List<Trigger> trigger;
     private final SchedulingTelemetry telemetry;
 
     public KoraQuartzJob(SchedulingTelemetry telemetry, Consumer<JobExecutionContext> job, Trigger trigger) {
+        this.job = job;
+        this.trigger = List.of(trigger);
+        this.telemetry = telemetry;
+    }
+
+    public KoraQuartzJob(SchedulingTelemetry telemetry, Consumer<JobExecutionContext> job, List<Trigger> trigger) {
         this.job = job;
         this.trigger = trigger;
         this.telemetry = telemetry;
@@ -38,6 +44,10 @@ public abstract class KoraQuartzJob implements Job {
     }
 
     public Trigger getTrigger() {
+        return this.trigger.get(0);
+    }
+
+    public List<Trigger> getTriggers() {
         return this.trigger;
     }
 }
