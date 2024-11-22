@@ -42,7 +42,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         val componentFunction = FunSpec.builder(jobFunName)
             .addParameter("telemetryFactory", schedulingTelemetryFactoryClassName)
             .addParameter("service", jdkSchedulingExecutor)
-            .addParameter("target", typeClassName)
+            .addParameter("target", CommonClassNames.valueOf.parameterizedBy(typeClassName))
             .returns(fixedRateJobClassName)
             .addAnnotation(CommonClassNames.root)
 
@@ -70,7 +70,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             builder.addFunction(configComponent(packageName, configType.name!!, configName))
         }
         componentFunction
-            .addCode("return %T(telemetry, service, { target.%L() }, initialDelay, period);\n", fixedRateJobClassName, function.simpleName.getShortName())
+            .addCode("return %T(telemetry, service, { target.get().%N() }, initialDelay, period);\n", fixedRateJobClassName, function.simpleName.getShortName())
         builder.addFunction(componentFunction.build())
     }
 
@@ -85,7 +85,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         val componentFunction = FunSpec.builder(jobFunName)
             .addParameter("telemetryFactory", schedulingTelemetryFactoryClassName)
             .addParameter("service", jdkSchedulingExecutor)
-            .addParameter("target", typeClassName)
+            .addParameter("target", CommonClassNames.valueOf.parameterizedBy(typeClassName))
             .returns(fixedDelayJobClassName)
             .addAnnotation(CommonClassNames.root)
 
@@ -113,7 +113,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             builder.addFunction(configComponent(packageName, configType.name!!, configName))
         }
         componentFunction
-            .addCode("return %T(telemetry, service, { target.%L() }, initialDelay, delay);\n", fixedDelayJobClassName, function.simpleName.getShortName())
+            .addCode("return %T(telemetry, service, { target.get().%N() }, initialDelay, delay);\n", fixedDelayJobClassName, function.simpleName.getShortName())
         builder.addFunction(componentFunction.build())
     }
 
@@ -127,7 +127,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         val componentFunction = FunSpec.builder(jobFunName)
             .addParameter("telemetryFactory", schedulingTelemetryFactoryClassName)
             .addParameter("service", jdkSchedulingExecutor)
-            .addParameter("target", typeClassName)
+            .addParameter("target", CommonClassNames.valueOf.parameterizedBy(typeClassName))
             .returns(runOnceJobClassName)
             .addAnnotation(CommonClassNames.root)
 
@@ -152,7 +152,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             builder.addFunction(configComponent(packageName, configType.name!!, configName))
         }
         componentFunction
-            .addCode("return %T(telemetry, service, { target.%L() }, delay);\n", runOnceJobClassName, function.simpleName.getShortName());
+            .addCode("return %T(telemetry, service, { target.get().%N() }, delay);\n", runOnceJobClassName, function.simpleName.getShortName());
         builder.addFunction(componentFunction.build());
     }
 
