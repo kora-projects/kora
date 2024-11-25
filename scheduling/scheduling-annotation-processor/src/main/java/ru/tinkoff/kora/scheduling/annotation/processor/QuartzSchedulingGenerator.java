@@ -16,6 +16,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.io.IOException;
+import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -106,8 +107,9 @@ public class QuartzSchedulingGenerator {
                 var trigger = $T.newTrigger()
                   .withIdentity($S)
                   .withSchedule($T.cronSchedule($L))
+                  .startAt(new $T(0))
                   .build();
-                """.stripIndent(), triggerBuilderClassName, identity, cronScheduleBuilderClassName, cronSchedule.toString());
+                """.stripIndent(), triggerBuilderClassName, identity, cronScheduleBuilderClassName, cronSchedule.toString(), Date.class);
             if (configPath != null && !configPath.isBlank()) {
                 component.addCode("var telemetry = telemetryFactory.get(config.telemetry(), $T.class, $S);\n", typeMirror, method.getSimpleName().toString());
             } else {

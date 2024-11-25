@@ -16,6 +16,7 @@ import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.writeTagValue
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
+import java.util.Date
 
 class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
     private val koraQuartzJobClassName: ClassName = ClassName("ru.tinkoff.kora.scheduling.quartz", "KoraQuartzJob")
@@ -100,8 +101,9 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
                 val trigger = %T.newTrigger()
                   .withIdentity(%S)
                   .withSchedule(%T.cronSchedule(%L))
+                  .startAt(%T(0))
                   .build();
-                """.trimIndent() + "\n", triggerBuilderClassName, identity, cronScheduleBuilderClassName, cronSchedule.toString()
+                """.trimIndent() + "\n", triggerBuilderClassName, identity, cronScheduleBuilderClassName, cronSchedule.toString(), Date::class.asClassName()
                 );
                 if (!configPath.isNullOrBlank()) {
                     component.addCode("val telemetry = telemetryFactory.get(config.telemetry(), %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())

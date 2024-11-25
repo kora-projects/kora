@@ -64,7 +64,7 @@ public class JdkSchedulingGenerator {
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(schedulingTelemetryFactoryClassName, "telemetryFactory")
             .addParameter(jdkSchedulingExecutor, "service")
-            .addParameter(TypeName.get(type.asType()), "object")
+            .addParameter(ParameterizedTypeName.get(CommonClassNames.valueOf, TypeName.get(type.asType())), "object")
             .returns(runOnceJobClassName)
             .addAnnotation(CommonClassNames.root);
 
@@ -107,7 +107,7 @@ public class JdkSchedulingGenerator {
             componentMethod.addCode("var delay = config.delay();\n");
         }
 
-        componentMethod.addCode("return new $T(telemetry, service, object::$L, delay);\n", runOnceJobClassName, method.getSimpleName());
+        componentMethod.addCode("return new $T(telemetry, service, () -> object.get().$N(), delay);\n", runOnceJobClassName, method.getSimpleName());
         module.addMethod(componentMethod.build());
     }
 
@@ -123,7 +123,7 @@ public class JdkSchedulingGenerator {
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(schedulingTelemetryFactoryClassName, "telemetryFactory")
             .addParameter(jdkSchedulingExecutor, "service")
-            .addParameter(TypeName.get(type.asType()), "object")
+            .addParameter(ParameterizedTypeName.get(CommonClassNames.valueOf, TypeName.get(type.asType())), "object")
             .returns(fixedDelayJobClassName)
             .addAnnotation(CommonClassNames.root);
 
@@ -175,7 +175,7 @@ public class JdkSchedulingGenerator {
                 .addCode("var delay = config.delay();\n");
         }
         componentMethod
-            .addCode("return new $T(telemetry, service, object::$L, initialDelay, delay);\n", fixedDelayJobClassName, method.getSimpleName());
+            .addCode("return new $T(telemetry, service, () -> object.get().$N(), initialDelay, delay);\n", fixedDelayJobClassName, method.getSimpleName());
         module.addMethod(componentMethod.build());
     }
 
@@ -191,7 +191,7 @@ public class JdkSchedulingGenerator {
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(schedulingTelemetryFactoryClassName, "telemetryFactory")
             .addParameter(jdkSchedulingExecutor, "service")
-            .addParameter(TypeName.get(type.asType()), "object")
+            .addParameter(ParameterizedTypeName.get(CommonClassNames.valueOf, TypeName.get(type.asType())), "object")
             .returns(fixedRateJobClassName)
             .addAnnotation(CommonClassNames.root);
 
@@ -243,7 +243,7 @@ public class JdkSchedulingGenerator {
                 .addCode("var period = config.period();\n");
         }
         componentMethod
-            .addCode("return new $T(telemetry, service, object::$L, initialDelay, period);\n", fixedRateJobClassName, method.getSimpleName());
+            .addCode("return new $T(telemetry, service, () -> object.get().$N(), initialDelay, period);\n", fixedRateJobClassName, method.getSimpleName());
         module.addMethod(componentMethod.build());
     }
 

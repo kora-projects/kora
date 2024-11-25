@@ -11,6 +11,7 @@ import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.util.Properties;
+import java.util.UUID;
 
 public class KoraQuartzScheduler implements Wrapped<Scheduler>, Lifecycle {
 
@@ -35,9 +36,15 @@ public class KoraQuartzScheduler implements Wrapped<Scheduler>, Lifecycle {
         logger.debug("KoraQuartzScheduler starting...");
         var started = System.nanoTime();
 
+        var propertiesToUse = new Properties();
+        for (var property : this.properties.stringPropertyNames()) {
+            propertiesToUse.setProperty(property, this.properties.getProperty(property));
+        }
+        propertiesToUse.setProperty("org.quartz.scheduler.instanceName", "kora-quartz-scheduler-" + UUID.randomUUID());
+
         // TODO real scheduler
         var factory = new StdSchedulerFactory();
-        factory.initialize(this.properties);
+        factory.initialize(propertiesToUse);
         this.scheduler = factory.getScheduler();
         this.scheduler.setJobFactory(this.jobFactory);
         this.scheduler.start();
