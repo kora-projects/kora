@@ -45,11 +45,11 @@ public interface HttpServerConfig {
     }
 
     default Duration socketReadTimeout() {
-        return Duration.ofSeconds(0);
+        return Duration.ZERO;
     }
 
     default Duration socketWriteTimeout() {
-        return Duration.ofSeconds(0);
+        return Duration.ZERO;
     }
 
     default boolean socketKeepAliveEnabled() {
