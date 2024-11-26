@@ -165,6 +165,10 @@ class PublicApiHandlerProcessTests {
             ignoreTrailingSlash,
             10,
             10,
+            Duration.ofSeconds(1),
+            Duration.ofSeconds(1),
+            Duration.ofSeconds(1),
+            false,
             Duration.ofMillis(100),
             new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
                 new $HttpServerLoggerConfig_ConfigValueExtractor.HttpServerLoggerConfig_Defaults(),

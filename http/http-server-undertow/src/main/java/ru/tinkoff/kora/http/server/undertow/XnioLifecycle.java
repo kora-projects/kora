@@ -41,7 +41,7 @@ public final class XnioLifecycle implements Lifecycle, Wrapped<XnioWorker> {
                     .setCoreWorkerPoolSize(1)
                     .setMaxWorkerPoolSize(httpServerConfig.blockingThreads())
                     .setWorkerIoThreads(httpServerConfig.ioThreads())
-                    .setWorkerKeepAlive(60 * 1000)
+                    .setWorkerKeepAlive(((int) httpServerConfig.threadKeepAliveTimeout().toMillis()))
                     .setDaemon(false)
                     .setWorkerName("kora-undertow")
                     .build();

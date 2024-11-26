@@ -31,7 +31,7 @@ public final class PrometheusMeterRegistryWrapper implements Lifecycle, Wrapped<
     }
 
     @Override
-    public void init() throws Exception {
+    public void init() {
         var meterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
         for (var initializer : initializers) {
             meterRegistry = initializer.apply(meterRegistry);

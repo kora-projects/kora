@@ -6,6 +6,7 @@ import io.undertow.server.handlers.GracefulShutdownHandler;
 import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xnio.Options;
 import org.xnio.XnioWorker;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
@@ -76,10 +77,14 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
     }
 
     private Undertow createServer() {
+        var config = this.config.get();
         return Undertow.builder()
-            .addHttpListener(this.config.get().publicApiHttpPort(), "0.0.0.0", this.gracefulShutdown)
+            .addHttpListener(config.publicApiHttpPort(), "0.0.0.0", this.gracefulShutdown)
             .setWorker(this.xnioWorker)
             .setByteBufferPool(this.byteBufferPool)
+            .setServerOption(Options.READ_TIMEOUT, ((int) config.socketReadTimeout().toMillis()))
+            .setServerOption(Options.WRITE_TIMEOUT, ((int) config.socketWriteTimeout().toMillis()))
+            .setServerOption(Options.KEEP_ALIVE, config.socketKeepAliveEnabled())
             .build();
     }
 

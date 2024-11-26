@@ -40,6 +40,22 @@ public interface HttpServerConfig {
         return Math.min(Math.max(Runtime.getRuntime().availableProcessors(), 2) * 8, 200);
     }
 
+    default Duration threadKeepAliveTimeout() {
+        return Duration.ofSeconds(60);
+    }
+
+    default Duration socketReadTimeout() {
+        return Duration.ZERO;
+    }
+
+    default Duration socketWriteTimeout() {
+        return Duration.ZERO;
+    }
+
+    default boolean socketKeepAliveEnabled() {
+        return false;
+    }
+
     default Duration shutdownWait() {
         return Duration.ofSeconds(30);
     }
