@@ -2,8 +2,12 @@ package ru.tinkoff.kora.database.r2dbc;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.database.common.DataBaseModule;
+import ru.tinkoff.kora.database.common.EnumColumnIntMapping;
+import ru.tinkoff.kora.database.common.EnumColumnShortMapping;
+import ru.tinkoff.kora.database.common.EnumColumnStringMapping;
 import ru.tinkoff.kora.database.r2dbc.mapper.parameter.R2dbcParameterColumnMapper;
 import ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcResultColumnMapper;
 import ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcResultFluxMapper;
@@ -12,6 +16,7 @@ import ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcRowMapper;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.*;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -170,6 +175,39 @@ public interface R2dbcModule extends DataBaseModule {
         };
     }
 
+    @DefaultComponent
+    default <T extends Enum<T> & EnumColumnIntMapping> R2dbcParameterColumnMapper<T> enumIntJdbcParameterColumnMapper() {
+        return (stmt, index, o) -> {
+            if (o == null) {
+                stmt.bindNull(index, Integer.class);
+            } else {
+                stmt.bind(index, o.valueAsInt());
+            }
+        };
+    }
+
+    @DefaultComponent
+    default <T extends Enum<T> & EnumColumnShortMapping> R2dbcParameterColumnMapper<T> enumShortJdbcParameterColumnMapper() {
+        return (stmt, index, o) -> {
+            if (o == null) {
+                stmt.bindNull(index, Short.class);
+            } else {
+                stmt.bind(index, o.valueAsShort());
+            }
+        };
+    }
+
+    @DefaultComponent
+    default <T extends Enum<T> & EnumColumnStringMapping> R2dbcParameterColumnMapper<T> enumStringJdbcParameterColumnMapper() {
+        return (stmt, index, o) -> {
+            if (o == null) {
+                stmt.bindNull(index, String.class);
+            } else {
+                stmt.bind(index, o.toString());
+            }
+        };
+    }
+
     // Result Column Mappers
     @DefaultComponent
     default R2dbcResultColumnMapper<BigDecimal> bigDecimalR2dbcResultColumnMapper() {
@@ -204,5 +242,56 @@ public interface R2dbcModule extends DataBaseModule {
     @DefaultComponent
     default R2dbcResultColumnMapper<OffsetDateTime> offsetDateTimeR2dbcResultColumnMapper() {
         return (row, label) -> row.get(label, OffsetDateTime.class);
+    }
+
+    @DefaultComponent
+    default <T extends Enum<T> & EnumColumnIntMapping> R2dbcResultColumnMapper<T> enumIntR2dbcRowColumnMapper(TypeRef<T> typeRef) {
+        final T[] enums = typeRef.getRawType().getEnumConstants();
+        var enumMap = new HashMap<Integer, T>();
+        for (T e : enums) {
+            enumMap.put(e.valueAsInt(), e);
+        }
+
+        return (row, index) -> {
+            var value = row.get(index, Integer.class);
+            if (value == null) {
+                return null;
+            }
+            return enumMap.get(value);
+        };
+    }
+
+    @DefaultComponent
+    default <T extends Enum<T> & EnumColumnShortMapping> R2dbcResultColumnMapper<T> enumShortR2dbcRowColumnMapper(TypeRef<T> typeRef) {
+        final T[] enums = typeRef.getRawType().getEnumConstants();
+        var enumMap = new HashMap<Short, T>();
+        for (T e : enums) {
+            enumMap.put(e.valueAsShort(), e);
+        }
+
+        return (row, index) -> {
+            var value = row.get(index, Short.class);
+            if (value == null) {
+                return null;
+            }
+            return enumMap.get(value);
+        };
+    }
+
+    @DefaultComponent
+    default <T extends Enum<T> & EnumColumnStringMapping> R2dbcResultColumnMapper<T> enumStringR2dbcRowColumnMapper(TypeRef<T> typeRef) {
+        final T[] enums = typeRef.getRawType().getEnumConstants();
+        var enumMap = new HashMap<String, T>();
+        for (T e : enums) {
+            enumMap.put(e.toString(), e);
+        }
+
+        return (row, index) -> {
+            var value = row.get(index, String.class);
+            if (value == null) {
+                return null;
+            }
+            return enumMap.get(value);
+        };
     }
 }

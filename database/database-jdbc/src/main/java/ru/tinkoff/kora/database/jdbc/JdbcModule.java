@@ -1,7 +1,8 @@
 package ru.tinkoff.kora.database.jdbc;
 
+import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.common.DefaultComponent;
-import ru.tinkoff.kora.database.common.DataBaseModule;
+import ru.tinkoff.kora.database.common.*;
 import ru.tinkoff.kora.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultColumnMapper;
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultSetMapper;
@@ -10,6 +11,7 @@ import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcRowMapper;
 import java.math.BigDecimal;
 import java.sql.Types;
 import java.time.*;
+import java.util.HashMap;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -254,6 +256,39 @@ public interface JdbcModule extends DataBaseModule {
         };
     }
 
+    @DefaultComponent
+    default <T extends Enum<T> & EnumColumnIntMapping> JdbcParameterColumnMapper<T> enumIntJdbcParameterColumnMapper() {
+        return (stmt, index, o) -> {
+            if (o == null) {
+                stmt.setNull(index, Types.INTEGER);
+            } else {
+                stmt.setInt(index, o.valueAsInt());
+            }
+        };
+    }
+
+    @DefaultComponent
+    default <T extends Enum<T> & EnumColumnShortMapping> JdbcParameterColumnMapper<T> enumShortJdbcParameterColumnMapper() {
+        return (stmt, index, o) -> {
+            if (o == null) {
+                stmt.setNull(index, Types.SMALLINT);
+            } else {
+                stmt.setShort(index, o.valueAsShort());
+            }
+        };
+    }
+
+    @DefaultComponent
+    default <T extends Enum<T> & EnumColumnStringMapping> JdbcParameterColumnMapper<T> enumStringJdbcParameterColumnMapper() {
+        return (stmt, index, o) -> {
+            if (o == null) {
+                stmt.setNull(index, Types.VARCHAR);
+            } else {
+                stmt.setString(index, o.toString());
+            }
+        };
+    }
+
     // Result Mappers
     @DefaultComponent
     default JdbcResultColumnMapper<BigDecimal> bigDecimalJdbcResultColumnMapper() {
@@ -329,6 +364,60 @@ public interface JdbcModule extends DataBaseModule {
                 return null;
             }
             return value;
+        };
+    }
+
+    @DefaultComponent
+    default <T extends Enum<T> & EnumColumnIntMapping> JdbcResultColumnMapper<T> enumIntJdbcColumnMapper(TypeRef<T> typeRef) {
+        final T[] enums = typeRef.getRawType().getEnumConstants();
+        var enumMap = new HashMap<Integer, T>();
+        for (T e : enums) {
+            enumMap.put(e.valueAsInt(), e);
+        }
+
+        return (row, index) -> {
+            var value = row.getInt(index);
+            if (row.wasNull()) {
+                return null;
+            }
+
+            return enumMap.get(value);
+        };
+    }
+
+    @DefaultComponent
+    default <T extends Enum<T> & EnumColumnShortMapping> JdbcResultColumnMapper<T> enumShortJdbcColumnMapper(TypeRef<T> typeRef) {
+        final T[] enums = typeRef.getRawType().getEnumConstants();
+        var enumMap = new HashMap<Short, T>();
+        for (T e : enums) {
+            enumMap.put(e.valueAsShort(), e);
+        }
+
+        return (row, index) -> {
+            var value = row.getObject(index, Short.class);
+            if (row.wasNull()) {
+                return null;
+            }
+
+            return enumMap.get(value);
+        };
+    }
+
+    @DefaultComponent
+    default <T extends Enum<T> & EnumColumnStringMapping> JdbcResultColumnMapper<T> enumStringJdbcColumnMapper(TypeRef<T> typeRef) {
+        final T[] enums = typeRef.getRawType().getEnumConstants();
+        var enumMap = new HashMap<String, T>();
+        for (T e : enums) {
+            enumMap.put(e.toString(), e);
+        }
+
+        return (row, index) -> {
+            var value = row.getString(index);
+            if (row.wasNull()) {
+                return null;
+            }
+
+            return enumMap.get(value);
         };
     }
 }
