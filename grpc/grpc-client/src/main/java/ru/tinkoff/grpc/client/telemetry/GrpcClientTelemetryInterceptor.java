@@ -1,7 +1,10 @@
 package ru.tinkoff.grpc.client.telemetry;
 
 import io.grpc.*;
+import org.jetbrains.annotations.Nullable;
 import ru.tinkoff.kora.common.Context;
+
+import java.util.concurrent.CancellationException;
 
 public final class GrpcClientTelemetryInterceptor implements ClientInterceptor {
     private final GrpcClientTelemetry telemetry;
@@ -56,6 +59,33 @@ public final class GrpcClientTelemetryInterceptor implements ClientInterceptor {
             try {
                 super.sendMessage(message);
                 tctx.close();
+            } catch (Exception e) {
+                tctx.close(e);
+                throw e;
+            } finally {
+                oldCtx.inject();
+            }
+        }
+
+        @Override
+        public void cancel(@Nullable String message, @Nullable Throwable cause) {
+            var oldCtx = Context.current();
+            this.ctx.inject();
+            try {
+                super.cancel(message, cause);
+                if (cause != null) {
+                    if (cause instanceof Exception ex) {
+                        tctx.close(ex);
+                    } else {
+                        tctx.close(new RuntimeException(cause));
+                    }
+                } else {
+                    if (message != null) {
+                        tctx.close(new CancellationException(message));
+                    } else {
+                        tctx.close(new CancellationException());
+                    }
+                }
             } catch (Exception e) {
                 tctx.close(e);
                 throw e;
