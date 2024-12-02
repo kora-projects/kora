@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.database.common.annotation.processor.jdbc;
 
+import jakarta.annotation.Nullable;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.database.common.QueryContext;
@@ -8,7 +9,6 @@ import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory;
 import ru.tinkoff.kora.database.jdbc.JdbcHelper;
 import ru.tinkoff.kora.database.jdbc.RuntimeSqlException;
 
-import jakarta.annotation.Nullable;
 import java.sql.*;
 
 import static org.mockito.ArgumentMatchers.anyString;
@@ -44,7 +44,6 @@ public class MockJdbcExecutor implements JdbcConnectionFactory {
             throw new RuntimeSqlException(e);
         }
     }
-
 
     @Override
     public Connection currentConnection() {
