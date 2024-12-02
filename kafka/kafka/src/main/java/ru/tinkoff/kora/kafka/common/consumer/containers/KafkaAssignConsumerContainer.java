@@ -57,6 +57,17 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
         Deserializer<V> valueDeserializer,
         KafkaConsumerTelemetry<K, V> telemetry,
         BaseKafkaRecordsHandler<K, V> handler) {
+        this(KafkaUtils.getConsumerPrefix(config), config, topic, keyDeserializer, valueDeserializer, telemetry, handler);
+    }
+
+    public KafkaAssignConsumerContainer(
+        String consumerName,
+        KafkaListenerConfig config,
+        String topic,
+        Deserializer<K> keyDeserializer,
+        Deserializer<V> valueDeserializer,
+        KafkaConsumerTelemetry<K, V> telemetry,
+        BaseKafkaRecordsHandler<K, V> handler) {
         this.handler = Objects.requireNonNull(handler);
         this.backoffTimeout = new AtomicLong(config.backoffTimeout().toMillis());
         this.keyDeserializer = Objects.requireNonNull(keyDeserializer);
@@ -66,7 +77,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
         this.config = config;
         this.refreshInterval = config.partitionRefreshInterval().toMillis();
         this.telemetry = Objects.requireNonNull(telemetry);
-        this.consumerPrefix = KafkaUtils.getConsumerPrefix(this.config);
+        this.consumerPrefix = Objects.requireNonNullElse(consumerName, KafkaUtils.getConsumerPrefix(config));
     }
 
     public void launchPollLoop(Consumer<K, V> consumer, int number, long started) {
@@ -286,7 +297,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
             }
             consumers.clear();
             if (executorService != null) {
-                if(!shutdownExecutorService(executorService, config.shutdownWait())) {
+                if (!shutdownExecutorService(executorService, config.shutdownWait())) {
                     logger.warn("Kafka Consumer '{}' failed completing graceful shutdown in {}", consumerPrefix, config.shutdownWait());
                 }
             }

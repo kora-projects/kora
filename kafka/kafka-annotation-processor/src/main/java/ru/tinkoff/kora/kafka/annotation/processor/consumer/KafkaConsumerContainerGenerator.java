@@ -66,10 +66,7 @@ public class KafkaConsumerContainerGenerator {
             .build());
 
         var configPath = Objects.requireNonNull(AnnotationUtils.parseAnnotationValueWithoutDefault(listenerAnnotation, "value")).toString();
-        var consumerName = configPath
-            .replace(".", "-")
-            .replace("_", "-");
-        methodBuilder.addStatement("var telemetry = telemetryFactory.get($S, config.driverProperties(), config.telemetry())", consumerName);
+        methodBuilder.addStatement("var telemetry = telemetryFactory.get($S, config.driverProperties(), config.telemetry())", configPath);
 
         var consumerParameter = parameters.stream().filter(r -> r instanceof ConsumerParameter.Consumer).map(ConsumerParameter.Consumer.class::cast).findFirst();
         if (handlerTypeName.rawType.equals(recordHandler)) {
@@ -81,9 +78,11 @@ public class KafkaConsumerContainerGenerator {
         methodBuilder.beginControlFlow("if (config.topics() == null || config.topics().size() != 1)"); // todo allow list?
         methodBuilder.addStatement("throw new java.lang.IllegalArgumentException($S + config.topics())", "@KafkaListener require to specify 1 topic to subscribe when groupId is null, but received: ");
         methodBuilder.endControlFlow();
-        methodBuilder.addCode("return new $T<>(config, config.topics().get(0), keyDeserializer, valueDeserializer, telemetry, wrappedHandler);", kafkaAssignConsumerContainer);
+        methodBuilder.addCode("return new $T<>($S, config, config.topics().get(0), keyDeserializer, valueDeserializer, telemetry, wrappedHandler);",
+            kafkaAssignConsumerContainer, configPath);
         methodBuilder.addCode("$<\n} else {$>\n");
-        methodBuilder.addCode("return new $T<>(config, keyDeserializer, valueDeserializer, wrappedHandler, rebalanceListener);", kafkaSubscribeConsumerContainer);
+        methodBuilder.addCode("return new $T<>($S, config, keyDeserializer, valueDeserializer, wrappedHandler, rebalanceListener);",
+            kafkaSubscribeConsumerContainer, configPath);
         methodBuilder.addCode("$<\n}\n");
         return methodBuilder.build();
     }

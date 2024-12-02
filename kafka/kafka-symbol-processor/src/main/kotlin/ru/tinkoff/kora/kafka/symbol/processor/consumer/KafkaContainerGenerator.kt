@@ -41,10 +41,7 @@ class KafkaContainerGenerator {
             .returns(CommonClassNames.lifecycle)
 
         val configPath = listenerAnnotation.findValueNoDefault<String>("value")!!
-        val consumerName = configPath
-            .replace('.', '-')
-            .replace('_', '-')
-        funBuilder.addStatement("val telemetry = telemetryFactory.get(%S, config.driverProperties(), config.telemetry())", consumerName)
+        funBuilder.addStatement("val telemetry = telemetryFactory.get(%S, config.driverProperties(), config.telemetry())", configPath)
         if (handlerType.rawType == KafkaClassNames.recordHandler) {
             funBuilder.addStatement("val wrappedHandler = %T.wrapHandlerRecord(telemetry, %L, handler)", KafkaClassNames.handlerWrapper, consumerParameter == null)
         } else {
@@ -54,9 +51,11 @@ class KafkaContainerGenerator {
             addStatement("val topics = config.topics()")
             addStatement("require(topics != null)")
             addStatement("require(topics.size == 1)")
-            addStatement("return %T(config, topics[0], keyDeserializer, valueDeserializer, telemetry, wrappedHandler)", KafkaClassNames.kafkaAssignConsumerContainer)
+            addStatement("return %T(%S, config, topics[0], keyDeserializer, valueDeserializer, telemetry, wrappedHandler)",
+                KafkaClassNames.kafkaAssignConsumerContainer, configPath)
             nextControlFlow("else")
-            addStatement("return %T(config, keyDeserializer, valueDeserializer, wrappedHandler, rebalanceListener)", KafkaClassNames.kafkaSubscribeConsumerContainer)
+            addStatement("return %T(%S, config, keyDeserializer, valueDeserializer, wrappedHandler, rebalanceListener)",
+                KafkaClassNames.kafkaSubscribeConsumerContainer, configPath)
         }
         return funBuilder.build()
     }
