@@ -47,29 +47,33 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
     private final String consumerPrefix;
     private final boolean commitAllowed;
 
-    public KafkaSubscribeConsumerContainer(
-        KafkaListenerConfig config,
-        Deserializer<K> keyDeserializer,
-        Deserializer<V> valueDeserializer,
-        BaseKafkaRecordsHandler<K, V> handler
-    ) {
+    public KafkaSubscribeConsumerContainer(KafkaListenerConfig config,
+                                           Deserializer<K> keyDeserializer,
+                                           Deserializer<V> valueDeserializer,
+                                           BaseKafkaRecordsHandler<K, V> handler) {
         this(config, keyDeserializer, valueDeserializer, handler, null);
     }
 
-    public KafkaSubscribeConsumerContainer(
-        KafkaListenerConfig config,
-        Deserializer<K> keyDeserializer,
-        Deserializer<V> valueDeserializer,
-        BaseKafkaRecordsHandler<K, V> handler,
-        @Nullable ConsumerAwareRebalanceListener rebalanceListener
-    ) {
+    public KafkaSubscribeConsumerContainer(KafkaListenerConfig config,
+                                           Deserializer<K> keyDeserializer,
+                                           Deserializer<V> valueDeserializer,
+                                           BaseKafkaRecordsHandler<K, V> handler,
+                                           @Nullable ConsumerAwareRebalanceListener rebalanceListener) {
+        this(KafkaUtils.getConsumerPrefix(config), config, keyDeserializer, valueDeserializer, handler, rebalanceListener);
+    }
+
+    public KafkaSubscribeConsumerContainer(String consumerName,
+                                           KafkaListenerConfig config,
+                                           Deserializer<K> keyDeserializer,
+                                           Deserializer<V> valueDeserializer,
+                                           BaseKafkaRecordsHandler<K, V> handler,
+                                           @Nullable ConsumerAwareRebalanceListener rebalanceListener) {
         if (config.driverProperties().get(CommonClientConfigs.GROUP_ID_CONFIG) == null) {
             throw new IllegalArgumentException("Group id is required for subscribe container");
         }
+
         this.handler = handler;
         this.rebalanceListener = rebalanceListener;
-        this.backoffTimeout = new AtomicLong(config.backoffTimeout().toMillis());
-        this.consumerPrefix = KafkaUtils.getConsumerPrefix(config);
         var autoCommit = config.driverProperties().get(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG);
         if (autoCommit == null) {
             config = config.withDriverPropertiesOverrides(Map.of(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false));
@@ -80,6 +84,8 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
         this.config = config;
         this.keyDeserializer = keyDeserializer;
         this.valueDeserializer = valueDeserializer;
+        this.backoffTimeout = new AtomicLong(config.backoffTimeout().toMillis());
+        this.consumerPrefix = Objects.requireNonNullElse(consumerName, KafkaUtils.getConsumerPrefix(config));
     }
 
     public void launchPollLoop(Consumer<K, V> consumer, long started) {
