@@ -426,6 +426,8 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         LONG.copy(true) to CodeBlock.of("value.asNumber().toLong()"),
         DOUBLE to CodeBlock.of("value.asNumber().toDouble()"),
         DOUBLE.copy(true) to CodeBlock.of("value.asNumber().toDouble()"),
+        BOOLEAN to CodeBlock.of("value.asBoolean()"),
+        BOOLEAN.copy(true) to CodeBlock.of("value.asBoolean()"),
         STRING to CodeBlock.of("value.asString()"),
         STRING.copy(true) to CodeBlock.of("value.asString()")
     )
