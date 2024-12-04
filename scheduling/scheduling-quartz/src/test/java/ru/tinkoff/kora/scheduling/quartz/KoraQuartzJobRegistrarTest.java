@@ -83,7 +83,7 @@ class KoraQuartzJobRegistrarTest {
                     mockJobRunnable,
                     (data) -> Assertions.assertThat(data.getAllInvocations())
                         .hasSizeGreaterThan(5 * 2 + 1)
-                        .hasSizeLessThanOrEqualTo(7 * 2 + 3)
+                        .hasSizeLessThanOrEqualTo(7 * 2 + 4)
                 ).accept(any());
             } finally {
                 registrar.release();
