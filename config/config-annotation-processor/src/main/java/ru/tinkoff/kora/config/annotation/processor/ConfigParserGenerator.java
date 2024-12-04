@@ -410,6 +410,8 @@ public class ConfigParserGenerator {
         Map.entry(TypeName.LONG.box(), CodeBlock.of("value.asNumber().longValue()")),
         Map.entry(TypeName.DOUBLE, CodeBlock.of("value.asNumber().doubleValue()")),
         Map.entry(TypeName.DOUBLE.box(), CodeBlock.of("value.asNumber().doubleValue()")),
+        Map.entry(TypeName.BOOLEAN, CodeBlock.of("value.asBoolean()")),
+        Map.entry(TypeName.BOOLEAN.box(), CodeBlock.of("value.asBoolean()")),
         Map.entry(ClassName.get(String.class), CodeBlock.of("value.asString()"))
     );
 

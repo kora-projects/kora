@@ -39,7 +39,6 @@ class AnnotationConfigTest : AbstractConfigTest() {
             interface TestConfig {
               fun value() : Int?
             }
-            
             """.trimIndent()
         )
         assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value" to 42)).root()))
@@ -56,12 +55,68 @@ class AnnotationConfigTest : AbstractConfigTest() {
             interface TestConfig {
               fun value(): String
             }
-            
             """.trimIndent()
         )
 
         assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value" to "test")).root()))
             .isEqualTo(new("\$TestConfig_ConfigValueExtractor\$TestConfig_Impl", "test"))
+
+        assertThatThrownBy { extractor.extract(MapConfigFactory.fromMap(mapOf<String, Any?>()).root()) }
+            .isInstanceOf(ConfigValueExtractionException::class.java)
+            .hasMessageStartingWith("Config expected value, but got null at path: 'ROOT.value' for origin");
+    }
+
+    @Test
+    fun testBooleanSupported() {
+        val extractor = compileConfig(
+            listOf<Any>(), """
+            @ConfigValueExtractor
+            interface TestConfig {
+              fun value(): Boolean 
+            }
+            """.trimIndent()
+        )
+
+        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value" to true)).root()))
+            .isEqualTo(new("\$TestConfig_ConfigValueExtractor\$TestConfig_Impl", true))
+
+        assertThatThrownBy { extractor.extract(MapConfigFactory.fromMap(mapOf<String, Any?>()).root()) }
+            .isInstanceOf(ConfigValueExtractionException::class.java)
+            .hasMessageStartingWith("Config expected value, but got null at path: 'ROOT.value' for origin");
+    }
+
+    @Test
+    fun testLongSupported() {
+        val extractor = compileConfig(
+            listOf<Any>(), """
+            @ConfigValueExtractor
+            interface TestConfig {
+              fun value(): Long 
+            }
+            """.trimIndent()
+        )
+
+        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value" to 42L)).root()))
+            .isEqualTo(new("\$TestConfig_ConfigValueExtractor\$TestConfig_Impl", 42L))
+
+        assertThatThrownBy { extractor.extract(MapConfigFactory.fromMap(mapOf<String, Any?>()).root()) }
+            .isInstanceOf(ConfigValueExtractionException::class.java)
+            .hasMessageStartingWith("Config expected value, but got null at path: 'ROOT.value' for origin");
+    }
+
+    @Test
+    fun testDoubleSupported() {
+        val extractor = compileConfig(
+            listOf<Any>(), """
+            @ConfigValueExtractor
+            interface TestConfig {
+              fun value(): Double
+            }
+            """.trimIndent()
+        )
+
+        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value" to 1.0)).root()))
+            .isEqualTo(new("\$TestConfig_ConfigValueExtractor\$TestConfig_Impl", 1.0))
 
         assertThatThrownBy { extractor.extract(MapConfigFactory.fromMap(mapOf<String, Any?>()).root()) }
             .isInstanceOf(ConfigValueExtractionException::class.java)
