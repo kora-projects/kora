@@ -34,7 +34,8 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
 
     public UndertowHttpServer(ValueOf<HttpServerConfig> config,
                               ValueOf<UndertowPublicApiHandler> publicApiHandler,
-                              @Nullable XnioWorker xnioWorker, ByteBufferPool byteBufferPool) {
+                              @Nullable XnioWorker xnioWorker,
+                              ByteBufferPool byteBufferPool) {
         this.config = config;
         this.xnioWorker = xnioWorker;
         this.byteBufferPool = byteBufferPool;

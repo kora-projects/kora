@@ -39,11 +39,6 @@ public class UndertowPrivateHttpServer implements PrivateHttpServer {
     public void release() {
         if (this.undertow != null) {
             logger.debug("Private HTTP Server (Undertow) stopping...");
-            try {
-                Thread.sleep(this.config.get().shutdownWait().toMillis());
-            } catch (InterruptedException e) {
-                // ignore
-            }
             final long started = TimeUtils.started();
             this.undertow.stop();
             this.undertow = null;
