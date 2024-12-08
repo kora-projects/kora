@@ -3,6 +3,7 @@ package ru.tinkoff.kora.test.extension.junit5.testdata;
 import ru.tinkoff.kora.application.graph.LifecycleWrapper;
 import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.common.KoraApp;
+import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Root;
 
 import java.util.function.Function;
@@ -50,12 +51,28 @@ public interface TestApplication extends TestExtendModule {
         return (s) -> 1;
     }
 
+    @Root
+    default SomeFactory someFactory() {
+        return () -> "1";
+    }
+
+    @Root
+    @Tag(String.class)
+    default SomeFactory someFactoryWithTag() {
+        return () -> "1";
+    }
+
     class CustomWrapper implements Wrapped<Float> {
 
         @Override
         public Float value() {
             return 1.0F;
         }
+    }
+
+    interface SomeFactory {
+
+        String getValue();
     }
 
     interface SomeParent {
