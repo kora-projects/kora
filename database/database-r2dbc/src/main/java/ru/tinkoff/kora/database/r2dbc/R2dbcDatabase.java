@@ -59,11 +59,7 @@ public class R2dbcDatabase implements R2dbcConnectionFactory, Lifecycle, Readine
     public Mono<Connection> currentConnection() {
         return Mono.deferContextual(reactorContext -> {
             var ctx = Context.Reactor.current(reactorContext);
-            var connection = ctx.get(this.connectionKey);
-            if (connection != null) {
-                return Mono.just(connection);
-            }
-            return this.connectionFactory.create();
+            return Mono.justOrEmpty(ctx.get(this.connectionKey));
         });
     }
 
