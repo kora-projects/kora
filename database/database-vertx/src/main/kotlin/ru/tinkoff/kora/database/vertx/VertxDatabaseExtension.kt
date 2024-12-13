@@ -3,27 +3,30 @@ package ru.tinkoff.kora.database.vertx
 import io.vertx.sqlclient.SqlClient
 import io.vertx.sqlclient.SqlConnection
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.future.future
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
 
-suspend inline fun <T> VertxConnectionFactory.withConnectionSuspend(context: CoroutineContext? = null, noinline callback: suspend (SqlClient) -> T): T {
-    val ctx = context ?: coroutineContext
-    val future = withConnection {
-        CoroutineScope(ctx).future {
-            callback.invoke(it)
+suspend fun <T> VertxConnectionFactory.withConnectionSuspend(callback: suspend (SqlClient) -> T): T {
+    return coroutineScope {
+        val future = withConnection {
+            future {
+                callback.invoke(it)
+            }
         }
+        future.await()
     }
-    return future.await()
 }
 
-suspend inline fun <T> VertxConnectionFactory.inTxSuspend(context: CoroutineContext? = null, noinline callback: suspend (SqlConnection) -> T): T {
-    val ctx = context ?: coroutineContext
-    val future = inTx {
-        CoroutineScope(ctx).future<T>(ctx) {
-            callback.invoke(it)
+suspend fun <T> VertxConnectionFactory.inTxSuspend(callback: suspend (SqlConnection) -> T): T {
+    return coroutineScope {
+        val future = inTx {
+            future<T> {
+                callback.invoke(it)
+            }
         }
+        future.await()
     }
-    return future.await()
 }

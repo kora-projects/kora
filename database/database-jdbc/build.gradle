@@ -12,4 +12,8 @@ dependencies {
     api libs.hikari
 
     testImplementation project(":internal:test-postgres")
+    testImplementation(libs.reactor.core)
+    testImplementation(libs.kotlin.stdlib.lib)
+    testImplementation(libs.kotlin.coroutines.core)
+    testImplementation(libs.kotlin.coroutines.jdk8)
 }

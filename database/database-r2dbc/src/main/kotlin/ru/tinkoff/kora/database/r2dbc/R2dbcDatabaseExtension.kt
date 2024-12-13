@@ -1,27 +1,26 @@
 package ru.tinkoff.kora.database.r2dbc
 
 import io.r2dbc.spi.Connection
-import kotlinx.coroutines.reactor.awaitSingle
+import kotlinx.coroutines.reactor.awaitSingleOrNull
 import kotlinx.coroutines.reactor.mono
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.coroutineContext
+import ru.tinkoff.kora.common.Context
 
-suspend inline fun <T> R2dbcConnectionFactory.withConnectionSuspend(context: CoroutineContext? = null, noinline callback: suspend (Connection) -> T): T {
-    val ctx = context ?: coroutineContext
+@Suppress("UNCHECKED_CAST")
+suspend fun <T> R2dbcConnectionFactory.withConnectionSuspend(callback: suspend (Connection) -> T): T {
     val mono = withConnection {
-        mono(ctx) {
+        mono(Context.Kotlin.asCoroutineContext(Context.current())) {
             callback.invoke(it)
         }
     }
-    return mono.awaitSingle()
+    return mono.awaitSingleOrNull() as T
 }
 
-suspend inline fun <T> R2dbcConnectionFactory.inTxSuspend(context: CoroutineContext? = null, noinline callback: suspend (Connection) -> T): T {
-    val ctx = context ?: coroutineContext
+@Suppress("UNCHECKED_CAST")
+suspend fun <T> R2dbcConnectionFactory.inTxSuspend(callback: suspend (Connection) -> T): T {
     val mono = inTx {
-        mono(ctx) {
+        mono(Context.Kotlin.asCoroutineContext(Context.current())) {
             callback.invoke(it)
         }
     }
-    return mono.awaitSingle()
+    return mono.awaitSingleOrNull() as T
 }

@@ -36,7 +36,6 @@ import java.sql.Statement
 import java.util.concurrent.Executor
 
 class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenerator {
-    private val coroutineConnection = ClassName("ru.tinkoff.kora.database.jdbc", "CoroutineConnection")
     private val withContext = MemberName("kotlinx.coroutines", "withContext")
     private val asCoroutineDispatcher = MemberName("kotlinx.coroutines", "asCoroutineDispatcher")
     private val repositoryInterface = resolver.getClassDeclarationByName(resolver.getKSNameFromString(JdbcTypes.jdbcRepository.canonicalName))?.asStarProjectedType()
@@ -110,7 +109,7 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         b.addStatement("val _query = %L", queryContextFieldName)
 
         if (method.isSuspend()) {
-            b.addStatement("var _conToUse = %L ?: this.coroutineContext[%T]?.connection", connection, coroutineConnection)
+            b.addStatement("var _conToUse = %L", connection)
             b.addStatement("val _ctxFork = _ctxCurrent.fork()")
             b.addStatement("_ctxFork.inject()")
             b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(_ctxFork, _query)")
