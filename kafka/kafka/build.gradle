@@ -1,11 +1,12 @@
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
+    annotationProcessor project(":config:config-annotation-processor")
+
     api project(":common")
     api project(":config:config-common")
     api project(":telemetry:telemetry-common")
     api libs.kafka.client
 
-    annotationProcessor project(":config:config-annotation-processor")
     testImplementation project(':internal:test-kafka')
 }

@@ -133,6 +133,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             library("mockserver-client", "org.mock-server", "mockserver-client-java").versionRef("mockserver")
 
             library("kafka-client", "org.apache.kafka", "kafka-clients").versionRef("kafka")
+            library("avro", "org.apache.avro", "avro").version("1.12.0")
 
             library("grpc-kotlin-stub", "io.grpc", "grpc-kotlin-stub").versionRef("grpc-kotlin")
             library("grpc-kotlin-gen", "io.grpc", "protoc-gen-grpc-kotlin").versionRef("grpc-kotlin")

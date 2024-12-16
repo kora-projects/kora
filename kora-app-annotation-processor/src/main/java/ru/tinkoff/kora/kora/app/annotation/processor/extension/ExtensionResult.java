@@ -13,18 +13,26 @@ import java.util.function.Function;
 public sealed interface ExtensionResult {
 
     static GeneratedResult fromExecutable(ExecutableElement constructor) {
-        return new ExtensionResult.GeneratedResult(constructor, (ExecutableType) constructor.asType());
+        return new ExtensionResult.GeneratedResult(constructor, (ExecutableType) constructor.asType(), Set.of());
+    }
+
+    static GeneratedResult fromExecutable(ExecutableElement constructor, Set<String> tags) {
+        return new ExtensionResult.GeneratedResult(constructor, (ExecutableType) constructor.asType(), tags);
     }
 
     static GeneratedResult fromExecutable(ExecutableElement executableElement, ExecutableType executableType) {
-        return new ExtensionResult.GeneratedResult(executableElement, executableType);
+        return new ExtensionResult.GeneratedResult(executableElement, executableType, Set.of());
+    }
+
+    static GeneratedResult fromExecutable(ExecutableElement executableElement, ExecutableType executableType, Set<String> tags) {
+        return new ExtensionResult.GeneratedResult(executableElement, executableType, tags);
     }
 
     static ExtensionResult nextRound() {
         return RequiresCompilingResult.INSTANCE;
     }
 
-    record GeneratedResult(ExecutableElement sourceElement, ExecutableType targetType) implements ExtensionResult {}
+    record GeneratedResult(ExecutableElement sourceElement, ExecutableType targetType, Set<String> tags) implements ExtensionResult {}
 
     record CodeBlockResult(Element source, Function<CodeBlock, CodeBlock> codeBlock, TypeMirror componentType, Set<String> componentTag, List<TypeMirror> dependencyTypes,
                            List<Set<String>> dependencyTags) implements ExtensionResult {
