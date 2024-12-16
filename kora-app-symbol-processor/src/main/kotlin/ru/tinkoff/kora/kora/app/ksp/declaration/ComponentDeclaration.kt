@@ -177,7 +177,10 @@ sealed interface ComponentDeclaration {
             if (type.isError) {
                 throw ProcessingErrorException("Component type is not resolvable in the current round of processing", sourceMethod)
             }
-            val tag = if (sourceMethod.isConstructor()) {
+
+            val tag = if(extensionResult.tags.isNotEmpty())
+                extensionResult.tags
+            else if (sourceMethod.isConstructor()) {
                 sourceMethod.closestClassDeclaration()!!.parseTags()
             } else {
                 sourceMethod.parseTags()
