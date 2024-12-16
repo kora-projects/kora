@@ -5,7 +5,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.avro.common.AvroReader
 import ru.tinkoff.kora.avro.common.AvroWriter
-import tinkoff.kora.binary.TestAvroBinary
 import tinkoff.kora.json.TestAvroJson
 import java.time.Instant
 
