@@ -1,0 +1,43 @@
+{
+    "type": "record",
+    "name": "TestAvro",
+    "namespace": "tinkoff.kora",
+    "fields": [
+        {
+            "name": "cluster",
+            "type": "string"
+        },
+        {
+            "name": "date",
+            "type": [
+                "null",
+                {
+                    "type": "long",
+                    "logicalType": "timestamp-millis"
+                }
+            ]
+        },
+        {
+            "name": "description",
+            "type": [
+                "null",
+                "string"
+            ]
+        },
+        {
+            "name": "counter",
+            "type": [
+                "null",
+                "long"
+            ]
+        },
+        {
+            "name": "flag",
+            "type": [
+                "null",
+                "boolean"
+            ],
+            "default": null
+        }
+    ]
+}

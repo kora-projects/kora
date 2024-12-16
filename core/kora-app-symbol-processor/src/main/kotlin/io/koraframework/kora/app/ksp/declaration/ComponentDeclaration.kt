@@ -211,7 +211,10 @@ sealed interface ComponentDeclaration {
                     sourceMethod
                 )
             }
-            val tag = if (sourceMethod.isConstructor()) {
+
+            val tag = if(extensionResult.tags.isNotEmpty())
+                extensionResult.tags
+            else if (sourceMethod.isConstructor()) {
                 sourceMethod.closestClassDeclaration()!!.parseTag()
             } else {
                 sourceMethod.parseTag()

@@ -1,0 +1,54 @@
+import org.apache.avro.tool.SpecificCompilerTool
+
+buildscript {
+    dependencies {
+        classpath "org.apache.avro:avro-tools:1.12.0"
+    }
+}
+
+apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
+
+dependencies {
+    api project(':symbol-processor-common')
+    api project(':kora-app-symbol-processor')
+
+    testImplementation project(':avro:avro-common')
+    testImplementation testFixtures(project(':symbol-processor-common'))
+
+    testImplementation libs.classgraph
+    testImplementation libs.kotlin.compiler
+    testImplementation libs.kotlin.compiler
+    testImplementation libs.junit.jupiter
+    testImplementation libs.ksp
+    testImplementation libs.ksp.api
+    testImplementation libs.kotlin.coroutines.reactor
+    testImplementation libs.kotlin.coroutines.jdk8
+}
+
+tasks.register("generateAvroClasses") {
+    group("build")
+
+    var inputDir = "$projectDir/src/test/resources/avro"
+    var outputDir = "$buildDir/generated/sources/avro"
+    inputs.dir(inputDir)
+    outputs.dir(outputDir)
+    logging.captureStandardOutput(LogLevel.INFO)
+    logging.captureStandardError(LogLevel.ERROR)
+
+    doFirst {
+        delete outputDir
+        delete "$buildDir/in-test-generated-ksp/sources/tinkoff/kora"
+    }
+
+    doLast {
+        var params = ["-bigDecimal", "schema", inputDir.toString(), outputDir.toString()]
+        new SpecificCompilerTool().run(System.in, System.out, System.err, params)
+    }
+}
+
+sourceSets.test.java {
+    srcDir tasks.generateAvroClasses
+}
+
+test.dependsOn(tasks.generateAvroClasses)

@@ -1,0 +1,11 @@
+dependencies {
+    compileOnly project(":http:http-server-common")
+    compileOnly project(":http:http-client-common")
+    compileOnly project(":kafka:kafka")
+
+    api project(":avro:avro-common")
+
+    api("io.confluent:kafka-avro-serializer:7.7.2") {
+        exclude group: "org.apache.kafka", module: "kafka-clients"
+    }
+}
