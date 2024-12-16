@@ -50,7 +50,7 @@ public abstract class AbstractAvroAnnotationProcessorTest extends AbstractAnnota
     }
 
     protected String getTestAvroAsJson() {
-        return "";
+        return "{\"cluster\":\"cluster\",\"date\":{\"long\":0},\"description\":{\"string\":\"descr\"},\"counter\":{\"long\":12345},\"flag\":{\"boolean\":true}}";
     }
 
     protected void assertThatTestAvroValid(IndexedRecord expected, IndexedRecord actual) {
@@ -247,6 +247,20 @@ public abstract class AbstractAvroAnnotationProcessorTest extends AbstractAnnota
 
             var reader = new SpecificDatumReader<>(getTestAvroGenerated().getSchema(), getTestAvroGenerated().getSchema(), data);
             var binaryDecoder = DecoderFactory.get().binaryDecoder(value, null);
+            return (IndexedRecord) reader.read(null, binaryDecoder);
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    protected IndexedRecord readAsJson(byte[] value) {
+        try {
+            Field fieldData = getTestAvroGenerated().getClass().getDeclaredField("MODEL$");
+            fieldData.setAccessible(true);
+            SpecificData data = (SpecificData) fieldData.get(value);
+
+            var reader = new SpecificDatumReader<>(getTestAvroGenerated().getSchema(), getTestAvroGenerated().getSchema(), data);
+            var binaryDecoder = DecoderFactory.get().jsonDecoder(getTestAvroGenerated().getSchema(), new ByteArrayInputStream(value));
             return (IndexedRecord) reader.read(null, binaryDecoder);
         } catch (Exception e) {
             throw new IllegalStateException(e);
