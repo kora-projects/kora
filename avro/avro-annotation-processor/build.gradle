@@ -36,6 +36,4 @@ tasks.register("generateAvroClasses") {
     }
 }
 
-//sourceSets.test.java {
-//    srcDir tasks.generateAvroClasses
-//}
+test.dependsOn(tasks.generateAvroClasses)
