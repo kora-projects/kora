@@ -12,6 +12,7 @@ import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.avro.symbol.processor.AvroTypes
 import ru.tinkoff.kora.avro.symbol.processor.classPackage
+import ru.tinkoff.kora.avro.symbol.processor.writerBinaryName
 import ru.tinkoff.kora.avro.symbol.processor.writerJsonName
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
@@ -24,7 +25,7 @@ class AvroWriterGenerator(val resolver: Resolver, val codeGenerator: CodeGenerat
         val typeName = declaration.toTypeName()
         val typeParameterResolver = declaration.typeParameters.toTypeParameterResolver()
         val writerInterface = AvroTypes.writer.parameterizedBy(typeName)
-        val typeBuilder = TypeSpec.classBuilder(declaration.writerJsonName())
+        val typeBuilder = TypeSpec.classBuilder(declaration.writerBinaryName())
             .generated(AvroWriterGenerator::class)
         declaration.containingFile?.let { typeBuilder.addOriginatingKSFile(it) }
         typeBuilder.addSuperinterface(writerInterface)

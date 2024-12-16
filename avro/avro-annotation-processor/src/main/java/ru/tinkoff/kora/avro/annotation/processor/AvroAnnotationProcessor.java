@@ -56,7 +56,7 @@ public class AvroAnnotationProcessor extends AbstractKoraProcessor {
         var avroBinaryElements = roundEnv.getElementsAnnotatedWith(this.avroBinaryAnnotation).stream()
             .filter(e -> e.getKind().isClass() || e.getKind() == ElementKind.INTERFACE)
             .toList();
-        if(!avroBinaryElements.isEmpty()) {
+        if (!avroBinaryElements.isEmpty()) {
             LogUtils.logElementsFull(logger, Level.DEBUG, "Generating Avro Binary Readers & Writers for", avroBinaryElements);
             for (var e : avroBinaryElements) {
                 try {
@@ -75,7 +75,7 @@ public class AvroAnnotationProcessor extends AbstractKoraProcessor {
         var avroJsonElements = roundEnv.getElementsAnnotatedWith(this.avroJsonAnnotation).stream()
             .filter(e -> e.getKind().isClass() || e.getKind() == ElementKind.INTERFACE)
             .toList();
-        if(!avroJsonElements.isEmpty()) {
+        if (!avroJsonElements.isEmpty()) {
             LogUtils.logElementsFull(logger, Level.DEBUG, "Generating Avro Json Readers & Writers for", avroBinaryElements);
             for (var e : avroJsonElements) {
                 try {
