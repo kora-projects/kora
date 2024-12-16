@@ -120,7 +120,7 @@ public class AvroWriterGenerator {
         method.endControlFlow();
         method.beginControlFlow("try (var os = new $T())", ByteArrayOutputStream.class);
         method.addStatement("var encoder = $T.get().jsonEncoder(SCHEMA, os)", AvroTypes.encoderFactory);
-        method.addStatement("WRITER.write(new $T(), encoder)", typeName);
+        method.addStatement("WRITER.write(value, encoder)");
         method.addStatement("encoder.flush()");
         method.addStatement("return os.toByteArray()");
         method.endControlFlow();

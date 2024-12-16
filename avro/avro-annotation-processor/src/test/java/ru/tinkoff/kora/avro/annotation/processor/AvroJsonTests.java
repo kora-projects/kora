@@ -4,6 +4,7 @@ import org.apache.avro.generic.IndexedRecord;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,7 +28,7 @@ public class AvroJsonTests extends AbstractAvroAnnotationProcessorTest {
         assertThat(reader).isNotNull();
 
         var testAvro = getTestAvroGenerated();
-        byte[] bytes = getTestAvroAsBytes();
+        byte[] bytes = getTestAvroAsJson().getBytes(StandardCharsets.UTF_8);
         IndexedRecord read = reader.readUnchecked(bytes);
         assertThatTestAvroValid(testAvro, read);
     }
@@ -50,7 +51,7 @@ public class AvroJsonTests extends AbstractAvroAnnotationProcessorTest {
 
         IndexedRecord testAvro = getTestAvroGenerated();
         byte[] bytes = writer.writeBytesUnchecked(testAvro);
-        IndexedRecord restored = readAsBinary(bytes);
+        IndexedRecord restored = readAsJson(bytes);
         assertThatTestAvroValid(testAvro, restored);
     }
 }
