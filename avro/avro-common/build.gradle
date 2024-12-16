@@ -1,37 +1,5 @@
-import org.apache.avro.tool.SpecificCompilerTool
-
-buildscript {
-    dependencies {
-        classpath "org.apache.avro:avro-tools:1.12.0"
-    }
-}
-
 dependencies {
     api project(":common")
 
     api libs.avro
-}
-
-tasks.register("generateAvroClasses") {
-    group("build")
-
-    var inputDir = "$projectDir/src/main/resources/avro"
-    var outputDir = "$buildDir/generated/sources/avro"
-    inputs.dir(inputDir)
-    outputs.dir(outputDir)
-    logging.captureStandardOutput(LogLevel.INFO);
-    logging.captureStandardError(LogLevel.ERROR)
-
-    doFirst {
-        delete outputDir
-    }
-
-    doLast {
-        var params = ["-bigDecimal", "schema", inputDir.toString(), outputDir.toString()]
-        new SpecificCompilerTool().run(System.in, System.out, System.err, params)
-    }
-}
-
-sourceSets.test.java {
-    srcDir tasks.generateAvroClasses
 }
