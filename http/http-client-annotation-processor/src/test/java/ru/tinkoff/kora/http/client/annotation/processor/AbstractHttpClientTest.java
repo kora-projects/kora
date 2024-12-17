@@ -98,9 +98,9 @@ public abstract class AbstractHttpClientTest extends AbstractAnnotationProcessor
         var clientClass = compileResult.loadClass("$TestClient_ClientImpl");
         var durationCVE = new DurationConfigValueExtractor();
         var telemetryCVE = (ConfigValueExtractor) new $HttpClientTelemetryConfig_ConfigValueExtractor(
-            new $HttpClientLoggerConfig_ConfigValueExtractor(new SetConfigValueExtractor<>(new StringConfigValueExtractor()), new BooleanConfigValueExtractor()),
-            new $TelemetryConfig_TracingConfig_ConfigValueExtractor(new BooleanConfigValueExtractor()),
-            new $TelemetryConfig_MetricsConfig_ConfigValueExtractor(new BooleanConfigValueExtractor(), new DoubleArrayConfigValueExtractor(c -> c.asNumber().doubleValue()))
+            new $HttpClientLoggerConfig_ConfigValueExtractor(new SetConfigValueExtractor<>(new StringConfigValueExtractor())),
+            new $TelemetryConfig_TracingConfig_ConfigValueExtractor(),
+            new $TelemetryConfig_MetricsConfig_ConfigValueExtractor(new DoubleArrayConfigValueExtractor(c -> c.asNumber().doubleValue()))
         );
         var configCVE = new $HttpClientOperationConfig_ConfigValueExtractor(durationCVE, telemetryCVE);
 

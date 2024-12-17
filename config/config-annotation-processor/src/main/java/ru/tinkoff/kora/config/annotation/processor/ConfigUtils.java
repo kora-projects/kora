@@ -21,6 +21,7 @@ public class ConfigUtils {
         TypeName.INT, TypeName.INT.box(),
         TypeName.LONG, TypeName.LONG.box(),
         TypeName.DOUBLE, TypeName.DOUBLE.box(),
+        TypeName.BOOLEAN, TypeName.BOOLEAN.box(),
         ClassName.get(String.class)
     );
 

@@ -65,6 +65,54 @@ public class AnnotationConfigTest extends AbstractConfigTest {
     }
 
     @Test
+    public void testLongSupported() {
+        var extractor = this.compileConfig(List.of(), """
+            @ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor
+            public interface TestConfig {
+              Long value();
+            }
+            """);
+
+        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value", 42L)).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", 42L));
+        assertThatThrownBy(() -> extractor.extract(MapConfigFactory.fromMap(Map.of()).root()))
+            .isInstanceOf(ConfigValueExtractionException.class)
+            .hasMessageStartingWith("Config expected value, but got null at path: 'ROOT.value' for origin");
+    }
+
+    @Test
+    public void testBooleanSupported() {
+        var extractor = this.compileConfig(List.of(), """
+            @ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor
+            public interface TestConfig {
+              Boolean value();
+            }
+            """);
+
+        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value", true)).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", true));
+        assertThatThrownBy(() -> extractor.extract(MapConfigFactory.fromMap(Map.of()).root()))
+            .isInstanceOf(ConfigValueExtractionException.class)
+            .hasMessageStartingWith("Config expected value, but got null at path: 'ROOT.value' for origin");
+    }
+
+    @Test
+    public void testDoubleSupported() {
+        var extractor = this.compileConfig(List.of(), """
+            @ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor
+            public interface TestConfig {
+              Double value();
+            }
+            """);
+
+        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value", 42.5)).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", 42.5));
+        assertThatThrownBy(() -> extractor.extract(MapConfigFactory.fromMap(Map.of()).root()))
+            .isInstanceOf(ConfigValueExtractionException.class)
+            .hasMessageStartingWith("Config expected value, but got null at path: 'ROOT.value' for origin");
+    }
+
+    @Test
     public void testDefaultValues() {
         var extractor = this.compileConfig(List.of(), """
             @ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor
