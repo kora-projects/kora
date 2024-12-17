@@ -1,21 +1,17 @@
+package ru.tinkoff.kora.database.jdbc
+
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.junit.jupiter.api.fail
 import org.slf4j.LoggerFactory
 import ru.tinkoff.kora.common.Context
 import ru.tinkoff.kora.database.common.telemetry.DefaultDataBaseTelemetryFactory
 import ru.tinkoff.kora.database.jdbc.`$JdbcDatabaseConfig_ConfigValueExtractor`.*
-import ru.tinkoff.kora.database.jdbc.JdbcDatabase
 import ru.tinkoff.kora.database.jdbc.JdbcHelper.SqlRunnable
-import ru.tinkoff.kora.database.jdbc.inTxSuspend
-import ru.tinkoff.kora.database.jdbc.withConnectionSuspend
 import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_ConfigValueExtractor`.*
 import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_LogConfig_ConfigValueExtractor`.*
 import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_MetricsConfig_ConfigValueExtractor`.*
