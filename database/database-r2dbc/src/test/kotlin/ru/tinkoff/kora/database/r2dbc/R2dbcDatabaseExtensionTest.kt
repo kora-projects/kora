@@ -1,3 +1,5 @@
+package ru.tinkoff.kora.database.r2dbc
+
 import io.r2dbc.spi.ConnectionFactoryOptions
 import kotlinx.coroutines.reactive.awaitSingle
 import kotlinx.coroutines.reactor.awaitSingle
@@ -9,9 +11,6 @@ import org.junit.jupiter.api.fail
 import ru.tinkoff.kora.common.Context
 import ru.tinkoff.kora.database.common.telemetry.DefaultDataBaseTelemetryFactory
 import ru.tinkoff.kora.database.r2dbc.`$R2dbcDatabaseConfig_ConfigValueExtractor`.R2dbcDatabaseConfig_Impl
-import ru.tinkoff.kora.database.r2dbc.R2dbcDatabase
-import ru.tinkoff.kora.database.r2dbc.inTxSuspend
-import ru.tinkoff.kora.database.r2dbc.withConnectionSuspend
 import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_ConfigValueExtractor`.TelemetryConfig_Impl
 import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_LogConfig_ConfigValueExtractor`.LogConfig_Impl
 import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_MetricsConfig_ConfigValueExtractor`.MetricsConfig_Impl
@@ -22,34 +21,41 @@ import java.time.Duration
 import java.util.function.Function
 
 @ExtendWith(PostgresTestContainer::class)
-class R2dbcDatabaseExtestionTest {
+class R2dbcDatabaseExtensionTest {
+
     @Test
     fun testQuery(params: PostgresParams) {
+        val tableName = PostgresTestContainer.randomName("test_table")
         params.execute(
             """
-            CREATE TABLE test_table(id BIGSERIAL, value VARCHAR);
-            INSERT INTO test_table(value) VALUES ('test1');
-            INSERT INTO test_table(value) VALUES ('test2');
-            
+            CREATE TABLE ${tableName}(id BIGSERIAL, value VARCHAR);
+            INSERT INTO ${tableName}(value) VALUES ('test1');
+            INSERT INTO ${tableName}(value) VALUES ('test2');
             """
         )
+
+        val sql = "SELECT * FROM $tableName WHERE value = 'test1'"
 
         data class Entity(val id: Long, val value: String)
 
         withDb(params) { db ->
             db.withConnectionSuspend {
                 val connection = db.currentConnection().awaitSingle()
-                val res = connection.createStatement("SELECT id FROM test_table WHERE value = 'test1'").execute().awaitSingle()
-                val id = res.map { rs -> rs.get(0, Long::class.java) }.awaitSingle()
-                Assertions.assertThat(id).isEqualTo(1)
+                val res = connection.createStatement(sql)
+                    .execute()
+                    .awaitSingle()
+
+                val id = res.map { rs -> rs.get(0, java.lang.Long::class.java) }.awaitSingle()
+                Assertions.assertThat(id).isEqualTo(1L)
             }
         }
     }
 
     @Test
     fun testTransaction(params: PostgresParams) {
-        params.execute("CREATE TABLE test_table(id BIGSERIAL, value VARCHAR);")
-        val sql = "INSERT INTO test_table(value) VALUES ('test1');"
+        val tableName = PostgresTestContainer.randomName("test_table")
+        params.execute("CREATE TABLE ${tableName}(id BIGSERIAL, value VARCHAR);")
+        val sql = "INSERT INTO ${tableName}(value) VALUES ('test1');"
 
         withDb(params) { db ->
             try {
@@ -66,9 +72,9 @@ class R2dbcDatabaseExtestionTest {
 
             db.withConnectionSuspend {
                 val conn = db.currentConnection().awaitSingle()
-                val res = conn.createStatement("select count(*) from test_table").execute().awaitSingle()
-                val count = res.map { rs -> rs.get(0, Long::class.java) }.awaitSingle()
-                Assertions.assertThat(count).isEqualTo(0)
+                val res = conn.createStatement("select count(*) from $tableName").execute().awaitSingle()
+                val count = res.map { rs -> rs.get(0, java.lang.Long::class.java) }.awaitSingle()
+                Assertions.assertThat(count).isEqualTo(0L)
             }
 
             db.inTxSuspend {
@@ -79,9 +85,9 @@ class R2dbcDatabaseExtestionTest {
 
             db.withConnectionSuspend {
                 val conn = db.currentConnection().awaitSingle()
-                val res = conn.createStatement("select count(*) from test_table").execute().awaitSingle()
-                val count = res.map { rs -> rs.get(0, Long::class.java) }.awaitSingle()
-                Assertions.assertThat(count).isEqualTo(1)
+                val res = conn.createStatement("select count(*) from $tableName").execute().awaitSingle()
+                val count = res.map { rs -> rs.get(0, java.lang.Long::class.java) }.awaitSingle()
+                Assertions.assertThat(count).isEqualTo(1L)
             }
         }
     }

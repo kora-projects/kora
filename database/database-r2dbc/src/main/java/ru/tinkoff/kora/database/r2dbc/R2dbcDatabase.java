@@ -27,18 +27,19 @@ public class R2dbcDatabase implements R2dbcConnectionFactory, Lifecycle, Readine
 
     private static final Option<Map<String, String>> OPTIONS = Option.valueOf("options");
 
-    private final Context.Key<Connection> connectionKey = new Context.Key<>() {
+    final Context.Key<Connection> connectionKey = new Context.Key<>() {
         @Override
         protected Connection copy(Connection object) {
             return null;
         }
     };
-    private final Context.Key<Connection> transactionKey = new Context.Key<>() {
+    final Context.Key<Connection> transactionKey = new Context.Key<>() {
         @Override
         protected Connection copy(Connection object) {
             return null;
         }
     };
+
     private final ConnectionPool connectionFactory;
     private final DataBaseTelemetry telemetry;
     private final R2dbcDatabaseConfig config;
