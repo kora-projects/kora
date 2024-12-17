@@ -111,6 +111,10 @@ include(
     'experimental:s3-client-aws',
     'experimental:camunda-engine-bpmn',
     'experimental:camunda-rest-undertow',
+    'avro:avro-common',
+    'avro:avro-module',
+    'avro:avro-annotation-processor',
+    'avro:avro-symbol-processor',
 )
 
 apply from: 'dependencies.gradle'

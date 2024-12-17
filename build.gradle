@@ -31,6 +31,13 @@ allprojects {
     version = System.getenv().getOrDefault("KORA_VERSION", "1.1.0-SNAPSHOT")
     repositories {
         mavenCentral()
+        maven { url = "https://packages.confluent.io/maven/" }
+    }
+
+    buildscript {
+        repositories {
+            mavenCentral()
+        }
     }
 }
 
