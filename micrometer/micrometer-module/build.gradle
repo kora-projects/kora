@@ -32,4 +32,10 @@ dependencies {
     compileOnly project(':experimental:camunda-engine-bpmn')
     compileOnly project(':experimental:camunda-rest-undertow')
     compileOnly project(':experimental:camunda-zeebe-worker')
+
+    api project(':micrometer:micrometer-registry-kora')
+
+    api libs.micrometer.core
+    api libs.opentelemetry.semconv
+    api libs.opentelemetry.api
 }
