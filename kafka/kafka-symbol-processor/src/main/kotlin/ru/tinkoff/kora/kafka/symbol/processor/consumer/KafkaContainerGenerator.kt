@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.kafka.symbol.processor.consumer
 
+import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.FunSpec
@@ -11,13 +12,14 @@ import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.containerFunName
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.getConsumerTags
 import ru.tinkoff.kora.kafka.symbol.processor.consumer.KafkaHandlerGenerator.HandlerFunction
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.TagUtils.addTag
 import ru.tinkoff.kora.ksp.common.TagUtils.toTagSpecTypes
 
 class KafkaContainerGenerator {
-    fun generate(functionDeclaration: KSFunctionDeclaration, handler: HandlerFunction, parameters: List<ConsumerParameter>): FunSpec {
+    fun generate(functionDeclaration: KSFunctionDeclaration, listenerAnnotation: KSAnnotation, handler: HandlerFunction, parameters: List<ConsumerParameter>): FunSpec {
         val keyType = handler.keyType
         val valueType = handler.valueType
         val handlerType = handler.funSpec.returnType as ParameterizedTypeName
@@ -37,7 +39,9 @@ class KafkaContainerGenerator {
             .addAnnotation(CommonClassNames.root)
             .addAnnotation(tagAnnotation)
             .returns(CommonClassNames.lifecycle)
-        funBuilder.addStatement("val telemetry = telemetryFactory.get(config.driverProperties(), config.telemetry())")
+
+        val configPath = listenerAnnotation.findValueNoDefault<String>("value")!!
+        funBuilder.addStatement("val telemetry = telemetryFactory.get(%S, config.driverProperties(), config.telemetry())", configPath)
         if (handlerType.rawType == KafkaClassNames.recordHandler) {
             funBuilder.addStatement("val wrappedHandler = %T.wrapHandlerRecord(telemetry, %L, handler)", KafkaClassNames.handlerWrapper, consumerParameter == null)
         } else {
@@ -47,9 +51,11 @@ class KafkaContainerGenerator {
             addStatement("val topics = config.topics()")
             addStatement("require(topics != null)")
             addStatement("require(topics.size == 1)")
-            addStatement("return %T(config, topics[0], keyDeserializer, valueDeserializer, telemetry, wrappedHandler)", KafkaClassNames.kafkaAssignConsumerContainer)
+            addStatement("return %T(%S, config, topics[0], keyDeserializer, valueDeserializer, telemetry, wrappedHandler)",
+                KafkaClassNames.kafkaAssignConsumerContainer, configPath)
             nextControlFlow("else")
-            addStatement("return %T(config, keyDeserializer, valueDeserializer, wrappedHandler, rebalanceListener)", KafkaClassNames.kafkaSubscribeConsumerContainer)
+            addStatement("return %T(%S, config, keyDeserializer, valueDeserializer, wrappedHandler, rebalanceListener)",
+                KafkaClassNames.kafkaSubscribeConsumerContainer, configPath)
         }
         return funBuilder.build()
     }
