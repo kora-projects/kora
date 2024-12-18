@@ -47,21 +47,6 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
     private final String consumerPrefix;
     private final boolean commitAllowed;
 
-    public KafkaSubscribeConsumerContainer(KafkaListenerConfig config,
-                                           Deserializer<K> keyDeserializer,
-                                           Deserializer<V> valueDeserializer,
-                                           BaseKafkaRecordsHandler<K, V> handler) {
-        this(config, keyDeserializer, valueDeserializer, handler, null);
-    }
-
-    public KafkaSubscribeConsumerContainer(KafkaListenerConfig config,
-                                           Deserializer<K> keyDeserializer,
-                                           Deserializer<V> valueDeserializer,
-                                           BaseKafkaRecordsHandler<K, V> handler,
-                                           @Nullable ConsumerAwareRebalanceListener rebalanceListener) {
-        this(KafkaUtils.getConsumerPrefix(config), config, keyDeserializer, valueDeserializer, handler, rebalanceListener);
-    }
-
     public KafkaSubscribeConsumerContainer(String consumerName,
                                            KafkaListenerConfig config,
                                            Deserializer<K> keyDeserializer,
