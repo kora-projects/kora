@@ -131,6 +131,8 @@ abstract class AbstractSymbolProcessorTest {
         return this.symbolProcessFiles(sourceList)
     }
 
+    class CompilationFailedException(message: String) : RuntimeException(message)
+
     data class CompileResult(val testPackage: String, val exitCode: ExitCode, val classLoader: ClassLoader, val messages: List<String>) {
         fun loadClass(className: String): Class<*> {
             return classLoader.loadClass("$testPackage.$className")!!
@@ -154,7 +156,7 @@ abstract class AbstractSymbolProcessorTest {
                     }
                 }
             }
-            throw RuntimeException(errorMessages.joinToString("\n"))
+            throw CompilationFailedException(errorMessages.joinToString("\n"))
         }
 
         fun assertSuccess() {

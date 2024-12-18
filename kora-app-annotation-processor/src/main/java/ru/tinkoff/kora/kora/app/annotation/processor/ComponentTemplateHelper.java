@@ -14,10 +14,20 @@ public class ComponentTemplateHelper {
     }
 
     public static TemplateMatch match(ProcessingContext ctx, DeclaredType declarationType, DeclaredType requiredType) {
+        return match0(ctx, declarationType, requiredType, true);
+    }
+
+    private static TemplateMatch match0(ProcessingContext ctx, DeclaredType declarationType, DeclaredType requiredType, boolean isRoot) {
         var declarationErasure = ctx.types.erasure(declarationType);
         var requiredErasure = ctx.types.erasure(requiredType);
-        if (!ctx.types.isAssignable(declarationErasure, requiredErasure)) {
-            return TemplateMatch.None.INSTANCE;
+        if (isRoot) {
+            if (!ctx.types.isAssignable(declarationErasure, requiredErasure)) {
+                return TemplateMatch.None.INSTANCE;
+            }
+        } else {
+            if (!ctx.types.isSameType(declarationErasure, requiredErasure)) {
+                return TemplateMatch.None.INSTANCE;
+            }
         }
         var typeElement = (TypeElement) requiredType.asElement();
         var map = new IdentityHashMap<TypeVariable, TypeMirror>();
@@ -62,7 +72,7 @@ public class ComponentTemplateHelper {
         if (requiredTypeParameter.getKind() == TypeKind.DECLARED && declarationTypeParameter.getKind() == TypeKind.DECLARED) {
             var drt = (DeclaredType) requiredTypeParameter;
             var ddt = (DeclaredType) declarationTypeParameter;
-            var match = match(ctx, ddt, drt);
+            var match = match0(ctx, ddt, drt, false);
             if (match instanceof TemplateMatch.None) {
                 return false;
             }
