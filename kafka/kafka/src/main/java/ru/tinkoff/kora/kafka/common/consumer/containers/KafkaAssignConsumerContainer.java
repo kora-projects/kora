@@ -50,6 +50,15 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
     private final String topic;
     private final KafkaConsumerTelemetry<K, V> telemetry;
 
+    public KafkaAssignConsumerContainer(KafkaListenerConfig config,
+                                        String topic,
+                                        Deserializer<K> keyDeserializer,
+                                        Deserializer<V> valueDeserializer,
+                                        KafkaConsumerTelemetry<K, V> telemetry,
+                                        BaseKafkaRecordsHandler<K, V> handler) {
+        this(KafkaUtils.getConsumerPrefix(config), config, topic, keyDeserializer, valueDeserializer, telemetry, handler);
+    }
+
     public KafkaAssignConsumerContainer(String consumerName,
                                         KafkaListenerConfig config,
                                         String topic,
