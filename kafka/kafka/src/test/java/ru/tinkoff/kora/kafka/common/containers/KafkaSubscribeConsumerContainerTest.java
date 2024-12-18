@@ -66,7 +66,7 @@ class KafkaSubscribeConsumerContainerTest {
             )
         );
         var queue = new ArrayBlockingQueue<>(3);
-        var container = new KafkaSubscribeConsumerContainer<>(config, new StringDeserializer(), new IntegerDeserializer(), (records, consumer, commitAllowed) -> {
+        var container = new KafkaSubscribeConsumerContainer<>("test", config, new StringDeserializer(), new IntegerDeserializer(), (records, consumer, commitAllowed) -> {
             for (var record : records) {
                 try {
                     var value = record.value();
@@ -76,7 +76,7 @@ class KafkaSubscribeConsumerContainerTest {
                 }
             }
             consumer.commitSync();
-        });
+        }, null);
         try {
             container.init();
             params.send("test-topic", 0, "1", 1);
