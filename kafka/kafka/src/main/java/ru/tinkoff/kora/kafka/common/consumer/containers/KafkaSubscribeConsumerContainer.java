@@ -85,7 +85,11 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
         this.keyDeserializer = keyDeserializer;
         this.valueDeserializer = valueDeserializer;
         this.backoffTimeout = new AtomicLong(config.backoffTimeout().toMillis());
-        this.consumerPrefix = Objects.requireNonNullElse(consumerName, KafkaUtils.getConsumerPrefix(config));
+        if(consumerName == null || consumerName.isBlank()) {
+            this.consumerPrefix = KafkaUtils.getConsumerPrefix(config);
+        } else {
+            this.consumerPrefix = consumerName;
+        }
     }
 
     public void launchPollLoop(Consumer<K, V> consumer, long started) {

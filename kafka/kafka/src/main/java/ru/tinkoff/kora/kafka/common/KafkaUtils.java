@@ -13,7 +13,7 @@ public final class KafkaUtils {
 
     public static String getConsumerPrefix(KafkaListenerConfig config) {
         final Object groupId = config.driverProperties().get(CommonClientConfigs.GROUP_ID_CONFIG);
-        if(groupId != null) {
+        if (groupId != null) {
             return groupId.toString();
         }
 

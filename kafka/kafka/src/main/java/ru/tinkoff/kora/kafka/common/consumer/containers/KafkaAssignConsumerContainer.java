@@ -77,7 +77,11 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
         this.config = config;
         this.refreshInterval = config.partitionRefreshInterval().toMillis();
         this.telemetry = Objects.requireNonNull(telemetry);
-        this.consumerPrefix = Objects.requireNonNullElse(consumerName, KafkaUtils.getConsumerPrefix(config));
+        if(consumerName == null || consumerName.isBlank()) {
+            this.consumerPrefix = KafkaUtils.getConsumerPrefix(config);
+        } else {
+            this.consumerPrefix = consumerName;
+        }
     }
 
     public void launchPollLoop(Consumer<K, V> consumer, int number, long started) {
