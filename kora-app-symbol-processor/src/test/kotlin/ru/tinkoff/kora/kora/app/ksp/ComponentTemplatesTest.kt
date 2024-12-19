@@ -43,4 +43,39 @@ class ComponentTemplatesTest : AbstractKoraAppProcessorTest() {
         Assertions.assertThat(draw.nodes).hasSize(3)
         draw.init()
     }
+
+    @Test
+    fun testInnerTypeParamsMatchCorrectly() {
+        try {
+            compile("""
+                @KoraApp
+                interface ExampleApplication {
+                    fun <T> dependency1(): MyJsonWriter<List<T>> {return MyJsonWriter()}
+                    class MyJsonWriter<T>
+
+                    @Root
+                    fun root(o: MyJsonWriter<Collection<String>>) {}
+                }
+                """);
+            Assertions.fail("Should throw an exception");
+        } catch (e: CompilationFailedException) {
+            Assertions.assertThat(e)
+                .hasMessageContaining("Required dependency type wasn't found");
+        }
+    }
+
+    @Test
+    fun testOuterTypeParamsMatchCorrectly() {
+        compile("""
+                @KoraApp
+                interface ExampleApplication {
+                    fun <T> dependency1(): MyJsonWriterImpl<List<T>> {return MyJsonWriterImpl()}
+                    interface MyJsonWriter<T>
+                    class MyJsonWriterImpl<T> : MyJsonWriter<T>
+
+                    @Root
+                    fun root(o: MyJsonWriter<List<String>>) {}
+                }
+                """);
+    }
 }
