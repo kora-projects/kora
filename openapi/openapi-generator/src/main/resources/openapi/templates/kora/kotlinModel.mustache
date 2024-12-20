@@ -20,7 +20,11 @@ package {{package}}
 @ru.tinkoff.kora.json.common.annotation.Json
 @ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorField("{{{propertyBaseName}}}")
 sealed interface {{classname}} {
-{{#allVars}}{{^isDiscriminator}}
+
+{{#vendorExtensions.x-discriminator-property}}
+  /** {{#description}}{{.}}{{/description}}{{^description}}{{name}}{{/description}} */
+  fun {{name}}(): {{{datatypeWithEnum}}}{{/vendorExtensions.x-discriminator-property}}{{#allVars}}{{^isDiscriminator}}
+
   /**
    * {{#description}}{{.}}{{/description}}{{^description}}{{name}}{{/description}} {{#example}}
    * (example: {{.}}){{/example}}
@@ -64,32 +68,38 @@ sealed interface {{classname}} {
 {{#vendorExtensions.x-discriminator-constant}}
 
   companion object {
-    val DISCRIMINATOR: String = {{{vendorExtensions.x-discriminator-constant}}}
+    val DISCRIMINATOR: String = {{{.}}}
+    val DISCRIMINATOR_{{vendorExtensions.x-discriminator-constant-field}}: String = {{{.}}};
   }
 {{/vendorExtensions.x-discriminator-constant}}
 {{#vendorExtensions.x-discriminator-constants}}
-
-    {{#vendorExtensions.formParamMappers}}
-    private ru.tinkoff.kora.http.client.common.writer.StringParameterConverter<{{paramType}}> {{paramName}}Converter;
-    {{/vendorExtensions.formParamMappers}}
 
   companion object {
     val DISCRIMINATORS: List<String> = listOf({{{vendorExtensions.x-discriminator-constants}}})
     {{#vendorExtensions.x-discriminator-constant-fields}}
     val DISCRIMINATOR_{{discriminatorField}}: String = {{{discriminatorValue}}}
+    {{#discriminatorFieldOld}}
+    @Deprecated
+    val DISCRIMINATOR_{{{.}}}: String = {{{discriminatorValue}}}
+    {{/discriminatorFieldOld}}
     {{/vendorExtensions.x-discriminator-constant-fields}}
   }
 {{/vendorExtensions.x-discriminator-constants}}
-
 {{#vendorExtensions.x-discriminator-values-check}}
+
   init {
     if {{{vendorExtensions.x-discriminator-values-check}}} {
       throw IllegalStateException("Invalid discriminator value");
     }
   }
 {{/vendorExtensions.x-discriminator-values-check}}
+{{#vendorExtensions.x-discriminator-property}}
 
+  /** {{#description}}{{.}}{{/description}}{{^description}}{{name}}{{/description}} */
+  override fun {{name}}(): {{{datatypeWithEnum}}} = {{{vendorExtensions.x-discriminator-property-value}}}
+{{/vendorExtensions.x-discriminator-property}}
 {{^hasVars}}
+
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
@@ -100,7 +110,6 @@ sealed interface {{classname}} {
     return javaClass.hashCode()
   }
 {{/hasVars}}
-
   {{#allVars}}
       {{#isEnum}}
       {{^isContainer}}
