@@ -10,6 +10,7 @@ import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.generatedClassName
 
 interface KoraExtension {
+
     fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)?
 
     fun generatedByProcessor(resolver: Resolver, source: KSClassDeclaration, postfix: String): (() -> ExtensionResult)? {
