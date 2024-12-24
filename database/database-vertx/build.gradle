@@ -3,15 +3,14 @@ apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 dependencies {
     annotationProcessor project(":config:config-annotation-processor")
 
-    api project(":database:database-common")
-    api project(":vertx-common")
-    api project(":common")
-
-    api(libs.vertx.sql.client)
     compileOnly(libs.reactor.core)
     compileOnly(libs.kotlin.stdlib.lib)
     compileOnly(libs.kotlin.coroutines.jdk8)
 
+    api project(":database:database-common")
+    api project(":vertx-common")
+    api project(":common")
+    api(libs.vertx.sql.client)
 
     testImplementation project(":internal:test-postgres")
     testImplementation libs.reactor.test

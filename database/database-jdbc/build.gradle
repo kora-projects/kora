@@ -1,9 +1,19 @@
+apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
+
 dependencies {
     annotationProcessor project(":config:config-annotation-processor")
+
+    compileOnly(libs.reactor.core)
+    compileOnly(libs.kotlin.stdlib.lib)
+    compileOnly(libs.kotlin.coroutines.jdk8)
 
     api project(":database:database-common")
     api project(":common")
     api libs.hikari
 
     testImplementation project(":internal:test-postgres")
+    testImplementation(libs.reactor.core)
+    testImplementation(libs.kotlin.stdlib.lib)
+    testImplementation(libs.kotlin.coroutines.core)
+    testImplementation(libs.kotlin.coroutines.jdk8)
 }
