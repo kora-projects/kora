@@ -50,13 +50,22 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
     private final String topic;
     private final KafkaConsumerTelemetry<K, V> telemetry;
 
-    public KafkaAssignConsumerContainer(
-        KafkaListenerConfig config,
-        String topic,
-        Deserializer<K> keyDeserializer,
-        Deserializer<V> valueDeserializer,
-        KafkaConsumerTelemetry<K, V> telemetry,
-        BaseKafkaRecordsHandler<K, V> handler) {
+    public KafkaAssignConsumerContainer(KafkaListenerConfig config,
+                                        String topic,
+                                        Deserializer<K> keyDeserializer,
+                                        Deserializer<V> valueDeserializer,
+                                        KafkaConsumerTelemetry<K, V> telemetry,
+                                        BaseKafkaRecordsHandler<K, V> handler) {
+        this(KafkaUtils.getConsumerPrefix(config), config, topic, keyDeserializer, valueDeserializer, telemetry, handler);
+    }
+
+    public KafkaAssignConsumerContainer(String consumerName,
+                                        KafkaListenerConfig config,
+                                        String topic,
+                                        Deserializer<K> keyDeserializer,
+                                        Deserializer<V> valueDeserializer,
+                                        KafkaConsumerTelemetry<K, V> telemetry,
+                                        BaseKafkaRecordsHandler<K, V> handler) {
         this.handler = Objects.requireNonNull(handler);
         this.backoffTimeout = new AtomicLong(config.backoffTimeout().toMillis());
         this.keyDeserializer = Objects.requireNonNull(keyDeserializer);
@@ -66,7 +75,11 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
         this.config = config;
         this.refreshInterval = config.partitionRefreshInterval().toMillis();
         this.telemetry = Objects.requireNonNull(telemetry);
-        this.consumerPrefix = KafkaUtils.getConsumerPrefix(this.config);
+        if (consumerName == null || consumerName.isBlank()) {
+            this.consumerPrefix = KafkaUtils.getConsumerPrefix(config);
+        } else {
+            this.consumerPrefix = consumerName;
+        }
     }
 
     public void launchPollLoop(Consumer<K, V> consumer, int number, long started) {
@@ -286,7 +299,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
             }
             consumers.clear();
             if (executorService != null) {
-                if(!shutdownExecutorService(executorService, config.shutdownWait())) {
+                if (!shutdownExecutorService(executorService, config.shutdownWait())) {
                     logger.warn("Kafka Consumer '{}' failed completing graceful shutdown in {}", consumerPrefix, config.shutdownWait());
                 }
             }

@@ -54,7 +54,7 @@ public class KafkaConsumerModuleGenerator {
             var handler = this.kafkaConsumerHandlerGenerator.generate(elements, method, parameters);
             classBuilder.addMethod(handler.method());
 
-            var container = this.kafkaConsumerContainerGenerator.generate(elements, method, handler, parameters);
+            var container = this.kafkaConsumerContainerGenerator.generate(elements, method, annotation, handler, parameters);
             classBuilder.addMethod(container);
         }
 

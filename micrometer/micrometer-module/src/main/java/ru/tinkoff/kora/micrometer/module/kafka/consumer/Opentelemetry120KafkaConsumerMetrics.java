@@ -3,28 +3,38 @@ package ru.tinkoff.kora.micrometer.module.kafka.consumer;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.semconv.SemanticAttributes;
+import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.Metric;
+import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerMetrics;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static io.opentelemetry.api.common.AttributeKey.stringKey;
 
 /**
  * @see <a href="https://github.com/open-telemetry/semantic-conventions/blob/main/docs/messaging/messaging-metrics.md">messaging-metrics</a>
  */
 public class Opentelemetry120KafkaConsumerMetrics implements KafkaConsumerMetrics, Lifecycle {
 
+    private static final AttributeKey<String> MESSAGING_KAFKA_CONSUMER_NAME = stringKey("messaging.kafka.consumer.name");
+
     private final MeterRegistry meterRegistry;
     private final ConcurrentHashMap<DurationKey, DistributionSummary> metrics = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<DurationBatchKey, DistributionSummary> metricsBatch = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<TopicPartition, LagGauge> lagMetrics = new ConcurrentHashMap<>();
     private final TelemetryConfig.MetricsConfig config;
     private final Properties driverProperties;
@@ -37,6 +47,8 @@ public class Opentelemetry120KafkaConsumerMetrics implements KafkaConsumerMetric
 
     private record DurationKey(String topic, int partition) {}
 
+    private record DurationBatchKey(String consumerName) {}
+
     private DistributionSummary metrics(DurationKey key) {
         var clientId = driverProperties.get(ProducerConfig.CLIENT_ID_CONFIG);
         var groupId = driverProperties.get(ConsumerConfig.GROUP_ID_CONFIG);
@@ -46,6 +58,22 @@ public class Opentelemetry120KafkaConsumerMetrics implements KafkaConsumerMetric
             .baseUnit("milliseconds")
             .tag(SemanticAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
             .tag(SemanticAttributes.MESSAGING_DESTINATION_NAME.getKey(), key.topic())
+            .tag(SemanticAttributes.MESSAGING_CLIENT_ID.getKey(), Objects.requireNonNullElse(clientId, "").toString())
+            .tag(SemanticAttributes.MESSAGING_KAFKA_CONSUMER_GROUP.getKey(), Objects.requireNonNullElse(groupId, "").toString());
+
+        return builder.register(this.meterRegistry);
+    }
+
+    private DistributionSummary metricBatch(DurationBatchKey key) {
+        var clientId = driverProperties.get(ProducerConfig.CLIENT_ID_CONFIG);
+        var groupId = driverProperties.get(ConsumerConfig.GROUP_ID_CONFIG);
+
+        var builder = DistributionSummary.builder("messaging.process.batch.duration")
+            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V120))
+            .baseUnit("milliseconds")
+            .tag(SemanticAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
+            .tag(MESSAGING_KAFKA_CONSUMER_NAME.getKey(), key.consumerName())
+            .tag(SemanticAttributes.MESSAGING_OPERATION.getKey(), key.consumerName())
             .tag(SemanticAttributes.MESSAGING_CLIENT_ID.getKey(), Objects.requireNonNullElse(clientId, "").toString())
             .tag(SemanticAttributes.MESSAGING_KAFKA_CONSUMER_GROUP.getKey(), Objects.requireNonNullElse(groupId, "").toString());
 
@@ -66,13 +94,16 @@ public class Opentelemetry120KafkaConsumerMetrics implements KafkaConsumerMetric
     }
 
     @Override
-    public void reportLag(TopicPartition partition, long lag) {
-        lagMetrics.computeIfAbsent(partition, p -> new LagGauge(p, meterRegistry)).offsetLag = lag;
+    public void reportLag(String consumerName, TopicPartition partition, long lag) {
+        lagMetrics.computeIfAbsent(partition, p -> new LagGauge(consumerName, p, meterRegistry)).offsetLag = lag;
     }
 
     @Override
-    public void onRecordsProcessed(ConsumerRecords<?, ?> records, long duration, Throwable ex) {
+    public void onRecordsProcessed(String consumerName, ConsumerRecords<?, ?> records, long duration, @Nullable Throwable ex) {
+        double durationDouble = ((double) duration) / 1_000_000;
+        var key = new DurationBatchKey(consumerName);
 
+        this.metricsBatch.computeIfAbsent(key, this::metricBatch).record(durationDouble);
     }
 
     @Override
@@ -87,6 +118,11 @@ public class Opentelemetry120KafkaConsumerMetrics implements KafkaConsumerMetric
         for (var metric : metrics) {
             metric.close();
         }
+        var metricsBatch = new ArrayList<>(this.metricsBatch.values());
+        this.metricsBatch.clear();
+        for (var metric : metricsBatch) {
+            metric.close();
+        }
         var lagMetrics = new ArrayList<>(this.lagMetrics.values());
         this.lagMetrics.clear();
         for (var lagMetric : lagMetrics) {
@@ -95,12 +131,14 @@ public class Opentelemetry120KafkaConsumerMetrics implements KafkaConsumerMetric
     }
 
     private static class LagGauge {
+
         private final Gauge gauge;
         private volatile long offsetLag;
 
-        private LagGauge(TopicPartition partition, MeterRegistry meterRegistry) {
+        private LagGauge(String consumerName, TopicPartition partition, MeterRegistry meterRegistry) {
             gauge = Gauge.builder("messaging.kafka.consumer.lag", () -> offsetLag)
                 .tag(SemanticAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
+                .tag(MESSAGING_KAFKA_CONSUMER_NAME.getKey(), consumerName)
                 .tag(SemanticAttributes.MESSAGING_DESTINATION_NAME.getKey(), partition.topic())
                 .tag(SemanticAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION.getKey(), Objects.toString(partition.partition()))
                 .register(meterRegistry);
