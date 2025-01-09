@@ -28,21 +28,19 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 
 public class PublicApiHandler {
-    private static final Logger log = LoggerFactory.getLogger(HttpServer.class);
+
     private static final CompletionStage<HttpServerResponse> NOT_FOUND_RESPONSE = CompletableFuture.completedFuture(
         HttpServerResponse.of(404)
     );
-    private final HttpServerRequestHandler.HandlerFunction NOT_FOUND_HANDLER = (ctx, request) -> NOT_FOUND_RESPONSE;
+    private static final HttpServerRequestHandler.HandlerFunction NOT_FOUND_HANDLER = (ctx, request) -> NOT_FOUND_RESPONSE;
 
     private final Map<String, PathTemplateMatcher<HttpServerRequestHandler>> pathTemplateMatcher;
     private final PathTemplateMatcher<List<String>> allMethodMatchers;
     private final AtomicReference<RequestHandler> requestHandler = new AtomicReference<>();
     private final HttpServerTelemetry telemetry;
-    private final HttpServerConfig config;
 
     public PublicApiHandler(List<HttpServerRequestHandler> handlers, List<HttpServerInterceptor> interceptors, HttpServerTelemetryFactory httpServerTelemetry, HttpServerConfig config) {
         this.telemetry = Objects.requireNonNullElse(httpServerTelemetry.get(config.telemetry()), HttpServerTelemetry.EMPTY);
-        this.config = config;
         this.pathTemplateMatcher = new HashMap<>();
         this.allMethodMatchers = new PathTemplateMatcher<>();
         for (var h : handlers) {
