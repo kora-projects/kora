@@ -7,7 +7,6 @@ dependencies {
     annotationProcessor project(':config:config-annotation-processor')
 
     compileOnly libs.caffeine
-    compileOnly project(':experimental:camunda-zeebe-worker')
     compileOnly project(':http:http-server-common')
     compileOnly project(':http:soap-client')
     compileOnly project(':http:http-client-common')
@@ -23,4 +22,5 @@ dependencies {
     compileOnly project(':experimental:s3-client-common')
     compileOnly project(':experimental:camunda-engine-bpmn')
     compileOnly project(':experimental:camunda-rest-undertow')
+    compileOnly project(':experimental:camunda-zeebe-worker')
 }
