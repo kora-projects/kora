@@ -14,5 +14,5 @@ dependencies {
     compileOnly project(':experimental:s3-client-common')
     compileOnly project(':experimental:camunda-rest-undertow')
     compileOnly project(':experimental:camunda-engine-bpmn')
-    compileOnly project(':camunda:camunda-zeebe-worker')
+    compileOnly project(':experimental:camunda-zeebe-worker')
 }
