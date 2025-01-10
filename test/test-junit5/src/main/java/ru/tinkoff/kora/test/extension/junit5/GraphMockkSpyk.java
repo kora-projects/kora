@@ -90,13 +90,12 @@ record GraphMockkSpyk(GraphCandidate candidate,
     }
 
     private Object getSpy(Object spyCandidate, Node node) {
-        var spy = Mockito.spy(spyCandidate);
         if (node.type() instanceof Class<?> tc && Wrapped.class.isAssignableFrom(tc)) {
-            return (Object) (Wrapped<?>) () -> spy;
+            return (Object) (Wrapped<?>) () -> spyCandidate;
         } else if (node.type() instanceof ParameterizedType pt && Wrapped.class.isAssignableFrom(((Class<?>) pt.getRawType()))) {
-            return (Object) (Wrapped<?>) () -> spy;
+            return (Object) (Wrapped<?>) () -> spyCandidate;
         } else {
-            return spy;
+            return spyCandidate;
         }
     }
 }
