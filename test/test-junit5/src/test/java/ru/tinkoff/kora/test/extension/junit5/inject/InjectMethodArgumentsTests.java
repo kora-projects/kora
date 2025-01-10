@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.test.extension.junit5.injectk;
+package ru.tinkoff.kora.test.extension.junit5.inject;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

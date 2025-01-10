@@ -6,6 +6,7 @@ import kotlin.jvm.JvmClassMappingKt;
 import kotlin.reflect.KClass;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Node;
+import ru.tinkoff.kora.application.graph.Wrapped;
 
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.ParameterizedType;
@@ -54,11 +55,15 @@ record GraphMockkMock(GraphCandidate candidate,
     }
 
     @SuppressWarnings("unchecked")
-    private <T> void replaceNode(ApplicationGraphDraw graphDraw, Node<?> node, Class<T> mockClass) {
-        var casted = (Node<T>) node;
-        graphDraw.replaceNode(casted, g -> {
-            KClass<T> kotlinClass = JvmClassMappingKt.getKotlinClass(mockClass);
-            return MockKKt.mockkClass(kotlinClass, null, relaxed, new KClass[]{}, relaxUnitFun, v -> null);
+    private void replaceNode(ApplicationGraphDraw graphDraw, Node node, Class<?> mockClass) {
+        graphDraw.replaceNode(node, g -> {
+            KClass<?> kotlinClass = JvmClassMappingKt.getKotlinClass(mockClass);
+            Object mock = MockKKt.mockkClass(kotlinClass, null, relaxed, new KClass[]{}, relaxUnitFun, v -> null);
+            if (node.type() instanceof Class<?> tc && Wrapped.class.isAssignableFrom(tc)) {
+                return (Object) (Wrapped<?>) () -> mock;
+            } else {
+                return mock;
+            }
         });
     }
 }
