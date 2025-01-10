@@ -11,12 +11,16 @@ public final class DefaultZeebeWorkerLogger implements ZeebeWorkerLogger {
 
     @Override
     public void logStarted(JobContext context) {
-        logger.debug("Zeebe JobWorker started Job {}", context);
+        if (logger.isDebugEnabled()) {
+            logger.debug("Zeebe JobWorker started Job {} with variables {}", context, context.variablesAsString());
+        } else if (logger.isInfoEnabled()) {
+            logger.info("Zeebe JobWorker started Job {}", context);
+        }
     }
 
     @Override
     public void logComplete(JobContext context) {
-        logger.debug("Zeebe JobWorker completed Job {}", context);
+        logger.info("Zeebe JobWorker completed Job {}", context);
     }
 
     @Override

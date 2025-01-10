@@ -23,6 +23,7 @@ import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.generatedClassName
 import java.io.IOException
 import java.io.UncheckedIOException
+import java.util.regex.Pattern
 
 class ZeebeWorkerSymbolProcessor(
     private val environment: SymbolProcessorEnvironment
@@ -45,6 +46,9 @@ class ZeebeWorkerSymbolProcessor(
         private val CLASS_JSON_WRITER: ClassName = ClassName("ru.tinkoff.kora.json.common", "JsonWriter")
         private val CLASS_VARIABLE_READER = ClassName("ru.tinkoff.kora.camunda.zeebe.worker", "ZeebeVariableJsonReader")
         private val CLASS_WORKER_CONFIG: ClassName = ClassName("ru.tinkoff.kora.camunda.zeebe.worker", "ZeebeWorkerConfig")
+
+        private val VAR_PATTERN: Pattern = Pattern.compile("[a-zA-Z_]+[a-zA-Z0-9_]+")
+        private val VAR_RESERVED: Set<String> = setOf("null", "true", "false", "function", "if", "then", "else", "for", "between", "instance", "of", "not")
     }
 
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
@@ -131,14 +135,40 @@ class ZeebeWorkerSymbolProcessor(
             codeBuilder.addStatement("return client.newCompleteCommand(job)")
         } else {
             codeBuilder.addStatement("val result = this.handler.%L(%L)", methodName, varsArg)
-            if (method.returnType!!.resolve().isMarkedNullable) {
+            val returnJobVariable = method.findAnnotation(ANNOTATION_VARIABLE)
+            val isResultNullable = method.returnType!!.resolve().isMarkedNullable
+            if (isResultNullable) {
                 codeBuilder.beginControlFlow("if(result != null)")
-                codeBuilder.addStatement("return client.newCompleteCommand(job).variables(varsWriter.toStringUnchecked(result))")
+            }
+
+            if (returnJobVariable != null) {
+                val varName = returnJobVariable.findValueNoDefault<String>("value")
+                    ?: throw ProcessingErrorException(
+                        "Worker result job variable must specify name or @JobVariable annotation must be removed if result represent all variables",
+                        method
+                    )
+
+                if (isVariableInvalid(varName)) {
+                    throw ProcessingErrorException(
+                        "Worker result job variable name must be alphanumeric ( _ symbol is allowed) and not start with number, but was: $varName",
+                        method
+                    )
+                }
+
+                codeBuilder.addStatement(
+                    "var _vars = %S + varsWriter.toStringUnchecked(result) + %S",
+                    "{\"$varName\":", "}"
+                )
+                codeBuilder.addStatement("return client.newCompleteCommand(job).variables(_vars)")
+            } else {
+                codeBuilder.addStatement("var _vars = varsWriter.toStringUnchecked(result)")
+                codeBuilder.addStatement("return client.newCompleteCommand(job).variables(_vars)")
+            }
+
+            if (isResultNullable) {
                 codeBuilder.nextControlFlow("else")
                 codeBuilder.addStatement("return client.newCompleteCommand(job)")
                 codeBuilder.endControlFlow()
-            } else {
-                codeBuilder.addStatement("return client.newCompleteCommand(job).variables(varsWriter.toStringUnchecked(result))")
             }
         }
 
@@ -313,6 +343,20 @@ class ZeebeWorkerSymbolProcessor(
         }
 
         throw ProcessingErrorException("Can't find KSClassDeclaration for " + method.simpleName, method)
+    }
+
+    private fun isVariableInvalid(name: String): Boolean {
+        if (!VAR_PATTERN.matcher(name).matches()) {
+            return true
+        }
+
+        for (s in VAR_RESERVED) {
+            if (s.equals(name, ignoreCase = true)) {
+                return true
+            }
+        }
+
+        return false
     }
 }
 

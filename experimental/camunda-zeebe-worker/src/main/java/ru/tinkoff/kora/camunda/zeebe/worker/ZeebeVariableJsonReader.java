@@ -52,28 +52,25 @@ public final class ZeebeVariableJsonReader<T> implements JsonReader<T> {
         T value = null;
         if (parser.nextFieldName(fetchVariableName)) {
             value = readValue(parser);
-            token = parser.nextToken();
-            while (token != JsonToken.END_OBJECT) {
-                parser.nextToken();
-                parser.skipChildren();
-                token = parser.nextToken();
-            }
             return value;
         }
 
         token = parser.currentToken();
         while (token != JsonToken.END_OBJECT) {
-            if (token != JsonToken.FIELD_NAME) {
-                throw new JsonParseException(parser, "Expecting FIELD_NAME token, got " + token);
+            if (token == JsonToken.FIELD_NAME) {
+                var fieldName = parser.currentName();
+                if (fieldName.equals(fetchVariableName.getValue())) {
+                    value = readValue(parser);
+                    break;
+                }
             }
-            var fieldName = parser.currentName();
-            if (fieldName.equals("value")) {
-                value = readValue(parser);
-            } else {
-                parser.nextToken();
-                parser.skipChildren();
-            }
+            parser.nextToken();
+            parser.skipChildren();
             token = parser.nextToken();
+        }
+
+        if (value == null && !isNullable) {
+            throw new JsonParseException(parser, "Expecting NonNull value for Fetch Variable '" + fetchVariableName + "', but got NULLABLE fetch variable");
         }
 
         return value;

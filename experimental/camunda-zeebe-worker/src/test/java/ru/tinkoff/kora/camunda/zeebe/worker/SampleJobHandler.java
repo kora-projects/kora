@@ -42,6 +42,12 @@ public class SampleJobHandler {
         // do something
     }
 
+    @JobWorker("my-worker")
+    @JobVariable("resp")
+    SomeResponse process7() {
+        return new SomeResponse("Bob", "1");
+    }
+
     static final class Job2 implements KoraJobWorker {
 
         private final SampleJobHandler handler;
@@ -175,6 +181,35 @@ public class SampleJobHandler {
             try {
                 handler.process6(new ActiveJobContext(type(), job));
                 return client.newCompleteCommand(job);
+            } catch (JobWorkerException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new JobWorkerException("500", e);
+            }
+        }
+    }
+
+    static final class Job7 implements KoraJobWorker {
+
+        private final JsonWriter<SomeResponse> jsonWriter;
+        private final SampleJobHandler handler;
+
+        Job7(JsonWriter<SomeResponse> jsonWriter, SampleJobHandler handler) {
+            this.jsonWriter = jsonWriter;
+            this.handler = handler;
+        }
+
+        @Override
+        public String type() {
+            return "job4";
+        }
+
+        @Override
+        public FinalCommandStep<?> handle(JobClient client, ActivatedJob job) {
+            try {
+                SomeResponse response = handler.process7();
+                return client.newCompleteCommand(job)
+                    .variables("{\"resp\"" + jsonWriter.toStringUnchecked(response) + "}");
             } catch (JobWorkerException e) {
                 throw e;
             } catch (Exception e) {

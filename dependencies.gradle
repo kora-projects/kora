@@ -25,7 +25,7 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
             version('undertow', '2.3.18.Final')
             version('undertow-jakarta', '6.2.8.Final')
             version('camunda7', '7.21.0')
-            version('zeebe', '8.5.0')
+            version('zeebe', '8.6.7')
 
             library('jsr305', 'com.google.code.findbugs', 'jsr305').version('3.0.2')
             library('jakarta-annotations', 'jakarta.annotation', 'jakarta.annotation-api').version('2.1.1')

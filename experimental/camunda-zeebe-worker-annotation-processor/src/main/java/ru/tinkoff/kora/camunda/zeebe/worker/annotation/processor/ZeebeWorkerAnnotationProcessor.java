@@ -11,6 +11,7 @@ import javax.lang.model.type.TypeMirror;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor {
@@ -31,6 +32,9 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
     private static final ClassName CLASS_JSON_WRITER = ClassName.get("ru.tinkoff.kora.json.common", "JsonWriter");
     private static final ClassName CLASS_VARIABLE_READER = ClassName.get("ru.tinkoff.kora.camunda.zeebe.worker", "ZeebeVariableJsonReader");
     private static final ClassName CLASS_WORKER_CONFIG = ClassName.get("ru.tinkoff.kora.camunda.zeebe.worker", "ZeebeWorkerConfig");
+
+    private static final Pattern VAR_PATTERN = Pattern.compile("[a-zA-Z_]+[a-zA-Z0-9_]+");
+    private static final Set<String> VAR_RESERVED = Set.of("null", "true", "false", "function", "if", "then", "else", "for", "between", "instance", "of", "not");
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -131,7 +135,23 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
             }
 
             codeBuilder.beginControlFlow("if(result != null)");
-            codeBuilder.addStatement("return client.newCompleteCommand(job).variables(varsWriter.toStringUnchecked(result))");
+            AnnotationMirror returnJobVariable = AnnotationUtils.findAnnotation(method, ANNOTATION_VARIABLE);
+            if (returnJobVariable != null) {
+                String varName = AnnotationUtils.parseAnnotationValueWithoutDefault(returnJobVariable, "value");
+                if (varName == null) {
+                    throw new ProcessingErrorException("Worker result job variable must specify name or @JobVariable annotation must be removed if result represent all variables", method);
+                }
+
+                if (isVariableInvalid(varName)) {
+                    throw new ProcessingErrorException("Worker result job variable name must be alphanumeric ( _ symbol is allowed) and not start with number, but was: " + varName, method);
+                }
+
+                codeBuilder.addStatement("var _vars = $S + varsWriter.toStringUnchecked(result) + $S", "{\"" + varName + "\":", "}");
+                codeBuilder.addStatement("return client.newCompleteCommand(job).variables(_vars)");
+            } else {
+                codeBuilder.addStatement("var _vars = varsWriter.toStringUnchecked(result)");
+                codeBuilder.addStatement("return client.newCompleteCommand(job).variables(_vars)");
+            }
             codeBuilder.nextControlFlow("else");
             codeBuilder.addStatement("return client.newCompleteCommand(job)");
             codeBuilder.endControlFlow();
@@ -214,7 +234,7 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
                 ? MethodUtils.getGenericType(method.getReturnType()).orElseThrow(() -> new ProcessingErrorException("Method return Optional<T> type must have type signature", method))
                 : method.getReturnType();
 
-            var writerType = ParameterizedTypeName.get(CLASS_JSON_WRITER, TypeName.get(returnType));
+            var writerType = ParameterizedTypeName.get(CLASS_JSON_WRITER, TypeName.get(returnType).box());
             implBuilder.addField(writerType, "varsWriter", Modifier.PRIVATE, Modifier.FINAL);
             methodBuilder.addParameter(writerType, "varsWriter");
             constructorBuilder.addStatement("this.varsWriter = varsWriter");
@@ -224,7 +244,7 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
             .filter(v -> v.isVars)
             .findFirst()
             .ifPresent(vars -> {
-                var readerType = ParameterizedTypeName.get(CLASS_JSON_READER, TypeName.get(vars.parameter.asType()));
+                var readerType = ParameterizedTypeName.get(CLASS_JSON_READER, TypeName.get(vars.parameter.asType()).box());
                 implBuilder.addField(readerType, "varsReader", Modifier.PRIVATE, Modifier.FINAL);
                 methodBuilder.addParameter(readerType, "varsReader");
                 constructorBuilder.addStatement("this.varsReader = varsReader");
@@ -233,7 +253,7 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
         int varCounter = 1;
         for (Variable variable : variables) {
             if (variable.isVar) {
-                var readerType = ParameterizedTypeName.get(CLASS_JSON_READER, TypeName.get(variable.parameter.asType()));
+                var readerType = ParameterizedTypeName.get(CLASS_JSON_READER, TypeName.get(variable.parameter.asType()).box());
                 var readerName = "var" + varCounter + "Reader";
                 implBuilder.addField(readerType, readerName, Modifier.PRIVATE, Modifier.FINAL);
                 methodBuilder.addParameter(readerType, readerName);
@@ -300,6 +320,10 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
                     .orElse(parameter.getSimpleName().toString())
                     : parameter.getSimpleName().toString();
 
+                if (isVariableInvalid(varName)) {
+                    throw new ProcessingErrorException("Worker argument job variable name must be alphanumeric with _ symbol and not start with number, but was: " + varName, method);
+                }
+
                 variables.add(new Variable(parameter, varName, isVar, isVars, isContext));
             } else {
                 throw new ProcessingErrorException("Only @%s and @%s and %s variables are supported as JobWorker arguments".formatted(
@@ -308,6 +332,20 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
         }
 
         return variables;
+    }
+
+    private static boolean isVariableInvalid(String name) {
+        if (!VAR_PATTERN.matcher(name).matches()) {
+            return true;
+        }
+
+        for (String s : VAR_RESERVED) {
+            if (s.equalsIgnoreCase(name)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     record Variable(VariableElement parameter, String name, boolean isVar, boolean isVars, boolean isContext) {

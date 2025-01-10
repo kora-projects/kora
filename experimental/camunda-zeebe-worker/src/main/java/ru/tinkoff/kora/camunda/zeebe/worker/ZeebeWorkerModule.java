@@ -2,7 +2,6 @@ package ru.tinkoff.kora.camunda.zeebe.worker;
 
 import io.camunda.zeebe.client.CredentialsProvider;
 import io.camunda.zeebe.client.ZeebeClient;
-import io.camunda.zeebe.client.ZeebeClientBuilder;
 import io.camunda.zeebe.client.ZeebeClientConfiguration;
 import io.camunda.zeebe.client.api.JsonMapper;
 import io.camunda.zeebe.client.api.worker.BackoffSupplier;
@@ -27,7 +26,7 @@ import ru.tinkoff.kora.json.common.JsonCommonModule;
 import java.net.URI;
 import java.util.concurrent.ScheduledExecutorService;
 
-public interface ZeebeWorkerModule extends JsonCommonModule, GrpcClientModule {
+public interface ZeebeWorkerModule extends GrpcClientModule, JsonCommonModule {
 
     default ZeebeWorkerConfig zeebeWorkerConfig(Config config, ConfigValueExtractor<ZeebeWorkerConfig> extractor) {
         return extractor.extract(config.get("zeebe.worker"));

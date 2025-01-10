@@ -48,7 +48,7 @@ public final class ZeebeResourceDeployment implements Lifecycle {
             final Set<String> normalizedLocations = locations.stream()
                 .map(location -> {
                     if (location.startsWith("classpath:")) {
-                        return location;
+                        return location.substring(10);
                     } else {
                         logger.warn("Only locations with `classpath:` prefix are supported, skipping unsupported resource location: {}", location);
                         return null;
@@ -98,31 +98,6 @@ public final class ZeebeResourceDeployment implements Lifecycle {
         InputStream asInputStream();
     }
 
-    record FileResource(String name, String path) implements Resource {
-
-        @Override
-        public InputStream asInputStream() {
-            return FileResource.class.getResourceAsStream("/" + path + "/" + name);
-        }
-
-        @Override
-        public boolean equals(Object object) {
-            if (this == object) return true;
-            if (!(object instanceof Resource that)) return false;
-            return Objects.equals(name, that.name()) && Objects.equals(path, that.path());
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(name, path);
-        }
-
-        @Override
-        public String toString() {
-            return name;
-        }
-    }
-
     record JarResource(String name, String path, Supplier<InputStream> inputStream) implements Resource {
 
         @Override
@@ -148,9 +123,38 @@ public final class ZeebeResourceDeployment implements Lifecycle {
         }
     }
 
+    record FileResource(String name, String path) implements Resource {
+
+        @Override
+        public InputStream asInputStream() {
+            return FileResource.class.getResourceAsStream("/" + path + "/" + name);
+        }
+
+        @Override
+        public boolean equals(Object object) {
+            if (this == object) return true;
+            if (!(object instanceof Resource that)) return false;
+            return Objects.equals(name, that.name()) && Objects.equals(path, that.path());
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(name, path);
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
     static final class ClasspathResourceUtils {
 
         private ClasspathResourceUtils() {}
+
+        public static Optional<Resource> findResource(String path) {
+            return findResources(path).stream().findFirst();
+        }
 
         public static List<Resource> findResources(Collection<String> paths) {
             return paths.stream()
