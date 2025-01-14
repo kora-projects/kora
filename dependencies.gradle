@@ -134,6 +134,10 @@ dependencyResolutionManagement { DependencyResolutionManagement it ->
 
             library("kafka-client", "org.apache.kafka", "kafka-clients").versionRef("kafka")
 
+            // gRPC               | Netty                 | netty-tcnative-boringssl-static
+            // 1.59.x             | 4.1.97.Final          | 2.0.61.Final
+            // 1.60.x-1.66.x      | 4.1.100.Final         | 2.0.61.Final
+            // 1.67.x             | 4.1.110.Final         | 2.0.65.Final
             library("grpc-kotlin-stub", "io.grpc", "grpc-kotlin-stub").versionRef("grpc-kotlin")
             library("grpc-kotlin-gen", "io.grpc", "protoc-gen-grpc-kotlin").versionRef("grpc-kotlin")
             library("grpc-protobuf", "io.grpc", "grpc-protobuf").versionRef('grpc-java')
