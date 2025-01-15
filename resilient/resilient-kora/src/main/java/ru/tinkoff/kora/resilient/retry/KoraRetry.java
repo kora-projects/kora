@@ -103,7 +103,7 @@ final class KoraRetry implements Retry {
                     result.completeExceptionally(ex);
                 } else {
                     retryState.close();
-                    result.completeExceptionally(new RetryExhaustedException(retryState.getAttemptsMax(), ex));
+                    result.completeExceptionally(new RetryExhaustedException(name, retryState.getAttemptsMax(), ex));
                 }
             }
         };
@@ -151,7 +151,7 @@ final class KoraRetry implements Retry {
                             }
                         }
 
-                        final RetryExhaustedException exhaustedException = new RetryExhaustedException(attempts, e);
+                        final RetryExhaustedException exhaustedException = new RetryExhaustedException(name, attempts, e);
                         for (Exception exception : suppressed) {
                             exhaustedException.addSuppressed(exception);
                         }
