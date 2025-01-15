@@ -2,7 +2,6 @@ package ru.tinkoff.kora.database.jdbc;
 
 import com.zaxxer.hikari.HikariDataSource;
 import jakarta.annotation.Nullable;
-import org.jetbrains.annotations.ApiStatus.Internal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
@@ -34,7 +33,6 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
     private final JdbcDatabaseConfig databaseConfig;
     private final HikariDataSource dataSource;
     private final DataBaseTelemetry telemetry;
-    @Internal
     @Nullable
     final Executor executor;
 
