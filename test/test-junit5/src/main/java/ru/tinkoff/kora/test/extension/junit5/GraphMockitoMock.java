@@ -6,6 +6,7 @@ import org.mockito.internal.creation.MockSettingsImpl;
 import org.mockito.quality.Strictness;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Node;
+import ru.tinkoff.kora.application.graph.Wrapped;
 
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.ParameterizedType;
@@ -47,10 +48,9 @@ record GraphMockitoMock(GraphCandidate candidate,
     }
 
     @SuppressWarnings("unchecked")
-    private <T> void replaceNode(ApplicationGraphDraw graphDraw, Node<?> node, Class<T> mockClass) {
-        var casted = (Node<T>) node;
-        graphDraw.replaceNode(casted, g -> {
-            var settings = new MockSettingsImpl<T>()
+    private void replaceNode(ApplicationGraphDraw graphDraw, Node node, Class<?> mockClass) {
+        graphDraw.replaceNode(node, g -> {
+            var settings = new MockSettingsImpl<>()
                     .name(name)
                     .defaultAnswer(annotation.answer());
 
@@ -84,7 +84,14 @@ record GraphMockitoMock(GraphCandidate candidate,
                 settings = settings.serializable();
             }
 
-            return Mockito.mock(mockClass, settings);
+            var mock = Mockito.mock(mockClass, settings);
+            if (node.type() instanceof Class<?> tc && Wrapped.class.isAssignableFrom(tc)) {
+                return (Object) (Wrapped<?>) () -> mock;
+            } else if (node.type() instanceof ParameterizedType pt && Wrapped.class.isAssignableFrom(((Class<?>) pt.getRawType()))) {
+                return (Object) (Wrapped<?>) () -> mock;
+            } else {
+                return mock;
+            }
         });
     }
 }

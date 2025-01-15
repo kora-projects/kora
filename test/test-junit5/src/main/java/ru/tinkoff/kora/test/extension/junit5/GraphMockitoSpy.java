@@ -4,6 +4,7 @@ import jakarta.annotation.Nullable;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Node;
+import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.application.graph.internal.NodeImpl;
 
 import java.lang.reflect.AnnotatedElement;
@@ -51,19 +52,28 @@ record GraphMockitoSpy(GraphCandidate candidate,
     }
 
     @SuppressWarnings("unchecked")
-    private <T> void replaceNode(ApplicationGraphDraw graphDraw, Node<?> node) {
-        var casted = (Node<T>) node;
-
+    private void replaceNode(ApplicationGraphDraw graphDraw, Node node) {
         if (value != null) {
-            graphDraw.replaceNode(casted, g -> {
-                var spyCandidate = (T) value;
-                return Mockito.spy(spyCandidate);
+            graphDraw.replaceNode(node, g -> {
+                var spyCandidate = value;
+                return getSpy(spyCandidate, node);
             });
         } else {
-            graphDraw.replaceNodeKeepDependencies(casted, g -> {
-                var spyCandidate = ((NodeImpl<T>) node).factory.get(g);
-                return Mockito.spy(spyCandidate);
+            graphDraw.replaceNodeKeepDependencies(node, g -> {
+                var spyCandidate = ((NodeImpl<?>) node).factory.get(g);
+                return getSpy(spyCandidate, node);
             });
+        }
+    }
+
+    private Object getSpy(Object spyCandidate, Node node) {
+        var spy = Mockito.spy(spyCandidate);
+        if (node.type() instanceof Class<?> tc && Wrapped.class.isAssignableFrom(tc)) {
+            return (Object) (Wrapped<?>) () -> spy;
+        } else if (node.type() instanceof ParameterizedType pt && Wrapped.class.isAssignableFrom(((Class<?>) pt.getRawType()))) {
+            return (Object) (Wrapped<?>) () -> spy;
+        } else {
+            return spy;
         }
     }
 }

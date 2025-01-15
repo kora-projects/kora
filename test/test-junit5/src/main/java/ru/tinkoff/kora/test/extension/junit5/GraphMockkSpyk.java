@@ -5,8 +5,10 @@ import io.mockk.impl.annotations.SpyK;
 import jakarta.annotation.Nullable;
 import kotlin.jvm.JvmClassMappingKt;
 import kotlin.reflect.KClass;
+import org.mockito.Mockito;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Node;
+import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.application.graph.internal.NodeImpl;
 
 import java.lang.reflect.AnnotatedElement;
@@ -65,18 +67,18 @@ record GraphMockkSpyk(GraphCandidate candidate,
     }
 
     @SuppressWarnings("unchecked")
-    private <T> void replaceNode(ApplicationGraphDraw graphDraw, Node<?> node) {
-        var casted = (Node<T>) node;
-
+    private void replaceNode(ApplicationGraphDraw graphDraw, Node node) {
         if (value != null) {
-            graphDraw.replaceNode(casted, g -> {
-                var spyCandidate = (T) value;
-                return getSpy(spyCandidate, spykName, recordPrivateCalls);
+            graphDraw.replaceNode(node, g -> {
+                var spyCandidate = value;
+                var spy = getSpy(spyCandidate, spykName, recordPrivateCalls);
+                return getSpy(spy, node);
             });
         } else {
-            graphDraw.replaceNodeKeepDependencies(casted, g -> {
-                var spyCandidate = ((NodeImpl<T>) node).factory.get(g);
-                return getSpy(spyCandidate, spykName, recordPrivateCalls);
+            graphDraw.replaceNodeKeepDependencies(node, g -> {
+                var spyCandidate = ((NodeImpl<?>) node).factory.get(g);
+                var spy = getSpy(spyCandidate, spykName, recordPrivateCalls);
+                return getSpy(spy, node);
             });
         }
     }
@@ -85,5 +87,15 @@ record GraphMockkSpyk(GraphCandidate candidate,
     private static <T> T getSpy(T spyCandidate, String spykName, boolean recordPrivateCalls) {
         final KClass<T> kotlinClass = JvmClassMappingKt.getKotlinClass(((Class<T>) spyCandidate.getClass()));
         return JvmMockKGateway.Companion.getDefaultImplementation().getMockFactory().spyk(kotlinClass, spyCandidate, spykName, new KClass[]{}, recordPrivateCalls);
+    }
+
+    private Object getSpy(Object spyCandidate, Node node) {
+        if (node.type() instanceof Class<?> tc && Wrapped.class.isAssignableFrom(tc)) {
+            return (Object) (Wrapped<?>) () -> spyCandidate;
+        } else if (node.type() instanceof ParameterizedType pt && Wrapped.class.isAssignableFrom(((Class<?>) pt.getRawType()))) {
+            return (Object) (Wrapped<?>) () -> spyCandidate;
+        } else {
+            return spyCandidate;
+        }
     }
 }

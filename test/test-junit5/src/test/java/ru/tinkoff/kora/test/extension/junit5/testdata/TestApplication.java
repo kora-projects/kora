@@ -5,6 +5,7 @@ import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.common.KoraApp;
 import ru.tinkoff.kora.common.annotation.Root;
 
+import java.math.BigInteger;
 import java.util.function.Function;
 
 @KoraApp
@@ -36,6 +37,16 @@ public interface TestApplication extends TestExtendModule {
     }
 
     @Root
+    default Wrapped<SomeWrapped> someWrapped() {
+        return new LifecycleWrapper<>(new SomeWrapped() {}, s -> {}, s -> {});
+    }
+
+    @Root
+    default SomeContainer someContainer(SomeWrapped wrapped) {
+        return () -> wrapped;
+    }
+
+    @Root
     default Wrapped<SomeChild> wrappedSomeChild() {
         return new LifecycleWrapper<>(new SomeChild() {}, (i) -> {}, (i) -> {});
     }
@@ -56,6 +67,15 @@ public interface TestApplication extends TestExtendModule {
         public Float value() {
             return 1.0F;
         }
+    }
+
+    interface SomeWrapped {
+
+    }
+
+    interface SomeContainer {
+
+        SomeWrapped wrapped();
     }
 
     interface SomeParent {
