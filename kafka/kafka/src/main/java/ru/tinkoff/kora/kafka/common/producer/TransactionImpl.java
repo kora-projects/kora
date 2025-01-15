@@ -39,7 +39,7 @@ public final class TransactionImpl<P extends GeneratedPublisher> extends AtomicR
 
     @Override
     public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, ConsumerGroupMetadata groupMetadata) {
-        if (this.compareAndSet(TxState.INIT, TxState.ABORT)) {
+        if (this.get() == TxState.INIT) {
             this.publisher.producer().sendOffsetsToTransaction(offsets, groupMetadata);
             this.txTelemetry.sendOffsetsToTransaction(offsets, groupMetadata);
         } else {

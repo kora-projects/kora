@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.kafka.common.producer;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
@@ -21,6 +22,7 @@ import ru.tinkoff.kora.test.kafka.KafkaTestContainer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 
@@ -169,6 +171,7 @@ class TransactionalPublisherImplTest {
                 pub.producer().send(params.producerRecord(testTopic, key, "value1".getBytes(StandardCharsets.UTF_8))).get();
                 pub.producer().send(params.producerRecord(testTopic, key, "value1".getBytes(StandardCharsets.UTF_8))).get();
                 pub.producer().send(params.producerRecord(testTopic, key, "value1".getBytes(StandardCharsets.UTF_8))).get();
+                tx.sendOffsetsToTransaction(Map.of(), new ConsumerGroupMetadata("test"));
                 tx.flush();
 
                 committed.seekToBeginning(topicPartitions);
