@@ -67,9 +67,9 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
         )
 
         val body = if (method.isFlow()) {
-            buildBodyFlow(method, superCall, fieldRetrier)
+            buildBodyFlow(method, superCall, fieldRetrier, retryableName)
         } else if (method.isSuspend()) {
-            buildBodySuspend(method, superCall, fieldRetrier)
+            buildBodySuspend(method, superCall, fieldRetrier, retryableName)
         } else {
             buildBodySync(method, superCall, fieldRetrier)
         }
@@ -89,7 +89,7 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
         return builder.build()
     }
 
-    private fun buildBodySuspend(method: KSFunctionDeclaration, superCall: String, fieldRetrier: String): CodeBlock {
+    private fun buildBodySuspend(method: KSFunctionDeclaration, superCall: String, fieldRetrier: String, retryableName: String): CodeBlock {
         return CodeBlock.builder()
             .add("%L.asState()", fieldRetrier).indent().add("\n")
             .controlFlow(".use { _state ->", fieldRetrier) {
@@ -118,11 +118,11 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
                             controlFlow("%T.EXHAUSTED ->", MEMBER_RETRY_STATUS) {
                                 add(
                                     """
-                                    val _exhaustedException = %M(_state.getAttempts(), _e)
+                                    val _exhaustedException = %M(%S, _state.getAttempts(), _e)
                                     _suppressed.forEach { _e.addSuppressed(it) }
                                     throw _exhaustedException
                                     
-                                    """.trimIndent(), MEMBER_RETRY_EXCEPTION
+                                    """.trimIndent(), MEMBER_RETRY_EXCEPTION, retryableName
                                 )
                             }
                         }
@@ -133,7 +133,7 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
             .build()
     }
 
-    private fun buildBodyFlow(method: KSFunctionDeclaration, superCall: String, fieldRetrier: String): CodeBlock {
+    private fun buildBodyFlow(method: KSFunctionDeclaration, superCall: String, fieldRetrier: String, retryableName: String): CodeBlock {
         return CodeBlock.builder().controlFlow("return %M", MEMBER_FLOW) {
             controlFlow("return@flow %L.asState().use { _state ->", fieldRetrier) {
                 controlFlow("if (_state.attemptsMax == 0)") {
@@ -149,7 +149,7 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
                             addStatement("true")
                         }
                         controlFlow("%T.EXHAUSTED ->", MEMBER_RETRY_STATUS) {
-                            addStatement("throw %M(_state.getAttempts(), _cause)", MEMBER_RETRY_EXCEPTION)
+                            addStatement("throw %M(%S, _state.getAttempts(), _cause)", MEMBER_RETRY_EXCEPTION, retryableName)
                         }
                     }
                 }
