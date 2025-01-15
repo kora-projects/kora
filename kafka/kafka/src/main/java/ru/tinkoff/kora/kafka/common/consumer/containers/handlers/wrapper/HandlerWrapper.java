@@ -22,7 +22,7 @@ public final class HandlerWrapper {
     }
 
     public static <K, V> BaseKafkaRecordsHandler<K, V> wrapHandlerRecords(KafkaConsumerTelemetry<K, V> telemetry, boolean shouldCommit, ValueOf<KafkaRecordsHandler<K, V>> handler, boolean allowEmptyRecords) {
-        return new RecordsHandler<>(telemetry, shouldCommit, handler);
+        return new RecordsHandler<>(telemetry, shouldCommit, handler, allowEmptyRecords);
     }
 
     @Deprecated
