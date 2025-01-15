@@ -37,10 +37,11 @@ public class KoraQuartzScheduler implements Wrapped<Scheduler>, Lifecycle {
         var started = System.nanoTime();
 
         var propertiesToUse = new Properties();
+        propertiesToUse.setProperty(StdSchedulerFactory.PROP_SCHED_INSTANCE_NAME, "kora-quartz-scheduler");
+        propertiesToUse.setProperty(StdSchedulerFactory.PROP_SCHED_INSTANCE_ID, StdSchedulerFactory.AUTO_GENERATE_INSTANCE_ID);
         for (var property : this.properties.stringPropertyNames()) {
             propertiesToUse.setProperty(property, this.properties.getProperty(property));
         }
-        propertiesToUse.setProperty("org.quartz.scheduler.instanceName", "kora-quartz-scheduler-" + UUID.randomUUID());
 
         // TODO real scheduler
         var factory = new StdSchedulerFactory();
