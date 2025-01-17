@@ -4,7 +4,12 @@ import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.CodeBlock
 
 sealed interface ExtensionResult {
-    class GeneratedResult(val constructor: KSFunctionDeclaration, val type: KSFunction) : ExtensionResult
+
+    class GeneratedResult(
+        val constructor: KSFunctionDeclaration,
+        val type: KSFunction,
+        val tags: Set<String>
+    ) : ExtensionResult
 
     class CodeBlockResult(
         val source: KSDeclaration,
@@ -12,26 +17,27 @@ sealed interface ExtensionResult {
         val componentType: KSType,
         val componentTag: Set<String>,
         val dependencyTypes: List<KSType>,
-        val dependencyTags: List<Set<String>>) : ExtensionResult {
-    }
+        val dependencyTags: List<Set<String>>
+    ) : ExtensionResult
 
 
     object RequiresCompilingResult : ExtensionResult
 
     companion object {
         fun fromConstructor(constructor: KSFunctionDeclaration, type: KSClassDeclaration): ExtensionResult {
-            return GeneratedResult(
-                constructor,
-                constructor.asMemberOf(type.asType(listOf()))
-            )
+            return GeneratedResult(constructor, constructor.asMemberOf(type.asType(listOf())), setOf())
+        }
+
+        fun fromConstructor(constructor: KSFunctionDeclaration, type: KSClassDeclaration, tags: Set<String>): ExtensionResult {
+            return GeneratedResult(constructor, constructor.asMemberOf(type.asType(listOf())), tags)
         }
 
         fun fromExecutable(constructor: KSFunctionDeclaration, type: KSFunction): ExtensionResult {
-            return GeneratedResult(
-                constructor,
-                type
-            )
+            return GeneratedResult(constructor, type, setOf())
+        }
+
+        fun fromExecutable(constructor: KSFunctionDeclaration, type: KSFunction, tags: Set<String>): ExtensionResult {
+            return GeneratedResult(constructor, type, tags)
         }
     }
-
 }
