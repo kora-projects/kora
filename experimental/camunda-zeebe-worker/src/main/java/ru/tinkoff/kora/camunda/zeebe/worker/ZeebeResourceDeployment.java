@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.common.util.TimeUtils;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -18,6 +19,7 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -58,12 +60,13 @@ public final class ZeebeResourceDeployment implements Lifecycle {
                 .collect(Collectors.toSet());
 
             final List<Resource> resources = ClasspathResourceUtils.findResources(normalizedLocations);
+            logger.info("Paths {} and resources {}", normalizedLocations, resources);
             if (!resources.isEmpty()) {
                 var deployResourceCommand = client.newDeployResourceCommand();
 
                 DeployResourceCommandStep1.DeployResourceCommandStep2 finalCommand = null;
                 for (Resource resource : resources) {
-                    try (var is = resource.asInputStream()) {
+                    try (var res = resource; var is = res.asInputStream()) {
                         finalCommand = deployResourceCommand.addResourceStream(is, resource.name());
                     }
                 }
@@ -89,7 +92,7 @@ public final class ZeebeResourceDeployment implements Lifecycle {
         // do nothing
     }
 
-    interface Resource {
+    interface Resource extends Closeable {
 
         String name();
 
@@ -98,11 +101,22 @@ public final class ZeebeResourceDeployment implements Lifecycle {
         InputStream asInputStream();
     }
 
-    record JarResource(String name, String path, Supplier<InputStream> inputStream) implements Resource {
+    record JarResource(String name, String path, Supplier<InputStream> inputStream, @Nullable Closeable closeable) implements Resource {
+
+        public JarResource(String name, String path, Supplier<InputStream> inputStream) {
+            this(name, path, inputStream, null);
+        }
 
         @Override
         public InputStream asInputStream() {
             return inputStream.get();
+        }
+
+        @Override
+        public void close() throws IOException {
+            if (closeable != null) {
+                closeable.close();
+            }
         }
 
         @Override
@@ -128,6 +142,11 @@ public final class ZeebeResourceDeployment implements Lifecycle {
         @Override
         public InputStream asInputStream() {
             return FileResource.class.getResourceAsStream("/" + path + "/" + name);
+        }
+
+        @Override
+        public void close() {
+
         }
 
         @Override
@@ -195,12 +214,12 @@ public final class ZeebeResourceDeployment implements Lifecycle {
                 } else {
                     workPath = ".";
                     pathResources = getSystemResources(workPath);
-                    pattern = Pattern.compile(path);
+                    pattern = Pattern.compile("^" + path);
                 }
             } else {
                 workPath = path.substring(0, innerDirectoryFrom);
                 pathResources = getSystemResources(workPath);
-                pattern = Pattern.compile(path.substring(innerDirectoryFrom + 1));
+                pattern = Pattern.compile("^" + path.substring(innerDirectoryFrom + 1));
             }
 
             return pathResources.stream()
@@ -261,41 +280,48 @@ public final class ZeebeResourceDeployment implements Lifecycle {
         private static List<Resource> loadFromJar(String path, URL resource, @Nullable Pattern pattern) {
             final String jarPath = resource.getPath()
                 .replaceFirst("[.]jar!.*", ".jar")
+                .replaceFirst("[.]tar!.*", ".tar")
                 .replaceFirst("file:", "");
 
             try {
                 final String jarUrlPath = URLDecoder.decode(jarPath, StandardCharsets.UTF_8);
-                try (final JarFile jar = new JarFile(jarUrlPath)) {
-                    final List<Resource> classes = new ArrayList<>();
-                    final Enumeration<JarEntry> files = jar.entries();
-                    while (files.hasMoreElements()) {
-                        final JarEntry file = files.nextElement();
-                        if (!file.isDirectory()) {
-                            if (pattern == null) {
-                                classes.add(new JarResource(file.getName(), jarUrlPath, () -> {
-                                    try {
-                                        return jar.getInputStream(file);
-                                    } catch (IOException e) {
-                                        throw new IllegalStateException(e);
-                                    }
-                                }));
-                            } else if (pattern.matcher(file.getName()).matches()) {
-                                classes.add(new JarResource(file.getName(), jarUrlPath, () -> {
-                                    try {
-                                        return jar.getInputStream(file);
-                                    } catch (IOException e) {
-                                        throw new IllegalStateException(e);
-                                    }
-                                }));
-                            }
+                logger.info("JarPath {}, path {}, pattern {}", jarPath, path, pattern);
+                final JarFile jar = new JarFile(jarUrlPath);
+                final List<Resource> classes = new ArrayList<>();
+                final Enumeration<JarEntry> files = jar.entries();
+                final AtomicInteger closeCounter = new AtomicInteger(0);
+                while (files.hasMoreElements()) {
+                    final JarEntry file = files.nextElement();
+                    if (!file.isDirectory()) {
+                        final String fileFullName = file.getName();
+                        final String fileName = (fileFullName.lastIndexOf('/') == -1)
+                            ? fileFullName
+                            : fileFullName.substring(fileFullName.lastIndexOf('/') + 1);
+                        logger.info("File {}, path {}, pattern {}", fileFullName, path, pattern);
+                        if ((pattern == null && fileFullName.startsWith(path))
+                            || (pattern != null && pattern.matcher(fileName).matches())) {
+
+                            logger.info("Match pattern {}, fileName {}", pattern, fileName);
+                            closeCounter.incrementAndGet();
+                            classes.add(new JarResource(fileFullName, jarUrlPath, () -> {
+                                try {
+                                    return jar.getInputStream(file);
+                                } catch (Exception e) {
+                                    throw new IllegalStateException(e.getMessage() + " for file: " + jarPath, e);
+                                }
+                            }, () -> {
+                                int res = closeCounter.decrementAndGet();
+                                if (res < 1) {
+                                    jar.close();
+                                }
+                            }));
                         }
                     }
-
-                    return classes;
                 }
+
+                return classes;
             } catch (Exception e) {
-                throw new IllegalArgumentException(
-                    "Can't open JAR '" + resource + "', failed with: " + e.getMessage());
+                throw new IllegalArgumentException("Can't open Jar '" + jarPath, e);
             }
         }
 
