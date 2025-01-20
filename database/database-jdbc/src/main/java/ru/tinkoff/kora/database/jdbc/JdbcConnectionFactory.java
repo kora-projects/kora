@@ -1,10 +1,10 @@
 package ru.tinkoff.kora.database.jdbc;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 
-import jakarta.annotation.Nullable;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -17,6 +17,7 @@ import java.sql.SQLException;
  * @see JdbcRepository
  */
 public interface JdbcConnectionFactory {
+
     <T> T withConnection(JdbcHelper.SqlFunction1<Connection, T> callback) throws RuntimeSqlException;
 
     @Nullable

@@ -17,12 +17,13 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Objects;
+import java.util.concurrent.Executor;
 
 public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnectionFactory, ReadinessProbe {
 
     private static final Logger logger = LoggerFactory.getLogger(JdbcDatabase.class);
 
-    private final Context.Key<Connection> connectionKey = new Context.Key<>() {
+    final Context.Key<Connection> connectionKey = new Context.Key<>() {
         @Override
         protected Connection copy(Connection object) {
             return null;
@@ -32,18 +33,29 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
     private final JdbcDatabaseConfig databaseConfig;
     private final HikariDataSource dataSource;
     private final DataBaseTelemetry telemetry;
+    @Nullable
+    final Executor executor;
 
     public JdbcDatabase(JdbcDatabaseConfig config, DataBaseTelemetryFactory telemetryFactory) {
-        this(config, getTelemetry(config, telemetryFactory));
+        this(config, telemetryFactory, null);
     }
 
     public JdbcDatabase(JdbcDatabaseConfig databaseConfig, DataBaseTelemetry telemetry) {
+        this(databaseConfig, telemetry, null);
+    }
+
+    public JdbcDatabase(JdbcDatabaseConfig config, DataBaseTelemetryFactory telemetryFactory, @Nullable Executor executor) {
+        this(config, getTelemetry(config, telemetryFactory), executor);
+    }
+
+    public JdbcDatabase(JdbcDatabaseConfig databaseConfig, DataBaseTelemetry telemetry, @Nullable Executor executor) {
         this.databaseConfig = Objects.requireNonNull(databaseConfig);
         this.telemetry = Objects.requireNonNull(telemetry);
         this.dataSource = new HikariDataSource(JdbcDatabaseConfig.toHikariConfig(this.databaseConfig));
         if (telemetry.getMetricRegistry() != null) {
             this.dataSource.setMetricRegistry(telemetry.getMetricRegistry());
         }
+        this.executor = executor;
     }
 
     private static DataBaseTelemetry getTelemetry(JdbcDatabaseConfig config, DataBaseTelemetryFactory factory) {
@@ -120,6 +132,7 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
                 throw new RuntimeSqlException(e);
             }
         }
+
         try (var connection = ctx.set(this.connectionKey, this.newConnection())) {
             return callback.apply(connection);
         } catch (SQLException e) {

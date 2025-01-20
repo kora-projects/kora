@@ -16,6 +16,7 @@ import java.util.function.Function;
  * @see VertxRepository
  */
 public interface VertxConnectionFactory {
+
     SqlConnection currentConnection();
 
     CompletionStage<SqlConnection> newConnection();
