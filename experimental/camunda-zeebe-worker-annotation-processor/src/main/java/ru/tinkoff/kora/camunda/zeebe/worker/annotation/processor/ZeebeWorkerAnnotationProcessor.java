@@ -154,7 +154,7 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
                 }
 
                 codeBuilder.addStatement("var _vars = $S + varsWriter.toStringUnchecked(result) + $S", "{\"" + varName + "\":", "}");
-                codeBuilder.addStatement("return client.newCompleteCommand(job).variables(_vars)");
+                codeBuilder.addStatement("return $T.completedFuture(client.newCompleteCommand(job).variables(_vars))", CompletableFuture.class);
             } else {
                 codeBuilder.addStatement("var _vars = varsWriter.toStringUnchecked(result)");
                 codeBuilder.addStatement("return $T.completedFuture(client.newCompleteCommand(job).variables(_vars))", CompletableFuture.class);

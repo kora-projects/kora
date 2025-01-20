@@ -174,7 +174,7 @@ class ZeebeWorkerSymbolProcessor(
 
             if (isResultNullable) {
                 codeBuilder.nextControlFlow("else")
-                codeBuilder.addStatement("return client.newCompleteCommand(job)")
+                codeBuilder.addStatement("return %T.completedFuture(client.newCompleteCommand(job))", CompletableFuture::class)
                 codeBuilder.endControlFlow()
             }
         }
