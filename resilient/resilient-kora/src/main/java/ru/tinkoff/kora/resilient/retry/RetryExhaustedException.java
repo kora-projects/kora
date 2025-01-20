@@ -8,7 +8,12 @@ import ru.tinkoff.kora.resilient.ResilientException;
  */
 public final class RetryExhaustedException extends ResilientException {
 
+    @Deprecated
     public RetryExhaustedException(int attempts, @Nonnull Throwable cause) {
-        super("All '" + attempts + "' retry attempts exhausted", cause);
+        super("unknown", "All '" + attempts + "' retry attempts exhausted: " + cause.getMessage(), cause);
+    }
+
+    public RetryExhaustedException(String name, int attempts, @Nonnull Throwable cause) {
+        super(name, "All '" + attempts + "' retry attempts exhausted: " + cause.getMessage(), cause);
     }
 }

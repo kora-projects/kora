@@ -14,6 +14,11 @@ public class ResilientException extends RuntimeException {
         this.name = name;
     }
 
+    public ResilientException(String name, String message, Throwable cause) {
+        super(message, cause);
+        this.name = name;
+    }
+
     public String name() {
         return name;
     }

@@ -92,7 +92,7 @@ public final class KoraRetryReactorBuilder {
                     if (signal.totalRetries() >= attempts) {
                         logger.debug("RetryReactor '{}' exhausted all '{}' attempts", name, signal.totalRetries());
                         metrics.recordExhaustedAttempts(name, attempts);
-                        final RetryExhaustedException exception = new RetryExhaustedException(attempts, currentFailure);
+                        final RetryExhaustedException exception = new RetryExhaustedException(name, attempts, currentFailure);
                         exception.addSuppressed(currentFailure);
                         return Mono.error(exception);
                     }
