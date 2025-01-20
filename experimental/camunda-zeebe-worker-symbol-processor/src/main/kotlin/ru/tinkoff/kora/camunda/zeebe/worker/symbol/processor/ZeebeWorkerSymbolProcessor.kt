@@ -13,9 +13,11 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isDeferred
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
@@ -23,6 +25,8 @@ import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.generatedClassName
 import java.io.IOException
 import java.io.UncheckedIOException
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CompletionStage
 import java.util.regex.Pattern
 
 class ZeebeWorkerSymbolProcessor(
@@ -58,9 +62,6 @@ class ZeebeWorkerSymbolProcessor(
             if (method.modifiers.any { m -> m == Modifier.PRIVATE }) {
                 throw ProcessingErrorException("@JobWorker method can't be private", method)
             }
-            if (method.modifiers.any { m -> m == Modifier.SUSPEND }) {
-                throw ProcessingErrorException("@JobWorker method can't be suspend", method)
-            }
 
             val packageName = method.packageName.asString()
             val ownerType = getOwner(method)
@@ -78,11 +79,17 @@ class ZeebeWorkerSymbolProcessor(
                 implSpecBuilder.addFunction(methodFetchVariables)
             }
 
-            val spec = implSpecBuilder
-                .addFunction(methodConstructor)
+            val specBuilder = implSpecBuilder
+                .primaryConstructor(methodConstructor)
                 .addFunction(getMethodType(method))
-                .addFunction(getMethodHandler(ownerType, method, variables))
-                .build()
+
+            if (method.isDeferred()) {
+                specBuilder.addFunction(getMethodDeferredHandler(ownerType, method, variables))
+            } else {
+                specBuilder.addFunction(getMethodHandler(ownerType, method, variables))
+            }
+
+            val spec = specBuilder.build()
 
             val fileModuleSpec = FileSpec.builder(packageName, spec.name.toString())
                 .addType(spec)
@@ -107,7 +114,7 @@ class ZeebeWorkerSymbolProcessor(
             .addModifiers(KModifier.OVERRIDE)
             .addParameter("client", CLASS_CLIENT)
             .addParameter("job", CLASS_ACTIVE_JOB)
-            .returns(CLASS_FINAL_COMMAND.parameterizedBy(WildcardTypeName.producerOf(Any::class)))
+            .returns(CompletionStage::class.asTypeName().parameterizedBy(CLASS_FINAL_COMMAND.parameterizedBy(WildcardTypeName.producerOf(Any::class))))
 
         val codeBuilder = CodeBlock.builder()
 
@@ -132,7 +139,7 @@ class ZeebeWorkerSymbolProcessor(
         val varsArg = java.lang.String.join(", ", vars)
         if (method.isVoid()) {
             codeBuilder.addStatement("this.handler.%L(%L)", methodName, varsArg)
-            codeBuilder.addStatement("return client.newCompleteCommand(job)")
+            codeBuilder.addStatement("return %T.completedFuture(client.newCompleteCommand(job))", CompletableFuture::class)
         } else {
             codeBuilder.addStatement("val result = this.handler.%L(%L)", methodName, varsArg)
             val returnJobVariable = method.findAnnotation(ANNOTATION_VARIABLE)
@@ -156,13 +163,13 @@ class ZeebeWorkerSymbolProcessor(
                 }
 
                 codeBuilder.addStatement(
-                    "var _vars = %S + varsWriter.toStringUnchecked(result) + %S",
+                    "val _vars = %S + varsWriter.toStringUnchecked(result) + %S",
                     "{\"$varName\":", "}"
                 )
-                codeBuilder.addStatement("return client.newCompleteCommand(job).variables(_vars)")
+                codeBuilder.addStatement("return %T.completedFuture(client.newCompleteCommand(job).variables(_vars))", CompletableFuture::class)
             } else {
-                codeBuilder.addStatement("var _vars = varsWriter.toStringUnchecked(result)")
-                codeBuilder.addStatement("return client.newCompleteCommand(job).variables(_vars)")
+                codeBuilder.addStatement("val _vars = varsWriter.toStringUnchecked(result)")
+                codeBuilder.addStatement("return %T.completedFuture(client.newCompleteCommand(job).variables(_vars))", CompletableFuture::class)
             }
 
             if (isResultNullable) {
@@ -180,6 +187,111 @@ class ZeebeWorkerSymbolProcessor(
         if (!method.isVoid()) {
             codeBuilder.nextControlFlow("catch (e: %T)", UncheckedIOException::class.java)
             codeBuilder.addStatement("throw %T(%S, e)", CLASS_WORKER_EXCEPTION, "SERIALIZATION")
+        }
+
+        codeBuilder.nextControlFlow("catch (e: %T)", CLASS_WORKER_EXCEPTION)
+        codeBuilder.addStatement("throw e")
+        codeBuilder.nextControlFlow("catch (e: Exception)", CLASS_WORKER_EXCEPTION)
+        codeBuilder.addStatement("throw %T(%S, e)", CLASS_WORKER_EXCEPTION, "UNEXPECTED")
+        codeBuilder.endControlFlow()
+
+        return methodBuilder
+            .addCode(codeBuilder.build())
+            .build()
+    }
+
+    private fun getMethodDeferredHandler(
+        ownerType: KSClassDeclaration,
+        method: KSFunctionDeclaration,
+        variables: List<Variable>
+    ): FunSpec {
+        val methodBuilder = FunSpec.builder("handle")
+            .addModifiers(KModifier.OVERRIDE)
+            .addParameter("client", CLASS_CLIENT)
+            .addParameter("job", CLASS_ACTIVE_JOB)
+            .returns(CompletionStage::class.asTypeName().parameterizedBy(CLASS_FINAL_COMMAND.parameterizedBy(WildcardTypeName.producerOf(Any::class))))
+
+        val codeBuilder = CodeBlock.builder()
+
+        codeBuilder.beginControlFlow("try")
+        val vars: MutableList<String> = ArrayList()
+
+        var varCounter = 1
+        for (variable in variables) {
+            val varName = "var" + vars.size + 1
+            vars.add(varName)
+            if (variable.isVars) {
+                codeBuilder.addStatement("val %L = varsReader.read(job.getVariables())", varName)
+            } else if (variable.isContext) {
+                codeBuilder.addStatement("val %L = %T(jobName, job)", varName, CLASS_ACTIVE_CONTEXT)
+            } else if (variable.isVar) {
+                val varReaderName = "var" + varCounter++ + "Reader"
+                codeBuilder.addStatement("val %L = %L.read(job.getVariables())", varName, varReaderName)
+            }
+        }
+
+        val methodName = method.simpleName.asString()
+        val varsArg = java.lang.String.join(", ", vars)
+        if (method.isVoid()) {
+            codeBuilder.addStatement("this.handler.%L(%L).%M().thenApply { client.newCompleteCommand(job) }", methodName, varsArg, MemberName("kotlinx.coroutines.future", "asCompletableFuture"))
+        } else {
+            codeBuilder.beginControlFlow("return this.handler.%L(%L).%M().thenApply { result -> ", methodName, varsArg, MemberName("kotlinx.coroutines.future", "asCompletableFuture"))
+            val returnJobVariable = method.findAnnotation(ANNOTATION_VARIABLE)
+            codeBuilder.indent()
+
+            val returnType = if (method.isDeferred())
+                method.returnType!!.resolve().arguments.first().type!!.resolve()
+            else
+                method.returnType!!.resolve()
+
+            val isResultNullable = returnType.isMarkedNullable
+            if (isResultNullable) {
+                codeBuilder.beginControlFlow("if(result != null)")
+            }
+
+            codeBuilder.beginControlFlow("try")
+
+            if (returnJobVariable != null) {
+                val varName = returnJobVariable.findValueNoDefault<String>("value")
+                    ?: throw ProcessingErrorException(
+                        "Worker result job variable must specify name or @JobVariable annotation must be removed if result represent all variables",
+                        method
+                    )
+
+                if (isVariableInvalid(varName)) {
+                    throw ProcessingErrorException(
+                        "Worker result job variable name must be alphanumeric ( _ symbol is allowed) and not start with number, but was: $varName",
+                        method
+                    )
+                }
+
+                codeBuilder.addStatement(
+                    "val _vars = %S + varsWriter.toStringUnchecked(result) + %S",
+                    "{\"$varName\":", "}"
+                )
+                codeBuilder.addStatement("client.newCompleteCommand(job).variables(_vars)")
+            } else {
+                codeBuilder.addStatement("val _vars = varsWriter.toStringUnchecked(result)")
+                codeBuilder.addStatement("client.newCompleteCommand(job).variables(_vars)")
+            }
+
+            codeBuilder.nextControlFlow("catch (e: %T)", UncheckedIOException::class.java)
+            codeBuilder.addStatement("throw %T(%S, e)", CLASS_WORKER_EXCEPTION, "SERIALIZATION")
+            codeBuilder.endControlFlow()
+
+            if (isResultNullable) {
+                codeBuilder.nextControlFlow("else")
+                codeBuilder.addStatement("return client.newCompleteCommand(job)")
+                codeBuilder.endControlFlow()
+            }
+
+            codeBuilder.unindent()
+            codeBuilder.endControlFlow()
+        }
+
+        if (variables.any { v -> v.isVar || v.isVars }) {
+            codeBuilder.nextControlFlow("catch (e: %T)", IOException::class.java)
+            codeBuilder.addStatement("throw %T(%S, e)", CLASS_WORKER_EXCEPTION, "DESERIALIZATION")
         }
 
         codeBuilder.nextControlFlow("catch (e: %T)", CLASS_WORKER_EXCEPTION)
@@ -240,10 +352,14 @@ class ZeebeWorkerSymbolProcessor(
             constructorBuilder.addStatement("this.jobName = config.getJobConfig(%S).name()", getJobType(method))
         }
 
-        if (method.isMono() || method.isFlux() || method.isFuture()) {
+        if (method.isMono() || method.isFlux() || method.isFuture() || method.isSuspend()) {
             throw ProcessingErrorException("@JobWorker return type can't be Mono/Flux/CompletionStage/Suspend", method)
         } else if (!method.isVoid()) {
-            val returnType = method.returnType
+            val returnType = if (method.isDeferred())
+                method.returnType!!.resolve().arguments.first().type
+            else
+                method.returnType
+
             val writerType = CLASS_JSON_WRITER.parameterizedBy(returnType!!.toTypeName())
             implBuilder.addProperty("varsWriter", writerType, KModifier.PRIVATE, KModifier.FINAL)
             methodBuilder.addParameter("varsWriter", writerType)

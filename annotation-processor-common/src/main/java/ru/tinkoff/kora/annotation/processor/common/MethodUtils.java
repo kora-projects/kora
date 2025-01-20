@@ -42,7 +42,15 @@ public final class MethodUtils {
     }
 
     public static boolean isVoidGeneric(TypeMirror returnType) {
-        if(returnType instanceof DeclaredType dt) {
+        if (returnType instanceof DeclaredType dt) {
+            return CommonUtils.isVoid(dt.getTypeArguments().get(0));
+        }
+
+        return false;
+    }
+
+    public static boolean isVoidGeneric(ExecutableElement method) {
+        if (method.getReturnType() instanceof DeclaredType dt) {
             return CommonUtils.isVoid(dt.getTypeArguments().get(0));
         }
 

@@ -5,11 +5,13 @@ import com.google.devtools.ksp.symbol.Modifier
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isFlow
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isFlux
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isCompletionStage
+import ru.tinkoff.kora.ksp.common.CommonClassNames.isDeferred
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isFuture
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isMono
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isPublisher
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isVoid
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isDeferred
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
 
 object FunctionUtils {
@@ -22,6 +24,7 @@ object FunctionUtils {
     fun KSFunctionDeclaration.isCompletionStage() = returnType!!.resolve().isCompletionStage()
     fun KSFunctionDeclaration.isList() = returnType!!.resolve().isList()
     fun KSFunctionDeclaration.isSuspend() = modifiers.contains(Modifier.SUSPEND)
+    fun KSFunctionDeclaration.isDeferred() = returnType!!.isDeferred()
     fun KSFunctionDeclaration.isVoid() = returnType!!.isVoid()
     fun KSFunctionDeclaration.isFlowVoid() = isFlow() && returnType!!.resolve().arguments.firstOrNull()?.type?.isVoid() ?: false
     fun KSFunctionDeclaration.isMonoVoid() = isMono() && returnType!!.resolve().arguments.firstOrNull()?.type?.isVoid() ?: false

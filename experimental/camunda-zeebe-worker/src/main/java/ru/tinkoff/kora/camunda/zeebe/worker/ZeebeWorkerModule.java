@@ -18,7 +18,6 @@ import ru.tinkoff.kora.camunda.zeebe.worker.telemetry.*;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Root;
-import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.json.common.JsonCommonModule;
@@ -119,10 +118,6 @@ public interface ZeebeWorkerModule extends GrpcClientModule, JsonCommonModule {
                                                    ZeebeClientConfiguration clientConfiguration,
                                                    @Tag(ZeebeClient.class) ManagedChannel managedChannel) {
         return new KoraZeebeClient(clientConfig, clientConfiguration, managedChannel);
-    }
-
-    default ReadinessProbe zeebeWorkerClientReadinessProbe(ZeebeClient zeebeClient) {
-        return new ZeebeClientReadinessProbe(zeebeClient);
     }
 
     @Root

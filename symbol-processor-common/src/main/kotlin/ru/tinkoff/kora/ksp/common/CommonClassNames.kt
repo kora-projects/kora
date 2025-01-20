@@ -7,6 +7,7 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.ksp.toClassName
+import ru.tinkoff.kora.ksp.common.CommonClassNames.isCompletionStage
 import java.util.*
 import java.util.concurrent.*
 
@@ -14,6 +15,7 @@ object CommonClassNames {
     val nullable = ClassName("jakarta.annotation", "Nullable")
     val publisher = ClassName("org.reactivestreams", "Publisher")
     val mono = ClassName("reactor.core.publisher", "Mono")
+    val deferred = ClassName("kotlinx.coroutines", "Deferred")
     val flux = ClassName("reactor.core.publisher", "Flux")
     val flow = ClassName("kotlinx.coroutines.flow", "Flow")
     val list = List::class.asClassName()
@@ -129,6 +131,7 @@ object CommonClassNames {
     fun KSType.isFlow() = declaration is KSClassDeclaration && declaration.qualifiedName!!.asString() == flow.canonicalName
     fun KSType.isPublisher() = declaration is KSClassDeclaration && declaration.qualifiedName!!.asString() == publisher.canonicalName
     fun KSType.isFuture() = declaration is KSClassDeclaration && declaration.qualifiedName!!.asString() == future.canonicalName
+    fun KSType.isDeferred() = declaration is KSClassDeclaration && declaration.qualifiedName!!.asString() == deferred.canonicalName
 
     fun KSType.isCompletionStage(): Boolean {
         if (declaration !is KSClassDeclaration) {
@@ -142,5 +145,10 @@ object CommonClassNames {
     fun KSTypeReference.isVoid(): Boolean {
         val typeAsStr = resolve().toClassName().canonicalName
         return Void::class.qualifiedName == typeAsStr || "void" == typeAsStr || Unit::class.qualifiedName == typeAsStr
+    }
+
+    fun KSTypeReference.isDeferred(): Boolean {
+        val typeAsStr = resolve().toClassName().canonicalName
+        return typeAsStr == deferred.canonicalName
     }
 }

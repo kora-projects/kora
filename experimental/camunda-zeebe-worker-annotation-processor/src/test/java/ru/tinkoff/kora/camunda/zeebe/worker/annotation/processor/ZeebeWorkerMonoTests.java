@@ -9,13 +9,16 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ZeebeWorkerTests extends AbstractAnnotationProcessorTest {
+public class ZeebeWorkerMonoTests extends AbstractAnnotationProcessorTest {
 
     @Override
     protected String commonImports() {
         return super.commonImports() + """
             import ru.tinkoff.kora.camunda.zeebe.worker.annotation.*;
             import ru.tinkoff.kora.camunda.zeebe.worker.*;
+            import java.util.concurrent.CompletionStage;
+            import java.util.concurrent.CompletableFuture;
+            import reactor.core.publisher.Mono;
             """;
     }
 
@@ -26,8 +29,8 @@ public class ZeebeWorkerTests extends AbstractAnnotationProcessorTest {
             public final class Handler {
                         
                 @JobWorker("worker")
-                void handle() {
-                    // do something
+                Mono<Void> handle() {
+                    return Mono.empty();
                 }
             }
             """);
@@ -50,8 +53,8 @@ public class ZeebeWorkerTests extends AbstractAnnotationProcessorTest {
                 public record SomeVariables(String name, String id) {}
                         
                 @JobWorker("worker")
-                void handle(@JobVariables SomeVariables vars) {
-                    // do something
+                Mono<Void> handle(@JobVariables SomeVariables vars) {
+                    return Mono.empty();
                 }
             }
             """);
@@ -72,8 +75,8 @@ public class ZeebeWorkerTests extends AbstractAnnotationProcessorTest {
             public final class Handler {
                         
                 @JobWorker("worker")
-                void handle(@JobVariable String var1, @Nullable @JobVariable("var12345") String var2) {
-                    // do something
+                Mono<Void> handle(@JobVariable String var1, @Nullable @JobVariable("var12345") String var2) {
+                    return Mono.empty();
                 }
             }
             """);
@@ -96,8 +99,8 @@ public class ZeebeWorkerTests extends AbstractAnnotationProcessorTest {
                 public record SomeResponse(String name, String id) {}
                 
                 @JobWorker("worker")
-                SomeResponse handle() {
-                    return new SomeResponse("1", "2");
+                Mono<SomeResponse> handle() {
+                    return Mono.just(new SomeResponse("1", "2"));
                 }
             }
             """);
@@ -118,8 +121,8 @@ public class ZeebeWorkerTests extends AbstractAnnotationProcessorTest {
             public final class Handler {
                         
                 @JobWorker("worker")
-                void handle(JobContext context) {
-                    // do something
+                Mono<Void> handle(JobContext context) {
+                    return Mono.empty();
                 }
             }
             """);

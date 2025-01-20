@@ -9,13 +9,15 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ZeebeWorkerTests extends AbstractAnnotationProcessorTest {
+public class ZeebeWorkerFutureTests extends AbstractAnnotationProcessorTest {
 
     @Override
     protected String commonImports() {
         return super.commonImports() + """
             import ru.tinkoff.kora.camunda.zeebe.worker.annotation.*;
             import ru.tinkoff.kora.camunda.zeebe.worker.*;
+            import java.util.concurrent.CompletionStage;
+            import java.util.concurrent.CompletableFuture;
             """;
     }
 
@@ -26,8 +28,8 @@ public class ZeebeWorkerTests extends AbstractAnnotationProcessorTest {
             public final class Handler {
                         
                 @JobWorker("worker")
-                void handle() {
-                    // do something
+                CompletionStage<Void> handle() {
+                    return CompletableFuture.completedFuture(null);
                 }
             }
             """);
@@ -50,8 +52,8 @@ public class ZeebeWorkerTests extends AbstractAnnotationProcessorTest {
                 public record SomeVariables(String name, String id) {}
                         
                 @JobWorker("worker")
-                void handle(@JobVariables SomeVariables vars) {
-                    // do something
+                CompletionStage<Void> handle(@JobVariables SomeVariables vars) {
+                    return CompletableFuture.completedFuture(null);
                 }
             }
             """);
@@ -72,8 +74,8 @@ public class ZeebeWorkerTests extends AbstractAnnotationProcessorTest {
             public final class Handler {
                         
                 @JobWorker("worker")
-                void handle(@JobVariable String var1, @Nullable @JobVariable("var12345") String var2) {
-                    // do something
+                CompletionStage<Void> handle(@JobVariable String var1, @Nullable @JobVariable("var12345") String var2) {
+                    return CompletableFuture.completedFuture(null);
                 }
             }
             """);
@@ -96,8 +98,8 @@ public class ZeebeWorkerTests extends AbstractAnnotationProcessorTest {
                 public record SomeResponse(String name, String id) {}
                 
                 @JobWorker("worker")
-                SomeResponse handle() {
-                    return new SomeResponse("1", "2");
+                CompletionStage<SomeResponse> handle() {
+                    return CompletableFuture.completedFuture(new SomeResponse("1", "2"));
                 }
             }
             """);
@@ -118,8 +120,8 @@ public class ZeebeWorkerTests extends AbstractAnnotationProcessorTest {
             public final class Handler {
                         
                 @JobWorker("worker")
-                void handle(JobContext context) {
-                    // do something
+                CompletionStage<Void> handle(JobContext context) {
+                    return CompletableFuture.completedFuture(null);
                 }
             }
             """);
