@@ -18,22 +18,6 @@ public interface ZeebeWorkerConfig {
     }
 
     @ConfigValueExtractor
-    interface BackoffConfig {
-
-        @Nullable
-        Duration maxDelay();
-
-        @Nullable
-        Duration minDelay();
-
-        @Nullable
-        Double factory();
-
-        @Nullable
-        Double jitter();
-    }
-
-    @ConfigValueExtractor
     interface JobConfig {
 
         default String name() {
@@ -66,6 +50,22 @@ public interface ZeebeWorkerConfig {
 
         @Nullable
         Duration streamTimeout();
+    }
+
+    @ConfigValueExtractor
+    interface BackoffConfig {
+
+        @Nullable
+        Duration maxDelay();
+
+        @Nullable
+        Duration minDelay();
+
+        @Nullable
+        Double factor();
+
+        @Nullable
+        Double jitter();
     }
 
     BackoffConfig DEFAULT_BACKOFF_CONFIG = new $ZeebeWorkerConfig_BackoffConfig_ConfigValueExtractor.BackoffConfig_Impl(
@@ -120,7 +120,7 @@ public interface ZeebeWorkerConfig {
         return new $ZeebeWorkerConfig_BackoffConfig_ConfigValueExtractor.BackoffConfig_Impl(
             targetConfig.maxDelay() == null ? defaultConfig.maxDelay() : targetConfig.maxDelay(),
             targetConfig.minDelay() == null ? defaultConfig.minDelay() : targetConfig.minDelay(),
-            targetConfig.factory() == null ? defaultConfig.factory() : targetConfig.factory(),
+            targetConfig.factor() == null ? defaultConfig.factor() : targetConfig.factor(),
             targetConfig.jitter() == null ? defaultConfig.jitter() : targetConfig.jitter()
         );
     }

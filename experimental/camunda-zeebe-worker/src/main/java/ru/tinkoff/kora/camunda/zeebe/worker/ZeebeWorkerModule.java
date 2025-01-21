@@ -48,9 +48,9 @@ public interface ZeebeWorkerModule extends GrpcClientModule, JsonCommonModule {
             .defaultJobTimeout(defaultJobConfig.timeout())
             .numJobWorkerExecutionThreads(clientConfig.executionThreads())
             .caCertificatePath(clientConfig.certificatePath())
-            .defaultMessageTimeToLive(clientConfig.ttl())
             .keepAlive(clientConfig.keepAlive())
-            .maxMessageSize((int) clientConfig.maxMessageSize().toBytes())
+            .defaultMessageTimeToLive(clientConfig.grpc().ttl())
+            .maxMessageSize((int) clientConfig.grpc().maxMessageSize().toBytes())
             .grpcAddress(URI.create(clientConfig.grpc().url()))
             .applyEnvironmentVariableOverrides(false);
 
@@ -89,7 +89,7 @@ public interface ZeebeWorkerModule extends GrpcClientModule, JsonCommonModule {
         return (config) -> BackoffSupplier.newBackoffBuilder()
             .maxDelay(config.maxDelay().toMillis())
             .minDelay(config.minDelay().toMillis())
-            .backoffFactor(config.factory())
+            .backoffFactor(config.factor())
             .jitterFactor(config.jitter())
             .build();
     }

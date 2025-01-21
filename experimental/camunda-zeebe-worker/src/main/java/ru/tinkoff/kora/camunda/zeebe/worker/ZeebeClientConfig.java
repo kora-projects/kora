@@ -13,7 +13,7 @@ import java.util.List;
 public interface ZeebeClientConfig {
 
     default int executionThreads() {
-        return 1;
+        return Math.max(Runtime.getRuntime().availableProcessors(), 2);
     }
 
     default boolean tls() {
@@ -22,14 +22,6 @@ public interface ZeebeClientConfig {
 
     default Duration keepAlive() {
         return Duration.ofSeconds(45);
-    }
-
-    default Duration ttl() {
-        return Duration.ofHours(1);
-    }
-
-    default Size maxMessageSize() {
-        return Size.of(4, Size.Type.MiB);
     }
 
     @Nullable
@@ -43,9 +35,9 @@ public interface ZeebeClientConfig {
     @Nullable
     RestConfig rest();
 
-    TelemetryConfig telemetry();
-
     DeploymentConfig deployment();
+
+    TelemetryConfig telemetry();
 
     @ConfigValueExtractor
     interface RestConfig {
@@ -57,6 +49,14 @@ public interface ZeebeClientConfig {
     interface GrpcConfig {
 
         String url();
+
+        default Duration ttl() {
+            return Duration.ofHours(1);
+        }
+
+        default Size maxMessageSize() {
+            return Size.of(4, Size.Type.MiB);
+        }
 
         GrpcRetryConfig retryPolicy();
     }
