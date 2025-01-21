@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 2,
+  "components": [
+    {
+      "text": "# Sample form",
+      "type": "text",
+      "id": "Field_1yqat0e"
+    }
+  ],
+  "type": "default",
+  "id": "Sample_Form"
+}

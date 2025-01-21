@@ -18,4 +18,5 @@ dependencies {
     api project(':logging:declarative-logging:declarative-logging-symbol-processor')
     api project(':grpc:grpc-client-symbol-processor')
     api project(':experimental:s3-client-symbol-processor')
+    api project(':experimental:camunda-zeebe-worker-symbol-processor')
 }
