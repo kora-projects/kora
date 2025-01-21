@@ -19,11 +19,7 @@ jobs:
 
       - name: Extract description
         run: |
-          KORA_CHANGELOG_DESCRIPTION=${ curl -s https://kora-projects.github.io/kora-docs/ru/changelog/changelog/ 
-            | grep -o '<meta property="og:description" content=".*' 
-            | grep -o '"[^"]*"' 
-            | tail -n +2 
-            | tr -d '"' }
+          echo "KORA_CHANGELOG_DESCRIPTION=$(curl -s https://kora-projects.github.io/kora-docs/ru/changelog/changelog/ | grep -o '<meta property="og:description" content=".*' | grep -o '"[^"]*"' | tail -n +2 | tr -d '"')" >> $GITHUB_ENV
 
       - name: Notify new release to Telegram
         uses: appleboy/telegram-action@master
