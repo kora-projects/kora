@@ -17,16 +17,26 @@ jobs:
           KORA_CHANGELOG_TAG=${KORA_CHANGELOG_TAG//.}
           echo "KORA_CHANGELOG_TAG=${KORA_CHANGELOG_TAG}" >> $GITHUB_OUTPUT
 
+      - name: Extract description
+        run: |
+          KORA_CHANGELOG_DESCRIPTION=${ curl -s https://kora-projects.github.io/kora-docs/ru/changelog/changelog/ 
+            | grep -o '<meta property="og:description" content=".*' 
+            | grep -o '"[^"]*"' 
+            | tail -n +2 
+            | tr -d '"' }
+
       - name: Notify new release to Telegram
         uses: appleboy/telegram-action@master
         env:
           KORA_VERSION: ${{ github.event.inputs.koraVersion }}
           KORA_CHANGELOG_TAG: ${{ steps.kora_changelog.outputs.KORA_CHANGELOG_TAG }}
         with:
-          to: ${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}
+          to: ${{ secrets.TELEGRAM_TEST_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           format: markdown
           message: |
             Вышла новая версия Kora: ${{ env.KORA_VERSION }}
+            
+            ${{ env.KORA_CHANGELOG_DESCRIPTION }}
             
             Больше подробностей [тут](https://kora-projects.github.io/kora-docs/ru/changelog/changelog/#${{ env.KORA_CHANGELOG_TAG }})
