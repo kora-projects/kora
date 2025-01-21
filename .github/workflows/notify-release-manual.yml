@@ -27,7 +27,7 @@ jobs:
           KORA_VERSION: ${{ github.event.inputs.koraVersion }}
           KORA_CHANGELOG_TAG: ${{ steps.kora_changelog.outputs.KORA_CHANGELOG_TAG }}
         with:
-          to: ${{ secrets.TELEGRAM_TEST_CHAT_ID }}
+          to: ${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           format: markdown
           message: |
