@@ -18,6 +18,12 @@ paths:
 
 components:
   schemas:
+    DeliveryTypeEnum:
+      type: string
+      enum:
+        - spb-city
+        - msk-city
+
     DeliveryAllOf:
       type: object
       required:
@@ -32,10 +38,10 @@ components:
       discriminator:
         propertyName: type
         mapping:
-          SPB: '#/components/schemas/DeliveryAllOfBig'
-          MSK: '#/components/schemas/DeliveryAllOfBig'
+          spb-city: '#/components/schemas/DeliveryAllOfSame'
+          msk-city: '#/components/schemas/DeliveryAllOfSame'
 
-    DeliveryAllOfBig:
+    DeliveryAllOfSame:
       type: object
       allOf:
         - $ref: '#/components/schemas/DeliveryAllOf'
@@ -52,10 +58,10 @@ components:
       discriminator:
         propertyName: type
         mapping:
-          SPB: '#/components/schemas/DeliverySimpleBig'
-          MSK: '#/components/schemas/DeliverySimpleBig'
+          spb-city: '#/components/schemas/DeliverySimpleSame'
+          msk-city: '#/components/schemas/DeliverySimpleSame'
 
-    DeliverySimpleBig:
+    DeliverySimpleSame:
       type: object
       properties:
         contractName:
@@ -71,9 +77,9 @@ components:
       discriminator:
         propertyName: type
         mapping:
-          MSK: '#/components/schemas/DeliverySingleBig'
+          msk-city: '#/components/schemas/DeliverySingleSame'
 
-    DeliverySingleBig:
+    DeliverySingleSame:
       type: object
       allOf:
         - $ref: '#/components/schemas/DeliverySingle'
@@ -131,6 +137,44 @@ components:
         contractName:
           type: string
 
+    ProductType:
+      type: string
+      enum: [ pie-product, tie-product ]
+
+    ProductOneOf:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          $ref: '#/components/schemas/ProductType'
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/ProductOneOfDataSmall'
+            - $ref: '#/components/schemas/ProductOneOfDataBig'
+          discriminator:
+            propertyName: type
+            mapping:
+              pie-product: '#/components/schemas/ProductOneOfDataSmall'
+              tie-product: '#/components/schemas/ProductOneOfDataBig'
+
+    ProductOneOfDataSmall:
+      type: object
+      properties:
+        type:
+          type: string
+        id:
+          type: string
+          format: uuid
+
+    ProductOneOfDataBig:
+      type: object
+      properties:
+        type:
+          type: string
+        contractName:
+          type: string
+
 # int/boolean not supported in JsonDiscriminator
 #    ResponseData:
 #      type: object
@@ -154,12 +198,6 @@ components:
 #      properties:
 #        code:
 #          type: int
-
-    DeliveryTypeEnum:
-      type: string
-      enum:
-        - SPB
-        - MSK
 
     ValidationErrorDto:
       title: ValidationErrorDto
@@ -231,7 +269,7 @@ components:
               type: boolean
             breed:
               type: string
-              enum: [ Dingo, Husky, Retriever, Shepherd ]
+              enum: [ Dingo-Don, Husky, Retriever, Shepherd ]
             int-breed:
               description: "enum with int value"
               type: int
