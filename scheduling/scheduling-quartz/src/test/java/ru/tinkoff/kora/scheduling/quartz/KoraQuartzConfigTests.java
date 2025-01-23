@@ -9,6 +9,7 @@ import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.config.common.impl.SimpleConfigValueOrigin;
 import ru.tinkoff.kora.config.common.origin.SimpleConfigOrigin;
 
+import java.util.List;
 import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -35,5 +36,22 @@ class KoraQuartzConfigTests {
         Properties properties = new QuartzModule() {}.quartzProperties(mockConfig, mockExtractor);
 
         assertNotEquals(defaults, properties);
+    }
+
+    @Test
+    void quartzNameChanged() throws Exception {
+        var mockExtractor = Mockito.mock(ConfigValueExtractor.class);
+        var mockConfig = Mockito.mock(Config.class);
+        ConfigValue stringValue = new ConfigValue.StringValue(new SimpleConfigValueOrigin(new SimpleConfigOrigin(""), ConfigValuePath.ROOT), "some");
+
+        when(mockExtractor.extract(any())).thenReturn(null);
+        when(mockConfig.get(anyString())).thenReturn(stringValue);
+
+        QuartzModule quartzModule = new QuartzModule() {};
+        Properties properties = quartzModule.quartzProperties(mockConfig, mockExtractor);
+        KoraQuartzScheduler koraQuartzScheduler = quartzModule.koraQuartzScheduler(new KoraQuartzJobFactory(List.of()), properties, new SchedulingQuartzConfig() {});
+        koraQuartzScheduler.init();
+
+        assertNotEquals("DefaultQuartzScheduler", koraQuartzScheduler.value().getSchedulerName());
     }
 }
