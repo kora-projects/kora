@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.scheduling.quartz;
 
 import org.quartz.Scheduler;
+import org.quartz.impl.StdSchedulerFactory;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.Tag;
@@ -23,6 +24,9 @@ public interface QuartzModule extends SchedulingModule {
                 defaults.load(is);
             }
         }
+        defaults.setProperty(StdSchedulerFactory.PROP_SCHED_INSTANCE_NAME, "kora-quartz-scheduler");
+        defaults.setProperty(StdSchedulerFactory.PROP_SCHED_INSTANCE_ID, StdSchedulerFactory.AUTO_GENERATE_INSTANCE_ID);
+
         var props = extractor.extract(value);
         if (props == null) {
             return defaults;
