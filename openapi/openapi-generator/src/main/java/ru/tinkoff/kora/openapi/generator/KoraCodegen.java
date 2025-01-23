@@ -658,7 +658,7 @@ public class KoraCodegen extends DefaultCodegen {
                             property.isNullable = false;
                             model.discriminator.getVendorExtensions().put("x-discriminator-property", property);
                         }
-                    } else if(propertyTypeToProp.isEmpty()) {
+                    } else if (propertyTypeToProp.isEmpty()) {
                         CodegenProperty p = getFakeCodegenPropertyString(model.discriminator.getPropertyBaseName());
                         model.discriminator.getVendorExtensions().put("x-discriminator-property", p);
                         model.discriminator.getVendorExtensions().put("x-discriminator-property-all-empty", true);
@@ -682,15 +682,28 @@ public class KoraCodegen extends DefaultCodegen {
                             p.isNullable = false;
 
                             childModel.vendorExtensions.put("x-discriminator-property", p);
-                            if(p.isString) {
+                            if (p.isString) {
                                 p.vendorExtensions.put("x-discriminator-property-value", "DISCRIMINATOR");
-                            } else if(p.isEnum || p.isEnumRef || p.isInnerEnum) {
-                                p.vendorExtensions.put("x-discriminator-property-value", p.dataType + "." + mappings.get(0));
+                            } else if (p.isEnum || p.isEnumRef || p.isInnerEnum) {
+                                final List<Map<String, Object>> enumVars = (List<Map<String, Object>>) p.allowableValues.get("enumVars");
+                                final String enumVarName = enumVars.stream()
+                                    .filter(m -> {
+                                        String mappingValue = String.valueOf(m.get("value"));
+                                        return mappingValue.equals(mappings.get(0))
+                                               || mappingValue.equals("\"" + mappings.get(0) + "\"");
+                                    })
+                                    .map(m -> m.get("name"))
+                                    .filter(Objects::nonNull)
+                                    .map(Object::toString)
+                                    .findFirst()
+                                    .orElseGet(() -> toEnumVarName(mappings.get(0), p.dataType));
+
+                                p.vendorExtensions.put("x-discriminator-property-value", p.dataType + "." + enumVarName);
                             } else {
                                 p.vendorExtensions.put("x-discriminator-property-value", p.dataType + ".valueOf(DISCRIMINATOR)");
                             }
                         });
-                        if(property.isEmpty() && model.discriminator.getVendorExtensions().containsKey("x-discriminator-property-all-empty")) {
+                        if (property.isEmpty() && model.discriminator.getVendorExtensions().containsKey("x-discriminator-property-all-empty")) {
                             CodegenProperty p = getFakeCodegenPropertyString(model.discriminator.getPropertyBaseName());
                             childModel.vendorExtensions.put("x-discriminator-property", p);
                             p.vendorExtensions.put("x-discriminator-property-value", "DISCRIMINATOR");
@@ -719,7 +732,7 @@ public class KoraCodegen extends DefaultCodegen {
                             property.isDiscriminator = true;
                         }
 
-                        if(params.codegenMode().isKotlin()) {
+                        if (params.codegenMode().isKotlin()) {
                             childModel.vendorExtensions.put("x-discriminator-property", property);
                             property.vendorExtensions.put("x-discriminator-property-value", property.name);
                         }
