@@ -54,8 +54,11 @@ import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.ExecutionException
+import java.util.regex.Pattern
 
 class ClientClassGenerator(private val resolver: Resolver) {
+
+    private val PATH_PARAM_PATTERN: Pattern = Pattern.compile("\\{.*}")
 
     fun generate(declaration: KSClassDeclaration): TypeSpec {
         val typeName = declaration.clientName()
@@ -200,6 +203,17 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 uriWithPlaceholdersString = uriWithPlaceholdersStringB.toString();
                 b.add(";\n");
             } else {
+                val matcher = PATH_PARAM_PATTERN.matcher(httpPath)
+                val pathUnmatched: MutableList<String> = java.util.ArrayList()
+                while (matcher.find()) {
+                    val group = matcher.group()
+                    pathUnmatched.add(group)
+                }
+
+                if (pathUnmatched.isNotEmpty()) {
+                    throw ProcessingErrorException("HTTP path '$httpPath' contains unspecified path parameters: $pathUnmatched", method)
+                }
+
                 b.addStatement("val _uriNoQuery = this.rootUrl + %S", httpPath);
                 uriWithPlaceholdersString = httpPath;
             }

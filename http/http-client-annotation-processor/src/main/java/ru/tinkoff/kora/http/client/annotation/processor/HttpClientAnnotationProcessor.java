@@ -3,6 +3,7 @@ package ru.tinkoff.kora.http.client.annotation.processor;
 import com.squareup.javapoet.JavaFile;
 import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -57,6 +58,8 @@ public class HttpClientAnnotationProcessor extends AbstractKoraProcessor {
             var typeElement = (TypeElement) httpClient;
             try {
                 this.generateClient(typeElement);
+            } catch (ProcessingErrorException e) {
+                throw e;
             } catch (Exception exception) {
                 exception.printStackTrace();
             }

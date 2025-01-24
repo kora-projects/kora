@@ -20,6 +20,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static ru.tinkoff.kora.http.client.annotation.processor.HttpClientClassNames.*;
 
@@ -27,6 +29,8 @@ public class ClientClassGenerator {
     private final ProcessingEnvironment processingEnv;
     private final Elements elements;
     private final Types types;
+
+    private final Pattern PATH_PARAM_PATTERN = Pattern.compile("\\{.*}");
 
     public ClientClassGenerator(ProcessingEnvironment processingEnv) {
         this.processingEnv = processingEnv;
@@ -101,6 +105,17 @@ public class ClientClassGenerator {
                 uriWithPlaceholdersString = uriWithPlaceholdersStringB.toString();
                 b.addCode(";\n");
             } else {
+                Matcher matcher = PATH_PARAM_PATTERN.matcher(httpPath);
+                final List<String> pathUnmatched = new ArrayList<>();
+                while (matcher.find()) {
+                    String group = matcher.group();
+                    pathUnmatched.add(group);
+                }
+
+                if(!pathUnmatched.isEmpty()) {
+                    throw new ProcessingErrorException("HTTP path '" +  httpPath + "' contains unspecified path parameters: " + pathUnmatched, method);
+                }
+
                 b.addStatement("var _uriNoQuery = this.rootUrl + $S", httpPath);
                 uriWithPlaceholdersString = httpPath;
             }
@@ -111,7 +126,7 @@ public class ClientClassGenerator {
                 try {
                     uriWithPlaceholders = URI.create(uriWithPlaceholdersString);
                 } catch (Exception e) {
-                    throw new ProcessingErrorException("Illegal URI path with Query parameters: " +  e.getMessage(), method);
+                    throw new ProcessingErrorException("Illegal URI path with Query parameters: " + e.getMessage(), method);
                 }
                 var hasQMark = uriWithPlaceholders.getQuery() != null;
                 var hasFirstParam = hasQMark && !uriWithPlaceholders.getQuery().isBlank();
@@ -581,8 +596,8 @@ public class ClientClassGenerator {
                 } else {
                     var isVoid = method.getReturnType().getKind() == TypeKind.VOID;
                     var isFutureOfVoid = (CommonUtils.isFuture(method.getReturnType()) || CommonUtils.isMono(method.getReturnType()))
-                        && method.getReturnType() instanceof DeclaredType dt
-                        && dt.getTypeArguments().get(0).toString().equals("java.lang.Void");
+                                         && method.getReturnType() instanceof DeclaredType dt
+                                         && dt.getTypeArguments().get(0).toString().equals("java.lang.Void");
                     if (!isVoid && !isFutureOfVoid) {
                         final TypeName responseMapperType;
                         if (methodData.responseMapper() != null && methodData.responseMapper().mapperClass() != null) {
