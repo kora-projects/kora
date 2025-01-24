@@ -58,7 +58,7 @@ import java.util.regex.Pattern
 
 class ClientClassGenerator(private val resolver: Resolver) {
 
-    private val PATH_PARAM_PATTERN: Pattern = Pattern.compile("\\{.+}")
+    private val PATH_PARAM_PATTERN: Pattern = Pattern.compile("\\{.+?}")
 
     fun generate(declaration: KSClassDeclaration): TypeSpec {
         val typeName = declaration.clientName()

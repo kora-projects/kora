@@ -30,7 +30,7 @@ public class ClientClassGenerator {
     private final Elements elements;
     private final Types types;
 
-    private final Pattern PATH_PARAM_PATTERN = Pattern.compile("\\{.+}");
+    private final Pattern PATH_PARAM_PATTERN = Pattern.compile("\\{.+?}");
 
     public ClientClassGenerator(ProcessingEnvironment processingEnv) {
         this.processingEnv = processingEnv;
