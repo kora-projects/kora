@@ -111,7 +111,7 @@ public class ClientClassGenerator {
                 try {
                     uriWithPlaceholders = URI.create(uriWithPlaceholdersString);
                 } catch (Exception e) {
-                    throw new ProcessingErrorException(e.getMessage(), method);
+                    throw new ProcessingErrorException("Illegal URI path with Query parameters: " +  e.getMessage(), method);
                 }
                 var hasQMark = uriWithPlaceholders.getQuery() != null;
                 var hasFirstParam = hasQMark && !uriWithPlaceholders.getQuery().isBlank();

@@ -33,7 +33,6 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.extendsKeepAop
-import ru.tinkoff.kora.ksp.common.CommonAopUtils.hasAopAnnotations
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.overridingKeepAop
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.await
@@ -210,7 +209,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 val uriWithPlaceholders: URI = try {
                     URI.create(uriWithPlaceholdersString);
                 } catch (e: Exception) {
-                    throw ProcessingErrorException(e.message!!, method)
+                    throw ProcessingErrorException("Illegal URI path with Query parameters: " + e.message, method)
                 }
                 val hasQMark = uriWithPlaceholders.getQuery() != null;
                 val hasFirstParam = hasQMark && !uriWithPlaceholders.getQuery().isBlank();
