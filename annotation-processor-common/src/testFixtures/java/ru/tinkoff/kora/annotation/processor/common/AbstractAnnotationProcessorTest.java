@@ -139,6 +139,11 @@ public abstract class AbstractAnnotationProcessorTest {
             task.call();
             w.close();
             return this.compileResult = new CompileResult(testPackage, diagnostic, manager);
+        } catch (RuntimeException e) {
+            if (e.getCause() instanceof RuntimeException er) {
+                throw er;
+            }
+            throw e;
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

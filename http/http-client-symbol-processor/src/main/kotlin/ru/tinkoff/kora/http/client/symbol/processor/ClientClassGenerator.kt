@@ -33,7 +33,6 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.extendsKeepAop
-import ru.tinkoff.kora.ksp.common.CommonAopUtils.hasAopAnnotations
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.overridingKeepAop
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.await
@@ -55,8 +54,11 @@ import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.ExecutionException
+import java.util.regex.Pattern
 
 class ClientClassGenerator(private val resolver: Resolver) {
+
+    private val PATH_PARAM_PATTERN: Pattern = Pattern.compile("\\{.+?}")
 
     fun generate(declaration: KSClassDeclaration): TypeSpec {
         val typeName = declaration.clientName()
@@ -201,13 +203,28 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 uriWithPlaceholdersString = uriWithPlaceholdersStringB.toString();
                 b.add(";\n");
             } else {
+                val matcher = PATH_PARAM_PATTERN.matcher(httpPath)
+                val pathUnmatched: MutableList<String> = java.util.ArrayList()
+                while (matcher.find()) {
+                    val group = matcher.group()
+                    pathUnmatched.add(group)
+                }
+
+                if (pathUnmatched.isNotEmpty()) {
+                    throw ProcessingErrorException("HTTP path '$httpPath' contains unspecified path parameters: $pathUnmatched", method)
+                }
+
                 b.addStatement("val _uriNoQuery = this.rootUrl + %S", httpPath);
                 uriWithPlaceholdersString = httpPath;
             }
             if (!hasQueryParameters) {
                 b.addStatement("val _uri = %T.create(_uriNoQuery)", URI::class.asClassName())
             } else {
-                val uriWithPlaceholders = URI.create(uriWithPlaceholdersString);
+                val uriWithPlaceholders: URI = try {
+                    URI.create(uriWithPlaceholdersString);
+                } catch (e: Exception) {
+                    throw ProcessingErrorException("Illegal URI path with Query parameters: " + e.message, method)
+                }
                 val hasQMark = uriWithPlaceholders.getQuery() != null;
                 val hasFirstParam = hasQMark && !uriWithPlaceholders.getQuery().isBlank();
                 b.addStatement("val _query = %T(%L, %L)", uriQueryBuilder, !hasQMark, hasFirstParam);

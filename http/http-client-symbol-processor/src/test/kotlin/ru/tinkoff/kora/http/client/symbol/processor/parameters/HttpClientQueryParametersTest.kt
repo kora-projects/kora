@@ -1,9 +1,11 @@
 package ru.tinkoff.kora.http.client.symbol.processor.parameters
 
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.mockito.Mockito
 import ru.tinkoff.kora.http.client.common.writer.StringParameterConverter
 import ru.tinkoff.kora.http.client.symbol.processor.AbstractHttpClientTest
+import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
 class HttpClientQueryParametersTest : AbstractHttpClientTest() {
     @Test
@@ -44,6 +46,38 @@ class HttpClientQueryParametersTest : AbstractHttpClientTest() {
         Mockito.reset(httpClient)
         onRequest("POST", "http://test-url:8080/test?qParam=20") { rs -> rs }
         client.invoke<Unit>("request", 20)
+    }
+
+    @Test
+    fun testQueryParamUnknownPathParamFails() {
+        assertThrows<Exception> {
+            compile(
+                listOf<Any>(), """
+            @HttpClient
+            interface TestClient {
+              @HttpRoute(method = "POST", path = "/test/{param}")
+              fun request(@Query qParam: Int)
+            }
+            
+            """.trimIndent()
+            )
+        }
+    }
+
+    @Test
+    fun testQueryParamIllegalFails() {
+        assertThrows<Exception> {
+            compile(
+                listOf<Any>(), """
+            @HttpClient
+            interface TestClient {
+              @HttpRoute(method = "POST", path = "/test{")
+              fun request(@Query qParam: Int)
+            }
+            
+            """.trimIndent()
+            )
+        }
     }
 
     @Test
