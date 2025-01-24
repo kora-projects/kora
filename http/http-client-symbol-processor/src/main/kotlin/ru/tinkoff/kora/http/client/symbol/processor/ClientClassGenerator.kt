@@ -207,7 +207,11 @@ class ClientClassGenerator(private val resolver: Resolver) {
             if (!hasQueryParameters) {
                 b.addStatement("val _uri = %T.create(_uriNoQuery)", URI::class.asClassName())
             } else {
-                val uriWithPlaceholders = URI.create(uriWithPlaceholdersString);
+                val uriWithPlaceholders: URI = try {
+                    URI.create(uriWithPlaceholdersString);
+                } catch (e: Exception) {
+                    throw ProcessingErrorException(e.message!!, method)
+                }
                 val hasQMark = uriWithPlaceholders.getQuery() != null;
                 val hasFirstParam = hasQMark && !uriWithPlaceholders.getQuery().isBlank();
                 b.addStatement("val _query = %T(%L, %L)", uriQueryBuilder, !hasQMark, hasFirstParam);

@@ -107,7 +107,12 @@ public class ClientClassGenerator {
             if (!hasQueryParameters) {
                 b.addStatement("var _uri = $T.create(_uriNoQuery)", URI.class);
             } else {
-                var uriWithPlaceholders = URI.create(uriWithPlaceholdersString);
+                final URI uriWithPlaceholders;
+                try {
+                    uriWithPlaceholders = URI.create(uriWithPlaceholdersString);
+                } catch (Exception e) {
+                    throw new ProcessingErrorException(e.getMessage(), method);
+                }
                 var hasQMark = uriWithPlaceholders.getQuery() != null;
                 var hasFirstParam = hasQMark && !uriWithPlaceholders.getQuery().isBlank();
                 b.addStatement("var _query = new $T($L, $L)", uriQueryBuilder, !hasQMark, hasFirstParam);
