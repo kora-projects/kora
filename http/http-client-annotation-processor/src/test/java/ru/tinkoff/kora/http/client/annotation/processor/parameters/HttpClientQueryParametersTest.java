@@ -1,11 +1,16 @@
 package ru.tinkoff.kora.http.client.annotation.processor.parameters;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
+import ru.tinkoff.kora.config.annotation.processor.processor.ConfigParserAnnotationProcessor;
 import ru.tinkoff.kora.http.client.annotation.processor.AbstractHttpClientTest;
+import ru.tinkoff.kora.http.client.annotation.processor.HttpClientAnnotationProcessor;
 import ru.tinkoff.kora.http.client.common.writer.StringParameterConverter;
 
 import java.util.*;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
@@ -29,6 +34,30 @@ public class HttpClientQueryParametersTest extends AbstractHttpClientTest {
         onRequest("POST", "http://test-url:8080/test?qParam=test2", rs -> rs.withCode(200));
         client.invoke("request", "test2");
         verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=test2")));
+    }
+
+    @Test
+    public void testQueryParamUnknownPathParamFails() {
+        assertThrows(ProcessingErrorException.class, () -> compile(List.of(new HttpClientAnnotationProcessor(), new ConfigParserAnnotationProcessor()),
+            """
+                @HttpClient
+                public interface TestClient {
+                  @HttpRoute(method = "POST", path = "/test/{param}")
+                  void request(@Query String qParam);
+                }
+                """));
+    }
+
+    @Test
+    public void testQueryParamIllegalFails() {
+        assertThrows(ProcessingErrorException.class, () -> compile(List.of(new HttpClientAnnotationProcessor(), new ConfigParserAnnotationProcessor()),
+            """
+                @HttpClient
+                public interface TestClient {
+                  @HttpRoute(method = "POST", path = "/test/{")
+                  void request(@Query String qParam);
+                }
+                """));
     }
 
     @Test
