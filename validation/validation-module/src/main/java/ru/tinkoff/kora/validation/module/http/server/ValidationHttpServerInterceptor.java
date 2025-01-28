@@ -43,12 +43,17 @@ public final class ValidationHttpServerInterceptor implements HttpServerIntercep
         }
     }
 
-    private HttpServerResponse toResponse(Context context, HttpServerRequest request, ViolationException exception) {
+    private HttpServerResponse toResponse(Context contextFromChain, HttpServerRequest request, ViolationException exception) {
         if (this.mapper != null) {
-            context.inject();
-            var response = this.mapper.apply(request, exception);
-            if (response != null) {
-                return response;
+            final Context current = Context.current();
+            try {
+                contextFromChain.inject();
+                var response = this.mapper.apply(request, exception);
+                if (response != null) {
+                    return response;
+                }
+            } finally {
+                current.inject();
             }
         }
         var message = exception.getMessage();
