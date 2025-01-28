@@ -1,9 +1,12 @@
 package ru.tinkoff.kora.cache.redis.lettuce;
 
 import io.lettuce.core.cluster.RedisClusterClient;
+import io.lettuce.core.protocol.ProtocolVersion;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.cache.redis.RedisCacheClient;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.config.common.Config;
+import ru.tinkoff.kora.config.common.ConfigValue;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 
 import java.time.Duration;

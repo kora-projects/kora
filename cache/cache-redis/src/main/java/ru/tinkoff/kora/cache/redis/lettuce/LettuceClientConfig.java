@@ -2,7 +2,6 @@ package ru.tinkoff.kora.cache.redis.lettuce;
 
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.SocketOptions;
-import io.lettuce.core.protocol.ProtocolVersion;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
@@ -22,8 +21,8 @@ public interface LettuceClientConfig {
     @Nullable
     String password();
 
-    default ProtocolVersion protocol() {
-        return ProtocolVersion.RESP3;
+    default Protocol protocol() {
+        return Protocol.RESP3;
     }
 
     default Duration socketTimeout() {
@@ -32,5 +31,13 @@ public interface LettuceClientConfig {
 
     default Duration commandTimeout() {
         return Duration.ofSeconds(RedisURI.DEFAULT_TIMEOUT);
+    }
+
+    enum Protocol {
+
+        /** Redis 2 to Redis 5 */
+        RESP2,
+        /** Redis 6 */
+        RESP3
     }
 }

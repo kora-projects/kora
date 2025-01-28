@@ -17,7 +17,10 @@ public final class LettuceClientFactory {
     public AbstractRedisClient build(LettuceClientConfig config) {
         final Duration commandTimeout = config.commandTimeout();
         final Duration socketTimeout = config.socketTimeout();
-        final ProtocolVersion protocolVersion = config.protocol();
+        final ProtocolVersion protocolVersion = switch (config.protocol()) {
+            case RESP2 -> ProtocolVersion.RESP2;
+            case RESP3 -> ProtocolVersion.RESP3;
+        };
 
         final List<RedisURI> mappedRedisUris = buildRedisURI(config);
 
@@ -30,7 +33,10 @@ public final class LettuceClientFactory {
     public RedisClusterClient buildRedisClusterClient(LettuceClientConfig config) {
         final Duration commandTimeout = config.commandTimeout();
         final Duration socketTimeout = config.socketTimeout();
-        final ProtocolVersion protocolVersion = config.protocol();
+        final ProtocolVersion protocolVersion = switch (config.protocol()) {
+            case RESP2 -> ProtocolVersion.RESP2;
+            case RESP3 -> ProtocolVersion.RESP3;
+        };
         final List<RedisURI> mappedRedisUris = buildRedisURI(config);
         return buildRedisClusterClientInternal(mappedRedisUris, commandTimeout, socketTimeout, protocolVersion);
     }
@@ -39,7 +45,10 @@ public final class LettuceClientFactory {
     public RedisClient buildRedisClient(LettuceClientConfig config) {
         final Duration commandTimeout = config.commandTimeout();
         final Duration socketTimeout = config.socketTimeout();
-        final ProtocolVersion protocolVersion = config.protocol();
+        final ProtocolVersion protocolVersion = switch (config.protocol()) {
+            case RESP2 -> ProtocolVersion.RESP2;
+            case RESP3 -> ProtocolVersion.RESP3;
+        };
         final List<RedisURI> mappedRedisUris = buildRedisURI(config);
         return buildRedisClientInternal(mappedRedisUris.get(0), commandTimeout, socketTimeout, protocolVersion);
     }
