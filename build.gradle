@@ -49,7 +49,7 @@ subprojects {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
 
-    tasks.withType(JavaCompile) {
+    tasks.withType(JavaCompile).configureEach {
         options.encoding("UTF-8")
         options.debug = true
         options.compilerArgs << '-parameters' << '-Xlint:all' << '-Xlint:-serial,-processing' << '-XprintRounds'
@@ -76,6 +76,18 @@ subprojects {
     group = "ru.tinkoff.kora.experimental"
     dependencies {
         implementation libs.jetbrains.annotations
+    }
+}
+
+subprojects {
+    if (childProjects.isEmpty()) {
+        if (!file('src/main/java/module-info.java').exists()) {
+            tasks.withType(Jar).configureEach {
+                manifest {
+                    attributes('Automatic-Module-Name': 'kora.' + project.name.replace('-', '.'))
+                }
+            }
+        }
     }
 }
 
@@ -245,7 +257,7 @@ subprojects {
         testImplementation libs.assertj
     }
 
-    task allDeps(type: DependencyReportTask) {}
+    tasks.register("allDeps", DependencyReportTask)
 }
 
 apply from: "${project.rootDir}/gradle/ci-tests.gradle"
