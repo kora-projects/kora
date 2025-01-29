@@ -14,7 +14,6 @@ import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.cache.redis.RedisCacheClient;
 import ru.tinkoff.kora.common.util.TimeUtils;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -85,13 +84,13 @@ final class LettuceRedisCacheClient implements RedisCacheClient, Lifecycle {
             connection.flushCommands();
             connection.setAutoFlushCommands(true);
 
-            return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
+            return pool.release(connection)
+                .thenCompose(_v -> CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)))
                 .thenApply(_void -> futures.stream()
-                    .map(CompletableFuture::join)
+                    .map(f -> f.getNow(null))
                     .filter(Objects::nonNull)
                     .map(v -> ((Map.Entry<byte[], byte[]>) v))
-                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)))
-                .whenComplete((s, throwable) -> pool.release(connection));
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
         });
     }
 

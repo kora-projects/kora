@@ -18,7 +18,6 @@ import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.cache.redis.RedisCacheClient;
 import ru.tinkoff.kora.common.util.TimeUtils;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -86,13 +85,13 @@ final class LettuceClusterRedisCacheClient implements RedisCacheClient, Lifecycl
             connection.flushCommands();
             connection.setAutoFlushCommands(true);
 
-            return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
+            return pool.release(connection)
+                .thenCompose(_v -> CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)))
                 .thenApply(_void -> futures.stream()
-                    .map(CompletableFuture::join)
+                    .map(f -> f.getNow(null))
                     .filter(Objects::nonNull)
                     .map(v -> ((Map.Entry<byte[], byte[]>) v))
-                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)))
-                .whenComplete((s, throwable) -> pool.release(connection));
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
         });
     }
 
@@ -124,7 +123,6 @@ final class LettuceClusterRedisCacheClient implements RedisCacheClient, Lifecycl
             var async = connection.async();
             for (Map.Entry<byte[], byte[]> entry : keyAndValue.entrySet()) {
                 var future = async.psetex(entry.getKey(), expireAfterMillis, entry.getValue())
-                    .thenApply(v -> true)
                     .toCompletableFuture();
 
                 futures.add(future);
@@ -133,9 +131,9 @@ final class LettuceClusterRedisCacheClient implements RedisCacheClient, Lifecycl
             connection.flushCommands();
             connection.setAutoFlushCommands(true);
 
-            return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
-                .thenApply(_void -> true)
-                .whenComplete((s, throwable) -> pool.release(connection));
+            return pool.release(connection)
+                .thenCompose(_v -> CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)))
+                .thenApply(_v -> true);
         });
     }
 
