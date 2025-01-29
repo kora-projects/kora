@@ -2,50 +2,42 @@ package ru.tinkoff.kora.cache.redis.lettuce;
 
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.SocketOptions;
-import io.lettuce.core.protocol.ProtocolVersion;
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
 import java.time.Duration;
-import java.util.Arrays;
 
-public record LettuceClientConfig(String uri,
-                                  @Nullable Integer database,
-                                  @Nullable String user,
-                                  @Nullable String password,
-                                  @Nullable String protocol,
-                                  @Nullable Duration socketTimeout,
-                                  @Nullable Duration commandTimeout) {
+@ConfigValueExtractor
+public interface LettuceClientConfig {
 
-    public LettuceClientConfig(String uri,
-                               @Nullable Integer database,
-                               @Nullable String user,
-                               @Nullable String password,
-                               @Nullable String protocol,
-                               @Nullable Duration socketTimeout,
-                               @Nullable Duration commandTimeout) {
-        this.uri = uri;
-        this.database = database;
-        this.user = user;
-        this.password = password;
-        this.protocol = (protocol == null)
-            ? ProtocolVersion.RESP3.name()
-            : protocol;
-        this.commandTimeout = (commandTimeout == null)
-            ? Duration.ofSeconds(RedisURI.DEFAULT_TIMEOUT)
-            : commandTimeout;
-        this.socketTimeout = (socketTimeout == null)
-            ? Duration.ofSeconds(SocketOptions.DEFAULT_CONNECT_TIMEOUT)
-            : socketTimeout;
+    String uri();
+
+    @Nullable
+    Integer database();
+
+    @Nullable
+    String user();
+
+    @Nullable
+    String password();
+
+    default Protocol protocol() {
+        return Protocol.RESP3;
     }
 
-    public ProtocolVersion protocolVersion() {
-        if (ProtocolVersion.RESP3.name().equals(protocol)) {
-            return ProtocolVersion.RESP3;
-        } else if (ProtocolVersion.RESP2.name().equals(protocol)) {
-            return ProtocolVersion.RESP2;
-        } else {
-            throw new IllegalArgumentException("Unknown protocol value '" + protocol
-                + "', expected value one of: " + Arrays.toString(ProtocolVersion.values()));
-        }
+    default Duration socketTimeout() {
+        return Duration.ofSeconds(SocketOptions.DEFAULT_CONNECT_TIMEOUT);
+    }
+
+    default Duration commandTimeout() {
+        return Duration.ofSeconds(RedisURI.DEFAULT_TIMEOUT);
+    }
+
+    enum Protocol {
+
+        /** Redis 2 to Redis 5 */
+        RESP2,
+        /** Redis 6+ */
+        RESP3
     }
 }

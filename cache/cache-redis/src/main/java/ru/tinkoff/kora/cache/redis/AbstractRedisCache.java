@@ -1,6 +1,8 @@
 package ru.tinkoff.kora.cache.redis;
 
 import jakarta.annotation.Nonnull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.cache.AsyncCache;
 
 import java.nio.charset.StandardCharsets;
@@ -12,6 +14,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
+
+    private static final Logger logger = LoggerFactory.getLogger(RedisCache.class);
 
     private final String name;
     private final RedisCacheClient redisClient;
@@ -42,7 +46,7 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
             ? null
             : config.expireAfterWrite().toMillis();
 
-        if(config.keyPrefix().isEmpty()) {
+        if (config.keyPrefix().isEmpty()) {
             this.keyPrefix = null;
         } else {
             var prefixRaw = config.keyPrefix().getBytes(StandardCharsets.UTF_8);
@@ -81,7 +85,7 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
     @Override
     public Map<K, V> get(@Nonnull Collection<K> keys) {
         if (keys == null || keys.isEmpty()) {
-            return null;
+            return Collections.emptyMap();
         }
 
         var telemetryContext = telemetry.create("GET_MANY", name);
@@ -180,7 +184,7 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
     @Override
     public V computeIfAbsent(@Nonnull K key, @Nonnull Function<K, V> mappingFunction) {
         if (key == null) {
-            return mappingFunction.apply(key);
+            return null;
         }
 
         var telemetryContext = telemetry.create("COMPUTE_IF_ABSENT", name);
@@ -193,7 +197,9 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
                 : redisClient.getex(keyAsBytes, expireAfterAccessMillis).toCompletableFuture().join();
 
             fromCache = valueMapper.read(jsonAsBytes);
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+        }
 
         if (fromCache != null) {
             telemetryContext.recordSuccess();
@@ -211,7 +217,9 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
                     } else {
                         redisClient.psetex(keyAsBytes, valueAsBytes, expireAfterWriteMillis).toCompletableFuture().join();
                     }
-                } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
             }
 
             telemetryContext.recordSuccess();
@@ -229,7 +237,7 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
     @Override
     public Map<K, V> computeIfAbsent(@Nonnull Collection<K> keys, @Nonnull Function<Set<K>, Map<K, V>> mappingFunction) {
         if (keys == null || keys.isEmpty()) {
-            return mappingFunction.apply(Collections.emptySet());
+            return Collections.emptyMap();
         }
 
         var telemetryContext = telemetry.create("COMPUTE_IF_ABSENT_MANY", name);
@@ -252,7 +260,9 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
                     }
                 });
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+        }
 
         if (fromCache.size() == keys.size()) {
             telemetryContext.recordSuccess();
@@ -279,7 +289,9 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
                     } else {
                         redisClient.psetex(keyAndValuesAsBytes, expireAfterWriteMillis).toCompletableFuture().join();
                     }
-                } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    logger.error(e.getMessage(), e);
+                }
             }
 
             telemetryContext.recordSuccess();
@@ -476,7 +488,6 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
 
         return responseCompletionStage
             .thenApply(valueMapper::read)
-            .exceptionally(e -> null)
             .thenCompose(fromCache -> {
                 if (fromCache != null) {
                     return CompletableFuture.completedFuture(fromCache);
@@ -498,11 +509,11 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
                                 telemetryContext.recordSuccess();
                                 return value;
                             });
-                    })
-                    .exceptionally(e -> {
-                        telemetryContext.recordFailure(e);
-                        return null;
                     });
+            })
+            .exceptionally(e -> {
+                telemetryContext.recordFailure(e);
+                return null;
             });
     }
 
@@ -536,7 +547,6 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
 
                 return fromCache;
             })
-            .exceptionally(e -> null)
             .thenCompose(fromCache -> {
                 if (fromCache.size() == keys.size()) {
                     return CompletableFuture.completedFuture(fromCache);
@@ -569,11 +579,11 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
                                 fromCache.putAll(values);
                                 return fromCache;
                             });
-                    })
-                    .exceptionally(e -> {
-                        telemetryContext.recordFailure(e);
-                        return null;
                     });
+            })
+            .exceptionally(e -> {
+                telemetryContext.recordFailure(e);
+                return Collections.emptyMap();
             });
     }
 
@@ -637,7 +647,7 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
 
     private byte[] mapKey(K key) {
         final byte[] suffixAsBytes = keyMapper.apply(key);
-        if(this.keyPrefix == null) {
+        if (this.keyPrefix == null) {
             return suffixAsBytes;
         } else {
             var keyAsBytes = new byte[keyPrefix.length + suffixAsBytes.length];
