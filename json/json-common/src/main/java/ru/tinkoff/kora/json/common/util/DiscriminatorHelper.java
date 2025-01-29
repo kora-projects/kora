@@ -12,7 +12,9 @@ public class DiscriminatorHelper {
     public static String readStringDiscriminator(BufferingJsonParser parser, String fieldName) throws IOException {
         var token = parser.currentToken();
         var name = new SerializedString(fieldName);
-        assert token == JsonToken.START_OBJECT;
+        if (token != JsonToken.START_OBJECT) {
+            throw new JsonParseException(parser, "Expected start of object for discriminator field " + name);
+        }
         while (!parser.nextFieldName(name)) {
             if (parser.currentToken() == JsonToken.END_OBJECT) {
                 return null;

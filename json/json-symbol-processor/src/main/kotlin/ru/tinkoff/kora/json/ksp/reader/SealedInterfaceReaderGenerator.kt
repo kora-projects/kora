@@ -10,6 +10,7 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toClassName
 import ru.tinkoff.kora.json.ksp.*
+import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.collectFinalSealedSubtypes
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
@@ -47,6 +48,9 @@ class SealedInterfaceReaderGenerator(private val resolver: Resolver, logger: KSP
             .addModifiers(KModifier.PUBLIC, KModifier.OVERRIDE)
             .addParameter("__parser", JsonTypes.jsonParser)
             .returns(typeName.copy(nullable = true))
+        function.controlFlow("if (__parser.currentToken() == %T.VALUE_NULL)", JsonTypes.jsonToken) {
+            addStatement("return null")
+        }
         function.addCode("val bufferingParser = %T(__parser)\n", JsonTypes.bufferingJsonParser)
         function.addCode("val discriminator = %T.readStringDiscriminator(bufferingParser, %S)\n", JsonTypes.discriminatorHelper, discriminatorField);
         function.addCode("if (discriminator == null) throw %T(__parser, %S)\n", JsonTypes.jsonParseException, "Discriminator required, but not provided");

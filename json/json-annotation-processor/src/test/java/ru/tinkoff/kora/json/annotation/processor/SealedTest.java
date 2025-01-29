@@ -56,10 +56,10 @@ public class SealedTest extends AbstractJsonAnnotationProcessorTest {
                         }
                     }
                 }
-
+            
                 @Json
                 record Impl2(int value) implements TestInterface{}
-
+            
                 @Json
                 @JsonDiscriminatorValue({"Impl3.1", "Impl3.2"})
                 record Impl3() implements TestInterface {
@@ -293,5 +293,26 @@ public class SealedTest extends AbstractJsonAnnotationProcessorTest {
 
         assertThat(writer.toByteArray(o1)).asString(StandardCharsets.UTF_8).isEqualTo(json1);
         assertThat(writer.toByteArray(o2)).asString(StandardCharsets.UTF_8).isEqualTo(json2);
+    }
+
+
+    @Test
+    public void testSealedNull() throws IOException {
+        compile("""
+            @Json
+            @JsonDiscriminatorField("@type")
+            public sealed interface TestInterface {
+                @Json
+                record Impl1(String value) implements TestInterface{}
+                @Json
+                record Impl2(int value) implements TestInterface{}
+            }
+            """);
+
+        var m1 = mapper("TestInterface_Impl1");
+        var m2 = mapper("TestInterface_Impl2");
+        var m = mapper("TestInterface", List.of(m1, m2), List.of(m1, m2));
+
+        assertThat(m.read("null")).isNull();
     }
 }

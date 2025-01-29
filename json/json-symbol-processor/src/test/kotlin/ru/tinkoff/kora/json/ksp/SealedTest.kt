@@ -371,4 +371,30 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
         writer.assertWrite(new("TestInterface\$Impl1", "test"), "{\"@type\":\"Impl1\",\"value\":\"test\"}")
         writer.assertWrite(new("TestInterface\$Impl2", 42), "{\"@type\":\"Impl2\",\"value\":42}")
     }
+
+    @Test
+    fun testSealedNull() {
+        compile(
+            """
+            @Json
+            @JsonDiscriminatorField("@type")
+            sealed interface TestInterface {
+                @Json
+                data class Impl1(val value: String) : TestInterface
+                @Json
+                data class Impl2(val value: Int) : TestInterface
+            }
+            """.trimIndent()
+        )
+
+        val m1 = mapper("TestInterface_Impl1")
+        val m2 = mapper("TestInterface_Impl2")
+        val m = mapper(
+            "TestInterface",
+            listOf(m1, m2),
+            listOf(m1, m2)
+        )
+
+        assertThat(m.read("null")).isNull()
+    }
 }

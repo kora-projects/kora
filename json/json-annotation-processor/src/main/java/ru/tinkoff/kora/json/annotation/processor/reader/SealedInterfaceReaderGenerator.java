@@ -2,7 +2,6 @@ package ru.tinkoff.kora.json.annotation.processor.reader;
 
 import com.squareup.javapoet.*;
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.SealedTypeUtils;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
@@ -55,7 +54,10 @@ public class SealedInterfaceReaderGenerator {
             .addParameter(JsonTypes.jsonParser, "__parser")
             .returns(ClassName.get(jsonElement))
             .addAnnotation(Override.class)
-            .addAnnotation(Nullable.class);
+            .addAnnotation(CommonClassNames.nullable);
+        method.beginControlFlow("if (__parser.currentToken() == $T.VALUE_NULL)", JsonTypes.jsonToken)
+            .addStatement("return null")
+            .endControlFlow();
         method.addCode("var bufferingParser = new $T(__parser);\n", JsonTypes.bufferingJsonParser);
         method.addCode("var discriminator = $T.readStringDiscriminator(bufferingParser, $S);\n", JsonTypes.discriminatorHelper, discriminatorField);
         method.addCode("if (discriminator == null) throw new $T(__parser, $S);\n", JsonTypes.jsonParseException, "Discriminator required, but not provided");
