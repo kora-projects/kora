@@ -54,28 +54,28 @@ class LogKoraAspect : KoraAspect {
     }
 
     override fun apply(
-        function: KSFunctionDeclaration,
+        ksFunction: KSFunctionDeclaration,
         superCall: String,
         aspectContext: KoraAspect.AspectContext
     ): KoraAspect.ApplyResult {
         val loggerFactoryFieldName = aspectContext.fieldFactory.constructorParam(iLoggerFactoryType, emptyList())
-        val declarationName = function.parentDeclaration?.qualifiedName?.asString()
-        val loggerName = "${declarationName}.${function.simpleName.getShortName()}"
+        val declarationName = ksFunction.parentDeclaration?.qualifiedName?.asString()
+        val loggerName = "${declarationName}.${ksFunction.simpleName.getShortName()}"
         val loggerFieldName = aspectContext.fieldFactory.constructorInitialized(
             loggerType,
             CodeBlock.of("%N.getLogger(%S)", loggerFactoryFieldName, loggerName)
         )
 
         val result = CodeBlock.builder()
-        if (function.isFlow()) {
-            result.addStatement("var %N = %L", RESULT_FIELD_NAME, function.superCall(superCall))
-            result.generateInputLogFlow(aspectContext, loggerFieldName, function)
-            result.generateOutputLogFlow(aspectContext, loggerFieldName, function)
+        if (ksFunction.isFlow()) {
+            result.addStatement("var %N = %L", RESULT_FIELD_NAME, ksFunction.superCall(superCall))
+            result.generateInputLogFlow(aspectContext, loggerFieldName, ksFunction)
+            result.generateOutputLogFlow(aspectContext, loggerFieldName, ksFunction)
             result.add("\n")
             result.addStatement("return %L", RESULT_FIELD_NAME)
         } else {
-            result.generateInputLog(aspectContext, loggerFieldName, function)
-            result.generateOutputLog(aspectContext, loggerFieldName, function, superCall)
+            result.generateInputLog(aspectContext, loggerFieldName, ksFunction)
+            result.generateOutputLog(aspectContext, loggerFieldName, ksFunction, superCall)
         }
 
         return KoraAspect.ApplyResult.MethodBody(result.build())

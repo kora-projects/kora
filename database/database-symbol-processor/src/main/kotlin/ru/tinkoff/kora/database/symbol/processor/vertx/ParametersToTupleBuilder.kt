@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.database.symbol.processor.vertx
 
-import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.ksp.toTypeName
@@ -10,7 +9,7 @@ import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.parseMappingData
 
 object ParametersToTupleBuilder {
-    fun generate(b: FunSpec.Builder, query: QueryWithParameters, method: KSFunctionDeclaration, parameters: List<QueryParameter>, batchParam: QueryParameter?, parameterMappers: FieldFactory) {
+    fun generate(b: FunSpec.Builder, query: QueryWithParameters, parameters: List<QueryParameter>, batchParam: QueryParameter?, parameterMappers: FieldFactory) {
         if (batchParam != null) {
             b.addCode(
                 "val _batchParams = %T<%T>(%L.size)\n",
@@ -53,7 +52,6 @@ object ParametersToTupleBuilder {
                     if (sqlParameter == null || sqlParameter.sqlIndexes.isEmpty()) {
                         return@mapNotNull null
                     }
-                    val fieldName = field.property.simpleName.asString()
                     val variableName = it.first + "_" + field.variableName
                     val fieldAccessor = CodeBlock.of("%N?.%L", it.first, field.accessor(true))
                     val nativeType = VertxNativeTypes.findNativeType(field.type.toTypeName())

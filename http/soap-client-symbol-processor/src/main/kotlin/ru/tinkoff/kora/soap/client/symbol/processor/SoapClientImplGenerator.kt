@@ -122,7 +122,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
             .addProperty("jaxb", soapClasses.jaxbContextTypeName(), KModifier.PRIVATE)
             .primaryConstructor(
                 FunSpec.constructorBuilder()
-                    .addParameter("httpClient", soapClasses.httpClientTypeName()!!)
+                    .addParameter("httpClient", soapClasses.httpClientTypeName())
                     .addParameter("telemetry", SoapClientTelemetryFactory::class)
                     .addParameter("config", SoapServiceConfig::class)
                     .throws(soapClasses.jaxbExceptionTypeName())

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.json.common;
 
-@SuppressWarnings("ALL")
+@SuppressWarnings({"rawtypes", "unchecked"})
 final class JsonNullableUtil {
 
     static final JsonNullable NULL = new JsonNullable.Defined(null);

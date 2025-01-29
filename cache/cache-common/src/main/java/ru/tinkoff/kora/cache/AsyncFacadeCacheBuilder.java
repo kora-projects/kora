@@ -71,7 +71,7 @@ final class AsyncFacadeCacheBuilder<K, V> implements AsyncCache.Builder<K, V> {
         @Nonnull
         @Override
         public CompletionStage<V> putAsync(@Nonnull K key, @Nonnull V value) {
-            final CompletableFuture<?>[] operations = new CompletableFuture[facades.size()];
+            final CompletableFuture<?>[] operations = new CompletableFuture<?>[facades.size()];
             for (int i = 0; i < facades.size(); i++) {
                 AsyncCache<K, V> cache = facades.get(i);
                 operations[i] = cache.putAsync(key, value).toCompletableFuture();
@@ -83,7 +83,7 @@ final class AsyncFacadeCacheBuilder<K, V> implements AsyncCache.Builder<K, V> {
         @Nonnull
         @Override
         public CompletionStage<Map<K, V>> putAsync(@Nonnull Map<K, V> keyAndValues) {
-            final CompletableFuture<?>[] operations = new CompletableFuture[facades.size()];
+            final CompletableFuture<?>[] operations = new CompletableFuture<?>[facades.size()];
             for (int i = 0; i < facades.size(); i++) {
                 AsyncCache<K, V> cache = facades.get(i);
                 operations[i] = cache.putAsync(keyAndValues).toCompletableFuture();
@@ -104,7 +104,7 @@ final class AsyncFacadeCacheBuilder<K, V> implements AsyncCache.Builder<K, V> {
                     }
 
                     return facade.getAsync(key).thenCompose(received -> {
-                        final CompletableFuture<?>[] operations = new CompletableFuture[currentFacade];
+                        final CompletableFuture<?>[] operations = new CompletableFuture<?>[currentFacade];
                         for (int j = 0; j < currentFacade; j++) {
                             operations[j] = facades.get(j).putAsync(key, received).toCompletableFuture();
                         }
@@ -179,7 +179,7 @@ final class AsyncFacadeCacheBuilder<K, V> implements AsyncCache.Builder<K, V> {
         @Nonnull
         @Override
         public CompletionStage<Boolean> invalidateAsync(@Nonnull K key) {
-            final CompletableFuture<?>[] operations = new CompletableFuture[facades.size()];
+            final CompletableFuture<?>[] operations = new CompletableFuture<?>[facades.size()];
             for (int i = 0; i < facades.size(); i++) {
                 AsyncCache<K, V> cache = facades.get(i);
                 operations[i] = cache.invalidateAsync(key).toCompletableFuture();
@@ -190,7 +190,7 @@ final class AsyncFacadeCacheBuilder<K, V> implements AsyncCache.Builder<K, V> {
 
         @Override
         public CompletionStage<Boolean> invalidateAsync(@Nonnull Collection<K> keys) {
-            final CompletableFuture<?>[] operations = new CompletableFuture[facades.size()];
+            final CompletableFuture<?>[] operations = new CompletableFuture<?>[facades.size()];
             for (int i = 0; i < facades.size(); i++) {
                 AsyncCache<K, V> cache = facades.get(i);
                 operations[i] = cache.invalidateAsync(keys).toCompletableFuture();
@@ -202,7 +202,7 @@ final class AsyncFacadeCacheBuilder<K, V> implements AsyncCache.Builder<K, V> {
         @Nonnull
         @Override
         public CompletionStage<Boolean> invalidateAllAsync() {
-            final CompletableFuture<?>[] operations = new CompletableFuture[facades.size()];
+            final CompletableFuture<?>[] operations = new CompletableFuture<?>[facades.size()];
             for (int i = 0; i < facades.size(); i++) {
                 AsyncCache<K, V> cache = facades.get(i);
                 operations[i] = cache.invalidateAllAsync().toCompletableFuture();

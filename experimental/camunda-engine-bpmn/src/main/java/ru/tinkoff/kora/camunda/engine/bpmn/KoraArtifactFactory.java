@@ -30,6 +30,7 @@ public final class KoraArtifactFactory implements ArtifactFactory {
 
     @Override
     public <T> T getArtifact(Class<T> clazz) {
+        @SuppressWarnings("unchecked")
         var artifact = (T) componentByKey.get(clazz.getCanonicalName());
         if (artifact != null) {
             return artifact;

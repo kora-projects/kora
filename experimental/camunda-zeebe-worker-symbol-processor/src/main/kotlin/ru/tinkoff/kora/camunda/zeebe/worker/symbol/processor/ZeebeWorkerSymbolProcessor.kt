@@ -74,7 +74,7 @@ class ZeebeWorkerSymbolProcessor(
 
             val methodConstructor = getMethodConstructor(ownerType, method, implSpecBuilder, variables)
 
-            val methodFetchVariables = getMethodFetchVariables(method, variables)
+            val methodFetchVariables = getMethodFetchVariables(variables)
             if (methodFetchVariables != null) {
                 implSpecBuilder.addFunction(methodFetchVariables)
             }
@@ -84,9 +84,9 @@ class ZeebeWorkerSymbolProcessor(
                 .addFunction(getMethodType(method))
 
             if (method.isDeferred()) {
-                specBuilder.addFunction(getMethodDeferredHandler(ownerType, method, variables))
+                specBuilder.addFunction(getMethodDeferredHandler(method, variables))
             } else {
-                specBuilder.addFunction(getMethodHandler(ownerType, method, variables))
+                specBuilder.addFunction(getMethodHandler(method, variables))
             }
 
             val spec = specBuilder.build()
@@ -106,7 +106,6 @@ class ZeebeWorkerSymbolProcessor(
     }
 
     private fun getMethodHandler(
-        ownerType: KSClassDeclaration,
         method: KSFunctionDeclaration,
         variables: List<Variable>
     ): FunSpec {
@@ -201,7 +200,6 @@ class ZeebeWorkerSymbolProcessor(
     }
 
     private fun getMethodDeferredHandler(
-        ownerType: KSClassDeclaration,
         method: KSFunctionDeclaration,
         variables: List<Variable>
     ): FunSpec {
@@ -305,7 +303,7 @@ class ZeebeWorkerSymbolProcessor(
             .build()
     }
 
-    private fun getMethodFetchVariables(method: KSFunctionDeclaration, variables: List<Variable>): FunSpec? {
+    private fun getMethodFetchVariables(variables: List<Variable>): FunSpec? {
         if (variables.none { v -> v.isVar }) {
             return null
         }

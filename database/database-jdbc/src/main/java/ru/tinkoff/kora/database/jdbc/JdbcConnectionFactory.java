@@ -16,6 +16,7 @@ import java.sql.SQLException;
  *
  * @see JdbcRepository
  */
+@SuppressWarnings("overloads")
 public interface JdbcConnectionFactory {
 
     <T> T withConnection(JdbcHelper.SqlFunction1<Connection, T> callback) throws RuntimeSqlException;

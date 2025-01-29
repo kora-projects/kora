@@ -355,10 +355,9 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                     .add("""
                             .exceptionallyCompose(e -> {
                                 Throwable cause = e;
-                                if(e instanceof $T) {
+                                if (e instanceof $T) {
                                     cause = e.getCause();
                                 }
-                                
                                 if(cause instanceof $T) {
                                     return $T.completedFuture(null);
                                 } else {
@@ -470,11 +469,10 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                         .add("""
                                 .exceptionallyCompose(e -> {
                                     Throwable cause = e;
-                                    if(e instanceof $T) {
+                                    if (e instanceof $T) {
                                         cause = e.getCause();
                                     }
-                                    
-                                    if(cause instanceof $T) {
+                                    if (cause instanceof $T) {
                                         return $T.completedFuture(null);
                                     } else {
                                         return $T.failedFuture(cause);

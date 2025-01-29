@@ -8,7 +8,6 @@ import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
 import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
-import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotations
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
@@ -33,18 +32,18 @@ class CircuitBreakerKoraAspect(val resolver: Resolver) : KoraAspect {
         return setOf(ANNOTATION_TYPE.canonicalName)
     }
 
-    override fun apply(method: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
-        if (method.isFuture()) {
-            throw ProcessingErrorException("@CircuitBreaker can't be applied for types assignable from ${Future::class.java}", method)
-        } else if (method.isCompletionStage()) {
-            throw ProcessingErrorException("@CircuitBreaker can't be applied for types assignable from ${CompletionStage::class.java}", method)
-        } else if (method.isMono()) {
-            throw ProcessingErrorException("@CircuitBreaker can't be applied for types assignable from ${CommonClassNames.mono}", method)
-        } else if (method.isFlux()) {
-            throw ProcessingErrorException("@CircuitBreaker can't be applied for types assignable from ${CommonClassNames.flux}", method)
+    override fun apply(ksFunction: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
+        if (ksFunction.isFuture()) {
+            throw ProcessingErrorException("@CircuitBreaker can't be applied for types assignable from ${Future::class.java}", ksFunction)
+        } else if (ksFunction.isCompletionStage()) {
+            throw ProcessingErrorException("@CircuitBreaker can't be applied for types assignable from ${CompletionStage::class.java}", ksFunction)
+        } else if (ksFunction.isMono()) {
+            throw ProcessingErrorException("@CircuitBreaker can't be applied for types assignable from ${CommonClassNames.mono}", ksFunction)
+        } else if (ksFunction.isFlux()) {
+            throw ProcessingErrorException("@CircuitBreaker can't be applied for types assignable from ${CommonClassNames.flux}", ksFunction)
         }
 
-        val circuitBreakerName = method.findAnnotation(ANNOTATION_TYPE)!!
+        val circuitBreakerName = ksFunction.findAnnotation(ANNOTATION_TYPE)!!
             .findValue<String>("value")!!
 
         val managerType = resolver.getClassDeclarationByName("ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreakerManager")!!.asType(listOf())
@@ -55,12 +54,12 @@ class CircuitBreakerKoraAspect(val resolver: Resolver) : KoraAspect {
             CodeBlock.of("%L[%S]", fieldManager, circuitBreakerName)
         )
 
-        val body = if (method.isFlow()) {
-            buildBodyFlow(method, superCall, fieldCircuit)
-        } else if (method.isSuspend()) {
-            buildBodySync(method, superCall, fieldCircuit)
+        val body = if (ksFunction.isFlow()) {
+            buildBodyFlow(ksFunction, superCall, fieldCircuit)
+        } else if (ksFunction.isSuspend()) {
+            buildBodySync(ksFunction, superCall, fieldCircuit)
         } else {
-            buildBodySync(method, superCall, fieldCircuit)
+            buildBodySync(ksFunction, superCall, fieldCircuit)
         }
 
         return KoraAspect.ApplyResult.MethodBody(body)

@@ -21,14 +21,14 @@ class CassandraUdtSymbolProcessor(val environment: SymbolProcessorEnvironment) :
                 unprocessed.add(udtType)
                 continue
             }
-            udtType.visitClass { this.processUdtClass(resolver, it) }
+            udtType.visitClass { this.processUdtClass(it) }
         }
         return unprocessed
     }
 
-    private fun processUdtClass(resolver: Resolver, classDeclaration: KSClassDeclaration) {
-        resultExtractorGenerator.generate(resolver, classDeclaration)
-        statementSetterGenerator.generate(resolver, classDeclaration)
+    private fun processUdtClass(classDeclaration: KSClassDeclaration) {
+        resultExtractorGenerator.generate(classDeclaration)
+        statementSetterGenerator.generate(classDeclaration)
     }
 
 }

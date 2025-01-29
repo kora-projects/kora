@@ -107,7 +107,7 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
                 return null
             }
             val nameConverter = typeDeclaration.getNameConverter()
-            val property: (KSValueParameter) -> KSPropertyDeclaration = lambda@{ p ->
+            val propertyFinder: (KSValueParameter) -> KSPropertyDeclaration = lambda@{ p ->
                 for (property in typeDeclaration.getAllProperties()) {
                     if (property.simpleName.getShortName() == p.name!!.getShortName()) {
                         return@lambda property
@@ -118,14 +118,14 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
 
             val fields = typeDeclaration.primaryConstructor!!.parameters
                 .map {
-                    val property = property(it)
-                    val type = it.type.resolve()
+                    val property = propertyFinder(it)
+                    val propertyType = it.type.resolve()
                     val columnName = parseColumnName(it, nameConverter)
                     var mapping = property.parseMappingData()
                     if (mapping.tags.isEmpty() && mapping.mapperClasses.isEmpty()) {
                         mapping = it.parseMappingData()
                     }
-                    val field = SimpleEntityField(property, type, columnName, mapping)
+                    val field = SimpleEntityField(property, propertyType, columnName, mapping)
                     val embedded = it.findAnnotation(DbUtils.embeddedAnnotation)
                         ?: property.findAnnotation(DbUtils.embeddedAnnotation)
 
@@ -134,12 +134,12 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
                     }
 
                     val prefix = embedded.findValue<String>("value")?.ifEmpty { null } ?: ""
-                    val entity = parseEntity(type)
+                    val entity = parseEntity(propertyType)
                     if (entity == null) {
                         throw ProcessingErrorException("Embedded field should be of data type", property)
                     }
                     val embeddedFields = entity.fields.map { f -> EmbeddedEntityField.Field(field, f.property, f.type, prefix + (f as SimpleEntityField).columnName, f.mapping) }
-                    EmbeddedEntityField(field, property, type, embeddedFields)
+                    EmbeddedEntityField(field, property, propertyType, embeddedFields)
                 }
                 .toList()
             return DbEntity(

@@ -55,12 +55,12 @@ record GraphMockkMock(GraphCandidate candidate,
     }
 
     @SuppressWarnings("unchecked")
-    private void replaceNode(ApplicationGraphDraw graphDraw, Node node, Class<?> mockClass) {
+    private <T> void replaceNode(ApplicationGraphDraw graphDraw, Node<T> node, Class<?> mockClass) {
         graphDraw.replaceNode(node, g -> {
-            KClass<?> kotlinClass = JvmClassMappingKt.getKotlinClass(mockClass);
-            Object mock = MockKKt.mockkClass(kotlinClass, null, relaxed, new KClass[]{}, relaxUnitFun, v -> null);
+            var kotlinClass = JvmClassMappingKt.getKotlinClass(mockClass);
+            var mock = (T) MockKKt.mockkClass(kotlinClass, null, relaxed, new KClass<?>[]{}, relaxUnitFun, v -> null);
             if (node.type() instanceof Class<?> tc && Wrapped.class.isAssignableFrom(tc)) {
-                return (Object) (Wrapped<?>) () -> mock;
+                return (T) (Wrapped<?>) () -> mock;
             } else {
                 return mock;
             }

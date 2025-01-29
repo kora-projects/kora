@@ -44,18 +44,18 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
         return setOf(ANNOTATION_TYPE.canonicalName)
     }
 
-    override fun apply(method: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
-        if (method.isFuture()) {
-            throw ProcessingErrorException("@Retryable can't be applied for types assignable from ${Future::class.java}", method)
-        } else if (method.isCompletionStage()) {
-            throw ProcessingErrorException("@Retryable can't be applied for types assignable from ${CompletionStage::class.java}", method)
-        } else if (method.isMono()) {
-            throw ProcessingErrorException("@Retryable can't be applied for types assignable from ${CommonClassNames.mono}", method)
-        } else if (method.isFlux()) {
-            throw ProcessingErrorException("@Retryable can't be applied for types assignable from ${CommonClassNames.flux}", method)
+    override fun apply(ksFunction: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
+        if (ksFunction.isFuture()) {
+            throw ProcessingErrorException("@Retryable can't be applied for types assignable from ${Future::class.java}", ksFunction)
+        } else if (ksFunction.isCompletionStage()) {
+            throw ProcessingErrorException("@Retryable can't be applied for types assignable from ${CompletionStage::class.java}", ksFunction)
+        } else if (ksFunction.isMono()) {
+            throw ProcessingErrorException("@Retryable can't be applied for types assignable from ${CommonClassNames.mono}", ksFunction)
+        } else if (ksFunction.isFlux()) {
+            throw ProcessingErrorException("@Retryable can't be applied for types assignable from ${CommonClassNames.flux}", ksFunction)
         }
 
-        val retryableName = method.findAnnotation(ANNOTATION_TYPE)!!
+        val retryableName = ksFunction.findAnnotation(ANNOTATION_TYPE)!!
             .findValue<String>("value")!!
 
         val managerType = resolver.getClassDeclarationByName("ru.tinkoff.kora.resilient.retry.RetryManager")!!.asType(listOf())
@@ -66,12 +66,12 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
             CodeBlock.of("%L[%S]", fieldManager, retryableName)
         )
 
-        val body = if (method.isFlow()) {
-            buildBodyFlow(method, superCall, fieldRetrier, retryableName)
-        } else if (method.isSuspend()) {
-            buildBodySuspend(method, superCall, fieldRetrier, retryableName)
+        val body = if (ksFunction.isFlow()) {
+            buildBodyFlow(ksFunction, superCall, fieldRetrier, retryableName)
+        } else if (ksFunction.isSuspend()) {
+            buildBodySuspend(ksFunction, superCall, fieldRetrier, retryableName)
         } else {
-            buildBodySync(method, superCall, fieldRetrier)
+            buildBodySync(ksFunction, superCall, fieldRetrier)
         }
 
         return KoraAspect.ApplyResult.MethodBody(body)

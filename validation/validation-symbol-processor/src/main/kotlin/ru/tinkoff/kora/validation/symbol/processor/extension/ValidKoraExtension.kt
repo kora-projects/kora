@@ -43,7 +43,7 @@ class ValidKoraExtension(resolver: Resolver, codeGenerator: CodeGenerator) : Kor
         if (argumentTypeClass.findAnnotation(VALID_TYPE) != null) {
             return ExtensionResult.RequiresCompilingResult
         }
-        gen.generate(argumentTypeClass, resolver)
+        gen.generate(argumentTypeClass)
         return ExtensionResult.RequiresCompilingResult
     }
 

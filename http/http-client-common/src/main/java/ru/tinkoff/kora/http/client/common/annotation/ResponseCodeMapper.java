@@ -52,6 +52,7 @@ public @interface ResponseCodeMapper {
      * <hr>
      * <b>English</b>: Specifies the implementation of the handler to be registered
      */
+    @SuppressWarnings("rawtypes")
     Class<? extends HttpClientResponseMapper> mapper() default HttpClientResponseMapper.class;
 
     @Retention(RetentionPolicy.RUNTIME)

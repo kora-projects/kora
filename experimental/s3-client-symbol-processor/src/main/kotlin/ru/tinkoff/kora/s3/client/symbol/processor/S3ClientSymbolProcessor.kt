@@ -287,7 +287,7 @@ class S3ClientSymbolProcessor(
         } else if (method.parameters.isEmpty()) {
             throw ProcessingErrorException("@S3.Get operation must have key parameter", method)
         } else {
-            key = Key(CodeBlock.of("val _key = %L.toString()\n", firstParameter!!.name!!.asString()), listOf(firstParameter!!))
+            key = Key(CodeBlock.of("val _key = %L.toString()\n", firstParameter!!.name!!.asString()), listOf(firstParameter))
         }
 
         val returnType = method.returnType!!.toTypeName()
@@ -604,7 +604,6 @@ class S3ClientSymbolProcessor(
             val requestBuilder: CodeBlock.Builder = CodeBlock.builder()
             val type: String? = operationMeta.annotation.findValueNoDefault("type")
             val encoding: String? = operationMeta.annotation.findValueNoDefault("encoding")
-            val bodyParamName = bodyParamName
 
             if (CLASS_S3_BODY == bodyType) {
                 bodyCode = if (mode == S3Operation.Mode.SYNC) {

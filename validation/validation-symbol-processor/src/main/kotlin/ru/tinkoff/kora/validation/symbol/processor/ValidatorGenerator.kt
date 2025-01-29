@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.validation.symbol.processor
 
 import com.google.devtools.ksp.processing.CodeGenerator
-import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
@@ -215,7 +214,7 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
         return ValidSymbolProcessor.ValidatorSpec(meta, typeSpec, parameterSpecs)
     }
 
-    private fun getValidatorMeta(declaration: KSClassDeclaration, resolver: Resolver): ValidatorMeta {
+    private fun getValidatorMeta(declaration: KSClassDeclaration): ValidatorMeta {
         if (declaration.classKind == ClassKind.INTERFACE || declaration.classKind == ClassKind.ENUM_CLASS) {
             throw ProcessingErrorException("Validation can't be generated for: ${declaration.classKind}", declaration)
         }
@@ -273,11 +272,11 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
             ?: emptyList()
     }
 
-    fun generate(symbol: KSAnnotated, resolver: Resolver) {
+    fun generate(symbol: KSAnnotated) {
         if (symbol is KSClassDeclaration && symbol.classKind == ClassKind.INTERFACE && symbol.modifiers.contains(Modifier.SEALED)) {
             return this.generateForSealed(symbol)
         }
-        val meta = symbol.visitClass { clazz -> getValidatorMeta(clazz, resolver) }
+        val meta = symbol.visitClass { clazz -> getValidatorMeta(clazz) }
         if (meta == null) {
             return
         }

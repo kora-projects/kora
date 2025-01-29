@@ -52,26 +52,27 @@ record GraphMockitoSpy(GraphCandidate candidate,
     }
 
     @SuppressWarnings("unchecked")
-    private void replaceNode(ApplicationGraphDraw graphDraw, Node node) {
+    private <T> void replaceNode(ApplicationGraphDraw graphDraw, Node<T> node) {
         if (value != null) {
             graphDraw.replaceNode(node, g -> {
-                var spyCandidate = value;
+                var spyCandidate = (T) value;
                 return getSpy(spyCandidate, node);
             });
         } else {
             graphDraw.replaceNodeKeepDependencies(node, g -> {
-                var spyCandidate = ((NodeImpl<?>) node).factory.get(g);
+                var spyCandidate = ((NodeImpl<T>) node).factory.get(g);
                 return getSpy(spyCandidate, node);
             });
         }
     }
 
-    private Object getSpy(Object spyCandidate, Node node) {
+    @SuppressWarnings("unchecked")
+    private <T> T getSpy(T spyCandidate, Node<T> node) {
         var spy = Mockito.spy(spyCandidate);
         if (node.type() instanceof Class<?> tc && Wrapped.class.isAssignableFrom(tc)) {
-            return (Object) (Wrapped<?>) () -> spy;
+            return (T) (Wrapped<?>) () -> spy;
         } else if (node.type() instanceof ParameterizedType pt && Wrapped.class.isAssignableFrom(((Class<?>) pt.getRawType()))) {
-            return (Object) (Wrapped<?>) () -> spy;
+            return (T) (Wrapped<?>) () -> spy;
         } else {
             return spy;
         }

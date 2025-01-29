@@ -31,21 +31,21 @@ class FallbackKoraAspect(val resolver: Resolver) : KoraAspect {
         return setOf(ANNOTATION_TYPE.canonicalName)
     }
 
-    override fun apply(method: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
-        if (method.isFuture()) {
-            throw ProcessingErrorException("@Fallback can't be applied for types assignable from ${Future::class.java}", method)
-        } else if (method.isCompletionStage()) {
-            throw ProcessingErrorException("@Fallback can't be applied for types assignable from ${CompletionStage::class.java}", method)
-        } else if (method.isMono()) {
-            throw ProcessingErrorException("@Fallback can't be applied for types assignable from ${CommonClassNames.mono}", method)
-        } else if (method.isFlux()) {
-            throw ProcessingErrorException("@Fallback can't be applied for types assignable from ${CommonClassNames.flux}", method)
+    override fun apply(ksFunction: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
+        if (ksFunction.isFuture()) {
+            throw ProcessingErrorException("@Fallback can't be applied for types assignable from ${Future::class.java}", ksFunction)
+        } else if (ksFunction.isCompletionStage()) {
+            throw ProcessingErrorException("@Fallback can't be applied for types assignable from ${CompletionStage::class.java}", ksFunction)
+        } else if (ksFunction.isMono()) {
+            throw ProcessingErrorException("@Fallback can't be applied for types assignable from ${CommonClassNames.mono}", ksFunction)
+        } else if (ksFunction.isFlux()) {
+            throw ProcessingErrorException("@Fallback can't be applied for types assignable from ${CommonClassNames.flux}", ksFunction)
         }
 
-        val annotation = method.findAnnotations(ANNOTATION_TYPE).first()
+        val annotation = ksFunction.findAnnotations(ANNOTATION_TYPE).first()
 
         val fallbackName = annotation.findValue<String>("value")!!
-        val fallback = annotation.asFallback(method)
+        val fallback = annotation.asFallback(ksFunction)
 
         val managerType = resolver.getClassDeclarationByName("ru.tinkoff.kora.resilient.fallback.FallbackManager")!!.asType(listOf())
         val fieldManager = aspectContext.fieldFactory.constructorParam(managerType, listOf())
@@ -55,12 +55,12 @@ class FallbackKoraAspect(val resolver: Resolver) : KoraAspect {
             CodeBlock.of("%L[%S]", fieldManager, fallbackName)
         )
 
-        val body = if (method.isFlow()) {
-            buildBodyFlow(method, fallback, superCall, fieldFallback)
-        } else if (method.isSuspend()) {
-            buildBodySync(method, fallback, superCall, fieldFallback)
+        val body = if (ksFunction.isFlow()) {
+            buildBodyFlow(ksFunction, fallback, superCall, fieldFallback)
+        } else if (ksFunction.isSuspend()) {
+            buildBodySync(ksFunction, fallback, superCall, fieldFallback)
         } else {
-            buildBodySync(method, fallback, superCall, fieldFallback)
+            buildBodySync(ksFunction, fallback, superCall, fieldFallback)
         }
 
         return KoraAspect.ApplyResult.MethodBody(body)

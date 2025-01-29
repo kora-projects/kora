@@ -24,12 +24,12 @@ class GrpcClientStubForSymbolProcessor(val env: SymbolProcessorEnvironment) : Ba
         val symbols = resolver.getSymbolsWithAnnotation(GrpcClassNames.stubFor.canonicalName)
         val invalid = arrayListOf<KSAnnotated>()
         for (symbol in symbols) {
-            this.process(resolver, symbol)
+            this.process(symbol)
         }
         return invalid
     }
 
-    private fun process(resolver: Resolver, symbol: KSAnnotated) {
+    private fun process(symbol: KSAnnotated) {
         if (symbol !is KSClassDeclaration) {
             return
         }

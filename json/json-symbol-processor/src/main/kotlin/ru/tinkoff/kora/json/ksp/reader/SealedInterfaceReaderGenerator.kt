@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.json.ksp.reader
 
-import com.google.devtools.ksp.processing.KSPLogger
-import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSDeclaration
 import com.google.devtools.ksp.symbol.KSTypeParameter
@@ -17,7 +15,7 @@ import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import java.util.*
 
-class SealedInterfaceReaderGenerator(private val resolver: Resolver, logger: KSPLogger) {
+class SealedInterfaceReaderGenerator {
     fun generateSealedReader(jsonClassDeclaration: KSClassDeclaration): TypeSpec {
         val subclasses = jsonClassDeclaration.collectFinalSealedSubtypes().toList()
         val (typeArgMap, readerTypeVariables) = detectSealedHierarchyTypeVariables(jsonClassDeclaration, subclasses)

@@ -3,11 +3,7 @@ package ru.tinkoff.kora.kafka.common.consumer.telemetry;
 import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.common.Metric;
-import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
-
-import java.util.Map;
 
 public class DefaultKafkaConsumerTelemetry<K, V> implements KafkaConsumerTelemetry<K, V> {
 
@@ -53,7 +49,7 @@ public class DefaultKafkaConsumerTelemetry<K, V> implements KafkaConsumerTelemet
     @Override
     public void reportLag(TopicPartition partition, long lag) {
         if (this.metrics != null) {
-            this.metrics.reportLag(partition, lag);
+            this.metrics.reportLag(consumerName, partition, lag);
         }
     }
 

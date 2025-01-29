@@ -287,9 +287,9 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
             if (t.isMarkedNullable) {
                 return null
             }
-            val ksClassDeclaration = t.declaration as KSClassDeclaration
-            if (ksClassDeclaration.findAnnotation(CassandraTypes.udt) != null) {
-                return generatedByProcessor(resolver, ksClassDeclaration, "List_CassandraRowColumnMapper")
+            val listKsClassDeclaration = t.declaration as KSClassDeclaration
+            if (listKsClassDeclaration.findAnnotation(CassandraTypes.udt) != null) {
+                return generatedByProcessor(resolver, listKsClassDeclaration, "List_CassandraRowColumnMapper")
             }
         }
 
