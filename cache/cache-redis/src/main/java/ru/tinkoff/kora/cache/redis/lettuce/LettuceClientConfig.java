@@ -37,7 +37,7 @@ public interface LettuceClientConfig {
 
         /** Redis 2 to Redis 5 */
         RESP2,
-        /** Redis 6 */
+        /** Redis 6+ */
         RESP3
     }
 }

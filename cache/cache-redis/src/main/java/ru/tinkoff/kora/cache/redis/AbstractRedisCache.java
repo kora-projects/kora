@@ -85,7 +85,7 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
     @Override
     public Map<K, V> get(@Nonnull Collection<K> keys) {
         if (keys == null || keys.isEmpty()) {
-            return null;
+            return Collections.emptyMap();
         }
 
         var telemetryContext = telemetry.create("GET_MANY", name);
@@ -184,7 +184,7 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
     @Override
     public V computeIfAbsent(@Nonnull K key, @Nonnull Function<K, V> mappingFunction) {
         if (key == null) {
-            return mappingFunction.apply(key);
+            return null;
         }
 
         var telemetryContext = telemetry.create("COMPUTE_IF_ABSENT", name);
@@ -237,7 +237,7 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
     @Override
     public Map<K, V> computeIfAbsent(@Nonnull Collection<K> keys, @Nonnull Function<Set<K>, Map<K, V>> mappingFunction) {
         if (keys == null || keys.isEmpty()) {
-            return mappingFunction.apply(Collections.emptySet());
+            return Collections.emptyMap();
         }
 
         var telemetryContext = telemetry.create("COMPUTE_IF_ABSENT_MANY", name);
@@ -488,7 +488,6 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
 
         return responseCompletionStage
             .thenApply(valueMapper::read)
-            .exceptionally(e -> null)
             .thenCompose(fromCache -> {
                 if (fromCache != null) {
                     return CompletableFuture.completedFuture(fromCache);
@@ -510,11 +509,11 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
                                 telemetryContext.recordSuccess();
                                 return value;
                             });
-                    })
-                    .exceptionally(e -> {
-                        telemetryContext.recordFailure(e);
-                        return null;
                     });
+            })
+            .exceptionally(e -> {
+                telemetryContext.recordFailure(e);
+                return null;
             });
     }
 
@@ -548,7 +547,6 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
 
                 return fromCache;
             })
-            .exceptionally(e -> null)
             .thenCompose(fromCache -> {
                 if (fromCache.size() == keys.size()) {
                     return CompletableFuture.completedFuture(fromCache);
@@ -581,11 +579,11 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
                                 fromCache.putAll(values);
                                 return fromCache;
                             });
-                    })
-                    .exceptionally(e -> {
-                        telemetryContext.recordFailure(e);
-                        return null;
                     });
+            })
+            .exceptionally(e -> {
+                telemetryContext.recordFailure(e);
+                return Collections.emptyMap();
             });
     }
 
