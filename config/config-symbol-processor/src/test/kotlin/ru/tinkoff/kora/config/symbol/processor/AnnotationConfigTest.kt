@@ -306,4 +306,21 @@ class AnnotationConfigTest : AbstractConfigTest() {
         assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value1" to "test")).root()))
             .isEqualTo(new("TestConfig", Duration.ofDays(3000), null))
     }
+
+    @Test
+    fun testEmptyConfig() {
+        val extractor = compileConfig(
+            listOf<Any>(), """
+            @ConfigValueExtractor
+            interface TestConfig
+            
+            """.trimIndent()
+        )
+        val instance1 = extractor.extract(MapConfigFactory.fromMap(mapOf("value" to 42)).root())
+        val instance2 = extractor.extract(MapConfigFactory.fromMap(mapOf<String, Any>()).root())
+        assertThat(instance1)
+            .isNotNull()
+            .isEqualTo(instance2)
+    }
+
 }

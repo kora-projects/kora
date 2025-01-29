@@ -108,6 +108,7 @@ abstract class AbstractSymbolProcessorTest {
                         .map { it.first + it.second }
                         .flatMap {
                             sequenceOf(
+                                s.indexOf("\n", it + 1),
                                 s.indexOf(" ", it + 1),
                                 s.indexOf("(", it + 1),
                                 s.indexOf("{", it + 1),

@@ -62,7 +62,12 @@ class ConfigParserGenerator(private val resolver: Resolver) {
                 initializer.unindent().add("\n)")
             }
         } else {
-            if (!hasRequiredFields) {
+            if (fields.isEmpty()) {
+                typeBuilder.addProperty(PropertySpec.builder("DEFAULTS", implClassName, KModifier.PRIVATE, KModifier.FINAL)
+                    .initializer("%T", implClassName)
+                    .build()
+                )
+            } else if (!hasRequiredFields) {
                 val initializer = CodeBlock.builder().add("%T(", implClassName).indent()
                 for (i in fields.indices) {
                     if (i > 0) {
@@ -97,7 +102,7 @@ class ConfigParserGenerator(private val resolver: Resolver) {
             typeBuilder.addFunction(parseFieldMethod)
         }
         typeBuilder.addType(companion.build())
-        this.buildConfigInterfaceImplementation(element, fields)?.let {
+        this.buildConfigInterfaceImplementation(element, fields).let {
             typeBuilder.addType(it)
         }
         val file = FileSpec.get(packageName, typeBuilder.build())
@@ -328,16 +333,20 @@ class ConfigParserGenerator(private val resolver: Resolver) {
             }
             rootParse.addStatement("return _result")
         } else {
-            val returnCodeBlock = CodeBlock.builder()
-            returnCodeBlock.add("return %T(\n", implClassName)
-            for (i in fields.indices) {
-                val field = fields[i]
-                if (i > 0) {
-                    returnCodeBlock.add(",\n")
+            if (fields.isEmpty()) {
+                rootParse.addStatement("return %T", implClassName)
+            } else {
+                val returnCodeBlock = CodeBlock.builder()
+                returnCodeBlock.add("return %T(\n", implClassName)
+                for (i in fields.indices) {
+                    val field = fields[i]
+                    if (i > 0) {
+                        returnCodeBlock.add(",\n")
+                    }
+                    returnCodeBlock.add("  %N", field.name)
                 }
-                returnCodeBlock.add("  %N", field.name)
+                rootParse.addCode(returnCodeBlock.add("\n);\n").build())
             }
-            rootParse.addCode(returnCodeBlock.add("\n);\n").build())
         }
         return rootParse.build()
     }
@@ -378,7 +387,13 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         return parse.build()
     }
 
-    private fun buildConfigInterfaceImplementation(typeDecl: KSClassDeclaration, fields: List<ConfigField>): TypeSpec? {
+    private fun buildConfigInterfaceImplementation(typeDecl: KSClassDeclaration, fields: List<ConfigField>): TypeSpec {
+        if (fields.isEmpty()) {
+            return TypeSpec.objectBuilder(typeDecl.simpleName.asString() + "_Impl")
+                .generated(ConfigParserGenerator::class)
+                .addSuperinterface(typeDecl.toTypeName(listOf()))
+                .build()
+        }
         val b = TypeSpec.classBuilder(typeDecl.simpleName.asString() + "_Impl")
             .addModifiers(KModifier.DATA)
             .generated(ConfigParserGenerator::class)
