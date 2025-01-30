@@ -6,9 +6,11 @@ import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowMapper;
 import ru.tinkoff.kora.database.common.DataBaseModule;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.time.*;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface CassandraModule extends DataBaseModule {
 
@@ -26,6 +28,13 @@ public interface CassandraModule extends DataBaseModule {
         return row -> row.isNull(0)
             ? null
             : row.getShort(0);
+    }
+
+    @DefaultComponent
+    default CassandraRowMapper<Byte> byteCassandraRowMapper() {
+        return row -> row.isNull(0)
+            ? null
+            : row.getByte(0);
     }
 
     default CassandraRowMapper<Integer> integerCassandraRowMapper() {
@@ -64,6 +73,21 @@ public interface CassandraModule extends DataBaseModule {
             : row.getBigDecimal(0);
     }
 
+    @DefaultComponent
+    default CassandraRowMapper<BigInteger> bigIntegerCassandraRowMapper() {
+        return row -> row.isNull(0)
+            ? null
+            : row.getBigInteger(0);
+    }
+
+    @DefaultComponent
+    default CassandraRowMapper<UUID> uuidCassandraRowMapper() {
+        return row -> row.isNull(0)
+            ? null
+            : row.getUuid(0);
+    }
+
+    @DefaultComponent
     default CassandraRowMapper<ByteBuffer> byteBufferCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
