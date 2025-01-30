@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.database.cassandra;
 
+import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraResultSetMapper;
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowMapper;
 import ru.tinkoff.kora.database.common.DataBaseModule;
@@ -24,43 +25,43 @@ public interface CassandraModule extends DataBaseModule {
     default CassandraRowMapper<Short> shortCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
-            : row.getShort(1);
+            : row.getShort(0);
     }
 
     default CassandraRowMapper<Integer> integerCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
-            : row.getInt(1);
+            : row.getInt(0);
     }
 
     default CassandraRowMapper<Long> longCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
-            : row.getLong(1);
+            : row.getLong(0);
     }
 
     default CassandraRowMapper<Double> doubleCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
-            : row.getDouble(1);
+            : row.getDouble(0);
     }
 
     default CassandraRowMapper<Float> floatCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
-            : row.getFloat(1);
+            : row.getFloat(0);
     }
 
     default CassandraRowMapper<Boolean> booleanCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
-            : row.getBoolean(1);
+            : row.getBoolean(0);
     }
 
     default CassandraRowMapper<BigDecimal> bigDecimalCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
-            : row.getBigDecimal(1);
+            : row.getBigDecimal(0);
     }
 
     default CassandraRowMapper<ByteBuffer> byteBufferCassandraRowMapper() {
@@ -69,30 +70,35 @@ public interface CassandraModule extends DataBaseModule {
             : row.getByteBuffer(0);
     }
 
+    @DefaultComponent
     default CassandraRowMapper<LocalTime> localTimeCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
             : row.getLocalTime(0);
     }
 
+    @DefaultComponent
     default CassandraRowMapper<LocalDate> localDateCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
             : row.getLocalDate(0);
     }
 
+    @DefaultComponent
     default CassandraRowMapper<LocalDateTime> localDateTimeCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
             : row.get(0, LocalDateTime.class);
     }
 
+    @DefaultComponent
     default CassandraRowMapper<ZonedDateTime> zonedDateTimeCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
             : row.get(0, ZonedDateTime.class);
     }
 
+    @DefaultComponent
     default CassandraRowMapper<Instant> instantCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
