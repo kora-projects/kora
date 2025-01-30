@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.database.symbol.processor.cassandra.udt
 
-import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.*
@@ -15,7 +14,7 @@ import ru.tinkoff.kora.ksp.common.generatedClassName
 
 class UserDefinedTypeStatementSetterGenerator(private val environment: SymbolProcessorEnvironment) {
 
-    fun generate(resolver: Resolver, classDeclaration: KSClassDeclaration) {
+    fun generate(classDeclaration: KSClassDeclaration) {
         this.generateSetter(classDeclaration)
         this.generateListSetter(classDeclaration)
     }

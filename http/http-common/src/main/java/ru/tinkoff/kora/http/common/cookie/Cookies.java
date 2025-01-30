@@ -211,6 +211,7 @@ public class Cookies {
         }
     }
 
+    @SuppressWarnings("fallthrough")
     private static void parseCookie(final String cookie, final Collection<Cookie> parsedCookies, int maxCookies, boolean allowEqualInValue, boolean commaIsSeperator) {
         int state = 0;
         String name = null;

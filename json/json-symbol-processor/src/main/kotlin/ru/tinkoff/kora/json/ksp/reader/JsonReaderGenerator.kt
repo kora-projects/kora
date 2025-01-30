@@ -44,7 +44,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
         this.addBitSet(typeBuilder, meta)
         this.addReaders(typeBuilder, meta, typeParameterResolver)
         this.addFieldNames(typeBuilder, meta)
-        this.addReadMethods(typeBuilder, meta, typeParameterResolver)
+        this.addReadMethods(typeBuilder, meta)
         val functionBody = CodeBlock.builder()
         functionBody.addStatement("var __token = __parser.currentToken()")
         functionBody.controlFlow("if (__token == %T.VALUE_NULL) ", JsonTypes.jsonToken) {
@@ -63,7 +63,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
         }
         functionBody.add("\n")
 
-        this.addFieldVariables(functionBody, meta, typeParameterResolver)
+        this.addFieldVariables(functionBody, meta)
         functionBody.add("\n")
         this.addFastPath(functionBody, meta)
 
@@ -183,7 +183,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
         }
     }
 
-    private fun addFieldVariables(method: CodeBlock.Builder, meta: JsonClassReaderMeta, typeParameterResolver: TypeParameterResolver) {
+    private fun addFieldVariables(method: CodeBlock.Builder, meta: JsonClassReaderMeta) {
         for (i in meta.fields.indices) {
             val field = meta.fields[i]
             val type = field.type
@@ -278,7 +278,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
         }
     }
 
-    private fun addReadMethods(typeBuilder: TypeSpec.Builder, meta: JsonClassReaderMeta, typeParameterResolver: TypeParameterResolver) {
+    private fun addReadMethods(typeBuilder: TypeSpec.Builder, meta: JsonClassReaderMeta) {
         val fields: List<JsonClassReaderMeta.FieldMeta> = meta.fields
         for (i in fields.indices) {
             typeBuilder.addFunction(this.readParamFunction(i, fields.size, fields[i]))

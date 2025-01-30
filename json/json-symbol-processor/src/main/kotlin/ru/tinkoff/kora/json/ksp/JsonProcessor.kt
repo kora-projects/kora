@@ -27,7 +27,7 @@ class JsonProcessor(
     private val writerTypeMetaParser = WriterTypeMetaParser(resolver)
     private val writerGenerator = JsonWriterGenerator(resolver)
     private val readerGenerator = JsonReaderGenerator(resolver)
-    private val sealedReaderGenerator = SealedInterfaceReaderGenerator(resolver, logger)
+    private val sealedReaderGenerator = SealedInterfaceReaderGenerator()
     private val sealedWriterGenerator = SealedInterfaceWriterGenerator()
     private val enumJsonReaderGenerator = EnumJsonReaderGenerator()
     private val enumJsonWriterGenerator = EnumJsonWriterGenerator()

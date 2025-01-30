@@ -29,24 +29,24 @@ class CacheableAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheA
         return setOf(ANNOTATION_CACHEABLE.canonicalName, ANNOTATION_CACHEABLES.canonicalName)
     }
 
-    override fun apply(method: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
-        if (method.isFuture()) {
-            throw ProcessingErrorException("@Cacheable can't be applied for types assignable from ${Future::class.java}", method)
-        } else if (method.isCompletionStage()) {
-            throw ProcessingErrorException("@Cacheable can't be applied for types assignable from ${CompletionStage::class.java}", method)
-        } else if (method.isMono()) {
-            throw ProcessingErrorException("@Cacheable can't be applied for types assignable from ${CommonClassNames.mono}", method)
-        } else if (method.isFlux()) {
-            throw ProcessingErrorException("@Cacheable can't be applied for types assignable from ${CommonClassNames.flux}", method)
-        } else if (method.isVoid()) {
-            throw ProcessingErrorException("@Cacheable can't be applied for types assignable from ${Void::class}", method)
+    override fun apply(ksFunction: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
+        if (ksFunction.isFuture()) {
+            throw ProcessingErrorException("@Cacheable can't be applied for types assignable from ${Future::class.java}", ksFunction)
+        } else if (ksFunction.isCompletionStage()) {
+            throw ProcessingErrorException("@Cacheable can't be applied for types assignable from ${CompletionStage::class.java}", ksFunction)
+        } else if (ksFunction.isMono()) {
+            throw ProcessingErrorException("@Cacheable can't be applied for types assignable from ${CommonClassNames.mono}", ksFunction)
+        } else if (ksFunction.isFlux()) {
+            throw ProcessingErrorException("@Cacheable can't be applied for types assignable from ${CommonClassNames.flux}", ksFunction)
+        } else if (ksFunction.isVoid()) {
+            throw ProcessingErrorException("@Cacheable can't be applied for types assignable from ${Void::class}", ksFunction)
         }
 
-        val operation = getCacheOperation(method, resolver, aspectContext)
-        val body = if (method.isSuspend()) {
-            buildBodySync(method, operation, superCall, resolver)
+        val operation = getCacheOperation(ksFunction, aspectContext)
+        val body = if (ksFunction.isSuspend()) {
+            buildBodySync(ksFunction, operation, superCall)
         } else {
-            buildBodySync(method, operation, superCall, resolver)
+            buildBodySync(ksFunction, operation, superCall)
         }
 
         return KoraAspect.ApplyResult.MethodBody(body)
@@ -55,8 +55,7 @@ class CacheableAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheA
     private fun buildBodySync(
         method: KSFunctionDeclaration,
         operation: CacheOperation,
-        superCall: String,
-        resolver: Resolver
+        superCall: String
     ): CodeBlock {
         val superMethod = getSuperMethod(method, superCall)
         val builder = CodeBlock.builder()
@@ -105,8 +104,8 @@ class CacheableAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheA
 
             for (j in 0 until i) {
                 val prevCache = operation.executions[j]
-                val keyField = "_key${j + 1}"
-                builder.add("\t%L.put(%L, _value)\n", prevCache.field, keyField)
+                val prevCacheKeyField = "_key${j + 1}"
+                builder.add("\t%L.put(%L, _value)\n", prevCache.field, prevCacheKeyField)
             }
 
             builder

@@ -32,19 +32,19 @@ class GrpcClientExtension(
     val abstractStub: KSClassDeclaration?,
     val abstractCoroutineStub: KSClassDeclaration?) : KoraExtension {
 
-    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tag: Set<String>): (() -> ExtensionResult)? {
+    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
         if (abstractStub != null && abstractStub.asStarProjectedType().isAssignableFrom(type)) {
-            return this.generateJavaStub(type, tag)
+            return this.generateJavaStub(type, tags)
         }
         if (abstractCoroutineStub != null && abstractCoroutineStub.asStarProjectedType().isAssignableFrom(type)) {
-            return this.generateCoroutineStub(type, tag)
+            return this.generateCoroutineStub(type, tags)
         }
         val typeName = type.toTypeName()
-        if (typeName == channel && tag.size == 1) {
-            return this.generateChannel(type, tag)
+        if (typeName == channel && tags.size == 1) {
+            return this.generateChannel(tags)
         }
-        if (typeName == grpcClientConfig && tag.size == 1) {
-            return this.generateConfig(type, tag)
+        if (typeName == grpcClientConfig && tags.size == 1) {
+            return this.generateConfig(type, tags)
         }
         return null
     }
@@ -76,7 +76,7 @@ class GrpcClientExtension(
         .filter { it.simpleName.asString() == name }
         .first()
 
-    private fun generateChannel(type: KSType, tag: Set<String>): (() -> ExtensionResult) {
+    private fun generateChannel(tag: Set<String>): (() -> ExtensionResult) {
         val grpcServiceTypeName = tag.first()
         val grpcServiceClassName = ClassName.bestGuess(grpcServiceTypeName)
 

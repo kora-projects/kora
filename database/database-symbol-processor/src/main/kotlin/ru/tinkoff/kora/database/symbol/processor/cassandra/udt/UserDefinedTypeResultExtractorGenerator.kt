@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.database.symbol.processor.cassandra.udt
 
-import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.*
@@ -15,9 +14,9 @@ import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.generatedClassName
 
 class UserDefinedTypeResultExtractorGenerator(private val environment: SymbolProcessorEnvironment) {
-    fun generate(resolver: Resolver, classDeclaration: KSClassDeclaration) {
+    fun generate(classDeclaration: KSClassDeclaration) {
         this.generateRowColumnMapper(classDeclaration)
-        this.generateListRowColumnMapper(resolver, classDeclaration)
+        this.generateListRowColumnMapper(classDeclaration)
     }
 
     private fun generateRowColumnMapper(classDeclaration: KSClassDeclaration) {
@@ -51,7 +50,7 @@ class UserDefinedTypeResultExtractorGenerator(private val environment: SymbolPro
         FileSpec.get(classDeclaration.packageName.asString(), typeSpec.build()).writeTo(environment.codeGenerator, false, listOfNotNull(classDeclaration.containingFile))
     }
 
-    private fun generateListRowColumnMapper(resolver: Resolver, classDeclaration: KSClassDeclaration) {
+    private fun generateListRowColumnMapper(classDeclaration: KSClassDeclaration) {
         val type = classDeclaration.asType(listOf())
         val typeName = type.toTypeName().copy(false)
         val listTypeName = LIST.parameterizedBy(typeName).copy(false)

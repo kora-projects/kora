@@ -13,6 +13,7 @@ import java.util.Map;
 /**
  * @param <P> publisher type that must be annotated with {@link KafkaPublisher}
  */
+@SuppressWarnings("overloads")
 public interface TransactionalPublisher<P> {
 
     interface Transaction<P> extends AutoCloseable {

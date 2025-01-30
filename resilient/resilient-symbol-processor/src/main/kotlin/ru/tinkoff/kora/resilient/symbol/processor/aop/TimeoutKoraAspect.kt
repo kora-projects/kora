@@ -43,18 +43,18 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
         return setOf(ANNOTATION_TYPE.canonicalName)
     }
 
-    override fun apply(method: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
-        if (method.isFuture()) {
-            throw ProcessingErrorException("@Timeout can't be applied for types assignable from ${Future::class.java}", method)
-        } else if (method.isCompletionStage()) {
-            throw ProcessingErrorException("@Timeout can't be applied for types assignable from ${CompletionStage::class.java}", method)
-        } else if (method.isMono()) {
-            throw ProcessingErrorException("@Timeout can't be applied for types assignable from ${CommonClassNames.mono}", method)
-        } else if (method.isFlux()) {
-            throw ProcessingErrorException("@Timeout can't be applied for types assignable from ${CommonClassNames.flux}", method)
+    override fun apply(ksFunction: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
+        if (ksFunction.isFuture()) {
+            throw ProcessingErrorException("@Timeout can't be applied for types assignable from ${Future::class.java}", ksFunction)
+        } else if (ksFunction.isCompletionStage()) {
+            throw ProcessingErrorException("@Timeout can't be applied for types assignable from ${CompletionStage::class.java}", ksFunction)
+        } else if (ksFunction.isMono()) {
+            throw ProcessingErrorException("@Timeout can't be applied for types assignable from ${CommonClassNames.mono}", ksFunction)
+        } else if (ksFunction.isFlux()) {
+            throw ProcessingErrorException("@Timeout can't be applied for types assignable from ${CommonClassNames.flux}", ksFunction)
         }
 
-        val annotation = method.findAnnotation(ANNOTATION_TYPE)!!
+        val annotation = ksFunction.findAnnotation(ANNOTATION_TYPE)!!
 
         val timeoutName = annotation.findValue<String>("value")!!
 
@@ -67,12 +67,12 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
             CodeBlock.of("%L[%S]", fieldManager, timeoutName)
         )
 
-        val body = if (method.isFlow()) {
-            buildBodyFlow(method, superCall, timeoutName, fieldTimeout, fieldMetric)
-        } else if (method.isSuspend()) {
-            buildBodySuspend(method, superCall, timeoutName, fieldTimeout, fieldMetric)
+        val body = if (ksFunction.isFlow()) {
+            buildBodyFlow(ksFunction, superCall, timeoutName, fieldTimeout, fieldMetric)
+        } else if (ksFunction.isSuspend()) {
+            buildBodySuspend(ksFunction, superCall, timeoutName, fieldTimeout, fieldMetric)
         } else {
-            buildBodySync(method, superCall, fieldTimeout)
+            buildBodySync(ksFunction, superCall, fieldTimeout)
         }
 
         return KoraAspect.ApplyResult.MethodBody(body)

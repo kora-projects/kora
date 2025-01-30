@@ -36,6 +36,7 @@ public interface ZeebeWorkerModule extends GrpcClientModule, JsonCommonModule {
     }
 
     @DefaultComponent
+    @SuppressWarnings("deprecation")
     default ZeebeClientConfiguration zeebeWorkerClientConfiguration(ZeebeClientConfig clientConfig,
                                                                     ZeebeWorkerConfig workerConfig,
                                                                     @Nullable CredentialsProvider credentialsProvider,

@@ -35,7 +35,6 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionException
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.ExecutionException
-import javax.lang.model.type.DeclaredType
 
 
 class RouteProcessor {
@@ -64,22 +63,23 @@ class RouteProcessor {
         val isBlocking = !isSuspend
         val bodyParams = mutableListOf<KSValueParameter>()
         function.parameters.forEach {
-            val type = it.type.toTypeName()
             when {
                 it.isAnnotationPresent(query) -> {
-                    if(it.type.resolve().isCollection()) {
+                    if (it.type.resolve().isCollection()) {
                         funBuilder.addQueryParameterMapper(it, it.type.resolve().arguments[0].toTypeName())
                     } else {
                         funBuilder.addQueryParameterMapper(it)
                     }
                 }
+
                 it.isAnnotationPresent(header) -> {
-                    if(it.type.resolve().isCollection()) {
+                    if (it.type.resolve().isCollection()) {
                         funBuilder.addHeaderParameterMapper(it, it.type.resolve().arguments[0].toTypeName())
                     } else {
                         funBuilder.addHeaderParameterMapper(it)
                     }
                 }
+
                 it.isAnnotationPresent(path) -> funBuilder.addPathParameterMapper(it)
                 it.isAnnotationPresent(cookie) -> funBuilder.addCookieParameterMapper(it)
                 else -> {
@@ -251,35 +251,35 @@ class RouteProcessor {
 
         val parameterName = parameter.name!!.asString()
         val parameterTypeName = parameter.type.toTypeName()
-        val extractor = ExtractorFunctions.header[parameterTypeName]
-        if (extractor != null) {
-            addStatement("val %N = %M(_request, %S)", parameterName, extractor, name)
-        } else {
-            if (parameter.type.resolve().isList()) {
-                val readerParameterName = "_${parameterName}StringParameterReader"
-                if (parameterTypeName.isNullable) {
-                    val extractor = ExtractorFunctions.header[LIST.parameterizedBy(STRING).copy(true)]!!
-                    addCode("val %N = ", parameterName).check400 {
-                        addStatement("%M(_request, %S)?.map { %N.read(it) }?.toList()", extractor, name, readerParameterName)
-                    }
-                } else {
-                    val extractor = ExtractorFunctions.header[LIST.parameterizedBy(STRING)]!!
-                    addCode("val %N = ", parameterName).check400 {
-                        addStatement("%M(_request, %S).map { %N.read(it) }.toList()", extractor, name, readerParameterName)
-                    }
+        val supportedTypeExtractor = ExtractorFunctions.header[parameterTypeName]
+        if (supportedTypeExtractor != null) {
+            addStatement("val %N = %M(_request, %S)", parameterName, supportedTypeExtractor, name)
+            return
+        }
+        if (parameter.type.resolve().isList()) {
+            val readerParameterName = "_${parameterName}StringParameterReader"
+            if (parameterTypeName.isNullable) {
+                val extractor = ExtractorFunctions.header[LIST.parameterizedBy(STRING).copy(true)]!!
+                addCode("val %N = ", parameterName).check400 {
+                    addStatement("%M(_request, %S)?.map { %N.read(it) }?.toList()", extractor, name, readerParameterName)
                 }
             } else {
-                val readerParameterName = "_${parameterName}StringParameterReader"
-                if (parameterTypeName.isNullable) {
-                    val stringExtractor = ExtractorFunctions.header[STRING.copy(true)]!!
-                    addCode("val %N = ", parameterName).check400 {
-                        addStatement("%M(_request, %S)?.let(%N::read)", stringExtractor, name, readerParameterName)
-                    }
-                } else {
-                    val stringExtractor = ExtractorFunctions.header[STRING]!!
-                    addCode("val %N = ", parameterName).check400 {
-                        addStatement("%N.read(%M(_request, %S))", readerParameterName, stringExtractor, name)
-                    }
+                val extractor = ExtractorFunctions.header[LIST.parameterizedBy(STRING)]!!
+                addCode("val %N = ", parameterName).check400 {
+                    addStatement("%M(_request, %S).map { %N.read(it) }.toList()", extractor, name, readerParameterName)
+                }
+            }
+        } else {
+            val readerParameterName = "_${parameterName}StringParameterReader"
+            if (parameterTypeName.isNullable) {
+                val stringExtractor = ExtractorFunctions.header[STRING.copy(true)]!!
+                addCode("val %N = ", parameterName).check400 {
+                    addStatement("%M(_request, %S)?.let(%N::read)", stringExtractor, name, readerParameterName)
+                }
+            } else {
+                val stringExtractor = ExtractorFunctions.header[STRING]!!
+                addCode("val %N = ", parameterName).check400 {
+                    addStatement("%N.read(%M(_request, %S))", readerParameterName, stringExtractor, name)
                 }
             }
         }
@@ -295,22 +295,22 @@ class RouteProcessor {
         }
         val parameterName = parameter.name!!.asString()
         val parameterTypeName = parameter.type.toTypeName()
-        val extractor = ExtractorFunctions.cookie[parameterTypeName]
-        if (extractor != null) {
-            addStatement("val %N = %M(_request, %S)", parameterName, extractor, name)
+        val supportedTypeExtractor = ExtractorFunctions.cookie[parameterTypeName]
+        if (supportedTypeExtractor != null) {
+            addStatement("val %N = %M(_request, %S)", parameterName, supportedTypeExtractor, name)
+            return
+        }
+        if (parameterTypeName.isNullable) {
+            val stringExtractor = ExtractorFunctions.cookie[STRING.copy(true)]!!
+            val readerParameterName = "_${parameterName}StringParameterReader"
+            addCode("val %N = ", parameterName).check400 {
+                addStatement("%M(_request, %S)?.let(%N::read)", stringExtractor, name, readerParameterName)
+            }
         } else {
-            if (parameterTypeName.isNullable) {
-                val stringExtractor = ExtractorFunctions.cookie[STRING.copy(true)]!!
-                val readerParameterName = "_${parameterName}StringParameterReader"
-                addCode("val %N = ", parameterName).check400 {
-                    addStatement("%M(_request, %S)?.let(%N::read)", stringExtractor, name, readerParameterName)
-                }
-            } else {
-                val stringExtractor = ExtractorFunctions.cookie[STRING]!!
-                val readerParameterName = "_${parameterName}StringParameterReader"
-                addCode("val %N = ", parameterName).check400 {
-                    addStatement("%N.read(%M(_request, %S))", readerParameterName, stringExtractor, name)
-                }
+            val stringExtractor = ExtractorFunctions.cookie[STRING]!!
+            val readerParameterName = "_${parameterName}StringParameterReader"
+            addCode("val %N = ", parameterName).check400 {
+                addStatement("%N.read(%M(_request, %S))", readerParameterName, stringExtractor, name)
             }
         }
     }
@@ -325,36 +325,36 @@ class RouteProcessor {
         }
         val parameterName = parameter.name!!.asString()
         val parameterTypeName = parameter.type.toTypeName()
-        val extractor = ExtractorFunctions.query[parameterTypeName]
-        if (extractor != null) {
-            addStatement("val %N = %M(_request, %S)", parameterName, extractor, name)
-        } else {
-            if (parameter.type.resolve().isList()) {
-                val readerParameterName = "_${parameterName}StringParameterReader"
-                if (parameterTypeName.isNullable) {
-                    val extractor = ExtractorFunctions.query[LIST.parameterizedBy(STRING).copy(true)]!!
-                    addCode("val %N = ", parameterName).check400 {
-                        addStatement("%M(_request, %S)?.map { %N.read(it) }?.toList()", extractor, name, readerParameterName)
-                    }
-                } else {
-                    val extractor = ExtractorFunctions.query[LIST.parameterizedBy(STRING)]!!
-                    addCode("val %N = ", parameterName).check400 {
-                        addStatement("%M(_request, %S).map { %N.read(it) }.toList()", extractor, name, readerParameterName)
-                    }
+        val supportedTypeExtractor = ExtractorFunctions.query[parameterTypeName]
+        if (supportedTypeExtractor != null) {
+            addStatement("val %N = %M(_request, %S)", parameterName, supportedTypeExtractor, name)
+            return
+        }
+        if (parameter.type.resolve().isList()) {
+            val readerParameterName = "_${parameterName}StringParameterReader"
+            if (parameterTypeName.isNullable) {
+                val extractor = ExtractorFunctions.query[LIST.parameterizedBy(STRING).copy(true)]!!
+                addCode("val %N = ", parameterName).check400 {
+                    addStatement("%M(_request, %S)?.map { %N.read(it) }?.toList()", extractor, name, readerParameterName)
                 }
             } else {
-                if (parameterTypeName.isNullable) {
-                    val stringExtractor = ExtractorFunctions.query[STRING.copy(true)]!!
-                    val readerParameterName = "_${parameterName}StringParameterReader"
-                    addCode("val %N = ", parameterName).check400 {
-                        addStatement("%M(_request, %S)?.let(%N::read)", stringExtractor, name, readerParameterName)
-                    }
-                } else {
-                    val stringExtractor = ExtractorFunctions.query[STRING]!!
-                    val readerParameterName = "_${parameterName}StringParameterReader"
-                    addCode("val %N = ", parameterName).check400 {
-                        addStatement("%N.read(%M(_request, %S))", readerParameterName, stringExtractor, name)
-                    }
+                val extractor = ExtractorFunctions.query[LIST.parameterizedBy(STRING)]!!
+                addCode("val %N = ", parameterName).check400 {
+                    addStatement("%M(_request, %S).map { %N.read(it) }.toList()", extractor, name, readerParameterName)
+                }
+            }
+        } else {
+            if (parameterTypeName.isNullable) {
+                val stringExtractor = ExtractorFunctions.query[STRING.copy(true)]!!
+                val readerParameterName = "_${parameterName}StringParameterReader"
+                addCode("val %N = ", parameterName).check400 {
+                    addStatement("%M(_request, %S)?.let(%N::read)", stringExtractor, name, readerParameterName)
+                }
+            } else {
+                val stringExtractor = ExtractorFunctions.query[STRING]!!
+                val readerParameterName = "_${parameterName}StringParameterReader"
+                addCode("val %N = ", parameterName).check400 {
+                    addStatement("%N.read(%M(_request, %S))", readerParameterName, stringExtractor, name)
                 }
             }
         }

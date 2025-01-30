@@ -1,8 +1,6 @@
 package ru.tinkoff.kora.json.common.util;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.core.ObjectCodec;
+import com.fasterxml.jackson.core.*;
 import com.fasterxml.jackson.core.base.ParserBase;
 import com.fasterxml.jackson.core.io.ContentReference;
 import com.fasterxml.jackson.core.io.IOContext;
@@ -21,7 +19,17 @@ public class BufferingJsonParser extends ParserBase {
     private int currentToken;
 
     public BufferingJsonParser(JsonParser delegate) throws IOException {
-        super(new IOContext(JsonCommonModule.JSON_FACTORY._getBufferRecycler(), ContentReference.rawReference(delegate), false), delegate.getFeatureMask());
+        super(
+            new IOContext(
+                delegate.streamReadConstraints(),
+                StreamWriteConstraints.defaults(),
+                ErrorReportConfiguration.defaults(),
+                JsonCommonModule.JSON_FACTORY._getBufferRecycler(),
+                ContentReference.rawReference(delegate),
+                false
+            ),
+            delegate.getFeatureMask()
+        );
         this.delegate = delegate;
         this._currToken = delegate.currentToken();
         this.tokens.add(this.data(this._currToken, this.delegate));

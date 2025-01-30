@@ -19,7 +19,7 @@ class ValidSymbolProcessor(environment: SymbolProcessorEnvironment) : BaseSymbol
         val symbols = resolver.getSymbolsWithAnnotation(VALID_TYPE.canonicalName).toList()
         for (symbol in symbols) {
             if (symbol.validate()) {
-                gen.generate(symbol, resolver)
+                gen.generate(symbol)
             }
         }
 

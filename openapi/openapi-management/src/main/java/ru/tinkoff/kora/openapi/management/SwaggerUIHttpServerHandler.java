@@ -61,7 +61,7 @@ public final class SwaggerUIHttpServerHandler implements HttpServerRequestHandle
                         replacement.append("""
                             { url: window.location.href.substring(0, window.location.href.lastIndexOf("#") === -1 ? window.location.href.length : window.location.href.lastIndexOf("#")).replace("%s", "%s"),
                               name: "%s" },
-                              """.formatted(swaggeruiPath, openapiPath + "/" + fileName, fileName));
+                            """.formatted(swaggeruiPath, openapiPath + "/" + fileName, fileName));
                     }
                     replacement.append("]");
 

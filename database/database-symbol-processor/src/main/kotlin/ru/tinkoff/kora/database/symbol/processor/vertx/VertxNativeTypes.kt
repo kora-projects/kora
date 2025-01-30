@@ -50,9 +50,4 @@ object VertxNativeTypes {
     )
 
     fun findNativeType(type: TypeName) = nativeTypes.firstOrNull { it.type() == type }
-
-    fun extract(simpleResult: QueryResult.SimpleResult, index: CodeBlock): CodeBlock {
-
-        throw IllegalStateException("Invalid type " + simpleResult.type.declaration.simpleName.asString())
-    }
 }

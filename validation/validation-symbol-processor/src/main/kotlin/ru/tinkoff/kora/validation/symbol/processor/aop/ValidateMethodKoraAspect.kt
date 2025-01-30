@@ -43,33 +43,33 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
         return setOf(validateType.canonicalName)
     }
 
-    override fun apply(method: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
-        val validationOutputCode = buildValidationOutputCode(method, aspectContext)
+    override fun apply(ksFunction: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
+        val validationOutputCode = buildValidationOutputCode(ksFunction, aspectContext)
         if (validationOutputCode != null) {
-            if (method.isFuture()) {
-                throw ProcessingErrorException("@Validate return value can't be applied for types assignable from ${Future::class.java}", method)
-            } else if (method.isCompletionStage()) {
-                throw ProcessingErrorException("@Validate return value can't be applied for types assignable from ${CompletionStage::class.java}", method)
-            } else if (method.isMono()) {
-                throw ProcessingErrorException("@Validate return value can't be applied for types assignable from ${CommonClassNames.mono}", method)
-            } else if (method.isFlux()) {
-                throw ProcessingErrorException("@Validate return value can't be applied for types assignable from ${CommonClassNames.flux}", method)
-            } else if (method.isVoid()) {
-                throw ProcessingErrorException("@Validate return value can't be applied for types assignable from ${Void::class.java}", method)
+            if (ksFunction.isFuture()) {
+                throw ProcessingErrorException("@Validate return value can't be applied for types assignable from ${Future::class.java}", ksFunction)
+            } else if (ksFunction.isCompletionStage()) {
+                throw ProcessingErrorException("@Validate return value can't be applied for types assignable from ${CompletionStage::class.java}", ksFunction)
+            } else if (ksFunction.isMono()) {
+                throw ProcessingErrorException("@Validate return value can't be applied for types assignable from ${CommonClassNames.mono}", ksFunction)
+            } else if (ksFunction.isFlux()) {
+                throw ProcessingErrorException("@Validate return value can't be applied for types assignable from ${CommonClassNames.flux}", ksFunction)
+            } else if (ksFunction.isVoid()) {
+                throw ProcessingErrorException("@Validate return value can't be applied for types assignable from ${Void::class.java}", ksFunction)
             }
         }
 
-        val validationInputCode = buildValidationInputCode(method, aspectContext)
+        val validationInputCode = buildValidationInputCode(ksFunction, aspectContext)
         if (validationOutputCode == null && validationInputCode == null) {
             return KoraAspect.ApplyResult.Noop.INSTANCE
         }
 
-        val body = if (method.isFlow()) {
-            buildBodyFlow(method, superCall, validationOutputCode, validationInputCode)
-        } else if (method.isSuspend()) {
-            buildBodySuspend(method, superCall, validationOutputCode, validationInputCode)
+        val body = if (ksFunction.isFlow()) {
+            buildBodyFlow(ksFunction, superCall, validationOutputCode, validationInputCode)
+        } else if (ksFunction.isSuspend()) {
+            buildBodySuspend(ksFunction, superCall, validationOutputCode, validationInputCode)
         } else {
-            buildBodySync(method, superCall, validationOutputCode, validationInputCode)
+            buildBodySync(ksFunction, superCall, validationOutputCode, validationInputCode)
         }
 
         return KoraAspect.ApplyResult.MethodBody(body)

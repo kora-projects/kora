@@ -29,24 +29,24 @@ class CachePutAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheAs
         return setOf(ANNOTATION_CACHE_PUT.canonicalName, ANNOTATION_CACHE_PUTS.canonicalName)
     }
 
-    override fun apply(method: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
-        if (method.isFuture()) {
-            throw ProcessingErrorException("@CachePut can't be applied for types assignable from ${Future::class.java}", method)
-        } else if (method.isCompletionStage()) {
-            throw ProcessingErrorException("@CachePut can't be applied for types assignable from ${CompletionStage::class.java}", method)
-        } else if (method.isMono()) {
-            throw ProcessingErrorException("@CachePut can't be applied for types assignable from ${CommonClassNames.mono}", method)
-        } else if (method.isFlux()) {
-            throw ProcessingErrorException("@CachePut can't be applied for types assignable from ${CommonClassNames.flux}", method)
-        } else if (method.isVoid()) {
-            throw ProcessingErrorException("@CachePut can't be applied for types assignable from ${Void::class}", method)
+    override fun apply(ksFunction: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
+        if (ksFunction.isFuture()) {
+            throw ProcessingErrorException("@CachePut can't be applied for types assignable from ${Future::class.java}", ksFunction)
+        } else if (ksFunction.isCompletionStage()) {
+            throw ProcessingErrorException("@CachePut can't be applied for types assignable from ${CompletionStage::class.java}", ksFunction)
+        } else if (ksFunction.isMono()) {
+            throw ProcessingErrorException("@CachePut can't be applied for types assignable from ${CommonClassNames.mono}", ksFunction)
+        } else if (ksFunction.isFlux()) {
+            throw ProcessingErrorException("@CachePut can't be applied for types assignable from ${CommonClassNames.flux}", ksFunction)
+        } else if (ksFunction.isVoid()) {
+            throw ProcessingErrorException("@CachePut can't be applied for types assignable from ${Void::class}", ksFunction)
         }
 
-        val operation = getCacheOperation(method, resolver, aspectContext)
-        val body = if (method.isSuspend()) {
-            buildBodySync(method, operation, superCall)
+        val operation = getCacheOperation(ksFunction, aspectContext)
+        val body = if (ksFunction.isSuspend()) {
+            buildBodySync(ksFunction, operation, superCall)
         } else {
-            buildBodySync(method, operation, superCall)
+            buildBodySync(ksFunction, operation, superCall)
         }
 
         return KoraAspect.ApplyResult.MethodBody(body)

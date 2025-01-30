@@ -783,6 +783,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
         } else {
             val tag = AnnotationSpec.builder(CommonClassNames.tag)
             val builder = CodeBlock.builder().add("value = [")
+            @Suppress("UNCHECKED_CAST")
             val tags = interceptorTag.arguments[0].value!! as List<KSType>
             if (tags.isNotEmpty()) {
                 for (t in tags) {

@@ -236,9 +236,9 @@ public class ValidatorGenerator {
             .addCode(CodeBlock.join(List.of(
                     CodeBlock.of("""
                             if (value == null) {
-                                return $T.of(context.violates(\"$L input must be non null, but was null\"));
+                                return $T.of(context.violates("$L input must be non null, but was null"));
                             }
-                                                        
+
                             final $T<$T> _violations = new $T<>();""",
                         List.class, meta.sourceElement().getSimpleName(), List.class, ValidTypes.violation, ArrayList.class),
                     CodeBlock.join(fieldConstraintBuilder, "\n"),

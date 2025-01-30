@@ -28,22 +28,22 @@ class CacheInvalidateAopKoraAspect(private val resolver: Resolver) : AbstractAop
         return setOf(ANNOTATION_CACHE_INVALIDATE.canonicalName, ANNOTATION_CACHE_INVALIDATES.canonicalName)
     }
 
-    override fun apply(method: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
-        if (method.isFuture()) {
-            throw ProcessingErrorException("@CacheInvalidate can't be applied for types assignable from ${Future::class.java}", method)
-        } else if (method.isCompletionStage()) {
-            throw ProcessingErrorException("@CacheInvalidate can't be applied for types assignable from ${CompletionStage::class.java}", method)
-        } else if (method.isMono()) {
-            throw ProcessingErrorException("@CacheInvalidate can't be applied for types assignable from ${CommonClassNames.mono}", method)
-        } else if (method.isFlux()) {
-            throw ProcessingErrorException("@CacheInvalidate can't be applied for types assignable from ${CommonClassNames.flux}", method)
+    override fun apply(ksFunction: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
+        if (ksFunction.isFuture()) {
+            throw ProcessingErrorException("@CacheInvalidate can't be applied for types assignable from ${Future::class.java}", ksFunction)
+        } else if (ksFunction.isCompletionStage()) {
+            throw ProcessingErrorException("@CacheInvalidate can't be applied for types assignable from ${CompletionStage::class.java}", ksFunction)
+        } else if (ksFunction.isMono()) {
+            throw ProcessingErrorException("@CacheInvalidate can't be applied for types assignable from ${CommonClassNames.mono}", ksFunction)
+        } else if (ksFunction.isFlux()) {
+            throw ProcessingErrorException("@CacheInvalidate can't be applied for types assignable from ${CommonClassNames.flux}", ksFunction)
         }
 
-        val operation = getCacheOperation(method, resolver, aspectContext)
+        val operation = getCacheOperation(ksFunction, aspectContext)
         val body = if (operation.type == CacheOperation.Type.EVICT_ALL) {
-            buildBodySyncAll(method, operation, superCall)
+            buildBodySyncAll(ksFunction, operation, superCall)
         } else {
-            buildBodySync(method, operation, superCall)
+            buildBodySync(ksFunction, operation, superCall)
         }
 
         return KoraAspect.ApplyResult.MethodBody(body)

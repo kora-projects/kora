@@ -4,7 +4,6 @@ import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.isPublic
-import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
@@ -15,7 +14,6 @@ import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import jakarta.annotation.Nullable
 import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
-import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotations
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
@@ -66,7 +64,6 @@ class CacheOperationUtils {
 
         fun getCacheOperation(
             method: KSFunctionDeclaration,
-            resolver: Resolver,
             aspectContext: KoraAspect.AspectContext
         ): CacheOperation {
             val className = method.parentDeclaration?.simpleName?.asString() ?: ""
@@ -93,9 +90,9 @@ class CacheOperationUtils {
             }
 
             if (cacheables.isNotEmpty()) {
-                return getCacheOperation(method, CacheOperation.Type.GET, cacheables, resolver, aspectContext)
+                return getCacheOperation(method, CacheOperation.Type.GET, cacheables, aspectContext)
             } else if (puts.isNotEmpty()) {
-                return getCacheOperation(method, CacheOperation.Type.PUT, puts, resolver, aspectContext)
+                return getCacheOperation(method, CacheOperation.Type.PUT, puts, aspectContext)
             } else if (invalidates.isNotEmpty()) {
                 val invalidateAlls = invalidates.asSequence()
                     .flatMap { a -> a.arguments.asSequence() }
@@ -117,7 +114,7 @@ class CacheOperationUtils {
                 }
 
                 val type = if (allInvalidateAll) CacheOperation.Type.EVICT_ALL else CacheOperation.Type.EVICT
-                return getCacheOperation(method, type, invalidates, resolver, aspectContext)
+                return getCacheOperation(method, type, invalidates, aspectContext)
             }
 
             throw IllegalStateException("None of $ANNOTATIONS cache annotations found")
@@ -127,7 +124,6 @@ class CacheOperationUtils {
             method: KSFunctionDeclaration,
             type: CacheOperation.Type,
             annotations: List<KSAnnotation>,
-            resolver: Resolver,
             aspectContext: KoraAspect.AspectContext
         ): CacheOperation {
             val className = method.parentDeclaration?.simpleName?.asString() ?: ""
@@ -175,7 +171,7 @@ class CacheOperationUtils {
                 val superTypes = (cacheImpl.declaration as KSClassDeclaration).superTypes.toList()
                 val superType = superTypes[superTypes.size - 1]
 
-                var cacheKey: CacheOperation.CacheKey? = null
+                var cacheKey: CacheOperation.CacheKey?
                 val cacheKeyMirror = superType.resolve().arguments[0]
                 val cacheKeyDeclaration = cacheKeyMirror.type!!.resolve().declaration as KSClassDeclaration
 

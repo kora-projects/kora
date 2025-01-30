@@ -20,8 +20,8 @@ record GraphMockitoMock(GraphCandidate candidate,
     public static GraphModification ofAnnotated(GraphCandidate candidate, AnnotatedElement element, String defaultName) {
         var annotation = element.getAnnotation(Mock.class);
         var name = Optional.of(annotation.name())
-                .filter(n -> !n.isBlank())
-                .orElse(defaultName);
+            .filter(n -> !n.isBlank())
+            .orElse(defaultName);
 
         return new GraphMockitoMock(candidate, getClassToMock(candidate), name, annotation);
     }
@@ -48,17 +48,17 @@ record GraphMockitoMock(GraphCandidate candidate,
     }
 
     @SuppressWarnings("unchecked")
-    private void replaceNode(ApplicationGraphDraw graphDraw, Node node, Class<?> mockClass) {
+    private <T> void replaceNode(ApplicationGraphDraw graphDraw, Node<T> node, Class<?> mockClass) {
         graphDraw.replaceNode(node, g -> {
             var settings = new MockSettingsImpl<>()
-                    .name(name)
-                    .defaultAnswer(annotation.answer());
+                .name(name)
+                .defaultAnswer(annotation.answer());
 
-            if(!annotation.mockMaker().isBlank()) {
+            if (!annotation.mockMaker().isBlank()) {
                 settings = settings.mockMaker(annotation.mockMaker());
             }
 
-            if(annotation.extraInterfaces().length != 0) {
+            if (annotation.extraInterfaces().length != 0) {
                 settings = settings.extraInterfaces(annotation.extraInterfaces());
             }
 
@@ -67,8 +67,7 @@ record GraphMockitoMock(GraphCandidate candidate,
                     case WARN -> Strictness.WARN;
                     case LENIENT -> Strictness.LENIENT;
                     case STRICT_STUBS -> Strictness.STRICT_STUBS;
-                    default ->
-                            throw new UnsupportedOperationException("Unknown strictness level provided: " + annotation.strictness());
+                    default -> throw new UnsupportedOperationException("Unknown strictness level provided: " + annotation.strictness());
                 };
 
                 settings = settings.strictness(strictLevel);
@@ -84,11 +83,11 @@ record GraphMockitoMock(GraphCandidate candidate,
                 settings = settings.serializable();
             }
 
-            var mock = Mockito.mock(mockClass, settings);
+            var mock = (T) Mockito.mock(mockClass, settings);
             if (node.type() instanceof Class<?> tc && Wrapped.class.isAssignableFrom(tc)) {
-                return (Object) (Wrapped<?>) () -> mock;
+                return (T) (Wrapped<?>) () -> mock;
             } else if (node.type() instanceof ParameterizedType pt && Wrapped.class.isAssignableFrom(((Class<?>) pt.getRawType()))) {
-                return (Object) (Wrapped<?>) () -> mock;
+                return (T)(Wrapped<?>) () -> mock;
             } else {
                 return mock;
             }

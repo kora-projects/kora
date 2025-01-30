@@ -99,7 +99,7 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
         val batchParam = parameters.firstOrNull { it is QueryParameter.BatchParameter }
         val isSuspend = funDeclaration.isSuspend()
         val isFlow = funDeclaration.isFlow()
-        ParametersToTupleBuilder.generate(b, query, funDeclaration, parameters, batchParam, parameterMappers)
+        ParametersToTupleBuilder.generate(b, query, parameters, batchParam, parameterMappers)
         val connectionParameter = parameters.asSequence().filterIsInstance<QueryParameter.ConnectionParameter>().firstOrNull()?.variable?.name?.asString()
 
         if (batchParam != null) {
