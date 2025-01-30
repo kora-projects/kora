@@ -25,6 +25,7 @@ import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
@@ -50,6 +51,9 @@ public abstract class AbstractHttpControllerTest extends AbstractAnnotationProce
             import java.util.Optional;
             import static ru.tinkoff.kora.http.common.HttpMethod.GET;
             import java.util.List;
+            import java.util.Set;
+            import java.util.UUID;
+            import java.math.BigInteger;
             """;
     }
 

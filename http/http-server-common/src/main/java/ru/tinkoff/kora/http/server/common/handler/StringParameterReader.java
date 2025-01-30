@@ -5,6 +5,7 @@ import ru.tinkoff.kora.http.server.common.HttpServerResponseException;
 import java.util.function.Function;
 
 public interface StringParameterReader<T> {
+
     T read(String string);
 
     static <T> StringParameterReader<T> of(Function<String, T> converter, String errorMessage) {

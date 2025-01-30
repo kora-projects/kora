@@ -12,7 +12,6 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
@@ -356,6 +355,7 @@ public class RequestHandlerGenerator {
         var code = CodeBlock.builder();
         var typeString = TypeName.get(parameter.type).withoutAnnotations().toString();
         switch (typeString) {
+            case "java.lang.Boolean", "boolean" -> code.add("$L = $T.parseBooleanPathParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
             case "java.lang.Integer", "int" -> code.add("$L = $T.parseIntegerPathParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
             case "java.lang.Long", "long" -> code.add("$L = $T.parseLongPathParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
             case "java.lang.Double", "double" -> code.add("$L = $T.parseDoublePathParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
@@ -395,7 +395,15 @@ public class RequestHandlerGenerator {
                     code.add("$L = $T.parseStringListHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
+            case "java.util.Set<java.lang.String>" -> {
+                if (isNullable(parameter)) {
+                    code.add("$L = $T.parseOptionalStringSetHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                } else {
+                    code.add("$L = $T.parseStringSetHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                }
+            }
 
+            case "int" -> code.add("$L = $T.parseIntegerHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
             case "java.util.Optional<java.lang.Integer>" ->
                 code.add("$L = $T.ofNullable($T.parseOptionalIntegerHeaderParameter(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
             case "java.lang.Integer" -> {
@@ -410,6 +418,87 @@ public class RequestHandlerGenerator {
                     code.add("$L = $T.parseOptionalIntegerListHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 } else {
                     code.add("$L = $T.parseIntegerListHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                }
+            }
+            case "java.util.Set<java.lang.Integer>" -> {
+                if (isNullable(parameter)) {
+                    code.add("$L = $T.parseOptionalIntegerSetHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                } else {
+                    code.add("$L = $T.parseIntegerSetHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                }
+            }
+
+            case "long" -> code.add("$L = $T.parseLongHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+            case "java.util.Optional<java.lang.Long>" ->
+                code.add("$L = $T.ofNullable($T.parseOptionalLongHeaderParameter(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
+            case "java.lang.Long" -> {
+                if (isNullable(parameter)) {
+                    code.add("$L = $T.parseOptionalLongHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                } else {
+                    code.add("$L = $T.parseLongHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                }
+            }
+            case "java.util.List<java.lang.Long>" -> {
+                if (isNullable(parameter)) {
+                    code.add("$L = $T.parseOptionalLongListHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                } else {
+                    code.add("$L = $T.parseLongListHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                }
+            }
+            case "java.util.Set<java.lang.Long>" -> {
+                if (isNullable(parameter)) {
+                    code.add("$L = $T.parseOptionalLongSetHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                } else {
+                    code.add("$L = $T.parseLongSetHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                }
+            }
+
+            case "double" -> code.add("$L = $T.parseDoubleHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+            case "java.util.Optional<java.lang.Double>" ->
+                code.add("$L = $T.ofNullable($T.parseOptionalDoubleHeaderParameter(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
+            case "java.lang.Double" -> {
+                if (isNullable(parameter)) {
+                    code.add("$L = $T.parseOptionalDoubleHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                } else {
+                    code.add("$L = $T.parseDoubleHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                }
+            }
+            case "java.util.List<java.lang.Double>" -> {
+                if (isNullable(parameter)) {
+                    code.add("$L = $T.parseOptionalDoubleListHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                } else {
+                    code.add("$L = $T.parseDoubleListHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                }
+            }
+            case "java.util.Set<java.lang.Double>" -> {
+                if (isNullable(parameter)) {
+                    code.add("$L = $T.parseOptionalDoubleSetHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                } else {
+                    code.add("$L = $T.parseDoubleSetHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                }
+            }
+
+            case "java.util.Optional<java.util.UUID>" ->
+                code.add("$L = $T.ofNullable($T.parseOptionalUuidHeaderParameter(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
+            case "java.util.UUID" -> {
+                if (isNullable(parameter)) {
+                    code.add("$L = $T.parseOptionalUuidHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                } else {
+                    code.add("$L = $T.parseUuidHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                }
+            }
+            case "java.util.List<java.util.UUID>" -> {
+                if (isNullable(parameter)) {
+                    code.add("$L = $T.parseOptionalUuidListHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                } else {
+                    code.add("$L = $T.parseUuidListHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                }
+            }
+            case "java.util.Set<java.util.UUID>" -> {
+                if (isNullable(parameter)) {
+                    code.add("$L = $T.parseOptionalUuidSetHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                } else {
+                    code.add("$L = $T.parseUuidSetHeaderParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
 
@@ -439,10 +528,32 @@ public class RequestHandlerGenerator {
                     methodBuilder.addParameter(parameterReaderType, parameterReaderName);
 
                     if (isNullable(parameter)) {
-                        code.add("$L = $T.ofNullable($T.parseOptionalStringListHeaderParameter(_request, $S)).map(_var_$L -> _var_$L.stream().map($L::read).toList()).orElse(null);",
-                            parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name, parameter.variableElement, parameter.variableElement, parameterReaderName);
+                        code.add("$L = $T.parseOptionalSomeListHeaderParameter(_request, $S, $L);",
+                            parameter.variableElement, requestHandlerUtils, parameter.name, parameterReaderName);
                     } else {
-                        code.add("$L = $T.parseStringListHeaderParameter(_request, $S).stream().map($L::read).toList();", parameter.variableElement, requestHandlerUtils, parameter.name, parameterReaderName);
+                        code.add("$L = $T.parseSomeListHeaderParameter(_request, $S, $L);",
+                            parameter.variableElement, requestHandlerUtils, parameter.name, parameterReaderName);
+                    }
+
+                    return code.build();
+                }
+
+                if (CommonUtils.isSet(parameter.type)) {
+                    var listParameter = ((DeclaredType) parameter.type).getTypeArguments().get(0);
+                    var parameterReaderType = ParameterizedTypeName.get(
+                        HttpServerClassNames.stringParameterReader,
+                        TypeName.get(listParameter)
+                    );
+
+                    final String parameterReaderName = "_" + parameter.name + "Reader";
+                    methodBuilder.addParameter(parameterReaderType, parameterReaderName);
+
+                    if (isNullable(parameter)) {
+                        code.add("$L = $T.parseOptionalSomeSetHeaderParameter(_request, $S, $L);",
+                            parameter.variableElement, requestHandlerUtils, parameter.name, parameterReaderName);
+                    } else {
+                        code.add("$L = $T.parseSomeSetHeaderParameter(_request, $S, $L);",
+                            parameter.variableElement, requestHandlerUtils, parameter.name, parameterReaderName);
                     }
 
                     return code.build();
@@ -549,6 +660,13 @@ public class RequestHandlerGenerator {
                     code.add("$L = $T.parseUuidListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
+            case "java.util.Set<java.util.UUID>" -> {
+                if (isNullable(parameter)) {
+                    code.add("$L = $T.parseOptionalUuidSetQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                } else {
+                    code.add("$L = $T.parseUuidSetQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                }
+            }
 
             case "int" -> code.add("$L = $T.parseIntegerQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
             case "java.util.Optional<java.lang.Integer>" ->
@@ -565,6 +683,13 @@ public class RequestHandlerGenerator {
                     code.add("$L = $T.parseOptionalIntegerListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 } else {
                     code.add("$L = $T.parseIntegerListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                }
+            }
+            case "java.util.Set<java.lang.Integer>" -> {
+                if (isNullable(parameter)) {
+                    code.add("$L = $T.parseOptionalIntegerSetQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                } else {
+                    code.add("$L = $T.parseIntegerSetQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
 
@@ -585,6 +710,13 @@ public class RequestHandlerGenerator {
                     code.add("$L = $T.parseLongListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
+            case "java.util.Set<java.lang.Long>" -> {
+                if (isNullable(parameter)) {
+                    code.add("$L = $T.parseOptionalLongSetQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                } else {
+                    code.add("$L = $T.parseLongSetQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                }
+            }
 
             case "double" -> code.add("$L = $T.parseDoubleQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
             case "java.util.Optional<java.lang.Double>" ->
@@ -603,6 +735,13 @@ public class RequestHandlerGenerator {
                     code.add("$L = $T.parseDoubleListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
+            case "java.util.Set<java.lang.Double>" -> {
+                if (isNullable(parameter)) {
+                    code.add("$L = $T.parseOptionalDoubleSetQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                } else {
+                    code.add("$L = $T.parseDoubleSetQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                }
+            }
 
             case "java.util.Optional<java.lang.String>" ->
                 code.add("$L = $T.ofNullable($T.parseOptionalStringQueryParameter(_request, $S));", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name);
@@ -618,6 +757,13 @@ public class RequestHandlerGenerator {
                     code.add("$L = $T.parseOptionalStringListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 } else {
                     code.add("$L = $T.parseStringListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                }
+            }
+            case "java.util.Set<java.lang.String>" -> {
+                if (isNullable(parameter)) {
+                    code.add("$L = $T.parseOptionalStringSetQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                } else {
+                    code.add("$L = $T.parseStringSetQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
 
@@ -638,6 +784,13 @@ public class RequestHandlerGenerator {
                     code.add("$L = $T.parseBooleanListQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
                 }
             }
+            case "java.util.Set<java.lang.Boolean>" -> {
+                if (isNullable(parameter)) {
+                    code.add("$L = $T.parseOptionalBooleanSetQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                } else {
+                    code.add("$L = $T.parseBooleanSetQueryParameter(_request, $S);", parameter.variableElement, requestHandlerUtils, parameter.name);
+                }
+            }
 
             default -> {
                 final String readerParameterName = "_" + parameter.name + "Reader";
@@ -653,6 +806,7 @@ public class RequestHandlerGenerator {
                     code.add("$L = $T.ofNullable($T.parseOptionalStringQueryParameter(_request, $S)).map($L::read);", parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name, readerParameterName);
                     return code.build();
                 }
+
                 if (CommonUtils.isList(parameter.type)) {
                     var listParameter = ((DeclaredType) parameter.type).getTypeArguments().get(0);
                     var parameterReaderType = ParameterizedTypeName.get(
@@ -661,15 +815,34 @@ public class RequestHandlerGenerator {
                     );
                     if (isNullable(parameter)) {
                         methodBuilder.addParameter(parameterReaderType, readerParameterName);
-                        code.add("$L = $T.ofNullable($T.parseOptionalStringListQueryParameter(_request, $S)).map(_var_$L -> _var_$L.stream().map($L::read).toList()).orElse(null);",
-                            parameter.variableElement, Optional.class, requestHandlerUtils, parameter.name, parameter.variableElement, parameter.variableElement, readerParameterName);
+                        code.add("$L = $T.parseOptionalSomeListQueryParameter(_request, $S, $L);",
+                            parameter.variableElement, requestHandlerUtils, parameter.name, readerParameterName);
                     } else {
                         methodBuilder.addParameter(parameterReaderType, readerParameterName);
-                        code.add("$L = $T.parseStringListQueryParameter(_request, $S).stream().map($L::read).toList();", parameter.variableElement, requestHandlerUtils, parameter.name, readerParameterName);
+                        code.add("$L = $T.parseSomeListQueryParameter(_request, $S, $L);",
+                            parameter.variableElement, requestHandlerUtils, parameter.name, readerParameterName);
                     }
 
                     return code.build();
+                }
 
+                if (CommonUtils.isSet(parameter.type)) {
+                    var listParameter = ((DeclaredType) parameter.type).getTypeArguments().get(0);
+                    var parameterReaderType = ParameterizedTypeName.get(
+                        HttpServerClassNames.stringParameterReader,
+                        TypeName.get(listParameter)
+                    );
+                    if (isNullable(parameter)) {
+                        methodBuilder.addParameter(parameterReaderType, readerParameterName);
+                        code.add("$L = $T.parseOptionalSomeSetQueryParameter(_request, $S, $L);",
+                            parameter.variableElement, requestHandlerUtils, parameter.name, readerParameterName);
+                    } else {
+                        methodBuilder.addParameter(parameterReaderType, readerParameterName);
+                        code.add("$L = $T.parseSomeSetQueryParameter(_request, $S, $L);",
+                            parameter.variableElement, requestHandlerUtils, parameter.name, readerParameterName);
+                    }
+
+                    return code.build();
                 }
 
                 var parameterReaderType = ParameterizedTypeName.get(
@@ -779,8 +952,8 @@ public class RequestHandlerGenerator {
     private boolean isBlocking(RequestMappingData requestMappingData) {
         var returnType = requestMappingData.executableType().getReturnType();
         var isAsync = this.types.isAssignable(returnType, this.completionStageTypeErasure)
-            || this.publisherTypeErasure != null && this.types.isAssignable(returnType, this.publisherTypeErasure)
-            || this.types.isAssignable(returnType, this.jdkPublisherTypeErasure);
+                      || this.publisherTypeErasure != null && this.types.isAssignable(returnType, this.publisherTypeErasure)
+                      || this.types.isAssignable(returnType, this.jdkPublisherTypeErasure);
         return !isAsync;
     }
 
