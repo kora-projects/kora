@@ -64,15 +64,12 @@ object GraphResolutionHelper {
         if (declaration.packageName.asString() == "kotlin") {
             return null
         }
-        if (declaration.typeParameters.isNotEmpty()) {
-            return null
-        }
         if (declaration.primaryConstructor == null) {
             return null
         }
         val tags = TagUtils.parseTagValue(declaration)
         if (dependencyClaim.tagsMatches(tags)) {
-            return ComponentDeclaration.fromDependency(ctx, declaration)
+            return ComponentDeclaration.fromDependency(ctx, declaration, dependencyClaim.type)
         }
         return null
     }

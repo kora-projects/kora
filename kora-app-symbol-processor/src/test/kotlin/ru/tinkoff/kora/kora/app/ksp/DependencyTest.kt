@@ -22,6 +22,24 @@ open class DependencyTest : AbstractKoraAppProcessorTest() {
     }
 
     @Test
+    open fun testDiscoveredFinalClassDependencyWithGeneric() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                class TestClass1<T>(t: T)
+                class TestClass2
+                
+                @Root
+                fun test(testClass: TestClass1<TestClass2>) = ""
+            }
+            """.trimIndent()
+        )
+        Assertions.assertThat(draw.nodes).hasSize(3)
+        draw.init()
+    }
+
+    @Test
     open fun testDiscoveredFinalClassDependencyWithTag() {
         val draw = compile(
             """

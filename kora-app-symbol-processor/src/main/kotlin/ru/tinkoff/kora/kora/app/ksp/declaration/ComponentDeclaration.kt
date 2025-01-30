@@ -154,12 +154,11 @@ sealed interface ComponentDeclaration {
             return AnnotatedComponent(type, classDeclaration, tags, constructor, parameterTypes, typeParameters)
         }
 
-        fun fromDependency(@Suppress("UNUSED_PARAMETER") ctx: ProcessingContext, classDeclaration: KSClassDeclaration): DiscoveredAsDependencyComponent {
+        fun fromDependency(@Suppress("UNUSED_PARAMETER") ctx: ProcessingContext, classDeclaration: KSClassDeclaration, type: KSType): DiscoveredAsDependencyComponent {
             val constructor = classDeclaration.primaryConstructor
             if (constructor == null) {
                 throw ProcessingErrorException("No primary constructor to parse component for: $classDeclaration", classDeclaration)
             }
-            val type = classDeclaration.asType(listOf())
             if (type.isError) {
                 throw ProcessingErrorException("Component type is not resolvable in the current round of processing", classDeclaration)
             }
