@@ -24,43 +24,43 @@ public interface CassandraModule extends DataBaseModule {
     default CassandraRowMapper<Short> shortCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
-            : row.getShort(1);
+            : row.getShort(0);
     }
 
     default CassandraRowMapper<Integer> integerCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
-            : row.getInt(1);
+            : row.getInt(0);
     }
 
     default CassandraRowMapper<Long> longCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
-            : row.getLong(1);
+            : row.getLong(0);
     }
 
     default CassandraRowMapper<Double> doubleCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
-            : row.getDouble(1);
+            : row.getDouble(0);
     }
 
     default CassandraRowMapper<Float> floatCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
-            : row.getFloat(1);
+            : row.getFloat(0);
     }
 
     default CassandraRowMapper<Boolean> booleanCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
-            : row.getBoolean(1);
+            : row.getBoolean(0);
     }
 
     default CassandraRowMapper<BigDecimal> bigDecimalCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
-            : row.getBigDecimal(1);
+            : row.getBigDecimal(0);
     }
 
     default CassandraRowMapper<ByteBuffer> byteBufferCassandraRowMapper() {
