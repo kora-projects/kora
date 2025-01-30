@@ -1,9 +1,6 @@
 dependencies {
     annotationProcessor project(':config:config-annotation-processor')
 
-    api project(":cache:cache-common")
-
-    implementation project(":json:json-common")
     implementation project(":config:config-common")
     implementation(libs.redis.lettuce) {
         exclude group: 'io.projectreactor', module: 'reactor-core'
@@ -15,7 +12,6 @@ dependencies {
     implementation libs.netty.common
     implementation libs.netty.handlers
     implementation libs.netty.transports
-    implementation libs.apache.pool
 
     testImplementation project(":internal:test-logging")
     testImplementation project(":internal:test-redis")
