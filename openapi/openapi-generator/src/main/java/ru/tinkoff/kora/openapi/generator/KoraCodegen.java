@@ -793,24 +793,34 @@ public class KoraCodegen extends DefaultCodegen {
                         continue;
                     }
                     if (requiredVar.isInteger) {
-                        requiredVar.dataType = "int";
-                        requiredVar.datatypeWithEnum = "int";
+                        if (!typeMapping.containsKey("Integer") && !typeMapping.containsKey(Integer.class.getCanonicalName())) {
+                            requiredVar.dataType = "int";
+                            requiredVar.datatypeWithEnum = "int";
+                        }
                     }
                     if (requiredVar.isLong) {
-                        requiredVar.dataType = "long";
-                        requiredVar.datatypeWithEnum = "long";
+                        if (!typeMapping.containsKey("Long") && !typeMapping.containsKey(Long.class.getCanonicalName())) {
+                            requiredVar.dataType = "long";
+                            requiredVar.datatypeWithEnum = "long";
+                        }
                     }
                     if (requiredVar.isFloat) {
-                        requiredVar.dataType = "float";
-                        requiredVar.datatypeWithEnum = "float";
+                        if (!typeMapping.containsKey("Float") && !typeMapping.containsKey(Float.class.getCanonicalName())) {
+                            requiredVar.dataType = "float";
+                            requiredVar.datatypeWithEnum = "float";
+                        }
                     }
                     if (requiredVar.isDouble) {
-                        requiredVar.dataType = "double";
-                        requiredVar.datatypeWithEnum = "double";
+                        if (!typeMapping.containsKey("Double") && !typeMapping.containsKey(Double.class.getCanonicalName())) {
+                            requiredVar.dataType = "double";
+                            requiredVar.datatypeWithEnum = "double";
+                        }
                     }
                     if (requiredVar.isBoolean) {
-                        requiredVar.dataType = "boolean";
-                        requiredVar.datatypeWithEnum = "boolean";
+                        if (!typeMapping.containsKey("Boolean") && !typeMapping.containsKey(Boolean.class.getCanonicalName())) {
+                            requiredVar.dataType = "boolean";
+                            requiredVar.datatypeWithEnum = "boolean";
+                        }
                     }
                 }
             }
@@ -2025,19 +2035,29 @@ public class KoraCodegen extends DefaultCodegen {
                         continue;
                     }
                     if (allParam.isInteger) {
-                        allParam.dataType = "int";
+                        if (!typeMapping.containsKey("Integer") && !typeMapping.containsKey(Integer.class.getCanonicalName())) {
+                            allParam.dataType = "int";
+                        }
                     }
                     if (allParam.isLong) {
-                        allParam.dataType = "long";
+                        if (!typeMapping.containsKey("Long") && !typeMapping.containsKey(Long.class.getCanonicalName())) {
+                            allParam.dataType = "long";
+                        }
                     }
                     if (allParam.isFloat) {
-                        allParam.dataType = "float";
+                        if (!typeMapping.containsKey("Float") && !typeMapping.containsKey(Float.class.getCanonicalName())) {
+                            allParam.dataType = "float";
+                        }
                     }
                     if (allParam.isDouble) {
-                        allParam.dataType = "double";
+                        if (!typeMapping.containsKey("Double") && !typeMapping.containsKey(Double.class.getCanonicalName())) {
+                            allParam.dataType = "double";
+                        }
                     }
                     if (allParam.isBoolean) {
-                        allParam.dataType = "boolean";
+                        if (!typeMapping.containsKey("Boolean") && !typeMapping.containsKey(Boolean.class.getCanonicalName())) {
+                            allParam.dataType = "boolean";
+                        }
                     }
                 }
             }
