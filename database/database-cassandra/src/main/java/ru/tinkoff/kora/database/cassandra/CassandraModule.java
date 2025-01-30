@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.database.cassandra;
 
+import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraResultSetMapper;
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowMapper;
 import ru.tinkoff.kora.database.common.DataBaseModule;
@@ -69,30 +70,35 @@ public interface CassandraModule extends DataBaseModule {
             : row.getByteBuffer(0);
     }
 
+    @DefaultComponent
     default CassandraRowMapper<LocalTime> localTimeCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
             : row.getLocalTime(0);
     }
 
+    @DefaultComponent
     default CassandraRowMapper<LocalDate> localDateCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
             : row.getLocalDate(0);
     }
 
+    @DefaultComponent
     default CassandraRowMapper<LocalDateTime> localDateTimeCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
             : row.get(0, LocalDateTime.class);
     }
 
+    @DefaultComponent
     default CassandraRowMapper<ZonedDateTime> zonedDateTimeCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
             : row.get(0, ZonedDateTime.class);
     }
 
+    @DefaultComponent
     default CassandraRowMapper<Instant> instantCassandraRowMapper() {
         return row -> row.isNull(0)
             ? null
