@@ -672,7 +672,7 @@ public final class RequestHandlerUtils {
                         T value = mapping.read(s);
                         result.add(value);
                     } catch (HttpServerResponseException e) {
-                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, s));
+                        throw e;
                     } catch (Exception e) {
                         throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value due to: ".formatted(name, s) + e.getMessage());
                     }
@@ -713,7 +713,7 @@ public final class RequestHandlerUtils {
                         T value = mapping.read(s);
                         result.add(value);
                     } catch (HttpServerResponseException e) {
-                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, s));
+                        throw e;
                     } catch (Exception e) {
                         throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value due to: ".formatted(name, s) + e.getMessage());
                     }
@@ -1297,7 +1297,7 @@ public final class RequestHandlerUtils {
                         T value = mapping.read(s);
                         result.add(value);
                     } catch (HttpServerResponseException e) {
-                        throw HttpServerResponseException.of(400, "Query %s(%s) has invalid value".formatted(name, s));
+                        throw e;
                     } catch (Exception e) {
                         throw HttpServerResponseException.of(400, "Query %s(%s) has invalid value due to: ".formatted(name, s) + e.getMessage());
                     }
@@ -1338,7 +1338,7 @@ public final class RequestHandlerUtils {
                         T value = mapping.read(s);
                         result.add(value);
                     } catch (HttpServerResponseException e) {
-                        throw HttpServerResponseException.of(400, "Query %s(%s) has invalid value".formatted(name, s));
+                        throw e;
                     } catch (Exception e) {
                         throw HttpServerResponseException.of(400, "Query %s(%s) has invalid value due to: ".formatted(name, s) + e.getMessage());
                     }
