@@ -1,6 +1,6 @@
 dependencies {
     api libs.testcontainers.core
-    api(libs.lettuce.core) {
+    api(libs.redis.lettuce) {
         exclude group: 'io.projectreactor', module: 'reactor-core'
         exclude group: 'io.netty', module: 'netty-common'
         exclude group: 'io.netty', module: 'netty-handler'
