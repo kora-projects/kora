@@ -6,12 +6,7 @@ import ru.tinkoff.kora.http.common.cookie.Cookie;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponseException;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.function.Predicate;
-import java.util.stream.Stream;
+import java.util.*;
 
 public final class RequestHandlerUtils {
 
@@ -108,8 +103,23 @@ public final class RequestHandlerUtils {
         }
     }
 
+    public static boolean parseBooleanPathParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = request.pathParams().get(name);
+        if (result == null) {
+            throw HttpServerResponseException.of(400, "Path parameter '%s' is required".formatted(name));
+        }
+
+        if ("true".equalsIgnoreCase(result)) {
+            return true;
+        } else if ("false".equalsIgnoreCase(result)) {
+            return false;
+        } else {
+            throw HttpServerResponseException.of(400, "Path parameter %s(%s) has invalid value".formatted(name, result));
+        }
+    }
+
     /*
-     * Headers: String, Integer, List<String>, List<Integer>
+     * Headers: String, Integer, Long, Double, BigInteger, BigDecimal, UUID
      */
     @Nonnull
     public static String parseStringHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
@@ -140,16 +150,53 @@ public final class RequestHandlerUtils {
 
     @Nullable
     public static List<String> parseOptionalStringListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = request.headers().getAll(name);
-        if (result == null) {
+        var headers = request.headers().getAll(name);
+        if (headers == null) {
             return null;
         }
 
-        return result.stream()
-            .flatMap(h -> Stream.of(h.split(",")))
-            .map(String::trim)
-            .filter(Predicate.not(String::isBlank))
-            .toList();
+        List<String> result = new ArrayList<>();
+        for (String header : headers) {
+            String[] split = header.split(",");
+            for (String s : split) {
+                s = s.strip();
+                if (!s.isBlank()) {
+                    result.add(s);
+                }
+            }
+        }
+
+        return Collections.unmodifiableList(result);
+    }
+
+    public static Set<String> parseStringSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseOptionalStringSetHeaderParameter(request, name);
+        if (result == null) {
+            throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
+        }
+
+        return result;
+    }
+
+    @Nullable
+    public static Set<String> parseOptionalStringSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var headers = request.headers().getAll(name);
+        if (headers == null) {
+            return null;
+        }
+
+        Set<String> result = new LinkedHashSet<>();
+        for (String header : headers) {
+            String[] split = header.split(",");
+            for (String s : split) {
+                s = s.strip();
+                if (!s.isBlank()) {
+                    result.add(s);
+                }
+            }
+        }
+
+        return Collections.unmodifiableSet(result);
     }
 
     public static int parseIntegerHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
@@ -158,7 +205,7 @@ public final class RequestHandlerUtils {
             throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
         }
 
-        var first = result.iterator().next().trim();
+        var first = result.iterator().next().strip();
         if (first.isEmpty()) {
             throw HttpServerResponseException.of(400, "Header '%s' has invalid blank string value".formatted(name));
         }
@@ -177,7 +224,7 @@ public final class RequestHandlerUtils {
             return null;
         }
 
-        var first = result.iterator().next().trim();
+        var first = result.iterator().next().strip();
         if (first.isEmpty()) {
             throw HttpServerResponseException.of(400, "Header '%s' has invalid blank string value".formatted(name));
         }
@@ -206,11 +253,11 @@ public final class RequestHandlerUtils {
 
         List<Integer> result = new ArrayList<>();
         for (String header : headers) {
-            header = header.trim();
+            header = header.strip();
             if (!header.isEmpty()) {
                 String[] split = header.split(",");
                 for (String s : split) {
-                    s = s.trim();
+                    s = s.strip();
                     if (s.isEmpty()) {
                         throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, header));
                     }
@@ -224,7 +271,457 @@ public final class RequestHandlerUtils {
             }
         }
 
-        return List.copyOf(result);
+        return Collections.unmodifiableList(result);
+    }
+
+    public static Set<Integer> parseIntegerSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseOptionalIntegerSetHeaderParameter(request, name);
+        if (result == null) {
+            throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
+        }
+        return result;
+    }
+
+    @Nullable
+    public static Set<Integer> parseOptionalIntegerSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var headers = request.headers().getAll(name);
+        if (headers == null || headers.isEmpty()) {
+            return null;
+        }
+
+        Set<Integer> result = new LinkedHashSet<>();
+        for (String header : headers) {
+            header = header.strip();
+            if (!header.isEmpty()) {
+                String[] split = header.split(",");
+                for (String s : split) {
+                    s = s.strip();
+                    if (s.isEmpty()) {
+                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, header));
+                    }
+
+                    try {
+                        result.add(Integer.parseInt(s));
+                    } catch (NumberFormatException e) {
+                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, s));
+                    }
+                }
+            }
+        }
+
+        return Collections.unmodifiableSet(result);
+    }
+
+    public static long parseLongHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = request.headers().getAll(name);
+        if (result == null || result.isEmpty()) {
+            throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
+        }
+
+        var first = result.iterator().next().strip();
+        if (first.isEmpty()) {
+            throw HttpServerResponseException.of(400, "Header '%s' has invalid blank string value".formatted(name));
+        }
+
+        try {
+            return Long.parseLong(first);
+        } catch (NumberFormatException e) {
+            throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, first));
+        }
+    }
+
+    @Nullable
+    public static Long parseOptionalLongHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = request.headers().getAll(name);
+        if (result == null || result.isEmpty()) {
+            return null;
+        }
+
+        var first = result.iterator().next().strip();
+        if (first.isEmpty()) {
+            throw HttpServerResponseException.of(400, "Header '%s' has invalid blank string value".formatted(name));
+        }
+
+        try {
+            return Long.parseLong(first);
+        } catch (NumberFormatException e) {
+            throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, first));
+        }
+    }
+
+    public static List<Long> parseLongListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseOptionalLongListHeaderParameter(request, name);
+        if (result == null) {
+            throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
+        }
+        return result;
+    }
+
+    @Nullable
+    public static List<Long> parseOptionalLongListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var headers = request.headers().getAll(name);
+        if (headers == null || headers.isEmpty()) {
+            return null;
+        }
+
+        List<Long> result = new ArrayList<>();
+        for (String header : headers) {
+            header = header.strip();
+            if (!header.isEmpty()) {
+                String[] split = header.split(",");
+                for (String s : split) {
+                    s = s.strip();
+                    if (s.isEmpty()) {
+                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, header));
+                    }
+
+                    try {
+                        result.add(Long.parseLong(s));
+                    } catch (NumberFormatException e) {
+                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, s));
+                    }
+                }
+            }
+        }
+
+        return Collections.unmodifiableList(result);
+    }
+
+    public static Set<Long> parseLongSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseOptionalLongSetHeaderParameter(request, name);
+        if (result == null) {
+            throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
+        }
+        return result;
+    }
+
+    @Nullable
+    public static Set<Long> parseOptionalLongSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var headers = request.headers().getAll(name);
+        if (headers == null || headers.isEmpty()) {
+            return null;
+        }
+
+        Set<Long> result = new LinkedHashSet<>();
+        for (String header : headers) {
+            header = header.strip();
+            if (!header.isEmpty()) {
+                String[] split = header.split(",");
+                for (String s : split) {
+                    s = s.strip();
+                    if (s.isEmpty()) {
+                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, header));
+                    }
+
+                    try {
+                        result.add(Long.parseLong(s));
+                    } catch (NumberFormatException e) {
+                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, s));
+                    }
+                }
+            }
+        }
+
+        return Collections.unmodifiableSet(result);
+    }
+
+    public static double parseDoubleHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = request.headers().getAll(name);
+        if (result == null || result.isEmpty()) {
+            throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
+        }
+
+        var first = result.iterator().next().strip();
+        if (first.isEmpty()) {
+            throw HttpServerResponseException.of(400, "Header '%s' has invalid blank string value".formatted(name));
+        }
+
+        try {
+            return Double.parseDouble(first);
+        } catch (NumberFormatException e) {
+            throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, first));
+        }
+    }
+
+    @Nullable
+    public static Double parseOptionalDoubleHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = request.headers().getAll(name);
+        if (result == null || result.isEmpty()) {
+            return null;
+        }
+
+        var first = result.iterator().next().strip();
+        if (first.isEmpty()) {
+            throw HttpServerResponseException.of(400, "Header '%s' has invalid blank string value".formatted(name));
+        }
+
+        try {
+            return Double.parseDouble(first);
+        } catch (NumberFormatException e) {
+            throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, first));
+        }
+    }
+
+    public static List<Double> parseDoubleListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseOptionalDoubleListHeaderParameter(request, name);
+        if (result == null) {
+            throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
+        }
+        return result;
+    }
+
+    @Nullable
+    public static List<Double> parseOptionalDoubleListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var headers = request.headers().getAll(name);
+        if (headers == null || headers.isEmpty()) {
+            return null;
+        }
+
+        List<Double> result = new ArrayList<>();
+        for (String header : headers) {
+            header = header.strip();
+            if (!header.isEmpty()) {
+                String[] split = header.split(",");
+                for (String s : split) {
+                    s = s.strip();
+                    if (s.isEmpty()) {
+                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, header));
+                    }
+
+                    try {
+                        result.add(Double.parseDouble(s));
+                    } catch (NumberFormatException e) {
+                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, s));
+                    }
+                }
+            }
+        }
+
+        return Collections.unmodifiableList(result);
+    }
+
+    public static Set<Double> parseDoubleSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseOptionalDoubleSetHeaderParameter(request, name);
+        if (result == null) {
+            throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
+        }
+        return result;
+    }
+
+    @Nullable
+    public static Set<Double> parseOptionalDoubleSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var headers = request.headers().getAll(name);
+        if (headers == null || headers.isEmpty()) {
+            return null;
+        }
+
+        Set<Double> result = new LinkedHashSet<>();
+        for (String header : headers) {
+            header = header.strip();
+            if (!header.isEmpty()) {
+                String[] split = header.split(",");
+                for (String s : split) {
+                    s = s.strip();
+                    if (s.isEmpty()) {
+                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, header));
+                    }
+
+                    try {
+                        result.add(Double.parseDouble(s));
+                    } catch (NumberFormatException e) {
+                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, s));
+                    }
+                }
+            }
+        }
+
+        return Collections.unmodifiableSet(result);
+    }
+
+    public static UUID parseUuidHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseOptionalUuidHeaderParameter(request, name);
+        if (result == null) {
+            throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
+        } else {
+            return result;
+        }
+    }
+
+    @Nullable
+    public static UUID parseOptionalUuidHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = request.headers().getAll(name);
+        if (result == null || result.isEmpty()) {
+            return null;
+        }
+
+        var first = result.iterator().next().strip();
+        if (first.isEmpty()) {
+            throw HttpServerResponseException.of(400, "Header '%s' has invalid blank string value".formatted(name));
+        }
+
+        try {
+            return UUID.fromString(first);
+        } catch (NumberFormatException e) {
+            throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, first));
+        }
+    }
+
+    public static List<UUID> parseUuidListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseOptionalUuidListHeaderParameter(request, name);
+        if (result == null) {
+            throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
+        }
+        return result;
+    }
+
+    @Nullable
+    public static List<UUID> parseOptionalUuidListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var headers = request.headers().getAll(name);
+        if (headers == null || headers.isEmpty()) {
+            return null;
+        }
+
+        List<UUID> result = new ArrayList<>();
+        for (String header : headers) {
+            header = header.strip();
+            if (!header.isEmpty()) {
+                String[] split = header.split(",");
+                for (String s : split) {
+                    s = s.strip();
+                    if (s.isEmpty()) {
+                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, header));
+                    }
+
+                    try {
+                        result.add(UUID.fromString(s));
+                    } catch (NumberFormatException e) {
+                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, s));
+                    }
+                }
+            }
+        }
+
+        return Collections.unmodifiableList(result);
+    }
+
+    public static Set<UUID> parseUuidSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseOptionalUuidSetHeaderParameter(request, name);
+        if (result == null) {
+            throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
+        }
+        return result;
+    }
+
+    @Nullable
+    public static Set<UUID> parseOptionalUuidSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var headers = request.headers().getAll(name);
+        if (headers == null || headers.isEmpty()) {
+            return null;
+        }
+
+        Set<UUID> result = new LinkedHashSet<>();
+        for (String header : headers) {
+            header = header.strip();
+            if (!header.isEmpty()) {
+                String[] split = header.split(",");
+                for (String s : split) {
+                    s = s.strip();
+                    if (s.isEmpty()) {
+                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, header));
+                    }
+
+                    try {
+                        result.add(UUID.fromString(s));
+                    } catch (NumberFormatException e) {
+                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, s));
+                    }
+                }
+            }
+        }
+
+        return Collections.unmodifiableSet(result);
+    }
+
+    public static <T> List<T> parseSomeListHeaderParameter(HttpServerRequest request, String name, StringParameterReader<T> mapping) throws HttpServerResponseException {
+        var result = parseOptionalSomeListHeaderParameter(request, name, mapping);
+        if (result == null) {
+            throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
+        }
+        return result;
+    }
+
+    @Nullable
+    public static <T> List<T> parseOptionalSomeListHeaderParameter(HttpServerRequest request, String name, StringParameterReader<T> mapping) throws HttpServerResponseException {
+        var headers = request.headers().getAll(name);
+        if (headers == null || headers.isEmpty()) {
+            return null;
+        }
+
+        List<T> result = new ArrayList<>();
+        for (String header : headers) {
+            header = header.strip();
+            if (!header.isEmpty()) {
+                String[] split = header.split(",");
+                for (String s : split) {
+                    s = s.strip();
+                    if (s.isEmpty()) {
+                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, header));
+                    }
+
+                    try {
+                        T value = mapping.read(s);
+                        result.add(value);
+                    } catch (HttpServerResponseException e) {
+                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, s));
+                    } catch (Exception e) {
+                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value due to: ".formatted(name, s) + e.getMessage());
+                    }
+                }
+            }
+        }
+
+        return Collections.unmodifiableList(result);
+    }
+
+    public static <T> Set<T> parseSomeSetHeaderParameter(HttpServerRequest request, String name, StringParameterReader<T> mapping) throws HttpServerResponseException {
+        var result = parseOptionalSomeSetHeaderParameter(request, name, mapping);
+        if (result == null) {
+            throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
+        }
+        return result;
+    }
+
+    @Nullable
+    public static <T> Set<T> parseOptionalSomeSetHeaderParameter(HttpServerRequest request, String name, StringParameterReader<T> mapping) throws HttpServerResponseException {
+        var headers = request.headers().getAll(name);
+        if (headers == null || headers.isEmpty()) {
+            return null;
+        }
+
+        Set<T> result = new LinkedHashSet<>();
+        for (String header : headers) {
+            header = header.strip();
+            if (!header.isEmpty()) {
+                String[] split = header.split(",");
+                for (String s : split) {
+                    s = s.strip();
+                    if (s.isEmpty()) {
+                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, header));
+                    }
+
+                    try {
+                        T value = mapping.read(s);
+                        result.add(value);
+                    } catch (HttpServerResponseException e) {
+                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, s));
+                    } catch (Exception e) {
+                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value due to: ".formatted(name, s) + e.getMessage());
+                    }
+                }
+            }
+        }
+
+        return Collections.unmodifiableSet(result);
     }
 
     /*
@@ -247,7 +744,7 @@ public final class RequestHandlerUtils {
             return null;
         }
 
-        var first = result.iterator().next().trim();
+        var first = result.iterator().next().strip();
         if (first.isEmpty()) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid blank string value".formatted(name));
         }
@@ -294,7 +791,7 @@ public final class RequestHandlerUtils {
             return null;
         }
 
-        var first = result.iterator().next().trim();
+        var first = result.iterator().next().strip();
         if (first.isEmpty()) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid blank string value".formatted(name));
         }
@@ -321,7 +818,7 @@ public final class RequestHandlerUtils {
             return null;
         }
 
-        var first = result.iterator().next().trim();
+        var first = result.iterator().next().strip();
         if (first.isEmpty()) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid blank string value".formatted(name));
         }
@@ -348,16 +845,17 @@ public final class RequestHandlerUtils {
             return null;
         }
 
-        var first = result.iterator().next().trim();
+        var first = result.iterator().next().strip();
         if (first.isEmpty()) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid blank string value".formatted(name));
         }
 
-        try {
-            // todo
-            return Boolean.parseBoolean(first);
-        } catch (NumberFormatException e) {
-            throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, first));
+        if ("true".equalsIgnoreCase(first)) {
+            return true;
+        } else if ("false".equalsIgnoreCase(first)) {
+            return false;
+        } else {
+            throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, result));
         }
     }
 
@@ -376,7 +874,7 @@ public final class RequestHandlerUtils {
             return null;
         }
 
-        var first = result.iterator().next().trim();
+        var first = result.iterator().next().strip();
         if (first.isEmpty()) {
             throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid blank string value".formatted(name));
         }
@@ -409,7 +907,7 @@ public final class RequestHandlerUtils {
         var list = new ArrayList<Integer>(result.size());
         for (var str : result) {
             if (str != null) {
-                str = str.trim();
+                str = str.strip();
                 if (str.isEmpty()) {
                     throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid blank string value".formatted(name));
                 }
@@ -439,21 +937,21 @@ public final class RequestHandlerUtils {
             return null;
         }
 
-        return result.stream()
-            .filter(Objects::nonNull)
-            .map(v -> {
-                v = v.trim();
-                if (v.isEmpty()) {
+        var list = new ArrayList<UUID>(result.size());
+        for (var str : result) {
+            if (str != null) {
+                str = str.strip();
+                if (str.isEmpty()) {
                     throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid blank string value".formatted(name));
                 }
-
                 try {
-                    return UUID.fromString(v);
-                } catch (IllegalArgumentException e) {
-                    throw HttpServerResponseException.of(400, "Path parameter '%s' has invalid value '%s'".formatted(name, result));
+                    list.add(UUID.fromString(str));
+                } catch (NumberFormatException e) {
+                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, str));
                 }
-            })
-            .toList();
+            }
+        }
+        return list;
     }
 
     @Nonnull
@@ -491,21 +989,21 @@ public final class RequestHandlerUtils {
             return null;
         }
 
-        return result.stream()
-            .filter(Objects::nonNull)
-            .map(v -> {
-                v = v.trim();
-                if (v.isEmpty()) {
+        var list = new ArrayList<Long>(result.size());
+        for (var str : result) {
+            if (str != null) {
+                str = str.strip();
+                if (str.isEmpty()) {
                     throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid blank string value".formatted(name));
                 }
-
                 try {
-                    return Long.parseLong(v);
+                    list.add(Long.parseLong(str));
                 } catch (NumberFormatException e) {
-                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, v));
+                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, str));
                 }
-            })
-            .toList();
+            }
+        }
+        return list;
     }
 
     @Nonnull
@@ -524,21 +1022,21 @@ public final class RequestHandlerUtils {
             return null;
         }
 
-        return result.stream()
-            .filter(Objects::nonNull)
-            .map(v -> {
-                v = v.trim();
-                if (v.isEmpty()) {
+        var list = new ArrayList<Double>(result.size());
+        for (var str : result) {
+            if (str != null) {
+                str = str.strip();
+                if (str.isEmpty()) {
                     throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid blank string value".formatted(name));
                 }
-
                 try {
-                    return Double.parseDouble(v);
+                    list.add(Double.parseDouble(str));
                 } catch (NumberFormatException e) {
-                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, v));
+                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, str));
                 }
-            })
-            .toList();
+            }
+        }
+        return list;
     }
 
     @Nonnull
@@ -557,23 +1055,301 @@ public final class RequestHandlerUtils {
             return null;
         }
 
-        return result.stream()
-            .filter(Objects::nonNull)
-            .map(v -> {
-                v = v.trim();
-                if (v.isEmpty()) {
+        var list = new ArrayList<Boolean>(result.size());
+        for (var str : result) {
+            if (str != null) {
+                str = str.strip();
+                if (str.isEmpty()) {
+                    throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid blank string value".formatted(name));
+                }
+                if ("true".equalsIgnoreCase(str)) {
+                    list.add(true);
+                } else if ("false".equalsIgnoreCase(str)) {
+                    list.add(false);
+                } else {
+                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, result));
+                }
+            }
+        }
+        return list;
+    }
+
+    @Nonnull
+    public static Set<Integer> parseIntegerSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseOptionalIntegerSetQueryParameter(request, name);
+        if (result == null) {
+            throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
+        }
+        return result;
+    }
+
+    @Nullable
+    public static Set<Integer> parseOptionalIntegerSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = request.queryParams().get(name);
+        if (result == null) {
+            return null;
+        }
+        var set = new LinkedHashSet<Integer>(result.size() + 1);
+        for (var str : result) {
+            if (str != null) {
+                str = str.strip();
+                if (str.isEmpty()) {
+                    throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid blank string value".formatted(name));
+                }
+                try {
+                    set.add(Integer.parseInt(str));
+                } catch (NumberFormatException e) {
+                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, str));
+                }
+            }
+        }
+        return Collections.unmodifiableSet(set);
+    }
+
+    @Nonnull
+    public static Set<UUID> parseUuidSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseOptionalUuidSetQueryParameter(request, name);
+        if (result == null) {
+            throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
+        }
+        return result;
+    }
+
+    @Nullable
+    public static Set<UUID> parseOptionalUuidSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = request.queryParams().get(name);
+        if (result == null) {
+            return null;
+        }
+
+        var set = new LinkedHashSet<UUID>(result.size() + 1);
+        for (var str : result) {
+            if (str != null) {
+                str = str.strip();
+                if (str.isEmpty()) {
+                    throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid blank string value".formatted(name));
+                }
+                try {
+                    set.add(UUID.fromString(str));
+                } catch (NumberFormatException e) {
+                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, str));
+                }
+            }
+        }
+        return Collections.unmodifiableSet(set);
+    }
+
+    @Nonnull
+    public static Set<String> parseStringSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseOptionalStringSetQueryParameter(request, name);
+        if (result == null) {
+            throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
+        }
+        return result;
+    }
+
+    @Nullable
+    public static Set<String> parseOptionalStringSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = request.queryParams().get(name);
+        if (result == null) {
+            return null;
+        }
+
+        var set = new LinkedHashSet<String>(result.size() + 1);
+        for (var str : result) {
+            if (str != null) {
+                set.add(str);
+            }
+        }
+
+        return Collections.unmodifiableSet(set);
+    }
+
+    @Nonnull
+    public static Set<Long> parseLongSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseOptionalLongSetQueryParameter(request, name);
+        if (result == null) {
+            throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
+        }
+        return result;
+    }
+
+    @Nullable
+    public static Set<Long> parseOptionalLongSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = request.queryParams().get(name);
+        if (result == null) {
+            return null;
+        }
+
+        var set = new LinkedHashSet<Long>(result.size() + 1);
+        for (var str : result) {
+            if (str != null) {
+                str = str.strip();
+                if (str.isEmpty()) {
+                    throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid blank string value".formatted(name));
+                }
+                try {
+                    set.add(Long.parseLong(str));
+                } catch (NumberFormatException e) {
+                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, str));
+                }
+            }
+        }
+        return Collections.unmodifiableSet(set);
+    }
+
+    @Nonnull
+    public static Set<Double> parseDoubleSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseOptionalDoubleSetQueryParameter(request, name);
+        if (result == null) {
+            throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
+        }
+        return result;
+    }
+
+    @Nullable
+    public static Set<Double> parseOptionalDoubleSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = request.queryParams().get(name);
+        if (result == null) {
+            return null;
+        }
+
+        var set = new LinkedHashSet<Double>(result.size() + 1);
+        for (var str : result) {
+            if (str != null) {
+                str = str.strip();
+                if (str.isEmpty()) {
+                    throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid blank string value".formatted(name));
+                }
+                try {
+                    set.add(Double.parseDouble(str));
+                } catch (NumberFormatException e) {
+                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, str));
+                }
+            }
+        }
+        return Collections.unmodifiableSet(set);
+    }
+
+    @Nonnull
+    public static Set<Boolean> parseBooleanSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = parseOptionalBooleanSetQueryParameter(request, name);
+        if (result == null) {
+            throw HttpServerResponseException.of(400, "Query parameter '%s' is required".formatted(name));
+        }
+        return result;
+    }
+
+    @Nullable
+    public static Set<Boolean> parseOptionalBooleanSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
+        var result = request.queryParams().get(name);
+        if (result == null) {
+            return null;
+        }
+
+        var set = new LinkedHashSet<Boolean>(result.size() + 1);
+        for (var str : result) {
+            if (str != null) {
+                str = str.strip();
+                if (str.isEmpty()) {
                     throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid blank string value".formatted(name));
                 }
 
-                try {
-                    return Boolean.parseBoolean(v);
-                } catch (NumberFormatException e) {
-                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, v));
+                if ("true".equalsIgnoreCase(str)) {
+                    set.add(true);
+                } else if ("false".equalsIgnoreCase(str)) {
+                    set.add(false);
+                } else {
+                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, result));
                 }
-            })
-            .toList();
+            }
+        }
+        return Collections.unmodifiableSet(set);
     }
 
+    public static <T> List<T> parseSomeListQueryParameter(HttpServerRequest request, String name, StringParameterReader<T> mapping) throws HttpServerResponseException {
+        var result = parseOptionalSomeListQueryParameter(request, name, mapping);
+        if (result == null) {
+            throw HttpServerResponseException.of(400, "Header '%s' is required".formatted(name));
+        }
+        return result;
+    }
+
+    @Nullable
+    public static <T> List<T> parseOptionalSomeListQueryParameter(HttpServerRequest request, String name, StringParameterReader<T> mapping) throws HttpServerResponseException {
+        var headers = request.headers().getAll(name);
+        if (headers == null || headers.isEmpty()) {
+            return null;
+        }
+
+        List<T> result = new ArrayList<>();
+        for (String header : headers) {
+            header = header.strip();
+            if (!header.isEmpty()) {
+                String[] split = header.split(",");
+                for (String s : split) {
+                    s = s.strip();
+                    if (s.isEmpty()) {
+                        throw HttpServerResponseException.of(400, "Query %s(%s) has invalid value".formatted(name, header));
+                    }
+
+                    try {
+                        T value = mapping.read(s);
+                        result.add(value);
+                    } catch (HttpServerResponseException e) {
+                        throw HttpServerResponseException.of(400, "Query %s(%s) has invalid value".formatted(name, s));
+                    } catch (Exception e) {
+                        throw HttpServerResponseException.of(400, "Query %s(%s) has invalid value due to: ".formatted(name, s) + e.getMessage());
+                    }
+                }
+            }
+        }
+
+        return Collections.unmodifiableList(result);
+    }
+
+    public static <T> Set<T> parseSomeSetQueryParameter(HttpServerRequest request, String name, StringParameterReader<T> mapping) throws HttpServerResponseException {
+        var result = parseOptionalSomeSetQueryParameter(request, name, mapping);
+        if (result == null) {
+            throw HttpServerResponseException.of(400, "Query '%s' is required".formatted(name));
+        }
+        return result;
+    }
+
+    @Nullable
+    public static <T> Set<T> parseOptionalSomeSetQueryParameter(HttpServerRequest request, String name, StringParameterReader<T> mapping) throws HttpServerResponseException {
+        var headers = request.headers().getAll(name);
+        if (headers == null || headers.isEmpty()) {
+            return null;
+        }
+
+        Set<T> result = new LinkedHashSet<>();
+        for (String header : headers) {
+            header = header.strip();
+            if (!header.isEmpty()) {
+                String[] split = header.split(",");
+                for (String s : split) {
+                    s = s.strip();
+                    if (s.isEmpty()) {
+                        throw HttpServerResponseException.of(400, "Query %s(%s) has invalid value".formatted(name, header));
+                    }
+
+                    try {
+                        T value = mapping.read(s);
+                        result.add(value);
+                    } catch (HttpServerResponseException e) {
+                        throw HttpServerResponseException.of(400, "Query %s(%s) has invalid value".formatted(name, s));
+                    } catch (Exception e) {
+                        throw HttpServerResponseException.of(400, "Query %s(%s) has invalid value due to: ".formatted(name, s) + e.getMessage());
+                    }
+                }
+            }
+        }
+
+        return Collections.unmodifiableSet(result);
+    }
+
+    // cookies
     @Nullable
     public static Cookie parseOptionalCookie(HttpServerRequest request, String name) {
         var cookies = request.cookies();

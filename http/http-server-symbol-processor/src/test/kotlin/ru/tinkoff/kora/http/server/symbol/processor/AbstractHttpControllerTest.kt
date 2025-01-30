@@ -17,6 +17,7 @@ import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 import java.nio.charset.StandardCharsets
+import java.util.UUID
 import java.util.concurrent.CompletionException
 import java.util.concurrent.CompletionStage
 
@@ -35,6 +36,8 @@ abstract class AbstractHttpControllerTest : AbstractSymbolProcessorTest() {
         import ru.tinkoff.kora.http.common.HttpMethod.*;
         import java.util.concurrent.CompletionStage;
         import java.util.concurrent.CompletableFuture;
+        import java.util.UUID;
+        import java.math.BigInteger;
     """.trimIndent()
 
 
