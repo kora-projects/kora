@@ -78,7 +78,7 @@ public class GraphResolutionHelper {
         var tags = TagUtils.parseTagValue(element);
 
         if (dependencyClaim.tagsMatches(tags)) {
-            return ComponentDeclaration.fromDependency(ctx, element);
+            return ComponentDeclaration.fromDependency(ctx, element, declaredType);
         } else {
             return null;
         }

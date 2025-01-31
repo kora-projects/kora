@@ -3,6 +3,7 @@ package ru.tinkoff.kora.kora.app.annotation.processor.component;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import ru.tinkoff.kora.annotation.processor.common.*;
+import ru.tinkoff.kora.kora.app.annotation.processor.ProcessingContext;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim.DependencyClaimType;
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclaration;
 
@@ -18,7 +19,7 @@ import java.util.Set;
 
 public class ComponentDependencyHelper {
 
-    public static List<DependencyClaim> parseDependencyClaims(ComponentDeclaration componentDeclaration) {
+    public static List<DependencyClaim> parseDependencyClaims(ProcessingContext ctx, ComponentDeclaration componentDeclaration) {
         // TODO switch
         if (componentDeclaration instanceof ComponentDeclaration.FromModuleComponent moduleComponent) {
             var element = moduleComponent.method();
@@ -33,7 +34,7 @@ public class ComponentDependencyHelper {
             return result;
         } else if (componentDeclaration instanceof ComponentDeclaration.DiscoveredAsDependencyComponent discoveredAsDependency) {
             var element = discoveredAsDependency.constructor();
-            var type = (ExecutableType) element.asType();
+            var type = (ExecutableType) ctx.types.asMemberOf(discoveredAsDependency.type(), element);
             var result = new ArrayList<DependencyClaim>(element.getParameters().size());
             for (int i = 0; i < type.getParameterTypes().size(); i++) {
                 var parameterType = type.getParameterTypes().get(i);

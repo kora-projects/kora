@@ -50,7 +50,7 @@ public class GraphBuilder {
                     continue;
                 }
                 stack.add(new ProcessingState.ResolutionFrame.Component(
-                    declaration, ComponentDependencyHelper.parseDependencyClaims(declaration)
+                    declaration, ComponentDependencyHelper.parseDependencyClaims(ctx, declaration)
                 ));
                 stack.addAll(findInterceptors(ctx, processing, declaration));
                 continue;
@@ -91,7 +91,7 @@ public class GraphBuilder {
                     // component not yet resolved - adding it to the tail, resolving
                     stack.addLast(componentFrame.withCurrentDependency(currentDependency));
                     stack.addLast(new ProcessingState.ResolutionFrame.Component(
-                        dependencyDeclaration, ComponentDependencyHelper.parseDependencyClaims(dependencyDeclaration)
+                        dependencyDeclaration, ComponentDependencyHelper.parseDependencyClaims(ctx, dependencyDeclaration)
                     ));
                     stack.addAll(findInterceptors(ctx, processing, dependencyDeclaration));
                     continue frame;
@@ -103,7 +103,7 @@ public class GraphBuilder {
                         processing.sourceDeclarations().add(template);
                         stack.addLast(componentFrame.withCurrentDependency(currentDependency));
                         stack.addLast(new ProcessingState.ResolutionFrame.Component(
-                            template, ComponentDependencyHelper.parseDependencyClaims(template)
+                            template, ComponentDependencyHelper.parseDependencyClaims(ctx, template)
                         ));
                         stack.addAll(findInterceptors(ctx, processing, template));
                         continue frame;
@@ -123,7 +123,7 @@ public class GraphBuilder {
                         newProcessing.sourceDeclarations().add(template);
                         newProcessing.resolutionStack().addLast(componentFrame.withCurrentDependency(currentDependency));
                         newProcessing.resolutionStack().addLast(new ProcessingState.ResolutionFrame.Component(
-                            template, ComponentDependencyHelper.parseDependencyClaims(template)
+                            template, ComponentDependencyHelper.parseDependencyClaims(ctx, template)
                         ));
                         newProcessing.resolutionStack().addAll(findInterceptors(ctx, processing, template));
 
@@ -176,7 +176,7 @@ public class GraphBuilder {
                     processing.sourceDeclarations().add(finalClassComponent);
                     stack.addLast(componentFrame.withCurrentDependency(currentDependency));
                     stack.addLast(new ProcessingState.ResolutionFrame.Component(
-                        finalClassComponent, ComponentDependencyHelper.parseDependencyClaims(finalClassComponent)
+                        finalClassComponent, ComponentDependencyHelper.parseDependencyClaims(ctx, finalClassComponent)
                     ));
                     stack.addAll(findInterceptors(ctx, processing, finalClassComponent));
                     continue frame;
@@ -281,7 +281,7 @@ public class GraphBuilder {
             }
             processing.resolutionStack().addLast(componentFrame.withCurrentDependency(currentDependency));
             processing.resolutionStack().addLast(new ProcessingState.ResolutionFrame.Component(
-                dependency, ComponentDependencyHelper.parseDependencyClaims(dependency)
+                dependency, ComponentDependencyHelper.parseDependencyClaims(ctx, dependency)
             ));
             processing.resolutionStack().addAll(findInterceptors(ctx, processing, dependency));
             return null;
@@ -302,7 +302,7 @@ public class GraphBuilder {
         return GraphResolutionHelper.findInterceptorDeclarations(ctx, processing.sourceDeclarations(), declaration.type())
             .stream()
             .filter(id -> processing.resolvedComponents().stream().noneMatch(rc -> rc.declaration() == id) && processing.resolutionStack().stream().noneMatch(rf -> rf instanceof ProcessingState.ResolutionFrame.Component c && c.declaration() == id))
-            .map(id -> new ProcessingState.ResolutionFrame.Component(id, ComponentDependencyHelper.parseDependencyClaims(id)))
+            .map(id -> new ProcessingState.ResolutionFrame.Component(id, ComponentDependencyHelper.parseDependencyClaims(ctx, id)))
             .toList();
     }
 

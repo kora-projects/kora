@@ -41,11 +41,11 @@ object ComponentDependencyHelper {
 
             is ComponentDeclaration.DiscoveredAsDependencyComponent -> {
                 val element = declaration.constructor
+                val constructorType = element.asMemberOf(declaration.type)
                 val result = ArrayList<DependencyClaim>(element.parameters.size)
-                for (parameter in element.parameters) {
-                    val type = parameter.type.resolve()
+                for ((parameter, parameterType) in element.parameters.zip(constructorType.parameterTypes)) {
                     val tags = TagUtils.parseTagValue(parameter)
-                    result.add(parseClaim(type, tags, element))
+                    result.add(parseClaim(parameterType!!, tags, element))
                 }
                 return result
             }

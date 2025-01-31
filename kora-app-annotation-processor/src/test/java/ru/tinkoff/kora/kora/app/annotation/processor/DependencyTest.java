@@ -229,6 +229,21 @@ public class DependencyTest extends AbstractKoraAppTest {
         assertThat(draw.getNodes()).hasSize(2);
         draw.init();
     }
+    @Test
+    public void testDiscoveredFinalClassDependencyWithGeneric() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                final class TestClass2{}
+                final class TestClass1<T> { public TestClass1(T t){}}
+
+                @Root
+                default String test(TestClass1<TestClass2> testClass) { return ""; }
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(3);
+        draw.init();
+    }
 
     @Test
     public void testDiscoveredFinalClassDependencyWithTag() {
