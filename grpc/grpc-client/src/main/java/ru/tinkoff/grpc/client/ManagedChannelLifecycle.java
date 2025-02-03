@@ -30,11 +30,14 @@ public final class ManagedChannelLifecycle implements Lifecycle, Wrapped<Managed
     private final ChannelCredentials channelCredentials;
     private final GrpcClientTelemetryFactory telemetryFactory;
     private final All<ClientInterceptor> interceptors;
+    @Nullable
+    private final GrpcClientBuilderConfigurer configurer;
     private volatile ManagedChannel channel;
 
     public ManagedChannelLifecycle(GrpcClientConfig config,
                                    @Nullable ChannelCredentials channelCredentials,
                                    All<ClientInterceptor> interceptors,
+                                   @Nullable GrpcClientBuilderConfigurer configurer,
                                    GrpcClientTelemetryFactory telemetryFactory,
                                    GrpcClientChannelFactory channelFactory,
                                    ServiceDescriptor serviceDefinition) {
@@ -44,6 +47,7 @@ public final class ManagedChannelLifecycle implements Lifecycle, Wrapped<Managed
         this.channelFactory = channelFactory;
         this.telemetryFactory = telemetryFactory;
         this.interceptors = interceptors;
+        this.configurer = configurer;
     }
 
     @Override
@@ -81,6 +85,13 @@ public final class ManagedChannelLifecycle implements Lifecycle, Wrapped<Managed
         }
         interceptors.add(new GrpcClientConfigInterceptor(this.config));
         builder.intercept(interceptors);
+        var defaultServiceConfig = this.config.defaultServiceConfig();
+        if (defaultServiceConfig != null && !defaultServiceConfig.content.isEmpty()) {
+            builder.defaultServiceConfig(defaultServiceConfig.content);
+        }
+        if (this.configurer != null) {
+            builder = this.configurer.configure(builder);
+        }
 
         this.channel = builder.build();
         logger.info("GrpcManagedChannel '{}' started in {}", this.config.url(), TimeUtils.tookForLogging(started));

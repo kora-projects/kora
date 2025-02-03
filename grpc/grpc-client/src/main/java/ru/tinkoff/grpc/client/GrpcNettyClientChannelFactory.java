@@ -5,7 +5,6 @@ import io.grpc.ManagedChannelBuilder;
 import io.grpc.netty.NettyChannelBuilder;
 import io.netty.channel.EventLoopGroup;
 import ru.tinkoff.kora.netty.common.NettyChannelFactory;
-import ru.tinkoff.kora.netty.common.NettyCommonModule;
 
 import java.net.SocketAddress;
 

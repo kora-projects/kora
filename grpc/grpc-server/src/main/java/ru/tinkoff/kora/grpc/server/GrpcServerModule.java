@@ -53,6 +53,8 @@ public interface GrpcServerModule extends NettyCommonModule {
         @Tag(WorkerLoopGroup.class) EventLoopGroup eventLoop,
         @Tag(BossLoopGroup.class) EventLoopGroup bossEventLoop,
         NettyChannelFactory nettyChannelFactory,
+        @Nullable
+        GrpcServerBuilderConfigurer configurer,
         ValueOf<GrpcServerTelemetry> telemetry) {
 
         GrpcServerConfig grpcServerConfig = config.get();
@@ -74,6 +76,10 @@ public interface GrpcServerModule extends NettyCommonModule {
             .intercept(CoroutineContextInjectInterceptor.newInstance());
 
         services.forEach(builder::addService);
+
+        if (configurer != null) {
+            builder = configurer.configure(builder);
+        }
 
         return builder;
     }

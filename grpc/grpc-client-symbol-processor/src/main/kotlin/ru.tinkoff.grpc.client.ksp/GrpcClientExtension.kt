@@ -86,12 +86,12 @@ class GrpcClientExtension(
         val parameterTags = arrayListOf<Set<String>>()
         val parameterTypes = arrayListOf<KSType>()
         for ((i, parameter) in managedChannelConstructor.parameters.dropLast(1).withIndex()) {
-            if (i < 3) {
+            if (i < 4) {
                 parameterTags.add(tag)
             } else {
                 parameterTags.add(setOf())
             }
-            if (i == 1) {
+            if (i == 1 || i == 3) {
                 parameterTypes.add(parameter.type.resolve().makeNullable())
             } else {
                 parameterTypes.add(parameter.type.resolve().makeNotNullable())
