@@ -86,7 +86,7 @@ public final class GrpcClientExtension implements KoraExtension {
         var parameterTypes = new ArrayList<TypeMirror>(managedChannelConstructor.getParameters().size() - 1);
         for (int i = 0; i < managedChannelConstructor.getParameters().size() - 1; i++) {
             var parameter = managedChannelConstructor.getParameters().get(i);
-            parameterTags.add(i < 3 ? tag : Set.of());
+            parameterTags.add(i < 4 ? tag : Set.of());
             parameterTypes.add(parameter.asType());
         }
         return () -> new ExtensionResult.CodeBlockResult(

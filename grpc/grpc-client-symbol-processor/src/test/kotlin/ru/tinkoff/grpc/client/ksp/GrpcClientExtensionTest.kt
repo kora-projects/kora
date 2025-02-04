@@ -47,10 +47,11 @@ class GrpcClientExtensionTest : AbstractSymbolProcessorTest() {
               16. netty channel factory
               17. channel factory
               18. channel lifecycle
-              19. the stub
-              20. test root
+              19. config mapper
+              20. the stub
+              21. test root
              */
-            Assertions.assertThat(g.draw.size()).isEqualTo(20)
+            Assertions.assertThat(g.draw.size()).isEqualTo(21)
         }
     }
 

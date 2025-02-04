@@ -5,6 +5,7 @@ import io.camunda.zeebe.client.impl.util.VersionUtil;
 import io.grpc.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.grpc.client.GrpcClientChannelFactory;
+import ru.tinkoff.grpc.client.config.DefaultServiceConfig;
 import ru.tinkoff.grpc.client.config.GrpcClientConfig;
 import ru.tinkoff.grpc.client.telemetry.GrpcClientTelemetryFactory;
 import ru.tinkoff.kora.application.graph.All;
@@ -51,6 +52,12 @@ final class ZeebeManagedChannelFactory {
             @Override
             public TelemetryConfig telemetry() {
                 return clientConfig.telemetry();
+            }
+
+            @Override
+            @Nullable
+            public DefaultServiceConfig defaultServiceConfig() {
+                return null;
             }
         };
     }
