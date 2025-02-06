@@ -12,6 +12,7 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import ru.tinkoff.kora.database.symbol.processor.cassandra.CassandraEntityGenerator
 import ru.tinkoff.kora.database.symbol.processor.cassandra.CassandraEntityGenerator.Companion.listResultSetMapperClassName
+import ru.tinkoff.kora.database.symbol.processor.cassandra.CassandraEntityGenerator.Companion.resultSetMapperClassName
 import ru.tinkoff.kora.database.symbol.processor.cassandra.CassandraEntityGenerator.Companion.rowMapperClassName
 import ru.tinkoff.kora.database.symbol.processor.cassandra.CassandraTypes
 import ru.tinkoff.kora.database.symbol.processor.model.DbEntity
@@ -55,6 +56,17 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
             return null
         }
         if (!rowSetParam.isList()) {
+            val entity = DbEntity.parseEntity(rowSetParam)
+            if (entity != null) {
+                if (entity.type.declaration.isAnnotationPresent(CassandraTypes.entity)) {
+                    return fromProcessor(resolver, rowSetParam.resultSetMapperClassName())
+                } else {
+                    return fromExtension(resolver, rowSetKSType, rowSetParam.resultSetMapperClassName()) {
+                        entityGenerator.generateResultSetMapper(entity)
+                    }
+                }
+            }
+
             val resultSetMapperDecl = resolver.getClassDeclarationByName(CassandraTypes.resultSetMapper.canonicalName)!!
             val rowMapperDecl = resolver.getClassDeclarationByName(CassandraTypes.rowMapper.canonicalName)!!
             val resultSetMapperType = resultSetMapperDecl.asType(listOf(resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(rowSetParam), Variance.INVARIANT)))
