@@ -30,6 +30,9 @@ public class CassandraEntityAnnotationProcessorTest extends AbstractAnnotationPr
         assertThat(compileResult.loadClass("$TestRecord_ListCassandraResultSetMapper"))
             .isNotNull()
             .isAssignableTo(CassandraResultSetMapper.class);
+        assertThat(compileResult.loadClass("$TestRecord_CassandraResultSetMapper"))
+            .isNotNull()
+            .isAssignableTo(CassandraResultSetMapper.class);
     }
 
     @Test
@@ -47,7 +50,11 @@ public class CassandraEntityAnnotationProcessorTest extends AbstractAnnotationPr
         assertThat(rowMapper.getConstructors()[0].getParameters()).hasSize(1);
         assertThat(TypeName.get(rowMapper.getConstructors()[0].getGenericParameterTypes()[0])).isEqualTo(expectedColumnMapper);
 
-        var listResultSetMapper = compileResult.loadClass("$TestRecord_ListCassandraResultSetMapper");
+        var resultSetMapper = compileResult.loadClass("$TestRecord_CassandraResultSetMapper");
+        assertThat(resultSetMapper.getConstructors()[0].getParameters()).hasSize(1);
+        assertThat(TypeName.get(resultSetMapper.getConstructors()[0].getGenericParameterTypes()[0])).isEqualTo(expectedColumnMapper);
+
+        var listResultSetMapper = compileResult.loadClass("$TestRecord_CassandraResultSetMapper");
         assertThat(listResultSetMapper.getConstructors()[0].getParameters()).hasSize(1);
         assertThat(TypeName.get(listResultSetMapper.getConstructors()[0].getGenericParameterTypes()[0])).isEqualTo(expectedColumnMapper);
     }
@@ -74,6 +81,9 @@ public class CassandraEntityAnnotationProcessorTest extends AbstractAnnotationPr
         assertThat(compileResult.loadClass("$TestClass_CassandraRowMapper"))
             .isNotNull()
             .isAssignableTo(RowMapper.class);
+        assertThat(compileResult.loadClass("$TestClass_CassandraResultSetMapper"))
+            .isNotNull()
+            .isAssignableTo(CassandraResultSetMapper.class);
         assertThat(compileResult.loadClass("$TestClass_ListCassandraResultSetMapper"))
             .isNotNull()
             .isAssignableTo(CassandraResultSetMapper.class);

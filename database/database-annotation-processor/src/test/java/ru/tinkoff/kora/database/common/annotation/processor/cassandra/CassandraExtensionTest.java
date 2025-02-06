@@ -162,6 +162,26 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
     }
 
     @Test
+    public void testEntitySingleResultSetMapper() {
+        compile(List.of(new KoraAppProcessor(), new CassandraEntityAnnotationProcessor()), """
+            @ru.tinkoff.kora.common.KoraApp
+            public interface TestApp extends ru.tinkoff.kora.database.cassandra.CassandraModule {
+              @Root
+              default String root(CassandraResultSetMapper<TestRecord> r) {return "";}
+            }
+            """, """
+            @ru.tinkoff.kora.database.cassandra.annotation.EntityCassandra
+            public record TestRecord(int value) {}
+            """);
+
+        compileResult.assertSuccess();
+        assertThat(compileResult.loadClass("$TestRecord_CassandraResultSetMapper"))
+            .isNotNull()
+            .isFinal()
+            .matches(doesImplement(CassandraResultSetMapper.class));
+    }
+
+    @Test
     public void testSingleAsyncResultSetMapper() {
         compile(List.of(new KoraAppProcessor()), """
             @ru.tinkoff.kora.common.KoraApp
