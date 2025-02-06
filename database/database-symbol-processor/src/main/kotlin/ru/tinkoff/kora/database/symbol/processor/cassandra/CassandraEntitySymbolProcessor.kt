@@ -23,6 +23,7 @@ class CassandraEntitySymbolProcessor(environment: SymbolProcessorEnvironment) : 
                 continue
             }
             generator.generateRowMapper(entity)
+            generator.generateResultSetMapper(entity)
             generator.generateListResultSetMapper(entity)
         }
         return emptyList()

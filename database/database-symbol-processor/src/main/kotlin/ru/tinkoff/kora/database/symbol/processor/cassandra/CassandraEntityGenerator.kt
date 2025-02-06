@@ -4,7 +4,6 @@ import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.database.symbol.processor.DbEntityReader
@@ -31,9 +30,41 @@ class CassandraEntityGenerator(val codeGenerator: CodeGenerator) {
         }
     )
 
+    fun generateResultSetMapper(entity: DbEntity) {
+        val rowType = entity.type
+        val mapperName = rowType.resultSetMapperClassName()
+        val packageName = rowType.declaration.packageName.asString()
+        val entityTypeName = entity.type.toTypeName();
+        val type = TypeSpec.classBuilder(mapperName)
+            .generated(CassandraTypesExtension::class)
+            .addSuperinterface(CassandraTypes.resultSetMapper.parameterizedBy(entityTypeName))
+
+        val constructor = FunSpec.constructorBuilder()
+        val apply = FunSpec.builder("apply")
+            .addModifiers(KModifier.OVERRIDE)
+            .addParameter("_rs", CassandraTypes.resultSet)
+            .returns(entityTypeName.copy(nullable = true))
+        apply.addStatement("val _it = _rs.iterator()")
+        apply.controlFlow("if (!_it.hasNext())") {
+            apply.addStatement("return null")
+        }
+        apply.addStatement("val _row = _it.next()")
+        apply.addCode(parseIndexes(entity, "_rs"))
+        val read = this.entityReader.readEntity("_result", entity)
+        read.enrich(type, constructor)
+        apply.addCode(read.block)
+        // todo throw exception on more than one row
+        apply.addStatement("return _result")
+
+
+        type.primaryConstructor(constructor.build())
+        type.addFunction(apply.build())
+
+        FileSpec.get(packageName, type.build()).writeTo(codeGenerator, true, listOfNotNull(entity.classDeclaration.containingFile))
+    }
+
     fun generateListResultSetMapper(entity: DbEntity) {
         val rowType = entity.type
-        val typeName = rowType.toClassName().simpleName
         val mapperName = rowType.listResultSetMapperClassName()
         val packageName = rowType.declaration.packageName.asString()
         val entityTypeName = entity.type.toTypeName();
@@ -47,8 +78,8 @@ class CassandraEntityGenerator(val codeGenerator: CodeGenerator) {
             .addModifiers(KModifier.OVERRIDE)
             .addParameter("_rs", CassandraTypes.resultSet)
             .returns(listType)
-        apply.addCode("val _result = %T<%T>(_rs.availableWithoutFetching);\n", ArrayList::class, entityTypeName)
         apply.addCode(parseIndexes(entity, "_rs"))
+        apply.addCode("val _result = %T<%T>(_rs.availableWithoutFetching);\n", ArrayList::class, entityTypeName)
         val read = this.entityReader.readEntity("_mappedRow", entity)
         read.enrich(type, constructor)
         apply.beginControlFlow("for (_row in _rs)")
@@ -100,7 +131,7 @@ class CassandraEntityGenerator(val codeGenerator: CodeGenerator) {
 
     companion object {
         fun KSType.rowMapperClassName() = ClassName(this.declaration.packageName.asString(), this.declaration.generatedClass(CassandraTypes.rowMapper))
-
+        fun KSType.resultSetMapperClassName() = ClassName(this.declaration.packageName.asString(), this.declaration.generatedClass(CassandraTypes.resultSetMapper))
         fun KSType.listResultSetMapperClassName() = ClassName(this.declaration.packageName.asString(), this.declaration.generatedClass("ListCassandraResultSetMapper"))
     }
 }
