@@ -140,19 +140,23 @@ public class CassandraTypesExtension implements KoraExtension {
     @Nullable
     private KoraExtensionDependencyGenerator generateResultSetMapper(RoundEnvironment roundEnvironment, DeclaredType typeMirror) {
         //CassandraResultSetMapper<List<T>>
-        var listType = typeMirror.getTypeArguments().get(0);
-        if (!(listType instanceof DeclaredType dt)) {
+        var resultType = typeMirror.getTypeArguments().get(0);
+        if (!(resultType instanceof DeclaredType dt)) {
             return null;
         }
-        if (CommonUtils.isList(listType)) {
-            var tn = (ParameterizedTypeName) TypeName.get(listType);
+        if (CommonUtils.isList(resultType)) {
+            var tn = (ParameterizedTypeName) TypeName.get(resultType);
             var rowType = dt.getTypeArguments().get(0);
             return this.listResultSetMapper(typeMirror, tn, (DeclaredType) rowType);
+        }
+        var rowTypeElement = this.types.asElement(resultType);
+        if (AnnotationUtils.isAnnotationPresent(rowTypeElement, CassandraTypes.CASSANDRA_ENTITY)) {
+            return fromAnnotationProcessor(generator.resultSetMapperName(rowTypeElement));
         }
         return () -> {
             var singleResultSetMapper = findStaticMethod(CassandraTypes.RESULT_SET_MAPPER, "singleResultSetMapper");
             var tp = (TypeVariable) singleResultSetMapper.getTypeParameters().get(0).asType();
-            var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, listType), singleResultSetMapper.asType());
+            var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, resultType), singleResultSetMapper.asType());
             return ExtensionResult.fromExecutable(singleResultSetMapper, executableType);
         };
     }
@@ -218,7 +222,6 @@ public class CassandraTypesExtension implements KoraExtension {
     }
 
     private KoraExtensionDependencyGenerator listResultSetMapper(DeclaredType typeMirror, ParameterizedTypeName listType, DeclaredType rowTypeMirror) {
-        var packageElement = this.elements.getPackageOf(this.types.asElement(rowTypeMirror));
         var rowTypeElement = this.types.asElement(rowTypeMirror);
         var listResultSetMapperName = this.generator.listResultSetMapperName(rowTypeElement);
         if (AnnotationUtils.isAnnotationPresent(rowTypeElement, CassandraTypes.CASSANDRA_ENTITY)) {
