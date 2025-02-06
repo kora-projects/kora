@@ -24,6 +24,7 @@ object CassandraTypes {
     val resultSetMapper = ClassName("ru.tinkoff.kora.database.cassandra.mapper.result", "CassandraResultSetMapper")
 
     val udt = ClassName("ru.tinkoff.kora.database.cassandra.annotation", "UDT")
+    val entity = ClassName("ru.tinkoff.kora.database.cassandra.annotation", "EntityCassandra")
     val gettableByName = ClassName("com.datastax.oss.driver.api.core.data", "GettableByName")
     val settableByName = ClassName("com.datastax.oss.driver.api.core.data", "SettableByName")
         .parameterizedBy(STAR)

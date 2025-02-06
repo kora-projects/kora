@@ -33,4 +33,5 @@ public class CassandraTypes {
     public static final ClassName LIST_TYPE = ClassName.get("com.datastax.oss.driver.api.core.type", "ListType");
     public static final ClassName UDT_VALUE = ClassName.get("com.datastax.oss.driver.api.core.data", "UdtValue");
     public static final ClassName UDT_ANNOTATION = ClassName.get("ru.tinkoff.kora.database.cassandra.annotation", "UDT");
+    public static final ClassName CASSANDRA_ENTITY = ClassName.get("ru.tinkoff.kora.database.cassandra.annotation", "EntityCassandra");
 }
