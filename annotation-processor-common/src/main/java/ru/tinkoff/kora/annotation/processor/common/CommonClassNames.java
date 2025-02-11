@@ -2,6 +2,7 @@ package ru.tinkoff.kora.annotation.processor.common;
 
 import com.squareup.javapoet.ClassName;
 
+import java.io.InputStream;
 import java.util.List;
 
 
@@ -45,6 +46,7 @@ public class CommonClassNames {
 
     public static final ClassName koraGenerated = ClassName.get("ru.tinkoff.kora.common.annotation", "Generated");
     public static final ClassName list = ClassName.get(List.class);
+    public static final ClassName inputStream = ClassName.get(InputStream.class);
 
     public static final ClassName config = ClassName.get("ru.tinkoff.kora.config.common", "Config");
     public static final ClassName configValueExtractor = ClassName.get("ru.tinkoff.kora.config.common.extractor", "ConfigValueExtractor");

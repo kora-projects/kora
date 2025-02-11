@@ -2,8 +2,6 @@ package ru.tinkoff.kora.config.annotation.processor;
 
 import com.squareup.javapoet.*;
 import jakarta.annotation.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.common.util.Either;
 
@@ -360,7 +358,8 @@ public class ConfigParserGenerator {
             .addOriginatingElement(typeElement)
             .addAnnotation(AnnotationUtils.generated(ConfigParserGenerator.class))
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-            .addSuperinterface(type);
+            .addSuperinterface(type)
+            .addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC).build());
         for (var tp : typeElement.getTypeParameters()) {
             defaults.addTypeVariable(TypeVariableName.get(tp));
         }

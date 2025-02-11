@@ -1,0 +1,18 @@
+dependencies {
+    annotationProcessor project(":config:config-annotation-processor")
+
+    compileOnly libs.jetbrains.annotations
+
+    implementation project(':logging:logging-common')
+
+    api project(':telemetry:telemetry-common')
+    api project(":http:http-client-common")
+    api project(":config:config-common")
+    api project(":common")
+
+    testImplementation project(":internal:test-logging")
+    testImplementation project(":http:http-client-ok")
+    testImplementation libs.testcontainers.core
+    testImplementation libs.s3client.minio
+    testImplementation 'com.squareup.okhttp3:logging-interceptor:5.0.0-alpha.14'
+}

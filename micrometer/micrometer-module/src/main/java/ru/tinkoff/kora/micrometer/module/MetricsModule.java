@@ -32,7 +32,7 @@ import ru.tinkoff.kora.micrometer.module.resilient.MicrometerFallbackMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerRetryMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerTimeoutMetrics;
 import ru.tinkoff.kora.micrometer.module.s3.client.MicrometerS3ClientMetricsFactory;
-import ru.tinkoff.kora.micrometer.module.s3.client.MicrometerS3KoraClientMetricsFactory;
+import ru.tinkoff.kora.micrometer.module.s3.client.MicrometerS3MetricsFactory;
 import ru.tinkoff.kora.micrometer.module.scheduling.MicrometerSchedulingMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.soap.client.MicrometerSoapClientMetricsFactory;
 
@@ -148,8 +148,8 @@ public interface MetricsModule {
     }
 
     @DefaultComponent
-    default MicrometerS3KoraClientMetricsFactory micrometerS3KoraClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
-        return new MicrometerS3KoraClientMetricsFactory(meterRegistry, metricsConfig);
+    default MicrometerS3MetricsFactory micrometerS3KoraClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
+        return new MicrometerS3MetricsFactory(meterRegistry, metricsConfig);
     }
 
     @DefaultComponent

@@ -9,8 +9,6 @@ import io.opentelemetry.semconv.incubating.AwsIncubatingAttributes;
 import io.opentelemetry.semconv.incubating.HttpIncubatingAttributes;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
-import ru.tinkoff.kora.s3.client.S3Exception;
-import ru.tinkoff.kora.s3.client.telemetry.S3ClientTracer;
 
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
 

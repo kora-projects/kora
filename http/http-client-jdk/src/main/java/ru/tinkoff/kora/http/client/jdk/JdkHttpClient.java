@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.http.client.jdk;
 
+import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.client.common.*;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
@@ -23,7 +24,7 @@ public class JdkHttpClient implements HttpClient {
     }
 
     @Override
-    public CompletionStage<HttpClientResponse> execute(HttpClientRequest request) {
+    public CompletionStage<HttpClientResponse> execute(Context ctx, HttpClientRequest request) {
         var httpClientRequest = HttpRequest.newBuilder()
             .uri(request.uri());
         if (request.requestTimeout() != null) {

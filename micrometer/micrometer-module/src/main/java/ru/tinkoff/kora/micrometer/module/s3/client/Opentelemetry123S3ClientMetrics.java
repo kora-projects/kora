@@ -6,8 +6,6 @@ import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.semconv.HttpAttributes;
 import io.opentelemetry.semconv.incubating.AwsIncubatingAttributes;
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.s3.client.S3Exception;
-import ru.tinkoff.kora.s3.client.telemetry.S3ClientMetrics;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.Objects;

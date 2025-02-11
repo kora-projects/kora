@@ -259,7 +259,14 @@ abstract class AbstractSymbolProcessorTest {
 
     protected fun newObject(name: String, vararg args: Any?): TestObject {
         val loadClass = compileResult.loadClass(name)
-        val inst = loadClass.constructors[0].newInstance(*args)!!
+        val mappedArgs = args.map {
+            if (it is GeneratedObject<*>) {
+                it()
+            } else {
+                it
+            }
+        }.toTypedArray()
+        val inst = loadClass.constructors[0].newInstance(*mappedArgs)!!
         return TestObject(loadClass.kotlin, inst)
     }
 
@@ -269,7 +276,7 @@ abstract class AbstractSymbolProcessorTest {
     ) {
 
         @SuppressWarnings("unchecked")
-        fun <T> invoke(method: String, vararg args: Any?): T? {
+        fun <T> invoke(method: String, vararg args: Any?): T {
             for (repositoryClassMethod in objectClass.memberFunctions) {
                 if (repositoryClassMethod.name == method && repositoryClassMethod.parameters.size == args.size + 1) {
                     try {
@@ -290,7 +297,7 @@ abstract class AbstractSymbolProcessorTest {
                             is Mono<*> -> result.block()
                             is Future<*> -> result.get()
                             else -> result
-                        } as T?
+                        } as T
                     } catch (e: InvocationTargetException) {
                         throw e.targetException
                     }

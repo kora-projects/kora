@@ -310,7 +310,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
     private val resumeWithException = MemberName("kotlin.coroutines", "resumeWithException")
 
     private fun generatePublisherExecutableMethod(publishMethod: KSFunctionDeclaration, publishData: KafkaPublisherUtils.PublisherData, topicVariable: String, keyParserName: String?, valueParserName: String): FunSpec {
-        val b = publishMethod.overridingKeepAop(resolver)
+        val b = publishMethod.overridingKeepAop()
         if (publishData.recordVar != null) {
             val record = publishData.recordVar.name?.asString().toString()
             b.addStatement("val _headers = %N.headers()", record)

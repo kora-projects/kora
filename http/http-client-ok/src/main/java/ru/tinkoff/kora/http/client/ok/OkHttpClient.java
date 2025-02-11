@@ -4,6 +4,7 @@ import jakarta.annotation.Nullable;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.internal.http.HttpMethod;
+import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.client.common.HttpClient;
 import ru.tinkoff.kora.http.client.common.HttpClientConnectionException;
 import ru.tinkoff.kora.http.client.common.HttpClientTimeoutException;
@@ -22,7 +23,7 @@ public final class OkHttpClient implements HttpClient {
     }
 
     @Override
-    public CompletionStage<HttpClientResponse> execute(HttpClientRequest request) {
+    public CompletionStage<HttpClientResponse> execute(Context ctx, HttpClientRequest request) {
         try {
             var b = new Request.Builder();
             b.method(request.method(), toRequestBody(request))
