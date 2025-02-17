@@ -13,6 +13,7 @@ import ru.tinkoff.kora.json.annotation.processor.writer.WriterTypeMetaParser;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.KoraExtension;
 
+import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.ElementKind;
@@ -24,6 +25,7 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
+import javax.tools.Diagnostic;
 import java.util.Objects;
 import java.util.Set;
 
@@ -36,6 +38,7 @@ public class JsonKoraExtension implements KoraExtension {
     private final TypeMirror jsonReaderErasure;
     private final ReaderTypeMetaParser readerTypeMetaParser;
     private final WriterTypeMetaParser writerTypeMetaParser;
+    private final Messager messager;
 
     public JsonKoraExtension(ProcessingEnvironment processingEnv) {
         this.types = processingEnv.getTypeUtils();
@@ -47,6 +50,7 @@ public class JsonKoraExtension implements KoraExtension {
         this.processor = new JsonProcessor(processingEnv);
         this.jsonWriterErasure = this.types.erasure(this.elements.getTypeElement(JsonTypes.jsonWriter.canonicalName()).asType());
         this.jsonReaderErasure = this.types.erasure(this.elements.getTypeElement(JsonTypes.jsonReader.canonicalName()).asType());
+        this.messager = processingEnv.getMessager();
     }
 
     @Override
@@ -66,24 +70,24 @@ public class JsonKoraExtension implements KoraExtension {
             }
             if (jsonElement.getKind().isInterface()) {
                 if (jsonElement.getModifiers().contains(Modifier.SEALED)) {
-                    return () -> this.generateWriter(possibleJsonClass);
+                    return () -> this.generateWriter(typeMirror, possibleJsonClass);
                 } else {
                     return null;
                 }
             }
             if (jsonElement.getModifiers().contains(Modifier.ABSTRACT)) {
                 if (jsonElement.getModifiers().contains(Modifier.SEALED)) {
-                    return () -> this.generateWriter(possibleJsonClass);
+                    return () -> this.generateWriter(possibleJsonClass, possibleJsonClass);
                 } else {
                     return null;
                 }
             }
             if (jsonElement.getKind() == ElementKind.ENUM) {
-                return () -> this.generateWriter(possibleJsonClass);
+                return () -> this.generateWriter(possibleJsonClass, possibleJsonClass);
             }
             try {
                 Objects.requireNonNull(this.writerTypeMetaParser.parse(jsonElement, possibleJsonClass));
-                return () -> this.generateWriter(possibleJsonClass);
+                return () -> this.generateWriter(possibleJsonClass, possibleJsonClass);
             } catch (ProcessingErrorException e) {
                 return null;
             }
@@ -98,30 +102,30 @@ public class JsonKoraExtension implements KoraExtension {
             if (AnnotationUtils.findAnnotation(jsonElement, JsonTypes.json) != null
                 || AnnotationUtils.findAnnotation(jsonElement, JsonTypes.jsonReaderAnnotation) != null
                 || CommonUtils.findConstructors(jsonElement, s -> s.contains(Modifier.PUBLIC))
-                    .stream()
-                    .anyMatch(e -> AnnotationUtils.findAnnotation(e, JsonTypes.jsonReaderAnnotation) != null)) {
+                .stream()
+                .anyMatch(e -> AnnotationUtils.findAnnotation(e, JsonTypes.jsonReaderAnnotation) != null)) {
                 return KoraExtensionDependencyGenerator.generatedFrom(elements, jsonElement, JsonTypes.jsonReader);
             }
             if (jsonElement.getKind().isInterface()) {
                 if (jsonElement.getModifiers().contains(Modifier.SEALED)) {
-                    return () -> this.generateReader(possibleJsonClass);
+                    return () -> this.generateReader(typeMirror, possibleJsonClass);
                 } else {
                     return null;
                 }
             }
             if (jsonElement.getModifiers().contains(Modifier.ABSTRACT)) {
                 if (jsonElement.getModifiers().contains(Modifier.SEALED)) {
-                    return () -> this.generateReader(possibleJsonClass);
+                    return () -> this.generateReader(possibleJsonClass, possibleJsonClass);
                 } else {
                     return null;
                 }
             }
             if (jsonElement.getKind() == ElementKind.ENUM) {
-                return () -> this.generateReader(possibleJsonClass);
+                return () -> this.generateReader(possibleJsonClass, possibleJsonClass);
             }
             try {
                 Objects.requireNonNull(this.readerTypeMetaParser.parse(jsonElement, typeMirror));
-                return () -> this.generateReader(possibleJsonClass);
+                return () -> this.generateReader(possibleJsonClass, possibleJsonClass);
             } catch (ProcessingErrorException e) {
                 return null;
             }
@@ -130,11 +134,16 @@ public class JsonKoraExtension implements KoraExtension {
     }
 
     @Nullable
-    private ExtensionResult generateReader(TypeMirror jsonClass) {
+    private ExtensionResult generateReader(TypeMirror jsonClass, TypeMirror possibleJsonClass) {
         var jsonTypeElement = (TypeElement) this.types.asElement(jsonClass);
         var packageElement = this.elements.getPackageOf(jsonTypeElement).getQualifiedName().toString();
         var resultClassName = JsonUtils.jsonReaderName(this.types, jsonClass);
         var resultElement = this.elements.getTypeElement(packageElement + "." + resultClassName);
+        this.messager.printMessage(
+            Diagnostic.Kind.WARNING,
+            "Type is not annotated with @Json or @JsonWriter, but %s is requested by graph. Generating one in graph building process will lead to another round of compiling which will slow down you build".formatted(possibleJsonClass),
+            jsonTypeElement
+        );
         if (resultElement != null) {
             return buildExtensionResult(resultElement);
         }
@@ -152,8 +161,13 @@ public class JsonKoraExtension implements KoraExtension {
     }
 
     @Nullable
-    private ExtensionResult generateWriter(TypeMirror jsonClass) {
+    private ExtensionResult generateWriter(TypeMirror jsonClass, TypeMirror jsonWriterType) {
         var jsonTypeElement = (TypeElement) this.types.asElement(jsonClass);
+        this.messager.printMessage(
+            Diagnostic.Kind.WARNING,
+            "Type is not annotated with @Json or @JsonWriter, but %s is requested by graph. Generating one in graph building process will lead to another round of compiling which will slow down you build".formatted(jsonWriterType),
+            jsonTypeElement
+        );
         var packageElement = this.elements.getPackageOf(jsonTypeElement).getQualifiedName().toString();
         var resultClassName = JsonUtils.jsonWriterName(this.types, jsonClass);
         var resultElement = this.elements.getTypeElement(packageElement + "." + resultClassName);

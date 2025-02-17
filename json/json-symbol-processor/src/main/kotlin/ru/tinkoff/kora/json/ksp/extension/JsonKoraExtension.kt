@@ -52,15 +52,15 @@ class JsonKoraExtension(
             if (possibleJsonClassDeclaration !is KSClassDeclaration) {
                 return null
             }
-            if (possibleJsonClassDeclaration.isAnnotationPresent(JsonTypes.json) || possibleJsonClassDeclaration.isAnnotationPresent(JsonTypes.jsonWriter)) {
+            if (possibleJsonClassDeclaration.isAnnotationPresent(JsonTypes.json) || possibleJsonClassDeclaration.isAnnotationPresent(JsonTypes.jsonWriterAnnotation)) {
                 return generatedByProcessor(resolver, possibleJsonClassDeclaration, "JsonWriter")
             }
             if (possibleJsonClassDeclaration.modifiers.contains(Modifier.ENUM) || possibleJsonClassDeclaration.modifiers.contains(Modifier.SEALED)) {
-                return { generateWriter(resolver, possibleJsonClassDeclaration) }
+                return { generateWriter(resolver, type, possibleJsonClassDeclaration) }
             }
             try {
                 writerTypeMetaParser.parse(possibleJsonClassDeclaration)
-                return { generateWriter(resolver, possibleJsonClassDeclaration) }
+                return { generateWriter(resolver, type, possibleJsonClassDeclaration) }
             } catch (e: ProcessingErrorException) {
                 e.message?.let { kspLogger.warn(it, null) }
                 return null
@@ -89,18 +89,18 @@ class JsonKoraExtension(
                 return null
             }
             if (possibleJsonClassDeclaration.isAnnotationPresent(JsonTypes.json)
-                || possibleJsonClassDeclaration.isAnnotationPresent(JsonTypes.jsonReader)
-                || possibleJsonClassDeclaration.primaryConstructor?.isAnnotationPresent(JsonTypes.jsonReader) == true
+                || possibleJsonClassDeclaration.isAnnotationPresent(JsonTypes.jsonReaderAnnotation)
+                || possibleJsonClassDeclaration.primaryConstructor?.isAnnotationPresent(JsonTypes.jsonReaderAnnotation) == true
             ) {
                 return generatedByProcessor(resolver, possibleJsonClassDeclaration, "JsonReader")
             }
             if (possibleJsonClassDeclaration.modifiers.contains(Modifier.ENUM) || possibleJsonClassDeclaration.modifiers.contains(Modifier.SEALED)) {
-                return { generateReader(resolver, possibleJsonClassDeclaration) }
+                return { generateReader(resolver, type, possibleJsonClassDeclaration) }
             }
 
             try {
                 readerTypeMetaParser.parse(possibleJsonClassDeclaration)
-                return { generateReader(resolver, possibleJsonClassDeclaration) }
+                return { generateReader(resolver, type, possibleJsonClassDeclaration) }
             } catch (e: ProcessingErrorException) {
                 return null
             }
@@ -108,7 +108,8 @@ class JsonKoraExtension(
         return null
     }
 
-    private fun generateReader(resolver: Resolver, jsonClass: KSClassDeclaration): ExtensionResult {
+    private fun generateReader(resolver: Resolver, mapperType: KSType, jsonClass: KSClassDeclaration): ExtensionResult {
+        kspLogger.warn("Type is not annotated with @Json or @JsonReader, but mapper $mapperType is requested by graph. Generating one in graph building process will lead to another round of compiling which will slow down you build")
         val packageElement = jsonClass.packageName.asString()
         val resultClassName = jsonClass.jsonReaderName()
         val resultDeclaration = resolver.getClassDeclarationByName("$packageElement.$resultClassName")
@@ -124,7 +125,8 @@ class JsonKoraExtension(
         return ExtensionResult.RequiresCompilingResult
     }
 
-    private fun generateWriter(resolver: Resolver, declaration: KSClassDeclaration): ExtensionResult {
+    private fun generateWriter(resolver: Resolver, mapperType: KSType, declaration: KSClassDeclaration): ExtensionResult {
+        kspLogger.warn("Type is not annotated with @Json or @JsonWriter, but mapper $mapperType is requested by graph. Generating one in graph building process will lead to another round of compiling which will slow down you build")
         val packageElement = declaration.packageName.asString()
         val resultClassName = declaration.jsonWriterName()
         val resultDeclaration = resolver.getClassDeclarationByName("$packageElement.$resultClassName")
