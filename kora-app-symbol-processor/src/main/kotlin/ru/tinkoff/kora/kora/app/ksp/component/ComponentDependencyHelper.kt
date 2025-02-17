@@ -10,7 +10,6 @@ import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.TagUtils
 import ru.tinkoff.kora.ksp.common.exception.ProcessingError
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
-import java.lang.RuntimeException
 import javax.tools.Diagnostic
 
 object ComponentDependencyHelper {
@@ -41,11 +40,16 @@ object ComponentDependencyHelper {
 
             is ComponentDeclaration.DiscoveredAsDependencyComponent -> {
                 val element = declaration.constructor
-                val constructorType = element.asMemberOf(declaration.type)
+                val constructorParameterTypes = if (declaration.classDeclaration.typeParameters.isEmpty()) {
+                    element.parameters.asSequence().map { it.type.resolve() }
+                } else {
+                    // this will fail but there's nothing we can do about it
+                    element.asMemberOf(declaration.type).parameterTypes.asSequence().mapNotNull { it!! }
+                }
                 val result = ArrayList<DependencyClaim>(element.parameters.size)
-                for ((parameter, parameterType) in element.parameters.zip(constructorType.parameterTypes)) {
+                for ((parameter, parameterType) in element.parameters.asSequence().zip(constructorParameterTypes)) {
                     val tags = TagUtils.parseTagValue(parameter)
-                    result.add(parseClaim(parameterType!!, tags, element))
+                    result.add(parseClaim(parameterType, tags, element))
                 }
                 return result
             }
