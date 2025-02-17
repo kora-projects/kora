@@ -567,7 +567,7 @@ public class KoraCodegen extends DefaultCodegen {
     @Override
     public Map<String, ModelsMap> updateAllModels(Map<String, ModelsMap> objs) {
         objs = super.updateAllModels(objs);
-        Map<String, CodegenModel> allModels = getAllModels(objs);
+        var allModels = getAllModels(objs);
         for (var model : allModels.values()) {
             model.vendorExtensions.put("x-enable-validation", params.enableValidation);
 
@@ -626,165 +626,87 @@ public class KoraCodegen extends DefaultCodegen {
                         l.addAll(l1);
                         l.addAll(l2);
                         return l;
-                    }));
-                var uniqueMappedModels = model.discriminator.getMappedModels().stream().map(CodegenDiscriminator.MappedModel::getModelName).collect(Collectors.toSet());
-                model.vendorExtensions.put("x-unique-mapped-models", uniqueMappedModels);
-                model.discriminator.getVendorExtensions().put("x-unique-mapped-models", uniqueMappedModels);
-
-                if (!model.discriminator.getVendorExtensions().containsKey("x-discriminator-property")) {
-                    final String propertyName = model.getDiscriminator().getPropertyName();
-                    final Map<String, CodegenProperty> propertyTypeToProp = new LinkedHashMap<>();
-                    Boolean allSameType = null;
-                    for (var mappedModel : model.discriminator.getMappedModels()) {
-                        var childModel = allModels.get(mappedModel.getModelName());
-                        var discrProp = childModel.allVars.stream()
-                            .filter(p -> p.name.equals(propertyName))
-                            .findFirst();
-
-                        if (allSameType == null) {
-                            allSameType = discrProp.isPresent();
-                        }
-                        if (discrProp.isPresent()) {
-                            propertyTypeToProp.computeIfAbsent(discrProp.get().dataType, k -> discrProp.get());
-                        } else if (allSameType) {
-                            allSameType = false;
-                        }
-                    }
-
-                    if (allSameType != null && allSameType && propertyTypeToProp.size() == 1) {
-                        if (model.allVars.stream().noneMatch(p -> !p.isDiscriminator && p.name.equals(model.discriminator.getPropertyName()))) {
-                            CodegenProperty property = propertyTypeToProp.values().iterator().next();
-                            property.required = true;
-                            property.isNullable = false;
-                            model.discriminator.getVendorExtensions().put("x-discriminator-property", property);
-                        }
-                    } else if (propertyTypeToProp.isEmpty()) {
-                        CodegenProperty p = getFakeCodegenPropertyString(model.discriminator.getPropertyBaseName());
-                        model.discriminator.getVendorExtensions().put("x-discriminator-property", p);
-                        model.discriminator.getVendorExtensions().put("x-discriminator-property-all-empty", true);
-                    }
+                    }, LinkedHashMap::new));
+                model.allVars.removeIf(p -> p.name.equals(model.discriminator.getPropertyName()));
+                var discriminatorProperty = new CodegenProperty();
+                discriminatorProperty.name = model.discriminator.getPropertyName();
+                discriminatorProperty.baseName = model.discriminator.getPropertyName();
+                discriminatorProperty.openApiType = model.discriminator.getPropertyType();
+                discriminatorProperty._enum = new ArrayList<>(model.discriminator.getMapping().keySet());
+                discriminatorProperty.allowableValues = new LinkedHashMap<>();
+                discriminatorProperty.allowableValues.put("enumVars", new ArrayList<>());
+                for (var enumValue : model.discriminator.getMapping().keySet()) {
+                    var l = (List<Map<String, ?>>) discriminatorProperty.allowableValues.get("enumVars");
+                    var enumVar = toEnumVarName(enumValue, "String");
+                    var enumStr = toEnumValue(enumValue, "String");
+                    l.add(Map.of("name", enumVar, "value", enumStr));
                 }
-
+                discriminatorProperty.datatypeWithEnum = toEnumName(discriminatorProperty);
+                discriminatorProperty.dataType = "String";
+                discriminatorProperty.isDiscriminator = true;
+                discriminatorProperty.required = true;
                 for (var mappedModel : model.discriminator.getMappedModels()) {
                     var childModel = allModels.get(mappedModel.getModelName());
                     childModel.parentModel = model;
                     childModel.parent = model.classname;
                     var mappings = map.get(mappedModel.getModelName());
-
+                    childModel.allVars.removeIf(p -> p.name.equals(model.discriminator.getPropertyName()));
+                    childModel.optionalVars.removeIf(p -> p.name.equals(model.discriminator.getPropertyName()));
+                    childModel.requiredVars.removeIf(p -> p.name.equals(model.discriminator.getPropertyName()));
+                    var property = discriminatorProperty.clone();
+                    childModel.allVars.add(0, property);
+                    childModel.requiredVars.add(0, property);
                     if (mappings.size() == 1) {
-                        var property = childModel.allVars.stream()
-                            .filter(prop -> StringUtils.equals(model.discriminator.getPropertyBaseName(), prop.baseName))
-                            .findFirst();
-                        property.ifPresent(p -> {
-                            if (!p.required) {
-                                p.setRequired(true);
-                            }
-                            p.isNullable = false;
-
-                            childModel.vendorExtensions.put("x-discriminator-property", p);
-                            if (p.isString) {
-                                p.vendorExtensions.put("x-discriminator-property-value", "DISCRIMINATOR");
-                            } else if (p.isEnum || p.isEnumRef || p.isInnerEnum) {
-                                final List<Map<String, Object>> enumVars = (List<Map<String, Object>>) p.allowableValues.get("enumVars");
-                                final String enumVarName = enumVars.stream()
-                                    .filter(m -> {
-                                        String mappingValue = String.valueOf(m.get("value"));
-                                        return mappingValue.equals(mappings.get(0))
-                                               || mappingValue.equals("\"" + mappings.get(0) + "\"");
-                                    })
-                                    .map(m -> m.get("name"))
-                                    .filter(Objects::nonNull)
-                                    .map(Object::toString)
-                                    .findFirst()
-                                    .orElseGet(() -> toEnumVarName(mappings.get(0), p.dataType));
-
-                                p.vendorExtensions.put("x-discriminator-property-value", p.dataType + "." + enumVarName);
-                            } else {
-                                p.vendorExtensions.put("x-discriminator-property-value", p.dataType + ".valueOf(DISCRIMINATOR)");
-                            }
-                        });
-                        if (property.isEmpty() && model.discriminator.getVendorExtensions().containsKey("x-discriminator-property-all-empty")) {
-                            CodegenProperty p = getFakeCodegenPropertyString(model.discriminator.getPropertyBaseName());
-                            childModel.vendorExtensions.put("x-discriminator-property", p);
-                            p.vendorExtensions.put("x-discriminator-property-value", "DISCRIMINATOR");
+                        var enumValue = "%s.%s.%s".formatted(model.classname, discriminatorProperty.datatypeWithEnum, toEnumVarName(mappings.get(0), "String"));
+                        property.vendorExtensions.put("x-discriminator-single", enumValue);
+                        childModel.vendorExtensions.put("x-discriminator-single", enumValue);
+                        var enumStringValue = "%s.%s.Constants.%s".formatted(model.classname, discriminatorProperty.datatypeWithEnum, toEnumVarName(mappings.get(0), "String"));
+                        childModel.vendorExtensions.put("x-discriminator-value", params.codegenMode.isJava()
+                            ? enumStringValue
+                            : "[" + enumStringValue + "]");
+                        var valuesCheck = new StringBuilder();
+                        valuesCheck.append("if (").append(discriminatorProperty.name).append(" != ").append(enumValue).append(") {\n");
+                        if (params.codegenMode.isKotlin()) {
+                            valuesCheck.append("  throw IllegalArgumentException");
+                        } else {
+                            valuesCheck.append("  throw new IllegalArgumentException");
                         }
-
-                        childModel.vars.removeIf(prop -> StringUtils.equals(model.discriminator.getPropertyBaseName(), prop.baseName));
-                        childModel.allVars.removeIf(prop -> StringUtils.equals(model.discriminator.getPropertyBaseName(), prop.baseName));
-                        childModel.requiredVars.removeIf(prop -> StringUtils.equals(model.discriminator.getPropertyBaseName(), prop.baseName));
-                        childModel.optionalVars.removeIf(prop -> StringUtils.equals(model.discriminator.getPropertyBaseName(), prop.baseName));
-                        childModel.hasVars = !childModel.allVars.isEmpty();
-                        childModel.emptyVars = childModel.allVars.isEmpty();
+                        valuesCheck.append("(\"Unexpected value '\" + ").append(discriminatorProperty.name).append(" + \"' for variable ").append(discriminatorProperty.name).append("\");\n")
+                            .append("}\n");
+                        childModel.vendorExtensions.put("x-discriminator-values-check", valuesCheck.toString().indent(4));
                     } else {
-                        var property = childModel.allVars.stream()
-                            .filter(prop -> StringUtils.equals(model.discriminator.getPropertyBaseName(), prop.baseName))
-                            .findFirst()
-                            .orElseThrow(() -> new IllegalStateException("Discriminator must be described as property in schema: " + model.name));
-
-                        property.isNullable = false;
-                        property.setRequired(true);
-                        childModel.setHasRequired(true);
-                        childModel.requiredVars.removeIf(p -> Objects.equals(p.baseName, property.baseName));
-                        childModel.optionalVars.removeIf(p -> Objects.equals(p.baseName, property.baseName));
-                        childModel.requiredVars.add(property);
-
-                        if (model.discriminator.getPropertyBaseName().equals(property.baseName)) {
-                            property.isDiscriminator = true;
+                        assert mappings.size() > 1;
+                        var discriminatorValue = mappings.stream()
+                            .<String>map(it -> "%s.%s.Constants.%s".formatted(model.classname, discriminatorProperty.datatypeWithEnum, toEnumVarName(it, "String")))
+                            .collect(Collectors.joining(
+                                ",\n  ",
+                                params.codegenMode.isJava() ? "{\n  " : "[\n  ",
+                                params.codegenMode.isJava() ? "\n}" : "\n]"
+                            ));
+                        childModel.vendorExtensions.put("x-discriminator-value", discriminatorValue);
+                        childModel.vendorExtensions.put("x-discriminator-keys", discriminatorValue);
+                        var valuesCheck = new StringBuilder();
+                        var discriminatorValueCheck = mappings.stream()
+                            .map(it -> "%s != %s.%s.%s".formatted(discriminatorProperty.name, model.classname, discriminatorProperty.datatypeWithEnum, toEnumVarName(it, "String")))
+                            .collect(Collectors.joining("\n  && "));
+                        valuesCheck.append("if (").append(discriminatorValueCheck).append(") {\n");
+                        if (params.codegenMode.isKotlin()) {
+                            valuesCheck.append("  throw IllegalArgumentException");
+                        } else {
+                            valuesCheck.append("  throw new IllegalArgumentException");
                         }
-
-                        if (params.codegenMode().isKotlin()) {
-                            childModel.vendorExtensions.put("x-discriminator-property", property);
-                            property.vendorExtensions.put("x-discriminator-property-value", property.name);
-                        }
-
-                        var sb = new StringBuilder().append("(");
-                        for (int i = 0; i < mappings.size(); i++) {
-                            var mapping = mappings.get(i);
-                            if (i > 0) {
-                                sb.append(" && ");
-                            }
-                            if (params.codegenMode.isJava()) {
-                                sb.append("!String.valueOf(").append(property.name).append(").equals(\"").append(mapping).append("\")");
-                            } else {
-                                sb.append(property.name).append("?.toString() != \"").append(mapping).append("\"");
-                            }
-                        }
-                        childModel.vendorExtensions.put("x-discriminator-values-check", sb.append(")").toString());
-                        childModel.vendorExtensions.put("x-discriminator-constant", mappings.get(0));
-                    }
-
-                    var separators = params.codegenMode.isJava() ? new String[]{"{\"", "\"}"} : new String[]{"[\"", "\"]"};
-                    var discriminatorValues = mappings.stream().collect(Collectors.joining("\", \"", separators[0], separators[1]));
-                    childModel.vendorExtensions.put("x-discriminator-value", discriminatorValues);
-
-                    if (mappings.size() == 1) {
-                        childModel.vendorExtensions.put("x-discriminator-constant", "\"" + mappings.get(0) + "\"");
-                        final String field = getUpperSnakeCase(mappings.get(0));
-                        childModel.vendorExtensions.put("x-discriminator-constant-field", field);
-                    } else {
-                        var discriminatorConsts = mappings.stream().collect(Collectors.joining("\", \"", "\"", "\""));
-                        childModel.vendorExtensions.put("x-discriminator-constants", discriminatorConsts);
-                        childModel.vendorExtensions.remove("x-discriminator-constant");
-
-                        var mappingValues = mappings.stream()
-                            .map(m -> {
-                                final String field = getUpperSnakeCase(m);
-                                final String fieldOld = Arrays.stream(m.split("[^a-zA-Z0-9]"))
-                                    .map(String::strip)
-                                    .map(String::toUpperCase)
-                                    .collect(Collectors.joining("_"));
-
-                                if (field.equals(fieldOld)) {
-                                    return Map.of("discriminatorField", field, "discriminatorValue", "\"" + m + "\"");
-                                } else {
-                                    return Map.of("discriminatorField", field, "discriminatorFieldOld", fieldOld, "discriminatorValue", "\"" + m + "\"");
-                                }
-                            })
-                            .collect(Collectors.toList());
-
-                        childModel.vendorExtensions.put("x-discriminator-constant-fields", mappingValues);
+                        valuesCheck.append("(\"Unexpected value '\" + ").append(discriminatorProperty.name).append(" + \"' for variable ").append(discriminatorProperty.name).append("\");\n")
+                            .append("}\n");
+                        childModel.vendorExtensions.put("x-discriminator-values-check", valuesCheck.toString().indent(4));
                     }
                 }
+
+                model.vendorExtensions.put("x-discriminator-property", discriminatorProperty);
+                model.discriminator.getVendorExtensions().put("x-discriminator-property", discriminatorProperty);
+
+                var uniqueMappedModels = model.discriminator.getMappedModels().stream().map(CodegenDiscriminator.MappedModel::getModelName).collect(Collectors.toSet());
+                model.vendorExtensions.put("x-unique-mapped-models", uniqueMappedModels);
+                model.discriminator.getVendorExtensions().put("x-unique-mapped-models", uniqueMappedModels);
             }
 
             if (params.codegenMode.isJava()) {
@@ -927,14 +849,16 @@ public class KoraCodegen extends DefaultCodegen {
             var model = (Map<String, Object>) obj;
             var models = (List<Map<String, Object>>) model.get("models");
             var codegenModel = (CodegenModel) models.get(0).get("model");
-            var additionalConstructor = codegenModel.getHasVars() && !codegenModel.getVars().isEmpty() && !codegenModel.getAllVars().isEmpty() && codegenModel.getVars().size() != codegenModel.getRequiredVars().size();
+            var additionalConstructor = codegenModel.getHasVars()
+                && !codegenModel.getVars().isEmpty()
+                && !codegenModel.getAllVars().isEmpty()
+                && codegenModel.getAllVars().size() != codegenModel.getRequiredVars().size();
             for (var requiredVar : codegenModel.requiredVars) {
                 // discriminator is somehow present in both optional and required vars, so we should clean it up
                 codegenModel.optionalVars.removeIf(p -> Objects.equals(p.name, requiredVar.name));
-                // discriminator is skipped in sealed interface declaration, so it should not be overridden
                 if (codegenModel.parentModel != null && codegenModel.parentModel.discriminator != null) {
                     if (Objects.equals(requiredVar.name, codegenModel.parentModel.discriminator.getPropertyName())) {
-                        requiredVar.isOverridden = false;
+                        requiredVar.isOverridden = true;
                     }
                 }
             }
@@ -2115,10 +2039,10 @@ public class KoraCodegen extends DefaultCodegen {
         } else if (authMethod.isKeyInCookie) {
             fakeAuthParameter.isCookieParam = true;
         } else if (authMethod.isOAuth
-                   || authMethod.isOpenId
-                   || authMethod.isBasicBearer
-                   || authMethod.isBasic
-                   || authMethod.isBasicBasic) {
+            || authMethod.isOpenId
+            || authMethod.isBasicBearer
+            || authMethod.isBasic
+            || authMethod.isBasicBasic) {
             fakeAuthParameter.isHeaderParam = true;
 
             for (CodegenParameter parameter : parameters) {
@@ -2168,8 +2092,8 @@ public class KoraCodegen extends DefaultCodegen {
 
     public static boolean isContentJson(CodegenParameter parameter) {
         return parameter.containerType != null
-               && (parameter.containerType.startsWith("application/json") || parameter.containerType.startsWith("text/json"))
-               || isContentJson(parameter.getContent());
+            && (parameter.containerType.startsWith("application/json") || parameter.containerType.startsWith("text/json"))
+            || isContentJson(parameter.getContent());
     }
 
     public static boolean isContentJson(@Nullable Map<String, CodegenMediaType> content) {

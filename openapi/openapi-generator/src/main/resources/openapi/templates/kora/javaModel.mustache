@@ -25,12 +25,27 @@ import jakarta.annotation.Nullable;
 @ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorField("{{{propertyBaseName}}}")
 public sealed interface {{classname}} permits {{#vendorExtensions.x-unique-mapped-models}}{{.}}{{^-last}}, {{/-last}}{{/vendorExtensions.x-unique-mapped-models}} {
 {{#vendorExtensions.x-discriminator-property}}
-
   /** {{#description}}{{.}}{{/description}}{{^description}}{{name}}{{/description}} */
-  {{{datatypeWithEnum}}} {{name}}();{{/vendorExtensions.x-discriminator-property}}{{#allVars}}{{^isDiscriminator}}
+  {{{datatypeWithEnum}}} {{name}}();{{/vendorExtensions.x-discriminator-property}}{{#allVars}}
+  {{^isDiscriminator}}
+        {{#isEnum}}
+        {{^isContainer}}
+    {{>javaEnumClass}}
+        {{/isContainer}}
+        {{#isContainer}}
+        {{#mostInnerItems}}
+    {{>javaEnumClass}}
+        {{/mostInnerItems}}
+        {{/isContainer}}
+        {{/isEnum}}
 
   /** {{#description}}{{.}}{{/description}}{{^description}}{{name}}{{/description}} */
   {{^vendorExtensions.x-json-nullable}}{{^required}}@Nullable {{/required}}{{{datatypeWithEnum}}}{{/vendorExtensions.x-json-nullable}}{{#vendorExtensions.x-json-nullable}}ru.tinkoff.kora.json.common.JsonNullable<{{{datatypeWithEnum}}}>{{/vendorExtensions.x-json-nullable}} {{name}}();{{/isDiscriminator}}{{/allVars}}
+{{#vendorExtensions.x-discriminator-property}}
+
+{{^isContainer}}{{>javaEnumClass}}{{/isContainer}}
+{{#isContainer}}{{#mostInnerItems}}{{>javaEnumClass}}{{/mostInnerItems}}{{/isContainer}}
+{{/vendorExtensions.x-discriminator-property}}
   {{#allVars}}{{^isDiscriminator}}{{#example}}
   /** (example: {{.}}) */{{/example}}
   {{{classname}}} with{{#lambda.titlecase}}{{name}}{{/lambda.titlecase}}({{^vendorExtensions.x-json-nullable}}{{^required}}@Nullable {{/required}}{{{datatypeWithEnum}}}{{/vendorExtensions.x-json-nullable}}{{#vendorExtensions.x-json-nullable}}ru.tinkoff.kora.json.common.JsonNullable<{{{datatypeWithEnum}}}>{{/vendorExtensions.x-json-nullable}} {{name}});
@@ -60,22 +75,6 @@ public record {{classname}}(
   {{/vendorExtensions.x-has-pattern}}{{#vendorExtensions.x-has-valid-model}}@ru.tinkoff.kora.validation.common.annotation.Valid
   {{/vendorExtensions.x-has-valid-model}}{{^vendorExtensions.x-json-nullable}}{{^required}}@Nullable {{/required}}{{{datatypeWithEnum}}}{{/vendorExtensions.x-json-nullable}}{{#vendorExtensions.x-json-nullable}}ru.tinkoff.kora.json.common.JsonNullable<{{{datatypeWithEnum}}}>{{/vendorExtensions.x-json-nullable}} {{name}}{{^-last}},{{/-last}}
 {{/allVars}}){{#vendorExtensions.x-discriminator-value}} implements {{parent}} {{/vendorExtensions.x-discriminator-value}}{
-{{#vendorExtensions.x-discriminator-constant}}
-
-  public static final String DISCRIMINATOR = {{{.}}};
-  public static final String DISCRIMINATOR_{{vendorExtensions.x-discriminator-constant-field}} = {{{.}}};
-{{/vendorExtensions.x-discriminator-constant}}
-{{#vendorExtensions.x-discriminator-constants}}
-
-  public static final java.util.List<String> DISCRIMINATORS = java.util.List.of({{{vendorExtensions.x-discriminator-constants}}});
-  {{#vendorExtensions.x-discriminator-constant-fields}}
-  public static final String DISCRIMINATOR_{{discriminatorField}} = {{{discriminatorValue}}};
-      {{#discriminatorFieldOld}}
-  @Deprecated
-  public static final String DISCRIMINATOR_{{{.}}} = {{{discriminatorValue}}};
-      {{/discriminatorFieldOld}}
-  {{/vendorExtensions.x-discriminator-constant-fields}}
-{{/vendorExtensions.x-discriminator-constants}}
 {{#isArray}}
 
 public static String schema = """
@@ -86,17 +85,21 @@ public static String schema = """
 {{#additionalConstructor}}
   public {{classname}}(
 {{#requiredVars}}
-    {{^vendorExtensions.x-json-nullable}}{{^required}}@Nullable {{/required}}{{{datatypeWithEnum}}}{{/vendorExtensions.x-json-nullable}}{{#vendorExtensions.x-json-nullable}}ru.tinkoff.kora.json.common.JsonNullable<{{{datatypeWithEnum}}}>{{/vendorExtensions.x-json-nullable}} {{name}}{{^-last}},{{/-last}}
+    {{^vendorExtensions.x-json-nullable}}{{^required}}@Nullable {{/required}}{{{datatypeWithEnum}}}{{/vendorExtensions.x-json-nullable}}{{#vendorExtensions.x-json-nullable}}ru.tinkoff.kora.json.common.JsonNullable<{{{datatypeWithEnum}}}>{{/vendorExtensions.x-json-nullable}} {{name}}{{^-last}}, {{/-last}}
 {{/requiredVars}}  ) {
-    this({{#allVars}}{{#required}}{{name}}{{/required}}{{^required}}null{{/required}}{{^-last}}, {{/-last}}{{/allVars}});
+    this({{#allVars}}{{#required}}{{#vendorExtensions.x-discriminator-single}}{{vendorExtensions.x-discriminator-single}}{{/vendorExtensions.x-discriminator-single}}{{^vendorExtensions.x-discriminator-single}}{{name}}{{/vendorExtensions.x-discriminator-single}}{{/required}}{{^required}}null{{/required}}{{^-last}}, {{/-last}}{{/allVars}});
   }
 {{/additionalConstructor}}
-
+{{#vendorExtensions.x-discriminator-single}}
+ public {{classname}}({{#allVars}}{{^isDiscriminator}}
+   {{^vendorExtensions.x-json-nullable}}{{^required}}@Nullable {{/required}}{{{datatypeWithEnum}}}{{/vendorExtensions.x-json-nullable}}{{#vendorExtensions.x-json-nullable}}ru.tinkoff.kora.json.common.JsonNullable<{{{datatypeWithEnum}}}>{{/vendorExtensions.x-json-nullable}} {{name}}{{^-last}}, {{/-last}}
+ {{/isDiscriminator}}{{/allVars}}) {
+    this({{#allVars}}{{#isDiscriminator}}{{vendorExtensions.x-discriminator-single}}{{/isDiscriminator}}{{^isDiscriminator}}{{name}}{{/isDiscriminator}}{{^-last}}, {{/-last}}{{/allVars}});
+ }
+{{/vendorExtensions.x-discriminator-single}}
   @ru.tinkoff.kora.json.common.annotation.JsonReader
   public {{classname}} { {{#vendorExtensions.x-discriminator-values-check}}
-    if {{{vendorExtensions.x-discriminator-values-check}}} {
-      throw new IllegalStateException("Invalid discriminator value");
-    }
+{{{vendorExtensions.x-discriminator-values-check}}}
 {{/vendorExtensions.x-discriminator-values-check}}
   }
 
@@ -112,13 +115,6 @@ public static String schema = """
       {{/isContainer}}
       {{/isEnum}}
   {{/allVars}}
-{{#vendorExtensions.x-discriminator-property}}
-
-  /** {{#description}}{{.}}{{/description}}{{^description}}{{name}}{{/description}} */
-  public {{{datatypeWithEnum}}} {{name}}() {
-      return {{{vendorExtensions.x-discriminator-property-value}}};
-  }
-{{/vendorExtensions.x-discriminator-property}}
 {{#allVars}}
 
 {{#example}}
