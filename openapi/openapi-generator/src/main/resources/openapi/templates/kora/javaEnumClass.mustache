@@ -30,7 +30,7 @@
 
     public static class Constants {
 {{#allowableValues}}{{#enumVars}}
-      public static final String {{{name}}} = {{{value}}};{{/enumVars}}{{/allowableValues}}
+      public static final {{dataType}} {{{name}}} = {{{value}}};{{/enumVars}}{{/allowableValues}}
     }
 
     @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora")

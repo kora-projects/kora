@@ -24,7 +24,7 @@
     }
 
     object Constants { {{#allowableValues}}{{#enumVars}}
-      const val {{{name}}} = {{{value}}}{{/enumVars}}{{/allowableValues}}
+      const val {{{name}}}: {{dataType}} = {{{value}}}{{/enumVars}}{{/allowableValues}}
     }
 
 

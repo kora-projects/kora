@@ -39,9 +39,9 @@ components:
       discriminator:
         propertyName: kind
         mapping:
-          SdpGpStream: '#/components/schemas/NewSdpStreamResourceObject'
-          SdpStream: '#/components/schemas/NewSdpStreamResourceObject'
-          ChronoStream: '#/components/schemas/NewChronoStreamResourceObject'
+          Mapping1: '#/components/schemas/TestBaseObject1Child1'
+          Mapping2: '#/components/schemas/TestBaseObject1Child2'
+          Mapping3: '#/components/schemas/TestBaseObject1Child2'
       properties:
         kind:
           type: string

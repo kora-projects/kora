@@ -632,10 +632,17 @@ public class KoraCodegen extends DefaultCodegen {
                 discriminatorProperty.name = model.discriminator.getPropertyName();
                 discriminatorProperty.baseName = model.discriminator.getPropertyName();
                 discriminatorProperty.openApiType = model.discriminator.getPropertyType();
-                discriminatorProperty._enum = new ArrayList<>(model.discriminator.getMapping().keySet());
+                if (model.discriminator.getMapping() != null) {
+                    discriminatorProperty._enum = new ArrayList<>(model.discriminator.getMapping().keySet());
+                } else {
+                    discriminatorProperty._enum = new ArrayList<>();
+                    for (var mappedModel : model.discriminator.getMappedModels()) {
+                        discriminatorProperty._enum.add(mappedModel.getMappingName());
+                    }
+                }
                 discriminatorProperty.allowableValues = new LinkedHashMap<>();
                 discriminatorProperty.allowableValues.put("enumVars", new ArrayList<>());
-                for (var enumValue : model.discriminator.getMapping().keySet()) {
+                for (var enumValue : discriminatorProperty._enum) {
                     var l = (List<Map<String, ?>>) discriminatorProperty.allowableValues.get("enumVars");
                     var enumVar = toEnumVarName(enumValue, "String");
                     var enumStr = toEnumValue(enumValue, "String");
