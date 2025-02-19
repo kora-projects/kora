@@ -6,6 +6,7 @@ import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowColumnMapper
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowMapper
 import ru.tinkoff.kora.database.symbol.processor.entity.EntityWithEmbedded
 import ru.tinkoff.kora.database.symbol.processor.entity.TestEntity
+import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 import ru.tinkoff.kora.ksp.common.TestUtils
 import kotlin.reflect.typeOf
@@ -31,7 +32,7 @@ class CassandraExtensionTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testRowMapper() {
-        compile0(
+        compile0(listOf(KoraAppProcessorProvider()),
             """
             @ru.tinkoff.kora.common.KoraApp
             interface TestApp : ru.tinkoff.kora.database.cassandra.CassandraModule {
@@ -46,8 +47,25 @@ class CassandraExtensionTest : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun testEntityRowMapper() {
+        compile0(listOf(KoraAppProcessorProvider(), CassandraEntitySymbolProcessorProvider()),
+            """
+            @ru.tinkoff.kora.common.KoraApp
+            interface TestApp : ru.tinkoff.kora.database.cassandra.CassandraModule {
+                @ru.tinkoff.kora.common.annotation.Root
+                fun root(m: ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowMapper<TestEntity>) = ""
+            }
+            """.trimIndent(), """
+                @ru.tinkoff.kora.database.cassandra.annotation.EntityCassandra
+                data class TestEntity(val value: String)
+                """.trimIndent()
+        )
+        compileResult.assertSuccess()
+    }
+
+    @Test
     fun testListResultSetMapper() {
-        compile0(
+        compile0(listOf(KoraAppProcessorProvider()),
             """
             @ru.tinkoff.kora.common.KoraApp
             interface TestApp : ru.tinkoff.kora.database.cassandra.CassandraModule {
@@ -62,8 +80,25 @@ class CassandraExtensionTest : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun testEntityListResultSetMapper() {
+        compile0(listOf(KoraAppProcessorProvider(), CassandraEntitySymbolProcessorProvider()),
+            """
+            @ru.tinkoff.kora.common.KoraApp
+            interface TestApp : ru.tinkoff.kora.database.cassandra.CassandraModule {
+                @ru.tinkoff.kora.common.annotation.Root
+                fun root(m: ru.tinkoff.kora.database.cassandra.mapper.result.CassandraResultSetMapper<List<TestEntity>>) = ""
+            }
+            """.trimIndent(), """
+                @ru.tinkoff.kora.database.cassandra.annotation.EntityCassandra
+                data class TestEntity(val value: String)
+                """.trimIndent()
+        )
+        compileResult.assertSuccess()
+    }
+
+    @Test
     fun testSingleResultSetMapper() {
-        compile0(
+        compile0(listOf(KoraAppProcessorProvider()),
             """
             @ru.tinkoff.kora.common.KoraApp
             interface TestApp : ru.tinkoff.kora.database.cassandra.CassandraModule {
@@ -78,8 +113,25 @@ class CassandraExtensionTest : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun testEntitySingleResultSetMapper() {
+        compile0(listOf(KoraAppProcessorProvider()),
+            """
+            @ru.tinkoff.kora.common.KoraApp
+            interface TestApp : ru.tinkoff.kora.database.cassandra.CassandraModule {
+                @ru.tinkoff.kora.common.annotation.Root
+                fun root(m: ru.tinkoff.kora.database.cassandra.mapper.result.CassandraResultSetMapper<TestEntity>) = ""
+            }
+            """.trimIndent(), """
+                @ru.tinkoff.kora.database.cassandra.annotation.EntityCassandra
+                data class TestEntity(val value: String)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+    }
+
+    @Test
     fun testListAsyncResultSetMapper() {
-        compile0(
+        compile0(listOf(KoraAppProcessorProvider()),
             """
             @ru.tinkoff.kora.common.KoraApp
             interface TestApp : ru.tinkoff.kora.database.cassandra.CassandraModule {
