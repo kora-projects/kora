@@ -18,6 +18,34 @@ paths:
 
 components:
   schemas:
+    TestBaseObject1Child2:
+      allOf:
+        - $ref: '#/components/schemas/TestBaseObject1'
+        - type: object
+          required: [ required1 ]
+          properties:
+            required1: { type: string }
+    TestBaseObject1Child1:
+      allOf:
+        - $ref: '#/components/schemas/TestBaseObject1'
+        - type: object
+          required: [ required1 ]
+          properties:
+            required1: { type: string }
+    TestBaseObject1:
+      type: object
+      required: [ kind ]
+      description: Use 'SdpStream' as kind instead 'SdpGpStream'
+      discriminator:
+        propertyName: kind
+        mapping:
+          Mapping1: '#/components/schemas/TestBaseObject1Child1'
+          Mapping2: '#/components/schemas/TestBaseObject1Child2'
+          Mapping3: '#/components/schemas/TestBaseObject1Child2'
+      properties:
+        kind:
+          type: string
+
     DeliveryTypeEnum:
       type: string
       enum:
@@ -175,29 +203,29 @@ components:
         contractName:
           type: string
 
-# int/boolean not supported in JsonDiscriminator
-#    ResponseData:
-#      type: object
-#      properties:
-#        status:
-#          type: boolean
-#      discriminator:
-#        propertyName: status
-#        mapping:
-#          true: '#/components/schemas/ResponseDataSuccess'
-#          false: '#/components/schemas/ResponseDataError'
-#
-#    ResponseDataSuccess:
-#      type: object
-#      properties:
-#        message:
-#          type: string
-#
-#    ResponseDataError:
-#      type: object
-#      properties:
-#        code:
-#          type: int
+    # int/boolean not supported in JsonDiscriminator
+    #    ResponseData:
+    #      type: object
+    #      properties:
+    #        status:
+    #          type: boolean
+    #      discriminator:
+    #        propertyName: status
+    #        mapping:
+    #          true: '#/components/schemas/ResponseDataSuccess'
+    #          false: '#/components/schemas/ResponseDataError'
+    #
+    #    ResponseDataSuccess:
+    #      type: object
+    #      properties:
+    #        message:
+    #          type: string
+    #
+    #    ResponseDataError:
+    #      type: object
+    #      properties:
+    #        code:
+    #          type: int
 
     ValidationErrorDto:
       title: ValidationErrorDto
@@ -209,6 +237,10 @@ components:
       properties:
         type:
           type: string
+          enum:
+            - Block.Error1
+            - Block.Error2
+            - Prop.Error
         fieldRequired:
           type: string
           example: 123

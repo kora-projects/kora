@@ -51,16 +51,20 @@ javaPlugin.sourceSets {
     testGenerated {
         java {
             def addOpenapiDir = { String path ->
-                srcDir project.file("build/out/$path/java/client")
-                srcDir project.file("build/out/$path/java/server")
-                srcDir project.file("build/out/$path/reactive/client")
-                srcDir project.file("build/out/$path/reactive/server")
+                srcDir project.file("build/out/$path/java-client")
+                srcDir project.file("build/out/$path/java-server")
+                srcDir project.file("build/out/$path/java-reactive-client")
+                srcDir project.file("build/out/$path/java-reactive-server")
+                srcDir project.file("build/out/$path/java-async-client")
+                srcDir project.file("build/out/$path/java-async-server")
                 pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
                     kotlin {
                         sourceSets {
                             testGenerated {
-                                kotlin.srcDir("build/out/$path/kotlin/client")
-                                kotlin.srcDir("build/out/$path/kotlin/server")
+                                kotlin.srcDir("build/out/$path/kotlin-client")
+                                kotlin.srcDir("build/out/$path/kotlin-server")
+                                kotlin.srcDir("build/out/$path/kotlin-suspend-client")
+                                kotlin.srcDir("build/out/$path/kotlin-suspend-server")
                             }
                         }
                     }
@@ -68,6 +72,8 @@ javaPlugin.sourceSets {
             }
             addOpenapiDir("petstoreV2")
             addOpenapiDir("petstoreV3")
+            addOpenapiDir("petstoreV3_enum")
+            addOpenapiDir("petstoreV3_types")
             addOpenapiDir("petstoreV3_single_response")
             addOpenapiDir("petstoreV3_discriminator")
             addOpenapiDir("petstoreV3_security_api_key")
@@ -82,7 +88,7 @@ javaPlugin.sourceSets {
 
 sourceSets {
     testGenerated {
-        java.srcDirs += "$buildDir/out"
+//        java.srcDirs += "$buildDir/out"
     }
 }
 
