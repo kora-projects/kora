@@ -1,8 +1,9 @@
 package ru.tinkoff.kora.json.ksp
 
+import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.*
-import com.squareup.kotlinpoet.ksp.toTypeName
+import com.squareup.kotlinpoet.ksp.toClassName
 import java.math.BigInteger
 import java.util.*
 
@@ -12,7 +13,12 @@ object KnownType {
     private val binary = ByteArray::class.asClassName()
 
     fun detect(type: KSType): KnownTypesEnum? {
-        return when (type.toTypeName().copy(nullable = false)) {
+        val classDecl = type.declaration
+        if (classDecl !is KSClassDeclaration) {
+            return null
+        }
+        val className = classDecl.toClassName()
+        return when (className) {
             STRING -> KnownTypesEnum.STRING
             INT -> KnownTypesEnum.INTEGER
             LONG -> KnownTypesEnum.LONG

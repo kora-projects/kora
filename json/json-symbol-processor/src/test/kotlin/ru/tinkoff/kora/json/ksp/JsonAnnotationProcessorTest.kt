@@ -378,14 +378,8 @@ internal class JsonAnnotationProcessorTest {
     @Test
     fun testJavaRecord() {
         val cl = JsonClassLoader(symbolProcessJava(JavaRecordDto::class.java, JsonSymbolProcessorProvider()))
-        val intReader = JsonReader<Int> { it.intValue }
-        val booleanReader = JsonReader<Boolean> { it.booleanValue }
-        val stringJsonReader: JsonReader<String> = JsonReader { parser: JsonParser -> parser.text }
         val reader: JsonReader<JavaRecordDto?> = cl.reader(
             JavaRecordDto::class.java,
-            stringJsonReader,
-            intReader,
-            booleanReader
         )
         val writer: JsonWriter<JavaRecordDto?> = cl.writer(
             JavaRecordDto::class.java
