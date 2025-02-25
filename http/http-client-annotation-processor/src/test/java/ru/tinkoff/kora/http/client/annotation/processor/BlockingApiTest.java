@@ -5,7 +5,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.http.client.common.HttpClientEncoderException;
+import ru.tinkoff.kora.http.client.common.HttpClientException;
 import ru.tinkoff.kora.http.client.common.HttpClientResponseException;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequestMapper;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper;
@@ -144,6 +146,38 @@ public class BlockingApiTest extends AbstractHttpClientTest {
         onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(500));
         assertThat(client.<String>invoke("request"))
             .isEqualTo("test-string-from-mapper");
+    }
+
+    @Test
+    public void testBlockingCustomMapperTag() {
+        compileClient(List.of(newGeneratedObject("TestMapper")), """
+            @HttpClient
+            public interface TestClient {
+              @Tag(TestMapper.class)
+              @HttpRoute(method = "GET", path = "/test")
+              String request();
+            }
+            """, """
+            public class TestMapper implements HttpClientResponseMapper<String> {
+              public String apply(HttpClientResponse rs) {
+                  return "test-string-from-mapper";
+              }
+            }
+            """);
+
+        assertThat(client.objectClass.getConstructors()[0].getParameters()[3].getAnnotation(Tag.class))
+            .isNotNull();
+
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(200));
+        assertThat(client.<String>invoke("request"))
+            .isEqualTo("test-string-from-mapper");
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(500));
+        assertThatThrownBy(() -> client.<String>invoke("request"))
+            .isInstanceOf(HttpClientException.class);
     }
 
     @Test

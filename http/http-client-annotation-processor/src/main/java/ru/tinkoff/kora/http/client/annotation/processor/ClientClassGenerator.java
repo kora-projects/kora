@@ -322,7 +322,7 @@ public class ClientClassGenerator {
 
     private CodeBlock mapBlockingResponse(MethodData methodData, TypeMirror resultType) {
         var b = CodeBlock.builder();
-        if (methodData.responseMapper != null && methodData.codeMappers().isEmpty()) {
+        if (methodData.responseMapper != null && methodData.responseMapper.mapperClass() != null && methodData.codeMappers().isEmpty()) {
             var responseMapperName = methodData.element.getSimpleName() + "ResponseMapper";
             if (resultType.getKind() != TypeKind.VOID) {
                 b.add("return ");
@@ -395,7 +395,7 @@ public class ClientClassGenerator {
 
     private CodeBlock mapFutureResponse(MethodData methodData, TypeMirror resultType) {
         var b = CodeBlock.builder();
-        if (methodData.responseMapper != null) {
+        if (methodData.responseMapper != null && methodData.responseMapper.mapperClass() != null) {
             var responseMapperName = methodData.element.getSimpleName() + "ResponseMapper";
             b.addStatement("_result = this.$N.apply(_response)", responseMapperName);
         } else if (methodData.codeMappers().isEmpty()) {
