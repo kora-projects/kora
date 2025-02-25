@@ -27,9 +27,8 @@ public class SealedInterfaceReaderGenerator {
         this.elements = processingEnvironment.getElementUtils();
     }
 
-    public TypeSpec generateSealedReader(TypeElement jsonElement) {
-        var typeName = JsonUtils.jsonReaderName(jsonElement);
-        var typeBuilder = TypeSpec.classBuilder(typeName)
+    public TypeSpec generateSealedReader(ClassName target, TypeElement jsonElement) {
+        var typeBuilder = TypeSpec.classBuilder(target)
             .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
                 .addMember("value", CodeBlock.of("$S", SealedInterfaceReaderGenerator.class.getCanonicalName()))
                 .build())

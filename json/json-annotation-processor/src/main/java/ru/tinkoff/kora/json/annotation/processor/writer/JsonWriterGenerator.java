@@ -24,8 +24,8 @@ public class JsonWriterGenerator {
     }
 
     @Nullable
-    public TypeSpec generate(JsonClassWriterMeta meta) {
-        var typeBuilder = TypeSpec.classBuilder(JsonUtils.jsonWriterName(meta.typeElement()))
+    public TypeSpec generate(ClassName targetName, JsonClassWriterMeta meta) {
+        var typeBuilder = TypeSpec.classBuilder(targetName)
             .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
                 .addMember("value", CodeBlock.of("$S", JsonWriterGenerator.class.getCanonicalName()))
                 .build())
@@ -48,7 +48,7 @@ public class JsonWriterGenerator {
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addException(IOException.class)
             .addParameter(JsonTypes.jsonGenerator, "_gen")
-            .addParameter(ParameterSpec.builder(TypeName.get(meta.typeMirror()), "_object").addAnnotation(Nullable.class).build())
+            .addParameter(ParameterSpec.builder(TypeName.get(meta.typeMirror()), "_object").addAnnotation(CommonClassNames.nullable).build())
             .addAnnotation(Override.class);
         method.addCode("if (_object == null) {$>\n_gen.writeNull();\nreturn;$<\n}\n");
         method.addStatement("_gen.writeStartObject(_object)");
@@ -124,8 +124,8 @@ public class JsonWriterGenerator {
         }
 
         var isEmptyCheck = field.includeType() == JsonClassWriterMeta.IncludeType.NON_EMPTY
-                           && (CommonUtils.isCollection(field.writerTypeMeta().typeMirror())
-                               || CommonUtils.isMap(field.writerTypeMeta().typeMirror()));
+            && (CommonUtils.isCollection(field.writerTypeMeta().typeMirror())
+            || CommonUtils.isMap(field.writerTypeMeta().typeMirror()));
 
         if (field.writerTypeMeta().isJsonNullable()) {
             method.addCode("if (_object.$L.isDefined()) {$>\n", field.accessor());
