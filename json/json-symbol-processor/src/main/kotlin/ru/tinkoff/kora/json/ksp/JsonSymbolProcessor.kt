@@ -25,13 +25,7 @@ class JsonSymbolProcessor(
     )
 
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
-        val knownType = KnownType(resolver)
-        val jsonProcessor = JsonProcessor(
-            resolver,
-            kspLogger,
-            codeGenerator,
-            knownType
-        )
+        val jsonProcessor = JsonProcessor(codeGenerator)
         val symbolsToProcess = getSupportedAnnotationTypes().map { resolver.getSymbolsWithAnnotation(it).toList() }.flatten().distinct()
         for (it in symbolsToProcess) {
             try {

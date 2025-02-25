@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.json.ksp.writer
 
-import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.TypeName
@@ -20,8 +19,7 @@ import ru.tinkoff.kora.ksp.common.getNameConverter
 import ru.tinkoff.kora.ksp.common.isJavaRecord
 import ru.tinkoff.kora.ksp.common.parseAnnotationValue
 
-class WriterTypeMetaParser(val resolver: Resolver) {
-    private val knownTypes: KnownType = KnownType(resolver)
+class WriterTypeMetaParser {
 
     fun parse(jsonClassDeclaration: KSClassDeclaration): JsonClassWriterMeta {
         val fieldElements = parseFields(jsonClassDeclaration)
@@ -94,7 +92,7 @@ class WriterTypeMetaParser(val resolver: Resolver) {
             resolvedFieldTypeName = realType.toTypeName(jsonClass.typeParameters.toTypeParameterResolver())
         }
 
-        val knownType = knownTypes.detect(realType)
+        val knownType = KnownType.detect(realType)
         return if (knownType != null) {
             WriterFieldType.KnownWriterFieldType(realType, resolvedFieldTypeName, isJsonNullable, knownType)
         } else {

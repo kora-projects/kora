@@ -91,7 +91,7 @@ public class GeneratorModuleAnnotationProcessor extends AbstractKoraProcessor {
                     .get()
                     .getValue();
                 e.printError(this.processingEnv);
-                new ProcessingError(Diagnostic.Kind.ERROR, e.getMessage(), module, generatorModuleAnnotation, annotationValue.get(i)).print(processingEnv);
+                this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, e.getMessage(), module, generatorModuleAnnotation, annotationValue.get(i));
             }
         }
         if (error) {

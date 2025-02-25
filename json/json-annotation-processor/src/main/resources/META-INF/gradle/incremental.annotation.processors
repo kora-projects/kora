@@ -1,0 +1,2 @@
+ru.tinkoff.kora.json.annotation.processor.JsonAnnotationProcessor,isolating
+ru.tinkoff.kora.json.annotation.processor.GeneratorModuleAnnotationProcessor,isolating

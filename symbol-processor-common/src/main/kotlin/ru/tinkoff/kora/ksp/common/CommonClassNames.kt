@@ -7,7 +7,6 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.ksp.toClassName
-import ru.tinkoff.kora.ksp.common.CommonClassNames.isCompletionStage
 import java.util.*
 import java.util.concurrent.*
 
@@ -40,6 +39,7 @@ object CommonClassNames {
     val component = ClassName("ru.tinkoff.kora.common", "Component")
     val defaultComponent = ClassName("ru.tinkoff.kora.common", "DefaultComponent")
     val root = ClassName("ru.tinkoff.kora.common.annotation", "Root")
+    val generatorModule = ClassName("ru.tinkoff.kora.common.annotation", "GeneratorModule");
 
     val node = ClassName("ru.tinkoff.kora.application.graph", "Node")
     val lifecycle = ClassName("ru.tinkoff.kora.application.graph", "Lifecycle")
