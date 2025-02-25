@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.stream.Collectors;
 
 public final class GraphImpl implements RefreshableGraph, Lifecycle {
-
+    private static final long SLOW_NODE_INIT_THRESHOLD = Long.parseLong(System.getProperty("kora.graph.slowNodeInitThresholdMillis", "100"));
     private static final CompletableFuture<Void> EMPTY_FUTURE = CompletableFuture.completedFuture(null);
 
     private final Executor executor;
@@ -325,6 +325,7 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
         private final AtomicReferenceArray<CompletableFuture<Void>> inits;
         private final BitSet initialized;
         private final Executor executor;
+        private final boolean debugEnabled;
 
         private TmpGraph(GraphImpl rootGraph) {
             this.rootGraph = rootGraph;
@@ -335,6 +336,7 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
             this.inits = new AtomicReferenceArray<>(this.tmpArray.length());
             this.initialized = new BitSet(this.tmpArray.length());
             this.executor = rootGraph.executor;
+            this.debugEnabled = this.rootGraph.log.isDebugEnabled();
         }
 
         @Override
@@ -480,6 +482,7 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
             var dependencyInitialization = CompletableFuture.allOf(dependencyInitializationFutures)
                 .exceptionallyCompose(e -> CompletableFuture.failedFuture(new DependencyInitializationFailedException()));
             this.inits.set(node.index, dependencyInitialization.thenAcceptAsync(v -> {
+                var startTime = this.debugEnabled ? System.nanoTime() : 0L;
                 try {
                     create.call();
                 } catch (CompletionException e) {
@@ -494,6 +497,13 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                     throw e;
                 } catch (Throwable e) {
                     throw new IllegalStateException(e);
+                } finally {
+                    if (this.debugEnabled) {
+                        var took = System.nanoTime() - startTime;
+                        if (took > SLOW_NODE_INIT_THRESHOLD * 1_000_000) {
+                            this.rootGraph.log.debug("Initialized node {} in {}ms", node.index, took / 1_000_000);
+                        }
+                    }
                 }
             }, this.executor));
         }
