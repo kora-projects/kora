@@ -196,7 +196,7 @@ class JsonWriterGenerator(private val resolver: Resolver) {
         return when (knownType) {
             KnownTypesEnum.STRING -> CodeBlock.of("_gen.writeString($param)\n")
             KnownTypesEnum.BOOLEAN -> CodeBlock.of("_gen.writeBoolean($param)\n")
-            INTEGER, BIG_INTEGER, BIG_DECIMAL, KnownTypesEnum.DOUBLE, KnownTypesEnum.FLOAT, KnownTypesEnum.LONG, KnownTypesEnum.SHORT -> CodeBlock.of(
+            INTEGER, BIG_INTEGER, KnownTypesEnum.DOUBLE, KnownTypesEnum.FLOAT, KnownTypesEnum.LONG, KnownTypesEnum.SHORT -> CodeBlock.of(
                 "_gen.writeNumber($param)\n"
             )
 

@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonParseException;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.math.BigInteger;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -386,39 +385,6 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
 
         var mapper = mapper("TestRecord");
         mapper.verify(newObject("TestRecord", new BigInteger("42")), "{\"value\":42}");
-        mapper.verify(newObject("TestRecord", new Object[]{null}), "{}");
-        mapper.verifyRead("{\"value\":null}", newObject("TestRecord", new Object[]{null}));
-    }
-
-    @Test
-    public void testBigDecimal() throws IOException {
-        compile("""
-            @Json
-            public record TestRecord(java.math.BigDecimal value) {
-            }
-            """);
-
-        compileResult.assertSuccess();
-
-        var mapper = mapper("TestRecord");
-        mapper.verify(newObject("TestRecord", new BigDecimal("42")), "{\"value\":42}");
-        mapper.verify(newObject("TestRecord", new BigDecimal("42.43")), "{\"value\":42.43}");
-        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(JsonParseException.class);
-    }
-
-    @Test
-    public void testNullableBigDecimal() throws IOException {
-        compile("""
-            @Json
-            public record TestRecord(@Nullable java.math.BigDecimal value) {
-            }
-            """);
-
-        compileResult.assertSuccess();
-
-        var mapper = mapper("TestRecord");
-        mapper.verify(newObject("TestRecord", new BigDecimal("42")), "{\"value\":42}");
-        mapper.verify(newObject("TestRecord", new BigDecimal("42.43")), "{\"value\":42.43}");
         mapper.verify(newObject("TestRecord", new Object[]{null}), "{}");
         mapper.verifyRead("{\"value\":null}", newObject("TestRecord", new Object[]{null}));
     }

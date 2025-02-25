@@ -186,7 +186,7 @@ public class JsonWriterGenerator {
         return switch (knownType) {
             case STRING -> CodeBlock.of("_gen.writeString($L);\n", value);
             case BOOLEAN_OBJECT, BOOLEAN_PRIMITIVE -> CodeBlock.of("_gen.writeBoolean($L);\n", value);
-            case INTEGER_OBJECT, BIG_INTEGER, BIG_DECIMAL, DOUBLE_OBJECT, FLOAT_OBJECT, LONG_OBJECT, SHORT_OBJECT,
+            case INTEGER_OBJECT, BIG_INTEGER, DOUBLE_OBJECT, FLOAT_OBJECT, LONG_OBJECT, SHORT_OBJECT,
                  INTEGER_PRIMITIVE, DOUBLE_PRIMITIVE, FLOAT_PRIMITIVE, LONG_PRIMITIVE, SHORT_PRIMITIVE -> CodeBlock.of("_gen.writeNumber($L);\n", value);
             case BINARY -> CodeBlock.of("_gen.writeBinary($L);\n", value);
             case UUID -> CodeBlock.of("_gen.writeString($L.toString());\n", value);

@@ -14,7 +14,6 @@ class KnownType(private val resolver: Resolver) {
     private val integer = resolver.builtIns.intType
     private val nullableInteger = integer.makeNullable()
     private val bigInteger = resolver.getClassDeclarationByName("java.math.BigInteger")!!.asType(listOf())
-    private val bigDecimal = resolver.getClassDeclarationByName("java.math.BigDecimal")!!.asType(listOf())
     private val double = resolver.builtIns.doubleType
     private val nullableDouble = double.makeNullable()
     private val float = resolver.builtIns.floatType
@@ -35,7 +34,6 @@ class KnownType(private val resolver: Resolver) {
             float, nullableFloat -> KnownTypesEnum.FLOAT
             short, nullableShort -> KnownTypesEnum.SHORT
             bigInteger, bigInteger.makeNullable() -> KnownTypesEnum.BIG_INTEGER
-            bigDecimal, bigDecimal.makeNullable() -> KnownTypesEnum.BIG_DECIMAL
             boolean, nullableBoolean -> KnownTypesEnum.BOOLEAN
             binary, binary.makeNullable() -> KnownTypesEnum.BINARY
             uuid, uuid.makeNullable() -> KnownTypesEnum.UUID
@@ -48,7 +46,6 @@ class KnownType(private val resolver: Resolver) {
         BOOLEAN,
         INTEGER,
         BIG_INTEGER,
-        BIG_DECIMAL,
         DOUBLE,
         FLOAT,
         LONG,
