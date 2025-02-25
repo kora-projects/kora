@@ -8,11 +8,14 @@ import org.mockito.Mockito.reset
 import org.mockito.kotlin.whenever
 import ru.tinkoff.kora.common.Component
 import ru.tinkoff.kora.common.Context
+import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.http.client.common.HttpClientEncoderException
 import ru.tinkoff.kora.http.client.common.HttpClientResponseException
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequestMapper
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper
 import ru.tinkoff.kora.http.common.body.HttpBody
+import kotlin.reflect.full.hasAnnotation
+import kotlin.reflect.full.primaryConstructor
 
 class BlockingApiTest : AbstractHttpClientTest() {
 
@@ -145,6 +148,37 @@ class BlockingApiTest : AbstractHttpClientTest() {
         onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(500) }
         Assertions.assertThat(client.invoke<String>("request"))
             .isEqualTo("test-string-from-mapper")
+    }
+
+    @Test
+    fun testBlockingCustomMapperByTag() {
+        compile(listOf(newGenerated("TestMapper")), """
+            @HttpClient
+            interface TestClient {
+              @Tag(TestMapper::class)
+              @HttpRoute(method = "GET", path = "/test")
+              fun request(): String
+            }
+            
+            """.trimIndent(), """
+            class TestMapper : HttpClientResponseMapper<String> {
+              override fun apply(rs: HttpClientResponse): String {
+                  return "test-string-from-mapper";
+              }
+            }
+            
+            """.trimIndent())
+        Assertions.assertThat(client.objectClass.primaryConstructor!!.parameters[3].hasAnnotation<Tag>())
+
+        reset(httpClient)
+        onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(200) }
+        Assertions.assertThat(client.invoke<String>("request"))
+            .isEqualTo("test-string-from-mapper")
+
+        reset(httpClient)
+        onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(500) }
+        Assertions.assertThatThrownBy { client.invoke<String>("request") }
+            .isInstanceOf(HttpClientResponseException::class.java)
     }
 
     @Test

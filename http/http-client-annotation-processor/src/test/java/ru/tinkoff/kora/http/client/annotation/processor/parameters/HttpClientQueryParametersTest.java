@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.http.client.annotation.processor.parameters;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.config.annotation.processor.processor.ConfigParserAnnotationProcessor;
@@ -10,7 +9,7 @@ import ru.tinkoff.kora.http.client.common.writer.StringParameterConverter;
 
 import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
