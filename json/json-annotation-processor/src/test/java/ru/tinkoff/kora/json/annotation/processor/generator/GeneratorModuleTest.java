@@ -4,7 +4,10 @@ import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest;
 import ru.tinkoff.kora.json.annotation.processor.GeneratorModuleAnnotationProcessor;
 
+import java.lang.reflect.ParameterizedType;
 import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class GeneratorModuleTest extends AbstractAnnotationProcessorTest {
     @Test
@@ -21,5 +24,15 @@ public class GeneratorModuleTest extends AbstractAnnotationProcessorTest {
             public interface JsonGenerator {}
             """);
         assertSuccess();
+
+        var reader0 = loadClass("$JsonGenerator_GeneratorModule_0_JsonReader");
+        loadClass("$JsonGenerator_GeneratorModule_1_JsonReader");
+        loadClass("$JsonGenerator_GeneratorModule_0_JsonWriter");
+        loadClass("$JsonGenerator_GeneratorModule_1_JsonWriter");
+
+        var reader0Interface = (ParameterizedType) reader0.getGenericInterfaces()[0];
+
+        assertThat(reader0Interface.getActualTypeArguments()[0])
+            .isEqualTo(loadClass("ExternalRecord2"));
     }
 }
