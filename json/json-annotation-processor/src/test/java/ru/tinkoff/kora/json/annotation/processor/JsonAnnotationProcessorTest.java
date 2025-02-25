@@ -2,6 +2,7 @@ package ru.tinkoff.kora.json.annotation.processor;
 
 import com.fasterxml.jackson.core.*;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
+import jakarta.annotation.Nullable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
@@ -9,11 +10,9 @@ import ru.tinkoff.kora.json.annotation.processor.dto.*;
 import ru.tinkoff.kora.json.annotation.processor.dto.DtoWithInnerDto.InnerDto;
 import ru.tinkoff.kora.json.common.*;
 
-import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +31,7 @@ class JsonAnnotationProcessorTest {
 
         var object = new DtoWithSupportedTypes(
             "string", true, false,
-            1, -1, BigInteger.TEN, BigDecimal.TEN,
+            1, -1, BigInteger.TEN,
             0.4d, 0.5d, 0.6f, 0.7f,
             100L, 101L, (short) 10, (short) 11,
             new byte[]{1, 2, 3},

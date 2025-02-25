@@ -53,6 +53,7 @@ public interface JsonCommonModule {
         return new SortedSetJsonReader<>(reader);
     }
 
+    @DefaultComponent
     default JsonWriter<Integer> integerJsonWriter() {
         return (gen, object) -> {
             if (object == null) {
@@ -63,6 +64,7 @@ public interface JsonCommonModule {
         };
     }
 
+    @DefaultComponent
     default JsonReader<Integer> integerJsonReader() {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
@@ -400,6 +402,7 @@ public interface JsonCommonModule {
         };
     }
 
+    @DefaultComponent
     default JsonWriter<Long> longJsonWriter() {
         return (gen, object) -> {
             if (object == null) {
@@ -410,6 +413,7 @@ public interface JsonCommonModule {
         };
     }
 
+    @DefaultComponent
     default JsonReader<Long> longJsonReader() {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
@@ -418,6 +422,7 @@ public interface JsonCommonModule {
         };
     }
 
+    @DefaultComponent
     default JsonWriter<Double> doubleJsonWriter() {
         return (gen, object) -> {
             if (object == null) {
@@ -428,6 +433,7 @@ public interface JsonCommonModule {
         };
     }
 
+    @DefaultComponent
     default JsonReader<Double> doubleJsonReader() {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
@@ -436,6 +442,7 @@ public interface JsonCommonModule {
         };
     }
 
+    @DefaultComponent
     default JsonWriter<String> stringJsonWriter() {
         return (gen, object) -> {
             if (object == null) {
@@ -446,6 +453,7 @@ public interface JsonCommonModule {
         };
     }
 
+    @DefaultComponent
     default JsonReader<String> stringJsonReader() {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
@@ -454,6 +462,7 @@ public interface JsonCommonModule {
         };
     }
 
+    @DefaultComponent
     default JsonWriter<Boolean> booleanJsonWriter() {
         return (gen, object) -> {
             if (object == null) {
@@ -464,6 +473,7 @@ public interface JsonCommonModule {
         };
     }
 
+    @DefaultComponent
     default JsonReader<Boolean> booleanJsonReader() {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
@@ -473,6 +483,7 @@ public interface JsonCommonModule {
         };
     }
 
+    @DefaultComponent
     default JsonWriter<BigDecimal> bigDecimalJsonWriter() {
         return (gen, bigDecimal) -> {
             if (bigDecimal == null) {
@@ -483,6 +494,7 @@ public interface JsonCommonModule {
         };
     }
 
+    @DefaultComponent
     default JsonReader<BigDecimal> bigDecimalJsonReader() {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
@@ -492,6 +504,7 @@ public interface JsonCommonModule {
     }
 
 
+    @DefaultComponent
     default JsonWriter<BigInteger> bigIntegerJsonWriter() {
         return (gen, bigDecimal) -> {
             if (bigDecimal == null) {
@@ -502,6 +515,7 @@ public interface JsonCommonModule {
         };
     }
 
+    @DefaultComponent
     default JsonReader<BigInteger> bigIntegerJsonReader() {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
@@ -510,14 +524,17 @@ public interface JsonCommonModule {
         };
     }
 
+    @DefaultComponent
     default JsonWriter<RawJson> rawJsonWriter() {
         return new RawJsonWriter();
     }
 
+    @DefaultComponent
     default JsonReader<UUID> uuidJsonReader() {
         return new UuidJsonCodec();
     }
 
+    @DefaultComponent
     default JsonWriter<UUID> uuidJsonWriter() {
         return new UuidJsonCodec();
     }

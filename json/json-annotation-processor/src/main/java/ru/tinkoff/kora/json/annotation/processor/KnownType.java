@@ -7,7 +7,6 @@ import jakarta.annotation.Nullable;
 
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Map;
 import java.util.UUID;
@@ -32,7 +31,6 @@ public class KnownType {
             Map.entry(TypeName.FLOAT, KnownTypesEnum.FLOAT_PRIMITIVE),
             Map.entry(TypeName.FLOAT.box(), KnownTypesEnum.FLOAT_OBJECT),
             Map.entry(ClassName.get(BigInteger.class), KnownTypesEnum.BIG_INTEGER),
-            Map.entry(ClassName.get(BigDecimal.class), KnownTypesEnum.BIG_DECIMAL),
             Map.entry(ArrayTypeName.of(TypeName.BYTE), KnownTypesEnum.BINARY)
         );
     }
@@ -53,7 +51,6 @@ public class KnownType {
         INTEGER_OBJECT,
         INTEGER_PRIMITIVE,
         BIG_INTEGER,
-        BIG_DECIMAL,
         DOUBLE_OBJECT,
         DOUBLE_PRIMITIVE,
         FLOAT_OBJECT,

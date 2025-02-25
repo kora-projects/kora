@@ -2,9 +2,7 @@ package ru.tinkoff.kora.json.annotation.processor.dto;
 
 import ru.tinkoff.kora.json.common.annotation.Json;
 
-import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 
@@ -16,7 +14,6 @@ public record DtoWithSupportedTypes(
     Integer integerObject,
     int integerPrimitive,
     BigInteger bigInteger,
-    BigDecimal bigDecimal,
     Double doubleObject,
     double doublePrimitive,
     Float floatObject,

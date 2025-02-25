@@ -412,11 +412,6 @@ public class JsonReaderGenerator {
                       $L__parser.getBigIntegerValue()$L;
                     }""",
                 JsonTypes.jsonToken, prefix, suffix);
-            case BIG_DECIMAL -> CodeBlock.of("""
-                    if (__token == $T.VALUE_NUMBER_INT || __token == $T.VALUE_NUMBER_FLOAT) {
-                      $L__parser.getDecimalValue()$L;
-                    }""",
-                JsonTypes.jsonToken, JsonTypes.jsonToken, prefix, suffix);
             case DOUBLE_OBJECT, DOUBLE_PRIMITIVE -> CodeBlock.of("""
                     if (__token == $T.VALUE_NUMBER_FLOAT || __token == $T.VALUE_NUMBER_INT) {
                       $L__parser.getDoubleValue()$L;
@@ -463,7 +458,7 @@ public class JsonReaderGenerator {
             case STRING, BINARY, UUID -> new String[]{"VALUE_STRING"};
             case BOOLEAN_OBJECT, BOOLEAN_PRIMITIVE -> new String[]{"VALUE_TRUE", "VALUE_FALSE"};
             case SHORT_OBJECT, INTEGER_OBJECT, LONG_OBJECT, BIG_INTEGER, INTEGER_PRIMITIVE, LONG_PRIMITIVE, SHORT_PRIMITIVE -> new String[]{"VALUE_NUMBER_INT"};
-            case BIG_DECIMAL, DOUBLE_OBJECT, FLOAT_OBJECT, DOUBLE_PRIMITIVE, FLOAT_PRIMITIVE -> new String[]{"VALUE_NUMBER_FLOAT", "VALUE_NUMBER_INT"};
+            case DOUBLE_OBJECT, FLOAT_OBJECT, DOUBLE_PRIMITIVE, FLOAT_PRIMITIVE -> new String[]{"VALUE_NUMBER_FLOAT", "VALUE_NUMBER_INT"};
         };
         if (nullable) {
             result = Arrays.copyOf(result, result.length + 1);

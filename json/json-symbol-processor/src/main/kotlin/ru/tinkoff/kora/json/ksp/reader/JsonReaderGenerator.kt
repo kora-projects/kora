@@ -424,14 +424,6 @@ class JsonReaderGenerator(val resolver: Resolver) {
                 }
             }
 
-            BIG_DECIMAL -> method.controlFlow("if (__token == %1T.VALUE_NUMBER_INT || __token == %1T.VALUE_NUMBER_FLOAT)", JsonTypes.jsonToken) {
-                if (isJsonNullable) {
-                    addStatement("return %T.ofNullable(__parser.decimalValue)", JsonTypes.jsonNullable)
-                } else {
-                    addStatement("return __parser.decimalValue")
-                }
-            }
-
             KnownTypesEnum.DOUBLE -> method.controlFlow("if (__token == %1T.VALUE_NUMBER_FLOAT || __token == %1T.VALUE_NUMBER_INT)", JsonTypes.jsonToken) {
                 if (isJsonNullable) {
                     addStatement("return %T.ofNullable(__parser.doubleValue)", JsonTypes.jsonNullable)
@@ -517,7 +509,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
                 "VALUE_NUMBER_INT"
             )
 
-            BIG_DECIMAL, KnownTypesEnum.DOUBLE, KnownTypesEnum.FLOAT -> arrayOf(
+            KnownTypesEnum.DOUBLE, KnownTypesEnum.FLOAT -> arrayOf(
                 "VALUE_NUMBER_FLOAT", "VALUE_NUMBER_INT"
             )
         }

@@ -3,7 +3,6 @@ package ru.tinkoff.kora.json.ksp
 import com.fasterxml.jackson.core.JsonParseException
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
-import java.math.BigDecimal
 import java.math.BigInteger
 import java.util.*
 
@@ -273,37 +272,6 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
         compileResult.assertSuccess()
         val mapper = mapper("TestRecord")
         mapper.assert(new("TestRecord", BigInteger("42")), "{\"value\":42}")
-        mapper.assert(new("TestRecord", null), "{}")
-        mapper.assertRead("{\"value\":null}", new("TestRecord", null))
-    }
-
-    @Test
-    fun testBigDecimal() {
-        compile("""
-            @Json
-            data class TestRecord(val value: java.math.BigDecimal) {
-            }
-            
-            """.trimIndent())
-        compileResult.assertSuccess()
-        val mapper = mapper("TestRecord")
-        mapper.assert(new("TestRecord", BigDecimal("42")), "{\"value\":42}")
-        mapper.assert(new("TestRecord", BigDecimal("42.43")), "{\"value\":42.43}")
-        Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(JsonParseException::class.java)
-    }
-
-    @Test
-    fun testNullableBigDecimal() {
-        compile("""
-            @Json
-            data class TestRecord(val value: java.math.BigDecimal?) {
-            }
-            
-            """.trimIndent())
-        compileResult.assertSuccess()
-        val mapper = mapper("TestRecord")
-        mapper.assert(new("TestRecord", BigDecimal("42")), "{\"value\":42}")
-        mapper.assert(new("TestRecord", BigDecimal("42.43")), "{\"value\":42.43}")
         mapper.assert(new("TestRecord", null), "{}")
         mapper.assertRead("{\"value\":null}", new("TestRecord", null))
     }

@@ -13,14 +13,11 @@ import ru.tinkoff.kora.json.ksp.AbstractJsonSymbolProcessorTest.Companion.reader
 import ru.tinkoff.kora.json.ksp.AbstractJsonSymbolProcessorTest.Companion.writer
 import ru.tinkoff.kora.json.ksp.AbstractJsonSymbolProcessorTest.Companion.writerClass
 import ru.tinkoff.kora.json.ksp.dto.*
-import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.symbolProcess
 import ru.tinkoff.kora.ksp.common.symbolProcessJava
 import java.io.IOException
 import java.io.StringWriter
-import java.math.BigDecimal
 import java.math.BigInteger
-import java.util.function.Supplier
 import kotlin.reflect.KClass
 
 @KspExperimental
@@ -45,7 +42,7 @@ internal class JsonAnnotationProcessorTest {
         )
         val obj = DtoWithSupportedTypes(
             "string", true,
-            1, BigInteger.TEN, BigDecimal.TEN,
+            1, BigInteger.TEN,
             0.4, 0.6f,
             100L, 10.toShort(), byteArrayOf(1, 2, 3),
             listOf(1), mutableSetOf(1)
