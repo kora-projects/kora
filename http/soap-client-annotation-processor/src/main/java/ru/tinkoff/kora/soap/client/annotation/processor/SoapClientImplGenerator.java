@@ -254,6 +254,9 @@ public class SoapClientImplGenerator {
                 var webParamName = (String) findAnnotationValue(webParam, "name");
                 if (processingEnv.getTypeUtils().isAssignable(parameter.asType(), processingEnv.getTypeUtils().erasure(soapClasses.holderTypeErasure()))) {
                     m.addCode("__requestWrapper.set$L($L.value);\n", CommonUtils.capitalize(webParamName), parameter);
+                } else if (webParam != null) { // вопрос в этом условии
+                    m.addCode("jakarta.xml.bind.JAXBElement<$T> __jaxb$L = new jakarta.xml.bind.JAXBElement<>(new javax.xml.namespace.QName(\"$L\"), $T.class, $L);\n", parameter.asType(), CommonUtils.capitalize(webParamName), webParamName, parameter.asType(), parameter);
+                    m.addCode("__requestWrapper.set$L(__jaxb$L);\n", CommonUtils.capitalize(webParamName), CommonUtils.capitalize(webParamName));
                 } else {
                     m.addCode("__requestWrapper.set$L($L);\n", CommonUtils.capitalize(webParamName), parameter);
                 }
@@ -338,9 +341,9 @@ public class SoapClientImplGenerator {
             if (webResult != null) {
                 var webResultName = (String) findAnnotationValue(webResult, "name");
                 if (isReactive) {
-                    m.addCode("__future.complete(__responseBodyWrapper.get$L());\n", CommonUtils.capitalize(webResultName));
+                    m.addCode("__future.complete(__responseBodyWrapper.get$L().getValue());\n", CommonUtils.capitalize(webResultName));
                 } else {
-                    m.addCode("return __responseBodyWrapper.get$L();\n", CommonUtils.capitalize(webResultName));
+                    m.addCode("return __responseBodyWrapper.get$L().getValue();\n", CommonUtils.capitalize(webResultName));
                 }
             } else {
                 for (var parameter : method.getParameters()) {

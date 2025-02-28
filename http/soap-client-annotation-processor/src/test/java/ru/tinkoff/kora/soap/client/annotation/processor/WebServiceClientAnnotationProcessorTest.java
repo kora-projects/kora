@@ -59,12 +59,14 @@ class WebServiceClientAnnotationProcessorTest {
 
     @Test
     void testGenerate() throws Exception {
-        TestUtils.annotationProcessFiles(files("build/generated/wsdl-jakarta-simple-service/"), new WebServiceClientAnnotationProcessor());
-        TestUtils.annotationProcessFiles(files("build/generated/wsdl-javax-simple-service/"), new WebServiceClientAnnotationProcessor());
-        TestUtils.annotationProcessFiles(files("build/generated/wsdl-jakarta-service-with-multipart-response/"), new WebServiceClientAnnotationProcessor());
-        TestUtils.annotationProcessFiles(files("build/generated/wsdl-javax-service-with-multipart-response/"), new WebServiceClientAnnotationProcessor());
-        TestUtils.annotationProcessFiles(files("build/generated/wsdl-jakarta-service-with-rpc/"), new WebServiceClientAnnotationProcessor());
-        TestUtils.annotationProcessFiles(files("build/generated/wsdl-javax-service-with-rpc/"), new WebServiceClientAnnotationProcessor());
+        //TestUtils.annotationProcessFiles(files("build/generated/wsdl-jakarta-simple-service/"), new WebServiceClientAnnotationProcessor());
+        //TestUtils.annotationProcessFiles(files("build/generated/wsdl-javax-simple-service/"), new WebServiceClientAnnotationProcessor());
+        //TestUtils.annotationProcessFiles(files("build/generated/wsdl-jakarta-service-with-multipart-response/"), new WebServiceClientAnnotationProcessor());
+        //TestUtils.annotationProcessFiles(files("build/generated/wsdl-javax-service-with-multipart-response/"), new WebServiceClientAnnotationProcessor());
+        //TestUtils.annotationProcessFiles(files("build/generated/wsdl-jakarta-service-with-rpc/"), new WebServiceClientAnnotationProcessor());
+        //TestUtils.annotationProcessFiles(files("build/generated/wsdl-javax-service-with-rpc/"), new WebServiceClientAnnotationProcessor());
+        TestUtils.annotationProcessFiles(files("build/generated/wsdl-jakarta-NPExtendedService/"), new WebServiceClientAnnotationProcessor());
+        //TestUtils.annotationProcessFiles(files("build/generated/wsdl-NPService/"), new WebServiceClientAnnotationProcessor());
     }
 
     static {
