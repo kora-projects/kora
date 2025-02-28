@@ -60,13 +60,13 @@ public class ClientClassGenerator {
             if (!hasUriParameters) {
                 builder.addField(URI.class, method.element().getSimpleName() + "Uri", Modifier.PRIVATE, Modifier.FINAL);
             }
-            var methodSpec = this.buildMethod(method);
+            var methodSpec = this.buildMethod(builder, method);
             builder.addMethod(methodSpec);
         }
         return builder.build();
     }
 
-    private MethodSpec buildMethod(MethodData methodData) {
+    private MethodSpec buildMethod(TypeSpec.Builder builder, MethodData methodData) {
         var method = methodData.element();
         var b = CommonUtils.overridingKeepAop(method)
             .addException(httpClientException);
@@ -112,8 +112,8 @@ public class ClientClassGenerator {
                     pathUnmatched.add(group);
                 }
 
-                if(!pathUnmatched.isEmpty()) {
-                    throw new ProcessingErrorException("HTTP path '" +  httpPath + "' contains unspecified path parameters: " + pathUnmatched, method);
+                if (!pathUnmatched.isEmpty()) {
+                    throw new ProcessingErrorException("HTTP path '" + httpPath + "' contains unspecified path parameters: " + pathUnmatched, method);
                 }
 
                 b.addStatement("var _uriNoQuery = this.rootUrl + $S", httpPath);
@@ -259,7 +259,10 @@ public class ClientClassGenerator {
             var requestMapperName = method.getSimpleName() + "RequestMapper";
             b.addStatement("final $T _body", httpBodyOutput);
             b.addCode("try {$>\n");
-            b.addCode("_body = this.$N.apply($T.current(), $L);$<\n", requestMapperName, CommonClassNames.context, bodyParameter.parameter());
+            var ref = findMapperField(builder, requestMapperName).modifiers.contains(Modifier.STATIC)
+                ? CodeBlock.of("$T", implClassName(methodData.element))
+                : CodeBlock.of("this");
+            b.addCode("_body = $L.$N.apply($T.current(), $L);$<\n", ref, requestMapperName, CommonClassNames.context, bodyParameter.parameter());
             b.addCode("} catch (Exception _e) {$>\n");
             b.addCode("throw new $T(_e);$<\n", httpClientEncoderException);
             b.addCode("}\n");
@@ -268,13 +271,29 @@ public class ClientClassGenerator {
 
         b.addStatement("var _request = $T.of($S, _uri, _uriTemplate, _headers, _body, _requestTimeout)", httpClientRequest, httpMethod);
         if (CommonUtils.isMono(method.getReturnType())) {
-            b.addCode(buildCallMono(methodData));
+            b.addCode(buildCallMono(builder, methodData));
         } else if (CommonUtils.isFuture(method.getReturnType())) {
-            b.addCode(buildCallFuture(methodData));
+            b.addCode(buildCallFuture(builder, methodData));
         } else {
-            b.addCode(buildCallBlocking(methodData));
+            b.addCode(buildCallBlocking(builder, methodData));
         }
         return b.build();
+    }
+
+    private ClassName implClassName(ExecutableElement method) {
+        return ClassName.get(
+            elements.getPackageOf(method).getQualifiedName().toString(),
+            HttpClientUtils.clientName((TypeElement) method.getEnclosingElement())
+        );
+    }
+
+    private static FieldSpec findMapperField(TypeSpec.Builder builder, String mapperName) {
+        for (var fieldSpec : builder.fieldSpecs) {
+            if (fieldSpec.name.equals(mapperName)) {
+                return fieldSpec;
+            }
+        }
+        throw new IllegalStateException();
     }
 
     private List<RoutePart> parseRouteParts(String httpPath, List<Parameter> parameters) {
@@ -320,14 +339,17 @@ public class ClientClassGenerator {
     }
 
 
-    private CodeBlock mapBlockingResponse(MethodData methodData, TypeMirror resultType) {
+    private CodeBlock mapBlockingResponse(TypeSpec.Builder builder, MethodData methodData, TypeMirror resultType) {
         var b = CodeBlock.builder();
         if (methodData.responseMapper != null && methodData.responseMapper.mapperClass() != null && methodData.codeMappers().isEmpty()) {
             var responseMapperName = methodData.element.getSimpleName() + "ResponseMapper";
             if (resultType.getKind() != TypeKind.VOID) {
                 b.add("return ");
             }
-            b.addStatement("this.$N.apply(_response)", responseMapperName);
+            var ref = findMapperField(builder, responseMapperName).modifiers.contains(Modifier.STATIC)
+                ? CodeBlock.of("$T", implClassName(methodData.element))
+                : CodeBlock.of("this");
+            b.addStatement("$L.$N.apply(_response)", ref, responseMapperName);
         } else if (methodData.codeMappers().isEmpty()) {
             b.addStatement("var _code = _response.code()");
             b.beginControlFlow("if (_code >= 200 && _code < 300)");
@@ -337,7 +359,10 @@ public class ClientClassGenerator {
                 b.addStatement("return null");
             } else {
                 var responseMapperName = methodData.element().getSimpleName() + "ResponseMapper";
-                b.addStatement("return this.$N.apply(_response)", responseMapperName);
+                var ref = findMapperField(builder, responseMapperName).modifiers.contains(Modifier.STATIC)
+                    ? CodeBlock.of("$T", implClassName(methodData.element))
+                    : CodeBlock.of("this");
+                b.addStatement("return $L.$N.apply(_response)", ref, responseMapperName);
             }
             b.nextControlFlow("else");
             b.addStatement("throw $T.fromResponseFuture(_response).get()", httpClientResponseException);
@@ -354,10 +379,13 @@ public class ClientClassGenerator {
                     defaultMapper = codeMapper;
                 } else {
                     var responseMapperName = "" + methodData.element().getSimpleName() + codeMapper.code() + "ResponseMapper";
+                    var ref = findMapperField(builder, responseMapperName).modifiers.contains(Modifier.STATIC)
+                        ? CodeBlock.of("$T", implClassName(methodData.element))
+                        : CodeBlock.of("this");
                     if (isMapperAssignable(methodData.element.getReturnType(), codeMapper.type, codeMapper.mapper)) {
-                        b.add("  case $L -> this.$L.apply(_response);\n", codeMapper.code(), responseMapperName);
+                        b.add("  case $L -> $L.$L.apply(_response);\n", codeMapper.code(), ref, responseMapperName);
                     } else {
-                        b.add("  case $L -> throw this.$L.apply(_response);\n", codeMapper.code(), responseMapperName);
+                        b.add("  case $L -> throw $L.$L.apply(_response);\n", codeMapper.code(), ref, responseMapperName);
                     }
                 }
             }
@@ -366,10 +394,14 @@ public class ClientClassGenerator {
                 b.add("    throw $T.fromResponseFuture(_response).get();\n", httpClientResponseException);
                 b.add("  }\n");
             } else {
+                var responseMapperName = methodData.element().getSimpleName() + "DefaultResponseMapper";
+                var ref = findMapperField(builder, responseMapperName).modifiers.contains(Modifier.STATIC)
+                    ? CodeBlock.of("$T", implClassName(methodData.element))
+                    : CodeBlock.of("this");
                 if (isMapperAssignable(methodData.element.getReturnType(), defaultMapper.type, defaultMapper.mapper)) {
-                    b.add("  default -> this.$L.apply(_response);\n", methodData.element().getSimpleName() + "DefaultResponseMapper");
+                    b.add("  default -> $L.$L.apply(_response);\n", ref, responseMapperName);
                 } else {
-                    b.add("  default -> throw this.$L.apply(_response);\n", methodData.element().getSimpleName() + "DefaultResponseMapper");
+                    b.add("  default -> throw $L.$L.apply(_response);\n", ref, responseMapperName);
                 }
             }
             b.add("};\n");
@@ -377,10 +409,10 @@ public class ClientClassGenerator {
         return b.build();
     }
 
-    private CodeBlock buildCallBlocking(MethodData method) {
+    private CodeBlock buildCallBlocking(TypeSpec.Builder builder, MethodData method) {
         var b = CodeBlock.builder();
         b.beginControlFlow("try (var _response = _client.execute(_request).toCompletableFuture().get())");
-        b.add(mapBlockingResponse(method, method.element().getReturnType()));
+        b.add(mapBlockingResponse(builder, method, method.element().getReturnType()));
         b.nextControlFlow("catch (java.util.concurrent.ExecutionException e)")
             .addStatement("if (e.getCause() instanceof RuntimeException re) throw re")
             .addStatement("if (e.getCause() instanceof Error er) throw er")
@@ -393,11 +425,14 @@ public class ClientClassGenerator {
         return b.build();
     }
 
-    private CodeBlock mapFutureResponse(MethodData methodData, TypeMirror resultType) {
+    private CodeBlock mapFutureResponse(TypeSpec.Builder builder, MethodData methodData, TypeMirror resultType) {
         var b = CodeBlock.builder();
         if (methodData.responseMapper != null && methodData.responseMapper.mapperClass() != null) {
             var responseMapperName = methodData.element.getSimpleName() + "ResponseMapper";
-            b.addStatement("_result = this.$N.apply(_response)", responseMapperName);
+            var ref = findMapperField(builder, responseMapperName).modifiers.contains(Modifier.STATIC)
+                ? CodeBlock.of("$T", implClassName(methodData.element))
+                : CodeBlock.of("this");
+            b.addStatement("_result = $L.$N.apply(_response)", ref, responseMapperName);
         } else if (methodData.codeMappers().isEmpty()) {
             b.addStatement("var _code = _response.code()");
             b.beginControlFlow("if (_code >= 200 && _code < 300)");
@@ -405,7 +440,10 @@ public class ClientClassGenerator {
                 b.addStatement("_result = $T.completedFuture(null)", CompletableFuture.class);
             } else {
                 var responseMapperName = methodData.element().getSimpleName() + "ResponseMapper";
-                b.addStatement("_result = this.$N.apply(_response)", responseMapperName);
+                var ref = findMapperField(builder, responseMapperName).modifiers.contains(Modifier.STATIC)
+                    ? CodeBlock.of("$T", implClassName(methodData.element))
+                    : CodeBlock.of("this");
+                b.addStatement("_result = $L.$N.apply(_response)", ref, responseMapperName);
             }
             b.nextControlFlow("else");
             b.addStatement("return $T.fromResponse(_response)", httpClientResponseException);
@@ -419,10 +457,13 @@ public class ClientClassGenerator {
                     defaultMapper = codeMapper;
                 } else {
                     var responseMapperName = "" + methodData.element().getSimpleName() + codeMapper.code() + "ResponseMapper";
+                    var ref = findMapperField(builder, responseMapperName).modifiers.contains(Modifier.STATIC)
+                        ? CodeBlock.of("$T", implClassName(methodData.element))
+                        : CodeBlock.of("this");
                     if (isMapperAssignable(resultType, codeMapper.type, codeMapper.mapper)) {
-                        b.add("  case $L -> this.$L.apply(_response);\n", codeMapper.code(), responseMapperName);
+                        b.add("  case $L -> $L.$L.apply(_response);\n", codeMapper.code(), ref, responseMapperName);
                     } else {
-                        b.add("  case $L -> this.$L.apply(_response).thenCompose($T::failedFuture);\n", codeMapper.code(), responseMapperName, CompletableFuture.class);
+                        b.add("  case $L -> $L.$L.apply(_response).thenCompose($T::failedFuture);\n", codeMapper.code(), ref, responseMapperName, CompletableFuture.class);
                     }
                 }
             }
@@ -430,10 +471,13 @@ public class ClientClassGenerator {
                 b.add("  default -> $T.fromResponse(_response);\n", httpClientResponseException);
             } else {
                 var responseMapperName = methodData.element().getSimpleName() + "DefaultResponseMapper";
+                var ref = findMapperField(builder, responseMapperName).modifiers.contains(Modifier.STATIC)
+                    ? CodeBlock.of("$T", implClassName(methodData.element))
+                    : CodeBlock.of("this");
                 if (isMapperAssignable(resultType, defaultMapper.type, defaultMapper.mapper)) {
-                    b.add("  default -> this.$L.apply(_response);\n", responseMapperName);
+                    b.add("  default -> $L.$L.apply(_response);\n", ref, responseMapperName);
                 } else {
-                    b.add("  default -> this.$L.apply(_response).thenCompose($T::failedFuture);\n", responseMapperName, CompletableFuture.class);
+                    b.add("  default -> $L.$L.apply(_response).thenCompose($T::failedFuture);\n", ref, responseMapperName, CompletableFuture.class);
                 }
             }
             b.add("};\n");
@@ -441,7 +485,7 @@ public class ClientClassGenerator {
         return b.build();
     }
 
-    private CodeBlock buildCallFuture(MethodData method) {
+    private CodeBlock buildCallFuture(TypeSpec.Builder builder, MethodData method) {
         var returnType = (DeclaredType) method.element().getReturnType();
         var returnTypeContent = returnType.getTypeArguments().get(0);
         var b = CodeBlock.builder();
@@ -449,7 +493,7 @@ public class ClientClassGenerator {
             .add(".thenCompose(_response -> {$>\n");
         b.addStatement("$T _result", ParameterizedTypeName.get(ClassName.get(CompletionStage.class), WildcardTypeName.subtypeOf(TypeName.get(returnTypeContent))));
         b.beginControlFlow("try");
-        b.add(mapFutureResponse(method, returnTypeContent));
+        b.add(mapFutureResponse(builder, method, returnTypeContent));
         b.nextControlFlow("catch (Throwable _e)");
         b.addStatement("_result = $T.failedFuture(_e)", CompletableFuture.class);
         b.endControlFlow();
@@ -468,7 +512,7 @@ public class ClientClassGenerator {
         return b.build();
     }
 
-    private CodeBlock buildCallMono(MethodData method) {
+    private CodeBlock buildCallMono(TypeSpec.Builder builder, MethodData method) {
         var returnType = (DeclaredType) method.element().getReturnType();
         var returnTypeContent = returnType.getTypeArguments().get(0);
         var b = CodeBlock.builder();
@@ -476,7 +520,7 @@ public class ClientClassGenerator {
             .add(".thenCompose(_response -> {$>\n");
         b.addStatement("$T _result", ParameterizedTypeName.get(ClassName.get(CompletionStage.class), WildcardTypeName.subtypeOf(TypeName.get(returnTypeContent))));
         b.beginControlFlow("try");
-        b.add(mapFutureResponse(method, returnTypeContent));
+        b.add(mapFutureResponse(builder, method, returnTypeContent));
         b.nextControlFlow("catch (Throwable _e)");
         b.addStatement("_result = $T.failedFuture(_e)", CompletableFuture.class);
         b.endControlFlow();
@@ -596,8 +640,8 @@ public class ClientClassGenerator {
                 } else {
                     var isVoid = method.getReturnType().getKind() == TypeKind.VOID;
                     var isFutureOfVoid = (CommonUtils.isFuture(method.getReturnType()) || CommonUtils.isMono(method.getReturnType()))
-                                         && method.getReturnType() instanceof DeclaredType dt
-                                         && dt.getTypeArguments().get(0).toString().equals("java.lang.Void");
+                        && method.getReturnType() instanceof DeclaredType dt
+                        && dt.getTypeArguments().get(0).toString().equals("java.lang.Void");
                     if (!isVoid && !isFutureOfVoid) {
                         final TypeName responseMapperType;
                         if (methodData.responseMapper() != null && methodData.responseMapper().mapperClass() != null) {

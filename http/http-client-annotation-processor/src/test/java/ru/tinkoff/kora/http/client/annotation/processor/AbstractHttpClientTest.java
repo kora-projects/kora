@@ -5,18 +5,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest;
 import ru.tinkoff.kora.config.annotation.processor.processor.ConfigParserAnnotationProcessor;
-import ru.tinkoff.kora.config.common.extractor.BooleanConfigValueExtractor;
-import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
-import ru.tinkoff.kora.config.common.extractor.DoubleArrayConfigValueExtractor;
-import ru.tinkoff.kora.config.common.extractor.DurationConfigValueExtractor;
-import ru.tinkoff.kora.config.common.extractor.SetConfigValueExtractor;
-import ru.tinkoff.kora.config.common.extractor.StringConfigValueExtractor;
+import ru.tinkoff.kora.config.common.extractor.*;
 import ru.tinkoff.kora.config.common.factory.MapConfigFactory;
 import ru.tinkoff.kora.http.client.common.HttpClient;
 import ru.tinkoff.kora.http.client.common.declarative.$HttpClientOperationConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
-import ru.tinkoff.kora.http.client.common.telemetry.*;
-import ru.tinkoff.kora.telemetry.common.*;
+import ru.tinkoff.kora.http.client.common.telemetry.$HttpClientLoggerConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.http.client.common.telemetry.$HttpClientTelemetryConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetry;
+import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryFactory;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -94,14 +93,17 @@ public abstract class AbstractHttpClientTest extends AbstractAnnotationProcessor
         if (compileResult.isFailed()) {
             throw compileResult.compilationException();
         }
+        compileResult.warnings().forEach(System.out::println);
 
         var clientClass = compileResult.loadClass("$TestClient_ClientImpl");
         var durationCVE = new DurationConfigValueExtractor();
+        @SuppressWarnings("enchecked")
         var telemetryCVE = (ConfigValueExtractor) new $HttpClientTelemetryConfig_ConfigValueExtractor(
             new $HttpClientLoggerConfig_ConfigValueExtractor(new SetConfigValueExtractor<>(new StringConfigValueExtractor())),
             new $TelemetryConfig_TracingConfig_ConfigValueExtractor(),
             new $TelemetryConfig_MetricsConfig_ConfigValueExtractor(new DoubleArrayConfigValueExtractor(c -> c.asNumber().doubleValue()))
         );
+        @SuppressWarnings("enchecked")
         var configCVE = new $HttpClientOperationConfig_ConfigValueExtractor(durationCVE, telemetryCVE);
 
         var configValueExtractor = (ConfigValueExtractor<?>) newObject("$$TestClient_Config_ConfigValueExtractor", telemetryCVE, durationCVE, configCVE);
