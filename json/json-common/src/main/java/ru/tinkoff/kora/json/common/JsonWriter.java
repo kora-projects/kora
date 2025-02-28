@@ -8,7 +8,6 @@ import jakarta.annotation.Nullable;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
 
 /**
  * <b>Русский</b>: Контракт писателя JSON со всеми методами записи
@@ -57,6 +56,25 @@ public interface JsonWriter<T> {
     default String toStringUnchecked(@Nullable T value) throws UncheckedIOException {
         try {
             return toString(value);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    default String toPrettyString(@Nullable T value) throws IOException {
+        try (var sw = new SegmentedStringWriter(JsonCommonModule.JSON_FACTORY._getBufferRecycler());
+             var gen = JsonCommonModule.JSON_FACTORY.createGenerator(sw)) {
+            gen.enable(JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN);
+            gen.useDefaultPrettyPrinter();
+            this.write(gen, value);
+            gen.flush();
+            return sw.getAndClear();
+        }
+    }
+
+    default String toPrettyStringUnchecked(@Nullable T value) throws UncheckedIOException {
+        try {
+            return toPrettyString(value);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
