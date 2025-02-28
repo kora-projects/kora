@@ -16,6 +16,7 @@ import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.generatedClassName
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Function
 import java.util.function.Supplier
 
@@ -23,6 +24,10 @@ class KafkaPublisherTransactionalGenerator(
     val env: SymbolProcessorEnvironment,
     val resolver: Resolver
 ) {
+
+    companion object {
+        val TRANSACTIONAL_SUFFIXES = Collections.newSetFromMap<String>(ConcurrentHashMap())
+    }
 
     fun generatePublisherTransactionalModule(txPublisher: KSClassDeclaration, publisher: KSClassDeclaration, annotation: KSAnnotation) {
         val packageName = txPublisher.packageName.asString()
@@ -46,6 +51,12 @@ class KafkaPublisherTransactionalGenerator(
             .addStatement("val configValue = config.get(%S)", configPath)
             .addStatement("return extractor.extract(configValue)!!")
             .build()
+
+        var transactionalSuffix: String?
+        do {
+            transactionalSuffix = getTransactionalSuffix()
+        } while (TRANSACTIONAL_SUFFIXES.add(transactionalSuffix))
+
         val publisherFunc = FunSpec.builder(txPublisher.simpleName.asString().replaceFirstChar { it.lowercaseChar() } + "_PublisherTransactional")
             .addParameter("factory", Function::class.asClassName().parameterizedBy(Properties::class.asClassName(), publisherImplementationTypeName))
             .addParameter(ParameterSpec.builder("config", KafkaClassNames.publisherTransactionalConfig).addAnnotation(tag).build())
@@ -53,7 +64,7 @@ class KafkaPublisherTransactionalGenerator(
             .addCode(CodeBlock.builder()
                 .add("return %T(config) {", implementationTypeName).indent().add("\n")
                 .addStatement("val properties = %T()", Properties::class.asClassName())
-                .addStatement("properties[%T.TRANSACTIONAL_ID_CONFIG] = config.idPrefix() + \"-\" + %T.randomUUID()", ClassName("org.apache.kafka.clients.producer", "ProducerConfig"), UUID::class.java)
+                .addStatement("properties[%T.TRANSACTIONAL_ID_CONFIG] = config.idPrefix() + %S", ClassName("org.apache.kafka.clients.producer", "ProducerConfig"), transactionalSuffix)
                 .addStatement("factory.apply(properties)")
                 .unindent().add("\n}\n")
                 .build()
@@ -64,6 +75,13 @@ class KafkaPublisherTransactionalGenerator(
         FileSpec.builder(packageName, moduleName).addType(module.build())
             .build()
             .writeTo(this.env.codeGenerator, false)
+    }
+
+    private fun getTransactionalSuffix(): String {
+        val uuid = UUID.randomUUID()
+        val uuidAsStr = uuid.toString()
+        val firstPart = uuidAsStr.substring(uuidAsStr.indexOf('-'))
+        return firstPart.lowercase()
     }
 
     fun generatePublisherTransactionalImpl(typeElement: KSClassDeclaration, publisherType: ClassName, publisherTypeElement: KSClassDeclaration) {

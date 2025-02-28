@@ -15,13 +15,14 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.io.IOException;
-import java.util.Objects;
-import java.util.Properties;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
 final class KafkaPublisherTransactionalGenerator {
+
+    private static final Set<String> TRANSACTIONAL_SUFFIXES = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     private final Types types;
     private final Elements elements;
@@ -60,6 +61,12 @@ final class KafkaPublisherTransactionalGenerator {
             .addStatement("var configValue = config.get($S)", configPath)
             .addStatement("return $T.requireNonNull(extractor.extract(configValue))", Objects.class)
             .build();
+
+        String transactionalSuffix;
+        do {
+            transactionalSuffix = getTransactionalSuffix();
+        } while (!TRANSACTIONAL_SUFFIXES.add(transactionalSuffix));
+
         var publisher = MethodSpec.methodBuilder(CommonUtils.decapitalize(typeElement.getSimpleName().toString()) + "_PublisherTransactional")
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(ParameterizedTypeName.get(ClassName.get(Function.class), ClassName.get(Properties.class), publisherImplementationTypeName), "factory")
@@ -67,7 +74,7 @@ final class KafkaPublisherTransactionalGenerator {
             .returns(ClassName.get(typeElement))
             .addCode("return new $T(config, () -> {$>\n", implementationTypeName)
             .addStatement("var properties = new $T()", Properties.class)
-            .addStatement("properties.put(org.apache.kafka.clients.producer.ProducerConfig.TRANSACTIONAL_ID_CONFIG, config.idPrefix() + \"-\" + $T.randomUUID())", UUID.class)
+            .addStatement("properties.put($T.TRANSACTIONAL_ID_CONFIG, config.idPrefix() + $S)", ClassName.get("org.apache.kafka.clients.producer", "ProducerConfig"), transactionalSuffix)
             .addStatement("return factory.apply(properties)")
             .addCode("$<\n});\n")
             .build();
@@ -78,6 +85,13 @@ final class KafkaPublisherTransactionalGenerator {
         JavaFile.builder(packageName, module.build())
             .build()
             .writeTo(this.processingEnv.getFiler());
+    }
+
+    private String getTransactionalSuffix() {
+        UUID uuid = UUID.randomUUID();
+        String uuidAsStr = uuid.toString();
+        String firstPart = uuidAsStr.substring(uuidAsStr.indexOf('-'));
+        return firstPart.toLowerCase(Locale.ROOT);
     }
 
     public void generatePublisherTransactionalImpl(TypeElement typeElement, ClassName publisherType, TypeElement publisherTypeElement) throws IOException {
