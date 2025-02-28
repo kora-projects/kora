@@ -501,7 +501,7 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                     if (this.debugEnabled) {
                         var took = System.nanoTime() - startTime;
                         if (took > SLOW_NODE_INIT_THRESHOLD * 1_000_000) {
-                            this.rootGraph.log.debug("Initialized node {} in {}ms", node.index, took / 1_000_000);
+                            this.rootGraph.log.debug("Initialized node {} at index {} in {}ms", node.type(), node.index, took / 1_000_000);
                         }
                     }
                 }
