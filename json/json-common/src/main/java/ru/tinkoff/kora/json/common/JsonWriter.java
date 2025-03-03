@@ -44,37 +44,35 @@ public interface JsonWriter<T> {
     }
 
     default String toString(@Nullable T value) throws IOException {
-        try (var sw = new SegmentedStringWriter(JsonCommonModule.JSON_FACTORY._getBufferRecycler());
-             var gen = JsonCommonModule.JSON_FACTORY.createGenerator(sw)) {
-            gen.enable(JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN);
-            this.write(gen, value);
-            gen.flush();
-            return sw.getAndClear();
-        }
+        return toString(value, false);
     }
 
     default String toStringUnchecked(@Nullable T value) throws UncheckedIOException {
-        try {
-            return toString(value);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        return toStringUnchecked(value, false);
     }
 
     default String toPrettyString(@Nullable T value) throws IOException {
+        return toString(value, true);
+    }
+
+    default String toPrettyStringUnchecked(@Nullable T value) throws UncheckedIOException {
+        return toStringUnchecked(value, true);
+    }
+
+    default String toString(@Nullable T value, boolean usePrettyPrinter) throws IOException {
         try (var sw = new SegmentedStringWriter(JsonCommonModule.JSON_FACTORY._getBufferRecycler());
              var gen = JsonCommonModule.JSON_FACTORY.createGenerator(sw)) {
             gen.enable(JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN);
-            gen.useDefaultPrettyPrinter();
+            if (usePrettyPrinter) gen.useDefaultPrettyPrinter();
             this.write(gen, value);
             gen.flush();
             return sw.getAndClear();
         }
     }
 
-    default String toPrettyStringUnchecked(@Nullable T value) throws UncheckedIOException {
+    default String toStringUnchecked(@Nullable T value, boolean usePrettyPrinter) throws UncheckedIOException {
         try {
-            return toPrettyString(value);
+            return toString(value, usePrettyPrinter);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
