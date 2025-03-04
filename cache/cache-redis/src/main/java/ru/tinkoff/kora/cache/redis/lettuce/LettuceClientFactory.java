@@ -11,6 +11,10 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 
+/**
+ * Use dependency - ru.tinkoff.kora:cache-redis-lettuce
+ */
+@Deprecated
 public final class LettuceClientFactory {
 
     @Nonnull

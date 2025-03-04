@@ -13,6 +13,10 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * Use dependency - ru.tinkoff.kora:cache-redis-lettuce
+ */
+@Deprecated
 public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
 
     private static final Logger logger = LoggerFactory.getLogger(RedisCache.class);

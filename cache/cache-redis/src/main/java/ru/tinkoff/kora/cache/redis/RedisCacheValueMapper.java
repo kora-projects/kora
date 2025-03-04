@@ -2,7 +2,9 @@ package ru.tinkoff.kora.cache.redis;
 
 /**
  * Converts cache value into serializer value to store in cache.
+ * Use dependency - ru.tinkoff.kora:cache-redis-lettuce
  */
+@Deprecated
 public interface RedisCacheValueMapper<V> {
 
     /**

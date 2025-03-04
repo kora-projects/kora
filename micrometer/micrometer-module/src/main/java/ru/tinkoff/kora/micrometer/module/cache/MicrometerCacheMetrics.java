@@ -12,6 +12,7 @@ import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
+@Deprecated
 public final class MicrometerCacheMetrics implements CacheMetrics {
 
     record Key(String cacheName, String origin, String operationName, String status) {}

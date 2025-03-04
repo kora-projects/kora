@@ -8,6 +8,7 @@ import ru.tinkoff.kora.cache.telemetry.CacheMetrics;
 import ru.tinkoff.kora.cache.telemetry.CacheTelemetryOperation;
 import ru.tinkoff.kora.cache.telemetry.CacheTracer;
 
+@Deprecated
 public final class CaffeineCacheTelemetry {
 
     private static final String ORIGIN = "caffeine";

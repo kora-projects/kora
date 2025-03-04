@@ -5,17 +5,6 @@ dependencies {
 
     implementation project(":json:json-common")
     implementation project(":config:config-common")
-    implementation(libs.redis.lettuce) {
-        exclude group: 'io.projectreactor', module: 'reactor-core'
-        exclude group: 'io.netty', module: 'netty-common'
-        exclude group: 'io.netty', module: 'netty-handler'
-        exclude group: 'io.netty', module: 'netty-transport'
-    }
-    implementation libs.reactor.core
-    implementation libs.netty.common
-    implementation libs.netty.handlers
-    implementation libs.netty.transports
-    implementation libs.apache.pool
 
     testImplementation project(":internal:test-logging")
     testImplementation project(":internal:test-redis")

@@ -48,7 +48,7 @@ class MonoCacheAopTests implements RedisCacheModule {
             cacheConstructor.setAccessible(true);
             final Map<ByteBuffer, ByteBuffer> cacheBuf = new HashMap<>();
             cache = (DummyCache22) cacheConstructor.newInstance(CacheRunner.getRedisConfig(),
-                CacheRunner.lettuceClient(cacheBuf), redisCacheTelemetry(null, null),
+                CacheRunner.lettuceSyncClient(cacheBuf), CacheRunner.lettuceAsyncClient(cacheBuf), defaultCacheTelemetryFactory(null, null, null),
                 (RedisCacheKeyMapper<DummyCache22.Key>) key -> {
                     var _key1 = key.k1().getBytes(StandardCharsets.UTF_8);
                     var _key2 = key.k2().toString().getBytes(StandardCharsets.UTF_8);

@@ -4,6 +4,9 @@ import jakarta.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.cache.AsyncCache;
+import ru.tinkoff.kora.cache.telemetry.CacheTelemetry;
+import ru.tinkoff.kora.cache.telemetry.CacheTelemetryArgs;
+import ru.tinkoff.kora.cache.telemetry.CacheTelemetryFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -17,9 +20,11 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
 
     private static final Logger logger = LoggerFactory.getLogger(RedisCache.class);
 
-    private final String name;
+    private static final String ORIGIN = "redis";
+
     private final RedisCacheClient redisClient;
-    private final RedisCacheTelemetry telemetry;
+    private final RedisCacheAsyncClient redisAsyncClient;
+    private final CacheTelemetry telemetry;
     private final byte[] keyPrefix;
 
     private final RedisCacheKeyMapper<K> keyMapper;
@@ -31,12 +36,25 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
     protected AbstractRedisCache(String name,
                                  RedisCacheConfig config,
                                  RedisCacheClient redisClient,
-                                 RedisCacheTelemetry telemetry,
+                                 RedisCacheAsyncClient redisAsyncClient,
+                                 CacheTelemetryFactory telemetryFactory,
                                  RedisCacheKeyMapper<K> keyMapper,
                                  RedisCacheValueMapper<V> valueMapper) {
-        this.name = name;
         this.redisClient = redisClient;
-        this.telemetry = telemetry;
+        this.redisAsyncClient = redisAsyncClient;
+        this.telemetry = telemetryFactory.get(config.telemetry(), new CacheTelemetryArgs() {
+            @Nonnull
+            @Override
+            public String cacheName() {
+                return name;
+            }
+
+            @Nonnull
+            @Override
+            public String origin() {
+                return ORIGIN;
+            }
+        });
         this.keyMapper = keyMapper;
         this.valueMapper = valueMapper;
         this.expireAfterAccessMillis = (config.expireAfterAccess() == null)
@@ -62,12 +80,12 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
             return null;
         }
 
-        var telemetryContext = telemetry.create("GET", name);
+        var telemetryContext = telemetry.get("GET");
         try {
             final byte[] keyAsBytes = mapKey(key);
             final byte[] jsonAsBytes = (expireAfterAccessMillis == null)
-                ? redisClient.get(keyAsBytes).toCompletableFuture().join()
-                : redisClient.getex(keyAsBytes, expireAfterAccessMillis).toCompletableFuture().join();
+                ? redisClient.get(keyAsBytes)
+                : redisClient.getex(keyAsBytes, expireAfterAccessMillis);
 
             final V value = valueMapper.read(jsonAsBytes);
             telemetryContext.recordSuccess(value);
@@ -88,15 +106,15 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
             return Collections.emptyMap();
         }
 
-        var telemetryContext = telemetry.create("GET_MANY", name);
+        var telemetryContext = telemetry.get("GET_MANY");
         try {
             final Map<K, byte[]> keysByKeyBytes = keys.stream()
                 .collect(Collectors.toMap(k -> k, this::mapKey, (v1, v2) -> v2));
 
             final byte[][] keysByBytes = keysByKeyBytes.values().toArray(byte[][]::new);
             final Map<byte[], byte[]> valueByKeys = (expireAfterAccessMillis == null)
-                ? redisClient.mget(keysByBytes).toCompletableFuture().join()
-                : redisClient.getex(keysByBytes, expireAfterAccessMillis).toCompletableFuture().join();
+                ? redisClient.mget(keysByBytes)
+                : redisClient.getex(keysByBytes, expireAfterAccessMillis);
 
             final Map<K, V> keyToValue = new HashMap<>();
             for (var entry : keysByKeyBytes.entrySet()) {
@@ -126,17 +144,17 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
             return null;
         }
 
-        var telemetryContext = telemetry.create("PUT", name);
+        var telemetryContext = telemetry.get("PUT");
 
         try {
             final byte[] keyAsBytes = mapKey(key);
             final byte[] valueAsBytes = valueMapper.write(value);
             if (expireAfterWriteMillis == null) {
-                redisClient.set(keyAsBytes, valueAsBytes).toCompletableFuture().join();
+                redisClient.set(keyAsBytes, valueAsBytes);
             } else {
-                redisClient.psetex(keyAsBytes, valueAsBytes, expireAfterWriteMillis).toCompletableFuture().join();
+                redisClient.psetex(keyAsBytes, valueAsBytes, expireAfterWriteMillis);
             }
-            telemetryContext.recordSuccess();
+            telemetryContext.recordSuccess(null);
             return value;
         } catch (CompletionException e) {
             telemetryContext.recordFailure(e.getCause());
@@ -154,7 +172,7 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
             return Collections.emptyMap();
         }
 
-        var telemetryContext = telemetry.create("PUT_MANY", name);
+        var telemetryContext = telemetry.get("PUT_MANY");
 
         try {
             var keyAndValuesAsBytes = new HashMap<byte[], byte[]>();
@@ -165,12 +183,12 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
             });
 
             if (expireAfterWriteMillis == null) {
-                redisClient.mset(keyAndValuesAsBytes).toCompletableFuture().join();
+                redisClient.mset(keyAndValuesAsBytes);
             } else {
-                redisClient.psetex(keyAndValuesAsBytes, expireAfterWriteMillis).toCompletableFuture().join();
+                redisClient.psetex(keyAndValuesAsBytes, expireAfterWriteMillis);
             }
 
-            telemetryContext.recordSuccess();
+            telemetryContext.recordSuccess(null);
             return keyAndValues;
         } catch (CompletionException e) {
             telemetryContext.recordFailure(e.getCause());
@@ -187,14 +205,14 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
             return null;
         }
 
-        var telemetryContext = telemetry.create("COMPUTE_IF_ABSENT", name);
+        var telemetryContext = telemetry.get("COMPUTE_IF_ABSENT");
 
         V fromCache = null;
         try {
             final byte[] keyAsBytes = mapKey(key);
             final byte[] jsonAsBytes = (expireAfterAccessMillis == null)
-                ? redisClient.get(keyAsBytes).toCompletableFuture().join()
-                : redisClient.getex(keyAsBytes, expireAfterAccessMillis).toCompletableFuture().join();
+                ? redisClient.get(keyAsBytes)
+                : redisClient.getex(keyAsBytes, expireAfterAccessMillis);
 
             fromCache = valueMapper.read(jsonAsBytes);
         } catch (Exception e) {
@@ -202,7 +220,7 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
         }
 
         if (fromCache != null) {
-            telemetryContext.recordSuccess();
+            telemetryContext.recordSuccess(null);
             return fromCache;
         }
 
@@ -213,16 +231,16 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
                     final byte[] keyAsBytes = mapKey(key);
                     final byte[] valueAsBytes = valueMapper.write(value);
                     if (expireAfterWriteMillis == null) {
-                        redisClient.set(keyAsBytes, valueAsBytes).toCompletableFuture().join();
+                        redisClient.set(keyAsBytes, valueAsBytes);
                     } else {
-                        redisClient.psetex(keyAsBytes, valueAsBytes, expireAfterWriteMillis).toCompletableFuture().join();
+                        redisClient.psetex(keyAsBytes, valueAsBytes, expireAfterWriteMillis);
                     }
                 } catch (Exception e) {
                     logger.error(e.getMessage(), e);
                 }
             }
 
-            telemetryContext.recordSuccess();
+            telemetryContext.recordSuccess(null);
             return value;
         } catch (CompletionException e) {
             telemetryContext.recordFailure(e.getCause());
@@ -240,7 +258,7 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
             return Collections.emptyMap();
         }
 
-        var telemetryContext = telemetry.create("COMPUTE_IF_ABSENT_MANY", name);
+        var telemetryContext = telemetry.get("COMPUTE_IF_ABSENT_MANY");
 
         final Map<K, V> fromCache = new HashMap<>();
         try {
@@ -249,8 +267,8 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
 
             final byte[][] keysByBytes = keysByKeyBytes.values().toArray(byte[][]::new);
             final Map<byte[], byte[]> valueByKeys = (expireAfterAccessMillis == null)
-                ? redisClient.mget(keysByBytes).toCompletableFuture().join()
-                : redisClient.getex(keysByBytes, expireAfterAccessMillis).toCompletableFuture().join();
+                ? redisClient.mget(keysByBytes)
+                : redisClient.getex(keysByBytes, expireAfterAccessMillis);
 
             for (var entry : keysByKeyBytes.entrySet()) {
                 valueByKeys.forEach((k, v) -> {
@@ -265,7 +283,7 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
         }
 
         if (fromCache.size() == keys.size()) {
-            telemetryContext.recordSuccess();
+            telemetryContext.recordSuccess(null);
             return fromCache;
         }
 
@@ -285,16 +303,16 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
                     });
 
                     if (expireAfterWriteMillis == null) {
-                        redisClient.mset(keyAndValuesAsBytes).toCompletableFuture().join();
+                        redisClient.mset(keyAndValuesAsBytes);
                     } else {
-                        redisClient.psetex(keyAndValuesAsBytes, expireAfterWriteMillis).toCompletableFuture().join();
+                        redisClient.psetex(keyAndValuesAsBytes, expireAfterWriteMillis);
                     }
                 } catch (Exception e) {
                     logger.error(e.getMessage(), e);
                 }
             }
 
-            telemetryContext.recordSuccess();
+            telemetryContext.recordSuccess(null);
             fromCache.putAll(values);
             return fromCache;
         } catch (CompletionException e) {
@@ -310,11 +328,11 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
     public void invalidate(@Nonnull K key) {
         if (key != null) {
             final byte[] keyAsBytes = mapKey(key);
-            var telemetryContext = telemetry.create("INVALIDATE", name);
+            var telemetryContext = telemetry.get("INVALIDATE");
 
             try {
-                redisClient.del(keyAsBytes).toCompletableFuture().join();
-                telemetryContext.recordSuccess();
+                redisClient.del(keyAsBytes);
+                telemetryContext.recordSuccess(null);
             } catch (CompletionException e) {
                 telemetryContext.recordFailure(e.getCause());
             } catch (Exception e) {
@@ -326,15 +344,15 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
     @Override
     public void invalidate(@Nonnull Collection<K> keys) {
         if (keys != null && !keys.isEmpty()) {
-            var telemetryContext = telemetry.create("INVALIDATE_MANY", name);
+            var telemetryContext = telemetry.get("INVALIDATE_MANY");
 
             try {
                 final byte[][] keysAsBytes = keys.stream()
                     .map(this::mapKey)
                     .toArray(byte[][]::new);
 
-                redisClient.del(keysAsBytes).toCompletableFuture().join();
-                telemetryContext.recordSuccess();
+                redisClient.del(keysAsBytes);
+                telemetryContext.recordSuccess(null);
             } catch (CompletionException e) {
                 telemetryContext.recordFailure(e.getCause());
             } catch (Exception e) {
@@ -345,11 +363,11 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
 
     @Override
     public void invalidateAll() {
-        var telemetryContext = telemetry.create("INVALIDATE_ALL", name);
+        var telemetryContext = telemetry.get("INVALIDATE_ALL");
 
         try {
-            redisClient.flushAll().toCompletableFuture().join();
-            telemetryContext.recordSuccess();
+            redisClient.flushAll();
+            telemetryContext.recordSuccess(null);
         } catch (CompletionException e) {
             telemetryContext.recordFailure(e.getCause());
         } catch (Exception e) {
@@ -364,12 +382,12 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
             return CompletableFuture.completedFuture(null);
         }
 
-        var telemetryContext = telemetry.create("GET", name);
+        var telemetryContext = telemetry.get("GET");
         final byte[] keyAsBytes = mapKey(key);
 
         CompletionStage<byte[]> responseCompletionStage = (expireAfterAccessMillis == null)
-            ? redisClient.get(keyAsBytes)
-            : redisClient.getex(keyAsBytes, expireAfterAccessMillis);
+            ? redisAsyncClient.get(keyAsBytes)
+            : redisAsyncClient.getex(keyAsBytes, expireAfterAccessMillis);
 
         return responseCompletionStage
             .thenApply(jsonAsBytes -> {
@@ -390,14 +408,14 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
             return CompletableFuture.completedFuture(Collections.emptyMap());
         }
 
-        var telemetryContext = telemetry.create("GET_MANY", name);
+        var telemetryContext = telemetry.get("GET_MANY");
         var keysByKeyByte = keys.stream()
             .collect(Collectors.toMap(k -> k, this::mapKey, (v1, v2) -> v2));
 
         var keysAsBytes = keysByKeyByte.values().toArray(byte[][]::new);
         var responseCompletionStage = (expireAfterAccessMillis == null)
-            ? redisClient.mget(keysAsBytes)
-            : redisClient.getex(keysAsBytes, expireAfterAccessMillis);
+            ? redisAsyncClient.mget(keysAsBytes)
+            : redisAsyncClient.getex(keysAsBytes, expireAfterAccessMillis);
 
         return responseCompletionStage
             .thenApply(valuesByKeys -> {
@@ -426,16 +444,16 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
             return CompletableFuture.completedFuture(value);
         }
 
-        var telemetryContext = telemetry.create("PUT", name);
+        var telemetryContext = telemetry.get("PUT");
         final byte[] keyAsBytes = mapKey(key);
         final byte[] valueAsBytes = valueMapper.write(value);
-        final CompletionStage<Boolean> responseCompletionStage = (expireAfterWriteMillis == null)
-            ? redisClient.set(keyAsBytes, valueAsBytes)
-            : redisClient.psetex(keyAsBytes, valueAsBytes, expireAfterWriteMillis);
+        var responseCompletionStage = (expireAfterWriteMillis == null)
+            ? redisAsyncClient.set(keyAsBytes, valueAsBytes)
+            : redisAsyncClient.psetex(keyAsBytes, valueAsBytes, expireAfterWriteMillis);
 
         return responseCompletionStage
             .thenApply(r -> {
-                telemetryContext.recordSuccess();
+                telemetryContext.recordSuccess(null);
                 return value;
             })
             .exceptionally(e -> {
@@ -451,7 +469,7 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
             return CompletableFuture.completedFuture(Collections.emptyMap());
         }
 
-        var telemetryContext = telemetry.create("PUT_MANY", name);
+        var telemetryContext = telemetry.get("PUT_MANY");
         var keyAndValuesAsBytes = new HashMap<byte[], byte[]>();
         keyAndValues.forEach((k, v) -> {
             final byte[] keyAsBytes = mapKey(k);
@@ -460,12 +478,12 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
         });
 
         var responseCompletionStage = (expireAfterWriteMillis == null)
-            ? redisClient.mset(keyAndValuesAsBytes)
-            : redisClient.psetex(keyAndValuesAsBytes, expireAfterAccessMillis);
+            ? redisAsyncClient.mset(keyAndValuesAsBytes)
+            : redisAsyncClient.psetex(keyAndValuesAsBytes, expireAfterAccessMillis);
 
         return responseCompletionStage
             .thenApply(r -> {
-                telemetryContext.recordSuccess();
+                telemetryContext.recordSuccess(null);
                 return keyAndValues;
             })
             .exceptionally(e -> {
@@ -480,11 +498,11 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
             return CompletableFuture.completedFuture(null);
         }
 
-        var telemetryContext = telemetry.create("COMPUTE_IF_ABSENT", name);
+        var telemetryContext = telemetry.get("COMPUTE_IF_ABSENT");
         final byte[] keyAsBytes = mapKey(key);
         final CompletionStage<byte[]> responseCompletionStage = (expireAfterAccessMillis == null)
-            ? redisClient.get(keyAsBytes)
-            : redisClient.getex(keyAsBytes, expireAfterAccessMillis);
+            ? redisAsyncClient.get(keyAsBytes)
+            : redisAsyncClient.getex(keyAsBytes, expireAfterAccessMillis);
 
         return responseCompletionStage
             .thenApply(valueMapper::read)
@@ -501,12 +519,12 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
 
                         final byte[] valueAsBytes = valueMapper.write(value);
                         var putFutureResponse = (expireAfterWriteMillis == null)
-                            ? redisClient.set(keyAsBytes, valueAsBytes)
-                            : redisClient.psetex(keyAsBytes, valueAsBytes, expireAfterWriteMillis);
+                            ? redisAsyncClient.set(keyAsBytes, valueAsBytes)
+                            : redisAsyncClient.psetex(keyAsBytes, valueAsBytes, expireAfterWriteMillis);
 
                         return putFutureResponse
                             .thenApply(v -> {
-                                telemetryContext.recordSuccess();
+                                telemetryContext.recordSuccess(null);
                                 return value;
                             });
                     });
@@ -524,14 +542,14 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
             return CompletableFuture.completedFuture(Collections.emptyMap());
         }
 
-        var telemetryContext = telemetry.create("COMPUTE_IF_ABSENT_MANY", name);
+        var telemetryContext = telemetry.get("COMPUTE_IF_ABSENT_MANY");
         final Map<K, byte[]> keysByKeyBytes = keys.stream()
             .collect(Collectors.toMap(k -> k, this::mapKey, (v1, v2) -> v2));
 
         final byte[][] keysByBytes = keysByKeyBytes.values().toArray(byte[][]::new);
         var responseCompletionStage = (expireAfterAccessMillis == null)
-            ? redisClient.mget(keysByBytes)
-            : redisClient.getex(keysByBytes, expireAfterAccessMillis);
+            ? redisAsyncClient.mget(keysByBytes)
+            : redisAsyncClient.getex(keysByBytes, expireAfterAccessMillis);
 
         return responseCompletionStage
             .thenApply(valueByKeys -> {
@@ -570,12 +588,12 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
                         });
 
                         var putCompletionStage = (expireAfterAccessMillis == null)
-                            ? redisClient.mset(keyAndValuesAsBytes)
-                            : redisClient.psetex(keyAndValuesAsBytes, expireAfterAccessMillis);
+                            ? redisAsyncClient.mset(keyAndValuesAsBytes)
+                            : redisAsyncClient.psetex(keyAndValuesAsBytes, expireAfterAccessMillis);
 
                         return putCompletionStage
                             .thenApply(v -> {
-                                telemetryContext.recordSuccess();
+                                telemetryContext.recordSuccess(null);
                                 fromCache.putAll(values);
                                 return fromCache;
                             });
@@ -594,11 +612,11 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
             return CompletableFuture.completedFuture(false);
         }
 
-        var telemetryContext = telemetry.create("INVALIDATE", name);
+        var telemetryContext = telemetry.get("INVALIDATE");
         final byte[] keyAsBytes = mapKey(key);
-        return redisClient.del(keyAsBytes)
+        return redisAsyncClient.del(keyAsBytes)
             .thenApply(r -> {
-                telemetryContext.recordSuccess();
+                telemetryContext.recordSuccess(null);
                 return true;
             })
             .exceptionally(e -> {
@@ -613,15 +631,15 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
             return CompletableFuture.completedFuture(false);
         }
 
-        var telemetryContext = telemetry.create("INVALIDATE_MANY", name);
+        var telemetryContext = telemetry.get("INVALIDATE_MANY");
         final byte[][] keyAsBytes = keys.stream()
             .distinct()
             .map(this::mapKey)
             .toArray(byte[][]::new);
 
-        return redisClient.del(keyAsBytes)
+        return redisAsyncClient.del(keyAsBytes)
             .thenApply(r -> {
-                telemetryContext.recordSuccess();
+                telemetryContext.recordSuccess(null);
                 return true;
             })
             .exceptionally(e -> {
@@ -633,11 +651,11 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
     @Nonnull
     @Override
     public CompletionStage<Boolean> invalidateAllAsync() {
-        var telemetryContext = telemetry.create("INVALIDATE_ALL", name);
-        return redisClient.flushAll()
+        var telemetryContext = telemetry.get("INVALIDATE_ALL");
+        return redisAsyncClient.flushAll()
             .thenApply(r -> {
-                telemetryContext.recordSuccess();
-                return r;
+                telemetryContext.recordSuccess(null);
+                return true;
             })
             .exceptionally(e -> {
                 telemetryContext.recordFailure(e);

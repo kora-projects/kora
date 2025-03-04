@@ -29,17 +29,23 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
 
     private static final ClassName ANNOTATION_CACHE = ClassName.get("ru.tinkoff.kora.cache.annotation", "Cache");
 
-    private static final ClassName CAFFEINE_TELEMETRY = ClassName.get("ru.tinkoff.kora.cache.caffeine", "CaffeineCacheTelemetry");
+    private static final ClassName CACHE_TELEMETRY_FACTORY = ClassName.get("ru.tinkoff.kora.cache.telemetry", "CacheTelemetryFactory");
+
     private static final ClassName CAFFEINE_CACHE = ClassName.get("ru.tinkoff.kora.cache.caffeine", "CaffeineCache");
     private static final ClassName CAFFEINE_CACHE_FACTORY = ClassName.get("ru.tinkoff.kora.cache.caffeine", "CaffeineCacheFactory");
     private static final ClassName CAFFEINE_CACHE_CONFIG = ClassName.get("ru.tinkoff.kora.cache.caffeine", "CaffeineCacheConfig");
     private static final ClassName CAFFEINE_CACHE_IMPL = ClassName.get("ru.tinkoff.kora.cache.caffeine", "AbstractCaffeineCache");
 
+    @Deprecated
     private static final ClassName REDIS_TELEMETRY = ClassName.get("ru.tinkoff.kora.cache.redis", "RedisCacheTelemetry");
+    @Deprecated
+    private static final ClassName REDIS_CACHE_OLD_CLIENT = ClassName.get("ru.tinkoff.kora.cache.redis", "RedisCacheClient");
+
     private static final ClassName REDIS_CACHE = ClassName.get("ru.tinkoff.kora.cache.redis", "RedisCache");
     private static final ClassName REDIS_CACHE_IMPL = ClassName.get("ru.tinkoff.kora.cache.redis", "AbstractRedisCache");
     private static final ClassName REDIS_CACHE_CONFIG = ClassName.get("ru.tinkoff.kora.cache.redis", "RedisCacheConfig");
-    private static final ClassName REDIS_CACHE_CLIENT = ClassName.get("ru.tinkoff.kora.cache.redis", "RedisCacheClient");
+    private static final ClassName REDIS_CACHE_SYNC_CLIENT = ClassName.get("ru.tinkoff.kora.cache.redis", "RedisCacheClient");
+    private static final ClassName REDIS_CACHE_ASYNC_CLIENT = ClassName.get("ru.tinkoff.kora.cache.redis", "RedisCacheAsyncClient");
     private static final ClassName REDIS_CACHE_MAPPER_KEY = ClassName.get("ru.tinkoff.kora.cache.redis", "RedisCacheKeyMapper");
     private static final ClassName REDIS_CACHE_MAPPER_VALUE = ClassName.get("ru.tinkoff.kora.cache.redis", "RedisCacheValueMapper");
 
@@ -217,8 +223,8 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
 
             var keyName = "_key" + (i + 1);
             keyBuilder.addStatement("var $L = $L.apply($T.requireNonNull(key.$L(), $S))",
-                    keyName, mapperName, Objects.class, recordField.getSimpleName().toString(),
-                    "Cache key '%s' field '%s' must be non null".formatted(keyType.asElement().toString(), recordField.getSimpleName().toString()));
+                keyName, mapperName, Objects.class, recordField.getSimpleName().toString(),
+                "Cache key '%s' field '%s' must be non null".formatted(keyType.asElement().toString(), recordField.getSimpleName().toString()));
 
             if (i == 0) {
                 compositeKeyBuilder.add("var _compositeKey = new byte[");
@@ -276,51 +282,109 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                         .build())
                     .build())
                 .addParameter(CAFFEINE_CACHE_FACTORY, "factory")
-                .addParameter(CAFFEINE_TELEMETRY, "telemetry")
-                .addStatement("return new $T(config, factory, telemetry)", cacheImplName)
+                .addParameter(CACHE_TELEMETRY_FACTORY, "telemetryFactory")
+                .addStatement("return new $T(config, factory, telemetryFactory)", cacheImplName)
                 .returns(TypeName.get(cacheContract.asType()))
                 .build();
         }
+
         if (cacheType.rawType.equals(REDIS_CACHE)) {
-            var keyType = cacheType.typeArguments.get(0);
-            var valueType = cacheType.typeArguments.get(1);
-            var keyMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_KEY, keyType);
-            var valueMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_VALUE, valueType);
-
-            final DeclaredType cacheDeclaredType = cacheContract.getInterfaces().stream()
-                .filter(i -> ClassName.get(i).equals(cacheType))
-                .map(i -> (DeclaredType) i)
-                .findFirst()
-                .orElseThrow();
-
-            var valueParamBuilder = ParameterSpec.builder(valueMapperType, "valueMapper");
-            final Set<String> valueTags = TagUtils.parseTagValue(cacheDeclaredType.getTypeArguments().get(1));
-            if (!valueTags.isEmpty()) {
-                valueParamBuilder.addAnnotation(TagUtils.makeAnnotationSpec(valueTags));
+            if (cacheType.annotations.stream().anyMatch(a -> a.type.equals(TypeName.get(Deprecated.class)))) {
+                return getCacheRedisDeprecatedMethod(cacheContract, cacheType, cacheImplName, methodName);
+            } else {
+                return getCacheRedisMethod(cacheContract, cacheType, cacheImplName, methodName);
             }
-
-            var keyParamBuilder = ParameterSpec.builder(keyMapperType, "keyMapper");
-            final Set<String> keyTags = TagUtils.parseTagValue(cacheDeclaredType.getTypeArguments().get(0));
-            if (!keyTags.isEmpty()) {
-                keyParamBuilder.addAnnotation(TagUtils.makeAnnotationSpec(keyTags));
-            }
-
-            return MethodSpec.methodBuilder(methodName)
-                .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(REDIS_CACHE_CONFIG, "config")
-                    .addAnnotation(AnnotationSpec.builder(CommonClassNames.tag)
-                        .addMember("value", "$T.class", cacheContract)
-                        .build())
-                    .build())
-                .addParameter(REDIS_CACHE_CLIENT, "redisClient")
-                .addParameter(REDIS_TELEMETRY, "telemetry")
-                .addParameter(keyParamBuilder.build())
-                .addParameter(valueParamBuilder.build())
-                .addStatement("return new $T(config, redisClient, telemetry, keyMapper, valueMapper)", cacheImplName)
-                .returns(TypeName.get(cacheContract.asType()))
-                .build();
         }
-        throw new IllegalArgumentException("Unknown cache type: " + cacheType.rawType);
+
+        throw new IllegalArgumentException("Unknown cache implementation type: " + cacheType.rawType);
+    }
+
+    private MethodSpec getCacheRedisMethod(TypeElement cacheContract,
+                                           ParameterizedTypeName cacheType,
+                                           ClassName cacheImplName,
+                                           String methodName) {
+        var keyType = cacheType.typeArguments.get(0);
+        var valueType = cacheType.typeArguments.get(1);
+        var keyMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_KEY, keyType);
+        var valueMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_VALUE, valueType);
+
+        final DeclaredType cacheDeclaredType = cacheContract.getInterfaces().stream()
+            .filter(i -> ClassName.get(i).equals(cacheType))
+            .map(i -> (DeclaredType) i)
+            .findFirst()
+            .orElseThrow();
+
+        var valueParamBuilder = ParameterSpec.builder(valueMapperType, "valueMapper");
+        final Set<String> valueTags = TagUtils.parseTagValue(cacheDeclaredType.getTypeArguments().get(1));
+        if (!valueTags.isEmpty()) {
+            valueParamBuilder.addAnnotation(TagUtils.makeAnnotationSpec(valueTags));
+        }
+
+        var keyParamBuilder = ParameterSpec.builder(keyMapperType, "keyMapper");
+        final Set<String> keyTags = TagUtils.parseTagValue(cacheDeclaredType.getTypeArguments().get(0));
+        if (!keyTags.isEmpty()) {
+            keyParamBuilder.addAnnotation(TagUtils.makeAnnotationSpec(keyTags));
+        }
+
+        return MethodSpec.methodBuilder(methodName)
+            .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
+            .addParameter(ParameterSpec.builder(REDIS_CACHE_CONFIG, "config")
+                .addAnnotation(AnnotationSpec.builder(CommonClassNames.tag)
+                    .addMember("value", "$T.class", cacheContract)
+                    .build())
+                .build())
+            .addParameter(REDIS_CACHE_SYNC_CLIENT, "redisSyncClient")
+            .addParameter(REDIS_CACHE_ASYNC_CLIENT, "redisAsyncClient")
+            .addParameter(CACHE_TELEMETRY_FACTORY, "telemetryFactory")
+            .addParameter(keyParamBuilder.build())
+            .addParameter(valueParamBuilder.build())
+            .addStatement("return new $T(config, redisSyncClient, redisAsyncClient, telemetryFactory, keyMapper, valueMapper)", cacheImplName)
+            .returns(TypeName.get(cacheContract.asType()))
+            .build();
+    }
+
+    @Deprecated
+    private MethodSpec getCacheRedisDeprecatedMethod(TypeElement cacheContract,
+                                                     ParameterizedTypeName cacheType,
+                                                     ClassName cacheImplName,
+                                                     String methodName) {
+        var keyType = cacheType.typeArguments.get(0);
+        var valueType = cacheType.typeArguments.get(1);
+        var keyMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_KEY, keyType);
+        var valueMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_VALUE, valueType);
+
+        final DeclaredType cacheDeclaredType = cacheContract.getInterfaces().stream()
+            .filter(i -> ClassName.get(i).equals(cacheType))
+            .map(i -> (DeclaredType) i)
+            .findFirst()
+            .orElseThrow();
+
+        var valueParamBuilder = ParameterSpec.builder(valueMapperType, "valueMapper");
+        final Set<String> valueTags = TagUtils.parseTagValue(cacheDeclaredType.getTypeArguments().get(1));
+        if (!valueTags.isEmpty()) {
+            valueParamBuilder.addAnnotation(TagUtils.makeAnnotationSpec(valueTags));
+        }
+
+        var keyParamBuilder = ParameterSpec.builder(keyMapperType, "keyMapper");
+        final Set<String> keyTags = TagUtils.parseTagValue(cacheDeclaredType.getTypeArguments().get(0));
+        if (!keyTags.isEmpty()) {
+            keyParamBuilder.addAnnotation(TagUtils.makeAnnotationSpec(keyTags));
+        }
+
+        return MethodSpec.methodBuilder(methodName)
+            .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
+            .addParameter(ParameterSpec.builder(REDIS_CACHE_CONFIG, "config")
+                .addAnnotation(AnnotationSpec.builder(CommonClassNames.tag)
+                    .addMember("value", "$T.class", cacheContract)
+                    .build())
+                .build())
+            .addParameter(REDIS_CACHE_OLD_CLIENT, "redisClient")
+            .addParameter(REDIS_TELEMETRY, "telemetry")
+            .addParameter(keyParamBuilder.build())
+            .addParameter(valueParamBuilder.build())
+            .addStatement("return new $T(config, redisClient, telemetry, keyMapper, valueMapper)", cacheImplName)
+            .returns(TypeName.get(cacheContract.asType()))
+            .build();
     }
 
     private MethodSpec getCacheConstructor(String configPath, ParameterizedTypeName cacheContract) {
@@ -328,24 +392,40 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
             return MethodSpec.constructorBuilder()
                 .addParameter(CAFFEINE_CACHE_CONFIG, "config")
                 .addParameter(CAFFEINE_CACHE_FACTORY, "factory")
-                .addParameter(CAFFEINE_TELEMETRY, "telemetry")
-                .addStatement("super($S, config, factory, telemetry)", configPath)
+                .addParameter(CACHE_TELEMETRY_FACTORY, "telemetryFactory")
+                .addStatement("super($S, config, factory, telemetryFactory)", configPath)
                 .build();
         }
 
         if (cacheContract.rawType.equals(REDIS_CACHE)) {
-            var keyType = cacheContract.typeArguments.get(0);
-            var valueType = cacheContract.typeArguments.get(1);
-            var keyMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_KEY, keyType);
-            var valueMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_VALUE, valueType);
-            return MethodSpec.constructorBuilder()
-                .addParameter(REDIS_CACHE_CONFIG, "config")
-                .addParameter(REDIS_CACHE_CLIENT, "redisClient")
-                .addParameter(REDIS_TELEMETRY, "telemetry")
-                .addParameter(keyMapperType, "keyMapper")
-                .addParameter(valueMapperType, "valueMapper")
-                .addStatement("super($S, config, redisClient, telemetry, keyMapper, valueMapper)", configPath)
-                .build();
+            if (cacheContract.annotations.stream().anyMatch(a -> a.type.equals(TypeName.get(Deprecated.class)))) {
+                var keyType = cacheContract.typeArguments.get(0);
+                var valueType = cacheContract.typeArguments.get(1);
+                var keyMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_KEY, keyType);
+                var valueMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_VALUE, valueType);
+                return MethodSpec.constructorBuilder()
+                    .addParameter(REDIS_CACHE_CONFIG, "config")
+                    .addParameter(REDIS_CACHE_OLD_CLIENT, "redisClient")
+                    .addParameter(REDIS_TELEMETRY, "telemetry")
+                    .addParameter(keyMapperType, "keyMapper")
+                    .addParameter(valueMapperType, "valueMapper")
+                    .addStatement("super($S, config, redisClient, telemetry, keyMapper, valueMapper)", configPath)
+                    .build();
+            } else {
+                var keyType = cacheContract.typeArguments.get(0);
+                var valueType = cacheContract.typeArguments.get(1);
+                var keyMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_KEY, keyType);
+                var valueMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_VALUE, valueType);
+                return MethodSpec.constructorBuilder()
+                    .addParameter(REDIS_CACHE_CONFIG, "config")
+                    .addParameter(REDIS_CACHE_SYNC_CLIENT, "redisSyncClient")
+                    .addParameter(REDIS_CACHE_ASYNC_CLIENT, "redisAsyncClient")
+                    .addParameter(CACHE_TELEMETRY_FACTORY, "telemetryFactory")
+                    .addParameter(keyMapperType, "keyMapper")
+                    .addParameter(valueMapperType, "valueMapper")
+                    .addStatement("super($S, config, redisSyncClient, redisAsyncClient, telemetryFactory, keyMapper, valueMapper)", configPath)
+                    .build();
+            }
         }
 
         throw new IllegalArgumentException("Unknown cache type: " + cacheContract.rawType);

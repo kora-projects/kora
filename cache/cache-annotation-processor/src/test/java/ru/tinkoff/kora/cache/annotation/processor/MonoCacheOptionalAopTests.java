@@ -43,7 +43,7 @@ class MonoCacheOptionalAopTests implements CaffeineCacheModule {
             final Constructor<?> cacheConstructor = cacheClass.getDeclaredConstructors()[0];
             cacheConstructor.setAccessible(true);
             cache = (DummyCache21) cacheConstructor.newInstance(CacheRunner.getCaffeineConfig(),
-                caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+                caffeineCacheFactory(null), defaultCacheTelemetryFactory(null, null, null));
 
             var serviceClass = classLoader.loadClass(CACHED_SERVICE);
             if (serviceClass == null) {
