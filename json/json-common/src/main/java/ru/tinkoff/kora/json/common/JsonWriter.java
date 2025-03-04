@@ -59,7 +59,7 @@ public interface JsonWriter<T> {
         return toStringUnchecked(value, true);
     }
 
-    default String toString(@Nullable T value, boolean usePrettyPrinter) throws IOException {
+    private String toString(@Nullable T value, boolean usePrettyPrinter) throws IOException {
         try (var sw = new SegmentedStringWriter(JsonCommonModule.JSON_FACTORY._getBufferRecycler());
              var gen = JsonCommonModule.JSON_FACTORY.createGenerator(sw)) {
             gen.enable(JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN);
@@ -70,7 +70,7 @@ public interface JsonWriter<T> {
         }
     }
 
-    default String toStringUnchecked(@Nullable T value, boolean usePrettyPrinter) throws UncheckedIOException {
+    private String toStringUnchecked(@Nullable T value, boolean usePrettyPrinter) throws UncheckedIOException {
         try {
             return toString(value, usePrettyPrinter);
         } catch (IOException e) {
