@@ -41,7 +41,7 @@ class SyncCacheAopTests : CaffeineCacheModule {
             cache = cacheClass.constructors[0].newInstance(
                 CacheRunner.getCaffeineConfig(),
                 caffeineCacheFactory(null),
-                caffeineCacheTelemetry(null, null)
+                defaultCacheTelemetryFactory(null, null, null)
             ) as DummyCache21
 
             val serviceClass = classLoader.loadClass(SERVICE_CLASS) ?: throw IllegalArgumentException("Expected class not found: $SERVICE_CLASS")

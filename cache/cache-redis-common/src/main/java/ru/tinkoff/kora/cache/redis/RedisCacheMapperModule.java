@@ -1,8 +1,5 @@
 package ru.tinkoff.kora.cache.redis;
 
-import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.cache.telemetry.CacheMetrics;
-import ru.tinkoff.kora.cache.telemetry.CacheTracer;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.json.common.JsonCommonModule;
 import ru.tinkoff.kora.json.common.JsonReader;
@@ -15,11 +12,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 public interface RedisCacheMapperModule extends JsonCommonModule {
-
-    @DefaultComponent
-    default RedisCacheTelemetry redisCacheTelemetry(@Nullable CacheMetrics metrics, @Nullable CacheTracer tracer) {
-        return new RedisCacheTelemetry(metrics, tracer);
-    }
 
     @Json
     @DefaultComponent

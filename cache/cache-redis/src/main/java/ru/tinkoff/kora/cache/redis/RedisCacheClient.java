@@ -5,6 +5,10 @@ import jakarta.annotation.Nonnull;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 
+/**
+ * Use dependency - ru.tinkoff.kora:cache-redis-lettuce
+ */
+@Deprecated
 public interface RedisCacheClient {
 
     @Nonnull

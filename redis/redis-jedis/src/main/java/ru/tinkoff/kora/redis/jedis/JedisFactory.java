@@ -11,6 +11,8 @@ import java.util.stream.Collectors;
 
 final class JedisFactory {
 
+    private JedisFactory() { }
+
     @Nonnull
     static UnifiedJedis build(JedisConfig config) {
         return (config.uri().size() == 1)

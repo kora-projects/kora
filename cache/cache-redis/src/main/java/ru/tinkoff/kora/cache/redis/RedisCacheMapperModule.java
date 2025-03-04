@@ -14,6 +14,10 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
+/**
+ * Use dependency - ru.tinkoff.kora:cache-redis-lettuce
+ */
+@Deprecated
 public interface RedisCacheMapperModule extends JsonCommonModule {
 
     @DefaultComponent

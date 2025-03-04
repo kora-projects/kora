@@ -8,6 +8,10 @@ import ru.tinkoff.kora.cache.telemetry.CacheMetrics;
 import ru.tinkoff.kora.cache.telemetry.CacheTelemetryOperation;
 import ru.tinkoff.kora.cache.telemetry.CacheTracer;
 
+/**
+ * Use dependency - ru.tinkoff.kora:cache-redis-lettuce
+ */
+@Deprecated
 public final class RedisCacheTelemetry {
 
     private static final String ORIGIN = "redis";

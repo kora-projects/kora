@@ -7,7 +7,9 @@ import java.util.function.Function;
 
 /**
  * Contract for converting method arguments {@link CacheKeyMapper} into the final key that will be used in Cache implementation.
+ * Use dependency - ru.tinkoff.kora:cache-redis-lettuce
  */
+@Deprecated
 public interface RedisCacheKeyMapper<K> extends Function<K, byte[]> {
 
     /**

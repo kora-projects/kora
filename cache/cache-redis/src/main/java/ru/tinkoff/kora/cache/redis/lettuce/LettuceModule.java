@@ -11,6 +11,10 @@ import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 
 import java.time.Duration;
 
+/**
+ * Use dependency - ru.tinkoff.kora:cache-redis-lettuce
+ */
+@Deprecated
 public interface LettuceModule {
 
     default LettuceClientConfig lettuceConfig(Config config, ConfigValueExtractor<LettuceClientConfig> extractor) {

@@ -1,8 +1,9 @@
 dependencies {
-    annotationProcessor project(':config:config-annotation-processor')
+    annotationProcessor project(":config:config-annotation-processor")
+
+    api libs.redis.jedis
 
     implementation project(":config:config-common")
-    implementation libs.redis.jedis
 
     testImplementation project(":internal:test-logging")
     testImplementation project(":internal:test-redis")

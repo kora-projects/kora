@@ -13,6 +13,8 @@ import java.util.List;
 
 final class LettuceFactory {
 
+    private LettuceFactory() { }
+
     @Nonnull
     static AbstractRedisClient build(LettuceConfig config) {
         final Duration commandTimeout = config.commandTimeout();
@@ -105,7 +107,7 @@ final class LettuceFactory {
         return client;
     }
 
-    private static List<RedisURI> buildRedisURI(LettuceConfig config) {
+    static List<RedisURI> buildRedisURI(LettuceConfig config) {
         final Integer database = config.database();
         final String user = config.user();
         final String password = config.password();

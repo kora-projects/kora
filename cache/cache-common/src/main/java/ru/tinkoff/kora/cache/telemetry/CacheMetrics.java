@@ -7,5 +7,5 @@ public interface CacheMetrics {
 
     void recordSuccess(@Nonnull CacheTelemetryOperation operation, long durationInNanos, @Nullable Object valueFromCache);
 
-    void recordFailure(@Nonnull CacheTelemetryOperation operation, long durationInNanos, @Nullable Throwable throwable);
+    void recordFailure(@Nonnull CacheTelemetryOperation operation, long durationInNanos, @Nullable Throwable exception);
 }
