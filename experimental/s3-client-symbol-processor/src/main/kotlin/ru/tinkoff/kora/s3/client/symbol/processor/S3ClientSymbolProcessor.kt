@@ -9,85 +9,29 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
-import ru.tinkoff.kora.common.Component
-import ru.tinkoff.kora.common.Module
 import ru.tinkoff.kora.ksp.common.*
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
-import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.overridingKeepAop
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isCollection
+import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isMap
-import ru.tinkoff.kora.ksp.common.CommonClassNames.isVoid
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
+import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
-import ru.tinkoff.kora.ksp.common.TagUtils.addTag
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import java.io.IOException
-import java.nio.ByteBuffer
-import java.util.concurrent.ExecutorService
+import java.io.InputStream
 
 class S3ClientSymbolProcessor(
     private val environment: SymbolProcessorEnvironment
 ) : BaseSymbolProcessor(environment) {
 
-    companion object {
-        private val ANNOTATION_CLIENT: ClassName = ClassName("ru.tinkoff.kora.s3.client.annotation", "S3", "Client")
-        private val MEMBER_AWAIT_FUTURE: MemberName = MemberName("kotlinx.coroutines.future", "await")
-        private val MEMBER_RUN_BLOCKING: MemberName = MemberName("kotlinx.coroutines", "runBlocking")
-
-        private val ANNOTATION_OP_GET: ClassName = ClassName("ru.tinkoff.kora.s3.client.annotation", "S3", "Get")
-        private val ANNOTATION_OP_LIST: ClassName = ClassName("ru.tinkoff.kora.s3.client.annotation", "S3", "List")
-        private val ANNOTATION_OP_PUT: ClassName = ClassName("ru.tinkoff.kora.s3.client.annotation", "S3", "Put")
-        private val ANNOTATION_OP_DELETE: ClassName = ClassName("ru.tinkoff.kora.s3.client.annotation", "S3", "Delete")
-
-        private val CLASS_CONFIG = ClassName("ru.tinkoff.kora.s3.client", "S3Config")
-        private val CLASS_AWS_CONFIG = ClassName("ru.tinkoff.kora.s3.client.aws", "AwsS3ClientConfig")
-        private val CLASS_CLIENT_CONFIG: ClassName = ClassName("ru.tinkoff.kora.s3.client", "S3ClientConfig")
-        private val CLASS_CLIENT_SIMPLE_SYNC: ClassName = ClassName("ru.tinkoff.kora.s3.client", "S3KoraClient")
-        private val CLASS_CLIENT_SIMPLE_ASYNC: ClassName = ClassName("ru.tinkoff.kora.s3.client", "S3KoraAsyncClient")
-        private val CLASS_CLIENT_AWS_SYNC: ClassName = ClassName("software.amazon.awssdk.services.s3", "S3Client")
-        private val CLASS_CLIENT_AWS_ASYNC: ClassName = ClassName("software.amazon.awssdk.services.s3", "S3AsyncClient")
-        private val CLASS_CLIENT_AWS_ASYNC_MULTIPART = ClassName("software.amazon.awssdk.services.s3.internal.multipart", "MultipartS3AsyncClient")
-        private val CLASS_INTERCEPTOR_AWS_CONTEXT_KEY = ClassName("ru.tinkoff.kora.s3.client.aws", "AwsS3ClientTelemetryInterceptor")
-        private val CLASS_CLIENT_AWS_TAG = ClassName("software.amazon.awssdk.awscore", "AwsClient")
-        private val CLASS_CLIENT_AWS_MULTIPART_TAG = ClassName("software.amazon.awssdk.services.s3.model", "MultipartUpload")
-
-        private val CLASS_S3_UPLOAD: ClassName = ClassName("ru.tinkoff.kora.s3.client.model", "S3ObjectUpload")
-        private val CLASS_S3_BODY: ClassName = ClassName("ru.tinkoff.kora.s3.client.model", "S3Body")
-        private val CLASS_S3_BODY_BYTES: ClassName = ClassName("ru.tinkoff.kora.s3.client.model", "ByteS3Body")
-        private val CLASS_S3_BODY_PUBLISHER: ClassName = ClassName("ru.tinkoff.kora.s3.client.model", "PublisherS3Body")
-        private val CLASS_S3_OBJECT: ClassName = ClassName("ru.tinkoff.kora.s3.client.model", "S3Object")
-        private val CLASS_S3_OBJECT_META: ClassName = ClassName("ru.tinkoff.kora.s3.client.model", "S3ObjectMeta")
-        private val CLASS_S3_OBJECT_MANY: TypeName = List::class.asTypeName().parameterizedBy(CLASS_S3_OBJECT)
-        private val CLASS_S3_OBJECT_META_MANY: TypeName = List::class.asTypeName().parameterizedBy(CLASS_S3_OBJECT_META)
-        private val CLASS_S3_OBJECT_LIST: ClassName = ClassName("ru.tinkoff.kora.s3.client.model", "S3ObjectList")
-        private val CLASS_S3_OBJECT_META_LIST: ClassName = ClassName("ru.tinkoff.kora.s3.client.model", "S3ObjectMetaList")
-
-        private val CLASS_JDK_FLOW_ADAPTER = ClassName("reactor.adapter", "JdkFlowAdapter")
-
-        private val CLASS_AWS_EXCEPTION_NO_KEY = ClassName("software.amazon.awssdk.services.s3.model", "NoSuchKeyException")
-        private val CLASS_AWS_EXCEPTION_NO_BUCKET = ClassName("software.amazon.awssdk.services.s3.model", "NoSuchBucketException")
-        private val CLASS_AWS_IS_SYNC_BODY: ClassName = ClassName("software.amazon.awssdk.core.sync", "RequestBody")
-        private val CLASS_AWS_IS_ASYNC_BODY: ClassName = ClassName("software.amazon.awssdk.core.async", "AsyncRequestBody")
-        private val CLASS_AWS_IS_ASYNC_TRANSFORMER: ClassName = ClassName("software.amazon.awssdk.core.async", "AsyncResponseTransformer")
-        private val CLASS_AWS_GET_REQUEST: ClassName = ClassName("software.amazon.awssdk.services.s3.model", "GetObjectRequest")
-        private val CLASS_AWS_GET_RESPONSE: ClassName = ClassName("software.amazon.awssdk.services.s3.model", "GetObjectResponse")
-        private val CLASS_AWS_GET_IS_RESPONSE: TypeName = ClassName("software.amazon.awssdk.core", "ResponseInputStream").parameterizedBy(CLASS_AWS_GET_RESPONSE)
-        private val CLASS_AWS_DELETE_REQUEST: ClassName = ClassName("software.amazon.awssdk.services.s3.model", "DeleteObjectRequest")
-        private val CLASS_AWS_DELETE_RESPONSE: ClassName = ClassName("software.amazon.awssdk.services.s3.model", "DeleteObjectResponse")
-        private val CLASS_AWS_DELETES_REQUEST: ClassName = ClassName("software.amazon.awssdk.services.s3.model", "DeleteObjectsRequest")
-        private val CLASS_AWS_DELETES_RESPONSE: ClassName = ClassName("software.amazon.awssdk.services.s3.model", "DeleteObjectsResponse")
-        private val CLASS_AWS_LIST_REQUEST: ClassName = ClassName("software.amazon.awssdk.services.s3.model", "ListObjectsV2Request")
-        private val CLASS_AWS_LIST_RESPONSE: ClassName = ClassName("software.amazon.awssdk.services.s3.model", "ListObjectsV2Response")
-        private val CLASS_AWS_PUT_REQUEST: ClassName = ClassName("software.amazon.awssdk.services.s3.model", "PutObjectRequest")
-        private val CLASS_AWS_PUT_RESPONSE: ClassName = ClassName("software.amazon.awssdk.services.s3.model", "PutObjectResponse")
-    }
-
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
-        val symbols = resolver.getSymbolsWithAnnotation(ANNOTATION_CLIENT.canonicalName).toList()
+        val symbols = resolver.getSymbolsWithAnnotation(S3ClassNames.Annotation.client.canonicalName).toList()
         val symbolsToProcess = symbols.filter { it.validate() }.filterIsInstance<KSClassDeclaration>()
         for (s3client in symbolsToProcess) {
             if (s3client.classKind != ClassKind.INTERFACE) {
@@ -99,17 +43,17 @@ class S3ClientSymbolProcessor(
 
             val packageName = s3client.packageName.asString()
             try {
-                val typeSpec = generateClient(s3client, resolver)
+                val generatedConfig = generateClientConfig(s3client)
+                generatedConfig.typeSpec?.let {
+                    FileSpec.get(packageName, it).writeTo(environment.codeGenerator, false)
+                }
+
+                val typeSpec = generateClient(generatedConfig, s3client)
                 val fileImplSpec = FileSpec.builder(packageName, typeSpec.name.toString())
                     .addType(typeSpec)
                     .build()
                 fileImplSpec.writeTo(codeGenerator = environment.codeGenerator, aggregating = false)
 
-                val configSpec = generateClientConfig(s3client)
-                val configImplSpec = FileSpec.builder(packageName, configSpec.name.toString())
-                    .addType(configSpec)
-                    .build()
-                configImplSpec.writeTo(codeGenerator = environment.codeGenerator, aggregating = false)
             } catch (e: IOException) {
                 throw IllegalStateException(e)
             }
@@ -118,758 +62,402 @@ class S3ClientSymbolProcessor(
         return symbols.filterNot { it.validate() }.toList()
     }
 
-    private fun generateClient(s3client: KSClassDeclaration, resolver: Resolver): TypeSpec {
-        val implSpecBuilder: TypeSpec.Builder = TypeSpec.classBuilder(s3client.generatedClassName("Impl"))
+    private fun generateClient(generatedConfig: GenerateClientConfig, s3client: KSClassDeclaration): TypeSpec {
+        val implClassName = ClassName(s3client.packageName.asString(), s3client.generatedClassName("Impl"))
+        val implSpecBuilder: TypeSpec.Builder = TypeSpec.classBuilder(implClassName)
             .generated(S3ClientSymbolProcessor::class)
-            .addAnnotation(Component::class)
             .addSuperinterface(s3client.toTypeName())
+            .addOriginatingKSFile(s3client)
 
-        val constructed = HashSet<Signature>()
+        val clientAnnotation = s3client.findAnnotation(S3ClassNames.Annotation.client)
         val constructorBuilder = FunSpec.constructorBuilder()
-        val constructorCode = CodeBlock.builder()
-        implSpecBuilder.addProperty("_clientConfig", CLASS_CLIENT_CONFIG, KModifier.PRIVATE, KModifier.FINAL)
-        constructorCode.addStatement("this._clientConfig = clientConfig")
-        constructorBuilder.addParameter(
-            ParameterSpec.builder("clientConfig", CLASS_CLIENT_CONFIG)
-                .addAnnotation(s3client.toTypeName().makeTagAnnotationSpec())
-                .build()
-        )
+        val clientTag = clientAnnotation?.findValueNoDefault<List<KSType>>("clientFactoryTag")
+        if (clientTag != null) {
+            constructorBuilder.addParameter(ParameterSpec.builder("clientFactory", S3ClassNames.clientFactory)
+                .addAnnotation(clientTag.makeTagAnnotationSpec())
+                .build())
+        } else {
+            constructorBuilder.addParameter("clientFactory", S3ClassNames.clientFactory)
+        }
+        generatedConfig.typeSpec?.let { configSpec ->
+            val configTypeName = ClassName(implClassName.packageName, configSpec.name!!)
+            constructorBuilder.addParameter("config", configTypeName)
+            implSpecBuilder.addProperty(PropertySpec.builder("config", configTypeName)
+                .initializer("config")
+                .build())
+        }
+        implSpecBuilder.addProperty(PropertySpec.builder("client", S3ClassNames.client).initializer("clientFactory.create(%T::class.java)", implClassName).build())
+        implSpecBuilder.primaryConstructor(constructorBuilder.build())
 
         for (func in s3client.getDeclaredFunctions()) {
-            val operationType = getOperationType(func)
-            if (operationType == null) {
-                throw ProcessingErrorException("@S3.Client method without operation annotation can't be non default", func)
-            } else {
-                val operation = getOperation(func, operationType)
-                val methodSpec = func.overridingKeepAop(resolver)
-                    .addCode(operation.code)
-                    .build()
-
-                implSpecBuilder.addFunction(methodSpec)
-
-                val signatures = mutableListOf<Signature>()
-                if (operation.impl == S3Operation.ImplType.SIMPLE) {
-                    if (operation.mode == S3Operation.Mode.SYNC) {
-                        signatures.add(Signature(CLASS_CLIENT_SIMPLE_SYNC, "simpleSyncClient"))
-                    } else {
-                        signatures.add(Signature(CLASS_CLIENT_SIMPLE_ASYNC, "simpleAsyncClient"))
-                    }
-                } else if (operation.impl == S3Operation.ImplType.AWS) {
-                    if (operation.mode == S3Operation.Mode.SYNC) {
-                        signatures.add(Signature(CLASS_CLIENT_AWS_SYNC, "awsSyncClient"))
-                    } else {
-                        signatures.add(Signature(CLASS_CLIENT_AWS_ASYNC, "awsAsyncClient"))
-                    }
-                    if (operation.type == S3Operation.OperationType.PUT) {
-                        signatures.add(Signature(CLASS_CLIENT_AWS_ASYNC_MULTIPART, "awsAsyncMultipartClient", listOf(CLASS_CLIENT_AWS_MULTIPART_TAG)))
-                        signatures.add(Signature(CLASS_CLIENT_AWS_ASYNC, "awsAsyncClient"))
-                        signatures.add(Signature(CLASS_AWS_CONFIG, "awsClientConfig"))
-                        signatures.add(Signature(ExecutorService::class.asTypeName(), "awsAsyncExecutor", listOf(CLASS_CLIENT_AWS_TAG)))
-                    }
-                }
-
-                for (signature in signatures) {
-                    if (!constructed.contains(signature)) {
-                        if (signature.tags.isEmpty()) {
-                            constructorBuilder.addParameter(signature.name, signature.type)
-                        } else {
-                            constructorBuilder.addParameter(
-                                ParameterSpec.builder(signature.name, signature.type)
-                                    .addTag(signature.tags)
-                                    .build()
-                            )
-                        }
-                        implSpecBuilder.addProperty("_" + signature.name, signature.type, KModifier.PRIVATE, KModifier.FINAL)
-                        constructorCode.addStatement("this._" + signature.name + " = " + signature.name)
-                        constructed.add(signature)
-                    }
-                }
+            if (func.isAbstract) {
+                val operation = generateMethod(generatedConfig, func)
+                implSpecBuilder.addFunction(operation)
             }
         }
-
-        constructorBuilder.addCode(constructorCode.build())
-        implSpecBuilder.addFunction(constructorBuilder.build())
 
         return implSpecBuilder.build()
     }
 
-    private fun generateClientConfig(s3client: KSClassDeclaration): TypeSpec {
-        val clientAnnotation = s3client.findAnnotation(ANNOTATION_CLIENT)
-        val clientConfigPath = clientAnnotation!!.findValueNoDefault<String>("value")!!
+    private data class GenerateClientConfig(val typeSpec: TypeSpec?, val paths: List<String>)
 
-        val extractorClass = CommonClassNames.configValueExtractor.parameterizedBy(CLASS_CLIENT_CONFIG)
-        return TypeSpec.interfaceBuilder(s3client.generatedClass("ClientConfigModule"))
+    private fun generateClientConfig(s3client: KSClassDeclaration): GenerateClientConfig {
+        val bucketPaths = LinkedHashSet<String>()
+        val onClass = s3client.findAnnotation(S3ClassNames.Annotation.bucket)
+        if (onClass != null) {
+            val value = onClass.findValueNoDefault<String>("value")
+            if (value != null) {
+                bucketPaths.add(value)
+            }
+        }
+        for (func in s3client.getDeclaredFunctions()) {
+            val onMethod = func.findAnnotation(S3ClassNames.Annotation.bucket)
+            if (onMethod != null) {
+                val value = onMethod.findValueNoDefault<String>("value")
+                if (value != null) {
+                    bucketPaths.add(value)
+                }
+            }
+        }
+        if (bucketPaths.isEmpty()) {
+            return GenerateClientConfig(null, emptyList())
+        }
+        val paths = ArrayList(bucketPaths)
+        val configType = ClassName(s3client.packageName.asString(), s3client.generatedClass("ClientConfig"))
+        val b = TypeSpec.classBuilder(configType)
             .generated(S3ClientSymbolProcessor::class)
-            .addAnnotation(AnnotationSpec.builder(Module::class).build())
             .addOriginatingKSFile(s3client)
-            .addFunction(
-                FunSpec.builder("clientConfig")
-                    .addModifiers(KModifier.PUBLIC)
-                    .addAnnotation(s3client.toTypeName().makeTagAnnotationSpec())
-                    .addParameter(ParameterSpec.builder("config", CommonClassNames.config).build())
-                    .addParameter(ParameterSpec.builder("extractor", extractorClass).build())
-                    .addStatement("val value = config.get(%S)", clientConfigPath)
-                    .addStatement(
-                        "return extractor.extract(value) ?: throw %T.missingValueAfterParse(value)",
-                        CommonClassNames.configValueExtractionException
-                    )
-                    .returns(CLASS_CLIENT_CONFIG)
-                    .build()
-            )
+        val constructor = FunSpec.constructorBuilder()
+            .addParameter("config", CommonClassNames.config)
             .build()
+        for ((i, path) in paths.withIndex()) {
+            b.addProperty(PropertySpec.builder("bucket_$i", String::class).initializer("config.get(%S).asString()", path).build())
+        }
+        b.primaryConstructor(constructor)
+        return GenerateClientConfig(b.build(), paths)
     }
 
-    data class Signature(val type: TypeName, val name: String, val tags: List<TypeName>) {
-
-        constructor(type: TypeName, name: String) : this(type, name, emptyList<TypeName>())
-    }
-
-    data class OperationMeta(val type: S3Operation.OperationType, val annotation: KSAnnotation)
-
-    private fun getOperationType(method: KSFunctionDeclaration): OperationMeta? {
-        var value: OperationMeta? = null
-
-        for (ksAnnotation in method.annotations) {
-            var type: S3Operation.OperationType? = null
-            if (ksAnnotation.annotationType.toTypeName() == ANNOTATION_OP_GET) {
-                type = S3Operation.OperationType.GET
-            } else if (ksAnnotation.annotationType.toTypeName() == ANNOTATION_OP_LIST) {
-                type = S3Operation.OperationType.LIST
-            } else if (ksAnnotation.annotationType.toTypeName() == ANNOTATION_OP_PUT) {
-                type = S3Operation.OperationType.PUT
-            } else if (ksAnnotation.annotationType.toTypeName() == ANNOTATION_OP_DELETE) {
-                type = S3Operation.OperationType.DELETE
-            }
-
-            if (value == null && type != null) {
-                value = OperationMeta(type, ksAnnotation)
-            } else {
-                throw ProcessingErrorException("@S3.Client method must be annotated with single operation annotation", method)
+    private fun generateMethod(generatedConfig: GenerateClientConfig, func: KSFunctionDeclaration): FunSpec {
+        if (func.isSuspend()) {
+            throw ProcessingErrorException("@S3.Client method can't be suspend", func)
+        }
+        for (parameter in func.parameters) {
+            if (parameter.type.resolve().isMarkedNullable) {
+                throw ProcessingErrorException("S3 operation can't have nullable method argument", parameter)
             }
         }
-
-        return value
-    }
-
-    private fun getOperation(method: KSFunctionDeclaration, operationMeta: OperationMeta): S3Operation {
-        for (parameter in method.parameters) {
-            if (parameter.type.toTypeName().isNullable) {
-                throw ProcessingErrorException("S3.${operationMeta.type} operation can't have nullable method argument", method)
-            }
-        }
-
-        val mode = if (method.isSuspend()) S3Operation.Mode.ASYNC else S3Operation.Mode.SYNC
-
-        return if (S3Operation.OperationType.GET == operationMeta.type) {
-            operationGET(method, operationMeta, mode)
-        } else if (S3Operation.OperationType.LIST == operationMeta.type) {
-            operationLIST(method, operationMeta, mode)
-        } else if (S3Operation.OperationType.PUT == operationMeta.type) {
-            operationPUT(method, operationMeta, mode)
-        } else if (S3Operation.OperationType.DELETE == operationMeta.type) {
-            operationDELETE(method, operationMeta, mode)
-        } else {
-            throw UnsupportedOperationException("Unsupported S3 operation type")
-        }
-    }
-
-    private fun operationGET(method: KSFunctionDeclaration, operationMeta: OperationMeta, mode: S3Operation.Mode): S3Operation {
-        val keyMapping: String? = operationMeta.annotation.findValueNoDefault("value")
-        val key: Key
-        val firstParameter = method.parameters.firstOrNull()
-        if (!keyMapping.isNullOrBlank()) {
-            key = parseKey(method, keyMapping)
-            if (key.params.isEmpty() && method.parameters.isNotEmpty()) {
-                throw ProcessingErrorException("@S3.Get operation key template must use method arguments or they should be removed", method)
-            }
-        } else if (method.parameters.size > 1) {
-            throw ProcessingErrorException("@S3.Get operation can't have multiple method parameters for keys without key template", method)
-        } else if (method.parameters.isEmpty()) {
-            throw ProcessingErrorException("@S3.Get operation must have key parameter", method)
-        } else {
-            key = Key(CodeBlock.of("val _key = %L.toString()\n", firstParameter!!.name!!.asString()), listOf(firstParameter))
-        }
-
-        val returnType = method.returnType!!.toTypeName()
-
-        if (CLASS_S3_OBJECT == returnType || CLASS_S3_OBJECT_META == returnType) {
-            if (firstParameter != null && firstParameter.type.resolve().isCollection()) {
-                throw ProcessingErrorException("@S3.Get operation expected single result, but parameter is collection of keys", method)
-            }
-
-            val bodyBuilder: CodeBlock.Builder = CodeBlock.builder()
-            if (mode == S3Operation.Mode.SYNC) {
-                bodyBuilder.add("return _simpleSyncClient")
-            } else {
-                bodyBuilder.add("return _simpleAsyncClient")
-            }
-
-            if (CLASS_S3_OBJECT == returnType) {
-                bodyBuilder.add(".get(_clientConfig.bucket(), _key)")
-            } else {
-                bodyBuilder.add(".getMeta(_clientConfig.bucket(), _key)")
-            }
-
-            if (mode == S3Operation.Mode.ASYNC) {
-                bodyBuilder.add(".%M()", MEMBER_AWAIT_FUTURE)
-            }
-
-            bodyBuilder.add("\n")
-
-            val code: CodeBlock = CodeBlock.builder()
-                .add(key.code)
-                .add(bodyBuilder.build())
-                .build()
-
-            return S3Operation(method, operationMeta.annotation, S3Operation.OperationType.GET, S3Operation.ImplType.SIMPLE, mode, code)
-        } else if (CLASS_S3_OBJECT_MANY == returnType || CLASS_S3_OBJECT_META_MANY == returnType) {
-            if (firstParameter != null && !firstParameter.type.resolve().isCollection()) {
-                throw ProcessingErrorException("@S3.Get operation expected many results, but parameter isn't collection of keys", method)
-            } else if (!keyMapping.isNullOrBlank()) {
-                throw ProcessingErrorException("@S3.Get operation expected many results, key template can't be specified for collection of keys", method)
-            }
-
-            val clientField = if (mode == S3Operation.Mode.SYNC) "_simpleSyncClient" else "_simpleAsyncClient"
-
-            val bodyBuilder: CodeBlock.Builder = CodeBlock.builder()
-            if (CLASS_S3_OBJECT_MANY == returnType) {
-                bodyBuilder.add(
-                    "return %L.get(_clientConfig.bucket(), %L)",
-                    clientField, firstParameter!!.name!!.asString()
-                )
-            } else {
-                bodyBuilder.add(
-                    "return %L.getMeta(_clientConfig.bucket(), %L)",
-                    clientField, firstParameter!!.name!!.asString()
-                )
-            }
-
-            if (mode == S3Operation.Mode.ASYNC) {
-                bodyBuilder.add(".%M()", MEMBER_AWAIT_FUTURE)
-            }
-
-            bodyBuilder.add("\n")
-
-            return S3Operation(method, operationMeta.annotation, S3Operation.OperationType.GET, S3Operation.ImplType.SIMPLE, mode, bodyBuilder.build())
-        } else if (CLASS_AWS_GET_RESPONSE == returnType || CLASS_AWS_GET_IS_RESPONSE == returnType) {
-            if (firstParameter != null && firstParameter.type.resolve().isCollection()) {
-                throw ProcessingErrorException("@S3.Get operation expected single result, but parameter is collection of keys", method)
-            }
-
-            val clientField = if (mode == S3Operation.Mode.SYNC) "_awsSyncClient" else "_awsAsyncClient"
-
-            val codeBuilder: CodeBlock.Builder = CodeBlock.builder()
-                .add(key.code)
-                .add("\n")
-                .addStatement(
-                    """
-                    var _request = %T.builder()
-                        .bucket(_clientConfig.bucket())
-                        .key(_key)
-                        .build()
-                        """.trimIndent(), CLASS_AWS_GET_REQUEST
-                )
-                .add("\n")
-
-            if (mode == S3Operation.Mode.SYNC) {
-                if (CLASS_AWS_GET_RESPONSE == returnType) {
-                    codeBuilder.addStatement("return %L.getObject(_request).response()", clientField).build()
-                } else {
-                    codeBuilder.addStatement("return %L.getObject(_request)", clientField).build()
-                }
-            } else {
-                if (CLASS_AWS_GET_RESPONSE == returnType) {
-                    codeBuilder
-                        .add(
-                            "return %L.getObject(_request, %T.toBlockingInputStream()).thenApply { it.response() }",
-                            clientField, CLASS_AWS_IS_ASYNC_TRANSFORMER
-                        )
-                        .build()
-                } else {
-                    codeBuilder
-                        .add(
-                            "return %L.getObject(_request, %T.toBlockingInputStream())",
-                            clientField, CLASS_AWS_IS_ASYNC_TRANSFORMER
-                        )
-                        .build()
-                }
-
-                codeBuilder.add(".%M()\n", MEMBER_AWAIT_FUTURE)
-            }
-
-            return S3Operation(method, operationMeta.annotation, S3Operation.OperationType.GET, S3Operation.ImplType.AWS, mode, codeBuilder.build())
-        } else {
-            if (firstParameter != null && firstParameter.type.resolve().isCollection()) {
-                throw ProcessingErrorException(
-                    "@S3.Get operation unsupported method return signature, expected any of List<${CLASS_S3_OBJECT.simpleName}>/List<${CLASS_S3_OBJECT_META.simpleName}>",
-                    method
-                )
-            } else {
-                throw ProcessingErrorException(
-                    "@S3.Get operation unsupported method return signature, expected any of ${CLASS_S3_OBJECT.simpleName}/${CLASS_S3_OBJECT_META.simpleName}/${CLASS_AWS_GET_RESPONSE.simpleName}/ResponseInputStream<${CLASS_AWS_GET_RESPONSE.simpleName}>",
-                    method
-                )
-            }
-        }
-    }
-
-    private fun operationLIST(method: KSFunctionDeclaration, operationMeta: OperationMeta, mode: S3Operation.Mode): S3Operation {
-        val keyMapping: String? = operationMeta.annotation.findValueNoDefault("value")
-        val key: Key?
-        val firstParameter = method.parameters.stream().findFirst().orElse(null)
-        if (!keyMapping.isNullOrBlank()) {
-            key = parseKey(method, keyMapping)
-            if (key.params.isEmpty() && method.parameters.isNotEmpty()) {
-                throw ProcessingErrorException("@S3.List operation prefix template must use method arguments or they should be removed", method)
-            }
-        } else if (method.parameters.size > 1) {
-            throw ProcessingErrorException("@S3.List operation can't have multiple method parameters for keys without key template", method)
-        } else if (method.parameters.isEmpty()) {
-            key = null
-        } else if (firstParameter.type.resolve().isCollection()) {
-            throw ProcessingErrorException("@S3.List operation expected single result, but parameter is collection of keys", method)
-        } else {
-            key = Key(CodeBlock.of("val _key = %L.toString()", firstParameter.name!!.asString()), listOf(firstParameter))
-        }
-
-        val limit: Int = operationMeta.annotation.findValue("limit") ?: 1000
-        val delimiter: String? = operationMeta.annotation.findValueNoDefault("delimiter")
-        val returnType: TypeName = method.returnType!!.toTypeName()
-
-        if (CLASS_S3_OBJECT_LIST == returnType || CLASS_S3_OBJECT_META_LIST == returnType) {
-            val bodyBuilder: CodeBlock.Builder = CodeBlock.builder()
-            if (key != null) {
-                bodyBuilder.add(key.code).add("\n")
-            }
-
-            if (mode == S3Operation.Mode.SYNC) {
-                bodyBuilder.add("return _simpleSyncClient")
-            } else {
-                bodyBuilder.add("return _simpleAsyncClient")
-            }
-
-            val keyField = if ((key == null)) "null as String?" else "_key"
-            if (CLASS_S3_OBJECT_LIST == returnType) {
-                bodyBuilder.add(".list(_clientConfig.bucket(), %L, %S, %L)", keyField, delimiter, limit)
-            } else {
-                bodyBuilder.add(".listMeta(_clientConfig.bucket(), %L, %S, %L)", keyField, delimiter, limit)
-            }
-
-            if (mode == S3Operation.Mode.ASYNC) {
-                bodyBuilder.add(".%M()", MEMBER_AWAIT_FUTURE)
-            }
-
-            bodyBuilder.add("\n")
-
-            return S3Operation(method, operationMeta.annotation, S3Operation.OperationType.LIST, S3Operation.ImplType.SIMPLE, mode, bodyBuilder.build())
-        } else if (CLASS_AWS_LIST_RESPONSE == returnType) {
-            val clientField = if (mode == S3Operation.Mode.SYNC) "_awsSyncClient" else "_awsAsyncClient"
-            val bodyBuilder: CodeBlock.Builder = CodeBlock.builder()
-            if (key != null) {
-                bodyBuilder.add(key.code).add("\n\n")
-            }
-
-            val keyField = if ((key == null)) "null" else "_key"
-            bodyBuilder
-                .add(
-                    """
-                    var _request = %L.builder()
-                        .bucket(_clientConfig.bucket())
-                        .prefix(%L)
-                        .delimiter(%S)
-                        .maxKeys(%L)
-                        .build()
-                        """.trimIndent(), CLASS_AWS_LIST_REQUEST, keyField, delimiter, limit
-                )
-                .add("\n")
-                .add("return %L.listObjectsV2(_request)", clientField)
-
-            if (mode == S3Operation.Mode.ASYNC) {
-                bodyBuilder.add(".%M()", MEMBER_AWAIT_FUTURE)
-            }
-            bodyBuilder.add("\n")
-
-            return S3Operation(method, operationMeta.annotation, S3Operation.OperationType.LIST, S3Operation.ImplType.AWS, mode, bodyBuilder.build())
-        } else {
-            throw ProcessingErrorException(
-                "@S3.List operation unsupported method return signature, expected any of ${CLASS_S3_OBJECT_LIST.simpleName}/${CLASS_S3_OBJECT_META_LIST.simpleName}/${CLASS_AWS_LIST_RESPONSE.simpleName}",
-                method
-            )
-        }
-    }
-
-    private fun operationPUT(method: KSFunctionDeclaration, operationMeta: OperationMeta, mode: S3Operation.Mode): S3Operation {
-        val keyMapping: String? = operationMeta.annotation.findValueNoDefault("value")
-        val key: Key
-
-        val keyParameters = method.parameters.stream()
-            .filter { p ->
-                val bodyType: TypeName = p.type.toTypeName()
-                (CLASS_S3_BODY != bodyType
-                    && ByteBuffer::class.asTypeName() != bodyType
-                    && ByteArray::class.asTypeName() != bodyType)
-            }
+        val s3Operations = func.annotations
+            .filter { S3ClassNames.Annotation.s3OperationClassNames.contains(it.annotationType.toTypeName()) }
             .toList()
-
-        val firstParameter = keyParameters.firstOrNull()
-        if (!keyMapping.isNullOrBlank()) {
-            key = parseKey(method, keyMapping)
-            if (key.params.isEmpty() && keyParameters.isNotEmpty()) {
-                throw ProcessingErrorException("@S3.Put operation key template must use method arguments or they should be removed", method)
-            }
-        } else if (firstParameter == null) {
-            throw ProcessingErrorException("@S3.Put operation must have parameters", method)
-        } else if (firstParameter.type.resolve().isCollection()) {
-            throw ProcessingErrorException("@S3.Put operation expected single result, but parameter is collection of keys", method)
-        } else {
-            key = Key(CodeBlock.of("val _key = %L.toString()", firstParameter.name!!.asString()), java.util.List.of(firstParameter))
+        if (s3Operations.isEmpty()) {
+            throw ProcessingErrorException("@S3.Client method must be annotated with single operation annotation", func)
         }
-
-        val returnTypeMirror = method.returnType
-        val returnType: TypeName = returnTypeMirror!!.toTypeName()
-
-        val bodyParam = method.parameters.stream()
-            .filter { p -> key.params.none { kp -> p === kp } }
-            .findFirst()
-            .orElseThrow { ProcessingErrorException("@S3.Put operation body parameter not found", method) }
-
-        val bodyType: TypeName = bodyParam.type.toTypeName()
-
-        val isResultUpload = CLASS_S3_UPLOAD == returnType
-        val bodyParamName = bodyParam.name!!.asString()
-        if (returnTypeMirror.isVoid() || isResultUpload) {
-            val bodyCode: CodeBlock
-            if (CLASS_S3_BODY == bodyType) {
-                bodyCode = CodeBlock.of("val _body = %L", bodyParamName)
-            } else {
-                val methodCall = when (bodyType) {
-                    ByteBuffer::class.asTypeName() -> "ofBuffer"
-                    ByteArray::class.asTypeName() -> "ofBytes"
-                    else -> throw ProcessingErrorException("@S3.Put operation body must be S3Body/ByteArray/ByteBuffer", method)
-                }
-
-                val type: String? = operationMeta.annotation.findValueNoDefault("type")
-                val encoding: String? = operationMeta.annotation.findValueNoDefault("encoding")
-                bodyCode = if (type != null && encoding != null) {
-                    CodeBlock.of(
-                        "val _body = %T.%L(%L, %S, %S)",
-                        CLASS_S3_BODY, methodCall, bodyParamName, methodCall, type, encoding
-                    )
-                } else if (type != null) {
-                    CodeBlock.of(
-                        "val _body = %T.%L(%L, %S)",
-                        CLASS_S3_BODY, methodCall, bodyParamName, methodCall, type
-                    )
-                } else if (encoding != null) {
-                    CodeBlock.of(
-                        "val _body = %T.%L(%L, null, %S)",
-                        CLASS_S3_BODY, methodCall, bodyParamName, methodCall, encoding
-                    )
-                } else {
-                    CodeBlock.of(
-                        "val _body = %T.%L(%L)",
-                        CLASS_S3_BODY, methodCall, bodyParamName
-                    )
-                }
-            }
-
-            val methodBuilder: CodeBlock.Builder = CodeBlock.builder()
-            if (mode == S3Operation.Mode.SYNC) {
-                if (isResultUpload) {
-                    methodBuilder.add("return _simpleSyncClient.put(_clientConfig.bucket(), _key, _body)")
-                } else {
-                    methodBuilder.add("_simpleSyncClient.put(_clientConfig.bucket(), _key, _body)")
-                }
-                methodBuilder.add("\n")
-            } else {
-                methodBuilder.add("return _simpleAsyncClient.put(_clientConfig.bucket(), _key, _body)")
-                if (returnTypeMirror.isVoid()) {
-                    methodBuilder.add(".thenApply {  }")
-                }
-                methodBuilder.add(".%M()", MEMBER_AWAIT_FUTURE)
-                methodBuilder.add("\n")
-            }
-
-            val code: CodeBlock = CodeBlock.builder()
-                .add(key.code)
-                .add("\n")
-                .add(bodyCode)
-                .add("\n")
-                .add(methodBuilder.build())
-                .build()
-
-            return S3Operation(method, operationMeta.annotation, S3Operation.OperationType.PUT, S3Operation.ImplType.SIMPLE, mode, code)
-        } else if (CLASS_AWS_PUT_RESPONSE == returnType) {
-            val bodyCode: CodeBlock
-            val requestBuilder: CodeBlock.Builder = CodeBlock.builder()
-            val type: String? = operationMeta.annotation.findValueNoDefault("type")
-            val encoding: String? = operationMeta.annotation.findValueNoDefault("encoding")
-
-            if (CLASS_S3_BODY == bodyType) {
-                bodyCode = if (mode == S3Operation.Mode.SYNC) {
-                    CodeBlock.builder()
-                        .beginControlFlow("val _requestBody = if (%L is %T)", bodyParamName, CLASS_S3_BODY_BYTES)
-                        .add("%T.fromBytes(%L.bytes())\n", CLASS_AWS_IS_SYNC_BODY, bodyParamName)
-                        .nextControlFlow("else if (%L.size() > 0)", bodyParamName)
-                        .add(
-                            "%T.fromContentProvider({ %L.asInputStream() }, %L.size(), %L.type())\n",
-                            CLASS_AWS_IS_SYNC_BODY,
-                            bodyParamName,
-                            bodyParamName,
-                            bodyParamName
-                        )
-                        .nextControlFlow("else")
-                        .add("%T.fromContentProvider({ %L.asInputStream() }, %L.type())\n", CLASS_AWS_IS_SYNC_BODY, bodyParamName, bodyParamName)
-                        .endControlFlow()
-                        .build()
-                } else {
-                    CodeBlock.of(
-                        """
-                        val _bodySize = if(%L.size() > 0) %L.size() else null
-                        val _requestBody = if(%L is %T) 
-                                %T.fromBytes(%L.bytes())
-                            else if(%L is %T)
-                                %T.fromPublisher(%T.flowPublisherToFlux(%L.asPublisher()))
-                            else 
-                                %T.fromInputStream(%L.asInputStream(), _bodySize, _awsAsyncExecutor)
-                            """.trimIndent(),
-                        bodyParamName, bodyParamName,
-                        bodyParamName, CLASS_S3_BODY_BYTES,
-                        CLASS_AWS_IS_ASYNC_BODY, bodyParamName,
-                        bodyParamName, CLASS_S3_BODY_PUBLISHER,
-                        CLASS_AWS_IS_ASYNC_BODY, CLASS_JDK_FLOW_ADAPTER, bodyParamName,
-                        CLASS_AWS_IS_ASYNC_BODY, bodyParamName
-                    )
-                }
-
-                requestBuilder.addStatement("_requestBuilder.contentLength(if(%L.size() > 0) %L.size() else null)", bodyParamName, bodyParamName)
-                if (type != null) {
-                    requestBuilder.addStatement("_requestBuilder.contentType(%S)", type)
-                } else {
-                    requestBuilder.addStatement("_requestBuilder.contentType(%L.type())", bodyParamName)
-                }
-                if (encoding != null) {
-                    requestBuilder.addStatement("_requestBuilder.contentEncoding(%S)", encoding)
-                } else {
-                    requestBuilder.addStatement("_requestBuilder.contentEncoding(%L.encoding())", bodyParamName)
-                }
-            } else {
-                val awsBodyClass: ClassName = if (mode == S3Operation.Mode.SYNC) CLASS_AWS_IS_SYNC_BODY else CLASS_AWS_IS_ASYNC_BODY
-                when (bodyType) {
-                    ByteBuffer::class.asTypeName() -> {
-                        bodyCode = CodeBlock.of(
-                            "val _requestBody = %T.fromByteBuffer(%L)",
-                            awsBodyClass, bodyParamName
-                        )
-                        requestBuilder.addStatement("_requestBuilder.contentLength(%L.remaining())", bodyParamName)
-                    }
-
-                    ByteArray::class.asTypeName() -> {
-                        bodyCode = CodeBlock.of(
-                            "val _requestBody = %T.fromBytes(%L)",
-                            awsBodyClass, bodyParamName
-                        )
-                        requestBuilder.addStatement("_requestBuilder.contentLength(%L.length)", bodyParamName)
-                    }
-
-                    else -> throw ProcessingErrorException("@S3.Put operation body must be S3Body/ByteArray/ByteBuffer", method)
-                }
-
-                if (type != null) {
-                    requestBuilder.addStatement("_requestBuilder.contentType(%S)", type)
-                }
-                if (encoding != null) {
-                    requestBuilder.addStatement("_requestBuilder.contentEncoding(%S)", encoding)
-                }
-            }
-
-            val clientField = if (mode == S3Operation.Mode.SYNC) "_awsSyncClient" else "_awsAsyncClient"
-            val bodyBuilder = CodeBlock.builder()
-                .add(key.code)
-                .add("\n\n")
-                .addStatement(
-                    """
-                    val _requestBuilder = %T.builder()
-                        .bucket(_clientConfig.bucket())
-                        .key(_key)
-                        """.trimIndent(), CLASS_AWS_PUT_REQUEST
-                )
-                .add(requestBuilder.build())
-                .addStatement("val _request = _requestBuilder.build()")
-                .add("\n")
-
-            if (mode == S3Operation.Mode.SYNC) {
-                bodyBuilder
-                    .beginControlFlow("if(%L is %T)", bodyParamName, CLASS_S3_BODY_PUBLISHER)
-                    .addStatement(
-                        "val _asyncBody = %T.fromPublisher(%T.flowPublisherToFlux(%L.asPublisher()))",
-                        CLASS_AWS_IS_ASYNC_BODY, CLASS_JDK_FLOW_ADAPTER, bodyParamName
-                    )
-                    .addStatement(
-                        "return %M { _awsAsyncClient.putObject(_request, _asyncBody).%M() }",
-                        MEMBER_RUN_BLOCKING, MEMBER_AWAIT_FUTURE
-                    )
-                    .nextControlFlow(
-                        "else if(%L.size() < 0 || %L.size() > _awsClientConfig.upload().partSize().toBytes())",
-                        bodyParamName, bodyParamName
-                    )
-                    .addStatement("val _bodySize = if(%L.size() > 0) %L.size() else null", bodyParamName, bodyParamName)
-                    .addStatement(
-                        "val _asyncBody = %T.fromInputStream(%L.asInputStream(), _bodySize, _awsAsyncExecutor)",
-                        CLASS_AWS_IS_ASYNC_BODY, bodyParamName
-                    )
-                    .addStatement(
-                        "return %M { _awsAsyncMultipartClient.putObject(_request, _asyncBody).%M() }",
-                        MEMBER_RUN_BLOCKING, MEMBER_AWAIT_FUTURE
-                    )
-                    .endControlFlow()
-                    .add("\n")
-            }
-
-            bodyBuilder
-                .add(bodyCode)
-                .add("\n\n")
-
-            if (mode == S3Operation.Mode.ASYNC) {
-                bodyBuilder.add(
-                    """
-                    return if(%L.size() > 0 && %L.size() <= _awsClientConfig.upload().partSize().toBytes())
-                            _awsAsyncClient.putObject(_request, _requestBody).%M()
-                        else
-                            _awsAsyncMultipartClient.putObject(_request, _requestBody).%M()
-                            """.trimIndent(), bodyParamName, bodyParamName, MEMBER_AWAIT_FUTURE, MEMBER_AWAIT_FUTURE
-                )
-            } else {
-                bodyBuilder
-                    .add("return %L.putObject(_request, _requestBody)", clientField)
-            }
-            bodyBuilder.add("\n")
-
-            return S3Operation(method, operationMeta.annotation, S3Operation.OperationType.PUT, S3Operation.ImplType.AWS, mode, bodyBuilder.build())
-        } else {
-            throw ProcessingErrorException("@S3.Put operation unsupported method return signature, expected any of Unit/${CLASS_S3_UPLOAD.simpleName}/${CLASS_AWS_PUT_RESPONSE.simpleName}", method)
+        if (s3Operations.size > 1) {
+            throw ProcessingErrorException("@S3.Client method without operation annotation can't be non default", func)
+        }
+        val operationAnnotation = s3Operations.first()
+        return when (s3Operations.first().annotationType.toTypeName()) {
+            S3ClassNames.Annotation.get -> operationGET(generatedConfig, func, operationAnnotation)
+            S3ClassNames.Annotation.delete -> operationDELETE(generatedConfig, func, operationAnnotation)
+            S3ClassNames.Annotation.list -> operationLIST(generatedConfig, func, operationAnnotation)
+            S3ClassNames.Annotation.put -> operationPUT(generatedConfig, func, operationAnnotation)
+            else -> throw IllegalStateException("Unknown operation annotation")
         }
     }
 
-    private fun operationDELETE(method: KSFunctionDeclaration, operationMeta: OperationMeta, mode: S3Operation.Mode): S3Operation {
-        val keyMapping: String? = operationMeta.annotation.findValueNoDefault("value")
-        val key: Key
-        val firstParameter = method.parameters.stream().findFirst().orElse(null)
-        if (!keyMapping.isNullOrBlank()) {
-            key = parseKey(method, keyMapping)
-            if (key.params.isEmpty() && method.parameters.isNotEmpty()) {
-                throw ProcessingErrorException("@S3.Delete operation key template must use method arguments or they should be removed", method)
-            }
-        } else if (method.parameters.size > 1) {
-            throw ProcessingErrorException("@S3.Delete operation can't have multiple method parameters for keys without key template", method)
-        } else if (method.parameters.isEmpty()) {
-            throw ProcessingErrorException("@S3.Delete operation must have key parameter", method)
-        } else {
-            key = Key(CodeBlock.of("val _key = %L.toString()", firstParameter.toString()), java.util.List.of(firstParameter))
+    private fun operationGET(generatedConfig: GenerateClientConfig, func: KSFunctionDeclaration, annotation: KSAnnotation): FunSpec {
+        val returnType = func.returnType!!.resolve().toTypeName()
+        val allowedTypeNames = setOf<TypeName>(
+            S3ClassNames.objectMeta,
+            ByteArray::class.asTypeName(),
+            S3ClassNames.body,
+            S3ClassNames.s3Object,
+            InputStream::class.asTypeName()
+        )
+        val returnTypeNonNullable = returnType.copy(false)
+        if (!allowedTypeNames.contains(returnTypeNonNullable)) {
+            throw ProcessingErrorException("Function ${func.simpleName.asString()} has return type $returnType, but should have one of $allowedTypeNames", func)
         }
-
-        val returnTypeMirror = method.returnType
-        val returnType: TypeName = returnTypeMirror!!.toTypeName()
-
-        val isFirstParamCollection = firstParameter != null && firstParameter.type.resolve().isCollection()
-        if (returnTypeMirror.isVoid()) {
-            val clientField = if (mode == S3Operation.Mode.SYNC) "_simpleSyncClient" else "_simpleAsyncClient"
-            val bodyBuilder = CodeBlock.builder()
-
-            val keyArgName: String
-            if (isFirstParamCollection) {
-                keyArgName = firstParameter.name!!.asString()
+        val rangeParams = func.parameters.filter { S3ClassNames.rangeClasses.contains(it.type.toTypeName()) }
+        if (rangeParams.size > 1) {
+            throw ProcessingErrorException("Function ${func.simpleName.asString()} has more than one range parameter", rangeParams[1])
+        }
+        val range = rangeParams.firstOrNull()
+        val bucket = extractBucket(generatedConfig, func)
+        val key = extractKey(func, annotation, true)
+        val builder = func.overridingKeepAop()
+            .addStatement("val _bucket = %L", bucket)
+            .addStatement("val _key = %L", key)
+        if (returnTypeNonNullable == S3ClassNames.objectMeta) {
+            if (range != null) {
+                throw ProcessingErrorException("Range parameters are not allowed on metadata requests", range)
+            }
+            if (returnType.isNullable) {
+                builder.addStatement("return this.client.getMetaOptional(_bucket, _key)")
             } else {
-                bodyBuilder.add(key.code).add(";\n")
-                keyArgName = "_key"
+                builder.addStatement("return this.client.getMeta(_bucket, _key)!!")
             }
-
-            if (mode == S3Operation.Mode.ASYNC) {
-                bodyBuilder.add("return ")
-            }
-            bodyBuilder.add("%L.delete(_clientConfig.bucket(), %L)", clientField, keyArgName)
-            if (mode == S3Operation.Mode.ASYNC) {
-                bodyBuilder.add(".thenApply {  }")
-                bodyBuilder.add(".%M()", MEMBER_AWAIT_FUTURE)
-            }
-
-            bodyBuilder.add("\n")
-
-            return S3Operation(method, operationMeta.annotation, S3Operation.OperationType.DELETE, S3Operation.ImplType.SIMPLE, mode, bodyBuilder.build())
-        } else if (CLASS_AWS_DELETE_RESPONSE == returnType) {
-            if (isFirstParamCollection) {
-                throw ProcessingErrorException("@S3.Delete operation expected single result, but parameter is collection of keys", method)
-            }
-
-            val clientField = if (mode == S3Operation.Mode.SYNC) "_awsSyncClient" else "_awsAsyncClient"
-            val bodyBuilder = CodeBlock.builder()
-                .add(key.code)
-                .add("\n")
-                .add(
-                    """
-                    var _request = %T.builder()
-                        .bucket(_clientConfig.bucket())
-                        .key(_key)
-                        .build()
-                        """.trimIndent(), CLASS_AWS_DELETE_REQUEST
-                )
-                .add("\n")
-                .add("return %L.deleteObject(_request)", clientField)
-
-            if (mode == S3Operation.Mode.ASYNC) {
-                bodyBuilder.add(".%M()", MEMBER_AWAIT_FUTURE)
-            }
-
-            return S3Operation(method, operationMeta.annotation, S3Operation.OperationType.DELETE, S3Operation.ImplType.AWS, mode, bodyBuilder.build())
-        } else if (CLASS_AWS_DELETES_RESPONSE == returnType) {
-            if (isFirstParamCollection) {
-                throw ProcessingErrorException("@S3.Delete operation multiple keys, but parameter is not collection of keys", method)
-            }
-
-            val clientField = if (mode == S3Operation.Mode.SYNC) "_awsSyncClient" else "_awsAsyncClient"
-            val bodyBuilder = CodeBlock.builder()
-                .add(
-                    """
-                        var _request = %T.builder()
-                            .bucket(_clientConfig.bucket())
-                            .delete(
-                                %T.builder()
-                                    .objects(%L.map { %T.builder().key(it).build() }.toList())
-                                    .build()
-                            )
-                            .build()
-                            """.trimIndent(), CLASS_AWS_DELETES_REQUEST,
-                    ClassName("software.amazon.awssdk.services.s3.model", "Delete"),
-                    firstParameter.name!!.asString(),
-                    ClassName("software.amazon.awssdk.services.s3.model", "ObjectIdentifier")
-                )
-                .add("\n")
-                .add("return %L.deleteObjects(_request)", clientField)
-
-            if (mode == S3Operation.Mode.ASYNC) {
-                bodyBuilder.add(".%M()", MEMBER_AWAIT_FUTURE)
-            }
-
-            return S3Operation(method, operationMeta.annotation, S3Operation.OperationType.DELETE, S3Operation.ImplType.AWS, mode, bodyBuilder.build())
-        } else {
-            throw ProcessingErrorException(
-                "@S3.Delete operation unsupported method return signature, expected any of Void/${CLASS_AWS_DELETE_RESPONSE.simpleName}/${CLASS_AWS_DELETES_RESPONSE.simpleName}",
-                method
-            )
+            return builder.build()
         }
+        if (range != null) {
+            builder.addStatement("val _range = %L", range)
+        } else {
+            builder.addStatement("val _range = null as %T?", S3ClassNames.rangeData)
+        }
+        if (returnTypeNonNullable == ByteArray::class.asTypeName()) {
+            if (returnType.isNullable) {
+                builder.controlFlow("this.client.getOptional(_bucket, _key, _range).use { _object ->") {
+                    controlFlow("_object?.body().use { _body ->") {
+                        addStatement("return _body?.asBytes()")
+                    }
+                }
+            } else {
+                builder.controlFlow("this.client.get(_bucket, _key, _range).use { _object ->") {
+                    controlFlow("_object.body().use { _body ->") {
+                        addStatement("return _body.asBytes()!!")
+                    }
+                }
+            }
+            return builder.build()
+        }
+        if (returnTypeNonNullable == S3ClassNames.s3Object) {
+            if (returnType.isNullable) {
+                builder.addStatement("return this.client.getOptional(_bucket, _key, _range)")
+            } else {
+                builder.addStatement("return this.client.get(_bucket, _key, _range)!!")
+            }
+            return builder.build()
+        }
+        if (returnTypeNonNullable == S3ClassNames.body) {
+            if (returnType.isNullable) {
+                builder.addStatement("return this.client.getOptional(_bucket, _key, _range)?.body()")
+            } else {
+                builder.addStatement("return this.client.get(_bucket, _key, _range).body()!!")
+            }
+            return builder.build()
+        }
+        if (returnTypeNonNullable == InputStream::class.asClassName()) {
+            if (returnType.isNullable) {
+                builder.addStatement("return this.client.getOptional(_bucket, _key, _range)?.body()?.asInputStream()")
+            } else {
+                builder.addStatement("return this.client.get(_bucket, _key, _range).body().asInputStream()!!")
+            }
+            return builder.build()
+        }
+        throw IllegalStateException("Not gonna happen");
+    }
+
+    private fun operationLIST(generatedConfig: GenerateClientConfig, func: KSFunctionDeclaration, annotation: KSAnnotation): FunSpec {
+        val returnType = func.returnType!!.resolve().toTypeName()
+        val isList = returnType == List::class.asClassName().parameterizedBy(S3ClassNames.objectMeta)
+        val isIterator = returnType == Iterator::class.asClassName().parameterizedBy(S3ClassNames.objectMeta)
+        if (!isList && !isIterator) {
+            throw ProcessingErrorException("Function ${func.simpleName.asString()} has return type $returnType, but should have one of List<S3ObjectMeta> or Iterator<S3ObjectMeta>", func)
+        }
+        val bucket = extractBucket(generatedConfig, func)
+        val key = extractKey(func, annotation, false)
+        val limit = extractLimit(func)
+        val delimiter = extractDelimiter(func)
+
+        val builder = func.overridingKeepAop()
+            .addStatement("val _bucket = %L", bucket)
+            .addStatement("val _key = %L", key)
+            .addStatement("val _delimiter = %L", delimiter)
+            .addStatement("val _limit = %L", limit)
+        if (isList) {
+            return builder.addStatement("return this.client.list(_bucket, _key, _delimiter, _limit)").build()
+        } else {
+            require(isIterator)
+            return builder.addStatement("return this.client.listIterator(_bucket, _key, _delimiter, _limit)").build()
+        }
+    }
+
+    private fun extractDelimiter(func: KSFunctionDeclaration): CodeBlock {
+        val onParameter = func.parameters.filter { it.isAnnotationPresent(S3ClassNames.Annotation.listDelimiter) }
+        if (onParameter.size > 1) {
+            throw ProcessingErrorException("@S3.List operation expected at most one @S3.List.Delimiter parameter", onParameter[1])
+        }
+        if (onParameter.isNotEmpty()) {
+            val parameter = onParameter[0]
+            val annotation = parameter.findAnnotation(S3ClassNames.Annotation.listDelimiter)!!
+            if (annotation.findValueNoDefault<String>("value") != null) {
+                throw ProcessingErrorException("@S3.List.Delimiter annotation can't have value when annotating parameter", parameter)
+            }
+            val parameterType = parameter.type.resolve().toTypeName()
+            if (parameterType == STRING) {
+                return CodeBlock.of("%N", parameter.name?.asString())
+            }
+            throw ProcessingErrorException("@S3.List.Delimiter annotation can't have parameter of type $parameterType: only String is allowed", parameter);
+        }
+        val onMethod = func.findAnnotation(S3ClassNames.Annotation.listDelimiter)
+        if (onMethod != null) {
+            val value = onMethod.findValueNoDefault<String>("value")
+            if (value != null) {
+                return CodeBlock.of("%S", value)
+            }
+            throw ProcessingErrorException("@S3.List.Delimiter annotation must have value when annotating method", func)
+        }
+        return CodeBlock.of("null as String?")
+    }
+
+    private fun extractLimit(func: KSFunctionDeclaration): Any {
+        val onParameter = func.parameters.filter { it.isAnnotationPresent(S3ClassNames.Annotation.listLimit) }
+        if (onParameter.size > 1) {
+            throw ProcessingErrorException("@S3.List operation expected at most one @S3.List.Limit parameter", onParameter[1])
+        }
+        if (onParameter.isNotEmpty()) {
+            val parameter = onParameter[0]
+            val annotation = parameter.findAnnotation(S3ClassNames.Annotation.listLimit)!!
+            if (annotation.findValueNoDefault<Int>("value") != null) {
+                throw ProcessingErrorException("@S3.List.Limit annotation can't have value when annotating parameter", parameter)
+            }
+            val parameterType = parameter.type.toTypeName()
+            return when (parameterType) {
+                INT -> CodeBlock.of("%M(1000, %N)", MemberName("kotlin.math", "min"), parameter.name?.asString())
+                LONG -> CodeBlock.of("%M(1000, %T.toIntExact(%N))", MemberName("kotlin.math", "min"), Math::class.asClassName(), parameter.name?.asString())
+                else -> throw ProcessingErrorException("@S3.List.Limit annotation can only be used on Int or Long parameters", parameter)
+            }
+        }
+        val onFunction = func.findAnnotation(S3ClassNames.Annotation.listLimit)
+        if (onFunction != null) {
+            val value = onFunction.findValueNoDefault<Int>("value")
+            return when {
+                value == null -> throw ProcessingErrorException("@S3.List.Limit annotation must have value when annotating method", func)
+                value <= 0 -> throw ProcessingErrorException("@S3.List.Limit should be more than zero", func)
+                value > 1000 -> throw ProcessingErrorException("@S3.List.Limit should be less than 1000", func)
+                else -> CodeBlock.of("%L", value)
+            }
+        }
+        return CodeBlock.of("1000")
+    }
+
+    private fun operationPUT(generatedConfig: GenerateClientConfig, func: KSFunctionDeclaration, annotation: KSAnnotation): FunSpec {
+        val returnType = func.returnType!!.toTypeName()
+        if (returnType != UNIT && returnType != S3ClassNames.uploadResult) {
+            throw ProcessingErrorException("@S3.Put operation return type must be Unit or S3ObjectUploadResult", func)
+        }
+        val bodyParams = func.parameters.filter { p -> S3ClassNames.bodyTypes.contains(p.type.resolve().toTypeName()) }
+        if (bodyParams.size != 1) {
+            throw ProcessingErrorException("@S3.Put operation must have exactly one parameter of types S3Body, byte[] or InputStream", func)
+        }
+        val bodyParam = bodyParams[0]
+        val bodyParamType = bodyParam.type.resolve().toTypeName()
+        val bucket = extractBucket(generatedConfig, func)
+        val key = extractKey(func, annotation, true)
+        val b = func.overridingKeepAop()
+            .addStatement("val _bucket = %L", bucket)
+            .addStatement("val _key = %L", key)
+        when (bodyParamType) {
+            S3ClassNames.body -> b.addStatement("val _body = %N", bodyParam.name?.asString()!!)
+            ByteArray::class.asClassName() -> b.addStatement("val _body = %T.ofBytes(%N)", S3ClassNames.body, bodyParam.name!!.asString())
+            InputStream::class.asClassName() -> b.addStatement("val _body = %T.ofInputStream(%N)", S3ClassNames.body, bodyParam.name!!.asString())
+            else -> throw IllegalStateException("never gonna happen")
+        }
+        b.addStatement("return this.client.put(_bucket, _key, _body)")
+        return b.build()
+    }
+
+    private fun operationDELETE(generatedConfig: GenerateClientConfig, func: KSFunctionDeclaration, annotation: KSAnnotation): FunSpec {
+        val returnType = func.returnType!!.toTypeName()
+        if (returnType != UNIT) {
+            throw ProcessingErrorException("@S3.Delete operation unsupported method return signature, expected Unit, got $returnType", func)
+        }
+        val bucket = extractBucket(generatedConfig, func)
+        val nonBucketParams = func.parameters.filter { !it.isAnnotationPresent(S3ClassNames.Annotation.bucket) }
+        if (nonBucketParams.isEmpty()) {
+            throw ProcessingErrorException("@S3.Delete operation must have key related parameter", func)
+        }
+        val funSpec = func.overridingKeepAop()
+            .addStatement("val _bucket = %L", bucket)
+        val firstKeyParam = nonBucketParams.first()
+        val firstKeyParamType = firstKeyParam.type.resolve()
+        if (nonBucketParams.size == 1 && (firstKeyParamType.isCollection() || firstKeyParamType.isList())) {
+            val collectionType = firstKeyParamType.toTypeName() as ParameterizedTypeName
+            if (collectionType.typeArguments.first() == STRING) {
+                funSpec.addStatement("val _key = %L", firstKeyParam.name!!.asString())
+            } else {
+                funSpec.addStatement("val _key = %L.map{it.toString()}", firstKeyParam.name!!.asString())
+            }
+        } else {
+            val key = extractKey(func, annotation, true)
+            funSpec.addStatement("val _key = %L", key)
+        }
+        funSpec.addStatement("this.client.delete(_bucket, _key)")
+        return funSpec.build()
+    }
+
+
+    private fun extractKey(func: KSFunctionDeclaration, annotation: KSAnnotation, isRequired: Boolean): CodeBlock {
+        val keyMapping = annotation.findValueNoDefault<String>("value")
+        val parameters = func.parameters.filter {
+            val parameterTypeName = it.type.toTypeName()
+            return@filter !it.isAnnotationPresent(S3ClassNames.Annotation.bucket)
+                && !it.isAnnotationPresent(S3ClassNames.Annotation.listLimit)
+                && !it.isAnnotationPresent(S3ClassNames.Annotation.listDelimiter)
+                && !S3ClassNames.rangeClasses.contains(parameterTypeName)
+                && !S3ClassNames.bodyTypes.contains(parameterTypeName)
+        }
+        if (!keyMapping.isNullOrBlank()) {
+            val key = parseKey(func, parameters, keyMapping)
+            if (key.params.isEmpty() && parameters.isNotEmpty()) {
+                throw ProcessingErrorException("@S3 operation key template must use method arguments or the should be removed", parameters[0])
+            }
+            return key.code
+        }
+        if (parameters.size > 1) {
+            throw ProcessingErrorException("@S3 operation can't have multiple function parameters for keys without key template", func)
+        }
+        if (parameters.isEmpty()) {
+            if (isRequired) {
+                throw ProcessingErrorException("@S3 operation must have at least one method parameter for key", func)
+            }
+            return CodeBlock.of("null as String?")
+        }
+        if (parameters.first().type.resolve().isCollection()) {
+            throw ProcessingErrorException("@%${annotation.shortName.asString()} operation expected single result, but parameter is collection of keys", func)
+        }
+        return CodeBlock.of("%N.toString()", parameters.first().name!!.asString())
+    }
+
+    private fun extractBucket(generatedConfig: GenerateClientConfig, func: KSFunctionDeclaration): CodeBlock {
+        val onParameter = func.parameters.filter { it.isAnnotationPresent(S3ClassNames.Annotation.bucket) }
+        if (onParameter.size > 1) {
+            throw ProcessingErrorException("@S3.Delete operation can't have multiple @S3.Bucket annotations", func)
+        }
+        onParameter.firstOrNull()?.let {
+            return CodeBlock.of("%N", it.name?.asString()!!)
+        }
+        val onMethod = func.findAnnotation(S3ClassNames.Annotation.bucket)
+        if (onMethod != null) {
+            val value = onMethod.findValueNoDefault<String>("value")!!
+            val i = generatedConfig.paths.indexOf(value)
+            if (i < 0) {
+                throw ProcessingErrorException("@S3 operation bucket annotation value must be one of ${generatedConfig.paths.joinToString()}", func)
+            }
+            return CodeBlock.of("this.config.bucket_%L", i)
+        }
+        val onClass = func.parentDeclaration?.findAnnotation(S3ClassNames.Annotation.bucket)
+        if (onClass != null) {
+            val value = onClass.findValueNoDefault<String>("value")!!
+            val i = generatedConfig.paths.indexOf(value)
+            if (i < 0) {
+                throw ProcessingErrorException("@S3 operation bucket annotation value must be one of ${generatedConfig.paths.joinToString()}", func)
+            }
+            return CodeBlock.of("this.config.bucket_%L", i)
+        }
+        throw ProcessingErrorException("S3 operation expected bucket on parameter, function or class but got none", func)
     }
 
     data class Key(val code: CodeBlock, val params: List<KSValueParameter>)
 
-    private fun parseKey(method: KSFunctionDeclaration, keyTemplate: String): Key {
+    private fun parseKey(method: KSFunctionDeclaration, parameters: List<KSValueParameter>, keyTemplate: String): Key {
         var indexStart = keyTemplate.indexOf("{")
         if (indexStart == -1) {
-            return Key(CodeBlock.of("val _key = %S\n", keyTemplate), listOf())
+            return Key(CodeBlock.of("%S\n", keyTemplate), listOf())
         }
 
-        val params: MutableList<KSValueParameter> = ArrayList()
+        val params = ArrayList<KSValueParameter>()
         val builder = CodeBlock.builder()
-        builder.add("val _key = ")
         var indexEnd = 0
         while (indexStart != -1) {
 
@@ -884,19 +472,13 @@ class S3ClientSymbolProcessor(
             indexEnd = keyTemplate.indexOf("}", indexStart)
 
             val paramName = keyTemplate.substring(indexStart + 1, indexEnd)
-            val parameter = method.parameters.stream()
-                .filter { p ->
-                    val bodyType: TypeName = p.type.toTypeName()
-                    (ByteBuffer::class.asClassName() != bodyType && ByteArray::class.asClassName() != bodyType)
-                }
-                .filter { p -> p.name!!.asString() == paramName }
-                .findFirst()
-                .orElseThrow {
-                    ProcessingErrorException(
-                        "@S3 operation key part named '${paramName}' expected, but wasn't found",
-                        method
-                    )
-                }
+            val parameter = parameters.firstOrNull { p -> p.name!!.asString() == paramName }
+            if (parameter == null) {
+                throw ProcessingErrorException(
+                    "@S3 operation key part named '${paramName}' expected, but wasn't found",
+                    method
+                )
+            }
 
             val paramType = parameter.type.resolve()
             if (paramType.isCollection() || paramType.isMap()) {
@@ -915,7 +497,7 @@ class S3ClientSymbolProcessor(
             builder.add(" + %S", keyTemplate.substring(indexEnd + 1))
         }
 
-        return Key(builder.add("\n").build(), params)
+        return Key(builder.build(), params)
     }
 }
 

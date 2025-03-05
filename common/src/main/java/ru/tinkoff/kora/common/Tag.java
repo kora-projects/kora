@@ -40,6 +40,7 @@ public @interface Tag {
      * <hr>
      * <b>English</b>: A special tag type which means that the tag matches any dependency enforcement condition, i.e. it matches any tag
      */
+    @SuppressWarnings("missing-explicit-ctor")
     final class Any {}
 
     Class<?>[] value();

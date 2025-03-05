@@ -154,7 +154,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
     private fun buildFunction(methodData: MethodData): FunSpec {
         val method = methodData.declaration
-        val m = method.overridingKeepAop(resolver)
+        val m = method.overridingKeepAop()
         val b = CodeBlock.builder()
 
         val httpRoute = method.findAnnotation(HttpClientClassNames.httpRoute)!!

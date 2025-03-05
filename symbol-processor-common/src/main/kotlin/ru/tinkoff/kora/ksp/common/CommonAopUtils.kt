@@ -2,14 +2,9 @@ package ru.tinkoff.kora.ksp.common
 
 import com.google.devtools.ksp.isProtected
 import com.google.devtools.ksp.isPublic
-import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
-import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
-import com.squareup.kotlinpoet.ksp.toAnnotationSpec
-import com.squareup.kotlinpoet.ksp.toClassName
-import com.squareup.kotlinpoet.ksp.toTypeName
-import com.squareup.kotlinpoet.ksp.toTypeVariableName
+import com.squareup.kotlinpoet.ksp.*
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames.aopAnnotation
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.resolveToUnderlying
@@ -39,7 +34,7 @@ object CommonAopUtils {
         return b
     }
 
-    fun KSFunctionDeclaration.overridingKeepAop(resolver: Resolver): FunSpec.Builder {
+    fun KSFunctionDeclaration.overridingKeepAop(): FunSpec.Builder {
         val funDeclaration = this
         val funBuilder = FunSpec.builder(funDeclaration.simpleName.asString())
         if (funDeclaration.modifiers.contains(Modifier.SUSPEND)) {
@@ -61,9 +56,9 @@ object CommonAopUtils {
                 funBuilder.addAnnotation(annotation.toAnnotationSpec())
             }
         }
-        val returnType = funDeclaration.returnType!!.resolve()
-        if (returnType != resolver.builtIns.unitType) {
-            funBuilder.returns(returnType.toTypeName())
+        val returnType = funDeclaration.returnType!!.resolve().toTypeName()
+        if (returnType != UNIT) {
+            funBuilder.returns(returnType)
         }
         for (parameter in funDeclaration.parameters) {
             val parameterType = parameter.type

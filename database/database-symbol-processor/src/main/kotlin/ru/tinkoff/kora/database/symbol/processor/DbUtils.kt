@@ -183,7 +183,7 @@ object DbUtils {
 
 
     fun KSFunctionDeclaration.queryMethodBuilder(resolver: Resolver): FunSpec.Builder {
-        return overridingKeepAop(resolver);
+        return overridingKeepAop();
     }
 }
 

@@ -358,7 +358,8 @@ public class ConfigParserGenerator {
             .addOriginatingElement(typeElement)
             .addAnnotation(AnnotationUtils.generated(ConfigParserGenerator.class))
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-            .addSuperinterface(type);
+            .addSuperinterface(type)
+            .addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC).build());
         for (var tp : typeElement.getTypeParameters()) {
             defaults.addTypeVariable(TypeVariableName.get(tp));
         }

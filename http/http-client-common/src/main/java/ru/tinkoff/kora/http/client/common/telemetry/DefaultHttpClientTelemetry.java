@@ -190,7 +190,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         return null;
     }
 
-    public class DefaultHttpClientTelemetryContextImpl implements HttpClientTelemetryContext {
+    class DefaultHttpClientTelemetryContextImpl implements HttpClientTelemetryContext {
         private final Context ctx;
         private final HttpClientRequest request;
         private final TelemetryContextData data;

@@ -15,18 +15,22 @@ import java.util.concurrent.CompletionStage;
  */
 public interface HttpClient {
 
-    CompletionStage<HttpClientResponse> execute(HttpClientRequest request);
+    default CompletionStage<HttpClientResponse> execute(HttpClientRequest request) {
+        return execute(Context.current(), request);
+    }
+
+    CompletionStage<HttpClientResponse> execute(Context context, HttpClientRequest request);
 
     default HttpClient with(HttpClientInterceptor interceptor) {
-        return request -> {
+        return (ctx, request) -> {
             try {
-                return interceptor.processRequest(Context.current(), (context, httpClientRequest) -> {
-                    var ctx = Context.current();
+                return interceptor.processRequest(ctx, (context, httpClientRequest) -> {
+                    var old = Context.current();
                     try {
                         context.inject();
                         return this.execute(httpClientRequest);
                     } finally {
-                        ctx.inject();
+                        old.inject();
                     }
                 }, request);
             } catch (Throwable e) {

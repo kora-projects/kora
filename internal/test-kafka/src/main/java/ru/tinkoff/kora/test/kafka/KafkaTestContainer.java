@@ -35,7 +35,7 @@ public class KafkaTestContainer implements AfterEachCallback, TestInstancePostPr
                 return;
             }
             if (container == null) {
-                container = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:5.4.3"))
+                container = new KafkaContainer(DockerImageName.parse("apache/kafka-native:3.8.0"))
                     .withExposedPorts(9092, 9093)
                     .waitingFor(Wait.forListeningPort())
                 ;

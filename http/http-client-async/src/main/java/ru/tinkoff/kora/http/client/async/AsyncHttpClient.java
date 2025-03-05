@@ -22,8 +22,7 @@ public class AsyncHttpClient implements HttpClient, Lifecycle {
     }
 
     @Override
-    public CompletionStage<HttpClientResponse> execute(HttpClientRequest request) {
-        var ctx = Context.current();
+    public CompletionStage<HttpClientResponse> execute(Context ctx, HttpClientRequest request) {
         return this.processRequest(ctx, request)
             .exceptionallyCompose(e -> {
                 if (e instanceof CompletionException ce) {

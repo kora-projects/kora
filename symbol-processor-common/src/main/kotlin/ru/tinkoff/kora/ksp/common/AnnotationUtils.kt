@@ -66,6 +66,7 @@ object AnnotationUtils {
             .filter { it.name!!.asString() == name }
             .filter { !defaultValues.contains(it) }
             .map { it.value!! }
+            .filter { it is T }
             .map { it as T }
             .firstOrNull()
     }
