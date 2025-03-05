@@ -40,6 +40,9 @@ public interface CircuitBreakerConfig {
         if (mergedConfig.minimumRequiredCalls() > mergedConfig.slidingWindowSize())
             throw new IllegalArgumentException("CircuitBreaker '" + name + "' minimumRequiredCalls was " + mergedConfig.minimumRequiredCalls()
                                                + " can't be more than slidingWindowSize which is " + mergedConfig.slidingWindowSize());
+        if (mergedConfig.permittedCallsInHalfOpenState() > mergedConfig.minimumRequiredCalls())
+            throw new IllegalArgumentException("CircuitBreaker '" + name + "' minimumRequiredCalls was " + mergedConfig.minimumRequiredCalls()
+                + " can't be more than permittedCallsInHalfOpenState which is " + mergedConfig.permittedCallsInHalfOpenState());
         if (mergedConfig.failureRateThreshold() > 100 || mergedConfig.failureRateThreshold() < 1)
             throw new IllegalArgumentException("CircuitBreaker '" + name + "' failureRateThreshold is percentage and must be in range 1 to 100, but was "
                                                + mergedConfig.failureRateThreshold());
