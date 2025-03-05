@@ -8,6 +8,7 @@ import org.mockito.kotlin.verify
 import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.database.jdbc.`$JdbcDatabaseConfig_ConfigValueExtractor`.JdbcDatabaseConfig_Impl
 import ru.tinkoff.kora.database.jdbc.mapper.parameter.JdbcParameterColumnMapper
+import ru.tinkoff.kora.database.symbol.processor.entity.TestEntity
 import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_ConfigValueExtractor`
 import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_LogConfig_ConfigValueExtractor`
 import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_MetricsConfig_ConfigValueExtractor`
@@ -326,6 +327,27 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         Assertions.assertThat(tag).isNotNull()
         Assertions.assertThat(tag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("TestRepository")))
+    }
+
+    @Test
+    fun testRecordFullParameterMapping() {
+        val mapper = Mockito.mock(JdbcParameterColumnMapper::class.java) as JdbcParameterColumnMapper<TestEntity>
+        val repository = compile(
+            listOf(mapper),
+            """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:rec.field1, :rec)")
+                fun test(rec: ru.tinkoff.kora.database.symbol.processor.entity.TestEntity)
+            }
+            """.trimIndent()
+        )
+
+        val defaultData = TestEntity.defaultData()
+        repository.invoke<Any>("test", defaultData)
+
+        verify(executor.preparedStatement).setString(1, "field1")
+        verify(mapper).set(ArgumentMatchers.same(executor.preparedStatement), ArgumentMatchers.eq(2), ArgumentMatchers.refEq(defaultData))
     }
 
     @Test

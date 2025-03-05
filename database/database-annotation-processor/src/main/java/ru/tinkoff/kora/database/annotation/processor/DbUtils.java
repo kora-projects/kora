@@ -168,6 +168,19 @@ public class DbUtils {
                         mappers.add(new DbUtils.Mapper(mapperType, Set.of()));
                     }
                 }
+
+                var queryParam = query.find(parameter.name());
+                if (queryParam == null || queryParam.sqlIndexes().isEmpty()) {
+                    continue;
+                }
+                var mapperType = ParameterizedTypeName.get(parameterColumnMapper, TypeName.get(ep.type()).box());
+                var fieldMappings = CommonUtils.parseMapping(ep.entity().typeElement());
+                var fieldMapping = fieldMappings.getMapping(parameterColumnMapper);
+                if (fieldMapping != null) {
+                    mappers.add(new DbUtils.Mapper(fieldMapping.mapperClass(), mapperType, fieldMapping.mapperTags()));
+                } else {
+                    mappers.add(new DbUtils.Mapper(mapperType, Set.of()));
+                }
             }
         }
         return mappers;

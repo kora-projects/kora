@@ -67,6 +67,11 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
                             }
                         }
                     }
+                    parseEntityDirectParameter(rawSql, i, parameterName).let {
+                        if (it.sqlIndexes.isNotEmpty()) {
+                            params.add(it)
+                        }
+                    }
                 }
                 if (params.size == size) {
                     throw ProcessingErrorException(
@@ -100,6 +105,22 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
                 if (rawSql.length >= indexAfter + 1) {
                     val charAfter = rawSql[indexAfter]
                     if (Character.isAlphabetic(charAfter.code) || charAfter == '_' || charAfter == '$' || Character.isDigit(charAfter)) {
+                        continue
+                    }
+                }
+                result.add(index)
+            }
+            return QueryParameter(sqlParameterName, methodParameterNumber, result)
+        }
+
+        private fun parseEntityDirectParameter(rawSql: String, methodParameterNumber: Int, sqlParameterName: String): QueryParameter {
+            var index = -1
+            val result = ArrayList<Int>()
+            while (rawSql.indexOf(":$sqlParameterName", index + 1).also { index = it } >= 0) {
+                val indexAfter = index + sqlParameterName.length + 1
+                if (rawSql.length >= indexAfter + 1) {
+                    val charAfter = rawSql[indexAfter]
+                    if ('.' == charAfter || Character.isAlphabetic(charAfter.code) || charAfter == '_' || charAfter == '$' || Character.isDigit(charAfter)) {
                         continue
                     }
                 }

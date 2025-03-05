@@ -53,9 +53,11 @@ object DbUtils {
         for (mapper in mappers) {
             if (mapper.mapperType == null) {
                 type.addProperty(mapper.fieldName, mapper.fieldTypeName, KModifier.PRIVATE)
-                constructor.addParameter(ParameterSpec.builder(mapper.fieldName, mapper.fieldTypeName)
-                    .addTag(mapper.tags)
-                    .build())
+                constructor.addParameter(
+                    ParameterSpec.builder(mapper.fieldName, mapper.fieldTypeName)
+                        .addTag(mapper.tags)
+                        .build()
+                )
                 constructor.addCode("this.`%L` = `%L`;\n", mapper.fieldName, mapper.fieldName)
             } else if (hasDefaultConstructor(mapper.mapperType)) {
                 if (companion == null) {
@@ -144,19 +146,35 @@ object DbUtils {
                 }
                 continue
             }
-            parameter = parameter as QueryParameter.EntityParameter
-            for (entityField in parameter.entity.columns) {
-                val queryParam = query.find(parameter.name + "." + entityField.property.simpleName.getShortName())
+            if (parameter is QueryParameter.EntityParameter) {
+                for (entityField in parameter.entity.columns) {
+                    val queryParam = query.find(parameter.name + "." + entityField.property.simpleName.getShortName())
+                    if (queryParam == null || queryParam.sqlIndexes.isEmpty()) {
+                        continue
+                    }
+                    val mapperName = parameterMapperName(method, parameter.variable, entityField.property.simpleName.getShortName())
+                    val mapperType = parameterColumnMapper.parameterizedBy(entityField.type.toTypeName().copy(false))
+                    val fieldMappings = entityField.mapping
+                    val fieldMapping = fieldMappings.getMapping(parameterColumnMapper)
+                    if (fieldMapping != null) {
+                        mappers.add(Mapper(fieldMapping, mapperType, mapperName))
+                    } else if (!nativeTypePredicate(entityField.type)) {
+                        mappers.add(Mapper(mapperType, mapperName))
+                    }
+                }
+
+                val queryParam = query.find(parameter.name)
                 if (queryParam == null || queryParam.sqlIndexes.isEmpty()) {
                     continue
                 }
-                val mapperName = parameterMapperName(method, parameter.variable, entityField.property.simpleName.getShortName())
-                val mapperType = parameterColumnMapper.parameterizedBy(entityField.type.toTypeName().copy(false))
-                val fieldMappings = entityField.mapping
+
+                val mapperName = parameterMapperName(method, parameter.variable, parameter.name)
+                val mapperType = parameterColumnMapper.parameterizedBy(parameter.entity.type.toTypeName().copy(false))
+                val fieldMappings = parameter.entity.classDeclaration.parseMappingData()
                 val fieldMapping = fieldMappings.getMapping(parameterColumnMapper)
                 if (fieldMapping != null) {
                     mappers.add(Mapper(fieldMapping, mapperType, mapperName))
-                } else if (!nativeTypePredicate(entityField.type)) {
+                } else {
                     mappers.add(Mapper(mapperType, mapperName))
                 }
             }

@@ -5,6 +5,7 @@ import com.squareup.javapoet.TypeName;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
 import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
+import ru.tinkoff.kora.database.annotation.processor.cassandra.CassandraTypes;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
 
 import jakarta.annotation.Nullable;
@@ -69,9 +70,9 @@ public class StatementSetterGenerator {
                     }
                 }
             }
-            if (parameter instanceof QueryParameter.EntityParameter entityParameter) {
-                for (var field : entityParameter.entity().columns()) {
-                    var sqlParameter = sqlWithParameters.find(field.queryParameterName(entityParameter.name()));
+            if (parameter instanceof QueryParameter.EntityParameter ep) {
+                for (var field : ep.entity().columns()) {
+                    var sqlParameter = sqlWithParameters.find(field.queryParameterName(ep.name()));
                     if (sqlParameter == null || sqlParameter.sqlIndexes().isEmpty()) {
                         continue;
                     }
@@ -105,6 +106,25 @@ public class StatementSetterGenerator {
                         for (var idx : sqlParameter.sqlIndexes()) {
                             b.add("$L.set(_stmt, $L, $L);\n", mapper, idx + 1, accessor);
                         }
+                    }
+                }
+
+                var sqlParameter = sqlWithParameters.find(ep.name());
+                if (sqlParameter == null || sqlParameter.sqlIndexes().isEmpty()) {
+                    continue;
+                }
+
+                var fieldAccessor = CodeBlock.of("$N", parameterName).toString();
+                var mapping = CommonUtils.parseMapping(ep.entity().typeElement()).getMapping(JdbcTypes.PARAMETER_COLUMN_MAPPER);
+                if (mapping != null && mapping.mapperClass() != null) {
+                    for (var idx : sqlParameter.sqlIndexes()) {
+                        var mapper = parameterMappers.get(JdbcTypes.PARAMETER_COLUMN_MAPPER, mapping, ep.type());
+                        b.add("$L.set(_stmt, $L, $L);\n", mapper, idx + 1, fieldAccessor);
+                    }
+                } else {
+                    for (var idx : sqlParameter.sqlIndexes()) {
+                        var mapper = parameterMappers.get(JdbcTypes.PARAMETER_COLUMN_MAPPER, ep.type(), ep.entity().typeElement());
+                        b.add("$L.set(_stmt, $L, $L);\n", mapper, idx + 1, fieldAccessor);
                     }
                 }
             }
