@@ -68,11 +68,14 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
     private CodeBlock getSyncBlock(ExecutableElement method, CacheOperation operation) {
         final CodeBlock.Builder builder = CodeBlock.builder();
 
-        final boolean isOptional = MethodUtils.isOptional(method);
+        final boolean isOptionalMethod = MethodUtils.isOptional(method);
+        final boolean isOptionalMethodSkip = isOptionalMethod && operation.executions().stream().noneMatch(this::isCacheOptional);
+        final boolean isOptionalCacheAny = operation.executions().stream().anyMatch(this::isCacheOptional);
+
         final boolean isPrimitive = method.getReturnType() instanceof PrimitiveType;
-        if (isOptional) {
+        if (isOptionalMethodSkip) {
             builder.beginControlFlow("_value.ifPresent(_v ->");
-        } else if (!isPrimitive) {
+        } else if (!isPrimitive && isOptionalMethod) {
             builder.beginControlFlow("if(_value != null)");
         }
 
@@ -106,20 +109,30 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
                 }
             }
 
-            if (isOptional) {
+            if (isOptionalMethodSkip) {
                 builder.add("$L.put($L, _v);\n", cache.field(), putKeyField);
+            } else if (isOptionalMethod && !isCacheOptional(cache)) {
+                builder.beginControlFlow("_value.ifPresent(_v ->");
+                builder.add("$L.put($L, _v);\n", cache.field(), putKeyField);
+                builder.endControlFlow(")");
+            } else if (!isOptionalMethod && isCacheOptional(cache)) {
+                builder.add("$L.put($L, $T.ofNullable(_value));\n", cache.field(), putKeyField, Optional.class);
             } else {
                 builder.add("$L.put($L, _value);\n", cache.field(), putKeyField);
             }
         }
 
-        if (isOptional) {
+        if (isOptionalMethodSkip) {
             builder.endControlFlow(")");
-        } else if (!isPrimitive) {
+        } else if (!isPrimitive && isOptionalMethod) {
             builder.endControlFlow();
         }
 
         return builder.add("return _value;").build();
+    }
+
+    private boolean isCacheOptional(CacheOperation.CacheExecution execution) {
+        return CommonUtils.isOptional(execution.superType().getTypeArguments().get(1));
     }
 
     private CodeBlock buildBodySync(ExecutableElement method,
@@ -131,7 +144,7 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
         final CodeBlock.Builder builder = CodeBlock.builder();
 
         // cache super method
-        builder.add("var _value = ").add(superMethod).add(";\n");
+        builder.add("var _value = $L;\n", superMethod);
         builder.add(getSyncBlock(method, operation));
         return builder.build();
     }
