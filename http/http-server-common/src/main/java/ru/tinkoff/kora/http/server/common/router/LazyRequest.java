@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.http.server.common.router;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import ru.tinkoff.kora.http.common.cookie.Cookie;
 import ru.tinkoff.kora.http.common.cookie.Cookies;
@@ -21,7 +22,7 @@ class LazyRequest implements HttpServerRequest {
     private Map<String, ? extends Collection<String>> queryParams;
     private List<Cookie> cookies;
 
-    LazyRequest(PublicApiRequest publicApiRequest, Map<String, String> pathParams, String routeTemplate) {
+    LazyRequest(PublicApiRequest publicApiRequest, Map<String, String> pathParams, @Nullable String routeTemplate) {
         this.publicApiRequest = publicApiRequest;
         this.method = publicApiRequest.method();
         this.path = publicApiRequest.path();

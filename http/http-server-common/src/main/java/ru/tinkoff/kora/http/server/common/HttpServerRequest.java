@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.http.server.common;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import ru.tinkoff.kora.http.common.cookie.Cookie;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
@@ -14,6 +15,10 @@ public interface HttpServerRequest {
 
     String path();
 
+    /**
+     * @return may be nullable if route not matched to any controller
+     */
+    @Nullable
     String route();
 
     HttpHeaders headers();
