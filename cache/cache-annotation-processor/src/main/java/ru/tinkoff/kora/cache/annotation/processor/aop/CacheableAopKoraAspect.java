@@ -67,7 +67,9 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
     }
 
     private CodeBlock.Builder getCacheSyncBlock(ExecutableElement method, CacheOperation operation) {
-        final boolean isOptional = MethodUtils.isOptional(method);
+        final boolean isOptionalMethod = MethodUtils.isOptional(method);
+        final boolean isOptionalMethodSkip = isOptionalMethod && operation.executions().stream().noneMatch(this::isCacheOptional);
+        final boolean isOptionalCacheAny = operation.executions().stream().anyMatch(this::isCacheOptional);
 
         String keyField = "_key1";
         final CodeBlock.Builder builder = CodeBlock.builder();
@@ -75,9 +77,10 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
         // cache get
         for (int i = 0; i < operation.executions().size(); i++) {
             final CacheExecution cache = operation.executions().get(i);
+            final boolean isOptionalCache = isCacheOptional(cache);
             final String prefix = (i == 0)
-                ? "var _value = "
-                : "_value = ";
+                ? "var _value"
+                : "_value";
 
             boolean prevKeyMatch = false;
             for (int i1 = 0; i1 < i; i1++) {
@@ -96,12 +99,25 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
                     .addStatement(cache.cacheKey().code());
             }
 
-            builder.add(prefix).add(cache.field()).add(".get($L);\n", keyField);
+            if (isOptionalMethod && isOptionalCacheAny && !isOptionalCache) {
+                builder.add("$L = $T.ofNullable($L.get($L));\n", prefix, Optional.class, cache.field(), keyField);
+            } else if(!isOptionalMethod && isOptionalCache) {
+                builder.add("var _$L_optional = $L.get($L);\n", cache.field(), cache.field(), keyField);
+                builder.add("$L = _$L_optional == null ? null : _$L_optional.orElse(null);\n", prefix, cache.field(), cache.field());
+            } else {
+                builder.add("$L = $L.get($L);\n", prefix, cache.field(), keyField);
+            }
 
-            builder.beginControlFlow("if(_value != null)");
+            if (isOptionalMethod && isOptionalCacheAny && !isOptionalCache) {
+                builder.beginControlFlow("if(_value.isPresent())");
+            } else {
+                builder.beginControlFlow("if(_value != null)");
+            }
+
             // put value from cache into prev level caches
             for (int j = 0; j < i; j++) {
                 final CacheExecution cachePrevPut = operation.executions().get(j);
+                final boolean isOptionalPrevCache = isCacheOptional(cachePrevPut);
 
                 var putKeyField = "_key" + (j + 1);
                 for (int i1 = 0; i1 < i; i1++) {
@@ -111,10 +127,18 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
                     }
                 }
 
-                builder.add(cachePrevPut.field()).add(".put($L, _value);\n", putKeyField);
+                if (isOptionalMethod && isOptionalCacheAny && !isOptionalPrevCache) {
+                    builder.beginControlFlow("_value.ifPresent(_v ->");
+                    builder.add("$L.put($L, _v);\n", cachePrevPut.field(), putKeyField);
+                    builder.endControlFlow(")");
+                } else if(!isOptionalMethod && isOptionalPrevCache) {
+                    builder.add("$L.put($L, Optional.ofNullable(_value));\n", cachePrevPut.field(), putKeyField);
+                } else {
+                    builder.add("$L.put($L, _value);\n", cachePrevPut.field(), putKeyField);
+                }
             }
 
-            if (isOptional) {
+            if (isOptionalMethodSkip) {
                 builder.add("return $T.of(_value);", Optional.class);
             } else if (MethodUtils.isFuture(method)) {
                 var completionType = ((DeclaredType) method.getReturnType()).getTypeArguments().get(0);
@@ -147,22 +171,31 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
                                     String superCall) {
         final String superMethod = getSuperMethod(method, superCall);
 
-        final boolean isOptional = MethodUtils.isOptional(method);
+        final boolean isOptionalMethod = MethodUtils.isOptional(method);
+        final boolean isOptionalCacheAny = operation.executions().stream().anyMatch(this::isCacheOptional);
+        final boolean isOptionalMethodSkip = isOptionalMethod && operation.executions().stream().noneMatch(this::isCacheOptional);
+
         if (operation.executions().size() == 1) {
+            final CacheExecution cache = operation.executions().get(0);
             final String keyField = "_key";
             final CodeBlock keyBlock = CodeBlock.builder()
                 .add("var $L = ", keyField)
-                .addStatement(operation.executions().get(0).cacheKey().code())
+                .addStatement(cache.cacheKey().code())
                 .build();
-            if (isOptional) {
+            if (isOptionalMethodSkip) {
                 return CodeBlock.builder()
                     .add(keyBlock)
-                    .add("return $T.ofNullable($L.computeIfAbsent($L, _k -> $L.orElse(null)));", Optional.class, operation.executions().get(0).field(), keyField, superMethod)
+                    .add("return $T.ofNullable($L.computeIfAbsent($L, _k -> $L.orElse(null)));", Optional.class, cache.field(), keyField, superMethod)
+                    .build();
+            } else if(!isOptionalMethod && isCacheOptional(cache)) {
+                return CodeBlock.builder()
+                    .add(keyBlock)
+                    .add("return $L.computeIfAbsent($L, _k -> $T.ofNullable($L)).orElse(null);", cache.field(), keyField, Optional.class, superMethod)
                     .build();
             } else {
                 return CodeBlock.builder()
                     .add(keyBlock)
-                    .add("return $L.computeIfAbsent($L, _k -> $L);", operation.executions().get(0).field(), keyField, superMethod)
+                    .add("return $L.computeIfAbsent($L, _k -> $L);", cache.field(), keyField, superMethod)
                     .build();
             }
         }
@@ -174,14 +207,15 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
 
         // cache put
         final boolean isPrimitive = method.getReturnType() instanceof PrimitiveType;
-        if (isOptional) {
+        if (isOptionalMethodSkip) {
             builder.beginControlFlow("_result.ifPresent(_v ->");
-        } else if (!isPrimitive) {
+        } else if (!isPrimitive && isOptionalMethod) {
             builder.beginControlFlow("if(_result != null)");
         }
 
         for (int i = 0; i < operation.executions().size(); i++) {
             var cache = operation.executions().get(i);
+            final boolean isOptionalCache = isCacheOptional(cache);
 
             var putKeyField = "_key" + (i + 1);
             for (int i1 = 0; i1 < i; i1++) {
@@ -191,21 +225,31 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
                 }
             }
 
-            if (isOptional) {
-                builder.add(cache.field()).add(".put($L, _v);\n", putKeyField);
+            if (isOptionalMethodSkip) {
+                builder.add("$L.put($L, _v);\n", cache.field(), putKeyField);
+            } else if (isOptionalMethod && isOptionalCacheAny && !isOptionalCache) {
+                builder.beginControlFlow("_result.ifPresent(_v ->");
+                builder.add("$L.put($L, _v);\n", cache.field(), putKeyField);
+                builder.endControlFlow(")");
+            } else if (!isOptionalMethod && isOptionalCache) {
+                builder.add("$L.put($L, Optional.ofNullable(_result));\n", cache.field(), putKeyField);
             } else {
-                builder.add(cache.field()).add(".put($L, _result);\n", putKeyField);
+                builder.add("$L.put($L, _result);\n", cache.field(), putKeyField);
             }
         }
 
-        if (isOptional) {
+        if (isOptionalMethodSkip) {
             builder.endControlFlow(")");
-        } else if (!isPrimitive) {
+        } else if (!isPrimitive && isOptionalMethod) {
             builder.endControlFlow();
         }
 
         builder.add("return _result;");
         return builder.build();
+    }
+
+    private boolean isCacheOptional(CacheExecution execution) {
+        return CommonUtils.isOptional(execution.superType().getTypeArguments().get(1));
     }
 
     private CodeBlock buildBodyMono(ExecutableElement method,
