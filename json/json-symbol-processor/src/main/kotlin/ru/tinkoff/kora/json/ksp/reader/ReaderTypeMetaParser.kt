@@ -2,7 +2,6 @@ package ru.tinkoff.kora.json.ksp.reader
 
 import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.isPublic
-import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.ksp.toClassName
@@ -18,10 +17,7 @@ import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.getNameConverter
 import ru.tinkoff.kora.ksp.common.parseAnnotationValue
 
-class ReaderTypeMetaParser(
-    private val knownType: KnownType,
-    private val logger: KSPLogger
-) {
+class ReaderTypeMetaParser {
 
     fun parse(declaration: KSClassDeclaration): JsonClassReaderMeta {
         val jsonConstructor = this.findJsonConstructor(declaration)
@@ -112,7 +108,7 @@ class ReaderTypeMetaParser(
             resolvedFieldTypeName = realType.toTypeName(jsonClass.typeParameters.toTypeParameterResolver())
         }
 
-        val knownType = knownType.detect(realType)
+        val knownType = KnownType.detect(realType)
         return if (knownType != null) {
             ReaderFieldType.KnownTypeReaderMeta(realType, resolvedFieldTypeName, isJsonNullable, knownType)
         } else {

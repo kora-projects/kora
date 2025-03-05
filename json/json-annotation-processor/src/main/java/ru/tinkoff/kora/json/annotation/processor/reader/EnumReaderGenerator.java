@@ -5,7 +5,6 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
-import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
 
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
@@ -15,11 +14,11 @@ import java.io.IOException;
 
 public class EnumReaderGenerator {
 
-    public TypeSpec generateForEnum(TypeElement typeElement) {
+    public TypeSpec generateForEnum(ClassName target, TypeElement typeElement) {
         var typeName = ClassName.get(typeElement);
         var enumValue = this.detectValueType(typeElement);
 
-        var typeBuilder = TypeSpec.classBuilder(JsonUtils.jsonReaderName(typeElement))
+        var typeBuilder = TypeSpec.classBuilder(target)
             .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
                 .addMember("value", CodeBlock.of("$S", JsonReaderGenerator.class.getCanonicalName()))
                 .build())

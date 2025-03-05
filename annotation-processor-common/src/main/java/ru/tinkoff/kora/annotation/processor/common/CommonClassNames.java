@@ -44,6 +44,7 @@ public class CommonClassNames {
     public static final ClassName refreshListener = ClassName.get("ru.tinkoff.kora.application.graph", "RefreshListener");
 
     public static final ClassName koraGenerated = ClassName.get("ru.tinkoff.kora.common.annotation", "Generated");
+    public static final ClassName generatorModule = ClassName.get("ru.tinkoff.kora.common.annotation", "GeneratorModule");
     public static final ClassName list = ClassName.get(List.class);
 
     public static final ClassName config = ClassName.get("ru.tinkoff.kora.config.common", "Config");
