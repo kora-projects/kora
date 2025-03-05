@@ -76,7 +76,7 @@ class CacheSymbolProcessor(
             val cacheImplBase = getCacheImplBase(cacheContractType)
             val implSpec = TypeSpec.classBuilder(getCacheImpl(cacheContract))
                 .generated(CacheSymbolProcessor::class)
-                .primaryConstructor(getCacheConstructor(cacheContractType))
+                .primaryConstructor(getCacheConstructor(cacheContractType, cacheContract))
                 .addSuperclassConstructorParameter(getCacheSuperConstructorCall(cacheContract, cacheContractType))
                 .superclass(cacheImplBase)
                 .addSuperinterface(cacheContract.toTypeName())
@@ -208,7 +208,7 @@ class CacheSymbolProcessor(
             }
 
             REDIS_CACHE -> {
-                if (cacheContract.annotations.any { it.typeName == Deprecated::class.asTypeName() }) {
+                if (isRedisDeprecated(cacheClass)) {
                     return getRedisDeprecatedFunc(cacheClass, cacheContract, cacheImplName, cacheTypeName, methodName)
                 } else {
                     return getRedisFunc(cacheClass, cacheContract, cacheImplName, cacheTypeName, methodName)
@@ -319,7 +319,7 @@ class CacheSymbolProcessor(
             .build()
     }
 
-    private fun getCacheConstructor(cacheContract: ParameterizedTypeName): FunSpec {
+    private fun getCacheConstructor(cacheContract: ParameterizedTypeName, cacheClass: KSClassDeclaration): FunSpec {
         return when (cacheContract.rawType) {
             CAFFEINE_CACHE -> {
                 FunSpec.constructorBuilder()
@@ -330,7 +330,7 @@ class CacheSymbolProcessor(
             }
 
             REDIS_CACHE -> {
-                if (cacheContract.annotations.any { it.typeName == Deprecated::class.asTypeName() }) {
+                if (isRedisDeprecated(cacheClass)) {
                     val keyType = cacheContract.typeArguments[0]
                     val valueType = cacheContract.typeArguments[1]
                     val keyMapperType = REDIS_CACHE_MAPPER_KEY.parameterizedBy(keyType)
@@ -362,6 +362,12 @@ class CacheSymbolProcessor(
                 throw IllegalArgumentException("Unknown cache type: ${cacheContract.rawType}")
             }
         }
+    }
+
+    private fun isRedisDeprecated(cacheContract: KSClassDeclaration): Boolean {
+        return cacheContract.getAllSuperTypes()
+            .filter { a -> a.toClassName() == REDIS_CACHE }
+            .any { a -> a.declaration.annotations.any { it.annotationType.toTypeName() == Deprecated::class.asTypeName() } }
     }
 
     private fun getCacheRedisKeyMapperForData(keyType: KSClassDeclaration): FunSpec {
@@ -453,7 +459,7 @@ class CacheSymbolProcessor(
         return when (cacheType.rawType) {
             CAFFEINE_CACHE -> CodeBlock.of("%S, config, factory, telemetryFactory", configPath)
             REDIS_CACHE -> {
-                if (cacheContract.annotations.any { it.annotationType.toTypeName() == Deprecated::class.asTypeName() }) {
+                if (isRedisDeprecated(cacheContract)) {
                     CodeBlock.of("%S, config, redisClient, telemetry, keyMapper, valueMapper", configPath)
                 } else {
                     CodeBlock.of("%S, config, redisSyncClient, redisAsyncClient, telemetryFactory, keyMapper, valueMapper", configPath)

@@ -87,10 +87,10 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
 
             var cacheImplBase = getCacheImplBase(cacheContract, cacheContractType);
             var implSpec = TypeSpec.classBuilder(getCacheImpl(cacheContract))
-                .addModifiers(Modifier.FINAL)
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
                     .addMember("value", CodeBlock.of("$S", CacheAnnotationProcessor.class.getCanonicalName())).build())
-                .addMethod(getCacheConstructor(configPath, cacheContractType))
+                .addMethod(getCacheConstructor(configPath, cacheContractType, cacheContract))
                 .superclass(cacheImplBase)
                 .addSuperinterface(cacheContract.asType())
                 .build();
@@ -149,6 +149,16 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
             REDIS_CACHE.canonicalName(), CAFFEINE_CACHE.canonicalName(), superinterface
         ));
         return null;
+    }
+
+    private boolean isRedisDeprecated(TypeElement cacheContract) {
+        return cacheContract.getInterfaces().stream()
+            .filter(a -> a instanceof DeclaredType)
+            .map(a -> ((DeclaredType) a))
+            .map(a -> ((TypeElement) a.asElement()))
+            .filter(a -> ClassName.get(a).equals(REDIS_CACHE))
+            .flatMap(a -> a.getAnnotationMirrors().stream())
+            .anyMatch(a -> TypeName.get(a.getAnnotationType()).equals(TypeName.get(Deprecated.class)));
     }
 
     private TypeName getCacheImplBase(TypeElement cacheContract, ParameterizedTypeName cacheType) {
@@ -289,7 +299,7 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
         }
 
         if (cacheType.rawType.equals(REDIS_CACHE)) {
-            if (cacheType.annotations.stream().anyMatch(a -> a.type.equals(TypeName.get(Deprecated.class)))) {
+            if (isRedisDeprecated(cacheContract)) {
                 return getCacheRedisDeprecatedMethod(cacheContract, cacheType, cacheImplName, methodName);
             } else {
                 return getCacheRedisMethod(cacheContract, cacheType, cacheImplName, methodName);
@@ -387,9 +397,10 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
             .build();
     }
 
-    private MethodSpec getCacheConstructor(String configPath, ParameterizedTypeName cacheContract) {
+    private MethodSpec getCacheConstructor(String configPath, ParameterizedTypeName cacheContract, TypeElement cacheElement) {
         if (cacheContract.rawType.equals(CAFFEINE_CACHE)) {
             return MethodSpec.constructorBuilder()
+                .addModifiers(Modifier.PUBLIC)
                 .addParameter(CAFFEINE_CACHE_CONFIG, "config")
                 .addParameter(CAFFEINE_CACHE_FACTORY, "factory")
                 .addParameter(CACHE_TELEMETRY_FACTORY, "telemetryFactory")
@@ -398,12 +409,13 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
         }
 
         if (cacheContract.rawType.equals(REDIS_CACHE)) {
-            if (cacheContract.annotations.stream().anyMatch(a -> a.type.equals(TypeName.get(Deprecated.class)))) {
+            if (isRedisDeprecated(cacheElement)) {
                 var keyType = cacheContract.typeArguments.get(0);
                 var valueType = cacheContract.typeArguments.get(1);
                 var keyMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_KEY, keyType);
                 var valueMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_VALUE, valueType);
                 return MethodSpec.constructorBuilder()
+                    .addModifiers(Modifier.PUBLIC)
                     .addParameter(REDIS_CACHE_CONFIG, "config")
                     .addParameter(REDIS_CACHE_OLD_CLIENT, "redisClient")
                     .addParameter(REDIS_TELEMETRY, "telemetry")
@@ -417,6 +429,7 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                 var keyMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_KEY, keyType);
                 var valueMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_VALUE, valueType);
                 return MethodSpec.constructorBuilder()
+                    .addModifiers(Modifier.PUBLIC)
                     .addParameter(REDIS_CACHE_CONFIG, "config")
                     .addParameter(REDIS_CACHE_SYNC_CLIENT, "redisSyncClient")
                     .addParameter(REDIS_CACHE_ASYNC_CLIENT, "redisAsyncClient")

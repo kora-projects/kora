@@ -13,7 +13,7 @@ import java.util.List;
 
 final class LettuceFactory {
 
-    private LettuceFactory() { }
+    private LettuceFactory() {}
 
     @Nonnull
     static AbstractRedisClient build(LettuceConfig config) {

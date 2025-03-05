@@ -72,8 +72,8 @@ abstract class CacheRunner extends Assertions implements RedisCacheMapperModule,
         return new JedisCacheSyncClient(jedis);
     }
 
-    private RedisCacheAsyncClient createAsyncJedis(RedisCacheClient cacheClient) throws Exception {
-        return new JedisCacheAsyncClient(cacheClient);
+    private RedisCacheAsyncClient createAsyncJedis(RedisCacheClient cacheClient) {
+        return new JedisCacheStubAsyncClient(cacheClient);
     }
 
     private DummyCache createDummyCache(RedisParams redisParams, Duration expireWrite, Duration expireRead) throws Exception {

@@ -34,9 +34,13 @@ public interface JedisConfig {
 
     enum Protocol {
 
-        /** Redis 2 to Redis 5 */
+        /**
+         * Redis 2 to Redis 5
+         */
         RESP2,
-        /** Redis 6+ */
+        /**
+         * Redis 6+
+         */
         RESP3
     }
 }

@@ -7,127 +7,96 @@ import ru.tinkoff.kora.cache.redis.RedisCacheClient;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Executor;
 
 final class JedisCacheAsyncClient implements RedisCacheAsyncClient {
 
     private final RedisCacheClient syncClient;
+    private final Executor executor;
 
-    JedisCacheAsyncClient(RedisCacheClient syncClient) {
+    JedisCacheAsyncClient(RedisCacheClient syncClient, Executor executor) {
         this.syncClient = syncClient;
+        this.executor = executor;
     }
 
     @Nonnull
     @Override
     public CompletionStage<byte[]> get(byte[] key) {
-        try {
-            return CompletableFuture.completedFuture(syncClient.get(key));
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        return CompletableFuture.supplyAsync(() -> syncClient.get(key), executor);
     }
 
     @Nonnull
     @Override
     public CompletionStage<Map<byte[], byte[]>> mget(byte[][] keys) {
-        try {
-            return CompletableFuture.completedFuture(syncClient.mget(keys));
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        return CompletableFuture.supplyAsync(() -> syncClient.mget(keys), executor);
     }
 
     @Nonnull
     @Override
     public CompletionStage<byte[]> getex(byte[] key, long expireAfterMillis) {
-        try {
-            return CompletableFuture.completedFuture(syncClient.getex(key, expireAfterMillis));
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        return CompletableFuture.supplyAsync(() -> syncClient.getex(key, expireAfterMillis), executor);
     }
 
     @Nonnull
     @Override
     public CompletionStage<Map<byte[], byte[]>> getex(byte[][] keys, long expireAfterMillis) {
-        try {
-            return CompletableFuture.completedFuture(syncClient.getex(keys, expireAfterMillis));
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        return CompletableFuture.supplyAsync(() -> syncClient.getex(keys, expireAfterMillis), executor);
     }
 
     @Nonnull
     @Override
     public CompletionStage<Void> set(byte[] key, byte[] value) {
-        try {
+        return CompletableFuture.supplyAsync(() -> {
             syncClient.set(key, value);
-            return CompletableFuture.completedFuture(null);
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+            return null;
+        }, executor);
     }
 
     @Nonnull
     @Override
     public CompletionStage<Void> mset(@Nonnull Map<byte[], byte[]> keyAndValue) {
-        try {
+        return CompletableFuture.supplyAsync(() -> {
             syncClient.mset(keyAndValue);
-            return CompletableFuture.completedFuture(null);
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+            return null;
+        }, executor);
     }
 
     @Nonnull
     @Override
     public CompletionStage<Void> psetex(byte[] key, byte[] value, long expireAfterMillis) {
-        try {
+        return CompletableFuture.supplyAsync(() -> {
             syncClient.psetex(key, value, expireAfterMillis);
-            return CompletableFuture.completedFuture(null);
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+            return null;
+        }, executor);
     }
 
     @Nonnull
     @Override
     public CompletionStage<Void> psetex(@Nonnull Map<byte[], byte[]> keyAndValue, long expireAfterMillis) {
-        try {
+        return CompletableFuture.supplyAsync(() -> {
             syncClient.psetex(keyAndValue, expireAfterMillis);
-            return CompletableFuture.completedFuture(null);
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+            return null;
+        }, executor);
     }
 
     @Nonnull
     @Override
     public CompletionStage<Long> del(byte[] key) {
-        try {
-            return CompletableFuture.completedFuture(syncClient.del(key));
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        return CompletableFuture.supplyAsync(() -> syncClient.del(key), executor);
     }
 
     @Nonnull
     @Override
     public CompletionStage<Long> del(byte[][] keys) {
-        try {
-            return CompletableFuture.completedFuture(syncClient.del(keys));
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        return CompletableFuture.supplyAsync(() -> syncClient.del(keys), executor);
     }
 
     @Nonnull
     @Override
     public CompletionStage<Void> flushAll() {
-        try {
+        return CompletableFuture.supplyAsync(() -> {
             syncClient.flushAll();
-            return CompletableFuture.completedFuture(null);
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+            return null;
+        }, executor);
     }
 }
