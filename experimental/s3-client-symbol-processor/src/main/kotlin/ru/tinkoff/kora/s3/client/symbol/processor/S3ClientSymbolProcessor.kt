@@ -188,7 +188,7 @@ class S3ClientSymbolProcessor(
         }
 
         constructorBuilder.addCode(constructorCode.build())
-        implSpecBuilder.addFunction(constructorBuilder.build())
+        implSpecBuilder.primaryConstructor(constructorBuilder.build())
 
         return implSpecBuilder.build()
     }
@@ -363,7 +363,7 @@ class S3ClientSymbolProcessor(
                 .add("\n")
                 .addStatement(
                     """
-                    var _request = %T.builder()
+                    val _request = %T.builder()
                         .bucket(_clientConfig.bucket())
                         .key(_key)
                         .build()
@@ -473,7 +473,7 @@ class S3ClientSymbolProcessor(
             bodyBuilder
                 .add(
                     """
-                    var _request = %L.builder()
+                    val _request = %L.builder()
                         .bucket(_clientConfig.bucket())
                         .prefix(%L)
                         .delimiter(%S)
@@ -807,7 +807,7 @@ class S3ClientSymbolProcessor(
                 .add("\n")
                 .add(
                     """
-                    var _request = %T.builder()
+                    val _request = %T.builder()
                         .bucket(_clientConfig.bucket())
                         .key(_key)
                         .build()
@@ -830,7 +830,7 @@ class S3ClientSymbolProcessor(
             val bodyBuilder = CodeBlock.builder()
                 .add(
                     """
-                        var _request = %T.builder()
+                        val _request = %T.builder()
                             .bucket(_clientConfig.bucket())
                             .delete(
                                 %T.builder()
