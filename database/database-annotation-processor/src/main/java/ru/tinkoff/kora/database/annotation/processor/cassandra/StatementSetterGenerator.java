@@ -61,10 +61,10 @@ public class StatementSetterGenerator {
                     b.addCode("$<\n}\n");
                 }
             }
-            if (parameter instanceof QueryParameter.EntityParameter dtoParameter) {
-                for (var field : dtoParameter.entity().columns()) {
+            if (parameter instanceof QueryParameter.EntityParameter ep) {
+                for (var field : ep.entity().columns()) {
                     var isNullable = field.isNullable();
-                    var sqlParameter = sqlWithParameters.find(field.queryParameterName(dtoParameter.name()));
+                    var sqlParameter = sqlWithParameters.find(field.queryParameterName(ep.name()));
                     if (sqlParameter == null || sqlParameter.sqlIndexes().isEmpty()) {
                         continue;
                     }
@@ -96,6 +96,37 @@ public class StatementSetterGenerator {
                     if (isNullable) {
                         b.addCode("$<\n}\n");
                     }
+                }
+
+                var sqlParameter = sqlWithParameters.find(ep.name());
+                if (sqlParameter == null || sqlParameter.sqlIndexes().isEmpty()) {
+                    continue;
+                }
+
+                var isNullable = CommonUtils.isNullable(ep.variable());
+                var fieldAccessor = CodeBlock.of("$N", parameterName).toString();
+                if (isNullable) {
+                    b.addCode("if ($L == null) {\n", fieldAccessor);
+                    for (var idx : sqlParameter.sqlIndexes()) {
+                        b.addCode("  _stmt.setToNull($L);\n", idx);
+                    }
+                    b.addCode("} else {$>\n");
+                }
+
+                var mapping = CommonUtils.parseMapping(ep.entity().typeElement()).getMapping(CassandraTypes.PARAMETER_COLUMN_MAPPER);
+                if (mapping != null && mapping.mapperClass() != null) {
+                    for (var idx : sqlParameter.sqlIndexes()) {
+                        var mapper = parameterMappers.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, mapping, ep.type());
+                        b.addCode("$L.apply(_stmt, $L, $L);\n", mapper, idx, fieldAccessor);
+                    }
+                } else {
+                    for (var idx : sqlParameter.sqlIndexes()) {
+                        var mapper = parameterMappers.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, ep.type(), ep.entity().typeElement());
+                        b.addCode("$L.apply(_stmt, $L, $L);\n", mapper, idx, fieldAccessor);
+                    }
+                }
+                if (isNullable) {
+                    b.addCode("$<\n}\n");
                 }
             }
         }

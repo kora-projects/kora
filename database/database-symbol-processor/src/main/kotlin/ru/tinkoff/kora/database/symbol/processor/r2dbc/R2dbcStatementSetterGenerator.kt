@@ -44,10 +44,10 @@ object R2dbcStatementSetterGenerator {
                         b.addCode(nativeType.bind("_stmt", parameterName, sqlIndex)).addCode("\n")
                     }
                 } else if (mapping?.mapper != null) {
-                    val mapper = parameterMappers.get(mapping.mapper!!, mapping.tags)
+                    val mapper = parameterMappers[mapping.mapper!!, mapping.tags]
                     b.addCode("%N.apply(_stmt, %L, %N)\n", mapper, sqlIndex, parameterName)
                 } else {
-                    val mapper = parameterMappers.get(R2dbcTypes.parameterColumnMapper, parameter.type, parameter.variable)
+                    val mapper = parameterMappers[R2dbcTypes.parameterColumnMapper, parameter.type, parameter.variable]
                     b.addCode("%N.apply(_stmt, %L, %N)\n", mapper, sqlIndex, parameterName)
                 }
                 sqlIndex++
@@ -77,16 +77,32 @@ object R2dbcStatementSetterGenerator {
                             b.endControlFlow()
                         }
                     } else if (mapping?.mapper != null) {
-                        val mapper = parameterMappers.get(mapping.mapper!!, mapping.tags)
+                        val mapper = parameterMappers[mapping.mapper!!, mapping.tags]
                         b.addStatement("%N.apply(_stmt, %L, %L)", mapper, sqlIndex, accessor)
                     } else {
-                        val mapper = parameterMappers.get(R2dbcTypes.parameterColumnMapper, field.type, field.property)
+                        val mapper = parameterMappers[R2dbcTypes.parameterColumnMapper, field.type, field.property]
+                        b.addStatement("%N.apply(_stmt, %L, %L)", mapper, sqlIndex, accessor)
+                    }
+                    sqlIndex++
+                }
+
+                val sqlParam = query.find(parameter.name)
+                if (!sqlParam?.sqlIndexes.isNullOrEmpty()) {
+                    val accessor = parameterName
+                    val mappersData = parameter.entity.classDeclaration.parseMappingData()
+                    val mapping = mappersData.getMapping(parameter.entity.type)
+                    if (mapping?.mapper != null) {
+                        val mapper = parameterMappers[mapping.mapper!!, mapping.tags]
+                        b.addStatement("%N.apply(_stmt, %L, %L)", mapper, sqlIndex, accessor)
+                    } else {
+                        val mapper = parameterMappers[R2dbcTypes.parameterColumnMapper, parameter.entity.type, parameter.entity.classDeclaration]
                         b.addStatement("%N.apply(_stmt, %L, %L)", mapper, sqlIndex, accessor)
                     }
                     sqlIndex++
                 }
             }
         }
+
         if (batchParam != null) {
             b.endControlFlow()
         }

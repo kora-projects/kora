@@ -7,19 +7,22 @@ import org.mockito.Mockito
 import org.mockito.Mockito.verify
 import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.database.r2dbc.mapper.parameter.R2dbcParameterColumnMapper
+import ru.tinkoff.kora.database.symbol.processor.entity.TestEntity
 import kotlin.reflect.full.findAnnotations
 import kotlin.reflect.jvm.jvmErasure
 
 class R2dbcParametersTest : AbstractR2dbcTest() {
     @Test
     fun testConnectionParameter() {
-        val repository = compile(listOf<Any>(), """
+        val repository = compile(
+            listOf<Any>(), """
             @Repository
             interface TestRepository : R2dbcRepository {
                 @Query("INSERT INTO test(test) VALUES ('test')")
                 fun test(connection: io.r2dbc.spi.Connection)
             }
-            """.trimIndent())
+            """.trimIndent()
+        )
 
         repository.invoke<Any>("test", executor.con)
 
@@ -28,13 +31,15 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
 
     @Test
     fun testNativeParameter() {
-        val repository = compile(listOf<Any>(), """
+        val repository = compile(
+            listOf<Any>(), """
             @Repository
             interface TestRepository : R2dbcRepository {
                 @Query("INSERT INTO test(value1, value2) VALUES (:value1, :value2)")
                 fun test(value1: String?, value2: Int)
             }
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         repository.invoke<Any>("test", "test", 42)
         verify(executor.statement).bind(0, "test")
@@ -50,13 +55,15 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
 
     @Test
     fun testParametersWithSimilarNames() {
-        val repository = compile(listOf<Any>(), """
+        val repository = compile(
+            listOf<Any>(), """
             @Repository
             interface TestRepository : R2dbcRepository {
                 @Query("INSERT INTO test(value1, value2) VALUES (:value, :valueTest)")
                 fun test(value: String?, valueTest: Int)
             }
-            """.trimIndent())
+            """.trimIndent()
+        )
 
         repository.invoke<Any>("test", "test", 42)
         verify(executor.con).createStatement("INSERT INTO test(value1, value2) VALUES ($1, $2)")
@@ -75,7 +82,8 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
 
     @Test
     fun testEntityFieldMapping() {
-        val repository = compile(listOf<Any>(), """
+        val repository = compile(
+            listOf<Any>(), """
             class StringToJsonbParameterMapper: R2dbcParameterColumnMapper<String?> {
                 override fun apply(stmt: Statement, index: Int, value: String?) {
                     stmt.bind(index, mapOf("test" to value))
@@ -90,7 +98,8 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
                 fun test(entity: SomeEntity)
             }
 
-            """.trimIndent())
+            """.trimIndent()
+        )
 
         repository.invoke<Any>("test", new("SomeEntity", 42L, "test-value"))
 
@@ -101,7 +110,8 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
 
     @Test
     fun testNativeParameterWithMapping() {
-        val repository = compile(listOf<Any>(), """
+        val repository = compile(
+            listOf<Any>(), """
             class StringToJsonbParameterMapper: R2dbcParameterColumnMapper<String?> {
                 override fun apply(stmt: Statement, index: Int, value: String?) {
                     stmt.bind(index, mapOf("test" to value))
@@ -113,7 +123,8 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
                 @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
                 fun test(id: Long, @Mapping(StringToJsonbParameterMapper::class) value: String)
             }
-            """.trimIndent())
+            """.trimIndent()
+        )
 
         repository.invoke<Any>("test", 42L, "test-value")
 
@@ -124,7 +135,8 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
 
     @Test
     fun testDataClassParameter() {
-        val repository = compile(listOf<Any>(), """
+        val repository = compile(
+            listOf<Any>(), """
         @Repository
         interface TestRepository: R2dbcRepository {
             @Query("INSERT INTO test(id, value) VALUES (:entity.id, :entity.value)")
@@ -132,7 +144,8 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
         }
         """.trimIndent(), """
         data class TestEntity(val id: Long, val value: String?)    
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         repository.invoke<Any>("test", new("TestEntity", 42L, null))
         verify(executor.statement).bind(0, 42L)
@@ -148,7 +161,8 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
     @Test
     fun testUnknownTypeParameter() {
         val mapper = Mockito.mock(R2dbcParameterColumnMapper::class.java)
-        val repository = compile(listOf(mapper), """
+        val repository = compile(
+            listOf(mapper), """
             @Repository
             interface TestRepository : R2dbcRepository {
                 @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
@@ -158,7 +172,8 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
             """.trimIndent(), """
             class UnknownType {}
             
-            """.trimIndent())
+            """.trimIndent()
+        )
 
         repository.invoke<Any>("test", 42L, new("UnknownType"))
 
@@ -169,7 +184,8 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
     @Test
     fun testUnknownTypeEntityField() {
         val mapper = Mockito.mock(R2dbcParameterColumnMapper::class.java)
-        val repository = compile(listOf(mapper), """
+        val repository = compile(
+            listOf(mapper), """
             @Repository
             interface TestRepository : R2dbcRepository {
                 @Query("INSERT INTO test(id, value) VALUES (:id, :value0.f)")
@@ -180,7 +196,8 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
             class UnknownType {}
             """.trimIndent(), """
             data class TestEntity (val f: UnknownType)
-            """.trimIndent())
+            """.trimIndent()
+        )
 
         repository.invoke<Any>("test", 42L, new("TestEntity", new("UnknownType")))
 
@@ -189,8 +206,29 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
     }
 
     @Test
+    fun testRecordFullParameterMapping() {
+        val mapper = Mockito.mock(R2dbcParameterColumnMapper::class.java) as R2dbcParameterColumnMapper<TestEntity>
+        val repository = compile(
+            listOf(mapper), """
+            @Repository
+            interface TestRepository : R2dbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:rec.field1, :rec)")
+                fun test(rec: ru.tinkoff.kora.database.symbol.processor.entity.TestEntity)
+            }
+            """.trimIndent()
+        )
+
+        val defaultData = TestEntity.defaultData()
+        repository.invoke<Any>("test", defaultData)
+
+        verify(executor.statement).bind(0, "field1")
+        verify(mapper).apply(ArgumentMatchers.same(executor.statement), ArgumentMatchers.eq(1), ArgumentMatchers.refEq(defaultData))
+    }
+
+    @Test
     fun testNativeParameterNonFinalMapper() {
-        val repository = compile(listOf(newGenerated("TestMapper")), """
+        val repository = compile(
+            listOf(newGenerated("TestMapper")), """
             open class TestMapper : R2dbcParameterColumnMapper<String> {
                 override fun apply(stmt: Statement, index: Int, value0: String?) {
                     stmt.bind(index, mapOf("test" to value0))
@@ -204,7 +242,8 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
                 fun test(id: Long, @Mapping(TestMapper::class) value0: String);
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
         repository.invoke<Any>("test", 42L, "test-value")
         verify(executor.statement).bind(0, 42L)
         verify(executor.statement).bind(1, mapOf("test" to "test-value"))
@@ -212,7 +251,8 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
 
     @Test
     fun testMultipleParametersWithSameMapper() {
-        val repository = compile(listOf(newGenerated("TestMapper")), """
+        val repository = compile(
+            listOf(newGenerated("TestMapper")), """
             open class TestMapper : R2dbcParameterColumnMapper<String> {
                 override fun apply(stmt: Statement, index: Int, value0: String?) {
                     stmt.bind(index, mapOf("test" to value0))
@@ -228,12 +268,14 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
                 fun test(id: Long, @Mapping(TestMapper::class) value0: String);
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
     }
 
     @Test
     fun testMultipleParameterFieldsWithSameMapper() {
-        val repository = compile(listOf(newGenerated("TestMapper")), """
+        val repository = compile(
+            listOf(newGenerated("TestMapper")), """
             open class TestMapper : R2dbcParameterColumnMapper<TestRecord> {
                 override fun apply(stmt: Statement, index: Int, value0: TestRecord?) {
                     stmt.bind(index, mapOf("test" to value0.toString()))
