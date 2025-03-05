@@ -62,7 +62,7 @@ public class ResponseCodeMapperTest extends AbstractHttpClientTest {
                      record Rs1() implements TestResponse {}
                      record Rs2() implements TestResponse {}
                   }
-                  
+                
                   @ResponseCodeMapper(code = 201, type = TestResponse.Rs1.class)
                   @ResponseCodeMapper(code = 404, type = TestResponse.Rs2.class)
                   @HttpRoute(method = "GET", path = "/test")
@@ -110,7 +110,7 @@ public class ResponseCodeMapperTest extends AbstractHttpClientTest {
                      record Rs1() implements TestResponse {}
                      record Rs2() implements TestResponse {}
                   }
-                  
+                
                   @Tag(TestResponse.class)
                   @ResponseCodeMapper(code = 201, type = TestResponse.Rs1.class)
                   @ResponseCodeMapper(code = 404, type = TestResponse.Rs2.class)

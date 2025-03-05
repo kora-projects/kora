@@ -233,6 +233,7 @@ public class ReactiveApiTest extends AbstractHttpClientTest {
     }
 
     @Test
+    @SuppressWarnings("enchecked")
     public void testMonoRequestBody() throws Exception {
         var mapper = Mockito.mock(HttpClientRequestMapper.class);
         var client = compileClient(List.of(mapper), """
