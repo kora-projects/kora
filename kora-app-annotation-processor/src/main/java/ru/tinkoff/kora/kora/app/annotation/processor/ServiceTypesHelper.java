@@ -28,6 +28,14 @@ public class ServiceTypesHelper {
         this.interceptorType = Objects.requireNonNull(this.types.getDeclaredType(this.interceptorTypeElement, this.types.getWildcardType(null, null)));
     }
 
+    public DeclaredType tryUnwrap(DeclaredType maybeWrapped) {
+        if (!this.types.isAssignable(maybeWrapped, this.wrappedType)) {
+            return maybeWrapped;
+        }
+        var wrappedParameterElement = this.wrappedTypeElement.getTypeParameters().get(0); // somehow it can be changed during execution
+        return (DeclaredType) this.types.asMemberOf(maybeWrapped, wrappedParameterElement);
+    }
+
     public boolean isAssignableToUnwrapped(TypeMirror maybeWrapped, TypeMirror typeMirror) {
         if (!this.types.isAssignable(maybeWrapped, this.wrappedType)) {
             return false;
