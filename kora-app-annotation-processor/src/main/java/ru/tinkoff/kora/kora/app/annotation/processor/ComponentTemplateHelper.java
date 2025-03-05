@@ -18,8 +18,10 @@ public class ComponentTemplateHelper {
     }
 
     private static TemplateMatch match0(ProcessingContext ctx, DeclaredType declarationType, DeclaredType requiredType, boolean isRoot) {
-        var declarationErasure = ctx.types.erasure(declarationType);
-        var requiredErasure = ctx.types.erasure(requiredType);
+        var declarationUnwrapped = ctx.serviceTypeHelper.tryUnwrap(declarationType);
+        var requiredUnwrapped = ctx.serviceTypeHelper.tryUnwrap(requiredType);
+        var declarationErasure = ctx.types.erasure(declarationUnwrapped);
+        var requiredErasure = ctx.types.erasure(requiredUnwrapped);
         if (isRoot) {
             if (!ctx.types.isAssignable(declarationErasure, requiredErasure)) {
                 return TemplateMatch.None.INSTANCE;
@@ -29,12 +31,12 @@ public class ComponentTemplateHelper {
                 return TemplateMatch.None.INSTANCE;
             }
         }
-        var typeElement = (TypeElement) requiredType.asElement();
+        var typeElement = (TypeElement) requiredUnwrapped.asElement();
         var map = new IdentityHashMap<TypeVariable, TypeMirror>();
         for (int i = 0; i < typeElement.getTypeParameters().size(); i++) {
             var typeVariable = typeElement.getTypeParameters().get(i);
-            var declarationTypeParameter = ctx.types.asMemberOf(declarationType, typeVariable);
-            var requiredTypeParameter = ctx.types.asMemberOf(requiredType, typeVariable);
+            var declarationTypeParameter = ctx.types.asMemberOf(declarationUnwrapped, typeVariable);
+            var requiredTypeParameter = ctx.types.asMemberOf(requiredUnwrapped, typeVariable);
             if (!match(ctx, declarationTypeParameter, requiredTypeParameter, map)) {
                 return TemplateMatch.None.INSTANCE;
             }
