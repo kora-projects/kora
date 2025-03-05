@@ -114,7 +114,7 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
             b.controlFlow("return %M", flowBuilder) {
                 controlFlow("try") {
                     addStatement("val _st = _session.prepareAsync(_query.sql()).%M()", await)
-                    addStatement("val _stmt = _st.boundStatementBuilder()")
+                    addStatement("var _stmt = _st.boundStatementBuilder()")
                     if (profile != null) {
                         addStatement("_stmt.setExecutionProfileName(%S)", profile)
                     }
@@ -140,7 +140,7 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         } else if (isSuspend) {
             b.controlFlow("try") {
                 addStatement("val _st = _session.prepareAsync(_query.sql()).%M()", await)
-                addStatement("val _stmt = _st.boundStatementBuilder()")
+                addStatement("var _stmt = _st.boundStatementBuilder()")
                 if (profile != null) {
                     addStatement("_stmt.setExecutionProfileName(%S)", profile)
                 }
@@ -164,7 +164,7 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
                 addStatement("_ctxCurrent.inject()")
             }
         } else {
-            b.addStatement("val _stmt = _session.prepare(_query.sql()).boundStatementBuilder()")
+            b.addStatement("var _stmt = _session.prepare(_query.sql()).boundStatementBuilder()")
             if (profile != null) {
                 b.addStatement("_stmt.setExecutionProfileName(%S)", profile)
             }
