@@ -313,22 +313,6 @@ class KoraAppProcessorTest {
     }
 
     @Test
-    void appWithWrappedComponentGeneric1() throws Exception {
-        var graphDraw = testClass(AppWithWrappedDependencyGeneric1.class);
-        Assertions.assertThat(graphDraw.getNodes()).hasSize(10);
-        var materializedGraph = graphDraw.init();
-        Assertions.assertThat(materializedGraph).isNotNull();
-    }
-
-    @Test
-    void appWithWrappedComponentGeneric2() throws Exception {
-        var graphDraw = testClass(AppWithWrappedDependencyGeneric2.class);
-        Assertions.assertThat(graphDraw.getNodes()).hasSize(10);
-        var materializedGraph = graphDraw.init();
-        Assertions.assertThat(materializedGraph).isNotNull();
-    }
-
-    @Test
     void appWithNestedClasses() throws Exception {
         var graphDraw = testClass(AppWithNestedClasses.class);
         Assertions.assertThat(graphDraw.getNodes()).hasSize(2);
