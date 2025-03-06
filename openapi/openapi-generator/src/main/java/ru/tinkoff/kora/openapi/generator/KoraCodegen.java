@@ -1112,8 +1112,12 @@ public class KoraCodegen extends DefaultCodegen {
             }
 
             if (params.codegenMode.isKotlin() && property.isNullable) {
-                if(params.enableJsonNullable) {
-                    return getSchemaType(target) + "<String, ru.tinkoff.kora.json.common.JsonNullable<" + getTypeDeclaration(inner) + ">>";
+                if (params.enableJsonNullable) {
+                    if (property.required) {
+                        return getSchemaType(target) + "<String, ru.tinkoff.kora.json.common.JsonNullable<" + getTypeDeclaration(inner) + ">>";
+                    } else {
+                        return getSchemaType(target) + "<String, ru.tinkoff.kora.json.common.JsonNullable<" + getTypeDeclaration(inner) + ">>?";
+                    }
                 } else {
                     return getSchemaType(target) + "<String, " + getTypeDeclaration(inner) + "?>";
                 }
