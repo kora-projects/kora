@@ -58,7 +58,7 @@ public class WrappedDependenciesTests extends AbstractKoraAppTest {
             }
             """);
 
-        assertThat(draw.getNodes()).hasSize(10);
+        assertThat(draw.getNodes()).hasSize(7);
         var materializedGraph = draw.init();
         assertThat(materializedGraph).isNotNull();
     }
