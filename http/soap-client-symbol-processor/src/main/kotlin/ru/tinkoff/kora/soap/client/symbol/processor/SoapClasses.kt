@@ -10,6 +10,7 @@ interface SoapClasses {
 
     fun jaxbContextTypeName(): TypeName
     fun jaxbExceptionTypeName(): TypeName
+    fun jaxbElementTypeName(): TypeName
     fun xmlSeeAlsoType(): ClassName
     fun webMethodType(): ClassName
     fun responseWrapperType(): ClassName
@@ -30,6 +31,8 @@ interface SoapClasses {
         override fun jaxbContextTypeName() = ClassName("jakarta.xml.bind", "JAXBContext")
 
         override fun jaxbExceptionTypeName() = ClassName("jakarta.xml.bind", "JAXBException")
+
+        override fun jaxbElementTypeName() = ClassName("jakarta.xml.bind", "JAXBElement")
 
         override fun xmlSeeAlsoType() = ClassName("jakarta.xml.bind.annotation", "XmlSeeAlso")
 
@@ -66,6 +69,8 @@ interface SoapClasses {
         override fun jaxbContextTypeName() = ClassName("javax.xml.bind", "JAXBContext")
 
         override fun jaxbExceptionTypeName() = ClassName("javax.xml.bind", "JAXBException")
+
+        override fun jaxbElementTypeName() = ClassName("javax.xml.bind", "JAXBElement")
 
         override fun xmlSeeAlsoType() = ClassName("javax.xml.bind.annotation", "XmlSeeAlso")
 
