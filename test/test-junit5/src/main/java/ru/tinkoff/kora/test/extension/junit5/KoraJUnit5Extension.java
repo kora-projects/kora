@@ -866,7 +866,11 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
         final ApplicationGraphDraw subGraph;
         if (nodesForSubGraph.isEmpty()) {
-            subGraph = graphDraw;
+            if (mocks.isEmpty()) {
+                subGraph = graphDraw;
+            } else {
+                subGraph = graphDraw.subgraph(mocks, graphDraw.getNodes());
+            }
         } else {
             subGraph = graphDraw.subgraph(mocks, nodesForSubGraph);
         }
