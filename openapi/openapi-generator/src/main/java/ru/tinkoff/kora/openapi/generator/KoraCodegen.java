@@ -593,6 +593,10 @@ public class KoraCodegen extends DefaultCodegen {
                             model.name, variable.name, ENABLE_JSON_NULLABLE);
                     }
                 }
+
+                if(variable.isEnum) {
+                    variable.datatypeWithEnum = toEnumName(variable);
+                }
             }
 
             // Optional-vars visit
