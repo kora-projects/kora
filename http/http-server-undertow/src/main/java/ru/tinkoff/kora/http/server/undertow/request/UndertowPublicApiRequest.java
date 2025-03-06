@@ -76,15 +76,19 @@ public class UndertowPublicApiRequest implements PublicApiRequest {
 
     private static Map<String, List<String>> queryParams(HttpServerExchange httpServerExchange) {
         var undertowQueryParams = httpServerExchange.getQueryParameters();
-        var queryParams = new HashMap<String, List<String>>(undertowQueryParams.size());
+        if(undertowQueryParams.isEmpty()) {
+            return Map.of();
+        }
+
+        var queryParams = new LinkedHashMap<String, List<String>>(undertowQueryParams.size());
         for (var entry : undertowQueryParams.entrySet()) {
             var key = entry.getKey();
             var value = entry.getValue().stream()
                 .filter(Predicate.not(String::isEmpty))
                 .toList();
-            queryParams.put(key, List.copyOf(value));
+            queryParams.put(key, value);
         }
-        return Map.copyOf(queryParams);
+        return Collections.unmodifiableMap(queryParams);
     }
 
     private HttpBodyInput getContent(HttpServerExchange exchange) throws IOException {
