@@ -17,6 +17,7 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.database.cassandra.mapper.parameter.CassandraParameterColumnMapper
+import ru.tinkoff.kora.database.symbol.processor.entity.TestEntity
 import kotlin.reflect.full.findAnnotations
 import kotlin.reflect.jvm.jvmErasure
 
@@ -244,6 +245,27 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
         repository.invoke<Any>("test", 42L, new("TestEntity", new("UnknownType")))
         verify(executor.boundStatementBuilder).setLong(0, 42L)
         verify(mapper).apply(ArgumentMatchers.same(executor.boundStatementBuilder), ArgumentMatchers.eq(1), ArgumentMatchers.any())
+    }
+
+    @Test
+    fun testRecordFullParameterMapping() {
+        val mapper = Mockito.mock(CassandraParameterColumnMapper::class.java) as CassandraParameterColumnMapper<TestEntity>
+        val repository = compile(
+            listOf(mapper),
+            """
+            @Repository
+            interface TestRepository : CassandraRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:rec.field1, :rec)")
+                fun test(rec: ru.tinkoff.kora.database.symbol.processor.entity.TestEntity)
+            }
+            """.trimIndent()
+        )
+
+        val defaultData = TestEntity.defaultData()
+        repository.invoke<Any>("test", defaultData)
+
+        verify(executor.boundStatementBuilder).setString(0, "field1")
+        verify(mapper).apply(ArgumentMatchers.same(executor.boundStatementBuilder), ArgumentMatchers.eq(1), ArgumentMatchers.refEq(defaultData))
     }
 
     @Test

@@ -9,6 +9,7 @@ import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.common.annotation.processor.DbTestUtils;
 import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRecord;
 import ru.tinkoff.kora.database.common.annotation.processor.r2dbc.repository.AllowedParametersRepository;
+import ru.tinkoff.kora.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
 import ru.tinkoff.kora.database.r2dbc.R2dbcConnectionFactory;
 import ru.tinkoff.kora.database.r2dbc.mapper.parameter.R2dbcParameterColumnMapper;
 import ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcResultFluxMapper;
@@ -19,6 +20,7 @@ import java.util.concurrent.Executor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 public class R2dbcParametersTest extends AbstractR2dbcRepositoryTest {
@@ -115,6 +117,24 @@ public class R2dbcParametersTest extends AbstractR2dbcRepositoryTest {
         verify(executor.statement).bind(1, Map.of("test", "test-value"));
     }
 
+    @Test
+    void testRecordFullParameterMapping() {
+        @SuppressWarnings("unchecked")
+        var mapper = (R2dbcParameterColumnMapper<TestEntityRecord>) mock(R2dbcParameterColumnMapper.class);
+        var repository = compileR2dbc(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("INSERT INTO test(value1, value2) VALUES (:rec.field1, :rec)")
+                void test(ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRecord rec);
+            }
+            """);
+
+        var object = TestEntityRecord.defaultRecord();
+        repository.invoke("test", object);
+
+        verify(executor.statement).bind(0, "field1");
+        verify(mapper).apply(any(), eq(1), refEq(object));
+    }
 
     @Test
     public void testUnknownTypeParameter() {

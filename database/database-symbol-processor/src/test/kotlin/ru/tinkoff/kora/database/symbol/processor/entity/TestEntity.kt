@@ -47,4 +47,18 @@ data class TestEntity(
     class UnknownField
     class MappedField1
     class MappedField2
+
+    companion object {
+
+        fun defaultData(): TestEntity {
+            return TestEntity(
+                "field1",
+                42,
+                43,
+                UnknownField(),
+                MappedField1(),
+                MappedField2()
+            )
+        }
+    }
 }

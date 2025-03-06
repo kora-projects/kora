@@ -6,6 +6,7 @@ import com.squareup.javapoet.TypeName;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
 import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
+import ru.tinkoff.kora.database.annotation.processor.cassandra.CassandraTypes;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
 
 import jakarta.annotation.Nullable;
@@ -66,11 +67,11 @@ public class R2dbcStatementSetterGenerator {
                 }
             }
 
-            if (parameter instanceof QueryParameter.EntityParameter entityParameter) {
-                for (var field : entityParameter.entity().columns()) {
+            if (parameter instanceof QueryParameter.EntityParameter ep) {
+                for (var field : ep.entity().columns()) {
                     var fieldAccessor = CodeBlock.of("$N.$L()", parameterName, field.accessor());
 
-                    var sqlParameter = sqlWithParameters.find(field.queryParameterName(entityParameter.name()));
+                    var sqlParameter = sqlWithParameters.find(field.queryParameterName(ep.name()));
                     if (sqlParameter == null || sqlParameter.sqlIndexes().isEmpty()) {
                         continue;
                     }
@@ -100,6 +101,25 @@ public class R2dbcStatementSetterGenerator {
                         for (var index : sqlParameter.sqlIndexes()) {
                             b.addCode("$L.apply(_stmt, $L, $L);\n", mapper, index, fieldAccessor);
                         }
+                    }
+                }
+
+                var sqlParameter = sqlWithParameters.find(ep.name());
+                if (sqlParameter == null || sqlParameter.sqlIndexes().isEmpty()) {
+                    continue;
+                }
+
+                var accessor = CodeBlock.of("$N", parameterName).toString();
+                var mapping = CommonUtils.parseMapping(ep.entity().typeElement()).getMapping(R2dbcTypes.PARAMETER_COLUMN_MAPPER);
+                if (mapping != null && mapping.mapperClass() != null) {
+                    for (var idx : sqlParameter.sqlIndexes()) {
+                        var mapper = parameterMappers.get(R2dbcTypes.PARAMETER_COLUMN_MAPPER, mapping, ep.type());
+                        b.addCode("$L.apply(_stmt, $L, $L);\n", mapper, idx, accessor);
+                    }
+                } else {
+                    for (var idx : sqlParameter.sqlIndexes()) {
+                        var mapper = parameterMappers.get(R2dbcTypes.PARAMETER_COLUMN_MAPPER, ep.type(), ep.entity().typeElement());
+                        b.addCode("$L.apply(_stmt, $L, $L);\n", mapper, idx, accessor);
                     }
                 }
             }

@@ -5,6 +5,7 @@ import org.mockito.Mockito;
 import ru.tinkoff.kora.annotation.processor.common.TestContext;
 import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.database.cassandra.mapper.parameter.CassandraParameterColumnMapper;
 import ru.tinkoff.kora.database.common.annotation.processor.DbTestUtils;
 import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityJavaBean;
 import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRecord;
@@ -23,6 +24,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
@@ -113,6 +115,25 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
 
         verify(executor.mockConnection).prepareStatement("INSERT INTO test(test) VALUES ('test')");
         verify(executor.preparedStatement).execute();
+    }
+
+    @Test
+    void testRecordFullParameterMapping() throws Exception {
+        @SuppressWarnings("unchecked")
+        var mapper = (JdbcParameterColumnMapper<TestEntityRecord>) mock(JdbcParameterColumnMapper.class);
+        var repository = compileJdbc(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(value1, value2) VALUES (:rec.field1, :rec)")
+                void test(ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRecord rec);
+            }
+            """);
+
+        var object = TestEntityRecord.defaultRecord();
+        repository.invoke("test", object);
+
+        verify(executor.preparedStatement).setString(1, "field1");
+        verify(mapper).set(same(executor.preparedStatement), eq(2), refEq(object));
     }
 
     @Test

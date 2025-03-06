@@ -98,8 +98,26 @@ object StatementSetterGenerator {
                         }
                     }
                 }
+
+                val sqlParameter = queryWithParameters.find(parameter.name)
+                if (sqlParameter != null && sqlParameter.sqlIndexes.isNotEmpty()) {
+                    val mappersData = parameter.entity.classDeclaration.parseMappingData()
+                    val mapping = mappersData.getMapping(parameter.entity.type)
+                    if (mapping?.mapper != null) {
+                        val mapperName = parameterMappers.get(mapping.mapper!!, mapping.tags)
+                        for (idx in sqlParameter.sqlIndexes) {
+                            b.addStatement("%N.set(_stmt, %L, %L)", mapperName, idx + 1, parameter.name)
+                        }
+                    } else {
+                        val mapperName = parameterMappers.get(JdbcTypes.jdbcParameterColumnMapper, parameter.entity.type, parameter.entity.classDeclaration)
+                        for (idx in sqlParameter.sqlIndexes) {
+                            b.addStatement("%N.set(_stmt, %L, %L)", mapperName, idx + 1, parameter.name)
+                        }
+                    }
+                }
             }
         }
+
         if (batchParam != null) {
             b.addStatement("_stmt.addBatch()")
             b.endControlFlow()
