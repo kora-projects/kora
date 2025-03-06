@@ -656,17 +656,12 @@ public final class RequestHandlerUtils {
             return null;
         }
 
-        List<T> result = new ArrayList<>(headers.size());
+        var result = new ArrayList<T>(headers.size());
         for (String header : headers) {
             header = header.strip();
             if (!header.isEmpty()) {
                 String[] split = header.split(",");
                 for (String s : split) {
-                    s = s.strip();
-                    if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, header));
-                    }
-
                     try {
                         T value = mapping.read(s);
                         result.add(value);
@@ -697,17 +692,12 @@ public final class RequestHandlerUtils {
             return null;
         }
 
-        Set<T> result = new LinkedHashSet<>(headers.size() + 1);
+        var result = new LinkedHashSet<T>(headers.size() + 1);
         for (String header : headers) {
             header = header.strip();
             if (!header.isEmpty()) {
                 String[] split = header.split(",");
                 for (String s : split) {
-                    s = s.strip();
-                    if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, header));
-                    }
-
                     try {
                         T value = mapping.read(s);
                         result.add(value);
@@ -1261,7 +1251,7 @@ public final class RequestHandlerUtils {
                 } else if ("false".equalsIgnoreCase(param)) {
                     result.add(false);
                 } else {
-                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, params));
+                    throw HttpServerResponseException.of(400, "Query parameter %s has invalid value".formatted(name));
                 }
             }
         }
@@ -1286,18 +1276,13 @@ public final class RequestHandlerUtils {
         var result = new ArrayList<T>(params.size());
         for (var param : params) {
             if (param != null) {
-                param = param.strip();
-                if (param.isEmpty()) {
-                    throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid blank string value".formatted(name));
-                }
-
                 try {
                     T value = mapping.read(param);
                     result.add(value);
                 } catch (HttpServerResponseException e) {
                     throw e;
                 } catch (Exception e) {
-                    throw HttpServerResponseException.of(400, "Query %s(%s) has invalid value due to: ".formatted(name, s) + e.getMessage());
+                    throw HttpServerResponseException.of(400, "Query parameter %s has invalid value".formatted(name));
                 }
             }
         }
@@ -1323,18 +1308,13 @@ public final class RequestHandlerUtils {
         var result = new LinkedHashSet<T>(params.size() + 1);
         for (var param : params) {
             if (param != null) {
-                param = param.strip();
-                if (param.isEmpty()) {
-                    throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid blank string value".formatted(name));
-                }
-
                 try {
                     T value = mapping.read(param);
                     result.add(value);
                 } catch (HttpServerResponseException e) {
                     throw e;
                 } catch (Exception e) {
-                    throw HttpServerResponseException.of(400, "Query %s(%s) has invalid value due to: ".formatted(name, s) + e.getMessage());
+                    throw HttpServerResponseException.of(400, "Query parameter %s has invalid value".formatted(name));
                 }
             }
         }
