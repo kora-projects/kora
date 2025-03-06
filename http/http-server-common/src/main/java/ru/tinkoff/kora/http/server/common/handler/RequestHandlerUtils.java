@@ -152,6 +152,8 @@ public final class RequestHandlerUtils {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
+        } else if(headers.isEmpty()) {
+            return List.of();
         }
 
         List<String> result = new ArrayList<>(headers.size());
@@ -182,6 +184,8 @@ public final class RequestHandlerUtils {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
+        } else if(headers.isEmpty()) {
+            return Set.of();
         }
 
         Set<String> result = new LinkedHashSet<>(headers.size() + 1);
@@ -246,8 +250,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static List<Integer> parseOptionalIntegerListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
-        if (headers == null || headers.isEmpty()) {
+        if (headers == null) {
             return null;
+        } else if(headers.isEmpty()) {
+            return List.of();
         }
 
         List<Integer> result = new ArrayList<>(headers.size());
@@ -284,8 +290,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static Set<Integer> parseOptionalIntegerSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
-        if (headers == null || headers.isEmpty()) {
+        if (headers == null) {
             return null;
+        } else if(headers.isEmpty()) {
+            return Set.of();
         }
 
         Set<Integer> result = new LinkedHashSet<>(headers.size() + 1);
@@ -359,8 +367,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static List<Long> parseOptionalLongListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
-        if (headers == null || headers.isEmpty()) {
+        if (headers == null) {
             return null;
+        } else if(headers.isEmpty()) {
+            return List.of();
         }
 
         List<Long> result = new ArrayList<>(headers.size());
@@ -397,8 +407,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static Set<Long> parseOptionalLongSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
-        if (headers == null || headers.isEmpty()) {
+        if (headers == null) {
             return null;
+        } else if(headers.isEmpty()) {
+            return Set.of();
         }
 
         Set<Long> result = new LinkedHashSet<>(headers.size() + 1);
@@ -472,8 +484,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static List<Double> parseOptionalDoubleListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
-        if (headers == null || headers.isEmpty()) {
+        if (headers == null) {
             return null;
+        } else if(headers.isEmpty()) {
+            return List.of();
         }
 
         List<Double> result = new ArrayList<>(headers.size());
@@ -510,8 +524,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static Set<Double> parseOptionalDoubleSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
-        if (headers == null || headers.isEmpty()) {
+        if (headers == null) {
             return null;
+        } else if(headers.isEmpty()) {
+            return Set.of();
         }
 
         Set<Double> result = new LinkedHashSet<>(headers.size() + 1);
@@ -576,8 +592,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static List<UUID> parseOptionalUuidListHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
-        if (headers == null || headers.isEmpty()) {
+        if (headers == null) {
             return null;
+        } else if(headers.isEmpty()) {
+            return List.of();
         }
 
         List<UUID> result = new ArrayList<>(headers.size());
@@ -614,8 +632,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static Set<UUID> parseOptionalUuidSetHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
-        if (headers == null || headers.isEmpty()) {
+        if (headers == null) {
             return null;
+        } else if(headers.isEmpty()) {
+            return Set.of();
         }
 
         Set<UUID> result = new LinkedHashSet<>(headers.size() + 1);
@@ -652,8 +672,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static <T> List<T> parseOptionalSomeListHeaderParameter(HttpServerRequest request, String name, StringParameterReader<T> mapping) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
-        if (headers == null || headers.isEmpty()) {
+        if (headers == null) {
             return null;
+        } else if(headers.isEmpty()) {
+            return List.of();
         }
 
         var result = new ArrayList<T>(headers.size());
@@ -688,8 +710,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static <T> Set<T> parseOptionalSomeSetHeaderParameter(HttpServerRequest request, String name, StringParameterReader<T> mapping) throws HttpServerResponseException {
         var headers = request.headers().getAll(name);
-        if (headers == null || headers.isEmpty()) {
+        if (headers == null) {
             return null;
+        } else if(headers.isEmpty()) {
+            return Set.of();
         }
 
         var result = new LinkedHashSet<T>(headers.size() + 1);
@@ -890,8 +914,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static List<Integer> parseOptionalIntegerListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
-        if (params == null || params.isEmpty()) {
+        if (params == null) {
             return null;
+        } else if(params.isEmpty()) {
+            return List.of();
         }
 
         var result = new ArrayList<Integer>(params.size());
@@ -923,8 +949,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static List<UUID> parseOptionalUuidListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
-        if (params == null || params.isEmpty()) {
+        if (params == null) {
             return null;
+        } else if(params.isEmpty()) {
+            return List.of();
         }
 
         var result = new ArrayList<UUID>(params.size());
@@ -955,12 +983,14 @@ public final class RequestHandlerUtils {
 
     @Nullable
     public static List<String> parseOptionalStringListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
-        var result = request.queryParams().get(name);
-        if (result == null) {
+        var params = request.queryParams().get(name);
+        if (params == null) {
             return null;
+        } else if(params.isEmpty()) {
+            return List.of();
         }
 
-        return result.stream().toList();
+        return params.stream().toList();
     }
 
     @Nonnull
@@ -975,8 +1005,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static List<Long> parseOptionalLongListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
-        if (params == null || params.isEmpty()) {
+        if (params == null) {
             return null;
+        } else if(params.isEmpty()) {
+            return List.of();
         }
 
         var result = new ArrayList<Long>(params.size());
@@ -1008,8 +1040,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static List<Double> parseOptionalDoubleListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
-        if (params == null || params.isEmpty()) {
+        if (params == null) {
             return null;
+        } else if(params.isEmpty()) {
+            return List.of();
         }
 
         var result = new ArrayList<Double>(params.size());
@@ -1041,8 +1075,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static List<Boolean> parseOptionalBooleanListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
-        if (params == null || params.isEmpty()) {
+        if (params == null) {
             return null;
+        } else if(params.isEmpty()) {
+            return List.of();
         }
 
         var result = new ArrayList<Boolean>(params.size());
@@ -1076,8 +1112,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static Set<Integer> parseOptionalIntegerSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
-        if (params == null || params.isEmpty()) {
+        if (params == null) {
             return null;
+        } else if(params.isEmpty()) {
+            return Set.of();
         }
 
         var result = new LinkedHashSet<Integer>(params.size() + 1);
@@ -1109,8 +1147,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static Set<UUID> parseOptionalUuidSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
-        if (params == null || params.isEmpty()) {
+        if (params == null) {
             return null;
+        } else if(params.isEmpty()) {
+            return Set.of();
         }
 
         var result = new LinkedHashSet<UUID>(params.size() + 1);
@@ -1142,8 +1182,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static Set<String> parseOptionalStringSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
-        if (params == null || params.isEmpty()) {
+        if (params == null) {
             return null;
+        } else if(params.isEmpty()) {
+            return Set.of();
         }
 
         var result = new LinkedHashSet<String>(params.size() + 1);
@@ -1168,8 +1210,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static Set<Long> parseOptionalLongSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
-        if (params == null || params.isEmpty()) {
+        if (params == null) {
             return null;
+        } else if(params.isEmpty()) {
+            return Set.of();
         }
 
         var result = new LinkedHashSet<Long>(params.size() + 1);
@@ -1201,8 +1245,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static Set<Double> parseOptionalDoubleSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
-        if (params == null || params.isEmpty()) {
+        if (params == null) {
             return null;
+        } else if(params.isEmpty()) {
+            return Set.of();
         }
 
         var result = new LinkedHashSet<Double>(params.size() + 1);
@@ -1234,8 +1280,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static Set<Boolean> parseOptionalBooleanSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
-        if (params == null || params.isEmpty()) {
+        if (params == null) {
             return null;
+        } else if(params.isEmpty()) {
+            return Set.of();
         }
 
         var result = new LinkedHashSet<Boolean>(params.size() + 1);
@@ -1269,8 +1317,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static <T> List<T> parseOptionalSomeListQueryParameter(HttpServerRequest request, String name, StringParameterReader<T> mapping) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
-        if (params == null || params.isEmpty()) {
+        if (params == null) {
             return null;
+        } else if(params.isEmpty()) {
+            return List.of();
         }
 
         var result = new ArrayList<T>(params.size());
@@ -1301,8 +1351,10 @@ public final class RequestHandlerUtils {
     @Nullable
     public static <T> Set<T> parseOptionalSomeSetQueryParameter(HttpServerRequest request, String name, StringParameterReader<T> mapping) throws HttpServerResponseException {
         var params = request.queryParams().get(name);
-        if (params == null || params.isEmpty()) {
+        if (params == null) {
             return null;
+        } else if(params.isEmpty()) {
+            return Set.of();
         }
 
         var result = new LinkedHashSet<T>(params.size() + 1);
