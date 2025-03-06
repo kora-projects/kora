@@ -1251,7 +1251,7 @@ public final class RequestHandlerUtils {
                 } else if ("false".equalsIgnoreCase(param)) {
                     result.add(false);
                 } else {
-                    throw HttpServerResponseException.of(400, "Query parameter %s has invalid value".formatted(name));
+                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, param));
                 }
             }
         }
@@ -1282,7 +1282,7 @@ public final class RequestHandlerUtils {
                 } catch (HttpServerResponseException e) {
                     throw e;
                 } catch (Exception e) {
-                    throw HttpServerResponseException.of(400, "Query parameter %s has invalid value".formatted(name));
+                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, param));
                 }
             }
         }
@@ -1314,7 +1314,7 @@ public final class RequestHandlerUtils {
                 } catch (HttpServerResponseException e) {
                     throw e;
                 } catch (Exception e) {
-                    throw HttpServerResponseException.of(400, "Query parameter %s has invalid value".formatted(name));
+                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, param));
                 }
             }
         }
