@@ -85,7 +85,7 @@ public final class RequestHandlerUtils {
         try {
             return Long.parseLong(param);
         } catch (NumberFormatException e) {
-            throw HttpServerResponseException.of(400, "Path parameter %s(%s) has invalid value".formatted(name, param));
+            throw HttpServerResponseException.of(400, "Path parameter %s has invalid value: %s".formatted(name, param));
         }
     }
 
@@ -98,7 +98,7 @@ public final class RequestHandlerUtils {
         try {
             return Double.parseDouble(param);
         } catch (NumberFormatException e) {
-            throw HttpServerResponseException.of(400, "Path parameter %s(%s) has invalid value".formatted(name, param));
+            throw HttpServerResponseException.of(400, "Path parameter %s has invalid value: %s".formatted(name, param));
         }
     }
 
@@ -113,7 +113,7 @@ public final class RequestHandlerUtils {
         } else if ("false".equalsIgnoreCase(param)) {
             return false;
         } else {
-            throw HttpServerResponseException.of(400, "Path parameter %s(%s) has invalid value".formatted(name, param));
+            throw HttpServerResponseException.of(400, "Path parameter %s has invalid value: %s".formatted(name, param));
         }
     }
 
@@ -216,7 +216,7 @@ public final class RequestHandlerUtils {
         try {
             return Integer.parseInt(first);
         } catch (NumberFormatException e) {
-            throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, first));
+            throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, first));
         }
     }
 
@@ -235,7 +235,7 @@ public final class RequestHandlerUtils {
         try {
             return Integer.parseInt(first);
         } catch (NumberFormatException e) {
-            throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, first));
+            throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, first));
         }
     }
 
@@ -264,13 +264,13 @@ public final class RequestHandlerUtils {
                 for (String s : split) {
                     s = s.strip();
                     if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, header));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, header));
                     }
 
                     try {
                         result.add(Integer.parseInt(s));
                     } catch (NumberFormatException e) {
-                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, s));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
                     }
                 }
             }
@@ -304,13 +304,13 @@ public final class RequestHandlerUtils {
                 for (String s : split) {
                     s = s.strip();
                     if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, header));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, header));
                     }
 
                     try {
                         result.add(Integer.parseInt(s));
                     } catch (NumberFormatException e) {
-                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, s));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
                     }
                 }
             }
@@ -333,7 +333,7 @@ public final class RequestHandlerUtils {
         try {
             return Long.parseLong(first);
         } catch (NumberFormatException e) {
-            throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, first));
+            throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, first));
         }
     }
 
@@ -352,7 +352,7 @@ public final class RequestHandlerUtils {
         try {
             return Long.parseLong(first);
         } catch (NumberFormatException e) {
-            throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, first));
+            throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, first));
         }
     }
 
@@ -381,13 +381,13 @@ public final class RequestHandlerUtils {
                 for (String s : split) {
                     s = s.strip();
                     if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, header));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, header));
                     }
 
                     try {
                         result.add(Long.parseLong(s));
                     } catch (NumberFormatException e) {
-                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, s));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
                     }
                 }
             }
@@ -421,13 +421,13 @@ public final class RequestHandlerUtils {
                 for (String s : split) {
                     s = s.strip();
                     if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, header));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, header));
                     }
 
                     try {
                         result.add(Long.parseLong(s));
                     } catch (NumberFormatException e) {
-                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, s));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
                     }
                 }
             }
@@ -450,7 +450,7 @@ public final class RequestHandlerUtils {
         try {
             return Double.parseDouble(first);
         } catch (NumberFormatException e) {
-            throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, first));
+            throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, first));
         }
     }
 
@@ -469,7 +469,7 @@ public final class RequestHandlerUtils {
         try {
             return Double.parseDouble(first);
         } catch (NumberFormatException e) {
-            throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, first));
+            throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, first));
         }
     }
 
@@ -498,13 +498,13 @@ public final class RequestHandlerUtils {
                 for (String s : split) {
                     s = s.strip();
                     if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, header));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, header));
                     }
 
                     try {
                         result.add(Double.parseDouble(s));
                     } catch (NumberFormatException e) {
-                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, s));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
                     }
                 }
             }
@@ -538,13 +538,13 @@ public final class RequestHandlerUtils {
                 for (String s : split) {
                     s = s.strip();
                     if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, header));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, header));
                     }
 
                     try {
                         result.add(Double.parseDouble(s));
                     } catch (NumberFormatException e) {
-                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, s));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
                     }
                 }
             }
@@ -577,7 +577,7 @@ public final class RequestHandlerUtils {
         try {
             return UUID.fromString(first);
         } catch (NumberFormatException e) {
-            throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, first));
+            throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, first));
         }
     }
 
@@ -606,13 +606,13 @@ public final class RequestHandlerUtils {
                 for (String s : split) {
                     s = s.strip();
                     if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, header));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, header));
                     }
 
                     try {
                         result.add(UUID.fromString(s));
                     } catch (NumberFormatException e) {
-                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, s));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
                     }
                 }
             }
@@ -646,13 +646,13 @@ public final class RequestHandlerUtils {
                 for (String s : split) {
                     s = s.strip();
                     if (s.isEmpty()) {
-                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, header));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, header));
                     }
 
                     try {
                         result.add(UUID.fromString(s));
                     } catch (NumberFormatException e) {
-                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value".formatted(name, s));
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s".formatted(name, s));
                     }
                 }
             }
@@ -690,7 +690,7 @@ public final class RequestHandlerUtils {
                     } catch (HttpServerResponseException e) {
                         throw e;
                     } catch (Exception e) {
-                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value due to: ".formatted(name, s) + e.getMessage());
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s due to: ".formatted(name, s) + e.getMessage());
                     }
                 }
             }
@@ -728,7 +728,7 @@ public final class RequestHandlerUtils {
                     } catch (HttpServerResponseException e) {
                         throw e;
                     } catch (Exception e) {
-                        throw HttpServerResponseException.of(400, "Header %s(%s) has invalid value due to: ".formatted(name, s) + e.getMessage());
+                        throw HttpServerResponseException.of(400, "Header '%s' has invalid value: %s due to: ".formatted(name, s) + e.getMessage());
                     }
                 }
             }
@@ -812,7 +812,7 @@ public final class RequestHandlerUtils {
         try {
             return Integer.parseInt(first);
         } catch (NumberFormatException e) {
-            throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, first));
+            throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value: %s".formatted(name, first));
         }
     }
 
@@ -839,7 +839,7 @@ public final class RequestHandlerUtils {
         try {
             return Long.parseLong(first);
         } catch (NumberFormatException e) {
-            throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, first));
+            throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value: %s".formatted(name, first));
         }
     }
 
@@ -868,7 +868,7 @@ public final class RequestHandlerUtils {
         } else if ("false".equalsIgnoreCase(first)) {
             return false;
         } else {
-            throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, param));
+            throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value: %s".formatted(name, param));
         }
     }
 
@@ -895,7 +895,7 @@ public final class RequestHandlerUtils {
         try {
             return Double.parseDouble(first);
         } catch (NumberFormatException e) {
-            throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, first));
+            throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value: %s".formatted(name, first));
         }
     }
 
@@ -930,7 +930,7 @@ public final class RequestHandlerUtils {
                 try {
                     result.add(Integer.parseInt(param));
                 } catch (NumberFormatException e) {
-                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, param));
+                    throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value: %s".formatted(name, param));
                 }
             }
         }
@@ -965,7 +965,7 @@ public final class RequestHandlerUtils {
                 try {
                     result.add(UUID.fromString(param));
                 } catch (NumberFormatException e) {
-                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, param));
+                    throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value: %s".formatted(name, param));
                 }
             }
         }
@@ -1021,7 +1021,7 @@ public final class RequestHandlerUtils {
                 try {
                     result.add(Long.parseLong(param));
                 } catch (NumberFormatException e) {
-                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, param));
+                    throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value: %s".formatted(name, param));
                 }
             }
         }
@@ -1056,7 +1056,7 @@ public final class RequestHandlerUtils {
                 try {
                     result.add(Double.parseDouble(param));
                 } catch (NumberFormatException e) {
-                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, param));
+                    throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value: %s".formatted(name, param));
                 }
             }
         }
@@ -1093,7 +1093,7 @@ public final class RequestHandlerUtils {
                 } else if ("false".equalsIgnoreCase(param)) {
                     result.add(false);
                 } else {
-                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, params));
+                    throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value: %s".formatted(name, params));
                 }
             }
         }
@@ -1128,7 +1128,7 @@ public final class RequestHandlerUtils {
                 try {
                     result.add(Integer.parseInt(param));
                 } catch (NumberFormatException e) {
-                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, param));
+                    throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value: %s".formatted(name, param));
                 }
             }
         }
@@ -1163,7 +1163,7 @@ public final class RequestHandlerUtils {
                 try {
                     result.add(UUID.fromString(param));
                 } catch (NumberFormatException e) {
-                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, param));
+                    throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value: %s".formatted(name, param));
                 }
             }
         }
@@ -1226,7 +1226,7 @@ public final class RequestHandlerUtils {
                 try {
                     result.add(Long.parseLong(param));
                 } catch (NumberFormatException e) {
-                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, param));
+                    throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value: %s".formatted(name, param));
                 }
             }
         }
@@ -1261,7 +1261,7 @@ public final class RequestHandlerUtils {
                 try {
                     result.add(Double.parseDouble(param));
                 } catch (NumberFormatException e) {
-                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, param));
+                    throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value: %s".formatted(name, param));
                 }
             }
         }
@@ -1299,7 +1299,7 @@ public final class RequestHandlerUtils {
                 } else if ("false".equalsIgnoreCase(param)) {
                     result.add(false);
                 } else {
-                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, param));
+                    throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value: %s".formatted(name, param));
                 }
             }
         }
@@ -1332,7 +1332,7 @@ public final class RequestHandlerUtils {
                 } catch (HttpServerResponseException e) {
                     throw e;
                 } catch (Exception e) {
-                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, param));
+                    throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value: %s".formatted(name, param));
                 }
             }
         }
@@ -1366,7 +1366,7 @@ public final class RequestHandlerUtils {
                 } catch (HttpServerResponseException e) {
                     throw e;
                 } catch (Exception e) {
-                    throw HttpServerResponseException.of(400, "Query parameter %s(%s) has invalid value".formatted(name, param));
+                    throw HttpServerResponseException.of(400, "Query parameter '%s' has invalid value: %s".formatted(name, param));
                 }
             }
         }
