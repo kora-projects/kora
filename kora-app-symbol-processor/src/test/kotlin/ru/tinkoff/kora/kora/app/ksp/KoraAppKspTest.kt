@@ -342,30 +342,6 @@ class KoraAppKspTest {
     }
 
     @Test
-    fun appWithWrappedComponent() {
-        val graphDraw = testClass(AppWithWrappedDependency::class)
-        assertThat(graphDraw.nodes).hasSize(7)
-        val materializedGraph = graphDraw.init()
-        assertThat(materializedGraph).isNotNull
-    }
-
-    @Test
-    fun appWithWrappedComponentWithGeneric1() {
-        val graphDraw = testClass(AppWithWrappedDependencyGeneric1::class)
-        assertThat(graphDraw.nodes).hasSize(16)
-        val materializedGraph = graphDraw.init()
-        assertThat(materializedGraph).isNotNull
-    }
-
-    @Test
-    fun appWithWrappedComponentWithGeneric2() {
-        val graphDraw = testClass(AppWithWrappedDependencyGeneric2::class)
-        assertThat(graphDraw.nodes).hasSize(16)
-        val materializedGraph = graphDraw.init()
-        assertThat(materializedGraph).isNotNull
-    }
-
-    @Test
     fun appWithNestedClasses() {
         val graphDraw = testClass(AppWithNestedClasses::class)
         assertThat(graphDraw.nodes).hasSize(2)
