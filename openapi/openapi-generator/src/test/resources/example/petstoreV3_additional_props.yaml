@@ -1,0 +1,51 @@
+openapi: 3.0.3
+
+info:
+  title: PetStore with discriminator
+  version: 1.0.0
+
+paths:
+  /store/inventory:
+    get:
+      summary: Returns pet inventories by status
+      operationId: getInventory
+      responses:
+        '200':
+          description: A page of pet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+components:
+  schemas:
+    Pet:
+      type: object
+      required:
+        - name
+        - propsRequired
+        - propsRequiredAndNullable
+      properties:
+        name:
+          type: string
+        propsNonRequired:
+          type: object
+          additionalProperties:
+            type: string
+          minProperties: 10
+        propsNonRequiredAndNullable:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: string
+          maxProperties: 10
+        propsRequired:
+          type: object
+          additionalProperties:
+            type: string
+          minProperties: 10
+        propsRequiredAndNullable:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: string
+          minProperties: 10
