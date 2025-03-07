@@ -3,10 +3,6 @@ package ru.tinkoff.kora.soap.client.annotation.processor;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.TypeName;
 
-import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.Elements;
-import javax.lang.model.util.Types;
-
 public interface SoapClasses {
     default TypeName httpClientTypeName() {
         return ClassName.get("ru.tinkoff.kora.http.client.common", "HttpClient");
@@ -56,6 +52,8 @@ public interface SoapClasses {
 
     TypeName jaxbExceptionTypeName();
 
+    ClassName jaxbElementTypeName();
+
     ClassName xmlSeeAlsoType();
 
     ClassName webMethodType();
@@ -70,7 +68,7 @@ public interface SoapClasses {
 
     TypeName xmlToolsType();
 
-    TypeMirror holderTypeErasure();
+    ClassName holderTypeClassName();
 
     ClassName webFaultType();
 
@@ -87,13 +85,6 @@ public interface SoapClasses {
     ClassName xmlElementClassName();
 
     class JakartaClasses implements SoapClasses {
-        private final Types types;
-        private final Elements elements;
-
-        public JakartaClasses(Types types, Elements elements) {
-            this.types = types;
-            this.elements = elements;
-        }
 
         @Override
         public TypeName jaxbContextTypeName() {
@@ -104,6 +95,9 @@ public interface SoapClasses {
         public TypeName jaxbExceptionTypeName() {
             return ClassName.get("jakarta.xml.bind", "JAXBException");
         }
+
+        @Override
+        public ClassName jaxbElementTypeName() {return ClassName.get("jakarta.xml.bind", "JAXBElement");}
 
         @Override
         public ClassName xmlSeeAlsoType() {
@@ -141,9 +135,7 @@ public interface SoapClasses {
         }
 
         @Override
-        public TypeMirror holderTypeErasure() {
-            return types.erasure(elements.getTypeElement("jakarta.xml.ws.Holder").asType());
-        }
+        public ClassName holderTypeClassName() {return ClassName.get("jakarta.xml.ws", "Holder");}
 
         @Override
         public ClassName webFaultType() {
@@ -182,13 +174,8 @@ public interface SoapClasses {
     }
 
     class JavaxClasses implements SoapClasses {
-        private final Types types;
-        private final Elements elements;
 
-        public JavaxClasses(Types types, Elements elements) {
-            this.types = types;
-            this.elements = elements;
-        }
+        public JavaxClasses() {}
 
         @Override
         public TypeName jaxbContextTypeName() {
@@ -199,6 +186,9 @@ public interface SoapClasses {
         public TypeName jaxbExceptionTypeName() {
             return ClassName.get("javax.xml.bind", "JAXBException");
         }
+
+        @Override
+        public ClassName jaxbElementTypeName() {return ClassName.get("javax.xml.bind", "JAXBElement");}
 
         @Override
         public ClassName xmlSeeAlsoType() {
@@ -236,9 +226,7 @@ public interface SoapClasses {
         }
 
         @Override
-        public TypeMirror holderTypeErasure() {
-            return types.erasure(elements.getTypeElement("javax.xml.ws.Holder").asType());
-        }
+        public ClassName holderTypeClassName() {return ClassName.get("javax.xml.ws", "Holder");}
 
         @Override
         public ClassName webFaultType() {
