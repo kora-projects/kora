@@ -9,6 +9,7 @@ abstract class AbstractCassandraRepositoryTest : AbstractRepositoryTest() {
     override fun commonImports(): String {
         return super.commonImports() + """
             import ru.tinkoff.kora.database.cassandra.*;
+            import ru.tinkoff.kora.database.cassandra.annotation.*;
             import ru.tinkoff.kora.database.cassandra.mapper.result.*;
             import ru.tinkoff.kora.database.cassandra.mapper.parameter.*;
 

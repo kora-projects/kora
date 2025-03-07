@@ -42,7 +42,7 @@ class CassandraExtensionTest : AbstractCassandraRepositoryTest() {
             }
             """.trimIndent(),
             """
-            data class TestEntity(val value: String, @field:Column("some_value") val value: String)
+            data class TestEntity(val value: String)
             """.trimIndent()
         )
         compileResult.assertSuccess()
@@ -61,7 +61,7 @@ class CassandraExtensionTest : AbstractCassandraRepositoryTest() {
             """.trimIndent(),
             """
             @EntityCassandra
-            data class TestEntity(val value: String, @field:Column("some_value") val value: String)
+            data class TestEntity(val value: String)
             """.trimIndent()
         )
         compileResult.assertSuccess()
@@ -79,7 +79,7 @@ class CassandraExtensionTest : AbstractCassandraRepositoryTest() {
             }
             """.trimIndent(),
             """
-            data class TestEntity(val value: String, @field:Column("some_value") val value: String)
+            data class TestEntity(val value: String)
             """.trimIndent()
         )
         compileResult.assertSuccess()
@@ -98,7 +98,7 @@ class CassandraExtensionTest : AbstractCassandraRepositoryTest() {
             """.trimIndent(),
             """
             @EntityCassandra
-            data class TestEntity(val value: String, @field:Column("some_value") val value: String)
+            data class TestEntity(val value: String)
             """.trimIndent()
         )
         compileResult.assertSuccess()
@@ -116,7 +116,7 @@ class CassandraExtensionTest : AbstractCassandraRepositoryTest() {
             }
             """.trimIndent(),
             """
-            data class TestEntity(val value: String, @field:Column("some_value") val value: String)
+            data class TestEntity(val value: String)
             """.trimIndent()
         )
         compileResult.assertSuccess()
@@ -135,7 +135,7 @@ class CassandraExtensionTest : AbstractCassandraRepositoryTest() {
             """.trimIndent(),
             """
             @EntityCassandra
-            data class TestEntity(val value: String, @field:Column("some_value") val value: String)
+            data class TestEntity(val value: String)
             """.trimIndent()
         )
         compileResult.assertSuccess()
@@ -153,7 +153,7 @@ class CassandraExtensionTest : AbstractCassandraRepositoryTest() {
             }
             """.trimIndent(),
             """
-            data class TestEntity(val value: String, @field:Column("some_value") val value: String)
+            data class TestEntity(val value: String)
             """.trimIndent()
         )
         compileResult.assertSuccess()
@@ -171,7 +171,7 @@ class CassandraExtensionTest : AbstractCassandraRepositoryTest() {
             }
             """.trimIndent(),
             """
-            data class TestEntity(val value: String, @field:Column("some_value") val value: String)
+            data class TestEntity(val value: String)
             """.trimIndent()
         )
         compileResult.assertSuccess()
