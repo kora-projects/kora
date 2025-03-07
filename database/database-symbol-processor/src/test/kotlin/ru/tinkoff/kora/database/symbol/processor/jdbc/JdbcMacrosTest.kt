@@ -14,7 +14,10 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
             interface TestRepository : JdbcRepository {
                         
                 @Table("entities")
-                data class Entity(@field:Id val id: String, @field:Column("value1") val field1: Long, val value2: String, val value3: String?)
+                data class Entity(@field:Id val id: String, 
+                                  @field:Column("value1") val field1: Long, 
+                                  val value2: String, 
+                                  val value3: String?)
                         
                 @Query("SELECT * FROM %{return#table} WHERE id = :id")
                 @Nullable
@@ -42,7 +45,10 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
             interface TestRepository : JdbcRepository {
                         
                 @Table("entities")
-                data class Entity(@field:Id val id: String, @field:Column("value1") val field1: Long, val value2: String, val value3: String?)
+                data class Entity(@field:Id val id: String, 
+                                  @field:Column("value1") val field1: Long, 
+                                  val value2: String, 
+                                  val value3: String?)
                         
                 @Query("SELECT %{return#selects} FROM %{return#table} WHERE id = :id")
                 suspend fun findById(id: String): Entity?
@@ -75,8 +81,10 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
             
             """.trimIndent(), """
                 @Table("entities")
-                data class Entity(@field:Id val id: String, @field:Column("value1") val field1: Long, val value2: String, val value3: String?)
-            
+                data class Entity(@field:Id val id: String, 
+                                  @field:Column("value1") val field1: Long, 
+                                  val value2: String, 
+                                  val value3: String?)
             """.trimIndent()
         )
         repository.invoke<Any>("insert", newGenerated("Entity", "1", 1, "1", "1").invoke())
@@ -97,7 +105,10 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
             
             """.trimIndent(), """
                 @Table("entities")
-                data class Entity(@field:Id val id: String, @field:Column("value1") val field1: Long, val value2: String, val value3: String?)
+                data class Entity(@field:Id val id: String, 
+                                  @field:Column("value1") val field1: Long, 
+                                  val value2: String, 
+                                  val value3: String?)
             
             """.trimIndent()
         )
@@ -121,7 +132,10 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
             
             """.trimIndent(), """
                 @Table("entities")
-                data class Entity(@field:Id val id: String, @field:Column("value1") val field1: Long, val value2: String, val value3: String?)
+                data class Entity(@field:Id val id: String, 
+                                  @field:Column("value1") val field1: Long, 
+                                  val value2: String, 
+                                  val value3: String?)
             
             """.trimIndent()
         )
@@ -148,7 +162,10 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
             
             """.trimIndent(), """
                 @Table("entities")
-                data class Entity(@field:Id val id: String, @field:Column("value1") val field1: Long, val value2: String, val value3: String?)
+                data class Entity(@field:Id val id: String, 
+                                  @field:Column("value1") val field1: Long, 
+                                  val value2: String, 
+                                  val value3: String?)
             
             """.trimIndent()
         )
@@ -170,7 +187,10 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
             
             """.trimIndent(), """
                 @Table("entities")
-                data class Entity(@field:Id val id: String, @field:Column("value1") val field1: Long, val value2: String, val value3: String?)
+                data class Entity(@field:Id val id: String, 
+                                  @field:Column("value1") val field1: Long, 
+                                  val value2: String, 
+                                  val value3: String?)
             
             """.trimIndent()
         )
@@ -192,7 +212,10 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
             
             """.trimIndent(), """
                 @Table("entities")
-                data class Entity(@field:Id val id: String, @field:Column("value1") val field1: Long, val value2: String, val value3: String?)
+                data class Entity(@field:Id val id: String, 
+                                  @field:Column("value1") val field1: Long, 
+                                  val value2: String, 
+                                  val value3: String?)
             
             """.trimIndent()
         )
@@ -214,7 +237,10 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
             
             """.trimIndent(), """
                 @Table("entities")
-                data class Entity(@field:Id val id: String, @field:Column("value1") val field1: Long, val value2: String, val value3: String?)
+                data class Entity(@field:Id val id: String, 
+                                  @field:Column("value1") val field1: Long, 
+                                  val value2: String, 
+                                  val value3: String?)
             
             """.trimIndent()
         )
@@ -238,7 +264,10 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
             
             """.trimIndent(), """
                 @Table("entities")
-                data class Entity(@field:Id val id: String, @field:Column("value1") val field1: Long, val value2: String, val value3: String?)
+                data class Entity(@field:Id val id: String, 
+                                  @field:Column("value1") val field1: Long, 
+                                  val value2: String, 
+                                  val value3: String?)
             
             """.trimIndent()
         )
@@ -260,7 +289,10 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
             
             """.trimIndent(), """
                 @Table("entities")
-                data class Entity(@field:Id val id: String, @field:Column("value1") val field1: Long, val value2: String, val value3: String?)
+                data class Entity(@field:Id val id: String, 
+                                  @field:Column("value1") val field1: Long, 
+                                  val value2: String, 
+                                  val value3: String?)
             
             """.trimIndent()
         )
@@ -284,7 +316,10 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
             
             """.trimIndent(), """
                 @Table("entities")
-                data class Entity(@field:Id @field:Embedded val id: EntityId, @field:Column("value1") val field1: Long, val value2: String, val value3: String?)
+                data class Entity(@field:Id @field:Embedded val id: EntityId, 
+                                  @field:Column("value1") val field1: Long, 
+                                  val value2: String, 
+                                  val value3: String?)
             
             """.trimIndent(), """
                 data class EntityId(val id1: String, val id2: String)
@@ -312,7 +347,10 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
             
             """.trimIndent(), """
                 @Table("entities")
-                data class Entity(@field:Id val id: String, @field:Column("value1") val field1: Long, val value2: String, val value3: String?)
+                data class Entity(@field:Id val id: String, 
+                                  @field:Column("value1") val field1: Long, 
+                                  val value2: String, 
+                                  val value3: String?)
             
             """.trimIndent()
         )
@@ -334,7 +372,10 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
             
             """.trimIndent(), """
                 @Table("entities")
-                data class Entity(@field:Id val id: String, @field:Column("value1") val field1: Long, val value2: String, val value3: String?)
+                data class Entity(@field:Id val id: String, 
+                                  @field:Column("value1") val field1: Long, 
+                                  val value2: String, 
+                                  val value3: String?)
             """.trimIndent()
         )
         repository.invoke<Any>("insert", newGenerated("Entity", "1", 1, "1", "1").invoke())

@@ -2,11 +2,13 @@ package ru.tinkoff.kora.database.symbol.processor.jdbc
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
 
 class JdbcExtensionTests : AbstractJdbcRepositoryTest() {
     @Test
     fun testAnnotatedComponentsFound() {
         compile0(
+            listOf(KoraAppProcessorProvider(), JdbcEntitySymbolProcessorProvider()),
             """
             @KoraApp
             interface Application : JdbcDatabaseModule {
@@ -26,6 +28,7 @@ class JdbcExtensionTests : AbstractJdbcRepositoryTest() {
     @Test
     fun testNotAnnotatedFound() {
         compile0(
+            listOf(KoraAppProcessorProvider()),
             """
             @KoraApp
             interface Application : JdbcDatabaseModule {
