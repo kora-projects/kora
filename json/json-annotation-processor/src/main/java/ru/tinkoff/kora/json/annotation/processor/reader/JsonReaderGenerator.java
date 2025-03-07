@@ -5,7 +5,6 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
-import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
 import ru.tinkoff.kora.json.annotation.processor.KnownType;
 import ru.tinkoff.kora.json.annotation.processor.reader.JsonClassReaderMeta.FieldMeta;
 import ru.tinkoff.kora.json.annotation.processor.reader.ReaderFieldType.KnownTypeReaderMeta;
@@ -30,8 +29,8 @@ public class JsonReaderGenerator {
     }
 
     @Nullable
-    public TypeSpec generate(JsonClassReaderMeta meta) {
-        return this.generateForClass(meta);
+    public TypeSpec generate(ClassName target, JsonClassReaderMeta meta) {
+        return this.generateForClass(target, meta);
     }
 
     private boolean isNullable(JsonClassReaderMeta.FieldMeta field) {
@@ -45,8 +44,8 @@ public class JsonReaderGenerator {
         return CommonUtils.isNullable(field.parameter());
     }
 
-    private TypeSpec generateForClass(JsonClassReaderMeta meta) {
-        var typeBuilder = TypeSpec.classBuilder(JsonUtils.jsonReaderName(meta.typeElement()))
+    private TypeSpec generateForClass(ClassName target, JsonClassReaderMeta meta) {
+        var typeBuilder = TypeSpec.classBuilder(target)
             .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
                 .addMember("value", CodeBlock.of("$S", JsonReaderGenerator.class.getCanonicalName()))
                 .build())

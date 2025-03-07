@@ -1,42 +1,34 @@
 package ru.tinkoff.kora.json.ksp
 
-import com.google.devtools.ksp.getClassDeclarationByName
-import com.google.devtools.ksp.processing.Resolver
+import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
+import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.ksp.toClassName
+import java.math.BigInteger
+import java.util.*
 
-class KnownType(private val resolver: Resolver) {
-    private val any = resolver.builtIns.anyType
-    private val nullableAny = resolver.builtIns.anyType.makeNullable()
-    private val string = resolver.builtIns.stringType
-    private val nullableString = string.makeNullable()
-    private val boolean = resolver.builtIns.booleanType
-    private val nullableBoolean = boolean.makeNullable()
-    private val integer = resolver.builtIns.intType
-    private val nullableInteger = integer.makeNullable()
-    private val bigInteger = resolver.getClassDeclarationByName("java.math.BigInteger")!!.asType(listOf())
-    private val double = resolver.builtIns.doubleType
-    private val nullableDouble = double.makeNullable()
-    private val float = resolver.builtIns.floatType
-    private val nullableFloat = float.makeNullable()
-    private val long = resolver.builtIns.longType
-    private val nullableLong = long.makeNullable()
-    private val short = resolver.builtIns.shortType
-    private val nullableShort = short.makeNullable()
-    private val uuid = resolver.getClassDeclarationByName("java.util.UUID")!!.asType(listOf())
-    private val binary = resolver.getClassDeclarationByName("kotlin.ByteArray")!!.asType(listOf())
+object KnownType {
+    private val bigInteger = BigInteger::class.asClassName()
+    private val uuid = UUID::class.asClassName()
+    private val binary = ByteArray::class.asClassName()
 
     fun detect(type: KSType): KnownTypesEnum? {
-        return when (type) {
-            string, nullableString -> KnownTypesEnum.STRING
-            integer, nullableInteger -> KnownTypesEnum.INTEGER
-            long, nullableLong -> KnownTypesEnum.LONG
-            double, nullableDouble -> KnownTypesEnum.DOUBLE
-            float, nullableFloat -> KnownTypesEnum.FLOAT
-            short, nullableShort -> KnownTypesEnum.SHORT
-            bigInteger, bigInteger.makeNullable() -> KnownTypesEnum.BIG_INTEGER
-            boolean, nullableBoolean -> KnownTypesEnum.BOOLEAN
-            binary, binary.makeNullable() -> KnownTypesEnum.BINARY
-            uuid, uuid.makeNullable() -> KnownTypesEnum.UUID
+        val classDecl = type.declaration
+        if (classDecl !is KSClassDeclaration) {
+            return null
+        }
+        val className = classDecl.toClassName()
+        return when (className) {
+            STRING -> KnownTypesEnum.STRING
+            INT -> KnownTypesEnum.INTEGER
+            LONG -> KnownTypesEnum.LONG
+            DOUBLE -> KnownTypesEnum.DOUBLE
+            FLOAT -> KnownTypesEnum.FLOAT
+            SHORT -> KnownTypesEnum.SHORT
+            bigInteger -> KnownTypesEnum.BIG_INTEGER
+            BOOLEAN -> KnownTypesEnum.BOOLEAN
+            binary -> KnownTypesEnum.BINARY
+            uuid -> KnownTypesEnum.UUID
             else -> null
         }
     }

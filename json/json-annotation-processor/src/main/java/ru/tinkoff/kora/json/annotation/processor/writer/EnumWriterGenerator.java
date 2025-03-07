@@ -5,7 +5,6 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
-import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
 
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
@@ -15,9 +14,9 @@ import java.io.IOException;
 
 public class EnumWriterGenerator {
 
-    public TypeSpec generateEnumWriter(TypeElement typeElement) {
+    public TypeSpec generateEnumWriter(ClassName targetName, TypeElement typeElement) {
         var typeName = ClassName.get(typeElement);
-        var typeBuilder = TypeSpec.classBuilder(JsonUtils.jsonWriterName(typeElement))
+        var typeBuilder = TypeSpec.classBuilder(targetName)
             .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
                 .addMember("value", CodeBlock.of("$S", JsonWriterGenerator.class.getCanonicalName()))
                 .build())

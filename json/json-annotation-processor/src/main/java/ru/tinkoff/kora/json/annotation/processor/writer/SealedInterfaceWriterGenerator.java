@@ -2,11 +2,10 @@ package ru.tinkoff.kora.json.annotation.processor.writer;
 
 import com.squareup.javapoet.*;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
-import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
 
-import jakarta.annotation.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
@@ -28,8 +27,8 @@ public class SealedInterfaceWriterGenerator {
         this.elements = processingEnvironment.getElementUtils();
     }
 
-    public TypeSpec generateSealedWriter(TypeElement jsonElement, List<? extends Element> jsonElements) {
-        var typeBuilder = TypeSpec.classBuilder(JsonUtils.jsonWriterName(jsonElement))
+    public TypeSpec generateSealedWriter(ClassName targetName, TypeElement jsonElement, List<? extends Element> jsonElements) {
+        var typeBuilder = TypeSpec.classBuilder(targetName)
             .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
                 .addMember("value", CodeBlock.of("$S", SealedInterfaceWriterGenerator.class.getCanonicalName()))
                 .build())

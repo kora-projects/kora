@@ -1,24 +1,19 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 
-import jakarta.annotation.Nullable;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.List;
 
 
 public class JsonUtils {
-    public static String jsonClassPackage(Elements elements, Element typeElement) {
-        return elements.getPackageOf(typeElement).getQualifiedName().toString();
-    }
-
     public static String jsonWriterName(Element typeElement) {
         return NameUtils.generatedType(typeElement, "JsonWriter");
     }
