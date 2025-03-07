@@ -120,7 +120,7 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
                 .map {
                     val property = propertyFinder(it)
                     val propertyType = it.type.resolve()
-                    val columnName = parseColumnName(it, nameConverter)
+                    val columnName = parseColumnName(it, property, nameConverter)
                     var mapping = property.parseMappingData()
                     if (mapping.tags.isEmpty() && mapping.mapperClasses.isEmpty()) {
                         mapping = it.parseMappingData()
