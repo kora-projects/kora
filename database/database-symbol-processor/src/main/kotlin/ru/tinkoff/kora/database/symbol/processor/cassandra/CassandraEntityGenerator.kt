@@ -78,16 +78,20 @@ class CassandraEntityGenerator(val codeGenerator: CodeGenerator) {
             .addModifiers(KModifier.OVERRIDE)
             .addParameter("_rs", CassandraTypes.resultSet)
             .returns(listType)
+        apply.addStatement("val _it = _rs.iterator()")
+        apply.controlFlow("if (!_it.hasNext())") {
+            apply.addStatement("return listOf()")
+        }
         apply.addCode(parseIndexes(entity, "_rs"))
-        apply.addCode("val _result = %T<%T>(_rs.availableWithoutFetching);\n", ArrayList::class, entityTypeName)
+        apply.addCode("val _result = %T<%T>(_rs.availableWithoutFetching)\n", ArrayList::class, entityTypeName)
         val read = this.entityReader.readEntity("_mappedRow", entity)
         read.enrich(type, constructor)
-        apply.beginControlFlow("for (_row in _rs)")
+        apply.beginControlFlow("for (_row in _it)")
         apply.addCode(read.block)
         apply.addCode("_result.add(_mappedRow)\n")
         apply.endControlFlow()
 
-        apply.addCode("return _result;\n")
+        apply.addCode("return _result\n")
 
 
         type.primaryConstructor(constructor.build())
@@ -112,8 +116,7 @@ class CassandraEntityGenerator(val codeGenerator: CodeGenerator) {
         read.enrich(type, constructor)
         apply.addCode(parseIndexes(entity, "_row"))
         apply.addCode(read.block)
-        apply.addCode("return _result;\n")
-
+        apply.addCode("return _result\n")
 
         type.primaryConstructor(constructor.build())
         type.addFunction(apply.build())
