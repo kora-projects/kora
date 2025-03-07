@@ -3,10 +3,6 @@ package ru.tinkoff.kora.soap.client.annotation.processor;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.TypeName;
 
-import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.Elements;
-import javax.lang.model.util.Types;
-
 public interface SoapClasses {
     default TypeName httpClientTypeName() {
         return ClassName.get("ru.tinkoff.kora.http.client.common", "HttpClient");
@@ -101,7 +97,7 @@ public interface SoapClasses {
         }
 
         @Override
-        public ClassName jaxbElementTypeName() { return ClassName.get("jakarta.xml.bind", "JAXBElement");}
+        public ClassName jaxbElementTypeName() {return ClassName.get("jakarta.xml.bind", "JAXBElement");}
 
         @Override
         public ClassName xmlSeeAlsoType() {
@@ -192,7 +188,7 @@ public interface SoapClasses {
         }
 
         @Override
-        public ClassName jaxbElementTypeName() { return ClassName.get("javax.xml.bind", "JAXBElement");}
+        public ClassName jaxbElementTypeName() {return ClassName.get("javax.xml.bind", "JAXBElement");}
 
         @Override
         public ClassName xmlSeeAlsoType() {
@@ -230,7 +226,7 @@ public interface SoapClasses {
         }
 
         @Override
-        public ClassName holderTypeClassName() { return ClassName.get("javax.xml.ws", "Holder"); }
+        public ClassName holderTypeClassName() {return ClassName.get("javax.xml.ws", "Holder");}
 
         @Override
         public ClassName webFaultType() {

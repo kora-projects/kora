@@ -3,7 +3,6 @@ package ru.tinkoff.kora.soap.client.symbol.processor
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.processing.Resolver
-import com.google.devtools.ksp.symbol.Modifier as KspModifier
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
@@ -22,7 +21,6 @@ import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 import ru.tinkoff.kora.ksp.common.doesImplement
 import ru.tinkoff.kora.ksp.common.generatedClassName
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
-import ru.tinkoff.kora.ksp.common.findMethods
 import ru.tinkoff.kora.soap.client.common.*
 import ru.tinkoff.kora.soap.client.common.envelope.SoapEnvelope
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetryFactory
@@ -96,19 +94,60 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
         return type.build()
     }
 
+    data class ObjectFactory(val className: ClassName, val type: KSType, val decl: KSClassDeclaration, val fieldName: String) {
+        fun findWrapperResponseType(wrapperClass: String): KSType {
+            for (f in decl.getDeclaredFunctions()) {
+                if (f.modifiers.contains(Modifier.PUBLIC) && f.parameters.isEmpty()) {
+                    val returnType = f.returnType?.resolve()
+                    if (returnType?.toTypeName().toString() == wrapperClass) {
+                        val wrapperClassDecl = returnType!!.declaration as KSClassDeclaration
+                        for (wrapperMethod in wrapperClassDecl.getDeclaredFunctions()) {
+                            if (wrapperMethod.parameters.isEmpty()) {
+                                return wrapperMethod.returnType?.resolve()!!
+                            }
+                        }
+                    }
+                }
+            }
+            throw IllegalArgumentException("No method found for wrapper class $wrapperClass")
+        }
+
+        fun findWrapperMethod(func: KSFunctionDeclaration, parameter: KSValueParameter): KSFunctionDeclaration? {
+            val paramFactoryName = "create" + func.simpleName.asString().replaceFirstChar { it.uppercase() } + parameter.name.toString().replaceFirstChar { it.uppercase() }
+            for (f in decl.getAllFunctions()) {
+                if (f.parameters.size == 1 && f.simpleName.asString() == paramFactoryName) {
+                    return f
+                }
+            }
+            return null
+        }
+    }
+
+    private fun List<ObjectFactory>.findObjectFactoryByWrapper(wrapperClass: String): ObjectFactory {
+        for (objectFactory in this) {
+            val packageName = objectFactory.className.toString().substringBeforeLast('.')
+            if (wrapperClass.startsWith(packageName) && wrapperClass.indexOf('.', packageName.length + 1) < 0) {
+                return objectFactory
+            }
+        }
+        throw IllegalStateException("No suitable object factory found for wrapper class: $wrapperClass")
+    }
+
+
     fun generate(service: KSClassDeclaration, soapClasses: SoapClasses): TypeSpec {
         val jaxbClasses = mutableListOf<TypeName>()
-        val objectFactoryClasses = HashMap<KSType, String>();
+        val objectFactories = mutableListOf<ObjectFactory>()
         jaxbClasses.add(soapClasses.soapEnvelopeObjectFactory())
         val xmlSeeAlso = service.findAnnotation(soapClasses.xmlSeeAlsoType())
         xmlSeeAlso?.arguments?.forEach { arg ->
             if (arg.name!!.asString() == "value") {
-                val types = (arg.value as List<*>)
-                jaxbClasses.addAll(types.map { (it as KSType).toTypeName() })
-                objectFactoryClasses.putAll(types.map {
-                    val typeName = (it as KSType)
-                    typeName to createVariableName(typeName)
-                });
+                @Suppress("unchecked")
+                val types = (arg.value as List<KSType>)
+                for ((i, type) in types.withIndex()) {
+                    val className = type.toTypeName() as ClassName
+                    jaxbClasses.add(className)
+                    objectFactories.add(ObjectFactory(className, type, type.declaration as KSClassDeclaration, "objectFactory$i"))
+                }
             }
         }
         val webService = service.findAnnotation(soapClasses.webServiceType())!!
@@ -144,11 +183,10 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
             }
         }
 
-        for ((ksTypeName, variableName) in objectFactoryClasses) {
-            val typeName = ksTypeName.toTypeName()
-            val property= PropertySpec
-                .builder(variableName, typeName, KModifier.PRIVATE, KModifier.FINAL)
-                .initializer("%T()", typeName)
+        for (objectFactory in objectFactories) {
+            val property = PropertySpec
+                .builder(objectFactory.fieldName, objectFactory.className, KModifier.PRIVATE, KModifier.FINAL)
+                .initializer("%T()", objectFactory.className)
                 .build()
             builder.addProperty(property);
         }
@@ -188,9 +226,9 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
                 m.addParameter(param.name!!.asString(), param.type.toTypeName())
             }
             method.returnType?.let { m.returns(it.toTypeName()) }
-            addMapRequest(m, method, soapClasses, objectFactoryClasses)
+            addMapRequest(m, method, soapClasses, objectFactories)
             m.addCode("val __response = this.%L.call(__requestEnvelope)\n", executorFieldName)
-            addMapResponse(m, method, soapClasses, objectFactoryClasses)
+            addMapResponse(m, method, soapClasses, objectFactories)
             builder.addFunction(m.build())
             val returnType = method.returnType!!.resolve()
 
@@ -200,10 +238,10 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
             for (parameter in method.parameters) {
                 reactiveM.addParameter(parameter.name!!.asString(), parameter.type.toTypeName())
             }
-            addMapRequest(reactiveM, method, soapClasses, objectFactoryClasses)
+            addMapRequest(reactiveM, method, soapClasses, objectFactories)
             reactiveM.addStatement("val __responseFuture = this.%L.callAsync(__requestEnvelope) as %T", executorFieldName, CompletionStage::class.asClassName().parameterizedBy(SoapResult::class.asTypeName().copy(true)))
             reactiveM.addStatement("val __response = __responseFuture.%M()", CommonClassNames.await)
-            addMapResponse(reactiveM, method, soapClasses, objectFactoryClasses)
+            addMapResponse(reactiveM, method, soapClasses, objectFactories)
             builder.addFunction(reactiveM.build())
         }
         builder.primaryConstructor(constructorBuilder.build())
@@ -262,41 +300,30 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
         }
     }
 
-    private fun addMapRequest(m: FunSpec.Builder,
-                              method: KSFunctionDeclaration,
-                              soapClasses: SoapClasses,
-                              objectFactoryClasses: HashMap<KSType, String>) {
+    private fun addMapRequest(m: FunSpec.Builder, method: KSFunctionDeclaration, soapClasses: SoapClasses, objectFactories: List<ObjectFactory>) {
         val requestWrapper = method.findAnnotation(soapClasses.requestWrapperType())
         if (requestWrapper != null) {
             val wrapperClass = requestWrapper.findValue<String>("className")!!
+            val objectFactory = objectFactories.findObjectFactoryByWrapper(wrapperClass)
             m.addCode("val __requestWrapper = %L()\n", wrapperClass)
             for (parameter in method.parameters) {
                 val webParam = parameter.findAnnotation(soapClasses.webParamType())!!
                 val webParamName = webParam.findValue<String>("name")!!
-                val objectFactory = findObjectFactoryByWrapper(wrapperClass, objectFactoryClasses.keys);
-                val paramFactoryName = "create${method.simpleName.asString().replaceFirstChar { it.uppercaseChar() }}${parameter.name!!.asString().replaceFirstChar { it.uppercaseChar() }}}"
-                val wrapperMethod = findMethods(getClassDeclaration(objectFactory) , { functions ->
-                    functions.modifiers.contains(KspModifier.PUBLIC)
-                })
-                    .filter { m0 -> m0.parameters.isEmpty() && m0.returnType.toString() == wrapperClass.substringAfterLast(".") }
-                    .map { it.returnType }
-                    .first()
-                if (wrapperMethod == null) {
-                    parameter.type.resolve().declaration.let {
-                        if (it is KSClassDeclaration && it.doesImplement(soapClasses.holderType())) {
-                            m.addCode("__requestWrapper.set%L(%L.value)\n", webParamName.replaceFirstChar { it.uppercaseChar() }, parameter)
-                        } else {
-                            m.addCode("__requestWrapper.set%L(%L)\n", webParamName.replaceFirstChar { it.uppercaseChar() }, parameter)
-                        }
+                val parameterWrapperFunc = objectFactory.findWrapperMethod(method, parameter)
+                val parameterTypeName = parameter.type.resolve().toTypeName()
+                val setterName = "set" + webParamName.replaceFirstChar { it.uppercaseChar() }
+                val isHolder = parameterTypeName is ParameterizedTypeName && parameterTypeName.rawType == soapClasses.holderType()
+                if (parameterWrapperFunc == null) {
+                    if (isHolder) {
+                        m.addCode("__requestWrapper.%N(%L.value)\n", setterName, parameter.name?.asString())
+                    } else {
+                        m.addCode("__requestWrapper.%N(%L)\n", setterName, parameter.name?.asString())
                     }
                 } else {
-                    val wrapCode = CodeBlock.of("%N.%N(%L)", objectFactoryClasses.get(objectFactory), paramFactoryName, parameter);
-                    parameter.type.resolve().declaration.let {
-                        if (it is KSClassDeclaration && it.doesImplement(soapClasses.holderType())) {
-                            m.addCode("__requestWrapper.set%L(%L.value)\n", webParamName.replaceFirstChar { it.uppercaseChar() }, wrapCode)
-                        } else {
-                            m.addCode("__requestWrapper.set%L(%L)\n", webParamName.replaceFirstChar { it.uppercaseChar() }, wrapCode)
-                        }
+                    if (isHolder) {
+                        m.addCode("__requestWrapper.%N(%N.%N(%L.value))\n", setterName, objectFactory.fieldName, parameterWrapperFunc.simpleName.asString(), parameter.name?.asString())
+                    } else {
+                        m.addCode("__requestWrapper.%N(%N.%N(%L))\n", setterName, objectFactory.fieldName, parameterWrapperFunc.simpleName.asString(), parameter.name?.asString())
                     }
                 }
             }
@@ -329,10 +356,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
     }
 
     @OptIn(KspExperimental::class)
-    private fun addMapResponse(m: FunSpec.Builder,
-                               method: KSFunctionDeclaration,
-                               soapClasses: SoapClasses,
-                               objectFactoryClasses: HashMap<KSType, String>) {
+    private fun addMapResponse(m: FunSpec.Builder, method: KSFunctionDeclaration, soapClasses: SoapClasses, objectFactories: List<ObjectFactory>) {
         m.controlFlow("if (__response is %T )", SoapResult.Failure::class.java) {
             m.addCode("val __fault = __response.fault()\n")
             val throws = resolver.getJvmCheckedException(method).toList()
@@ -359,28 +383,16 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
         if (responseWrapper != null) {
             val wrapperClass = responseWrapper.findValue<String>("className")!!
             val webResult = method.findAnnotation(soapClasses.webResultType())
-            val objectFactory = findObjectFactoryByWrapper(wrapperClass, objectFactoryClasses.keys);
             m.addCode("val __responseBodyWrapper =  __success.body() as (%L)\n", wrapperClass)
-            val objectFactoryDeclaration = resolver.getClassDeclarationByName(resolver.getKSNameFromString(objectFactory.toClassName().canonicalName))
-            val wrapperTypeElement = findMethods(objectFactoryDeclaration as KSAnnotated, { functions ->
-                functions.modifiers.contains(KspModifier.PUBLIC)
-            })
-                .filter { m0 -> m0.parameters.isEmpty() && m0.returnType.toString() == wrapperClass.substringAfterLast(".") }
-                .map { it.returnType!! }
-                .map { typeElement -> typeElement.resolve() }
-                .first()
-            val wrapperType = findMethods(getClassDeclaration(wrapperTypeElement), { functions ->
-                functions.modifiers.contains(KspModifier.PUBLIC)
-            }).first { m0 -> m0.parameters.isEmpty() }
-                .returnType!!
             if (webResult != null) {
                 val webResultName = webResult.findValue<String>("name")!!
-                val isWrapper = wrapperType.toString() != method.returnType.toString()
-                if (isWrapper) {
-                    m.addCode("return __responseBodyWrapper.get%L().value\n", webResultName.replaceFirstChar { it.uppercaseChar() })
-                } else {
-                    m.addCode("return __responseBodyWrapper.get%L()\n", webResultName.replaceFirstChar { it.uppercaseChar() })
+                m.addCode("return __responseBodyWrapper.get%L", webResultName.replaceFirstChar { it.uppercaseChar() })
+                val objectFactory = objectFactories.findObjectFactoryByWrapper(wrapperClass)
+                val wrapperFieldType = objectFactory.findWrapperResponseType(wrapperClass)
+                if (wrapperFieldType.toString() == method.returnType.toString()) {
+                    m.addCode(".value")
                 }
+                m.addCode("\n")
             } else {
                 for (parameter in method.parameters) {
                     val webParam = parameter.findAnnotation(soapClasses.webParamType())!!
@@ -407,8 +419,8 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
                                     continue
                                 }
                                 val parameterType = parameter.type.resolve()
-                                val parameterTypeDecl = parameterType.declaration
-                                if (parameterTypeDecl !is KSClassDeclaration || !parameterTypeDecl.doesImplement(soapClasses.holderType())) {
+                                val parameterTypeName = parameterType.toTypeName()
+                                if (parameterTypeName !is ParameterizedTypeName || parameterTypeName != soapClasses.holderType()) {
                                     continue
                                 }
                                 val partType = parameterType.arguments[0]
@@ -435,31 +447,5 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
             return style.simpleName.asString()
         }
         return style?.toString()
-    }
-
-    private fun findObjectFactoryByWrapper(wrapperClass: String, objectFactories: MutableSet<KSType>): KSType {
-        for (objectFactory in objectFactories) {
-            val packageName = objectFactory.toTypeName().toString().substringBeforeLast('.')
-            if (wrapperClass.startsWith(packageName)) {
-                return objectFactory
-            }
-        }
-        throw IllegalStateException("No suitable object factory found for wrapper class: $wrapperClass")
-    }
-
-    private fun createVariableName(typeName: KSType): String {
-        val parts = typeName.toString().split("\\.".toRegex())
-        val prefix = StringBuilder()
-        for (part in parts) {
-            val cleanedPart = part.replace("_", "")
-            if (cleanedPart.isNotEmpty()) {
-                prefix.append(cleanedPart[0])
-            }
-        }
-        return "__$prefix${typeName.toString().substringAfterLast('.')}"
-    }
-
-    private fun getClassDeclaration(typeName: KSType): KSAnnotated {
-        return resolver.getClassDeclarationByName(resolver.getKSNameFromString(typeName.toClassName().canonicalName)) as KSAnnotated
     }
 }

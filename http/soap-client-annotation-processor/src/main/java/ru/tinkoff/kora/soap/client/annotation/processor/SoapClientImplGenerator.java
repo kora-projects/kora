@@ -2,7 +2,6 @@ package ru.tinkoff.kora.soap.client.annotation.processor;
 
 import com.squareup.javapoet.*;
 import jakarta.annotation.Nullable;
-import java.util.HashMap;
 import org.w3c.dom.Node;
 import ru.tinkoff.kora.annotation.processor.common.*;
 
@@ -87,23 +86,58 @@ public class SoapClientImplGenerator {
         return type.build();
     }
 
+    record ObjectFactory(ClassName className, String fieldName, DeclaredType typeMirror, TypeElement typeElement) {
+        public TypeMirror findWrappedResponseType(ProcessingEnvironment processingEnv, String wrapperClass) {
+            var objectFactoryMethods = CommonUtils.findMethods(typeElement, modifiers -> modifiers.contains(Modifier.PUBLIC));
+            for (var executableElement : objectFactoryMethods) {
+                if (executableElement.getParameters().isEmpty() && executableElement.getReturnType().toString().equals(wrapperClass)) {
+                    var returnType = executableElement.getReturnType();
+                    var wrapperTypeElement = (TypeElement) processingEnv.getTypeUtils().asElement(returnType);
+                    var wrapperTypeMethods = CommonUtils.findMethods(wrapperTypeElement, modifiers -> modifiers.contains(Modifier.PUBLIC));
+                    for (var wrapperMethod : wrapperTypeMethods) {
+                        if (wrapperMethod.getParameters().isEmpty()) {
+                            return wrapperMethod.getReturnType();
+                        }
+                    }
+                }
+            }
+            throw new IllegalArgumentException("No method found for wrapper class " + wrapperClass);
+        }
+
+        @Nullable
+        public ExecutableElement findWrapperMethod(ExecutableElement method, VariableElement parameter) {
+            var paramFactoryName = "create" + CommonUtils.capitalize(method.getSimpleName().toString()) + CommonUtils.capitalize(parameter.getSimpleName().toString());
+            for (var method0 : CommonUtils.findMethods(typeElement, modifiers -> modifiers.contains(Modifier.PUBLIC))) {
+                if (method0.getParameters().size() == 1 && method0.getSimpleName().contentEquals(paramFactoryName)) {
+                    return method0;
+                }
+            }
+            return null;
+        }
+    }
+
     public TypeSpec generate(Element service, SoapClasses soapClasses) {
         var jaxbClasses = new ArrayList<TypeName>();
         jaxbClasses.add(soapClasses.soapEnvelopeObjectFactory());
-        var objectFactoryClasses = new HashMap<TypeName, String>();
+        var objectFactories = new ArrayList<ObjectFactory>();
         var xmlSeeAlso = findAnnotation(service, soapClasses.xmlSeeAlsoType());
         if (xmlSeeAlso != null) {
             for (var valuesEntry : xmlSeeAlso.getElementValues().entrySet()) {
                 if (!valuesEntry.getKey().getSimpleName().contentEquals("value")) {
                     continue;
                 }
-                var annotationValues = (List<?>) valuesEntry.getValue().getValue();
-                for (var i : annotationValues) {
-                    var annotationValue = (AnnotationValue) i;
+                @SuppressWarnings("unchecked")
+                var annotationValues = (List<AnnotationValue>) valuesEntry.getValue().getValue();
+                for (int i = 0; i < annotationValues.size(); i++) {
+                    var annotationValue = annotationValues.get(i);
                     var value = (TypeMirror) annotationValue.getValue();
-                    var typeValue = TypeName.get(value);
-                    jaxbClasses.add(TypeName.get(value));
-                    objectFactoryClasses.putIfAbsent(typeValue, createVariableName(typeValue));
+                    var typeName = TypeName.get(value);
+                    jaxbClasses.add(typeName);
+                    if (typeName instanceof ClassName cn && cn.simpleName().equals("ObjectFactory")) {
+                        objectFactories.add(new ObjectFactory(
+                            cn, "OBJECT_FACTORY_" + i, (DeclaredType) value, (TypeElement) processingEnv.getTypeUtils().asElement(value)
+                        ));
+                    }
                 }
             }
         }
@@ -143,10 +177,10 @@ public class SoapClientImplGenerator {
             }
         }
 
-        for (var factory : objectFactoryClasses.entrySet()) {
-            FieldSpec fieldSpec = FieldSpec.builder(factory.getKey(), factory.getValue())
+        for (var factory : objectFactories) {
+            var fieldSpec = FieldSpec.builder(factory.className, factory.fieldName)
                 .addModifiers(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
-                .initializer("new $T()", factory.getKey())
+                .initializer("new $T()", factory.className)
                 .build();
             builder.addField(fieldSpec);
         }
@@ -188,9 +222,9 @@ public class SoapClientImplGenerator {
             builder.addField(soapClasses.soapRequestExecutor(), executorFieldName, Modifier.PRIVATE, Modifier.FINAL);
 
             var m = MethodSpec.overriding(method);
-            this.addMapRequest(m, method, soapClasses, objectFactoryClasses);
+            this.addMapRequest(m, method, soapClasses, objectFactories);
             m.addCode("var __response = this.$L.call(__requestEnvelope);\n", executorFieldName);
-            this.addMapResponse(m, method, soapClasses, false, objectFactoryClasses);
+            this.addMapResponse(m, method, soapClasses, false, objectFactories);
             builder.addMethod(m.build());
             var monoParam = method.getReturnType().getKind() == TypeKind.VOID
                 ? this.processingEnv.getElementUtils().getTypeElement("java.lang.Void").asType()
@@ -204,7 +238,7 @@ public class SoapClientImplGenerator {
             for (var parameter : method.getParameters()) {
                 reactiveM.addParameter(TypeName.get(parameter.asType()), parameter.getSimpleName().toString());
             }
-            this.addMapRequest(reactiveM, method, soapClasses, objectFactoryClasses);
+            this.addMapRequest(reactiveM, method, soapClasses, objectFactories);
             reactiveM.addCode("var __future = new $T<$T>();\n", CompletableFuture.class, monoParam);
             reactiveM.addCode("this.$L.callAsync(__requestEnvelope)\n", executorFieldName);
             reactiveM.addCode("  .whenComplete((__response, __throwable) -> {$>$>\n", soapClasses.soapResult(), ParameterizedTypeName.get(SYNCHRONOUS_SINK, TypeName.get(monoParam)));
@@ -212,7 +246,7 @@ public class SoapClientImplGenerator {
             reactiveM.addCode("  __future.completeExceptionally(__throwable);\n");
             reactiveM.addCode("  return;\n");
             reactiveM.addCode("}\n");
-            this.addMapResponse(reactiveM, method, soapClasses, true, objectFactoryClasses);
+            this.addMapResponse(reactiveM, method, soapClasses, true, objectFactories);
             reactiveM.addCode("$<$<\n});\n");
             reactiveM.addCode("return __future;\n");
             builder.addMethod(reactiveM.build());
@@ -258,29 +292,31 @@ public class SoapClientImplGenerator {
         }
     }
 
-    private void addMapRequest(MethodSpec.Builder m,
-                               ExecutableElement method,
-                               SoapClasses soapClasses,
-                               HashMap<TypeName, String> objectFactoryClasses) {
+    private void addMapRequest(MethodSpec.Builder m, ExecutableElement method, SoapClasses soapClasses, List<ObjectFactory> objectFactories) {
         var requestWrapper = findAnnotation(method, soapClasses.requestWrapperType());
         if (requestWrapper != null) {
             var wrapperClass = this.<String>findAnnotationValue(requestWrapper, "className");
-            var objectFactory = this.findObjectFactoryByWrapper(wrapperClass, objectFactoryClasses.keySet());
-            var objectFactoryClassName = ClassName.get(objectFactory);
+            var objectFactory = this.findObjectFactoryByWrapper(wrapperClass, objectFactories);
             m.addCode("var __requestWrapper = new $L();\n", wrapperClass);
             for (var parameter : method.getParameters()) {
                 var webParam = findAnnotation(parameter, soapClasses.webParamType());
                 var webParamName = (String) findAnnotationValue(webParam, "name");
-                var paramFactoryName = "create" + CommonUtils.capitalize(method.getSimpleName().toString()) + CommonUtils.capitalize(parameter.getSimpleName().toString());
-                var wrapperMethod = CommonUtils.findMethods(objectFactory, modifiers -> modifiers.contains(Modifier.PUBLIC))
-                    .stream()
-                    .filter(method0 -> method0.getParameters().size() == 1 && method0.getSimpleName().contentEquals(paramFactoryName))
-                    .findFirst();
-                if (wrapperMethod.isEmpty()) {
-                    m.addCode("__requestWrapper.set$L($L);\n", CommonUtils.capitalize(webParamName), parameter);
+                var isHolder = TypeName.get(parameter.asType()) instanceof ParameterizedTypeName ptn && ptn.rawType.equals(soapClasses.holderTypeClassName());
+                var wrapperMethod = objectFactory.findWrapperMethod(method, parameter);
+                if (wrapperMethod == null) {
+                    if (isHolder) {
+                        m.addCode("__requestWrapper.set$L($L.value);\n", CommonUtils.capitalize(webParamName), parameter);
+                    } else {
+                        m.addCode("__requestWrapper.set$L($L);\n", CommonUtils.capitalize(webParamName), parameter);
+                    }
                 } else {
-                    var wrapCode = CodeBlock.of("$N.$N($L)", objectFactoryClasses.get(objectFactoryClassName), paramFactoryName, parameter);
-                    m.addCode("__requestWrapper.set$L($L);\n", CommonUtils.capitalize(webParamName), wrapCode);
+                    if (isHolder) {
+                        var wrapCode = CodeBlock.of("$N.$N($L.value)", objectFactory.fieldName, wrapperMethod.getSimpleName().toString(), parameter);
+                        m.addCode("__requestWrapper.set$L($L);\n", CommonUtils.capitalize(webParamName), wrapCode);
+                    } else {
+                        var wrapCode = CodeBlock.of("$N.$N($L)", objectFactory.fieldName, wrapperMethod.getSimpleName().toString(), parameter);
+                        m.addCode("__requestWrapper.set$L($L);\n", CommonUtils.capitalize(webParamName), wrapCode);
+                    }
                 }
             }
             m.addCode("var __requestEnvelope = this.envelopeProcessor.apply(new $L(__requestWrapper));\n", soapClasses.soapEnvelopeTypeName());
@@ -301,7 +337,7 @@ public class SoapClientImplGenerator {
             }
             m.addCode("var __requestEnvelope = this.envelopeProcessor.apply(new $L(__requestWrapper));\n", soapClasses.soapEnvelopeTypeName());
         } else {
-            assert method.getParameters().size() == 1;
+            if (method.getParameters().size() != 1) throw new AssertionError();
             m.addCode("var __requestEnvelope = this.envelopeProcessor.apply(new $L($L));\n", soapClasses.soapEnvelopeTypeName(), method.getParameters().get(0));
         }
     }
@@ -311,31 +347,31 @@ public class SoapClientImplGenerator {
         return soapBinding != null && findAnnotationValue(soapBinding, "style").toString().equals("RPC");
     }
 
-    private void checkNullForResponseWrapper(MethodSpec.Builder m, Boolean isReactive, Boolean isWrapper, String methodName) {
-        m.beginControlFlow("if (__responseBodyWrapper == null || __responseBodyWrapper.get$L() == null)", methodName);
+    private void checkNullForResponseWrapper(MethodSpec.Builder m, boolean isReactive, boolean isJaxbElement, String methodName) {
+        m.beginControlFlow("if (__responseBodyWrapper == null || __responseBodyWrapper.$N() == null)", methodName);
         if (isReactive) {
             m.addStatement("__future.complete(null)");
         } else {
             m.addStatement("return null");
         }
         m.nextControlFlow("else");
-        if (isReactive && isWrapper) {
-            m.addStatement("__future.complete(__responseBodyWrapper.get$L().getValue())", methodName);
-        } else if (isReactive) {
-            m.addStatement("__future.complete(__responseBodyWrapper.get$L())", methodName);
-        } else if (isWrapper) {
-            m.addStatement("return __responseBodyWrapper.get$L().getValue()", methodName);
+        if (isReactive) {
+            if (isJaxbElement) {
+                m.addStatement("__future.complete(__responseBodyWrapper.$N().getValue())", methodName);
+            } else {
+                m.addStatement("__future.complete(__responseBodyWrapper.$N())", methodName);
+            }
         } else {
-            m.addStatement("return __responseBodyWrapper.get$L()", methodName);
+            if (isJaxbElement) {
+                m.addStatement("return __responseBodyWrapper.$N().getValue()", methodName);
+            } else {
+                m.addStatement("return __responseBodyWrapper.$N()", methodName);
+            }
         }
         m.endControlFlow();
     }
 
-    private void addMapResponse(MethodSpec.Builder m,
-                                ExecutableElement method,
-                                SoapClasses soapClasses,
-                                boolean isReactive,
-                                HashMap<TypeName, String> objectFactoryClasses) {
+    private void addMapResponse(MethodSpec.Builder m, ExecutableElement method, SoapClasses soapClasses, boolean isReactive, List<ObjectFactory> objectFactories) {
         m.addCode("if (__response instanceof $T __failure) {$>\n", soapClasses.soapResultFailure());
         m.addCode("var __fault = __failure.fault();\n");
         if (!method.getThrownTypes().isEmpty()) {
@@ -382,27 +418,14 @@ public class SoapClientImplGenerator {
         var responseWrapper = findAnnotation(method, soapClasses.responseWrapperType());
         if (responseWrapper != null) {
             var wrapperClass = this.<String>findAnnotationValue(responseWrapper, "className");
-            var objectFactory = this.findObjectFactoryByWrapper(wrapperClass, objectFactoryClasses.keySet());
-            var wrapperTypeElement = CommonUtils.findMethods(objectFactory, modifiers -> modifiers.contains(Modifier.PUBLIC))
-                .stream()
-                .filter(m0 -> m0.getParameters().isEmpty() && m0.getReturnType().toString().equals(wrapperClass))
-                .map(ExecutableElement::getReturnType)
-                .map(this.processingEnv.getTypeUtils()::asElement)
-                .map(TypeElement.class::cast)
-                .findFirst()
-                .get();
-            var wrappedType = CommonUtils.findMethods(wrapperTypeElement, modifiers -> modifiers.contains(Modifier.PUBLIC))
-                .stream()
-                .filter(m0 -> m0.getParameters().isEmpty())
-                .findFirst()
-                .get()
-                .getReturnType();
             var webResult = findAnnotation(method, soapClasses.webResultType());
             m.addCode("var __responseBodyWrapper = ($L) __success.body();\n", wrapperClass);
             if (webResult != null) {
+                var objectFactory = this.findObjectFactoryByWrapper(wrapperClass, objectFactories);
+                var wrappedType = objectFactory.findWrappedResponseType(this.processingEnv, wrapperClass);
                 var webResultName = (String) findAnnotationValue(webResult, "name");
-                var isWrapper = !wrappedType.toString().equals(method.getReturnType().toString());
-                checkNullForResponseWrapper(m, isReactive, isWrapper, CommonUtils.capitalize(webResultName));
+                var isJaxbElement = !wrappedType.toString().equals(method.getReturnType().toString());
+                checkNullForResponseWrapper(m, isReactive, isJaxbElement, "get" + CommonUtils.capitalize(webResultName));
             } else {
                 for (var parameter : method.getParameters()) {
                     var webParam = findAnnotation(parameter, soapClasses.webParamType());
@@ -473,34 +496,13 @@ public class SoapClientImplGenerator {
         return AnnotationUtils.parseAnnotationValue(this.processingEnv.getElementUtils(), annotationMirror, name);
     }
 
-    private TypeElement findObjectFactoryByWrapper(String wrapperClass, Set<TypeName> objectFactoryClasses) {
-        for (var objectFactory : objectFactoryClasses) {
-            ClassName objectFactoryClassName = (ClassName) objectFactory;
-            TypeElement objectFactoryTypeElement = this.processingEnv.getElementUtils().getTypeElement(objectFactoryClassName.canonicalName());
-            var typeMirror = objectFactoryTypeElement.asType();
-            if (typeMirror instanceof DeclaredType dt) {
-                var typeElement = (TypeElement) dt.asElement();
-                var typePackage = this.processingEnv.getElementUtils().getPackageOf(typeElement);
-                var typePackageName = typePackage.getQualifiedName().toString();
-                if (wrapperClass.startsWith(typePackageName) && wrapperClass.indexOf('.', typePackageName.length() + 1) < 0) {
-                    return typeElement;
-                }
+    private ObjectFactory findObjectFactoryByWrapper(String wrapperClass, Iterable<ObjectFactory> objectFactories) {
+        for (var objectFactory : objectFactories) {
+            var typePackageName = objectFactory.className.packageName();
+            if (wrapperClass.startsWith(typePackageName) && wrapperClass.indexOf('.', typePackageName.length() + 1) < 0) {
+                return objectFactory;
             }
         }
         throw new IllegalStateException();
-    }
-
-    private static String createVariableName(TypeName typeName) {
-        ClassName className = (ClassName) typeName;
-        String packageName = className.packageName();
-        String classNameStr = className.simpleName();
-
-        String[] parts = packageName.split("\\.");
-        StringBuilder prefix = new StringBuilder();
-        for (String part : parts) {
-            part = part.replace("_", "");
-            prefix.append(part.charAt(0));
-        }
-        return "__" + prefix + classNameStr;
     }
 }
