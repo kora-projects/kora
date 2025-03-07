@@ -148,7 +148,7 @@ public class GraphResolutionHelper {
     public static List<ComponentDeclaration> findDependencyDeclarationsFromTemplate(ProcessingContext ctx, ComponentDeclaration forDeclaration, List<ComponentDeclaration> sourceDeclarations, DependencyClaim dependencyClaim) {
         var claimType = dependencyClaim.claimType();
         if (claimType == ALL_OF_ONE || claimType == ALL_OF_PROMISE || claimType == ALL_OF_VALUE) {
-            throw new IllegalStateException();
+            throw new UnsupportedOperationException();
         }
         var types = ctx.types;
         var declarations = new ArrayList<ComponentDeclaration>();
@@ -304,7 +304,7 @@ public class GraphResolutionHelper {
         throw new ProcessingErrorException("More than one component matches dependency claim " + dependencyClaim.type() + ":\n" + deps, forDeclaration.source());
     }
 
-    public static ArrayList<ComponentDeclaration> findDependencyDeclarations(ProcessingContext ctx, List<ComponentDeclaration> sourceDeclarations, DependencyClaim dependencyClaim) {
+    public static List<ComponentDeclaration> findDependencyDeclarations(ProcessingContext ctx, List<ComponentDeclaration> sourceDeclarations, DependencyClaim dependencyClaim) {
         var result = new ArrayList<ComponentDeclaration>();
         for (var sourceDeclaration : sourceDeclarations) {
             if (sourceDeclaration.isTemplate()) {

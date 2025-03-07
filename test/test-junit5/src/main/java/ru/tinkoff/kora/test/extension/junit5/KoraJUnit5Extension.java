@@ -814,18 +814,16 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             }
         }
 
-        var spyGraphComponents = Stream.of(
+        var mockGraphComponents = Stream.of(
                 metadata.classMetadata.fieldMocks,
                 metadata.parameterMocks,
                 metadata.classMetadata.constructorMocks)
             .flatMap(Collection::stream)
-            .filter(m -> m instanceof GraphMockitoSpy spy && spy.isSpyGraph()
-                         || m instanceof GraphMockkSpyk spyk && spyk.isSpyGraph())
             .map(GraphModification::candidate)
             .collect(Collectors.toSet());
 
         var result = new HashSet<>(components);
-        result.addAll(spyGraphComponents);
+        result.addAll(mockGraphComponents);
         return result;
     }
 

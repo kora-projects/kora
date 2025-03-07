@@ -428,5 +428,4 @@ class JdbcResultsTest : AbstractJdbcRepositoryTest() {
         Assertions.assertThat(tag).isNotNull()
         Assertions.assertThat(tag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("TestRepository")))
     }
-
 }

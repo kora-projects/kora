@@ -21,6 +21,7 @@ import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.database.common.annotation.processor.DbTestUtils;
 import ru.tinkoff.kora.database.common.annotation.processor.cassandra.repository.AllowedParametersRepository;
 import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityJavaBean;
+import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRecord;
 import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRecord.TestUnknownType;
 import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRecord.UnknownTypeField;
 
@@ -109,6 +110,24 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
         repository.invoke("test", object);
 
         verify(mapper).apply(any(), eq(0), refEq(object));
+    }
+
+    @Test
+    void testRecordFullParameterMapping() {
+        @SuppressWarnings("unchecked")
+        var mapper = (CassandraParameterColumnMapper<TestEntityRecord>) mock(CassandraParameterColumnMapper.class);
+        var repository = compileCassandra(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("INSERT INTO test(value1, value2) VALUES (:rec.field1, :rec)")
+                void test(ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRecord rec);
+            }
+            """);
+
+        var object = TestEntityRecord.defaultRecord();
+        repository.invoke("test", object);
+
+        verify(mapper).apply(any(), eq(1), refEq(object));
     }
 
     @Test

@@ -7,11 +7,11 @@ import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowMapper
 import ru.tinkoff.kora.database.symbol.processor.entity.EntityWithEmbedded
 import ru.tinkoff.kora.database.symbol.processor.entity.TestEntity
 import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
-import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 import ru.tinkoff.kora.ksp.common.TestUtils
 import kotlin.reflect.typeOf
 
-class CassandraExtensionTest : AbstractSymbolProcessorTest() {
+class CassandraExtensionTest : AbstractCassandraRepositoryTest() {
+
     @Test
     fun testEntity() {
         TestUtils.testKoraExtension(
@@ -32,98 +32,110 @@ class CassandraExtensionTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testRowMapper() {
-        compile0(listOf(KoraAppProcessorProvider()),
+        compile0(
+            listOf(KoraAppProcessorProvider()),
             """
-            @ru.tinkoff.kora.common.KoraApp
-            interface TestApp : ru.tinkoff.kora.database.cassandra.CassandraModule {
-                @ru.tinkoff.kora.common.annotation.Root
-                fun root(m: ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowMapper<TestEntity>) = ""
+            @KoraApp
+            interface TestApp : CassandraModule {
+                @Root
+                fun root(m: CassandraRowMapper<TestEntity>) = ""
             }
-            """.trimIndent(), """
-                    data class TestEntity(val value: String)
-                    """.trimIndent()
+            """.trimIndent(),
+            """
+            data class TestEntity(val value: String)
+            """.trimIndent()
         )
         compileResult.assertSuccess()
     }
 
     @Test
     fun testEntityRowMapper() {
-        compile0(listOf(KoraAppProcessorProvider(), CassandraEntitySymbolProcessorProvider()),
+        compile0(
+            listOf(KoraAppProcessorProvider(), CassandraEntitySymbolProcessorProvider()),
             """
-            @ru.tinkoff.kora.common.KoraApp
-            interface TestApp : ru.tinkoff.kora.database.cassandra.CassandraModule {
-                @ru.tinkoff.kora.common.annotation.Root
-                fun root(m: ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowMapper<TestEntity>) = ""
+            @KoraApp
+            interface TestApp : CassandraModule {
+                @Root
+                fun root(m: CassandraRowMapper<TestEntity>) = ""
             }
-            """.trimIndent(), """
-                @ru.tinkoff.kora.database.cassandra.annotation.EntityCassandra
-                data class TestEntity(val value: String)
-                """.trimIndent()
+            """.trimIndent(),
+            """
+            @EntityCassandra
+            data class TestEntity(val value: String)
+            """.trimIndent()
         )
         compileResult.assertSuccess()
     }
 
     @Test
     fun testListResultSetMapper() {
-        compile0(listOf(KoraAppProcessorProvider()),
+        compile0(
+            listOf(KoraAppProcessorProvider()),
             """
-            @ru.tinkoff.kora.common.KoraApp
-            interface TestApp : ru.tinkoff.kora.database.cassandra.CassandraModule {
-                @ru.tinkoff.kora.common.annotation.Root
-                fun root(m: ru.tinkoff.kora.database.cassandra.mapper.result.CassandraResultSetMapper<List<TestEntity>>) = ""
+            @KoraApp
+            interface TestApp : CassandraModule {
+                @Root
+                fun root(m: CassandraResultSetMapper<List<TestEntity>>) = ""
             }
-            """.trimIndent(), """
-                    data class TestEntity(val value: String)
-                    """.trimIndent()
+            """.trimIndent(),
+            """
+            data class TestEntity(val value: String)
+            """.trimIndent()
         )
         compileResult.assertSuccess()
     }
 
     @Test
     fun testEntityListResultSetMapper() {
-        compile0(listOf(KoraAppProcessorProvider(), CassandraEntitySymbolProcessorProvider()),
+        compile0(
+            listOf(KoraAppProcessorProvider(), CassandraEntitySymbolProcessorProvider()),
             """
-            @ru.tinkoff.kora.common.KoraApp
-            interface TestApp : ru.tinkoff.kora.database.cassandra.CassandraModule {
-                @ru.tinkoff.kora.common.annotation.Root
-                fun root(m: ru.tinkoff.kora.database.cassandra.mapper.result.CassandraResultSetMapper<List<TestEntity>>) = ""
+            @KoraApp
+            interface TestApp : CassandraModule {
+                @Root
+                fun root(m: CassandraResultSetMapper<List<TestEntity>>) = ""
             }
-            """.trimIndent(), """
-                @ru.tinkoff.kora.database.cassandra.annotation.EntityCassandra
-                data class TestEntity(val value: String)
-                """.trimIndent()
+            """.trimIndent(),
+            """
+            @EntityCassandra
+            data class TestEntity(val value: String)
+            """.trimIndent()
         )
         compileResult.assertSuccess()
     }
 
     @Test
     fun testSingleResultSetMapper() {
-        compile0(listOf(KoraAppProcessorProvider()),
+        compile0(
+            listOf(KoraAppProcessorProvider()),
             """
-            @ru.tinkoff.kora.common.KoraApp
-            interface TestApp : ru.tinkoff.kora.database.cassandra.CassandraModule {
-                @ru.tinkoff.kora.common.annotation.Root
-                fun root(m: ru.tinkoff.kora.database.cassandra.mapper.result.CassandraResultSetMapper<TestEntity>) = ""
+            @KoraApp
+            interface TestApp : CassandraModule {
+                @Root
+                fun root(m: CassandraResultSetMapper<TestEntity>) = ""
             }
-            """.trimIndent(), """
-                    data class TestEntity(val value: String)
-                    """.trimIndent()
+            """.trimIndent(),
+            """
+            data class TestEntity(val value: String)
+            """.trimIndent()
         )
         compileResult.assertSuccess()
     }
 
     @Test
     fun testEntitySingleResultSetMapper() {
-        compile0(listOf(KoraAppProcessorProvider()),
+        compile0(
+            listOf(KoraAppProcessorProvider()),
             """
-            @ru.tinkoff.kora.common.KoraApp
-            interface TestApp : ru.tinkoff.kora.database.cassandra.CassandraModule {
-                @ru.tinkoff.kora.common.annotation.Root
-                fun root(m: ru.tinkoff.kora.database.cassandra.mapper.result.CassandraResultSetMapper<TestEntity>) = ""
+            @KoraApp
+            interface TestApp : CassandraModule {
+                @Root
+                fun root(m: CassandraResultSetMapper<TestEntity>) = ""
             }
-            """.trimIndent(), """
-                @ru.tinkoff.kora.database.cassandra.annotation.EntityCassandra
-                data class TestEntity(val value: String)
+            """.trimIndent(),
+            """
+            @EntityCassandra
+            data class TestEntity(val value: String)
             """.trimIndent()
         )
         compileResult.assertSuccess()
@@ -131,16 +143,18 @@ class CassandraExtensionTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testListAsyncResultSetMapper() {
-        compile0(listOf(KoraAppProcessorProvider()),
+        compile0(
+            listOf(KoraAppProcessorProvider()),
             """
-            @ru.tinkoff.kora.common.KoraApp
-            interface TestApp : ru.tinkoff.kora.database.cassandra.CassandraModule {
-                @ru.tinkoff.kora.common.annotation.Root
-                fun root(m: ru.tinkoff.kora.database.cassandra.mapper.result.CassandraAsyncResultSetMapper<List<TestEntity>>) = ""
+            @KoraApp
+            interface TestApp : CassandraModule {
+                @Root
+                fun root(m: CassandraAsyncResultSetMapper<List<TestEntity>>) = ""
             }
-            """.trimIndent(), """
-                    data class TestEntity(val value: String)
-                    """.trimIndent()
+            """.trimIndent(),
+            """
+            data class TestEntity(val value: String)
+            """.trimIndent()
         )
         compileResult.assertSuccess()
     }
@@ -148,15 +162,17 @@ class CassandraExtensionTest : AbstractSymbolProcessorTest() {
     @Test
     fun testSingleAsyncResultSetMapper() {
         compile0(
+            listOf(KoraAppProcessorProvider()),
             """
-            @ru.tinkoff.kora.common.KoraApp
-            interface TestApp : ru.tinkoff.kora.database.cassandra.CassandraModule {
-                @ru.tinkoff.kora.common.annotation.Root
-                fun root(m: ru.tinkoff.kora.database.cassandra.mapper.result.CassandraAsyncResultSetMapper<TestEntity>) = ""
+            @KoraApp
+            interface TestApp : CassandraModule {
+                @Root
+                fun root(m: CassandraAsyncResultSetMapper<TestEntity>) = ""
             }
-            """.trimIndent(), """
-                    data class TestEntity(val value: String)
-                    """.trimIndent()
+            """.trimIndent(),
+            """
+            data class TestEntity(val value: String)
+            """.trimIndent()
         )
         compileResult.assertSuccess()
     }

@@ -27,7 +27,7 @@ public class UndertowHttpHeaders extends AbstractHttpHeaders implements HttpHead
         if (headers == null) {
             return null;
         }
-        return List.copyOf(headers);
+        return Collections.unmodifiableList(headers);
     }
 
     @Override

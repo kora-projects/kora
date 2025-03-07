@@ -89,6 +89,7 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
                 for (var field : entityParameter.entity().columns()) {
                     parseSimpleParameter(sql, i, field.queryParameterName(parameterName)).ifPresent(params::add);
                 }
+                parseEntityDirectParameter(sql, i, parameterName).ifPresent(params::add);
             }
             if (params.size() == size) {
                 throw new ProcessingErrorException("Parameter usage wasn't found in query: " + parameterName, parameter.variable());
@@ -122,6 +123,25 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
             if (rawSql.length() >= indexAfter + 1) {
                 var charAfter = rawSql.charAt(indexAfter);
                 if (Character.isAlphabetic(charAfter) || charAfter == '_' || charAfter == '$' || Character.isDigit(charAfter)) {
+                    continue;
+                }
+            }
+            result.add(index);
+        }
+
+        return (result.isEmpty())
+            ? Optional.empty()
+            : Optional.of(new QueryParameter(sqlParameterName, methodParameterNumber, result));
+    }
+
+    private static Optional<QueryParameter> parseEntityDirectParameter(String rawSql, int methodParameterNumber, String sqlParameterName) {
+        int index = -1;
+        var result = new ArrayList<Integer>();
+        while ((index = rawSql.indexOf(":" + sqlParameterName, index + 1)) >= 0) {
+            var indexAfter = index + sqlParameterName.length() + 1;
+            if (rawSql.length() >= indexAfter + 1) {
+                var charAfter = rawSql.charAt(indexAfter);
+                if ('.' == charAfter || Character.isAlphabetic(charAfter) || charAfter == '_' || charAfter == '$' || Character.isDigit(charAfter)) {
                     continue;
                 }
             }

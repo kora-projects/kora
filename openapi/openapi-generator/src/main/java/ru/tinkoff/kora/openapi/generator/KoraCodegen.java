@@ -593,6 +593,10 @@ public class KoraCodegen extends DefaultCodegen {
                             model.name, variable.name, ENABLE_JSON_NULLABLE);
                     }
                 }
+
+                if (variable.isEnum) {
+                    variable.datatypeWithEnum = toEnumName(variable);
+                }
             }
 
             // Optional-vars visit
@@ -857,9 +861,9 @@ public class KoraCodegen extends DefaultCodegen {
             var models = (List<Map<String, Object>>) model.get("models");
             var codegenModel = (CodegenModel) models.get(0).get("model");
             var additionalConstructor = codegenModel.getHasVars()
-                && !codegenModel.getVars().isEmpty()
-                && !codegenModel.getAllVars().isEmpty()
-                && codegenModel.getAllVars().size() != codegenModel.getRequiredVars().size();
+                                        && !codegenModel.getVars().isEmpty()
+                                        && !codegenModel.getAllVars().isEmpty()
+                                        && codegenModel.getAllVars().size() != codegenModel.getRequiredVars().size();
             for (var requiredVar : codegenModel.requiredVars) {
                 // discriminator is somehow present in both optional and required vars, so we should clean it up
                 codegenModel.optionalVars.removeIf(p -> Objects.equals(p.name, requiredVar.name));
@@ -2046,10 +2050,10 @@ public class KoraCodegen extends DefaultCodegen {
         } else if (authMethod.isKeyInCookie) {
             fakeAuthParameter.isCookieParam = true;
         } else if (authMethod.isOAuth
-            || authMethod.isOpenId
-            || authMethod.isBasicBearer
-            || authMethod.isBasic
-            || authMethod.isBasicBasic) {
+                   || authMethod.isOpenId
+                   || authMethod.isBasicBearer
+                   || authMethod.isBasic
+                   || authMethod.isBasicBasic) {
             fakeAuthParameter.isHeaderParam = true;
 
             for (CodegenParameter parameter : parameters) {
@@ -2099,8 +2103,8 @@ public class KoraCodegen extends DefaultCodegen {
 
     public static boolean isContentJson(CodegenParameter parameter) {
         return parameter.containerType != null
-            && (parameter.containerType.startsWith("application/json") || parameter.containerType.startsWith("text/json"))
-            || isContentJson(parameter.getContent());
+               && (parameter.containerType.startsWith("application/json") || parameter.containerType.startsWith("text/json"))
+               || isContentJson(parameter.getContent());
     }
 
     public static boolean isContentJson(@Nullable Map<String, CodegenMediaType> content) {

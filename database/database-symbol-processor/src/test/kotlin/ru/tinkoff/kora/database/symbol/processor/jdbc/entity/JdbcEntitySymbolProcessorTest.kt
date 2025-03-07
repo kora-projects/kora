@@ -6,7 +6,7 @@ import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultSetMapper
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcRowMapper
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 
-class CassandraEntitySymbolProcessorTest : AbstractSymbolProcessorTest() {
+class JdbcEntitySymbolProcessorTest : AbstractSymbolProcessorTest() {
     @Test
     fun testMappersGenerated() {
         compile0(

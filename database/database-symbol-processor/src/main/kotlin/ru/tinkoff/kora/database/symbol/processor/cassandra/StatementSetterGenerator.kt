@@ -92,22 +92,58 @@ object StatementSetterGenerator {
                         } else if (mapping?.mapper != null) {
                             val mapper = parameterMappers.get(mapping.mapper!!, mapping.tags)
                             for (idx in sqlParameter.sqlIndexes) {
-                                b.addStatement("%N.apply(_stmt, %L, it);\n", mapper, idx)
+                                b.addStatement("%N.apply(_stmt, %L, it)", mapper, idx)
                             }
                         } else {
                             val mapper = parameterMappers.get(CassandraTypes.parameterColumnMapper, field.type, field.property);
                             for (idx in sqlParameter.sqlIndexes) {
-                                b.addStatement("%N.apply(_stmt, %L, it);\n", mapper, idx)
+                                b.addStatement("%N.apply(_stmt, %L, it)", mapper, idx)
                             }
                         }
                         if (parameterNullable || fieldNullable) {
                             b.endControlFlow()
                         }
                     }
+                }
 
+                val parameterNullable = parameter.type.isMarkedNullable
+                val sqlParameter = queryWithParameters.find(parameter.name)
+                if (sqlParameter == null || sqlParameter.sqlIndexes.isEmpty()) {
+                    continue
+                }
+
+                b.addCode("%N", parameterName)
+                if (parameterNullable) {
+                    b.addCode("?")
+                }
+                b.controlFlow(".let {") {
+                    if (parameterNullable) {
+                        b.beginControlFlow("if (it == null)")
+                        for (idx in sqlParameter.sqlIndexes) {
+                            b.addStatement("_stmt.setToNull(%L)", idx)
+                        }
+                        b.nextControlFlow("else")
+                    }
+                    val mappersData = parameter.entity.classDeclaration.parseMappingData()
+                    val mapping = mappersData.getMapping(parameter.entity.type)
+                    if (mapping?.mapper != null) {
+                        val mapper = parameterMappers[mapping.mapper!!, mappersData.tags]
+                        for (idx in sqlParameter.sqlIndexes) {
+                            b.addStatement("%N.apply(_stmt, %L, it)", mapper, idx)
+                        }
+                    } else {
+                        val mapper = parameterMappers[CassandraTypes.parameterColumnMapper, parameter.entity.type, parameter.entity.classDeclaration];
+                        for (idx in sqlParameter.sqlIndexes) {
+                            b.addStatement("%N.apply(_stmt, %L, it)", mapper, idx)
+                        }
+                    }
+                    if (parameterNullable) {
+                        b.endControlFlow()
+                    }
                 }
             }
         }
+
         if (batchParam != null) {
             b.addStatement("val _builtStmt = _stmt.build()")
             b.addStatement("_batch.addStatement(_builtStmt)")
