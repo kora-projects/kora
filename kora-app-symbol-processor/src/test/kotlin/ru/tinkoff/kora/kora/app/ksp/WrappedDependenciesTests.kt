@@ -10,7 +10,7 @@ class WrappedDependenciesTests : AbstractKoraAppProcessorTest() {
         val draw = compile(
             """
             @KoraApp
-            interface AppWithWrappedDependency {
+            interface ExampleApplication {
                 @Root
                 fun class2(class1: Class1): Class2 {
                     return Class2()
@@ -64,7 +64,7 @@ class WrappedDependenciesTests : AbstractKoraAppProcessorTest() {
         val draw = compile(
             """
             @KoraApp
-            interface AppWithWrappedDependencyGeneric1 {
+            interface ExampleApplication {
 
                 @Root
                 fun class5gen1(class1: ClassGen1<Int>): Class5 = Class5()
@@ -124,7 +124,7 @@ class WrappedDependenciesTests : AbstractKoraAppProcessorTest() {
         val draw = compile(
             """
             @KoraApp
-            interface AppWithWrappedDependencyGeneric2 {
+            interface ExampleApplication {
 
                 @Root
                 fun class5gen2(class1: ClassGen2<String, Int>): Class5 = Class5()
