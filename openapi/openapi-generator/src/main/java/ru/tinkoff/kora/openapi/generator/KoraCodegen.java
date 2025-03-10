@@ -1105,13 +1105,13 @@ public class KoraCodegen extends DefaultCodegen {
         return super.getTypeDeclaration(target);
     }
 
+    /**
+     * Same as original, but have different mapping for Map of String to T
+     */
     public String getTypeDeclarationAndProp(Schema p, CodegenProperty property) {
         var schema = ModelUtils.unaliasSchema(this.openAPI, p, importMapping);
         var target = ModelUtils.isGenerateAliasAsModel() ? p : schema;
-        if (ModelUtils.isArraySchema(target)) {
-            var items = getSchemaItems((ArraySchema) schema);
-            return getSchemaType(target) + "<" + getTypeDeclaration(items) + ">";
-        } else if (ModelUtils.isMapSchema(target)) {
+        if (ModelUtils.isMapSchema(target)) {
             // Note: ModelUtils.isMapSchema(p) returns true when p is a composed schema that also defines
             // additionalproperties: true
             var inner = ModelUtils.getAdditionalProperties(target);
@@ -1137,6 +1137,7 @@ public class KoraCodegen extends DefaultCodegen {
                 return getSchemaType(target) + "<String, " + getTypeDeclaration(inner) + ">";
             }
         }
+
         return super.getTypeDeclaration(target);
     }
 
