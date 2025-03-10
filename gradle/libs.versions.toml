@@ -111,7 +111,8 @@ r2dbc-postgres = { module = "org.postgresql:r2dbc-postgresql", version = "1.0.5.
 byte-buddy-core = { module = "net.bytebuddy:byte-buddy", version = "1.14.9" }
 byte-buddy-agent = { module = "net.bytebuddy:byte-buddy-agent", version = "1.14.9" }
 
-javapoet = { module = "com.squareup:javapoet", version = "1.13.0" }
+javapoet = { module = "com.palantir.javapoet:javapoet", version = "0.6.0" }
+goethe = { module = "com.palantir.javapoet:goethe", version = "0.6.0" }
 classgraph = { module = "io.github.classgraph:classgraph", version = "4.8.170" }
 
 lettuce-core = { module = "io.lettuce:lettuce-core", version = "6.5.2.RELEASE" }

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.json.annotation.processor.reader;
 
-import com.squareup.javapoet.*;
+import com.palantir.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
@@ -76,7 +76,7 @@ public class JsonReaderGenerator {
         assertTokenType(method, "START_OBJECT");
 
         if (meta.fields().size() <= 32) {
-            method.addStatement("var __receivedFields = new int[]{NULLABLE_FIELDS_RECEIVED}", BitSet.class);
+            method.addStatement("var __receivedFields = new int[]{NULLABLE_FIELDS_RECEIVED}");
         } else {
             method.addStatement("var __receivedFields = ($T) NULLABLE_FIELDS_RECEIVED.clone()", BitSet.class);
         }

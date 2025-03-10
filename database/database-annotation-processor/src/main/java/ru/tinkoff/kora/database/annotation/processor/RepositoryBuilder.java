@@ -1,11 +1,7 @@
 package ru.tinkoff.kora.database.annotation.processor;
 
-import com.squareup.javapoet.AnnotationSpec;
-import com.squareup.javapoet.CodeBlock;
-import com.squareup.javapoet.MethodSpec;
-import com.squareup.javapoet.ParameterSpec;
-import com.squareup.javapoet.TypeName;
-import com.squareup.javapoet.TypeSpec;
+import com.palantir.javapoet.*;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
@@ -15,7 +11,6 @@ import ru.tinkoff.kora.database.annotation.processor.jdbc.JdbcRepositoryGenerato
 import ru.tinkoff.kora.database.annotation.processor.r2dbc.R2dbcRepositoryGenerator;
 import ru.tinkoff.kora.database.annotation.processor.vertx.VertxRepositoryGenerator;
 
-import jakarta.annotation.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;

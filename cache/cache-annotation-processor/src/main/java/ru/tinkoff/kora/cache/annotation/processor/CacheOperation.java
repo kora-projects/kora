@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.cache.annotation.processor;
 
-import com.squareup.javapoet.CodeBlock;
+import com.palantir.javapoet.CodeBlock;
 
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;

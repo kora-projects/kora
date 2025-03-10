@@ -1,14 +1,13 @@
 package ru.tinkoff.kora.database.annotation.processor.jdbc;
 
-import com.squareup.javapoet.CodeBlock;
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.CodeBlock;
+import com.palantir.javapoet.TypeName;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
 import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
-import ru.tinkoff.kora.database.annotation.processor.cassandra.CassandraTypes;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
 
-import jakarta.annotation.Nullable;
 import javax.lang.model.element.ExecutableElement;
 import java.util.List;
 

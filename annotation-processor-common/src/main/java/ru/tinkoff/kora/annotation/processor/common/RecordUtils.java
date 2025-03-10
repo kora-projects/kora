@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.annotation.processor.common;
 
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.TypeName;
 
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;

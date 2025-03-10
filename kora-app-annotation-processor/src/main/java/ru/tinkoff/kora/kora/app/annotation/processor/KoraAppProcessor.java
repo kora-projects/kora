@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
-import com.squareup.javapoet.*;
+import com.palantir.javapoet.*;
 import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -485,7 +485,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         var supplierMethodBuilder = MethodSpec.methodBuilder("graph")
             .returns(CommonClassNames.applicationGraphDraw)
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .addStatement("return graphDraw", graphName);
+            .addStatement("return graphDraw");
 
 
         return JavaFile.builder(packageElement.getQualifiedName().toString(), classBuilder

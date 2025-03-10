@@ -1,10 +1,9 @@
 package ru.tinkoff.kora.kafka.annotation.processor.utils;
 
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.TypeName;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
-import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames;
 
 import javax.lang.model.element.AnnotationMirror;

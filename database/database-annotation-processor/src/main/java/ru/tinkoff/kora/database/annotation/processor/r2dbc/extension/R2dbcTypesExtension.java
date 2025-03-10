@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.database.annotation.processor.r2dbc.extension;
 
-import com.squareup.javapoet.*;
+import com.palantir.javapoet.*;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.GenericTypeResolver;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
@@ -12,7 +13,6 @@ import ru.tinkoff.kora.database.annotation.processor.r2dbc.R2dbcTypes;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.KoraExtension;
 
-import jakarta.annotation.Nullable;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -74,10 +74,10 @@ public class R2dbcTypesExtension implements KoraExtension {
             return null;
         }
 
-        if (Objects.equals(ptn.rawType, R2dbcTypes.ROW_MAPPER)) {
+        if (Objects.equals(ptn.rawType(), R2dbcTypes.ROW_MAPPER)) {
             return this.generateResultRowMapper(declaredType);
         }
-        if (Objects.equals(ptn.rawType, R2dbcTypes.RESULT_FLUX_MAPPER)) {
+        if (Objects.equals(ptn.rawType(), R2dbcTypes.RESULT_FLUX_MAPPER)) {
             return this.generateResultFluxMapper(declaredType);
         }
 

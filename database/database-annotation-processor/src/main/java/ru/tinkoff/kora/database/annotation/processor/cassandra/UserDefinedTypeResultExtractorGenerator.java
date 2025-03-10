@@ -1,11 +1,9 @@
 package ru.tinkoff.kora.database.annotation.processor.cassandra;
 
-import com.squareup.javapoet.*;
+import com.palantir.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
-import ru.tinkoff.kora.common.annotation.Generated;
-import ru.tinkoff.kora.database.annotation.processor.RepositoryAnnotationProcessor;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
 
 import javax.annotation.processing.ProcessingEnvironment;

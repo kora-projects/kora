@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.database.annotation.processor.vertx;
 
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.ParameterizedTypeName;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.ParameterizedTypeName;
 
 public class VertxTypes {
     public static final ClassName CONNECTION = ClassName.get("io.vertx.sqlclient", "SqlConnection");

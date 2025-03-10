@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.database.annotation.processor.vertx;
 
-import com.squareup.javapoet.*;
+import com.palantir.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.common.Tag;

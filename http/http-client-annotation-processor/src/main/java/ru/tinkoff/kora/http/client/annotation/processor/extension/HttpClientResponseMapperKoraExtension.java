@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.http.client.annotation.processor.extension;
 
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.ParameterizedTypeName;
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.ParameterizedTypeName;
+import com.palantir.javapoet.TypeName;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.GenericTypeResolver;
 import ru.tinkoff.kora.http.client.annotation.processor.HttpClientClassNames;
@@ -42,10 +42,10 @@ public final class HttpClientResponseMapperKoraExtension implements KoraExtensio
         if (!(typeName instanceof ParameterizedTypeName ptn)) {
             return null;
         }
-        if (!ptn.rawType.equals(HttpClientClassNames.httpClientResponseMapper)) {
+        if (!ptn.rawType().equals(HttpClientClassNames.httpClientResponseMapper)) {
             return null;
         }
-        if (ptn.typeArguments.get(0) instanceof ParameterizedTypeName future && future.rawType.equals(ClassName.get(CompletionStage.class))) {
+        if (ptn.typeArguments().get(0) instanceof ParameterizedTypeName future && future.rawType().equals(ClassName.get(CompletionStage.class))) {
             return null;
         }
         var dt = (DeclaredType) typeMirror;

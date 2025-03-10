@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.database.common.annotation.processor;
 
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.ParameterizedTypeName;
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.ParameterizedTypeName;
+import com.palantir.javapoet.TypeName;
 import org.intellij.lang.annotations.Language;
 import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
@@ -51,7 +51,7 @@ public class AbstractExtensionTest extends AbstractAnnotationProcessorTest {
         for (var requiredMock : requiredMocks) {
             app.append("  default ").append(requiredMock.toString()).append(" mock").append(mocks++).append("() { org.mockito.Mockito.mock(");
             if (requiredMock instanceof ParameterizedTypeName ptn) {
-                app.append(ptn.rawType);
+                app.append(ptn.rawType());
             } else {
                 app.append(requiredMock);
             }

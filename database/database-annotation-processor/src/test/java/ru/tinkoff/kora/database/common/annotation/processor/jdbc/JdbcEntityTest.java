@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.database.common.annotation.processor.jdbc;
 
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.ParameterizedTypeName;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.ParameterizedTypeName;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.database.annotation.processor.jdbc.JdbcEntityAnnotationProcessor;
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultSetMapper;

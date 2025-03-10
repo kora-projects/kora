@@ -1,10 +1,9 @@
 package ru.tinkoff.kora.annotation.processor.common;
 
-import com.squareup.javapoet.ClassName;
+import com.palantir.javapoet.ClassName;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.TypeElement;
 
 public class NameUtils {
 

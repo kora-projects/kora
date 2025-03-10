@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.database.annotation.processor.r2dbc;
 
-import com.squareup.javapoet.ClassName;
+import com.palantir.javapoet.ClassName;
 
 public class R2dbcTypes {
     public static final ClassName CONNECTION = ClassName.get("io.r2dbc.spi", "Connection");
