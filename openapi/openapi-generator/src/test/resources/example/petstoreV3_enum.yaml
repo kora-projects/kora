@@ -34,6 +34,8 @@ components:
         - id
         - reqType
         - reqAndNotNullType
+        - reqArrayString
+        - reqAndNotNullArrayString
       properties:
         id:
           type: integer
@@ -52,6 +54,59 @@ components:
           type: string
           enum: [ Shepherd ]
           nullable: false
+        nonReqString:
+          type: string
+          enum: [ Dingo-Don, Husky, Retriever, Shepherd ]
+        nullableArrayString:
+          type: array
+          nullable: true
+          items:
+            type: string
+            enum:
+              - Dingo-Don
+              - Husky
+              - Retriever
+              - Shepherd
+        nonReqArrayString:
+          type: array
+          items:
+            type: string
+            enum:
+              - Dingo-Don
+              - Husky
+              - Retriever
+              - Shepherd
+        reqArrayString:
+          type: array
+          items:
+            type: string
+            enum:
+              - Dingo-Don
+              - Husky
+              - Retriever
+              - Shepherd
+        reqAndNotNullArrayString:
+          type: array
+          nullable: false
+          items:
+            type: string
+            enum:
+              - Dingo-Don
+              - Husky
+              - Retriever
+              - Shepherd
+        nonReqInt:
+          type: int
+          enum: [ 5, 7, 8, 10 ]
+        nonReqArrayInt:
+          type: array
+          items:
+            type: int
+            enum:
+              - 5
+              - 7
+              - 8
+              - 10
     Pets:
       type: array
       items:
