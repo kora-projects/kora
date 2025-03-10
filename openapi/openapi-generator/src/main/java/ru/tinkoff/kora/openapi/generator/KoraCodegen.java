@@ -621,6 +621,16 @@ public class KoraCodegen extends DefaultCodegen {
                             model.name, variable.name, ENABLE_JSON_NULLABLE);
                     }
                 }
+
+                if (variable.isEnum) {
+                    variable.datatypeWithEnum = toEnumName(variable);
+                }
+            }
+
+            for (var variable : model.requiredVars) {
+                if (variable.isEnum) {
+                    variable.datatypeWithEnum = toEnumName(variable);
+                }
             }
 
             if (model.discriminator != null) {
@@ -1093,6 +1103,50 @@ public class KoraCodegen extends DefaultCodegen {
             return getSchemaType(target) + "<String, " + getTypeDeclaration(inner) + ">";
         }
         return super.getTypeDeclaration(target);
+    }
+
+    public String getTypeDeclarationAndProp(Schema p, CodegenProperty property) {
+        var schema = ModelUtils.unaliasSchema(this.openAPI, p, importMapping);
+        var target = ModelUtils.isGenerateAliasAsModel() ? p : schema;
+        if (ModelUtils.isArraySchema(target)) {
+            var items = getSchemaItems((ArraySchema) schema);
+            return getSchemaType(target) + "<" + getTypeDeclaration(items) + ">";
+        } else if (ModelUtils.isMapSchema(target)) {
+            // Note: ModelUtils.isMapSchema(p) returns true when p is a composed schema that also defines
+            // additionalproperties: true
+            var inner = ModelUtils.getAdditionalProperties(target);
+            if (inner == null) {
+                LOGGER.error("`{}` (map property) does not have a proper inner type defined. Default to type:string", p.getName());
+                inner = new StringSchema().description("TODO default missing map inner type to string");
+                p.setAdditionalProperties(inner);
+            }
+
+            if (params.codegenMode.isKotlin() && property.isNullable) {
+                if (params.enableJsonNullable) {
+                    if (property.required) {
+                        return getSchemaType(target) + "<String, ru.tinkoff.kora.json.common.JsonNullable<" + getTypeDeclaration(inner) + ">>";
+                    } else {
+                        return getSchemaType(target) + "<String, ru.tinkoff.kora.json.common.JsonNullable<" + getTypeDeclaration(inner) + ">>?";
+                    }
+                } else {
+                    return getSchemaType(target) + "<String, " + getTypeDeclaration(inner) + "?>";
+                }
+            } else if (property.isNullable && !property.required && params.enableJsonNullable) {
+                return getSchemaType(target) + "<String, ru.tinkoff.kora.json.common.JsonNullable<" + getTypeDeclaration(inner) + ">>";
+            } else {
+                return getSchemaType(target) + "<String, " + getTypeDeclaration(inner) + ">";
+            }
+        }
+        return super.getTypeDeclaration(target);
+    }
+
+    @Override
+    public CodegenProperty fromProperty(String name, Schema p, boolean required, boolean schemaIsFromAdditionalProperties) {
+        var property = super.fromProperty(name, p, required, schemaIsFromAdditionalProperties);
+        var dataType = getTypeDeclarationAndProp(p, property);
+        property.dataType = dataType;
+        property.datatypeWithEnum = dataType;
+        return property;
     }
 
     @Override
