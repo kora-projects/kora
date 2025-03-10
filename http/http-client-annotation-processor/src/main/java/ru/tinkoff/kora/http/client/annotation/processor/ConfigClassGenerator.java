@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.http.client.annotation.processor;
 
-import com.squareup.javapoet.AnnotationSpec;
-import com.squareup.javapoet.CodeBlock;
-import com.squareup.javapoet.MethodSpec;
-import com.squareup.javapoet.TypeSpec;
+import com.palantir.javapoet.AnnotationSpec;
+import com.palantir.javapoet.CodeBlock;
+import com.palantir.javapoet.MethodSpec;
+import com.palantir.javapoet.TypeSpec;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.common.annotation.Generated;
 

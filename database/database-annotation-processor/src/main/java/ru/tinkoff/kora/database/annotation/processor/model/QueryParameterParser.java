@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.database.annotation.processor.model;
 
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.ParameterizedTypeName;
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.ParameterizedTypeName;
+import com.palantir.javapoet.TypeName;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
@@ -44,7 +44,7 @@ public final class QueryParameterParser {
         var mapping = CommonUtils.parseMapping(parameter).getMapping(parameterMapper);
         var batch = AnnotationUtils.findAnnotation(parameter, DbUtils.BATCH_ANNOTATION);
         if (batch != null) {
-            if (!(typeName instanceof ParameterizedTypeName ptn && (ptn.rawType.canonicalName().equals("java.util.List")))) {
+            if (!(typeName instanceof ParameterizedTypeName ptn && (ptn.rawType().canonicalName().equals("java.util.List")))) {
                 throw new ProcessingErrorException("@Batch parameter must be a list", parameter);
             }
             var batchType = ((DeclaredType) type).getTypeArguments().get(0);

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.kafka.annotation.processor.consumer;
 
-import com.squareup.javapoet.*;
+import com.palantir.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.annotation.processor.common.TagUtils;

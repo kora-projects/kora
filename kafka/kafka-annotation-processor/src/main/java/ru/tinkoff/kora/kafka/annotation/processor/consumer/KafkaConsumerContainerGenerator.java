@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.kafka.annotation.processor.consumer;
 
-import com.squareup.javapoet.MethodSpec;
-import com.squareup.javapoet.ParameterSpec;
-import com.squareup.javapoet.ParameterizedTypeName;
+import com.palantir.javapoet.MethodSpec;
+import com.palantir.javapoet.ParameterSpec;
+import com.palantir.javapoet.ParameterizedTypeName;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
@@ -31,7 +31,7 @@ public class KafkaConsumerContainerGenerator {
             .addAnnotation(CommonClassNames.root)
             .addAnnotation(tagAnnotation)
             .returns(CommonClassNames.lifecycle);
-        var handlerTypeName = (ParameterizedTypeName) handlerMethod.method().returnType;
+        var handlerTypeName = (ParameterizedTypeName) handlerMethod.method().returnType();
 
         var configParameter = ParameterSpec
             .builder(kafkaConsumerConfig, "config")
@@ -69,7 +69,7 @@ public class KafkaConsumerContainerGenerator {
         methodBuilder.addStatement("var telemetry = telemetryFactory.get($S, config.driverProperties(), config.telemetry())", configPath);
 
         var consumerParameter = parameters.stream().filter(r -> r instanceof ConsumerParameter.Consumer).map(ConsumerParameter.Consumer.class::cast).findFirst();
-        if (handlerTypeName.rawType.equals(recordHandler)) {
+        if (handlerTypeName.rawType().equals(recordHandler)) {
             methodBuilder.addCode("var wrappedHandler = $T.wrapHandlerRecord(telemetry, $L, handler);\n", handlerWrapper, consumerParameter.isEmpty());
         } else {
             methodBuilder.addCode("var wrappedHandler = $T.wrapHandlerRecords(telemetry, $L, handler, config.allowEmptyRecords());\n", handlerWrapper, consumerParameter.isEmpty());

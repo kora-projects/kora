@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.soap.client.annotation.processor;
 
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.TypeName;
 
 public interface SoapClasses {
     default TypeName httpClientTypeName() {

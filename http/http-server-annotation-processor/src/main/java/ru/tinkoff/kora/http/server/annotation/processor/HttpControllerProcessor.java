@@ -1,11 +1,10 @@
 package ru.tinkoff.kora.http.server.annotation.processor;
 
-import com.squareup.javapoet.JavaFile;
+import com.palantir.javapoet.JavaFile;
 import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
-import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic;

@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.aop.annotation.processor;
 
-import com.squareup.javapoet.AnnotationSpec;
-import com.squareup.javapoet.CodeBlock;
-import com.squareup.javapoet.TypeName;
-import com.squareup.javapoet.TypeSpec;
+import com.palantir.javapoet.AnnotationSpec;
+import com.palantir.javapoet.CodeBlock;
+import com.palantir.javapoet.TypeName;
+import com.palantir.javapoet.TypeSpec;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.TypeMirror;

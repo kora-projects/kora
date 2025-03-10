@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.config.annotation.processor;
 
-import com.squareup.javapoet.ClassName;
+import com.palantir.javapoet.ClassName;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 
 import java.util.Optional;

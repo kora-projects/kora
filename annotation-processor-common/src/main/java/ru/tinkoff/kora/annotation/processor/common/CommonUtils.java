@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.annotation.processor.common;
 
-import com.squareup.javapoet.*;
+import com.palantir.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.AopAnnotation;
 import ru.tinkoff.kora.common.Mapping;
@@ -189,7 +189,7 @@ public class CommonUtils {
         for (var anInterface : typeElement.getInterfaces()) {
             var interfaceType = TypeName.get(anInterface);
             if (interfaceType instanceof ParameterizedTypeName ptn) {
-                if (ptn.rawType.equals(i)) {
+                if (ptn.rawType().equals(i)) {
                     return true;
                 }
             }

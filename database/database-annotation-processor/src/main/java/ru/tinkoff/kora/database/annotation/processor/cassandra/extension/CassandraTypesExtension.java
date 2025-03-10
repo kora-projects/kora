@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.database.annotation.processor.cassandra.extension;
 
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.ParameterizedTypeName;
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.ParameterizedTypeName;
+import com.palantir.javapoet.TypeName;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.database.annotation.processor.cassandra.CassandraEntityGenerator;
@@ -52,22 +52,22 @@ public class CassandraTypesExtension implements KoraExtension {
         if (!(typeName instanceof ParameterizedTypeName ptn) || !(typeMirror instanceof DeclaredType dt)) {
             return null;
         }
-        if (ptn.rawType.equals(CassandraTypes.RESULT_SET_MAPPER)) {
+        if (ptn.rawType().equals(CassandraTypes.RESULT_SET_MAPPER)) {
             return this.generateResultSetMapper(roundEnvironment, dt);
         }
-        if (ptn.rawType.equals(CassandraTypes.ASYNC_RESULT_SET_MAPPER)) {
+        if (ptn.rawType().equals(CassandraTypes.ASYNC_RESULT_SET_MAPPER)) {
             return this.generateAsyncResultSetMapper(roundEnvironment, dt);
         }
-        if (ptn.rawType.equals(CassandraTypes.REACTIVE_RESULT_SET_MAPPER)) {
+        if (ptn.rawType().equals(CassandraTypes.REACTIVE_RESULT_SET_MAPPER)) {
             return this.generateReactiveResultSetMapper(roundEnvironment, ptn, dt);
         }
-        if (ptn.rawType.equals(CassandraTypes.ROW_MAPPER)) {
+        if (ptn.rawType().equals(CassandraTypes.ROW_MAPPER)) {
             return this.generateResultRowMapper(roundEnvironment, dt);
         }
-        if (ptn.rawType.equals(CassandraTypes.PARAMETER_COLUMN_MAPPER)) {
+        if (ptn.rawType().equals(CassandraTypes.PARAMETER_COLUMN_MAPPER)) {
             return this.generateParameterColumnMapper(roundEnvironment, dt);
         }
-        if (ptn.rawType.equals(CassandraTypes.RESULT_COLUMN_MAPPER)) {
+        if (ptn.rawType().equals(CassandraTypes.RESULT_COLUMN_MAPPER)) {
             return this.generateRowColumnMapper(roundEnvironment, dt);
         }
         return null;
@@ -188,20 +188,20 @@ public class CassandraTypesExtension implements KoraExtension {
 
     @Nullable
     private KoraExtensionDependencyGenerator generateReactiveResultSetMapper(RoundEnvironment roundEnvironment, ParameterizedTypeName ptn, DeclaredType typeMirror) {
-        if (ptn.typeArguments.size() < 2 || !(ptn.typeArguments.get(1) instanceof ParameterizedTypeName publisherTypeName)) {
+        if (ptn.typeArguments().size() < 2 || !(ptn.typeArguments().get(1) instanceof ParameterizedTypeName publisherTypeName)) {
             return null;
         }
-        if (publisherTypeName.rawType.equals(CommonClassNames.flux)) {
+        if (publisherTypeName.rawType().equals(CommonClassNames.flux)) {
             var fluxMapper = findStaticMethod(CassandraTypes.REACTIVE_RESULT_SET_MAPPER, "flux");
             var rowType = typeMirror.getTypeArguments().get(0);
             var tp = (TypeVariable) fluxMapper.getTypeParameters().get(0).asType();
             var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, rowType), fluxMapper.asType());
             return () -> ExtensionResult.fromExecutable(fluxMapper, executableType);
         }
-        if (publisherTypeName.rawType.equals(CommonClassNames.mono)) {
+        if (publisherTypeName.rawType().equals(CommonClassNames.mono)) {
             var monoParam = typeMirror.getTypeArguments().get(0);
             var monoParamTypeName = TypeName.get(monoParam);
-            if (monoParam instanceof DeclaredType monoDt && monoParamTypeName instanceof ParameterizedTypeName monoPtn && monoPtn.rawType.equals(CommonClassNames.list)) {
+            if (monoParam instanceof DeclaredType monoDt && monoParamTypeName instanceof ParameterizedTypeName monoPtn && monoPtn.rawType().equals(CommonClassNames.list)) {
                 var rowType = monoDt.getTypeArguments().get(0);
                 var monoList = findStaticMethod(CassandraTypes.REACTIVE_RESULT_SET_MAPPER, "monoList");
                 var tp = (TypeVariable) monoList.getTypeParameters().get(0).asType();

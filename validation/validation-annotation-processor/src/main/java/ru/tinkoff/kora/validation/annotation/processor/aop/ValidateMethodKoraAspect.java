@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.validation.annotation.processor.aop;
 
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.CodeBlock;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.CodeBlock;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
@@ -21,7 +21,7 @@ import javax.lang.model.type.TypeMirror;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
-import static com.squareup.javapoet.CodeBlock.joining;
+import static com.palantir.javapoet.CodeBlock.joining;
 import static ru.tinkoff.kora.validation.annotation.processor.ValidMeta.Validated;
 import static ru.tinkoff.kora.validation.annotation.processor.ValidTypes.*;
 import static ru.tinkoff.kora.validation.annotation.processor.ValidUtils.isNotNull;

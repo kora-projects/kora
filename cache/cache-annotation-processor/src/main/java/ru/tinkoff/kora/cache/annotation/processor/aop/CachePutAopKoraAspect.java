@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.cache.annotation.processor.aop;
 
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.CodeBlock;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.CodeBlock;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
