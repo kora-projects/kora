@@ -62,6 +62,9 @@ class JdbcTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val c
         }
         if (type.declaration.qualifiedName!!.asString() == JdbcTypes.jdbcRowMapper.canonicalName) {
             val rowType = type.arguments[0].type!!.resolve()
+            if (rowType.isMarkedNullable) {
+                return null
+            }
             if (rowType.declaration.isAnnotationPresent(JdbcTypes.jdbcEntity)) {
                 return fromProcessor(resolver, rowType.declaration.rowMapperName())
             }
@@ -73,8 +76,14 @@ class JdbcTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val c
         }
         if (type.declaration.qualifiedName!!.asString() == JdbcTypes.jdbcResultSetMapper.canonicalName) {
             val resultType = type.arguments[0].type!!.resolve()
+            if (resultType.isMarkedNullable) {
+                return null
+            }
             if (resultType.isList()) {
                 val rowType = resultType.arguments[0].type!!.resolve()
+                if (rowType.isMarkedNullable) {
+                    return null
+                }
                 if (rowType.declaration.isAnnotationPresent(JdbcTypes.jdbcEntity)) {
                     return fromProcessor(resolver, rowType.declaration.listResultSetMapperName())
                 }
