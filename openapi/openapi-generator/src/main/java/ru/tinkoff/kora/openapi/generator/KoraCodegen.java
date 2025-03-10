@@ -1143,10 +1143,14 @@ public class KoraCodegen extends DefaultCodegen {
     @Override
     public CodegenProperty fromProperty(String name, Schema p, boolean required, boolean schemaIsFromAdditionalProperties) {
         var property = super.fromProperty(name, p, required, schemaIsFromAdditionalProperties);
-        var dataType = getTypeDeclarationAndProp(p, property);
-        property.dataType = dataType;
-        if (!property.isEnum) {
-            property.datatypeWithEnum = property.dataType;
+        var schema = ModelUtils.unaliasSchema(this.openAPI, p, importMapping);
+        var target = ModelUtils.isGenerateAliasAsModel() ? p : schema;
+        if (ModelUtils.isMapSchema(target)) {
+            var dataType = getTypeDeclarationAndProp(p, property);
+            property.dataType = dataType;
+            if (!property.isEnum) {
+                property.datatypeWithEnum = property.dataType;
+            }
         }
         return property;
     }
