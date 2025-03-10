@@ -1145,7 +1145,9 @@ public class KoraCodegen extends DefaultCodegen {
         var property = super.fromProperty(name, p, required, schemaIsFromAdditionalProperties);
         var dataType = getTypeDeclarationAndProp(p, property);
         property.dataType = dataType;
-        property.datatypeWithEnum = dataType;
+        if (!property.isEnum) {
+            property.datatypeWithEnum = property.dataType;
+        }
         return property;
     }
 
