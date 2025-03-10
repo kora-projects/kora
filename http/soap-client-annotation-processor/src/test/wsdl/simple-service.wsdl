@@ -4,7 +4,8 @@
                   targetNamespace="http://kora.tinkoff.ru/simple/service"
                   xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
                   xmlns:tns="http://kora.tinkoff.ru/simple/service"
-                  xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                  xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl">
     <wsdl:types>
         <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="http://kora.tinkoff.ru/simple/service">
             <xsd:element name="TestRequest">
@@ -36,6 +37,38 @@
                     </xsd:sequence>
                 </xsd:complexType>
             </xsd:element>
+            <xsd:complexType name="CommonResponse">
+                <xsd:sequence>
+                    <xsd:element minOccurs="0" name="Code" type="xsd:int"/>
+                    <xsd:element minOccurs="0" name="Message" nillable="true" type="xsd:string"/>
+                </xsd:sequence>
+            </xsd:complexType>
+            <xsd:element name="GetResult">
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element minOccurs="0" name="str" nillable="true" type="xsd:string"/>
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+            <xsd:complexType name="ResultResponse">
+                <xsd:complexContent mixed="false">
+                    <xsd:extension base="tns:CommonResponse">
+                        <xsd:sequence>
+                            <xsd:element minOccurs="0" name="Date" nillable="true" type="xsd:dateTime"/>
+                            <xsd:element minOccurs="0" name="Field2" nillable="true" type="xsd:string"/>
+                            <xsd:element minOccurs="0" name="Field3" nillable="true" type="xsd:string"/>
+                        </xsd:sequence>
+                    </xsd:extension>
+                </xsd:complexContent>
+            </xsd:complexType>
+            <xsd:element name="ResultResponse" nillable="true" type="tns:ResultResponse"/>
+            <xsd:element name="GetResultResponse">
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element minOccurs="0" name="GetResultResponseResult" nillable="true" type="tns:ResultResponse"/>
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
         </xsd:schema>
     </wsdl:types>
 
@@ -51,6 +84,12 @@
     <wsdl:message name="testError2Msg">
         <wsdl:part element="tns:TestError2" name="testError2"/>
     </wsdl:message>
+    <wsdl:message name="GetResult_InputMessage">
+        <wsdl:part name="parameters" element="tns:GetResult"/>
+    </wsdl:message>
+    <wsdl:message name="GetResult_OutputMessage">
+        <wsdl:part name="parameters" element="tns:GetResultResponse"/>
+    </wsdl:message>
 
     <wsdl:portType name="SimpleService">
         <wsdl:operation name="test">
@@ -58,6 +97,10 @@
             <wsdl:output message="tns:testResponseMsg" name="testResponse"/>
             <wsdl:fault message="tns:testError1Msg" name="testError1"/>
             <wsdl:fault message="tns:testError2Msg" name="testError2"/>
+        </wsdl:operation>
+        <wsdl:operation name="GetResult">
+            <wsdl:input wsaw:Action="GetResult" message="tns:GetResult_InputMessage"/>
+            <wsdl:output wsaw:Action="GetResult" message="tns:GetResult_OutputMessage"/>
         </wsdl:operation>
     </wsdl:portType>
 
@@ -69,6 +112,15 @@
                 <soap:body use="literal"/>
             </wsdl:input>
             <wsdl:output name="testResponse">
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="GetResult">
+            <soap:operation soapAction="GetResult" style="document"/>
+            <wsdl:input>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
                 <soap:body use="literal"/>
             </wsdl:output>
         </wsdl:operation>

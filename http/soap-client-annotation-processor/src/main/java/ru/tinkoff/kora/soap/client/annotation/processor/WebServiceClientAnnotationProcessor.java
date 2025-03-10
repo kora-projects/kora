@@ -33,7 +33,7 @@ public class WebServiceClientAnnotationProcessor extends AbstractKoraProcessor {
         var jakartaWebService = this.elements.getTypeElement("jakarta.jws.WebService");
         var javaxWebService = this.elements.getTypeElement("javax.jws.WebService");
         if (jakartaWebService != null) {
-            var jakartaClasses = new SoapClasses.JakartaClasses(this.types, this.elements);
+            var jakartaClasses = new SoapClasses.JakartaClasses();
             var webServices = roundEnv.getElementsAnnotatedWith(jakartaWebService);
             for (var service : webServices) {
                 try {
@@ -44,7 +44,7 @@ public class WebServiceClientAnnotationProcessor extends AbstractKoraProcessor {
             }
         }
         if (javaxWebService != null) {
-            var javaxClasses = new SoapClasses.JavaxClasses(this.types, this.elements);
+            var javaxClasses = new SoapClasses.JavaxClasses();
             var webServices = roundEnv.getElementsAnnotatedWith(javaxWebService);
             for (var service : webServices) {
                 try {
