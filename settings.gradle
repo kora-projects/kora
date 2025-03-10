@@ -115,5 +115,3 @@ include(
     'experimental:camunda-zeebe-worker-annotation-processor',
     'experimental:camunda-zeebe-worker-symbol-processor',
 )
-
-apply from: 'dependencies.gradle'
