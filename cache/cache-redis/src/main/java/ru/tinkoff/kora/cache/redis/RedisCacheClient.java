@@ -6,7 +6,11 @@ import java.util.Map;
 import java.util.concurrent.CompletionStage;
 
 /**
- * Use dependency - ru.tinkoff.kora:cache-redis-lettuce
+ * This module is no longer maintained, it was replaced with new one.
+ * <p>
+ * Use dependency - ru.tinkoff.kora:cache-redis-lettuce AND RedisCacheAsyncClient
+ * <p>
+ * Check documentation for more information
  */
 @Deprecated
 public interface RedisCacheClient {

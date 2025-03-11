@@ -6,8 +6,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.function.Function;
 
 /**
+ * This module is no longer maintained, it was replaced with new one.
+ * <p>
+ * Use dependency - ru.tinkoff.kora:cache-redis-lettuce AND RedisCacheKeyMapper
+ * <p>
+ * Check documentation for more information
+ * <p>
  * Contract for converting method arguments {@link CacheKeyMapper} into the final key that will be used in Cache implementation.
- * Use dependency - ru.tinkoff.kora:cache-redis-lettuce
  */
 @Deprecated
 public interface RedisCacheKeyMapper<K> extends Function<K, byte[]> {

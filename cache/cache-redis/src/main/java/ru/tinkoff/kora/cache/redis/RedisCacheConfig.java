@@ -7,7 +7,11 @@ import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 import java.time.Duration;
 
 /**
- * Use dependency - ru.tinkoff.kora:cache-redis-lettuce
+ * This module is no longer maintained, it was replaced with new one.
+ * <p>
+ * Use dependency - ru.tinkoff.kora:cache-redis-lettuce AND RedisCacheConfig
+ * <p>
+ * Check documentation for more information
  */
 @Deprecated
 @ConfigValueExtractor

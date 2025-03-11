@@ -15,7 +15,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 /**
- * Use dependency - ru.tinkoff.kora:cache-redis-lettuce
+ * This module is no longer maintained, it was replaced with new one.
+ * <p>
+ * Use dependency - ru.tinkoff.kora:cache-redis-lettuce AND RedisCacheMapperModule
+ * <p>
+ * Check documentation for more information
  */
 @Deprecated
 public interface RedisCacheMapperModule extends JsonCommonModule {

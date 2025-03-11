@@ -14,7 +14,11 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Use dependency - ru.tinkoff.kora:cache-redis-lettuce
+ * This module is no longer maintained, it was replaced with new one.
+ * <p>
+ * Use dependency - ru.tinkoff.kora:cache-redis-lettuce AND RedisCacheAsyncClient
+ * <p>
+ * Check documentation for more information
  */
 @Deprecated
 public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
