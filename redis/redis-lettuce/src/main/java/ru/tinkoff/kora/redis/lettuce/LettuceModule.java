@@ -18,7 +18,6 @@ import io.lettuce.core.support.BoundedPoolConfig;
 import io.lettuce.core.support.ConnectionPoolSupport;
 import org.apache.commons.pool2.ObjectPool;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
-import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.config.common.Config;
@@ -70,17 +69,13 @@ public interface LettuceModule {
 
     @DefaultComponent
     default <K, V> RedisCodec<K, V> lettuceRedisCompositeCodec(RedisCodec<K, K> keyCodec,
-                                                               RedisCodec<V, V> valueCodec,
-                                                               TypeRef<K> keyRef,
-                                                               TypeRef<V> valueRef) {
+                                                               RedisCodec<V, V> valueCodec) {
         return new LettuceCompositeRedisCodec<>(keyCodec, valueCodec);
     }
 
     @DefaultComponent
     default <K, V> Wrapped<StatefulConnection<K, V>> lettuceStatefulConnection(AbstractRedisClient redisClient,
-                                                                               RedisCodec<K, V> codec,
-                                                                               TypeRef<K> keyRef,
-                                                                               TypeRef<V> valueRef) {
+                                                                               RedisCodec<K, V> codec) {
         if (redisClient instanceof io.lettuce.core.RedisClient rc) {
             return new LettuceLifecycleConnectionWrapper<>(() -> rc.connect(codec));
         } else if (redisClient instanceof RedisClusterClient rcc) {
@@ -93,9 +88,7 @@ public interface LettuceModule {
     @DefaultComponent
     default <K, V> Wrapped<ObjectPool<StatefulConnection<K, V>>> lettuceSyncConnectionPool(AbstractRedisClient redisClient,
                                                                                            LettuceConfig lettuceConfig,
-                                                                                           RedisCodec<K, V> codec,
-                                                                                           TypeRef<K> keyRef,
-                                                                                           TypeRef<V> valueRef) {
+                                                                                           RedisCodec<K, V> codec) {
         final GenericObjectPoolConfig<StatefulConnection<K, V>> poolConfig = new GenericObjectPoolConfig<>();
         poolConfig.setMaxTotal(lettuceConfig.pool().maxTotal());
         poolConfig.setMaxIdle(lettuceConfig.pool().maxIdle());
@@ -118,9 +111,7 @@ public interface LettuceModule {
     @DefaultComponent
     default <K, V> Wrapped<AsyncPool<StatefulConnection<K, V>>> lettuceAsyncConnectionPool(AbstractRedisClient redisClient,
                                                                                            LettuceConfig lettuceConfig,
-                                                                                           RedisCodec<K, V> codec,
-                                                                                           TypeRef<K> keyRef,
-                                                                                           TypeRef<V> valueRef) {
+                                                                                           RedisCodec<K, V> codec) {
         final BoundedPoolConfig poolConfig = BoundedPoolConfig.builder()
             .maxTotal(lettuceConfig.pool().maxTotal())
             .maxIdle(lettuceConfig.pool().maxIdle())
@@ -142,9 +133,7 @@ public interface LettuceModule {
     }
 
     @DefaultComponent
-    default <K, V> RedisClusterCommands<K, V> lettuceRedisClusterSyncCommands(StatefulConnection<K, V> connection,
-                                                                              TypeRef<K> keyRef,
-                                                                              TypeRef<V> valueRef) {
+    default <K, V> RedisClusterCommands<K, V> lettuceRedisClusterSyncCommands(StatefulConnection<K, V> connection) {
         if (connection instanceof StatefulRedisConnection<K, V> rc) {
             return rc.sync();
         } else if (connection instanceof StatefulRedisClusterConnection<K, V> rcc) {
@@ -155,9 +144,7 @@ public interface LettuceModule {
     }
 
     @DefaultComponent
-    default <K, V> RedisClusterAsyncCommands<K, V> lettuceRedisClusterAsyncCommands(StatefulConnection<K, V> connection,
-                                                                                    TypeRef<K> keyRef,
-                                                                                    TypeRef<V> valueRef) {
+    default <K, V> RedisClusterAsyncCommands<K, V> lettuceRedisClusterAsyncCommands(StatefulConnection<K, V> connection) {
         if (connection instanceof StatefulRedisConnection<K, V> rc) {
             return rc.async();
         } else if (connection instanceof StatefulRedisClusterConnection<K, V> rcc) {
@@ -168,9 +155,7 @@ public interface LettuceModule {
     }
 
     @DefaultComponent
-    default <K, V> RedisClusterReactiveCommands<K, V> lettuceRedisClusterReactiveCommands(StatefulConnection<K, V> connection,
-                                                                                          TypeRef<K> keyRef,
-                                                                                          TypeRef<V> valueRef) {
+    default <K, V> RedisClusterReactiveCommands<K, V> lettuceRedisClusterReactiveCommands(StatefulConnection<K, V> connection) {
         if (connection instanceof StatefulRedisConnection<K, V> rc) {
             return rc.reactive();
         } else if (connection instanceof StatefulRedisClusterConnection<K, V> rcc) {
