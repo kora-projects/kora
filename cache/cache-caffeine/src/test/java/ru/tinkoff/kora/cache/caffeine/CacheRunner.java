@@ -3,6 +3,7 @@ package ru.tinkoff.kora.cache.caffeine;
 import jakarta.annotation.Nullable;
 import org.junit.jupiter.api.Assertions;
 import ru.tinkoff.kora.cache.caffeine.testdata.DummyCache;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.time.Duration;
 
@@ -27,12 +28,19 @@ abstract class CacheRunner extends Assertions implements CaffeineCacheModule {
             public Integer initialSize() {
                 return null;
             }
+
+            @Override
+            public TelemetryConfig telemetry() {
+                return null;
+            }
         };
     }
 
     protected DummyCache createCache() {
         try {
-            return new DummyCache(getConfig(), caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+            return new DummyCache(getConfig(),
+                caffeineCacheFactory(null),
+                defaultCacheTelemetryFactory(null, null, null));
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }

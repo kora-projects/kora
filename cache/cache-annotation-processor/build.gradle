@@ -8,7 +8,7 @@ dependencies {
     testImplementation testFixtures(project(":annotation-processor-common"))
     testImplementation project(":internal:test-logging")
     testImplementation project(":cache:cache-caffeine")
-    testImplementation project(":cache:cache-redis")
+    testImplementation project(":cache:cache-redis-lettuce")
     testImplementation project(":json:json-common")
     testImplementation project(":config:config-common")
 }

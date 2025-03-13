@@ -4,7 +4,7 @@ import jakarta.annotation.Nullable;
 import org.junit.jupiter.api.Assertions;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.cache.redis.lettuce.LettuceClientConfig;
-import ru.tinkoff.kora.cache.redis.testdata.DummyCache;
+import ru.tinkoff.kora.cache.redis.lettuce.testdata.DummyCache;
 import ru.tinkoff.kora.test.redis.RedisParams;
 
 import java.time.Duration;

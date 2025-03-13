@@ -3,6 +3,7 @@ package ru.tinkoff.kora.cache.caffeine;
 
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.time.Duration;
 
@@ -21,4 +22,6 @@ public interface CaffeineCacheConfig {
 
     @Nullable
     Integer initialSize();
+
+    TelemetryConfig telemetry();
 }

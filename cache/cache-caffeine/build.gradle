@@ -3,9 +3,9 @@ dependencies {
     compileOnly libs.reactor.core
 
     api project(":cache:cache-common")
+    api libs.caffeine
 
     implementation project(":config:config-common")
-    implementation libs.caffeine
 
     testImplementation libs.reactor.core
     testImplementation testFixtures(project(":annotation-processor-common"))

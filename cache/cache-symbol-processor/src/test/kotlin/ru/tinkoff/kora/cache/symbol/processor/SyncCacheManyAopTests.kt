@@ -47,15 +47,16 @@ class SyncCacheManyAopTests : CaffeineCacheModule, RedisCacheMapperModule {
             cache1 = cache1Class.constructors[0].newInstance(
                 CacheRunner.getCaffeineConfig(),
                 caffeineCacheFactory(null),
-                caffeineCacheTelemetry(null, null)
+                defaultCacheTelemetryFactory(null, null, null)
             ) as DummyCache21
 
             val cache2Class = classLoader.loadClass(CACHE2_CLASS) ?: throw IllegalArgumentException("Expected class not found: $CACHE2_CLASS")
             val cache = mutableMapOf<ByteBuffer?, ByteBuffer?>()
             cache2 = cache2Class.constructors[0].newInstance(
                 CacheRunner.getRedisConfig(),
-                CacheRunner.lettuceClient(cache),
-                redisCacheTelemetry(null, null),
+                CacheRunner.lettuceSyncClient(cache),
+                CacheRunner.lettuceAsyncClient(cache),
+                defaultCacheTelemetryFactory(null, null, null),
                 RedisCacheKeyMapper<DummyCache22.Key> { key ->
                     val k1 = key.k1.toByteArray(StandardCharsets.UTF_8)
                     val k2 = key.k2.toString().toByteArray(StandardCharsets.UTF_8)
