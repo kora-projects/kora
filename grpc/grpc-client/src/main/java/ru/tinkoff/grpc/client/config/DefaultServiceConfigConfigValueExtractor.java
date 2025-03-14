@@ -37,7 +37,7 @@ public final class DefaultServiceConfigConfigValueExtractor implements ConfigVal
         if (value instanceof ConfigValue.StringValue str) {
             return str.value();
         } else if (value instanceof ConfigValue.BooleanValue bool) {
-            return bool;
+            return bool.value();
         } else if (value instanceof ConfigValue.NumberValue num) {
             return num.value().doubleValue(); // service config accepts only double values
         } else if (value instanceof ConfigValue.ObjectValue obj) {
