@@ -5,7 +5,10 @@ import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
-import ru.tinkoff.kora.json.ksp.*
+import ru.tinkoff.kora.json.ksp.JsonProcessor
+import ru.tinkoff.kora.json.ksp.JsonTypes
+import ru.tinkoff.kora.json.ksp.jsonReaderName
+import ru.tinkoff.kora.json.ksp.jsonWriterName
 import ru.tinkoff.kora.json.ksp.reader.ReaderTypeMetaParser
 import ru.tinkoff.kora.json.ksp.writer.WriterTypeMetaParser
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
@@ -21,10 +24,9 @@ class JsonKoraExtension(
 ) : KoraExtension {
     private val jsonWriterErasure = resolver.getClassDeclarationByName(JsonTypes.jsonWriter.canonicalName)!!.asStarProjectedType()
     private val jsonReaderErasure = resolver.getClassDeclarationByName(JsonTypes.jsonReader.canonicalName)!!.asStarProjectedType()
-    private val knownTypes = KnownType(resolver)
-    private val readerTypeMetaParser: ReaderTypeMetaParser = ReaderTypeMetaParser(knownTypes, kspLogger)
-    private val writerTypeMetaParser: WriterTypeMetaParser = WriterTypeMetaParser(resolver)
-    private val processor: JsonProcessor = JsonProcessor(resolver, kspLogger, codeGenerator, knownTypes)
+    private val readerTypeMetaParser: ReaderTypeMetaParser = ReaderTypeMetaParser()
+    private val writerTypeMetaParser: WriterTypeMetaParser = WriterTypeMetaParser()
+    private val processor: JsonProcessor = JsonProcessor(codeGenerator)
 
     override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
         if (tags.isNotEmpty()) return null

@@ -7,7 +7,10 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toClassName
-import ru.tinkoff.kora.json.ksp.*
+import ru.tinkoff.kora.json.ksp.JsonTypes
+import ru.tinkoff.kora.json.ksp.detectSealedHierarchyTypeVariables
+import ru.tinkoff.kora.json.ksp.discriminatorField
+import ru.tinkoff.kora.json.ksp.discriminatorValues
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.collectFinalSealedSubtypes
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
@@ -16,7 +19,7 @@ import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import java.util.*
 
 class SealedInterfaceReaderGenerator {
-    fun generateSealedReader(jsonClassDeclaration: KSClassDeclaration): TypeSpec {
+    fun generateSealedReader(target: ClassName, jsonClassDeclaration: KSClassDeclaration): TypeSpec {
         val subclasses = jsonClassDeclaration.collectFinalSealedSubtypes().toList()
         val (typeArgMap, readerTypeVariables) = detectSealedHierarchyTypeVariables(jsonClassDeclaration, subclasses)
 
@@ -26,7 +29,7 @@ class SealedInterfaceReaderGenerator {
 
         val readerInterface = JsonTypes.jsonReader.parameterizedBy(typeName)
 
-        val typeBuilder = TypeSpec.classBuilder(jsonClassDeclaration.jsonReaderName())
+        val typeBuilder = TypeSpec.classBuilder(target)
             .generated(SealedInterfaceReaderGenerator::class)
             .addSuperinterface(readerInterface)
             .addModifiers(KModifier.PUBLIC)

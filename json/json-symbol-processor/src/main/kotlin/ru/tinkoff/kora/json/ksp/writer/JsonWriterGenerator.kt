@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.json.ksp.writer
 
 import com.google.devtools.ksp.getConstructors
-import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
@@ -11,7 +10,6 @@ import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum
 import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum.*
 import ru.tinkoff.kora.json.ksp.discriminatorField
 import ru.tinkoff.kora.json.ksp.discriminatorValues
-import ru.tinkoff.kora.json.ksp.jsonWriterName
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isCollection
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isMap
@@ -19,14 +17,14 @@ import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 
-class JsonWriterGenerator(private val resolver: Resolver) {
+class JsonWriterGenerator {
 
-    fun generate(meta: JsonClassWriterMeta): TypeSpec {
+    fun generate(target: ClassName, meta: JsonClassWriterMeta): TypeSpec {
         val declaration = meta.type
         val typeParameterResolver = declaration.typeParameters.toTypeParameterResolver()
         val typeName = declaration.toTypeName()
         val writerInterface = JsonTypes.jsonWriter.parameterizedBy(typeName)
-        val typeBuilder = TypeSpec.classBuilder(declaration.jsonWriterName())
+        val typeBuilder = TypeSpec.classBuilder(target)
             .generated(JsonWriterGenerator::class)
         declaration.containingFile?.let { typeBuilder.addOriginatingKSFile(it) }
         typeBuilder.addSuperinterface(writerInterface)
@@ -149,7 +147,7 @@ class JsonWriterGenerator(private val resolver: Resolver) {
         }
 
         if (field.includeType == JsonClassWriterMeta.IncludeType.NON_EMPTY && (field.typeMeta.type.isCollection() || field.typeMeta.type.isMap())) {
-            val letAccessor = if(field.type.isMarkedNullable) "?.let" else ".let"
+            val letAccessor = if (field.type.isMarkedNullable) "?.let" else ".let"
             function.controlFlow("_object.%N%L {", field.accessor, letAccessor) {
                 if (field.typeMeta.isJsonNullable) {
                     controlFlow("if (!it.isNull && it.value().%M())", CommonClassNames.isNotEmpty) {
@@ -162,12 +160,12 @@ class JsonWriterGenerator(private val resolver: Resolver) {
                 }
             }
         } else if (field.includeType != JsonClassWriterMeta.IncludeType.ALWAYS) {
-            val letAccessor = if(field.type.isMarkedNullable) "?.let" else ".let"
+            val letAccessor = if (field.type.isMarkedNullable) "?.let" else ".let"
             function.controlFlow("_object.%N%L {", field.accessor, letAccessor) {
                 add(read.build())
             }
-        } else if(field.typeMeta.isJsonNullable) {
-            val letAccessor = if(field.type.isMarkedNullable) "?.let" else ".let"
+        } else if (field.typeMeta.isJsonNullable) {
+            val letAccessor = if (field.type.isMarkedNullable) "?.let" else ".let"
             function.controlFlow("_object.%N%L {", field.accessor, letAccessor) {
                 add(read.build())
             }

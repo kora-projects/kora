@@ -8,7 +8,6 @@ import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toClassName
 import ru.tinkoff.kora.json.ksp.JsonTypes
 import ru.tinkoff.kora.json.ksp.detectSealedHierarchyTypeVariables
-import ru.tinkoff.kora.json.ksp.jsonWriterName
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.collectFinalSealedSubtypes
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
@@ -17,14 +16,14 @@ import java.util.*
 
 class SealedInterfaceWriterGenerator {
 
-    fun generateSealedWriter(jsonClassDeclaration: KSClassDeclaration): TypeSpec {
+    fun generateSealedWriter(target: ClassName, jsonClassDeclaration: KSClassDeclaration): TypeSpec {
         val subclasses = jsonClassDeclaration.collectFinalSealedSubtypes().toList()
         val (typeArgMap, writerTypeVariables) = detectSealedHierarchyTypeVariables(jsonClassDeclaration, subclasses)
         val typeName = if (jsonClassDeclaration.typeParameters.isEmpty())
             jsonClassDeclaration.toClassName() else
             jsonClassDeclaration.toClassName().parameterizedBy(writerTypeVariables)
         val writerInterface = JsonTypes.jsonWriter.parameterizedBy(typeName)
-        val typeBuilder = TypeSpec.classBuilder(jsonClassDeclaration.jsonWriterName())
+        val typeBuilder = TypeSpec.classBuilder(target)
             .generated(JsonWriterGenerator::class)
             .addSuperinterface(writerInterface)
 

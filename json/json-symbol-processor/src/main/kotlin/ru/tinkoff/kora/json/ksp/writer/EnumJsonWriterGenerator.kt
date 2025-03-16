@@ -8,18 +8,17 @@ import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.json.ksp.JsonTypes
-import ru.tinkoff.kora.json.ksp.jsonWriterName
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 
 class EnumJsonWriterGenerator {
-    fun generateEnumWriter(jsonClassDeclaration: KSClassDeclaration): TypeSpec {
+    fun generateEnumWriter(target: ClassName, jsonClassDeclaration: KSClassDeclaration): TypeSpec {
         val className = jsonClassDeclaration.toClassName()
         val typeName = jsonClassDeclaration.toTypeName()
         val enumType = detectValueType(jsonClassDeclaration)
 
-        val typeBuilder = TypeSpec.classBuilder(jsonClassDeclaration.jsonWriterName())
+        val typeBuilder = TypeSpec.classBuilder(target)
             .generated(JsonWriterGenerator::class)
             .primaryConstructor(FunSpec.constructorBuilder()
                 .addParameter("valueWriter", JsonTypes.jsonWriter.parameterizedBy(enumType.type))

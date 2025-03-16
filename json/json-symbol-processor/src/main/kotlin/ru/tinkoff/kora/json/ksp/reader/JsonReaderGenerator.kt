@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.json.ksp.reader
 
 import com.google.devtools.ksp.getConstructors
-import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.*
@@ -10,28 +9,23 @@ import com.squareup.kotlinpoet.ksp.*
 import ru.tinkoff.kora.json.ksp.JsonTypes
 import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum
 import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum.*
-import ru.tinkoff.kora.json.ksp.jsonReaderName
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 import java.util.*
 import java.util.UUID
 
-class JsonReaderGenerator(val resolver: Resolver) {
+class JsonReaderGenerator {
     companion object {
         private const val maxFields: Int = 31
     }
 
-    fun generate(meta: JsonClassReaderMeta): TypeSpec {
-        return generateForClass(meta)
-    }
-
-    private fun generateForClass(meta: JsonClassReaderMeta): TypeSpec {
+    fun generate(target: ClassName, meta: JsonClassReaderMeta): TypeSpec {
         val declaration = meta.classDeclaration
         val typeName = declaration.toTypeName()
         val typeParameterResolver = declaration.typeParameters.toTypeParameterResolver()
         val readerInterface = JsonTypes.jsonReader.parameterizedBy(typeName)
-        val typeBuilder = TypeSpec.classBuilder(declaration.jsonReaderName())
+        val typeBuilder = TypeSpec.classBuilder(target)
             .generated(JsonReaderGenerator::class)
         declaration.containingFile?.let { typeBuilder.addOriginatingKSFile(it) }
 
@@ -149,12 +143,6 @@ class JsonReaderGenerator(val resolver: Resolver) {
 
             when {
                 type.isNullable -> functionBody.add("%N", paramName)
-                type == resolver.builtIns.booleanType -> functionBody.add("%N", paramName)
-                type == resolver.builtIns.shortType -> functionBody.add("%N", paramName)
-                type == resolver.builtIns.intType -> functionBody.add("%N", paramName)
-                type == resolver.builtIns.longType -> functionBody.add("%N", paramName)
-                type == resolver.builtIns.floatType -> functionBody.add("%N", paramName)
-                type == resolver.builtIns.doubleType -> functionBody.add("%N", paramName)
                 else -> {
                     if(field.typeMeta.isJsonNullable) {
                         functionBody.add("%N", paramName)
@@ -199,12 +187,12 @@ class JsonReaderGenerator(val resolver: Resolver) {
                 }
 
                 type.isNullable -> method.addStatement("var %N: %T = null", paramName, field.type)
-                type == resolver.builtIns.booleanType -> method.addStatement("var %N = false", paramName)
-                type == resolver.builtIns.shortType -> method.addStatement("var %N: Short = 0", paramName)
-                type == resolver.builtIns.intType -> method.addStatement("var %N = 0", paramName)
-                type == resolver.builtIns.longType -> method.addStatement("var %N = 0L", paramName)
-                type == resolver.builtIns.floatType -> method.addStatement("var %N = 0f", paramName)
-                type == resolver.builtIns.doubleType -> method.addStatement("var %N = 0.0", paramName)
+                type == com.squareup.kotlinpoet.BOOLEAN -> method.addStatement("var %N = false", paramName)
+                type == com.squareup.kotlinpoet.SHORT -> method.addStatement("var %N: Short = 0", paramName)
+                type == com.squareup.kotlinpoet.INT -> method.addStatement("var %N = 0", paramName)
+                type == com.squareup.kotlinpoet.LONG -> method.addStatement("var %N = 0L", paramName)
+                type == com.squareup.kotlinpoet.FLOAT -> method.addStatement("var %N = 0f", paramName)
+                type == com.squareup.kotlinpoet.DOUBLE -> method.addStatement("var %N = 0.0", paramName)
                 else -> method.addStatement("var %N: %T = null", paramName, field.type.copy(nullable = true))
             }
         }
@@ -367,7 +355,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
             }
         }
 
-        if(field.typeMeta.isJsonNullable) {
+        if (field.typeMeta.isJsonNullable) {
             functionBody.addStatement("return %T.ofNullable(%L.read(__parser))", JsonTypes.jsonNullable, readerFieldName(field))
         } else {
             val exceptionBlock = if (isMarkedNullable) CodeBlock.of("") else CodeBlock.of(

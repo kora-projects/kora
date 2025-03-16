@@ -1,10 +1,9 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
+import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.JavaFile;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.squareup.javapoet.TypeSpec;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.annotation.processor.common.ComparableTypeMirror;
 import ru.tinkoff.kora.annotation.processor.common.SealedTypeUtils;
 import ru.tinkoff.kora.json.annotation.processor.reader.EnumReaderGenerator;
 import ru.tinkoff.kora.json.annotation.processor.reader.JsonReaderGenerator;
@@ -19,14 +18,11 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.Objects;
 
 public class JsonProcessor {
-    private static final Logger log = LoggerFactory.getLogger(JsonProcessor.class);
-
     private final ProcessingEnvironment processingEnv;
     private final Elements elements;
     private final Types types;
@@ -55,90 +51,41 @@ public class JsonProcessor {
     }
 
     public void generateReader(TypeElement jsonElement) {
-        var jsonElementType = jsonElement.asType();
-        var packageElement = JsonUtils.jsonClassPackage(this.elements, jsonElement);
-        var readerClassName = JsonUtils.jsonReaderName(this.types, jsonElementType);
-        var readerElement = this.elements.getTypeElement(packageElement + "." + readerClassName);
-        if (readerElement != null) {
-            return;
-        }
+        var packageName = elements.getPackageOf(jsonElement).getQualifiedName().toString();
+        var className = ClassName.get(packageName, JsonUtils.jsonReaderName(jsonElement));
+        var reader = generateReader(className, jsonElement);
+        var javaFile = JavaFile.builder(packageName, reader).build();
+        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
+    }
+
+    public TypeSpec generateReader(ClassName target, TypeElement jsonElement) {
         if (jsonElement.getKind() == ElementKind.ENUM) {
-            this.generateEnumReader(jsonElement);
-            return;
+            return this.enumReaderGenerator.generateForEnum(target, jsonElement);
         }
         if (jsonElement.getModifiers().contains(Modifier.SEALED)) {
-            this.generateSealedRootReader(jsonElement);
-            return;
+            return this.sealedReaderGenerator.generateSealedReader(target, jsonElement);
         }
-        this.generateDtoReader(jsonElement, jsonElementType);
-    }
-
-    private void generateSealedRootReader(TypeElement jsonElement) {
-        var packageElement = JsonUtils.jsonClassPackage(this.elements, jsonElement);
-        var sealedReaderType = this.sealedReaderGenerator.generateSealedReader(jsonElement);
-
-        var javaFile = JavaFile.builder(packageElement, sealedReaderType).build();
-        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
-    }
-
-    private void generateEnumReader(TypeElement jsonElement) {
-        var packageElement = JsonUtils.jsonClassPackage(this.elements, jsonElement);
-        var sealedReaderType = this.enumReaderGenerator.generateForEnum(jsonElement);
-
-        var javaFile = JavaFile.builder(packageElement, sealedReaderType).build();
-        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
-    }
-
-    private void generateDtoReader(TypeElement typeElement, TypeMirror jsonTypeMirror) {
-        var packageElement = JsonUtils.jsonClassPackage(this.elements, typeElement);
-        var meta = Objects.requireNonNull(this.readerTypeMetaParser.parse(typeElement, jsonTypeMirror));
-        var readerType = Objects.requireNonNull(this.readerGenerator.generate(meta));
-
-        var javaFile = JavaFile.builder(packageElement, readerType).build();
-        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
-    }
-
-    private void generateEnumWriter(TypeElement jsonElement) {
-        var packageElement = JsonUtils.jsonClassPackage(this.elements, jsonElement);
-        var enumWriterType = this.enumWriterGenerator.generateEnumWriter(jsonElement);
-        var javaFile = JavaFile.builder(packageElement, enumWriterType).build();
-        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
+        var jsonElementType = jsonElement.asType();
+        var meta = Objects.requireNonNull(this.readerTypeMetaParser.parse(jsonElement, jsonElementType));
+        return Objects.requireNonNull(this.readerGenerator.generate(target, meta));
     }
 
     public void generateWriter(TypeElement jsonElement) {
-        var wrapper = new ComparableTypeMirror(this.types, jsonElement.asType());
-        var packageElement = JsonUtils.jsonClassPackage(this.elements, jsonElement);
-        var writerClassName = JsonUtils.jsonWriterName(this.types, wrapper.typeMirror());
-        var writerElement = this.elements.getTypeElement(packageElement + "." + writerClassName);
-        if (writerElement != null) {
-            return;
-        }
+        var packageName = elements.getPackageOf(jsonElement).getQualifiedName().toString();
+        var className = ClassName.get(packageName, JsonUtils.jsonWriterName(jsonElement));
+        var writer = generateWriter(className, jsonElement);
+        var javaFile = JavaFile.builder(packageName, writer).build();
+        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
+    }
+
+    public TypeSpec generateWriter(ClassName targetName, TypeElement jsonElement) {
         if (jsonElement.getKind() == ElementKind.ENUM) {
-            this.generateEnumWriter(jsonElement);
-            return;
+            return this.enumWriterGenerator.generateEnumWriter(targetName, jsonElement);
         }
         if (jsonElement.getModifiers().contains(Modifier.SEALED)) {
-            this.generateSealedWriter(jsonElement);
-            return;
+            return this.sealedWriterGenerator.generateSealedWriter(targetName, jsonElement, SealedTypeUtils.collectFinalPermittedSubtypes(types, elements, jsonElement));
         }
-        this.tryGenerateWriter(jsonElement, jsonElement.asType());
-    }
-
-
-    private void generateSealedWriter(TypeElement jsonElement) {
-        var packageElement = JsonUtils.jsonClassPackage(this.elements, jsonElement);
-        var sealedWriterType = this.sealedWriterGenerator.generateSealedWriter(jsonElement, SealedTypeUtils.collectFinalPermittedSubtypes(types, elements, jsonElement));
-
-        var javaFile = JavaFile.builder(packageElement, sealedWriterType).build();
-        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
-    }
-
-    private void tryGenerateWriter(TypeElement jsonElement, TypeMirror jsonTypeMirror) {
-        var meta = Objects.requireNonNull(this.writerTypeMetaParser.parse(jsonElement, jsonTypeMirror));
-        var packageElement = JsonUtils.jsonClassPackage(this.elements, jsonElement);
-        var writerType = Objects.requireNonNull(this.writerGenerator.generate(meta));
-
-        var javaFile = JavaFile.builder(packageElement, writerType).build();
-        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
+        var meta = Objects.requireNonNull(this.writerTypeMetaParser.parse(jsonElement, jsonElement.asType()));
+        return Objects.requireNonNull(this.writerGenerator.generate(targetName, meta));
     }
 }
