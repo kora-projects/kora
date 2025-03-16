@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.cache.redis;
 
 import org.junit.jupiter.api.Test;
-import ru.tinkoff.kora.cache.redis.testdata.DummyCache;
+import ru.tinkoff.kora.cache.redis.lettuce.testdata.DummyCache;
 
 import java.util.List;
 import java.util.Map;

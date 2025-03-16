@@ -10,7 +10,6 @@ import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache22;
 import ru.tinkoff.kora.cache.annotation.processor.testdata.sync.CacheableSyncMany;
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule;
 import ru.tinkoff.kora.cache.redis.RedisCacheKeyMapper;
-import ru.tinkoff.kora.cache.redis.RedisCacheMapperModule;
 import ru.tinkoff.kora.cache.redis.RedisCacheModule;
 
 import java.lang.reflect.Constructor;
@@ -51,7 +50,7 @@ class SyncCacheManyAopTests implements CaffeineCacheModule, RedisCacheModule {
             final Constructor<?> cacheConstructor1 = cacheClass1.getDeclaredConstructors()[0];
             cacheConstructor1.setAccessible(true);
             cache1 = (DummyCache21) cacheConstructor1.newInstance(CacheRunner.getCaffeineConfig(),
-                caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+                caffeineCacheFactory(null), defaultCacheTelemetryFactory(null, null, null));
 
             var cacheClass2 = classLoader.loadClass(CACHED_IMPL_2);
             if (cacheClass2 == null) {
@@ -62,7 +61,7 @@ class SyncCacheManyAopTests implements CaffeineCacheModule, RedisCacheModule {
             cacheConstructor2.setAccessible(true);
             final Map<ByteBuffer, ByteBuffer> cache = new HashMap<>();
             cache2 = (DummyCache22) cacheConstructor2.newInstance(CacheRunner.getRedisConfig(),
-                CacheRunner.lettuceClient(cache), redisCacheTelemetry(null, null),
+                CacheRunner.lettuceSyncClient(cache), CacheRunner.lettuceAsyncClient(cache), defaultCacheTelemetryFactory(null, null, null),
                 (RedisCacheKeyMapper<DummyCache22.Key>) key -> {
                     var _key1 = key.k1().getBytes(StandardCharsets.UTF_8);
                     var _key2 = key.k2().toString().getBytes(StandardCharsets.UTF_8);

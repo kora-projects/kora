@@ -26,7 +26,6 @@ import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 import ru.tinkoff.kora.ksp.common.TagUtils.parseTags
 import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
-import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
 class CacheSymbolProcessor(
     private val environment: SymbolProcessorEnvironment
@@ -35,17 +34,24 @@ class CacheSymbolProcessor(
     companion object {
         private val ANNOTATION_CACHE = ClassName("ru.tinkoff.kora.cache.annotation", "Cache")
 
-        private val CAFFEINE_TELEMETRY = ClassName("ru.tinkoff.kora.cache.caffeine", "CaffeineCacheTelemetry")
+        private val CACHE_TELEMETRY_FACTORY = ClassName("ru.tinkoff.kora.cache.telemetry", "CacheTelemetryFactory")
+
         private val CAFFEINE_CACHE = ClassName("ru.tinkoff.kora.cache.caffeine", "CaffeineCache")
         private val CAFFEINE_CACHE_FACTORY = ClassName("ru.tinkoff.kora.cache.caffeine", "CaffeineCacheFactory")
         private val CAFFEINE_CACHE_CONFIG = ClassName("ru.tinkoff.kora.cache.caffeine", "CaffeineCacheConfig")
         private val CAFFEINE_CACHE_IMPL = ClassName("ru.tinkoff.kora.cache.caffeine", "AbstractCaffeineCache")
 
+        @Deprecated(message = "deprecated redis dependency")
         private val REDIS_TELEMETRY = ClassName("ru.tinkoff.kora.cache.redis", "RedisCacheTelemetry")
+
+        @Deprecated(message = "deprecated redis dependency")
+        private val REDIS_CACHE_OLD_CLIENT = ClassName("ru.tinkoff.kora.cache.redis", "RedisCacheClient")
+
         private val REDIS_CACHE = ClassName("ru.tinkoff.kora.cache.redis", "RedisCache")
         private val REDIS_CACHE_IMPL = ClassName("ru.tinkoff.kora.cache.redis", "AbstractRedisCache")
         private val REDIS_CACHE_CONFIG = ClassName("ru.tinkoff.kora.cache.redis", "RedisCacheConfig")
-        private val REDIS_CACHE_CLIENT = ClassName("ru.tinkoff.kora.cache.redis", "RedisCacheClient")
+        private val REDIS_CACHE_SYNC_CLIENT = ClassName("ru.tinkoff.kora.cache.redis", "RedisCacheClient")
+        private val REDIS_CACHE_ASYNC_CLIENT = ClassName("ru.tinkoff.kora.cache.redis", "RedisCacheAsyncClient")
         private val REDIS_CACHE_MAPPER_KEY = ClassName("ru.tinkoff.kora.cache.redis", "RedisCacheKeyMapper")
         private val REDIS_CACHE_MAPPER_VALUE = ClassName("ru.tinkoff.kora.cache.redis", "RedisCacheValueMapper")
     }
@@ -70,7 +76,7 @@ class CacheSymbolProcessor(
             val cacheImplBase = getCacheImplBase(cacheContractType)
             val implSpec = TypeSpec.classBuilder(getCacheImpl(cacheContract))
                 .generated(CacheSymbolProcessor::class)
-                .primaryConstructor(getCacheConstructor(cacheContractType))
+                .primaryConstructor(getCacheConstructor(cacheContractType, cacheContract))
                 .addSuperclassConstructorParameter(getCacheSuperConstructorCall(cacheContract, cacheContractType))
                 .superclass(cacheImplBase)
                 .addSuperinterface(cacheContract.toTypeName())
@@ -195,52 +201,161 @@ class CacheSymbolProcessor(
                             .build()
                     )
                     .addParameter("factory", CAFFEINE_CACHE_FACTORY)
-                    .addParameter("telemetry", CAFFEINE_TELEMETRY)
-                    .addStatement("return %T(config, factory, telemetry)", cacheImplName)
+                    .addParameter("telemetryFactory", CACHE_TELEMETRY_FACTORY)
+                    .addStatement("return %T(config, factory, telemetryFactory)", cacheImplName)
                     .returns(cacheTypeName)
                     .build()
             }
 
             REDIS_CACHE -> {
-                val keyType = cacheContract.typeArguments[0]
-                val valueType = cacheContract.typeArguments[1]
-                val keyMapperType = REDIS_CACHE_MAPPER_KEY.parameterizedBy(keyType)
-                val valueMapperType = REDIS_CACHE_MAPPER_VALUE.parameterizedBy(valueType)
-
-                val cacheContractType = cacheClass.getAllSuperTypes()
-                    .filter { i -> i.toTypeName() == cacheContract }
-                    .first()
-
-                val keyMapperBuilder = ParameterSpec.builder("keyMapper", keyMapperType)
-                val keyTags = cacheContractType.arguments[0].parseTags()
-                if (keyTags.isNotEmpty()) {
-                    keyMapperBuilder.addAnnotation(keyTags.toTagAnnotation())
+                if (isRedisDeprecated(cacheClass)) {
+                    return getRedisDeprecatedFunc(cacheClass, cacheContract, cacheImplName, cacheTypeName, methodName)
+                } else {
+                    return getRedisFunc(cacheClass, cacheContract, cacheImplName, cacheTypeName, methodName)
                 }
+            }
 
-                val valueMapperBuilder = ParameterSpec.builder("valueMapper", valueMapperType)
-                val valueTags = cacheContractType.arguments[1].parseTags()
-                if (valueTags.isNotEmpty()) {
-                    valueMapperBuilder.addAnnotation(valueTags.toTagAnnotation())
-                }
+            else -> {
+                throw IllegalArgumentException("Unknown cache type impl: ${cacheContract.rawType}")
+            }
+        }
+    }
 
-                FunSpec.builder(methodName)
-                    .addModifiers(KModifier.PUBLIC)
-                    .addParameter(
-                        ParameterSpec.builder("config", REDIS_CACHE_CONFIG)
-                            .addAnnotation(
-                                AnnotationSpec.builder(CommonClassNames.tag)
-                                    .addMember("%T::class", cacheTypeName)
-                                    .build()
-                            )
+    private fun getRedisFunc(
+        cacheClass: KSClassDeclaration,
+        cacheContract: ParameterizedTypeName,
+        cacheImplName: ClassName,
+        cacheTypeName: TypeName,
+        methodName: String
+    ): FunSpec {
+        val keyType = cacheContract.typeArguments[0]
+        val valueType = cacheContract.typeArguments[1]
+        val keyMapperType = REDIS_CACHE_MAPPER_KEY.parameterizedBy(keyType)
+        val valueMapperType = REDIS_CACHE_MAPPER_VALUE.parameterizedBy(valueType)
+
+        val cacheContractType = cacheClass.getAllSuperTypes()
+            .filter { i -> i.toTypeName() == cacheContract }
+            .first()
+
+        val keyMapperBuilder = ParameterSpec.builder("keyMapper", keyMapperType)
+        val keyTags = cacheContractType.arguments[0].parseTags()
+        if (keyTags.isNotEmpty()) {
+            keyMapperBuilder.addAnnotation(keyTags.toTagAnnotation())
+        }
+
+        val valueMapperBuilder = ParameterSpec.builder("valueMapper", valueMapperType)
+        val valueTags = cacheContractType.arguments[1].parseTags()
+        if (valueTags.isNotEmpty()) {
+            valueMapperBuilder.addAnnotation(valueTags.toTagAnnotation())
+        }
+
+        return FunSpec.builder(methodName)
+            .addModifiers(KModifier.PUBLIC)
+            .addParameter(
+                ParameterSpec.builder("config", REDIS_CACHE_CONFIG)
+                    .addAnnotation(
+                        AnnotationSpec.builder(CommonClassNames.tag)
+                            .addMember("%T::class", cacheTypeName)
                             .build()
                     )
-                    .addParameter("redisClient", REDIS_CACHE_CLIENT)
-                    .addParameter("telemetry", REDIS_TELEMETRY)
-                    .addParameter(keyMapperBuilder.build())
-                    .addParameter(valueMapperBuilder.build())
-                    .addStatement("return %L(config, redisClient, telemetry, keyMapper, valueMapper)", cacheImplName)
-                    .returns(cacheTypeName)
                     .build()
+            )
+            .addParameter("redisSyncClient", REDIS_CACHE_SYNC_CLIENT)
+            .addParameter("redisAsyncClient", REDIS_CACHE_ASYNC_CLIENT)
+            .addParameter("telemetryFactory", CACHE_TELEMETRY_FACTORY)
+            .addParameter(keyMapperBuilder.build())
+            .addParameter(valueMapperBuilder.build())
+            .addStatement("return %L(config, redisSyncClient, redisAsyncClient, telemetryFactory, keyMapper, valueMapper)", cacheImplName)
+            .returns(cacheTypeName)
+            .build()
+    }
+
+    @Deprecated(message = "deprecated redis dependency")
+    private fun getRedisDeprecatedFunc(
+        cacheClass: KSClassDeclaration,
+        cacheContract: ParameterizedTypeName,
+        cacheImplName: ClassName,
+        cacheTypeName: TypeName,
+        methodName: String
+    ): FunSpec {
+        val keyType = cacheContract.typeArguments[0]
+        val valueType = cacheContract.typeArguments[1]
+        val keyMapperType = REDIS_CACHE_MAPPER_KEY.parameterizedBy(keyType)
+        val valueMapperType = REDIS_CACHE_MAPPER_VALUE.parameterizedBy(valueType)
+
+        val cacheContractType = cacheClass.getAllSuperTypes()
+            .filter { i -> i.toTypeName() == cacheContract }
+            .first()
+
+        val keyMapperBuilder = ParameterSpec.builder("keyMapper", keyMapperType)
+        val keyTags = cacheContractType.arguments[0].parseTags()
+        if (keyTags.isNotEmpty()) {
+            keyMapperBuilder.addAnnotation(keyTags.toTagAnnotation())
+        }
+
+        val valueMapperBuilder = ParameterSpec.builder("valueMapper", valueMapperType)
+        val valueTags = cacheContractType.arguments[1].parseTags()
+        if (valueTags.isNotEmpty()) {
+            valueMapperBuilder.addAnnotation(valueTags.toTagAnnotation())
+        }
+
+        return FunSpec.builder(methodName)
+            .addModifiers(KModifier.PUBLIC)
+            .addParameter(
+                ParameterSpec.builder("config", REDIS_CACHE_CONFIG)
+                    .addAnnotation(
+                        AnnotationSpec.builder(CommonClassNames.tag)
+                            .addMember("%T::class", cacheTypeName)
+                            .build()
+                    )
+                    .build()
+            )
+            .addParameter("redisClient", REDIS_CACHE_OLD_CLIENT)
+            .addParameter("telemetry", REDIS_TELEMETRY)
+            .addParameter(keyMapperBuilder.build())
+            .addParameter(valueMapperBuilder.build())
+            .addStatement("return %L(config, redisClient, telemetry, keyMapper, valueMapper)", cacheImplName)
+            .returns(cacheTypeName)
+            .build()
+    }
+
+    private fun getCacheConstructor(cacheContract: ParameterizedTypeName, cacheClass: KSClassDeclaration): FunSpec {
+        return when (cacheContract.rawType) {
+            CAFFEINE_CACHE -> {
+                FunSpec.constructorBuilder()
+                    .addParameter("config", CAFFEINE_CACHE_CONFIG)
+                    .addParameter("factory", CAFFEINE_CACHE_FACTORY)
+                    .addParameter("telemetryFactory", CACHE_TELEMETRY_FACTORY)
+                    .build()
+            }
+
+            REDIS_CACHE -> {
+                if (isRedisDeprecated(cacheClass)) {
+                    val keyType = cacheContract.typeArguments[0]
+                    val valueType = cacheContract.typeArguments[1]
+                    val keyMapperType = REDIS_CACHE_MAPPER_KEY.parameterizedBy(keyType)
+                    val valueMapperType = REDIS_CACHE_MAPPER_VALUE.parameterizedBy(valueType)
+                    FunSpec.constructorBuilder()
+                        .addParameter("config", REDIS_CACHE_CONFIG)
+                        .addParameter("redisClient", REDIS_CACHE_SYNC_CLIENT)
+                        .addParameter("telemetry", REDIS_TELEMETRY)
+                        .addParameter("keyMapper", keyMapperType)
+                        .addParameter("valueMapper", valueMapperType)
+                        .build()
+                } else {
+                    val keyType = cacheContract.typeArguments[0]
+                    val valueType = cacheContract.typeArguments[1]
+                    val keyMapperType = REDIS_CACHE_MAPPER_KEY.parameterizedBy(keyType)
+                    val valueMapperType = REDIS_CACHE_MAPPER_VALUE.parameterizedBy(valueType)
+                    FunSpec.constructorBuilder()
+                        .addParameter("config", REDIS_CACHE_CONFIG)
+                        .addParameter("redisSyncClient", REDIS_CACHE_SYNC_CLIENT)
+                        .addParameter("redisAsyncClient", REDIS_CACHE_ASYNC_CLIENT)
+                        .addParameter("telemetryFactory", CACHE_TELEMETRY_FACTORY)
+                        .addParameter("keyMapper", keyMapperType)
+                        .addParameter("valueMapper", valueMapperType)
+                        .build()
+                }
             }
 
             else -> {
@@ -249,34 +364,10 @@ class CacheSymbolProcessor(
         }
     }
 
-    private fun getCacheConstructor(cacheContract: ParameterizedTypeName): FunSpec {
-        return when (cacheContract.rawType) {
-            CAFFEINE_CACHE -> {
-                FunSpec.constructorBuilder()
-                    .addParameter("config", CAFFEINE_CACHE_CONFIG)
-                    .addParameter("factory", CAFFEINE_CACHE_FACTORY)
-                    .addParameter("telemetry", CAFFEINE_TELEMETRY)
-                    .build()
-            }
-
-            REDIS_CACHE -> {
-                val keyType = cacheContract.typeArguments[0]
-                val valueType = cacheContract.typeArguments[1]
-                val keyMapperType = REDIS_CACHE_MAPPER_KEY.parameterizedBy(keyType)
-                val valueMapperType = REDIS_CACHE_MAPPER_VALUE.parameterizedBy(valueType)
-                FunSpec.constructorBuilder()
-                    .addParameter("config", REDIS_CACHE_CONFIG)
-                    .addParameter("redisClient", REDIS_CACHE_CLIENT)
-                    .addParameter("telemetry", REDIS_TELEMETRY)
-                    .addParameter("keyMapper", keyMapperType)
-                    .addParameter("valueMapper", valueMapperType)
-                    .build()
-            }
-
-            else -> {
-                throw IllegalArgumentException("Unknown cache type: ${cacheContract.rawType}")
-            }
-        }
+    private fun isRedisDeprecated(cacheContract: KSClassDeclaration): Boolean {
+        return cacheContract.getAllSuperTypes()
+            .filter { a -> a.toClassName() == REDIS_CACHE }
+            .any { a -> a.declaration.annotations.any { it.annotationType.toTypeName() == Deprecated::class.asTypeName() } }
     }
 
     private fun getCacheRedisKeyMapperForData(keyType: KSClassDeclaration): FunSpec {
@@ -366,8 +457,15 @@ class CacheSymbolProcessor(
             ?.findValueNoDefault<String>("value")!!
 
         return when (cacheType.rawType) {
-            CAFFEINE_CACHE -> CodeBlock.of("%S, config, factory, telemetry", configPath)
-            REDIS_CACHE -> CodeBlock.of("%S, config, redisClient, telemetry, keyMapper, valueMapper", configPath)
+            CAFFEINE_CACHE -> CodeBlock.of("%S, config, factory, telemetryFactory", configPath)
+            REDIS_CACHE -> {
+                if (isRedisDeprecated(cacheContract)) {
+                    CodeBlock.of("%S, config, redisClient, telemetry, keyMapper, valueMapper", configPath)
+                } else {
+                    CodeBlock.of("%S, config, redisSyncClient, redisAsyncClient, telemetryFactory, keyMapper, valueMapper", configPath)
+                }
+            }
+
             else -> throw IllegalArgumentException("Unknown cache type: ${cacheType.rawType}")
         }
     }

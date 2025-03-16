@@ -1,0 +1,22 @@
+dependencies {
+    annotationProcessor project(":config:config-annotation-processor")
+
+    api libs.apache.pool
+    api(libs.redis.lettuce) {
+        exclude group: 'io.projectreactor', module: 'reactor-core'
+        exclude group: 'io.netty', module: 'netty-common'
+        exclude group: 'io.netty', module: 'netty-handler'
+        exclude group: 'io.netty', module: 'netty-transport'
+    }
+    implementation libs.reactor.core
+    implementation libs.netty.common
+    implementation libs.netty.handlers
+    implementation libs.netty.transports
+
+    implementation project(":config:config-common")
+
+    testImplementation project(":internal:test-logging")
+    testImplementation project(":internal:test-redis")
+}
+
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

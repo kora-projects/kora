@@ -1,0 +1,13 @@
+dependencies {
+    annotationProcessor project(":config:config-annotation-processor")
+
+    api project(":cache:cache-redis-common")
+    api project(":redis:redis-jedis")
+
+    implementation project(":config:config-common")
+
+    testImplementation project(":internal:test-logging")
+    testImplementation project(":internal:test-redis")
+}
+
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

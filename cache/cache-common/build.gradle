@@ -1,5 +1,7 @@
 dependencies {
     api project(":common")
+    api project(":logging:logging-common")
+    api project(":telemetry:telemetry-common")
 
     testImplementation project(":internal:test-logging")
 }

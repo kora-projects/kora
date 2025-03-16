@@ -6,7 +6,6 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 final class AsyncFacadeCacheBuilder<K, V> implements AsyncCache.Builder<K, V> {
 

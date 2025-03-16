@@ -10,6 +10,7 @@ import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractionException;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.micrometer.module.cache.MicrometerCacheMetrics;
+import ru.tinkoff.kora.micrometer.module.cache.MicrometerCacheMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.cache.caffeine.MicrometerCaffeineCacheMetricCollector;
 import ru.tinkoff.kora.micrometer.module.camunda.engine.bpmn.MicrometerCamundaEngineBpmnMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.camunda.rest.MicrometerCamundaRestMetricsFactory;
@@ -132,9 +133,15 @@ public interface MetricsModule {
         return new MicrometerTimeoutMetrics(meterRegistry);
     }
 
+    @Deprecated
     @DefaultComponent
     default MicrometerCacheMetrics micrometerCacheMetrics(MeterRegistry meterRegistry) {
         return new MicrometerCacheMetrics(meterRegistry);
+    }
+
+    @DefaultComponent
+    default MicrometerCacheMetricsFactory micrometerCacheMetricsFactory(MeterRegistry meterRegistry) {
+        return new MicrometerCacheMetricsFactory(meterRegistry);
     }
 
     @DefaultComponent
