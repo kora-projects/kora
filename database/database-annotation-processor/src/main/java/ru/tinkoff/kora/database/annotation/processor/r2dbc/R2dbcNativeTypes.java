@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.database.annotation.processor.r2dbc;
 
-import com.squareup.javapoet.ArrayTypeName;
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.ArrayTypeName;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.TypeName;
 import jakarta.annotation.Nullable;
 
 import java.math.BigDecimal;

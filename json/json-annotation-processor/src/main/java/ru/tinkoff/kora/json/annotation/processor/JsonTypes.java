@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
-import com.squareup.javapoet.ClassName;
+import com.palantir.javapoet.ClassName;
 
 public class JsonTypes {
     public static final ClassName json = ClassName.get("ru.tinkoff.kora.json.common.annotation", "Json");

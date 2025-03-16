@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.http.client.annotation.processor;
 
-import com.squareup.javapoet.ClassName;
+import com.palantir.javapoet.ClassName;
 
 public class HttpClientClassNames {
     public static final ClassName httpClient = ClassName.get("ru.tinkoff.kora.http.client.common", "HttpClient");

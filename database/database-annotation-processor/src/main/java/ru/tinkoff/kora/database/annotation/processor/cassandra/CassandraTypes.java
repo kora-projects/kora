@@ -1,9 +1,8 @@
 package ru.tinkoff.kora.database.annotation.processor.cassandra;
 
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.ParameterizedTypeName;
-import com.squareup.javapoet.TypeName;
-import com.squareup.javapoet.WildcardTypeName;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.ParameterizedTypeName;
+import com.palantir.javapoet.WildcardTypeName;
 
 public class CassandraTypes {
     public static final ClassName CONNECTION = ClassName.get("com.datastax.oss.driver.api.core", "CqlSession");
@@ -26,7 +25,7 @@ public class CassandraTypes {
     public static final ClassName REACTIVE_RESULT_SET_MAPPER = ClassName.get("ru.tinkoff.kora.database.cassandra.mapper.result", "CassandraReactiveResultSetMapper");
     public static final ClassName ASYNC_RESULT_SET_MAPPER = ClassName.get("ru.tinkoff.kora.database.cassandra.mapper.result", "CassandraAsyncResultSetMapper");
     public static final ClassName RESULT_SET_MAPPER = ClassName.get("ru.tinkoff.kora.database.cassandra.mapper.result", "CassandraResultSetMapper");
-    public static final ParameterizedTypeName SETTABLE_BY_NAME = ParameterizedTypeName.get(ClassName.get("com.datastax.oss.driver.api.core.data", "SettableByName"), WildcardTypeName.subtypeOf(TypeName.OBJECT));
+    public static final ParameterizedTypeName SETTABLE_BY_NAME = ParameterizedTypeName.get(ClassName.get("com.datastax.oss.driver.api.core.data", "SettableByName"), WildcardTypeName.subtypeOf(ClassName.OBJECT));
     public static final ClassName GETTABLE_BY_NAME = ClassName.get("com.datastax.oss.driver.api.core.data", "GettableByName");
 
     public static final ClassName USER_DEFINED_TYPE = ClassName.get("com.datastax.oss.driver.api.core.type", "UserDefinedType");

@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.component;
 
-import com.squareup.javapoet.ParameterizedTypeName;
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.ParameterizedTypeName;
+import com.palantir.javapoet.TypeName;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.kora.app.annotation.processor.ProcessingContext;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim.DependencyClaimType;
@@ -80,28 +80,28 @@ public class ComponentDependencyHelper {
 
         var typeName = TypeName.get(parameterType);
         if (typeName instanceof ParameterizedTypeName ptn && parameterType instanceof DeclaredType dt) {
-            if (ptn.rawType.canonicalName().equals(CommonClassNames.typeRef.canonicalName())) {
+            if (ptn.rawType().canonicalName().equals(CommonClassNames.typeRef.canonicalName())) {
                 return new DependencyClaim(dt.getTypeArguments().get(0), tags, DependencyClaimType.TYPE_REF);
             }
-            if (ptn.rawType.canonicalName().equals(CommonClassNames.all.canonicalName())) {
-                if (ptn.typeArguments.get(0) instanceof ParameterizedTypeName allOfType && dt.getTypeArguments().get(0) instanceof DeclaredType allOfTypeName) {
-                    if (allOfType.rawType.canonicalName().equals(CommonClassNames.valueOf.canonicalName())) {
+            if (ptn.rawType().canonicalName().equals(CommonClassNames.all.canonicalName())) {
+                if (ptn.typeArguments().get(0) instanceof ParameterizedTypeName allOfType && dt.getTypeArguments().get(0) instanceof DeclaredType allOfTypeName) {
+                    if (allOfType.rawType().canonicalName().equals(CommonClassNames.valueOf.canonicalName())) {
                         return new DependencyClaim(allOfTypeName.getTypeArguments().get(0), tags, DependencyClaimType.ALL_OF_VALUE);
                     }
-                    if (allOfType.rawType.canonicalName().equals(CommonClassNames.promiseOf.canonicalName())) {
+                    if (allOfType.rawType().canonicalName().equals(CommonClassNames.promiseOf.canonicalName())) {
                         return new DependencyClaim(allOfTypeName.getTypeArguments().get(0), tags, DependencyClaimType.ALL_OF_PROMISE);
                     }
                 }
                 return new DependencyClaim(dt.getTypeArguments().get(0), tags, DependencyClaimType.ALL_OF_ONE);
             }
-            if (ptn.rawType.canonicalName().equals(CommonClassNames.valueOf.canonicalName())) {
+            if (ptn.rawType().canonicalName().equals(CommonClassNames.valueOf.canonicalName())) {
                 if (isNullable) {
                     return new DependencyClaim(dt.getTypeArguments().get(0), tags, DependencyClaimType.NULLABLE_VALUE_OF);
                 } else {
                     return new DependencyClaim(dt.getTypeArguments().get(0), tags, DependencyClaimType.VALUE_OF);
                 }
             }
-            if (ptn.rawType.canonicalName().equals(CommonClassNames.promiseOf.canonicalName())) {
+            if (ptn.rawType().canonicalName().equals(CommonClassNames.promiseOf.canonicalName())) {
                 if (isNullable) {
                     return new DependencyClaim(dt.getTypeArguments().get(0), tags, DependencyClaimType.NULLABLE_PROMISE_OF);
                 } else {

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.aop.annotation.processor;
 
-import com.squareup.javapoet.*;
+import com.palantir.javapoet.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.annotation.processor.common.*;

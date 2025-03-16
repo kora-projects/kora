@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.kafka.annotation.processor.utils;
 
-import com.squareup.javapoet.ParameterizedTypeName;
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.ParameterizedTypeName;
+import com.palantir.javapoet.TypeName;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
@@ -67,8 +67,8 @@ public final class KafkaPublisherUtils {
         if (record != null) {
             var recordType = (DeclaredType) record.asType();
             var recordTypeName = (ParameterizedTypeName) TypeName.get(recordType).withoutAnnotations();
-            var keyType = recordTypeName.typeArguments.get(0);
-            var valueType = recordTypeName.typeArguments.get(1);
+            var keyType = recordTypeName.typeArguments().get(0);
+            var valueType = recordTypeName.typeArguments().get(1);
             var keyTag = TagUtils.parseTagValue(recordType.getTypeArguments().get(0));
             var valueTag = TagUtils.parseTagValue(recordType.getTypeArguments().get(1));
             return new PublisherData(keyType, keyTag, valueType, valueTag, key, value, headers, record, producerCallback);

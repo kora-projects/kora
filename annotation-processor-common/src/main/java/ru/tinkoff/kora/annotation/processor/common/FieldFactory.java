@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.annotation.processor.common;
 
-import com.squareup.javapoet.*;
+import com.palantir.javapoet.*;
 import jakarta.annotation.Nullable;
 
 import javax.lang.model.element.Element;
@@ -121,7 +121,7 @@ public class FieldFactory {
             ? defaultType
             : TypeName.get(Objects.requireNonNull(mapping.mapperClass()));
         var typeElement = typeName instanceof ParameterizedTypeName ptn
-            ? this.elements.getTypeElement(ptn.rawType.canonicalName())
+            ? this.elements.getTypeElement(ptn.rawType().canonicalName())
             : this.elements.getTypeElement(((ClassName) typeName).canonicalName());
 
         var key = new FieldKey(typeName, tags);
