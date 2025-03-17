@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.json.ksp.writer
 
+import com.google.devtools.ksp.isPrivate
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.ClassName
@@ -20,7 +21,8 @@ import ru.tinkoff.kora.ksp.common.getNameConverter
 import ru.tinkoff.kora.ksp.common.isJavaRecord
 import ru.tinkoff.kora.ksp.common.parseAnnotationValue
 
-class WriterTypeMetaParser(val resolver: Resolver) {
+class WriterTypeMetaParser(resolver: Resolver) {
+
     private val knownTypes: KnownType = KnownType(resolver)
 
     fun parse(jsonClassDeclaration: KSClassDeclaration): JsonClassWriterMeta {
@@ -63,7 +65,7 @@ class WriterTypeMetaParser(val resolver: Resolver) {
             throw ProcessingErrorException("Field %s.%s is ERROR".format(jsonClassDeclaration, field.simpleName.asString()), field)
         }
         val jsonName = parseJsonName(field, jsonField, fieldNameConverter)
-        val accessor = field.simpleName.asString()
+        val accessor = getAccessorMethod(jsonClassDeclaration, field, resolvedType)
         val writer = jsonField?.findValueNoDefault<KSType>("writer")
         val typeMeta = parseWriterFieldType(jsonClassDeclaration, resolvedType)
 
@@ -74,6 +76,29 @@ class WriterTypeMetaParser(val resolver: Resolver) {
             ?: JsonClassWriterMeta.IncludeType.NON_NULL)
 
         return JsonClassWriterMeta.FieldMeta(field.simpleName, jsonName, type.resolve(), typeMeta, writer, accessor, includeType)
+    }
+
+    private fun getAccessorMethod(jsonClassDeclaration: KSClassDeclaration, field: KSDeclaration, fieldType: KSType): String {
+        if (jsonClassDeclaration.isJavaRecord()) {
+            return field.simpleName.asString()
+        }
+        if (field is KSPropertyDeclaration && !field.isPrivate()) {
+            return field.simpleName.asString()
+        }
+
+        val paramName = field.simpleName.asString()
+        val capitalizedParamName = paramName[0].uppercaseChar().toString() + paramName.substring(1)
+        return jsonClassDeclaration.getAllFunctions()
+            .filter { e -> e.functionKind == FunctionKind.MEMBER }
+            .filter { e -> e.parameters.isEmpty() }
+            .filter { e ->
+                val methodName = e.simpleName.toString()
+                methodName == paramName || methodName == "get$capitalizedParamName"
+            }
+            .filter { m -> m.returnType!!.toTypeName() == fieldType.toTypeName() }
+            .map { m -> m.simpleName.asString() }
+            .firstOrNull()
+            ?: throw ProcessingErrorException("Can't detect field accessor: $paramName", field)
     }
 
     private fun parseWriterFieldType(jsonClass: KSClassDeclaration, resolvedType: KSType): WriterFieldType {

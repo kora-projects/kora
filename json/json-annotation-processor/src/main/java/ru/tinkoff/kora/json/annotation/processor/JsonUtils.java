@@ -1,12 +1,13 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 
-import jakarta.annotation.Nullable;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
@@ -14,7 +15,17 @@ import javax.lang.model.util.Types;
 import java.util.List;
 
 
-public class JsonUtils {
+public final class JsonUtils {
+
+    private JsonUtils() {}
+
+    private static final List<String> RESTRICTED_PACKAGES = List.of("java.", "javax.", "sun.", "com.sun.", "jdk.", "kotlin.");
+
+    public static boolean isNativePackage(Elements elements, TypeElement element) {
+        PackageElement packageOf = elements.getPackageOf(element);
+        return RESTRICTED_PACKAGES.stream().anyMatch(s -> packageOf.getQualifiedName().toString().startsWith(s));
+    }
+
     public static String jsonClassPackage(Elements elements, Element typeElement) {
         return elements.getPackageOf(typeElement).getQualifiedName().toString();
     }

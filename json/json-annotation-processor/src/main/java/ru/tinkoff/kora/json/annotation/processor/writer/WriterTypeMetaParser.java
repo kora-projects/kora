@@ -143,5 +143,4 @@ public class WriterTypeMetaParser {
         }
         throw new ProcessingErrorException("Can't detect accessor method name: %s".formatted(paramName), param);
     }
-
 }
