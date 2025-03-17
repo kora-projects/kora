@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
 import jakarta.annotation.Nonnull;
+import org.junit.jupiter.api.extension.ExtensionConfigurationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
@@ -62,8 +63,8 @@ final class TestGraph implements AutoCloseable {
             this.graphInitialized = new TestGraphContext(initGraph, graph, new DefaultKoraAppGraph(graph, initGraph));
             this.status = Status.INITIALIZED;
             logger.debug("@KoraAppTest dependency container initialized in {}", TimeUtils.tookForLogging(started));
-        } catch (IOException e) {
-            throw new IllegalStateException(e);
+        } catch (Exception e) {
+            throw new ExtensionConfigurationException("Dependency container initialization failed after: " + TimeUtils.tookForLogging(started), e);
         } finally {
             config.cleanup();
         }
@@ -72,7 +73,7 @@ final class TestGraph implements AutoCloseable {
     @Nonnull
     TestGraphContext initialized() {
         if (graphInitialized == null) {
-            throw new IllegalStateException("Dependency Container is not initialized!");
+            throw new ExtensionConfigurationException("Dependency container is not initialized, initialization probably failed on previous steps!");
         }
         return graphInitialized;
     }
@@ -89,10 +90,8 @@ final class TestGraph implements AutoCloseable {
             try {
                 graphInitialized.refreshableGraph().release();
                 this.status = Status.RELEASED;
-            } catch (RuntimeException | Error e) {
-                throw e;
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+            } catch (Error | Exception e) {
+                throw new ExtensionConfigurationException("Dependency container release failed after: " + TimeUtils.tookForLogging(started), e);
             }
             graphInitialized = null;
             logger.debug("@KoraAppTest dependency container released in {}", TimeUtils.tookForLogging(started));

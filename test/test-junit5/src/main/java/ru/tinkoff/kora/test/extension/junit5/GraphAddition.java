@@ -11,8 +11,8 @@ record GraphAddition(Function<KoraAppGraph, ?> function, GraphCandidate candidat
     @Override
     public void accept(ApplicationGraphDraw graphDraw) {
         var tags = (candidate().tags().isEmpty())
-                ? TAGS_EMPTY
-                : candidate().tagsAsArray();
+            ? TAGS_EMPTY
+            : candidate().tagsAsArray();
 
         graphDraw.addNode0(candidate().type(), tags, g -> function.apply(new DefaultKoraAppGraph(graphDraw, g)));
     }

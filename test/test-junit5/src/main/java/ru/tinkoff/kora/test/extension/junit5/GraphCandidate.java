@@ -24,7 +24,7 @@ record GraphCandidate(@Nonnull Type type, @Nonnull List<Class<?>> tags) {
     @Override
     public String toString() {
         return tags.isEmpty()
-                ? type.toString()
-                : "[type=" + type + ", tags=" + tags + ']';
+            ? type.toString()
+            : "[type=" + type + ", tags=" + tags + ']';
     }
 }
