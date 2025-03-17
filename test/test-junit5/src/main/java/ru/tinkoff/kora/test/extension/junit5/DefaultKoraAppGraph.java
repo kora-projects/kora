@@ -28,8 +28,8 @@ final class DefaultKoraAppGraph implements KoraAppGraph {
     public Object getFirst(@Nonnull Type type) {
         var node = graphDraw.findNodeByType(type);
         return (node == null)
-                ? null
-                : graph.get(node);
+            ? null
+            : graph.get(node);
     }
 
     @Nullable
@@ -43,9 +43,9 @@ final class DefaultKoraAppGraph implements KoraAppGraph {
     public Object getFirst(@Nonnull Type type, Class<?>... tags) {
         var nodes = GraphUtils.findNodeByType(graphDraw, new GraphCandidate(type, tags));
         return nodes.stream()
-                .map(graph::get)
-                .findFirst()
-                .orElse(null);
+            .map(graph::get)
+            .findFirst()
+            .orElse(null);
     }
 
     @Nullable
@@ -65,8 +65,8 @@ final class DefaultKoraAppGraph implements KoraAppGraph {
     public List<Object> getAll(@Nonnull Type type, Class<?>... tags) {
         var nodes = GraphUtils.findNodeByType(graphDraw, new GraphCandidate(type, tags));
         return nodes.stream()
-                .map(graph::get)
-                .toList();
+            .map(graph::get)
+            .toList();
     }
 
     @Nonnull

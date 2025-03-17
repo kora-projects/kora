@@ -10,7 +10,7 @@ import java.util.Map;
  * <p>
  * All configs specified for test are merged into single config, each next config replaces values from previous configs
  */
-public final class KoraConfigFile implements KoraConfigModification {
+final class KoraConfigFile implements KoraConfigModification {
 
     private final Map<String, String> systemProperties = new HashMap<>();
     private final String configFile;
