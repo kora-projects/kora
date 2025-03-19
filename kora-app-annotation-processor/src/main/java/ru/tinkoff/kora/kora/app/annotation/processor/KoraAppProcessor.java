@@ -50,9 +50,6 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
     private volatile boolean initialized = false;
     private volatile boolean isKoraAppSubmoduleEnabled = false;
     private TypeElement koraAppElement;
-    private TypeElement moduleElement;
-    private TypeElement koraSubmoduleElement;
-    private TypeElement componentElement;
     private ProcessingContext ctx;
 
     @Override
@@ -62,9 +59,6 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         if (this.koraAppElement == null) {
             return;
         }
-        this.moduleElement = this.elements.getTypeElement(CommonClassNames.module.canonicalName());
-        this.koraSubmoduleElement = this.elements.getTypeElement(CommonClassNames.koraSubmodule.canonicalName());
-        this.componentElement = this.elements.getTypeElement(CommonClassNames.component.canonicalName());
         this.initialized = true;
         this.isKoraAppSubmoduleEnabled = Boolean.parseBoolean(processingEnv.getOptions().getOrDefault(OPTION_SUBMODULE_GENERATION, "false"));
         this.ctx = new ProcessingContext(processingEnv);
@@ -73,7 +67,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 
     @Override
     public Set<ClassName> getSupportedAnnotationClassNames() {
-        return Set.of(CommonClassNames.koraApp, CommonClassNames.module, CommonClassNames.component, CommonClassNames.koraSubmodule, CommonClassNames.koraGenerated);
+        return Set.of(CommonClassNames.koraApp, CommonClassNames.module, CommonClassNames.component, CommonClassNames.koraSubmodule);
     }
 
     @Override
@@ -86,17 +80,18 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         if (!this.initialized) {
             return;
         }
-        this.processGenerated(annotations, roundEnv, annotatedElements);
-        var newModules = this.processModules(roundEnv);
-        var newComponents = this.processComponents(roundEnv);
-        this.processAppParts(roundEnv);
+        var newModules = this.processModules(annotatedElements);
+        var newComponents = this.processComponents(annotatedElements);
+        this.processAppParts(annotatedElements);
         if (newModules || newComponents) {
             for (var app : new ArrayList<>(this.annotatedElements.keySet())) {
                 this.annotatedElements.put(app, parseNone(app));
             }
         }
-        var koraAppElements = roundEnv.getElementsAnnotatedWith(this.koraAppElement);
-        for (var element : koraAppElements) {
+
+        var koraAppElements = annotatedElements.getOrDefault(CommonClassNames.koraApp, List.of());
+        for (var annotated : koraAppElements) {
+            var element = annotated.element();
             if (element.getKind() == ElementKind.INTERFACE) {
                 if (log.isInfoEnabled()) {
                     log.info("@KoraApp element found:\n{}", element.toString().indent(4));
@@ -205,28 +200,14 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         return GraphBuilder.processProcessing(ctx, roundEnv, processing);
     }
 
-    private void processGenerated(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
-        if (log.isDebugEnabled()) {
-            var generated = annotatedElements.get(CommonClassNames.koraGenerated);
-            if (generated == null) {
-                return;
-            }
-            var elements = generated.stream().map(AnnotatedElement::element).toList();
-            if (!elements.isEmpty()) {
-                LogUtils.logElementsFull(log, Level.DEBUG, "Generated previous Round", elements);
-            } else {
-                log.debug("Nothing was generated previous Round.");
-            }
-        }
-    }
+    private boolean processComponents(Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        var componentOfElements = annotatedElements.getOrDefault(CommonClassNames.component, List.of());
 
-    private boolean processComponents(RoundEnvironment roundEnv) {
-        var componentOfElements = roundEnv.getElementsAnnotatedWith(this.componentElement);
+        var processedComponents = new ArrayList<TypeElement>();
+        var processedWaitsProxy = new ArrayList<TypeElement>();
 
-        List<TypeElement> processedComponents = new ArrayList<>();
-        List<TypeElement> processedWaitsProxy = new ArrayList<>();
-
-        for (var componentElement : componentOfElements) {
+        for (var annotated : componentOfElements) {
+            var componentElement = annotated.element();
             if (componentElement.getKind() != ElementKind.CLASS) {
                 continue;
             }
@@ -259,16 +240,16 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         return !componentOfElements.isEmpty();
     }
 
-    private boolean processModules(RoundEnvironment roundEnv) {
-        var moduleOfElements = roundEnv.getElementsAnnotatedWith(this.moduleElement);
-
-        List<TypeElement> processedModules = new ArrayList<>();
-        for (var moduleElement : moduleOfElements) {
-            if (moduleElement.getKind() != ElementKind.INTERFACE) {
+    private boolean processModules(Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        var moduleElements = annotatedElements.getOrDefault(CommonClassNames.module, List.of());
+        var processedModules = new ArrayList<TypeElement>();
+        for (var annotated : moduleElements) {
+            if (annotated.element().getKind() != ElementKind.INTERFACE) {
                 continue;
             }
-            this.modules.add((TypeElement) moduleElement);
-            processedModules.add((TypeElement) moduleElement);
+            var te = (TypeElement) annotated.element();
+            this.modules.add(te);
+            processedModules.add(te);
         }
 
         if (!processedModules.isEmpty()) {
@@ -281,7 +262,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             }
         }
 
-        return !moduleOfElements.isEmpty();
+        return !moduleElements.isEmpty();
     }
 
     private ProcessingState.Processing processNone(ProcessingState.None none) {
@@ -388,7 +369,6 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         var graphTypeName = ClassName.get(packageElement.getQualifiedName().toString(), graphName);
         var classBuilder = TypeSpec.classBuilder(graphName)
             .addAnnotation(AnnotationUtils.generated(KoraAppProcessor.class))
-            .addOriginatingElement(classElement)
             .addModifiers(Modifier.PUBLIC)
             .addSuperinterface(ParameterizedTypeName.get(ClassName.get(Supplier.class), CommonClassNames.applicationGraphDraw))
             .addField(CommonClassNames.applicationGraphDraw, "graphDraw", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
@@ -399,13 +379,6 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 .returns(CommonClassNames.applicationGraphDraw)
                 .addStatement("return graphDraw")
                 .build());
-        for (var component : this.components) {
-            classBuilder.addOriginatingElement(component);
-        }
-        for (var module : this.modules) {
-            classBuilder.addOriginatingElement(module);
-        }
-
         var currentClass = (TypeSpec.Builder) null;
         var currentConstructor = (MethodSpec.Builder) null;
         int holders = 0;
@@ -624,7 +597,6 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         var className = "$" + classElement.getSimpleName().toString() + "Impl";
         var classBuilder = TypeSpec.classBuilder(className)
             .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", CodeBlock.of("$S", KoraAppProcessor.class.getCanonicalName())).build())
-            .addOriginatingElement(classElement)
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(typeMirror);
 
@@ -633,27 +605,24 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             classBuilder.addField(FieldSpec.builder(TypeName.get(module.asType()), "module" + i, Modifier.PUBLIC, Modifier.FINAL)
                 .initializer("new $T(){}", module.asType())
                 .build());
-            classBuilder.addOriginatingElement(module);
         }
-        for (var component : this.components) {
-            classBuilder.addOriginatingElement(component);
-        }
-
 
         return JavaFile.builder(packageElement.getQualifiedName().toString(), classBuilder.build())
             .build();
     }
 
-    private void processAppParts(RoundEnvironment roundEnv) {
-        roundEnv.getElementsAnnotatedWith(this.koraSubmoduleElement)
+    private void processAppParts(Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        annotatedElements.getOrDefault(CommonClassNames.koraSubmodule, List.of())
             .stream()
+            .map(AnnotatedElement::element)
             .filter(e -> e.getKind().isInterface())
             .map(TypeElement.class::cast)
             .forEach(this.appParts::add);
 
         if (isKoraAppSubmoduleEnabled) {
-            roundEnv.getElementsAnnotatedWith(this.koraAppElement)
+            annotatedElements.getOrDefault(CommonClassNames.koraApp, List.of())
                 .stream()
+                .map(AnnotatedElement::element)
                 .filter(e -> e.getKind().isInterface())
                 .map(TypeElement.class::cast)
                 .forEach(this.appParts::add);
@@ -667,7 +636,6 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 .addModifiers(Modifier.PUBLIC);
             var componentNumber = 0;
             for (var component : this.components) {
-                b.addOriginatingElement(component);
                 var constructor = this.findSinglePublicConstructor(component);
                 if (constructor == null) {
                     return;

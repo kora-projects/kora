@@ -68,7 +68,7 @@ public abstract class AbstractKoraProcessor extends AbstractProcessor {
         }
         var end = System.currentTimeMillis();
         var took = end - start;
-        if (annotatedElementsSize > 0 || took > 100) {
+        if (took > 100) {
             this.messager.printMessage(Diagnostic.Kind.NOTE, "%s processing took %sms for %d elements".formatted(this.getClass().getSimpleName(), took, annotatedElementsSize));
         }
         return false;
