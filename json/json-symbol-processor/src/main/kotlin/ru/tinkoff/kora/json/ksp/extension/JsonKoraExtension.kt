@@ -58,6 +58,9 @@ class JsonKoraExtension(
             if (possibleJsonClassDeclaration.modifiers.contains(Modifier.ENUM) || possibleJsonClassDeclaration.modifiers.contains(Modifier.SEALED)) {
                 return { generateWriter(resolver, type, possibleJsonClassDeclaration) }
             }
+            if (possibleJsonClassDeclaration.classKind != ClassKind.CLASS) {
+                return null
+            }
             try {
                 writerTypeMetaParser.parse(possibleJsonClassDeclaration)
                 return { generateWriter(resolver, type, possibleJsonClassDeclaration) }
@@ -97,7 +100,9 @@ class JsonKoraExtension(
             if (possibleJsonClassDeclaration.modifiers.contains(Modifier.ENUM) || possibleJsonClassDeclaration.modifiers.contains(Modifier.SEALED)) {
                 return { generateReader(resolver, type, possibleJsonClassDeclaration) }
             }
-
+            if (possibleJsonClassDeclaration.classKind != ClassKind.CLASS) {
+                return null
+            }
             try {
                 readerTypeMetaParser.parse(possibleJsonClassDeclaration)
                 return { generateReader(resolver, type, possibleJsonClassDeclaration) }
