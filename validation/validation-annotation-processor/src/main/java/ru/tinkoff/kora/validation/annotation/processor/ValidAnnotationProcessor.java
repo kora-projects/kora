@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.validation.annotation.processor;
 
+import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.TypeSpec;
 import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
@@ -10,7 +11,9 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.tools.Diagnostic;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static ru.tinkoff.kora.validation.annotation.processor.ValidTypes.VALID_TYPE;
@@ -22,8 +25,8 @@ public final class ValidAnnotationProcessor extends AbstractKoraProcessor {
     record ValidatorSpec(ValidMeta meta, TypeSpec spec, List<ParameterSpec> parameterSpecs) {}
 
     @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(VALID_TYPE.canonicalName());
+    public Set<ClassName> getSupportedAnnotationClassNames() {
+        return Set.of(VALID_TYPE);
     }
 
     @Override
@@ -33,34 +36,25 @@ public final class ValidAnnotationProcessor extends AbstractKoraProcessor {
     }
 
     @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        final List<TypeElement> validatedElements = getValidatedTypeElements(processingEnv, roundEnv);
-        for (var validatedElement : validatedElements) {
-            try {
-                this.generator.generateFor(validatedElement);
-            } catch (ProcessingErrorException e) {
-                e.printError(this.processingEnv);
+    public void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        var validatedElements = annotatedElements.getOrDefault(VALID_TYPE, List.of());
+        for (var annotated : validatedElements) {
+            var element = annotated.element();
+            if (element.getKind() == ElementKind.ENUM) {
+                this.messager.printMessage(Diagnostic.Kind.ERROR, "Validation can't be generated for enum", element);
+                continue;
+            }
+            if (element.getKind() == ElementKind.INTERFACE && !element.getModifiers().contains(Modifier.SEALED)) {
+                this.messager.printMessage(Diagnostic.Kind.ERROR, "Validation can't be generated for non sealed interface", element);
+                continue;
+            }
+            if (element instanceof TypeElement validatedElement) {
+                try {
+                    this.generator.generateFor(validatedElement);
+                } catch (ProcessingErrorException e) {
+                    e.printError(this.processingEnv);
+                }
             }
         }
-
-
-        return false;
-    }
-
-    private List<TypeElement> getValidatedTypeElements(ProcessingEnvironment processEnv, RoundEnvironment roundEnv) {
-        final TypeElement annotation = processEnv.getElementUtils().getTypeElement(VALID_TYPE.canonicalName());
-
-        return roundEnv.getElementsAnnotatedWith(annotation).stream()
-            .filter(a -> a instanceof TypeElement)
-            .map(element -> {
-                if (element.getKind() == ElementKind.ENUM) {
-                    throw new ProcessingErrorException("Validation can't be generated for: " + element.getKind(), element);
-                }
-                if (element.getKind() == ElementKind.INTERFACE && !element.getModifiers().contains(Modifier.SEALED)) {
-                    throw new ProcessingErrorException("Validation can't be generated for: " + element.getKind(), element);
-                }
-                return ((TypeElement) element);
-            })
-            .toList();
     }
 }

@@ -6,7 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
 import ru.tinkoff.kora.annotation.processor.common.*;
-import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ComponentDependency;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponent;
@@ -73,11 +72,8 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
     }
 
     @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        if (!this.initialized) {
-            return Set.of();
-        }
-        return Set.of(CommonClassNames.koraApp.canonicalName(), CommonClassNames.module.canonicalName(), CommonClassNames.component.canonicalName(), CommonClassNames.koraSubmodule.canonicalName(), CommonClassNames.koraGenerated.canonicalName());
+    public Set<ClassName> getSupportedAnnotationClassNames() {
+        return Set.of(CommonClassNames.koraApp, CommonClassNames.module, CommonClassNames.component, CommonClassNames.koraSubmodule, CommonClassNames.koraGenerated);
     }
 
     @Override
@@ -86,11 +82,11 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
     }
 
     @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+    protected void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
         if (!this.initialized) {
-            return false;
+            return;
         }
-        this.processGenerated(roundEnv);
+        this.processGenerated(annotations, roundEnv, annotatedElements);
         var newModules = this.processModules(roundEnv);
         var newComponents = this.processComponents(roundEnv);
         this.processAppParts(roundEnv);
@@ -203,16 +199,19 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 throw new RuntimeException(e);
             }
         }
-        return false;
     }
 
     private ProcessingState processProcessing(RoundEnvironment roundEnv, ProcessingState.Processing processing) {
         return GraphBuilder.processProcessing(ctx, roundEnv, processing);
     }
 
-    private void processGenerated(RoundEnvironment roundEnv) {
+    private void processGenerated(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
         if (log.isDebugEnabled()) {
-            var elements = roundEnv.getElementsAnnotatedWith(Generated.class);
+            var generated = annotatedElements.get(CommonClassNames.koraGenerated);
+            if (generated == null) {
+                return;
+            }
+            var elements = generated.stream().map(AnnotatedElement::element).toList();
             if (!elements.isEmpty()) {
                 LogUtils.logElementsFull(log, Level.DEBUG, "Generated previous Round", elements);
             } else {
@@ -342,7 +341,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             var sourceDescriptors = components.nonTemplates;
             var rootSet = sourceDescriptors.stream()
                 .filter(cd -> AnnotationUtils.isAnnotationPresent(cd.source(), CommonClassNames.root)
-                              || cd instanceof ComponentDeclaration.AnnotatedComponent ac && AnnotationUtils.isAnnotationPresent(ac.typeElement(), CommonClassNames.root))
+                    || cd instanceof ComponentDeclaration.AnnotatedComponent ac && AnnotationUtils.isAnnotationPresent(ac.typeElement(), CommonClassNames.root))
                 .toList();
             return new ProcessingState.None(type, allModules, sourceDescriptors, components.templates, rootSet);
         } catch (ProcessingErrorException e) {
@@ -422,9 +421,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 holders++;
                 var className = graphTypeName.nestedClass("ComponentHolder" + i / COMPONENTS_PER_HOLDER_CLASS);
                 currentClass = TypeSpec.classBuilder(className)
-                    .addAnnotation(AnnotationSpec.builder(Generated.class)
-                        .addMember("value", CodeBlock.of("$S", KoraAppProcessor.class.getCanonicalName()))
-                        .build())
+                    .addAnnotation(AnnotationUtils.generated(KoraAppProcessor.class))
                     .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL);
                 currentConstructor = MethodSpec.constructorBuilder()
                     .addModifiers(Modifier.PUBLIC)
