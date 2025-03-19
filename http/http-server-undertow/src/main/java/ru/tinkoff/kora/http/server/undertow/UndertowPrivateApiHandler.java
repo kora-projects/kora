@@ -102,6 +102,6 @@ public class UndertowPrivateApiHandler {
                     }
                 });
 
-            }, exchange.getConnection().getWorker()));
+            }, exchange.getConnection().getIoThread()));
     }
 }
