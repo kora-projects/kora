@@ -31,11 +31,12 @@ public class DependencyModuleHintProvider {
 
 
     sealed interface Hint {
+
         String message();
 
         record SimpleHint(TypeMirror type, String artifact, String module) implements DependencyModuleHintProvider.Hint {
             public String message() {
-                return "Missing component of type %s can be provided by module %s from artifact %s".formatted(
+                return "Missing component of type %s which can be provided by kora module, you may forgot to plug it\nModule class: %s \nArtifact dependency: %s\n".formatted(
                     type, module, artifact
                 );
             }
@@ -43,15 +44,14 @@ public class DependencyModuleHintProvider {
 
         record HintWithTag(TypeMirror type, String artifact, String module, Set<String> tags) implements DependencyModuleHintProvider.Hint {
             public String message() {
-                return "Missing component of type %s can be provided by module %s from artifact %s (required tags: `@Tag(%s)`)".formatted(
-                    type, module, artifact, tags.stream().map(s -> s + ".class").collect(Collectors.joining(", ", "{", "}"))
+                return "Missing component of type %s which can be provided by kora module, you may forgot to plug it\nModule class: %s (required tags: `@Tag(%s)`)\nArtifact dependency: %s\n".formatted(
+                    type, module, tags.stream().map(s -> s + ".class").collect(Collectors.joining(", ", "{", "}")), artifact
                 );
             }
         }
-
     }
 
-    public List<Hint> findHints(TypeMirror missingType, Set<String> missingTag) {
+    List<Hint> findHints(TypeMirror missingType, Set<String> missingTag) {
         log.trace("Checking hints for {}/{}", missingTag, missingType);
         var result = new ArrayList<Hint>();
         for (var hint : this.hints) {
@@ -59,25 +59,30 @@ public class DependencyModuleHintProvider {
             if (matcher.matches()) {
                 log.trace("Hint {} matched!", hint);
                 if (this.tagMatches(missingTag, hint.tags())) {
-                    result.add(new Hint.SimpleHint(missingType, hint.artifact, hint.moduleName));
-                } else {
-                    result.add(new Hint.HintWithTag(missingType, hint.artifact, hint.moduleName, hint.tags));
+                    if (hint.tags.isEmpty()) {
+                        result.add(new Hint.SimpleHint(missingType, hint.artifact, hint.moduleName));
+                    } else {
+                        result.add(new Hint.HintWithTag(missingType, hint.artifact, hint.moduleName, hint.tags));
+                    }
                 }
+            } else {
+                log.trace("Hint {} doesn't match because of regex", hint);
             }
-            log.trace("Hint {} doesn't match because of regex", hint);
         }
         return result;
     }
 
-    private boolean tagMatches(Set<String> missingTag, Set<String> tags) {
-        if (missingTag.isEmpty() && tags.isEmpty()) {
+    private boolean tagMatches(Set<String> missingTags, Set<String> hintTags) {
+        if (missingTags.isEmpty() && hintTags.isEmpty()) {
             return true;
         }
-        if (missingTag.size() >= tags.size()) {
+
+        if (missingTags.size() != hintTags.size()) {
             return false;
         }
-        for (var tag : missingTag) {
-            if (!tags.contains(tag)) {
+
+        for (var missingTag : missingTags) {
+            if (!hintTags.contains(missingTag)) {
                 return false;
             }
         }

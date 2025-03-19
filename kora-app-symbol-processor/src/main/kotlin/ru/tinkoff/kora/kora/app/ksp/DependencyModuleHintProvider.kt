@@ -25,14 +25,15 @@ class DependencyModuleHintProvider(private val resolver: Resolver) {
     }
 
     inner class Hint(
-        val type: KSType, val artifact: String, val module: String
+        val type: KSType, val artifact: String, val module: String, val tags: Set<String>
     ) {
         fun message(): String {
-            return "Missing component of type %s can be provided by module %s from artifact %s".format(
-                type,
-                module,
-                artifact
-            )
+            if (tags.isEmpty()) {
+                return "Missing component of type $type which can be provided by kora module, you may forgot to plug it\nModule class: $module \nArtifact dependency: $artifact\n"
+            } else {
+                val tagsAsStr = tags.joinToString(", ", "{", "}") { "$it.class" }
+                return "Missing component of type $type which can be provided by kora module, you may forgot to plug it\nModule class: $module (required tags: `@Tag($tagsAsStr)`)\nArtifact dependency: $artifact\n"
+            }
         }
     }
 
@@ -40,29 +41,36 @@ class DependencyModuleHintProvider(private val resolver: Resolver) {
         log.trace("Checking hints for {}/{}", missingTag, missingType)
         val result = mutableListOf<Hint>()
         for (hint in hints) {
-            if (!this.tagMatches(missingTag, hint.tags)) {
-                log.trace("Hint {} doesn't match because of tag", hint)
-                continue
-            }
             val matcher = hint.typeRegex.matcher(missingType.toTypeName().toString())
             if (matcher.matches()) {
-                log.trace("Hint {} matched!", hint)
-                result.add(Hint(missingType, hint.artifact, hint.moduleName))
+                if (this.tagMatches(missingTag, hint.tags)) {
+                    log.trace("Hint {} matched!", hint)
+                    if (hint.tags.isEmpty()) {
+                        result.add(Hint(missingType, hint.artifact, hint.moduleName, setOf()))
+                    } else {
+                        result.add(Hint(missingType, hint.artifact, hint.moduleName, hint.tags))
+                    }
+                } else {
+                    log.trace("Hint {} doesn't match because of tag", hint)
+                }
+            } else {
+                log.trace("Hint {} doesn't match because of regex", hint)
             }
-            log.trace("Hint {} doesn't match because of regex", hint)
         }
         return result
     }
 
-    private fun tagMatches(missingTag: Set<String>, tags: Set<String>): Boolean {
-        if (missingTag.isEmpty() && tags.isEmpty()) {
+    private fun tagMatches(missingTags: Set<String>, hintTags: Set<String>): Boolean {
+        if (missingTags.isEmpty() && hintTags.isEmpty()) {
             return true
         }
-        if (missingTag.size > tags.size) {
+
+        if (missingTags.size != hintTags.size) {
             return false
         }
-        for (tag in missingTag) {
-            if (!tags.contains(tag)) {
+
+        for (missingTag in missingTags) {
+            if (!hintTags.contains(missingTag)) {
                 return false
             }
         }
@@ -75,7 +83,6 @@ class DependencyModuleHintProvider(private val resolver: Resolver) {
         val moduleName: String,
         val artifact: String
     ) {
-
 
         companion object {
             @Throws(IOException::class)
@@ -124,24 +131,28 @@ class DependencyModuleHintProvider(private val resolver: Resolver) {
                                 next = p.nextToken()
                             }
                         }
+
                         "typeRegex" -> {
                             if (p.nextToken() != JsonToken.VALUE_STRING) {
                                 throw JsonParseException(p, "expected VALUE_STRING, got $next")
                             }
                             typeRegex = p.valueAsString
                         }
+
                         "moduleName" -> {
                             if (p.nextToken() != JsonToken.VALUE_STRING) {
                                 throw JsonParseException(p, "expected VALUE_STRING, got $next")
                             }
                             moduleName = p.valueAsString
                         }
+
                         "artifact" -> {
                             if (p.nextToken() != JsonToken.VALUE_STRING) {
                                 throw JsonParseException(p, "expected VALUE_STRING, got $next")
                             }
                             artifact = p.valueAsString
                         }
+
                         else -> {
                             p.nextToken()
                             p.skipChildren()
