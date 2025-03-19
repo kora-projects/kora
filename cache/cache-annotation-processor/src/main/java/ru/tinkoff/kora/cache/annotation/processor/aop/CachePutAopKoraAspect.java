@@ -35,6 +35,11 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
     }
 
     @Override
+    public Set<ClassName> getSupportedAnnotationClassNames() {
+        return Set.of(ANNOTATION_CACHE_PUT, ANNOTATION_CACHE_PUTS);
+    }
+
+    @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         if (MethodUtils.isFlux(method)) {
             throw new ProcessingErrorException("@CachePut can't be applied for types assignable from " + CommonClassNames.flux, method);

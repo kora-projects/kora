@@ -3,7 +3,6 @@ package ru.tinkoff.kora.database.annotation.processor.jdbc;
 import com.squareup.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
-import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils.Mapper;
 import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
@@ -18,7 +17,6 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
-import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.sql.Statement;
@@ -31,18 +29,11 @@ import java.util.concurrent.Executor;
 import java.util.stream.LongStream;
 
 public final class JdbcRepositoryGenerator implements RepositoryGenerator {
-    private final TypeMirror repositoryInterface;
     private final Types types;
     private final Elements elements;
     private final Filer filer;
 
     public JdbcRepositoryGenerator(ProcessingEnvironment processingEnv) {
-        var repository = processingEnv.getElementUtils().getTypeElement(JdbcTypes.JDBC_REPOSITORY.canonicalName());
-        if (repository == null) {
-            this.repositoryInterface = null;
-        } else {
-            this.repositoryInterface = repository.asType();
-        }
         this.types = processingEnv.getTypeUtils();
         this.elements = processingEnv.getElementUtils();
         this.filer = processingEnv.getFiler();
@@ -128,9 +119,8 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
     }
 
     @Override
-    @Nullable
-    public TypeMirror repositoryInterface() {
-        return this.repositoryInterface;
+    public ClassName repositoryInterface() {
+        return JdbcTypes.JDBC_REPOSITORY;
     }
 
     public MethodSpec generate(TypeElement repositoryElement, TypeSpec.Builder type, int methodNumber, ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters, @Nullable String resultMapperName, FieldFactory parameterMappers) {
@@ -305,7 +295,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
 
         var executorTag = DbUtils.getTag(repositoryElement);
         if (executorTag != null) {
-            constructorBuilder.addParameter(ParameterSpec.builder(JdbcTypes.CONNECTION_FACTORY, "_connectionFactory").addAnnotation(AnnotationSpec.builder(Tag.class).addMember("value", executorTag).build()).build());
+            constructorBuilder.addParameter(ParameterSpec.builder(JdbcTypes.CONNECTION_FACTORY, "_connectionFactory").addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value", executorTag).build()).build());
         } else {
             constructorBuilder.addParameter(JdbcTypes.CONNECTION_FACTORY, "_connectionFactory");
         }
@@ -316,7 +306,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             builder.addField(TypeName.get(Executor.class), "_executor", Modifier.PRIVATE, Modifier.FINAL);
             constructorBuilder.addStatement("this._executor = _executor");
             constructorBuilder.addParameter(ParameterSpec.builder(TypeName.get(Executor.class), "_executor")
-                .addAnnotation(AnnotationSpec.builder(Tag.class).addMember("value", executorTag).build())
+                .addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value", executorTag).build())
                 .build());
         } else if (needThreadPool) {
             builder.addField(TypeName.get(Executor.class), "_executor", Modifier.PRIVATE, Modifier.FINAL);

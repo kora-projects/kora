@@ -3,8 +3,6 @@ package ru.tinkoff.kora.http.client.annotation.processor;
 import com.squareup.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
-import ru.tinkoff.kora.common.Module;
-import ru.tinkoff.kora.common.annotation.Generated;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Modifier;
@@ -37,10 +35,10 @@ public class ConfigModuleGenerator {
         var extractorClass = ParameterizedTypeName.get(CommonClassNames.configValueExtractor, configClass);
 
         var type = TypeSpec.interfaceBuilder(moduleName)
-            .addModifiers(Modifier.PUBLIC)
-            .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", "$S", ConfigModuleGenerator.class.getCanonicalName()).build())
-            .addAnnotation(AnnotationSpec.builder(Module.class).build())
             .addOriginatingElement(element)
+            .addAnnotation(AnnotationUtils.generated(ConfigModuleGenerator.class))
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(CommonClassNames.module)
             .addMethod(MethodSpec.methodBuilder(lowercaseName + "Config")
                 .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
                 .returns(configClass)

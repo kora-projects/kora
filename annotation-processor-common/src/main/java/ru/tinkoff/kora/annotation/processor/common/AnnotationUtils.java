@@ -2,6 +2,7 @@ package ru.tinkoff.kora.annotation.processor.common;
 
 import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.CodeBlock;
 import jakarta.annotation.Nullable;
 
 import javax.lang.model.element.AnnotationMirror;
@@ -18,7 +19,13 @@ public class AnnotationUtils {
 
     public static AnnotationSpec generated(String canonicalName) {
         return AnnotationSpec.builder(CommonClassNames.koraGenerated)
-            .addMember("value", "$S", canonicalName)
+            .addMember("value", CodeBlock.of("$S", canonicalName))
+            .build();
+    }
+
+    public static AnnotationSpec generated(CodeBlock value) {
+        return AnnotationSpec.builder(CommonClassNames.koraGenerated)
+            .addMember("value", value)
             .build();
     }
 

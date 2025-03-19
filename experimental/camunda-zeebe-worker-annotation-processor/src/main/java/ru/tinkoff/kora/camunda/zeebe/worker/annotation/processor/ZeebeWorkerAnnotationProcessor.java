@@ -44,19 +44,14 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
     }
 
     @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(ANNOTATION_WORKER.canonicalName());
+    public Set<ClassName> getSupportedAnnotationClassNames() {
+        return Set.of(ANNOTATION_WORKER);
     }
 
     @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        var annotationWorker = processingEnv.getElementUtils().getTypeElement(ANNOTATION_WORKER.canonicalName());
-        if (annotationWorker == null) {
-            return false;
-        }
-
-        for (var element : roundEnv.getElementsAnnotatedWith(annotationWorker)) {
-            var method = (ExecutableElement) element;
+    public void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        for (var element : annotatedElements.getOrDefault(ANNOTATION_WORKER, List.of())) {
+            var method = (ExecutableElement) element.element();
             if (method.getModifiers().stream().anyMatch(m -> m.equals(Modifier.PRIVATE))) {
                 throw new ProcessingErrorException("@JobWorker method can't be private", method);
             }
@@ -66,8 +61,9 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
 
             final List<Variable> variables = getVariables(method);
             var implSpecBuilder = TypeSpec.classBuilder(NameUtils.generatedType(ownerType, "%s_KoraJobWorker".formatted(method.getSimpleName())))
-                .addModifiers(Modifier.FINAL, Modifier.PUBLIC)
+                .addOriginatingElement(ownerType)
                 .addAnnotation(AnnotationUtils.generated(ZeebeWorkerAnnotationProcessor.class))
+                .addModifiers(Modifier.FINAL, Modifier.PUBLIC)
                 .addAnnotation(CommonClassNames.component)
                 .addSuperinterface(CLASS_KORA_WORKER);
 
@@ -95,8 +91,6 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
                 throw new IllegalStateException(e);
             }
         }
-
-        return false;
     }
 
     private static String getJobType(ExecutableElement method) {

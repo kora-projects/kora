@@ -1,18 +1,23 @@
 package ru.tinkoff.kora.aop.annotation.processor;
 
-import com.squareup.javapoet.AnnotationSpec;
-import com.squareup.javapoet.CodeBlock;
-import com.squareup.javapoet.TypeName;
-import com.squareup.javapoet.TypeSpec;
+import com.squareup.javapoet.*;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public interface KoraAspect {
     Set<String> getSupportedAnnotationTypes();
+
+    default Set<ClassName> getSupportedAnnotationClassNames() {
+        return getSupportedAnnotationTypes()
+            .stream()
+            .map(ClassName::bestGuess)
+            .collect(Collectors.toSet());
+    }
 
     interface FieldFactory {
         default String constructorParam(TypeMirror type, List<AnnotationSpec> annotations) {
