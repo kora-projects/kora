@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.database.annotation.processor.cassandra;
 
 import com.squareup.javapoet.*;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
-import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.database.annotation.processor.DbEntityReadHelper;
 import ru.tinkoff.kora.database.annotation.processor.cassandra.extension.CassandraTypesExtension;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
@@ -55,7 +55,8 @@ public class CassandraEntityGenerator {
         var packageElement = this.elements.getPackageOf(entity.typeElement());
 
         var type = TypeSpec.classBuilder(mapperName)
-            .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", "$S", CassandraTypesExtension.class.getCanonicalName()).build())
+            .addOriginatingElement(entity.typeElement())
+            .addAnnotation(AnnotationUtils.generated(CassandraTypesExtension.class))
             .addSuperinterface(ParameterizedTypeName.get(
                 CassandraTypes.ROW_MAPPER, TypeName.get(entity.typeMirror())
             ))
@@ -88,8 +89,9 @@ public class CassandraEntityGenerator {
         var rowTypeName = TypeName.get(entity.typeMirror());
 
         var type = TypeSpec.classBuilder(mapperName)
+            .addOriginatingElement(entity.typeElement())
+            .addAnnotation(AnnotationUtils.generated(CassandraTypesExtension.class))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", "$S", CassandraTypesExtension.class.getCanonicalName()).build())
             .addSuperinterface(ParameterizedTypeName.get(
                 CassandraTypes.RESULT_SET_MAPPER, rowTypeName
             ));
@@ -128,8 +130,9 @@ public class CassandraEntityGenerator {
         var listType = ParameterizedTypeName.get(ClassName.get(List.class), TypeName.get(entity.typeMirror()));
 
         var type = TypeSpec.classBuilder(mapperName)
+            .addOriginatingElement(entity.typeElement())
+            .addAnnotation(AnnotationUtils.generated(CassandraTypesExtension.class))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", "$S", CassandraTypesExtension.class.getCanonicalName()).build())
             .addSuperinterface(ParameterizedTypeName.get(
                 CassandraTypes.RESULT_SET_MAPPER, listType
             ));

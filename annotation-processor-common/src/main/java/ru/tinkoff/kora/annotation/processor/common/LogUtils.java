@@ -22,6 +22,18 @@ public final class LogUtils {
         }
     }
 
+    public static void logAnnotatedElementsFull(Logger logger, Level level, String prefix, Collection<? extends AbstractKoraProcessor.AnnotatedElement> elements) {
+        if (!elements.isEmpty() && logger.isEnabledForLevel(level)) {
+            String out = elements.stream()
+                .map(AbstractKoraProcessor.AnnotatedElement::element)
+                .map(Object::toString)
+                .collect(Collectors.joining("\n"))
+                .indent(4);
+
+            logger.makeLoggingEventBuilder(level).log(prefix + ":\n{}", out);
+        }
+    }
+
     public static void logElementsSimple(Logger logger, Level level, String prefix, Collection<? extends Element> elements) {
         if (!elements.isEmpty() && logger.isEnabledForLevel(level)) {
             String out = elements.stream()

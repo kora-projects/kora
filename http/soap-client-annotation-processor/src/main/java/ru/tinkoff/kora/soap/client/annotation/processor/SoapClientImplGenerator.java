@@ -51,10 +51,10 @@ public class SoapClientImplGenerator {
 
         var methodPrefix = serviceName.substring(0, 1).toLowerCase() + serviceName.substring(1);
         var type = TypeSpec.interfaceBuilder(moduleName)
-            .addModifiers(Modifier.PUBLIC)
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", "$S", WebServiceClientAnnotationProcessor.class.getCanonicalName()).build())
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.module).build())
             .addOriginatingElement(element)
+            .addAnnotation(AnnotationUtils.generated(WebServiceClientAnnotationProcessor.class))
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(CommonClassNames.module)
             .addMethod(MethodSpec.methodBuilder(methodPrefix + "_SoapConfig")
                 .addAnnotation(TagUtils.makeAnnotationSpec(Set.of(elementType.toString())))
                 .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT).returns(SOAP_CONFIG)
@@ -155,8 +155,9 @@ public class SoapClientImplGenerator {
         }
         var targetNamespace = findAnnotationValue(webService, "targetNamespace").toString();
         var builder = TypeSpec.classBuilder(NameUtils.generatedType(service, "SoapClientImpl"))
+            .addOriginatingElement(service)
+            .addAnnotation(AnnotationUtils.generated(WebServiceClientAnnotationProcessor.class))
             .addModifiers(Modifier.PUBLIC)
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", CodeBlock.of("$S", WebServiceClientAnnotationProcessor.class.getCanonicalName())).build())
             .addField(ParameterizedTypeName.get(ClassName.get(Function.class), soapClasses.soapEnvelopeTypeName(), soapClasses.soapEnvelopeTypeName()), "envelopeProcessor", Modifier.PRIVATE, Modifier.FINAL)
             .addField(soapClasses.jaxbContextTypeName(), "jaxb", Modifier.PRIVATE, Modifier.FINAL)
             .addMethod(MethodSpec.constructorBuilder()

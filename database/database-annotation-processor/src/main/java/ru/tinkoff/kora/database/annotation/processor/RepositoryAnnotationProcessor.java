@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.database.annotation.processor;
 
+import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.JavaFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,8 +13,8 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class RepositoryAnnotationProcessor extends AbstractKoraProcessor {
@@ -21,45 +22,35 @@ public class RepositoryAnnotationProcessor extends AbstractKoraProcessor {
     private static final Logger log = LoggerFactory.getLogger(RepositoryAnnotationProcessor.class);
 
     private RepositoryBuilder repositoryBuilder;
-    private boolean initialized = false;
-    private TypeElement repositoryAnnotation;
 
     @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(DbUtils.REPOSITORY_ANNOTATION.canonicalName());
+    public Set<ClassName> getSupportedAnnotationClassNames() {
+        return Set.of(DbUtils.REPOSITORY_ANNOTATION);
     }
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
-        this.repositoryAnnotation = processingEnv.getElementUtils().getTypeElement(DbUtils.REPOSITORY_ANNOTATION.canonicalName());
-        if (repositoryAnnotation == null) {
-            return;
-        }
-        this.initialized = true;
         this.repositoryBuilder = new RepositoryBuilder(processingEnv);
     }
 
     @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        if (!this.initialized) {
-            return false;
+    public void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        var elements = annotatedElements.getOrDefault(DbUtils.REPOSITORY_ANNOTATION, List.of());
+        if (elements.isEmpty()) {
+            return;
         }
-        var elements = roundEnv.getElementsAnnotatedWith(this.repositoryAnnotation);
-        LogUtils.logElementsFull(log, Level.DEBUG, "Generating Repository for", elements);
+        LogUtils.logAnnotatedElementsFull(log, Level.DEBUG, "Generating Repository for", elements);
         for (var element : elements) {
             try {
-                this.processClass(element);
+                this.processClass(element.element());
             } catch (ProcessingErrorException e) {
                 e.printError(this.processingEnv);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
             }
         }
-        return false;
     }
 
-    private void processClass(Element classElement) throws IOException {
+    private void processClass(Element classElement) {
         if (classElement.getKind() != ElementKind.INTERFACE && (classElement.getKind() == ElementKind.CLASS && !classElement.getModifiers().contains(Modifier.ABSTRACT))) {
             throw new ProcessingErrorException(List.of(new ProcessingError("@Repository is only applicable to interfaces and abstract classes", classElement)));
         }

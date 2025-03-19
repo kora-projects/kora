@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.database.annotation.processor.cassandra;
 
+import com.squareup.javapoet.ClassName;
 import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
@@ -9,14 +10,16 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class CassandraEntityAnnotationProcessor extends AbstractKoraProcessor {
     private CassandraEntityGenerator generator;
 
     @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(CassandraTypes.CASSANDRA_ENTITY.canonicalName());
+    public Set<ClassName> getSupportedAnnotationClassNames() {
+        return Set.of(CassandraTypes.CASSANDRA_ENTITY);
     }
 
     @Override
@@ -26,9 +29,10 @@ public class CassandraEntityAnnotationProcessor extends AbstractKoraProcessor {
     }
 
     @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        for (var annotation : annotations) {
-            for (var element : roundEnv.getElementsAnnotatedWith(annotation)) {
+    public void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        for (var annotatedList : annotatedElements.values()) {
+            for (var annotated : annotatedList) {
+                var element = annotated.element();
                 if (element.getKind() != ElementKind.RECORD && element.getKind() != ElementKind.CLASS) {
                     this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "@EntityJdbc only works on records and java bean like classes");
                     continue;
@@ -52,6 +56,5 @@ public class CassandraEntityAnnotationProcessor extends AbstractKoraProcessor {
                 }
             }
         }
-        return false;
     }
 }

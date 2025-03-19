@@ -416,6 +416,7 @@ class KoraAppProcessorTest {
         var appClazz = classLoader.loadClass(AppWithApp.class.getName() + "Graph");
         assertThat(appClazz).isNotNull();
 
+        @SuppressWarnings("unchecked")
         var constructors = (Constructor<? extends Supplier<? extends ApplicationGraphDraw>>[]) appClazz.getConstructors();
         ApplicationGraphDraw graphDraw = constructors[0].newInstance().get();
         Assertions.assertThat(graphDraw.getNodes().size()).isEqualTo(4);

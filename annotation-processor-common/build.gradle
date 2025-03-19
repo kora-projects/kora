@@ -4,16 +4,15 @@ plugins {
 
 
 dependencies {
-    api project(':common')
-
     api libs.javapoet
-    implementation libs.slf4j.api
+
+    api libs.slf4j.api
     implementation(libs.logback.classic) {
         exclude group: 'org.slf4j', module: 'slf4j-api'
     }
 
     testFixturesApi project(':aop:aop-annotation-processor')
-    testFixturesImplementation project(':common')
+    testFixturesApi project(':common')
     testFixturesImplementation libs.reactor.core
 
     testFixturesImplementation libs.classgraph

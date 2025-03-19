@@ -6,8 +6,6 @@ import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
-import ru.tinkoff.kora.common.naming.NameConverter;
-import ru.tinkoff.kora.common.naming.SnakeCaseNameConverter;
 import ru.tinkoff.kora.database.annotation.processor.jdbc.JdbcNativeType;
 import ru.tinkoff.kora.database.annotation.processor.jdbc.JdbcNativeTypes;
 
@@ -58,7 +56,7 @@ final class QueryMacrosParser {
     private List<Field> getPathField(ExecutableElement method, DeclaredType target, String rootPath, String columnPrefix) {
         final JdbcNativeType nativeType = JdbcNativeTypes.findNativeType(TypeName.get(target));
         if (nativeType != null) {
-            throw new ProcessingErrorException("Can't process argument '" + rootPath  +"' as macros cause it is Native Type: " + target, method);
+            throw new ProcessingErrorException("Can't process argument '" + rootPath + "' as macros cause it is Native Type: " + target, method);
         }
 
         var result = new ArrayList<Field>();
@@ -90,7 +88,7 @@ final class QueryMacrosParser {
         var column = AnnotationUtils.findAnnotation(field, DbUtils.COLUMN_ANNOTATION);
         var columnName = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(column, "value");
         if (columnName == null || columnName.isEmpty()) {
-            var nameConverter = CommonUtils.getNameConverter(SnakeCaseNameConverter.INSTANCE, ((TypeElement) target.asElement()));
+            var nameConverter = CommonUtils.getNameConverter(EntityUtils.SNAKE_CASE_NAME_CONVERTER, ((TypeElement) target.asElement()));
             return columnPrefix.isBlank()
                 ? nameConverter.convert(field.getSimpleName().toString())
                 : columnPrefix + nameConverter.convert(field.getSimpleName().toString());
@@ -180,8 +178,8 @@ final class QueryMacrosParser {
                 .findFirst()
                 .map(a -> AnnotationUtils.<String>parseAnnotationValueWithoutDefault(a, "value"))
                 .orElseGet(() -> {
-                    final NameConverter nameConverter = Optional.ofNullable(CommonUtils.getNameConverter(((TypeElement) target.type().asElement())))
-                        .orElseGet(SnakeCaseNameConverter::new);
+                    var nameConverter = Optional.ofNullable(CommonUtils.getNameConverter(((TypeElement) target.type().asElement())))
+                        .orElseGet(() -> EntityUtils.SNAKE_CASE_NAME_CONVERTER);
 
                     return nameConverter.convert(target.type().asElement().getSimpleName().toString());
                 });

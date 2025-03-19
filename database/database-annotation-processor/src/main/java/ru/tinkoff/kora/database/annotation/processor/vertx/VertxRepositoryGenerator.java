@@ -3,7 +3,6 @@ package ru.tinkoff.kora.database.annotation.processor.vertx;
 import com.squareup.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
-import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
 import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
 import ru.tinkoff.kora.database.annotation.processor.RepositoryGenerator;
@@ -22,35 +21,21 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.*;
-import java.util.concurrent.CompletionStage;
 
 public final class VertxRepositoryGenerator implements RepositoryGenerator {
-    private final TypeMirror repositoryInterface;
     private final Types types;
     private final Elements elements;
     private final Filer filer;
-    private final DeclaredType completionStageType;
 
     public VertxRepositoryGenerator(ProcessingEnvironment processingEnv) {
-        var repository = processingEnv.getElementUtils().getTypeElement(VertxTypes.REPOSITORY.canonicalName());
-        if (repository == null) {
-            this.repositoryInterface = null;
-        } else {
-            this.repositoryInterface = repository.asType();
-        }
         this.types = processingEnv.getTypeUtils();
         this.elements = processingEnv.getElementUtils();
         this.filer = processingEnv.getFiler();
-        this.completionStageType = this.types.getDeclaredType(
-            this.elements.getTypeElement(CompletionStage.class.getCanonicalName()),
-            this.types.getWildcardType(null, null)
-        );
     }
 
     @Override
-    @Nullable
-    public TypeMirror repositoryInterface() {
-        return this.repositoryInterface;
+    public ClassName repositoryInterface() {
+        return VertxTypes.REPOSITORY;
     }
 
     @Override
@@ -271,7 +256,7 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
 
         var executorTag = DbUtils.getTag(repositoryElement);
         if (executorTag != null) {
-            constructorBuilder.addParameter(ParameterSpec.builder(VertxTypes.CONNECTION_FACTORY, "_connectionFactory").addAnnotation(AnnotationSpec.builder(Tag.class).addMember("value", executorTag).build()).build());
+            constructorBuilder.addParameter(ParameterSpec.builder(VertxTypes.CONNECTION_FACTORY, "_connectionFactory").addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value", executorTag).build()).build());
         } else {
             constructorBuilder.addParameter(VertxTypes.CONNECTION_FACTORY, "_connectionFactory");
         }
@@ -279,7 +264,7 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
     }
 
     private boolean isCompletionStage(TypeMirror returnType) {
-        return this.types.isAssignable(returnType, this.completionStageType);
+        return CommonUtils.isFuture(returnType);
     }
 
     private boolean isVoid(TypeMirror tm) {

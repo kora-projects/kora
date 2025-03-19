@@ -1,21 +1,14 @@
 package ru.tinkoff.kora.scheduling.annotation.processor;
 
 import com.squareup.javapoet.*;
-import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
-import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
-import ru.tinkoff.kora.annotation.processor.common.NameUtils;
-import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
-import ru.tinkoff.kora.common.annotation.Generated;
+import ru.tinkoff.kora.annotation.processor.common.*;
 
-import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
-import javax.lang.model.util.Types;
-import java.io.IOException;
 import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
@@ -32,17 +25,15 @@ public class QuartzSchedulingGenerator {
     private static final ClassName schedulerClassName = ClassName.get("org.quartz", "Scheduler");
     private static final ClassName triggerBuilderClassName = ClassName.get("org.quartz", "TriggerBuilder");
     private static final ClassName cronScheduleBuilderClassName = ClassName.get("org.quartz", "CronScheduleBuilder");
-    private final Types types;
     private final Elements elements;
-    private final Filer filer;
+    private final ProcessingEnvironment processingEnv;
 
     public QuartzSchedulingGenerator(ProcessingEnvironment processingEnv) {
-        this.types = processingEnv.getTypeUtils();
         this.elements = processingEnv.getElementUtils();
-        this.filer = processingEnv.getFiler();
+        this.processingEnv = processingEnv;
     }
 
-    public void generate(TypeElement type, ExecutableElement method, TypeSpec.Builder module, SchedulingTrigger trigger) throws IOException {
+    public void generate(TypeElement type, ExecutableElement method, TypeSpec.Builder module, SchedulingTrigger trigger) {
         var jobClassName = this.generateJobClass(type, method);
         var typeMirror = type.asType();
 
@@ -126,13 +117,14 @@ public class QuartzSchedulingGenerator {
         module.addMethod(component.build());
     }
 
-    private ClassName generateCronConfigRecord(TypeElement type, ExecutableElement method, String defaultCron) throws IOException {
+    private ClassName generateCronConfigRecord(TypeElement type, ExecutableElement method, String defaultCron) {
         var configRecordName = NameUtils.getOuterClassesAsPrefix(method) + "CronConfig";
         var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
 
         var config = TypeSpec.interfaceBuilder(configRecordName)
+            .addOriginatingElement(method)
+            .addAnnotation(AnnotationUtils.generated(JdkSchedulingGenerator.class))
             .addModifiers(Modifier.PUBLIC)
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", "$S", JdkSchedulingGenerator.class.getCanonicalName()).build())
             .addAnnotation(CommonClassNames.configValueExtractorAnnotation)
             .addMethod(MethodSpec.methodBuilder("telemetry")
                 .returns(CommonClassNames.telemetryConfig)
@@ -154,13 +146,13 @@ public class QuartzSchedulingGenerator {
                 .build()
             );
         }
-        JavaFile.builder(packageName, config.build()).build().writeTo(this.filer);
+        CommonUtils.safeWriteTo(this.processingEnv, JavaFile.builder(packageName, config.build()).build());
 
         return ClassName.get(packageName, configRecordName);
     }
 
 
-    private ClassName generateJobClass(TypeElement type, ExecutableElement method) throws IOException {
+    private ClassName generateJobClass(TypeElement type, ExecutableElement method) {
         var className = NameUtils.generatedType(type, method.getSimpleName() + "_Job");
         var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
         var typeMirror = type.asType();
@@ -169,9 +161,8 @@ public class QuartzSchedulingGenerator {
             : CodeBlock.of("object::$L", method.getSimpleName());
 
         var typeSpec = TypeSpec.classBuilder(className)
-            .addAnnotation(AnnotationSpec.builder(Generated.class)
-                .addMember("value", CodeBlock.of("$S", QuartzSchedulingGenerator.class.getCanonicalName()))
-                .build())
+            .addOriginatingElement(method)
+            .addAnnotation(AnnotationUtils.generated(QuartzSchedulingGenerator.class))
             .superclass(koraQuartzJobClassName)
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addField(TypeName.get(typeMirror), "object", Modifier.PRIVATE, Modifier.FINAL)
@@ -186,7 +177,7 @@ public class QuartzSchedulingGenerator {
             .build();
 
         var javaFile = JavaFile.builder(packageName, typeSpec).build();
-        javaFile.writeTo(this.filer);
+        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
 
         return ClassName.get(packageName, className);
     }

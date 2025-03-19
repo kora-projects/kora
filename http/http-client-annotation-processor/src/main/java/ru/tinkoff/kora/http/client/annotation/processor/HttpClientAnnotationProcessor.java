@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.http.client.annotation.processor;
 
+import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.JavaFile;
 import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
@@ -9,49 +10,33 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
-
-import static ru.tinkoff.kora.http.client.annotation.processor.HttpClientClassNames.httpClientAnnotation;
 
 public class HttpClientAnnotationProcessor extends AbstractKoraProcessor {
     private ClientClassGenerator clientGenerator;
     private ConfigClassGenerator configGenerator;
-    private boolean initialized;
     private ConfigModuleGenerator configModuleGenerator;
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
-        var httpClient = processingEnv.getElementUtils().getTypeElement(httpClientAnnotation.canonicalName());
-        if (httpClient == null) {
-            return;
-        }
-        this.initialized = true;
         this.clientGenerator = new ClientClassGenerator(processingEnv);
         this.configGenerator = new ConfigClassGenerator();
         this.configModuleGenerator = new ConfigModuleGenerator(processingEnv);
     }
 
     @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(httpClientAnnotation.canonicalName());
+    public Set<ClassName> getSupportedAnnotationClassNames() {
+        return Set.of(HttpClientClassNames.httpClientAnnotation);
     }
 
     @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        if (!this.initialized) {
-            return false;
-        }
-        if (roundEnv.processingOver()) {
-            return false;
-        }
-        var elements = annotations.stream()
-            .filter(a -> a.getQualifiedName().contentEquals(httpClientAnnotation.canonicalName()))
-            .flatMap(a -> roundEnv.getElementsAnnotatedWith(a).stream())
-            .collect(Collectors.toSet());
-
-        for (var httpClient : elements) {
+    public void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        var elements = annotatedElements.getOrDefault(HttpClientClassNames.httpClientAnnotation, List.of());
+        for (var annotated : elements) {
+            var httpClient = annotated.element();
             if (httpClient.getKind() != ElementKind.INTERFACE) {
                 continue;
             }
@@ -59,12 +44,9 @@ public class HttpClientAnnotationProcessor extends AbstractKoraProcessor {
             try {
                 this.generateClient(typeElement);
             } catch (ProcessingErrorException e) {
-                throw e;
-            } catch (Exception exception) {
-                exception.printStackTrace();
+                e.printError(this.processingEnv);
             }
         }
-        return !elements.isEmpty();
     }
 
     private void generateClient(TypeElement element) {

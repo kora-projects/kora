@@ -36,6 +36,11 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
     }
 
     @Override
+    public Set<ClassName> getSupportedAnnotationClassNames() {
+        return Set.of(ANNOTATION_CACHEABLE, ANNOTATION_CACHEABLES);
+    }
+
+    @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         if (MethodUtils.isFlux(method)) {
             throw new ProcessingErrorException("@Cacheable can't be applied for types assignable from " + CommonClassNames.flux, method);

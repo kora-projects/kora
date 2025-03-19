@@ -1,12 +1,8 @@
 package ru.tinkoff.kora.annotation.processor.common;
 
 import com.squareup.javapoet.*;
+import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.common.AopAnnotation;
-import ru.tinkoff.kora.common.Mapping;
-import ru.tinkoff.kora.common.NamingStrategy;
-import ru.tinkoff.kora.common.Tag;
-import ru.tinkoff.kora.common.naming.NameConverter;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.AnnotatedConstruct;
@@ -14,11 +10,11 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 import javax.lang.model.util.Types;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class CommonUtils {
     public static String decapitalize(String s) {
@@ -233,24 +229,19 @@ public class CommonUtils {
             }
         }
         tags.add("}");
-        return AnnotationSpec.builder(Tag.class).addMember("value", tags.build()).build();
+        return AnnotationSpec.builder(CommonClassNames.tag).addMember("value", tags.build()).build();
     }
 
     public static MappersData parseMapping(Element element) {
         var tag = TagUtils.parseTagValue(element);
-        if (element.getAnnotationsByType(Mapping.class).length == 0 && tag.isEmpty()) {
+        var mappings = AnnotationUtils.findAnnotations(element, CommonClassNames.mapping, CommonClassNames.mappings);
+
+        if (mappings.isEmpty() && tag.isEmpty()) {
             return new MappersData(null, tag);
         }
-        var mapping = Stream.of(element.getAnnotationsByType(Mapping.class))
-            .map(m -> {
-                try {
-                    m.value();
-                    throw new IllegalStateException();
-                } catch (MirroredTypeException e) {
-                    return e.getTypeMirror();
-                }
-            })
-            .collect(Collectors.toList());
+        var mapping = mappings.stream()
+            .map(m -> AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(m, "value"))
+            .toList();
 
         return new MappersData(mapping, tag);
     }
@@ -277,6 +268,11 @@ public class CommonUtils {
         return null;
     }
 
+    public interface NameConverter {
+        @Nonnull
+        String convert(@Nonnull String originalName);
+    }
+
     public static NameConverter getNameConverter(NameConverter defaultValue, TypeElement typeElement) {
         var converter = getNameConverter(typeElement);
         if (converter != null) {
@@ -288,19 +284,23 @@ public class CommonUtils {
 
     @Nullable
     public static NameConverter getNameConverter(TypeElement typeElement) {
-        var namingStrategy = typeElement.getAnnotation(NamingStrategy.class);
-        NameConverter nameConverter = null;
-        if (namingStrategy != null) {
-            var namingStrategyClass = getNamingStrategyConverterClass(typeElement);
-            if (namingStrategyClass != null) {
-                try {
-                    nameConverter = (NameConverter) namingStrategyClass.getConstructor().newInstance();
-                } catch (Exception e) {
-                    throw new ProcessingErrorException("Error on calling name converter constructor " + typeElement, typeElement);
-                }
-            }
+        var namingStrategyClass = getNamingStrategyConverterClass(typeElement);
+        if (namingStrategyClass == null) {
+            return null;
         }
-        return nameConverter;
+        try {
+            var instance = namingStrategyClass.getConstructor().newInstance();
+            var method = instance.getClass().getMethod("convert", String.class);
+            return originalName -> {
+                try {
+                    return (String) Objects.requireNonNull(method.invoke(instance, originalName));
+                } catch (IllegalAccessException | InvocationTargetException e) {
+                    throw new RuntimeException(e);
+                }
+            };
+        } catch (Exception e) {
+            throw new ProcessingErrorException("Error on calling name converter constructor " + typeElement + ": " + e.getMessage(), typeElement);
+        }
     }
 
     public static TypeSpec.Builder extendsKeepAop(TypeElement type, String newName) {
@@ -427,7 +427,7 @@ public class CommonUtils {
     }
 
     private static boolean isAopAnnotation(AnnotationMirror am) {
-        return am.getAnnotationType().asElement().getAnnotation(AopAnnotation.class) != null;
+        return AnnotationUtils.isAnnotationPresent(am.getAnnotationType().asElement(), CommonClassNames.aopAnnotation);
     }
 
     public static boolean isVoid(TypeMirror returnType) {

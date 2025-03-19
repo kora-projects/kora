@@ -1,11 +1,11 @@
 package ru.tinkoff.kora.logging.aspect;
 
-import com.squareup.javapoet.AnnotationSpec;
-import com.squareup.javapoet.CodeBlock;
-import com.squareup.javapoet.ParameterizedTypeName;
-import com.squareup.javapoet.TypeName;
+import com.squareup.javapoet.*;
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.annotation.processor.common.*;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
+import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
 import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -38,6 +38,11 @@ public class LogAspect implements KoraAspect {
     @Override
     public Set<String> getSupportedAnnotationTypes() {
         return Set.of(log.canonicalName(), logIn.canonicalName(), logOut.canonicalName());
+    }
+
+    @Override
+    public Set<ClassName> getSupportedAnnotationClassNames() {
+        return Set.of(log, logIn, logOut);
     }
 
     @Override

@@ -19,7 +19,7 @@ import static com.squareup.javapoet.CodeBlock.joining;
 
 public class CircuitBreakerKoraAspect implements KoraAspect {
 
-    private static final String ANNOTATION_TYPE = "ru.tinkoff.kora.resilient.circuitbreaker.annotation.CircuitBreaker";
+    private static final ClassName ANNOTATION_TYPE = ClassName.get("ru.tinkoff.kora.resilient.circuitbreaker.annotation", "CircuitBreaker");
     private static final ClassName PERMITTED_EXCEPTION = ClassName.get("ru.tinkoff.kora.resilient.circuitbreaker", "CallNotPermittedException");
 
     private final ProcessingEnvironment env;
@@ -30,12 +30,17 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
+        return Set.of(ANNOTATION_TYPE.canonicalName());
+    }
+
+    @Override
+    public Set<ClassName> getSupportedAnnotationClassNames() {
         return Set.of(ANNOTATION_TYPE);
     }
 
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
-        final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream().filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE)).findFirst();
+        final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream().filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE.canonicalName())).findFirst();
         final String circuitBreakerName = mirror.flatMap(a -> a.getElementValues().entrySet().stream()
                 .filter(e -> e.getKey().getSimpleName().contentEquals("value"))
                 .map(e -> String.valueOf(e.getValue().getValue())).findFirst())

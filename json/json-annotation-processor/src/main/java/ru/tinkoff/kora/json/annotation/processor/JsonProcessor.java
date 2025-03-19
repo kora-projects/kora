@@ -1,8 +1,6 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
 import com.squareup.javapoet.JavaFile;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ComparableTypeMirror;
 import ru.tinkoff.kora.annotation.processor.common.SealedTypeUtils;
@@ -25,8 +23,6 @@ import javax.lang.model.util.Types;
 import java.util.Objects;
 
 public class JsonProcessor {
-    private static final Logger log = LoggerFactory.getLogger(JsonProcessor.class);
-
     private final ProcessingEnvironment processingEnv;
     private final Elements elements;
     private final Types types;

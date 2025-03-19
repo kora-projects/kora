@@ -2,8 +2,6 @@ package ru.tinkoff.kora.s3.client.annotation.processor;
 
 import com.squareup.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.*;
-import ru.tinkoff.kora.common.Component;
-import ru.tinkoff.kora.common.Module;
 import ru.tinkoff.kora.s3.client.annotation.processor.S3Operation.ImplType;
 import ru.tinkoff.kora.s3.client.annotation.processor.S3Operation.OperationType;
 
@@ -13,7 +11,6 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeMirror;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -85,18 +82,14 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
     }
 
     @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(ANNOTATION_CLIENT.canonicalName());
+    public Set<ClassName> getSupportedAnnotationClassNames() {
+        return Set.of(ANNOTATION_CLIENT);
     }
 
     @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        var annotation = processingEnv.getElementUtils().getTypeElement(ANNOTATION_CLIENT.canonicalName());
-        if (annotation == null) {
-            return false;
-        }
-
-        for (var element : roundEnv.getElementsAnnotatedWith(annotation)) {
+    public void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        for (var annotated : annotatedElements.getOrDefault(ANNOTATION_CLIENT, List.of())) {
+            var element = annotated.element();
             if (!element.getKind().isInterface()) {
                 throw new ProcessingErrorException("@S3.Client annotation is intended to be used on interfaces, but was: " + element.getKind().name(), element);
             }
@@ -104,26 +97,20 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
             var s3client = (TypeElement) element;
             var packageName = getPackage(s3client);
 
-            try {
-                TypeSpec spec = generateClient(s3client);
-                var implFile = JavaFile.builder(packageName, spec).build();
-                implFile.writeTo(processingEnv.getFiler());
+            TypeSpec spec = generateClient(s3client);
+            var implFile = JavaFile.builder(packageName, spec).build();
+            CommonUtils.safeWriteTo(processingEnv, implFile);
 
-                TypeSpec configSpec = generateClientConfig(s3client);
-                var configFile = JavaFile.builder(packageName, configSpec).build();
-                configFile.writeTo(processingEnv.getFiler());
-            } catch (IOException e) {
-                throw new IllegalStateException(e);
-            }
+            TypeSpec configSpec = generateClientConfig(s3client);
+            var configFile = JavaFile.builder(packageName, configSpec).build();
+            CommonUtils.safeWriteTo(processingEnv, configFile);
         }
-
-        return false;
     }
 
     private TypeSpec generateClient(TypeElement s3client) {
         var implSpecBuilder = CommonUtils.extendsKeepAop(s3client, NameUtils.generatedType(s3client, "Impl"))
             .addAnnotation(AnnotationUtils.generated(S3ClientAnnotationProcessor.class))
-            .addAnnotation(Component.class);
+            .addAnnotation(CommonClassNames.component);
 
         final Set<Signature> constructed = new HashSet<>();
         var constructorBuilder = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
@@ -205,10 +192,10 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
 
         var extractorClass = ParameterizedTypeName.get(CommonClassNames.configValueExtractor, CLASS_CLIENT_CONFIG);
         return TypeSpec.interfaceBuilder(NameUtils.generatedType(s3client, "ClientConfigModule"))
-            .addModifiers(Modifier.PUBLIC)
-            .addAnnotation(AnnotationUtils.generated(S3ClientAnnotationProcessor.class))
-            .addAnnotation(AnnotationSpec.builder(Module.class).build())
             .addOriginatingElement(s3client)
+            .addAnnotation(AnnotationUtils.generated(S3ClientAnnotationProcessor.class))
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(CommonClassNames.module)
             .addMethod(MethodSpec.methodBuilder("clientConfig")
                 .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
                 .addAnnotation(TagUtils.makeAnnotationSpecForTypes(TypeName.get(s3client.asType())))
@@ -710,8 +697,8 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
             .filter(p -> {
                 TypeName bodyType = ClassName.get(p.asType());
                 return !CLASS_S3_BODY.equals(bodyType)
-                       && !ClassName.get(ByteBuffer.class).equals(bodyType)
-                       && !ArrayTypeName.get(byte[].class).equals(bodyType);
+                    && !ClassName.get(ByteBuffer.class).equals(bodyType)
+                    && !ArrayTypeName.get(byte[].class).equals(bodyType);
             })
             .toList();
 
@@ -1129,7 +1116,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                 .filter(p -> {
                     TypeName bodyType = ClassName.get(p.asType());
                     return !ClassName.get(ByteBuffer.class).equals(bodyType)
-                           && !ArrayTypeName.get(byte[].class).equals(bodyType);
+                        && !ArrayTypeName.get(byte[].class).equals(bodyType);
                 })
                 .filter(p -> p.getSimpleName().contentEquals(paramName))
                 .findFirst()

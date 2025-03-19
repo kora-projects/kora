@@ -5,6 +5,7 @@ import jakarta.annotation.Nullable;
 
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
 
 public final class TypeUtils {
     @Nullable
@@ -22,10 +23,13 @@ public final class TypeUtils {
                 return supertype;
             }
         }
-        var supertype = (DeclaredType) typeElement.getSuperclass();
-        var supertypeResult = findSupertype(supertype, expectedSupertype);
-        if (supertypeResult != null) {
-            return supertype;
+        var supertype = typeElement.getSuperclass();
+        if (supertype.getKind() == TypeKind.DECLARED) {
+            var dt = (DeclaredType) supertype;
+            var supertypeResult = findSupertype(dt, expectedSupertype);
+            if (supertypeResult != null) {
+                return dt;
+            }
         }
         return null;
     }

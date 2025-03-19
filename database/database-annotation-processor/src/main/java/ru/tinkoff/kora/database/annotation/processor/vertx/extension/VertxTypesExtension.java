@@ -1,10 +1,11 @@
 package ru.tinkoff.kora.database.annotation.processor.vertx.extension;
 
 import com.squareup.javapoet.*;
+import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.GenericTypeResolver;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
-import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.database.annotation.processor.DbEntityReadHelper;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
 import ru.tinkoff.kora.database.annotation.processor.vertx.VertxNativeTypes;
@@ -12,7 +13,6 @@ import ru.tinkoff.kora.database.annotation.processor.vertx.VertxTypes;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.KoraExtension;
 
-import jakarta.annotation.Nullable;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -98,7 +98,7 @@ public class VertxTypesExtension implements KoraExtension {
                 return ExtensionResult.fromExecutable(constructors.get(0));
             }
             var type = TypeSpec.classBuilder(mapperName)
-                .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", "$S", VertxTypesExtension.class.getCanonicalName()).build())
+                .addAnnotation(AnnotationUtils.generated(VertxTypesExtension.class))
                 .addSuperinterface(ParameterizedTypeName.get(
                     VertxTypes.ROW_MAPPER, TypeName.get(entity.typeMirror())
                 ))
@@ -184,7 +184,7 @@ public class VertxTypesExtension implements KoraExtension {
             var constructor = MethodSpec.constructorBuilder()
                 .addModifiers(Modifier.PUBLIC);
             var type = TypeSpec.classBuilder(mapperName)
-                .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", "$S", VertxTypesExtension.class.getCanonicalName()).build())
+                .addAnnotation(AnnotationUtils.generated(VertxTypesExtension.class))
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addSuperinterface(ParameterizedTypeName.get(
                     VertxTypes.ROW_SET_MAPPER, rowType
@@ -229,7 +229,7 @@ public class VertxTypesExtension implements KoraExtension {
                 .addModifiers(Modifier.PUBLIC);
             var type = TypeSpec.classBuilder(mapperName)
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", "$S", VertxTypesExtension.class.getCanonicalName()).build())
+                .addAnnotation(AnnotationUtils.generated(VertxTypesExtension.class))
                 .addSuperinterface(ParameterizedTypeName.get(
                     VertxTypes.ROW_SET_MAPPER, returnType
                 ));

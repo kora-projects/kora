@@ -3,8 +3,6 @@ package ru.tinkoff.kora.database.annotation.processor.r2dbc;
 import com.squareup.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
-import ru.tinkoff.kora.common.Context;
-import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
 import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
 import ru.tinkoff.kora.database.annotation.processor.RepositoryGenerator;
@@ -28,29 +26,20 @@ import java.util.Objects;
 import java.util.Optional;
 
 public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
-    private final TypeMirror repositoryInterface;
     private final Types types;
     private final Elements elements;
     private final Filer filer;
 
     public R2dbcRepositoryGenerator(ProcessingEnvironment processingEnv) {
-        var repository = processingEnv.getElementUtils().getTypeElement(R2dbcTypes.R2DBC_REPOSITORY.canonicalName());
-        if (repository == null) {
-            this.repositoryInterface = null;
-        } else {
-            this.repositoryInterface = repository.asType();
-        }
         this.types = processingEnv.getTypeUtils();
         this.elements = processingEnv.getElementUtils();
         this.filer = processingEnv.getFiler();
     }
 
     @Nullable
-    @Override
-    public TypeMirror repositoryInterface() {
-        return this.repositoryInterface;
+    public ClassName repositoryInterface() {
+        return R2dbcTypes.R2DBC_REPOSITORY;
     }
-
 
     @Override
     public TypeSpec generate(TypeElement repositoryElement, TypeSpec.Builder type, MethodSpec.Builder constructor) {
@@ -120,7 +109,7 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
         b.addStatement("var _ctxCurrent = $T.current(_reactorCtx)", CommonClassNames.contextReactor);
         b.addStatement("var _ctxFork = _ctxCurrent.fork()");
         b.addStatement("_ctxFork.inject()");
-        b.addCode("var _telemetry = this._connectionFactory.telemetry().createContext(_ctxFork, _query);\n", Context.class);
+        b.addCode("var _telemetry = this._connectionFactory.telemetry().createContext(_ctxFork, _query);\n", CommonClassNames.context);
         var connectionName = "_con";
         if (connectionParameter == null) {
             b.addCode("return this._connectionFactory.withConnection$L(_con -> {$>\n", isFlux ? "Flux" : "");
@@ -269,7 +258,7 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
 
         var executorTag = DbUtils.getTag(repositoryElement);
         if (executorTag != null) {
-            constructorBuilder.addParameter(ParameterSpec.builder(R2dbcTypes.CONNECTION_FACTORY, "_connectionFactory").addAnnotation(AnnotationSpec.builder(Tag.class).addMember("value", executorTag).build()).build());
+            constructorBuilder.addParameter(ParameterSpec.builder(R2dbcTypes.CONNECTION_FACTORY, "_connectionFactory").addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value", executorTag).build()).build());
         } else {
             constructorBuilder.addParameter(R2dbcTypes.CONNECTION_FACTORY, "_connectionFactory");
         }
