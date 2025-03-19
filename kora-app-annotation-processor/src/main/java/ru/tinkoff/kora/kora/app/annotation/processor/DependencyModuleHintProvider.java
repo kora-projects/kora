@@ -36,7 +36,7 @@ public class DependencyModuleHintProvider {
 
         record SimpleHint(TypeMirror type, String artifact, String module) implements DependencyModuleHintProvider.Hint {
             public String message() {
-                return "Missing component of type: %s can be provided by kora module, you may forgot to plug it\nModule class: %s \nArtifact dependency: %s\n".formatted(
+                return "Missing component of type %s which can be provided by kora module, you may forgot to plug it\nModule class: %s \nArtifact dependency: %s\n".formatted(
                     type, module, artifact
                 );
             }
@@ -45,11 +45,11 @@ public class DependencyModuleHintProvider {
         record HintWithTag(TypeMirror type, String artifact, String module, Set<String> tags) implements DependencyModuleHintProvider.Hint {
             public String message() {
                 if (tags.equals(Set.of("ru.tinkoff.kora.json.common.annotation.Json"))) {
-                    return "Missing component of type: %s can be provided by kora module, you may forgot to plug it\nModule class: %s (required tag: `@Json`)\nArtifact dependency: %s\n".formatted(
+                    return "Missing component of type %s which can be provided by kora module, you may forgot to plug it\nModule class: %s (required tag: `@Json`)\nArtifact dependency: %s\n".formatted(
                         type, module, artifact
                     );
                 } else {
-                    return "Missing component of type: %s can be provided by kora module, you may forgot to plug it\nModule class: %s (required tags: `@Tag(%s)`)\nArtifact dependency: %s\n".formatted(
+                    return "Missing component of type %s which can be provided by kora module, you may forgot to plug it\nModule class: %s (required tags: `@Tag(%s)`)\nArtifact dependency: %s\n".formatted(
                         type, module, tags.stream().map(s -> s + ".class").collect(Collectors.joining(", ", "{", "}")), artifact
                     );
                 }

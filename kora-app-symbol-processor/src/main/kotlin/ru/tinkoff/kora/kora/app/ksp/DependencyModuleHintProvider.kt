@@ -29,12 +29,12 @@ class DependencyModuleHintProvider(private val resolver: Resolver) {
     ) {
         fun message(): String {
             if (tags.isEmpty()) {
-                return "Missing component of type: $type can be provided by kora module, you may forgot to plug it\nModule class: $module \nArtifact dependency: $artifact\n"
+                return "Missing component of type $type which can be provided by kora module, you may forgot to plug it\nModule class: $module \nArtifact dependency: $artifact\n"
             } else if (tags == setOf("ru.tinkoff.kora.json.common.annotation.Json")) {
-                return "Missing component of type: $type can be provided by kora module, you may forgot to plug it\nModule class: $module (required tag: `@Json`)\nArtifact dependency: $artifact\n"
+                return "Missing component of type $type which can be provided by kora module, you may forgot to plug it\nModule class: $module (required tag: `@Json`)\nArtifact dependency: $artifact\n"
             } else {
                 val tagsAsStr = tags.joinToString(", ", "{", "}") { "$it.class" }
-                return "Missing component of type: $type can be provided by kora module, you may forgot to plug it\nModule class: $module (required tags: `@Tag($tagsAsStr)`)\nArtifact dependency: $artifact\n"
+                return "Missing component of type $type which can be provided by kora module, you may forgot to plug it\nModule class: $module (required tags: `@Tag($tagsAsStr)`)\nArtifact dependency: $artifact\n"
             }
         }
     }
