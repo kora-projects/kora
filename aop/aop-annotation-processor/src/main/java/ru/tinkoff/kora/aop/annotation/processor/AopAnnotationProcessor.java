@@ -3,7 +3,6 @@ package ru.tinkoff.kora.aop.annotation.processor;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.TypeSpec;
-import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
@@ -21,19 +20,10 @@ import java.util.stream.Collectors;
 
 public class AopAnnotationProcessor extends AbstractKoraProcessor {
     private static final Logger log = LoggerFactory.getLogger(AopAnnotationProcessor.class);
-    private final List<KoraAspect> aspects;
-    private final Set<ClassName> annotations;
-    private final AopProcessor aopProcessor;
+    private Set<ClassName> annotations;
+    private AopProcessor aopProcessor;
 
     public AopAnnotationProcessor() {
-        this.aspects = ServiceLoader.load(KoraAspectFactory.class, this.getClass().getClassLoader()).stream()
-            .map(ServiceLoader.Provider::get)
-            .<KoraAspect>mapMulti((factory, sink) -> factory.create(processingEnv).ifPresent(sink))
-            .toList();
-        this.annotations = this.aspects.stream()
-            .flatMap(a -> a.getSupportedAnnotationClassNames().stream())
-            .collect(Collectors.toSet());
-        this.aopProcessor = new AopProcessor(this.types, this.elements, this.aspects);
     }
 
     @Override
@@ -44,36 +34,43 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
-        if (this.aspects.isEmpty()) {
+        var aspects = ServiceLoader.load(KoraAspectFactory.class, this.getClass().getClassLoader()).stream()
+            .map(ServiceLoader.Provider::get)
+            .<KoraAspect>mapMulti((factory, sink) -> factory.create(processingEnv).ifPresent(sink))
+            .toList();
+        this.annotations = aspects.stream()
+            .flatMap(a -> a.getSupportedAnnotationClassNames().stream())
+            .collect(Collectors.toSet());
+        if (aspects.isEmpty()) {
             return;
         }
+        this.aopProcessor = new AopProcessor(this.types, this.elements, aspects);
 
         if (log.isDebugEnabled()) {
-            var aspects = this.aspects.stream()
+            var aspectsStr = aspects.stream()
                 .map(Object::getClass)
                 .map(Class::getCanonicalName)
                 .collect(Collectors.joining("\n\t", "\t", "")).indent(4);
-            log.debug("Discovered aspects:\n{}", aspects);
+            log.debug("Discovered aspects:\n{}", aspectsStr);
         }
 
     }
 
     @Override
     protected void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
-        record RoundAnnotations(List<? extends TypeElement> withAopAnnotation, List<? extends TypeElement> noAopAnnotation) {}
-
-        var roundAnnotations = annotations.stream()
-            .filter(a -> this.annotations.contains(a.getQualifiedName().toString()))
-            .collect(Collectors.teeing(
-                Collectors.filtering(a -> AnnotationUtils.isAnnotationPresent(a, CommonClassNames.aopAnnotation), Collectors.toList()),
-                Collectors.filtering(a -> !AnnotationUtils.isAnnotationPresent(a, CommonClassNames.aopAnnotation), Collectors.toList()),
-                RoundAnnotations::new
-            ));
-        for (var typeElement : roundAnnotations.noAopAnnotation()) {
+        var noAop = annotatedElements.entrySet()
+            .stream()
+            .filter(e -> this.annotations.contains(e.getKey()))
+            .filter(e -> !e.getValue().isEmpty())
+            .map(e -> e.getValue().get(0))
+            .map(AnnotatedElement::annotationType)
+            .filter(a -> !AnnotationUtils.isAnnotationPresent(a, CommonClassNames.aopAnnotation))
+            .toList();
+        for (var typeElement : noAop) {
             log.warn("Annotation {} has no @AopAnnotation marker, it will not be handled by some util methods", typeElement.getSimpleName());
         }
 
-        var elements = roundEnv.getElementsAnnotatedWithAny(roundAnnotations.withAopAnnotation().toArray(TypeElement[]::new));
+        var elements = annotatedElements.values().stream().flatMap(List::stream).map(AnnotatedElement::element).toList();
         var classesToProcess = new HashMap<ClassName, TypeElement>();
 
         for (var element : elements) {
@@ -110,7 +107,6 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
         }
     }
 
-    @Nullable
     private Either<TypeElement, ProcessingError> findTypeElement(Element element) {
         if (element.getKind() == ElementKind.INTERFACE) {
             return Either.left(null);
