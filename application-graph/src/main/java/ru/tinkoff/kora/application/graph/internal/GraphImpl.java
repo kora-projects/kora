@@ -269,7 +269,7 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
         }
         var dependentReleases = CompletableFuture.allOf(dependentNodes);
 
-        var intercept = CompletableFuture.completedFuture(object);
+        var intercept = dependentReleases.thenApply(v -> object);
         var i = node.getInterceptors().listIterator(node.getInterceptors().size());
         while (i.hasPrevious()) {
             var interceptorNode = i.previous();
@@ -292,8 +292,7 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
         }
 
         var finalIntercept = intercept;
-        return dependentReleases
-            .thenCompose(v -> finalIntercept)
+        return finalIntercept
             .thenComposeAsync(v -> {
                 if (v instanceof Lifecycle lifecycle) {
                     log.trace("Releasing node {} of class {}", node.index, object.getClass());

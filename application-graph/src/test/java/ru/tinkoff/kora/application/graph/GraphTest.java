@@ -3,6 +3,8 @@ package ru.tinkoff.kora.application.graph;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import org.assertj.core.api.Assertions;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -10,9 +12,11 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.internal.NodeImpl;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,7 +27,10 @@ class GraphTest {
 
     static {
         if (LoggerFactory.getLogger(ReferenceGraph.class) instanceof Logger log) {
-            log.setLevel(Level.DEBUG);
+            log.setLevel(Level.OFF);
+        }
+        if (LoggerFactory.getLogger("ru.tinkoff.kora") instanceof Logger log) {
+            log.setLevel(Level.OFF);
         }
     }
 
@@ -277,7 +284,15 @@ class GraphTest {
         graph.object2().verifyReleased();
         graph.interceptor1().verifyReleasedAfter(graph.object2());
         graph.object2().verifyReleaseIntercepted();
-        assertThat(graph.object5().releaseTime).isLessThan(graph.object2().interceptReleaseTime);
+        graph.object2().verifyReleasedAfter(graph.object5());
+        var release5 = graph.object5().releaseTime;
+        var interceptRelease2 = graph.object2().interceptReleaseTime;
+        var release2 = graph.object2().releaseTime;
+
+
+        assertThat(interceptRelease2).isLessThan(release2);
+        assertThat(release5).isLessThan(release2);
+        assertThat(release5).isLessThan(interceptRelease2);
     }
 
     @Test
@@ -346,7 +361,7 @@ class GraphTest {
         var graph = ReferenceGraph.graph();
 
         var object2 = graph.object2();
-        var beforeRefresh = System.nanoTime();
+        var beforeRefresh = graph.absoluteTime.getAndIncrement();
 
         graph.graph.valueOf(graph.node4()).refresh();
 
@@ -366,8 +381,13 @@ class GraphTest {
         var graph = ReferenceGraph.graph();
         var draw = graph.draw.copy();
         var mock = Mockito.mock(TestObject.class);
+        mock.initTime = -1;
+        mock.interceptInitTime = -1;
+        mock.interceptReleaseTime = -1;
+        mock.releaseTime = -1;
+        mock.refreshTime = -1;
 
-        draw.replaceNode(graph.object2Node, g -> mock);
+        draw.replaceNodeKeepDependencies(graph.object2Node, g -> mock);
         var newGraph = draw.init();
 
         @SuppressWarnings("unchecked")
@@ -427,20 +447,21 @@ class GraphTest {
      * </pre>
      */
     private static class ReferenceGraph {
+        private final AtomicLong absoluteTime = new AtomicLong();
         private final ApplicationGraphDraw draw = new ApplicationGraphDraw(ReferenceGraph.class);
-        private final TestObjectFactory rootFactory = factory();
+        private final TestObjectFactory rootFactory = factory("root", absoluteTime);
         private final Node<TestObject> rootNode = draw.addNode0(TestObject.class, TAGS, rootFactory);
-        private final TestObjectFactory object1Factory = factory(rootNode);
+        private final TestObjectFactory object1Factory = factory("o1", absoluteTime, rootNode);
         private final Node<TestObject> object1Node = draw.addNode0(TestObject.class, TAGS, object1Factory, rootNode);
-        private final TestObjectFactory interceptor1Factory = factory();
+        private final TestObjectFactory interceptor1Factory = factory("i1", absoluteTime);
         private final Node<TestObject> interceptor1 = draw.addNode0(TestObject.class, TAGS, interceptor1Factory);
-        private final TestObjectFactory object2Factory = factory(rootNode);
+        private final TestObjectFactory object2Factory = factory("o2", absoluteTime, rootNode);
         private final Node<TestObject> object2Node = draw.addNode0(TestObject.class, TAGS, object2Factory, List.of(interceptor1), rootNode);
-        private final TestObjectFactory object3Factory = factory(object1Node);
+        private final TestObjectFactory object3Factory = factory("o3", absoluteTime, object1Node);
         private final Node<TestObject> object3Node = draw.addNode0(TestObject.class, TAGS, object3Factory, object1Node);
-        private final TestObjectFactory object4Factory = factory(object1Node, object2Node.valueOf());
+        private final TestObjectFactory object4Factory = factory("o4", absoluteTime, object1Node);
         private final Node<TestObject> object4Node = draw.addNode0(TestObject.class, TAGS, object4Factory, object1Node, object2Node.valueOf());
-        private final TestObjectFactory object5Factory = factory(object2Node);
+        private final TestObjectFactory object5Factory = factory("o5", absoluteTime, object2Node);
         private final Node<TestObject> object5Node = draw.addNode0(TestObject.class, TAGS, object5Factory, object2Node);
 
         private final RefreshableGraph graph = this.draw.init();
@@ -552,6 +573,8 @@ class GraphTest {
     private static class TestObject implements Lifecycle, GraphInterceptor<TestObject>, RefreshListener {
         private final TestObjectFactory.Type type;
         private final List<Object> dependencies;
+        private final AtomicLong absoluteTime;
+        private final String name;
 
         private volatile long initTime = -1;
         private volatile long releaseTime = -1;
@@ -559,14 +582,16 @@ class GraphTest {
         private volatile long interceptReleaseTime = -1;
         private volatile long refreshTime = -1;
 
-        private TestObject(TestObjectFactory.Type type, List<Object> dependencies) {
+        private TestObject(String name, AtomicLong absoluteTime, TestObjectFactory.Type type, List<Object> dependencies) {
+            this.absoluteTime = absoluteTime;
+            this.name = name;
             this.type = type;
             this.dependencies = dependencies;
         }
 
         @Override
         public void init() {
-            this.initTime = System.nanoTime();
+            this.initTime = absoluteTime.getAndIncrement();
             for (var dependency : dependencies) {
                 if (dependency instanceof ValueOf<?> valueOf) {
                     assert valueOf.get() != null;
@@ -579,12 +604,26 @@ class GraphTest {
 
         @Override
         public void release() {
+            var releaseTime = absoluteTime.getAndIncrement();
             for (var dependency : dependencies) {
                 if (dependency instanceof ValueOf<?> valueOf) {
                     assert valueOf.get() != null;
+                    assertThat(valueOf.get())
+                        .isInstanceOf(TestObject.class)
+                        .asInstanceOf(InstanceOfAssertFactories.type(TestObject.class))
+                        .withFailMessage("Dependency of <" + name + ">  (" + ((TestObject) valueOf.get()).name + ") is not released")
+                        .satisfies(o -> Assertions.assertThat(o.releaseTime).isEqualTo(-1))
+                        .satisfies(o -> Assertions.assertThat(o.interceptReleaseTime).isEqualTo(-1));
+                } else {
+                    assertThat(dependency)
+                        .asInstanceOf(InstanceOfAssertFactories.type(TestObject.class))
+                        .withFailMessage("Dependency of <" + name + ">  (" + ((TestObject) dependency).name + ") is not released")
+                        .satisfies(o -> Assertions.assertThat(o.releaseTime).isEqualTo(-1))
+                        .satisfies(o -> Assertions.assertThat(o.interceptReleaseTime).isEqualTo(-1));
                 }
             }
-            this.releaseTime = System.nanoTime();
+
+            this.releaseTime = releaseTime;
             if (this.type == TestObjectFactory.Type.RELEASE_ERROR) {
                 throw new RuntimeException();
             }
@@ -593,7 +632,8 @@ class GraphTest {
 
         @Override
         public TestObject init(TestObject value) {
-            value.interceptInitTime = System.nanoTime();
+            assertThat(initTime).isGreaterThan(-1);
+            value.interceptInitTime = absoluteTime.getAndIncrement();
             if (this.type == TestObjectFactory.Type.INTERCEPT_INIT_ERROR) {
                 throw new RuntimeException();
             }
@@ -602,25 +642,27 @@ class GraphTest {
 
         @Override
         public TestObject release(TestObject value) {
-            value.interceptReleaseTime = System.nanoTime();
+            assertThat(releaseTime).isEqualTo(-1L);
+            value.interceptReleaseTime = absoluteTime.getAndIncrement();
             if (this.type == TestObjectFactory.Type.INTERCEPT_RELEASE_ERROR) {
                 throw new RuntimeException();
             }
+            assertThat(releaseTime).isEqualTo(-1L);
             return value;
         }
 
         @Override
         public void graphRefreshed() {
-            this.refreshTime = System.nanoTime();
+            this.refreshTime = absoluteTime.getAndIncrement();
         }
 
         public TestObject verifyInitialized() {
-            assertThat(this.initTime).isGreaterThan(0);
+            assertThat(this.initTime).isGreaterThan(-1);
             return this;
         }
 
         public TestObject verifyReleased() {
-            assertThat(this.releaseTime).isGreaterThan(0);
+            assertThat(this.releaseTime).isGreaterThan(-1);
             return this;
         }
 
@@ -640,15 +682,15 @@ class GraphTest {
         }
 
         public void verifyInitIntercepted() {
-            assertThat(this.interceptInitTime).isGreaterThan(0);
+            assertThat(this.interceptInitTime).isGreaterThan(-1);
         }
 
         public void verifyReleaseIntercepted() {
-            assertThat(this.interceptReleaseTime).isGreaterThan(0);
+            assertThat(this.interceptReleaseTime).isGreaterThan(-1);
         }
 
         public void verifyReleaseNotIntercepted() {
-            assertThat(this.interceptReleaseTime).isLessThan(0);
+            assertThat(this.interceptReleaseTime).isLessThan(-1);
         }
 
     }
@@ -658,13 +700,15 @@ class GraphTest {
         private final AtomicReference<Type> type = new AtomicReference<>(Type.SIMPLE);
         private final ConcurrentLinkedDeque<TestObject> objects = new ConcurrentLinkedDeque<>();
         private final List<Node<TestObject>> dependencies;
+        private final AtomicLong absoluteTime;
+        private final String name;
 
         @SafeVarargs
-        private TestObjectFactory(Node<TestObject>... dependencies) {
+        private TestObjectFactory(String name, AtomicLong absoluteTime, Node<TestObject>... dependencies) {
+            this.name = name;
+            this.absoluteTime = absoluteTime;
             this.dependencies = new ArrayList<>(dependencies.length);
-            for (var dependency : dependencies) {
-                this.dependencies.add(dependency);
-            }
+            this.dependencies.addAll(Arrays.asList(dependencies));
         }
 
         private enum Type {
@@ -687,7 +731,7 @@ class GraphTest {
                     }
                 })
                 .toList();
-            var object = new TestObject(this.type.get(), dependencies);
+            var object = new TestObject(name, absoluteTime, this.type.get(), dependencies);
             this.objects.offer(object);
             return object;
         }
@@ -722,7 +766,7 @@ class GraphTest {
     }
 
     @SafeVarargs
-    private static TestObjectFactory factory(Node<TestObject>... dependencies) {
-        return new TestObjectFactory(dependencies);
+    private static TestObjectFactory factory(String name, AtomicLong absoluteTime, Node<TestObject>... dependencies) {
+        return new TestObjectFactory(name, absoluteTime, dependencies);
     }
 }
