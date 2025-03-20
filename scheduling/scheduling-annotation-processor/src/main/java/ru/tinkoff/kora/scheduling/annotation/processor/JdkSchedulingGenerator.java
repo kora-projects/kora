@@ -1,19 +1,14 @@
 package ru.tinkoff.kora.scheduling.annotation.processor;
 
 import com.squareup.javapoet.*;
-import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
-import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
-import ru.tinkoff.kora.annotation.processor.common.NameUtils;
-import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
+import ru.tinkoff.kora.annotation.processor.common.*;
 
-import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.util.Elements;
-import java.io.IOException;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -29,14 +24,14 @@ public class JdkSchedulingGenerator {
     private static final ClassName schedulingTelemetryFactoryClassName = ClassName.get("ru.tinkoff.kora.scheduling.common.telemetry", "SchedulingTelemetryFactory");
     private static final ClassName jdkSchedulingExecutor = ClassName.get("ru.tinkoff.kora.scheduling.jdk", "JdkSchedulingExecutor");
     private final Elements elements;
-    private final Filer filer;
+    private final ProcessingEnvironment processingEnv;
 
     public JdkSchedulingGenerator(ProcessingEnvironment processingEnv) {
         this.elements = processingEnv.getElementUtils();
-        this.filer = processingEnv.getFiler();
+        this.processingEnv = processingEnv;
     }
 
-    public void generate(TypeElement type, Element method, TypeSpec.Builder module, SchedulingTrigger trigger) throws IOException {
+    public void generate(TypeElement type, Element method, TypeSpec.Builder module, SchedulingTrigger trigger) {
         var triggerTypeName = ClassName.get((TypeElement) trigger.triggerAnnotation().getAnnotationType().asElement());
         if (triggerTypeName.equals(scheduleAtFixedRate)) {
             this.generateScheduleAtFixedRate(type, method, module, trigger);
@@ -53,7 +48,7 @@ public class JdkSchedulingGenerator {
         throw new IllegalStateException("Unknown trigger type: " + trigger.triggerAnnotation().getAnnotationType());
     }
 
-    private void generateScheduleOnce(TypeElement type, Element method, TypeSpec.Builder module, SchedulingTrigger trigger) throws IOException {
+    private void generateScheduleOnce(TypeElement type, Element method, TypeSpec.Builder module, SchedulingTrigger trigger) {
         var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
         var configName = AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "config");
         var configClassName = NameUtils.generatedType(type, method.getSimpleName() + "_Config");
@@ -77,8 +72,9 @@ public class JdkSchedulingGenerator {
                 .addCode("var delay = $T.of($L, $T.$L);\n", Duration.class, delay, ChronoUnit.class, unit);
         } else {
             var config = TypeSpec.interfaceBuilder(configClassName)
+                .addOriginatingElement(method)
+                .addAnnotation(AnnotationUtils.generated(JdkSchedulingGenerator.class))
                 .addModifiers(Modifier.PUBLIC)
-                .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", "$S", JdkSchedulingGenerator.class.getCanonicalName()).build())
                 .addAnnotation(CommonClassNames.configValueExtractorAnnotation)
                 .addMethod(MethodSpec.methodBuilder("telemetry")
                     .returns(CommonClassNames.telemetryConfig)
@@ -100,7 +96,7 @@ public class JdkSchedulingGenerator {
                 );
             }
             module.addMethod(configComponent(packageName, configClassName, configName));
-            JavaFile.builder(packageName, config.build()).build().writeTo(this.filer);
+            CommonUtils.safeWriteTo(this.processingEnv, JavaFile.builder(packageName, config.build()).build());
 
             componentMethod.addParameter(ClassName.get(packageName, configClassName), "config");
             componentMethod.addCode("var telemetry = telemetryFactory.get(config.telemetry(), $T.class, $S);\n", type, method.getSimpleName());
@@ -111,7 +107,7 @@ public class JdkSchedulingGenerator {
         module.addMethod(componentMethod.build());
     }
 
-    private void generateScheduleWithFixedDelay(TypeElement type, Element method, TypeSpec.Builder module, SchedulingTrigger trigger) throws IOException {
+    private void generateScheduleWithFixedDelay(TypeElement type, Element method, TypeSpec.Builder module, SchedulingTrigger trigger) {
         var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
         var configName = AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "config");
         var configClassName = NameUtils.generatedType(type, method.getSimpleName() + "_Config");
@@ -137,8 +133,9 @@ public class JdkSchedulingGenerator {
                 .addCode("var delay = $T.of($L, $T.$L);\n", Duration.class, delay, ChronoUnit.class, unit);
         } else {
             var config = TypeSpec.interfaceBuilder(configClassName)
+                .addOriginatingElement(method)
+                .addAnnotation(AnnotationUtils.generated(JdkSchedulingGenerator.class))
                 .addModifiers(Modifier.PUBLIC)
-                .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", "$S", JdkSchedulingGenerator.class.getCanonicalName()).build())
                 .addAnnotation(CommonClassNames.configValueExtractorAnnotation)
                 .addMethod(MethodSpec.methodBuilder("telemetry")
                     .returns(CommonClassNames.telemetryConfig)
@@ -167,7 +164,7 @@ public class JdkSchedulingGenerator {
                 .build()
             );
             module.addMethod(configComponent(packageName, configClassName, configName));
-            JavaFile.builder(packageName, config.build()).build().writeTo(this.filer);
+            CommonUtils.safeWriteTo(this.processingEnv, JavaFile.builder(packageName, config.build()).build());
 
             componentMethod
                 .addCode("var telemetry = telemetryFactory.get(config.telemetry(), $T.class, $S);\n", type, method.getSimpleName())
@@ -179,7 +176,7 @@ public class JdkSchedulingGenerator {
         module.addMethod(componentMethod.build());
     }
 
-    private void generateScheduleAtFixedRate(TypeElement type, Element method, TypeSpec.Builder module, SchedulingTrigger trigger) throws IOException {
+    private void generateScheduleAtFixedRate(TypeElement type, Element method, TypeSpec.Builder module, SchedulingTrigger trigger) {
         var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
         var configName = AnnotationUtils.<String>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "config");
         var configClassName = NameUtils.generatedType(type, method.getSimpleName() + "_Config");
@@ -205,8 +202,9 @@ public class JdkSchedulingGenerator {
                 .addCode("var period = $T.of($L, $T.$L);\n", Duration.class, period, ChronoUnit.class, unit);
         } else {
             var config = TypeSpec.interfaceBuilder(configClassName)
+                .addOriginatingElement(method)
+                .addAnnotation(AnnotationUtils.generated(JdkSchedulingGenerator.class))
                 .addModifiers(Modifier.PUBLIC)
-                .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", "$S", JdkSchedulingGenerator.class.getCanonicalName()).build())
                 .addAnnotation(CommonClassNames.configValueExtractorAnnotation)
                 .addMethod(MethodSpec.methodBuilder("telemetry")
                     .returns(CommonClassNames.telemetryConfig)
@@ -234,7 +232,7 @@ public class JdkSchedulingGenerator {
                 .build()
             );
             module.addMethod(configComponent(packageName, configClassName, configName));
-            JavaFile.builder(packageName, config.build()).build().writeTo(this.filer);
+            CommonUtils.safeWriteTo(this.processingEnv, JavaFile.builder(packageName, config.build()).build());
 
             componentMethod.addParameter(ClassName.get(packageName, configClassName), "config");
             componentMethod

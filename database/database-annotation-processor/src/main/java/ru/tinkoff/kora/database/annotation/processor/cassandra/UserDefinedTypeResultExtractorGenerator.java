@@ -1,15 +1,15 @@
 package ru.tinkoff.kora.database.annotation.processor.cassandra;
 
 import com.squareup.javapoet.*;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
-import ru.tinkoff.kora.common.annotation.Generated;
-import ru.tinkoff.kora.database.annotation.processor.RepositoryAnnotationProcessor;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
@@ -27,19 +27,18 @@ public class UserDefinedTypeResultExtractorGenerator {
         this.types = processingEnvironment.getTypeUtils();
     }
 
-    public void generate(TypeMirror type) {
-        this.generateMapper(type);
-        this.generateListMapper(type);
+    public void generate(TypeElement element, TypeMirror type) {
+        this.generateMapper(element, type);
+        this.generateListMapper(element, type);
     }
 
-    public void generateMapper(TypeMirror type) {
-        var element = types.asElement(type);
+    public void generateMapper(TypeElement element, TypeMirror type) {
         var typeName = TypeName.get(type);
         var packageName = elements.getPackageOf(element);
 
         var typeSpec = TypeSpec.classBuilder(NameUtils.generatedType(element, CassandraTypes.RESULT_COLUMN_MAPPER))
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
-                .addMember("value", CodeBlock.of("$S", UserDefinedTypeResultExtractorGenerator.class.getCanonicalName())).build())
+            .addOriginatingElement(element)
+            .addAnnotation(AnnotationUtils.generated(UserDefinedTypeResultExtractorGenerator.class))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(CassandraTypes.RESULT_COLUMN_MAPPER, typeName));
         var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
@@ -67,13 +66,12 @@ public class UserDefinedTypeResultExtractorGenerator {
         CommonUtils.safeWriteTo(this.processingEnv, javaFile);
     }
 
-    public void generateListMapper(TypeMirror type) {
-        var element = types.asElement(type);
+    public void generateListMapper(TypeElement element, TypeMirror type) {
         var typeName = TypeName.get(type);
         var packageName = elements.getPackageOf(element);
         var typeSpec = TypeSpec.classBuilder(NameUtils.generatedType(element, "List_CassandraRowColumnMapper"))
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
-                .addMember("value", CodeBlock.of("$S", UserDefinedTypeResultExtractorGenerator.class.getCanonicalName())).build())
+            .addOriginatingElement(element)
+            .addAnnotation(AnnotationUtils.generated(UserDefinedTypeResultExtractorGenerator.class))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(CassandraTypes.RESULT_COLUMN_MAPPER, ParameterizedTypeName.get(CommonClassNames.list, typeName)));
         var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);

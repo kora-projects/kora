@@ -11,19 +11,23 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import java.util.Optional;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class ConfigSourceAnnotationProcessor extends AbstractKoraProcessor {
     @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(ConfigClassNames.configSourceAnnotation.canonicalName());
+    public Set<ClassName> getSupportedAnnotationClassNames() {
+        return Set.of(ConfigClassNames.configSourceAnnotation);
     }
 
     @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        for (var config : roundEnv.getElementsAnnotatedWith(this.elements.getTypeElement(ConfigClassNames.configSourceAnnotation.canonicalName()))) {
-            var typeBuilder = TypeSpec.interfaceBuilder(config.getSimpleName().toString() + "Module");
+    protected void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        for (var annotated : annotatedElements.getOrDefault(ConfigClassNames.configSourceAnnotation, List.of())) {
+            var config = annotated.element();
+            var typeBuilder = TypeSpec.interfaceBuilder(config.getSimpleName().toString() + "Module")
+                .addOriginatingElement(config)
+                .addAnnotation(AnnotationUtils.generated(ConfigSourceAnnotationProcessor.class));
             var path = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(
                 AnnotationUtils.findAnnotation(config, ConfigClassNames.configSourceAnnotation),
                 "value"
@@ -42,15 +46,15 @@ public class ConfigSourceAnnotationProcessor extends AbstractKoraProcessor {
                 .addParameter(ConfigClassNames.config, "config")
                 .addParameter(ParameterizedTypeName.get(ConfigClassNames.configValueExtractor, TypeName.get(config.asType())), "extractor")
                 .addStatement("var configValue = config.get($S)", path)
-                .addStatement("return $T.ofNullable(extractor.extract(configValue)).orElseThrow(() -> $T.missingValueAfterParse(configValue))", Optional.class, CommonClassNames.configValueExtractionException);
+                .addStatement("var parsed = extractor.extract(configValue)")
+                .beginControlFlow("if (parsed == null)")
+                .addStatement("throw $T.missingValueAfterParse(configValue)", CommonClassNames.configValueExtractionException)
+                .endControlFlow()
+                .addStatement("return parsed");
 
             var type = typeBuilder.addMethod(method.build())
                 .addAnnotation(CommonClassNames.module)
-                .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
-                    .addMember("value", CodeBlock.of("$S", ConfigSourceAnnotationProcessor.class.getCanonicalName()))
-                    .build())
                 .addModifiers(Modifier.PUBLIC)
-                .addOriginatingElement(config)
                 .build();
 
             var packageElement = this.elements.getPackageOf(config);
@@ -59,7 +63,5 @@ public class ConfigSourceAnnotationProcessor extends AbstractKoraProcessor {
 
             CommonUtils.safeWriteTo(this.processingEnv, javaFile);
         }
-
-        return false;
     }
 }
