@@ -27,8 +27,8 @@ record GraphMockkMock(GraphCandidate candidate,
 
         var classToMock = getClassToMock(candidate);
         var name = Optional.of(annotation.name())
-                .filter(n -> !n.isBlank())
-                .orElse(defaultName);
+            .filter(n -> !n.isBlank())
+            .orElse(defaultName);
 
         return new GraphMockkMock(candidate, classToMock, name, annotation.relaxed(), annotation.relaxUnitFun());
     }

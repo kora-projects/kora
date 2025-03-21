@@ -87,7 +87,7 @@ record GraphMockitoMock(GraphCandidate candidate,
             if (node.type() instanceof Class<?> tc && Wrapped.class.isAssignableFrom(tc)) {
                 return (T) (Wrapped<?>) () -> mock;
             } else if (node.type() instanceof ParameterizedType pt && Wrapped.class.isAssignableFrom(((Class<?>) pt.getRawType()))) {
-                return (T)(Wrapped<?>) () -> mock;
+                return (T) (Wrapped<?>) () -> mock;
             } else {
                 return mock;
             }
