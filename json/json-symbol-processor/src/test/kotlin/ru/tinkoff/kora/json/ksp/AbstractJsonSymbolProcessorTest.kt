@@ -14,8 +14,8 @@ abstract class AbstractJsonSymbolProcessorTest : AbstractSymbolProcessorTest() {
         return super.commonImports() + """
             import ru.tinkoff.kora.json.common.annotation.*
             import ru.tinkoff.kora.json.common.JsonNullable
-            import java.util.Optional
             import ru.tinkoff.kora.json.common.annotation.JsonInclude.IncludeType
+            import java.util.Optional
             
             """.trimIndent()
     }

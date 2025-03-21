@@ -23,6 +23,13 @@ fun jsonClassPackage(classDeclaration: KSClassDeclaration): String {
 fun KSClassDeclaration.jsonReaderName() = this.generatedClassName("JsonReader")
 fun KSClassDeclaration.jsonWriterName() = this.generatedClassName("JsonWriter")
 
+private val RESTRICTED_PACKAGES = listOf("java.", "javax.", "sun.", "com.sun.", "jdk.", "kotlin.")
+
+fun KSDeclaration.isNativePackage(): Boolean {
+    val packageOf = this.packageName.asString()
+    return RESTRICTED_PACKAGES.stream().anyMatch { s -> packageOf.startsWith(s) }
+}
+
 fun KSValueParameter.findJsonField(): KSAnnotation? {
     val parameterAnnotation = findJsonField(this)
     if (parameterAnnotation != null) {
