@@ -12,19 +12,23 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class AbstractJob implements Lifecycle {
+
     private final Logger logger;
+
     private final SchedulingTelemetry telemetry;
     private final JdkSchedulingExecutor service;
     private final Runnable command;
-    private volatile boolean started = false;
+
     private final ReentrantLock lock = new ReentrantLock(true);
+
+    private volatile boolean started = false;
     private volatile ScheduledFuture<?> scheduledFuture;
 
     public AbstractJob(SchedulingTelemetry telemetry, JdkSchedulingExecutor service, Runnable command) {
+        this.logger = LoggerFactory.getLogger(telemetry.jobClass());
         this.telemetry = telemetry;
         this.service = service;
         this.command = command;
-        this.logger = LoggerFactory.getLogger(telemetry.jobClass());
     }
 
     @Override
@@ -60,7 +64,7 @@ public abstract class AbstractJob implements Lifecycle {
             try {
                 this.command.run();
                 telemetryCtx.close(null);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 logger.warn("Uncaught exception while running job: {}#{}", this.telemetry.jobClass().getCanonicalName(), this.telemetry.jobMethod(), e);
                 telemetryCtx.close(e);
             }
