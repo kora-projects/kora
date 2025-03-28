@@ -13,8 +13,7 @@ public final class KoraGraphModification {
 
     private final List<GraphModification> modifications = new ArrayList<>();
 
-    private KoraGraphModification() {
-    }
+    private KoraGraphModification() {}
 
     public static KoraGraphModification create() {
         return new KoraGraphModification();
