@@ -23,6 +23,7 @@ import ru.tinkoff.kora.netty.common.NettyChannelFactory;
 import ru.tinkoff.kora.netty.common.NettyCommonModule;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public interface GrpcServerModule extends NettyCommonModule {
 
@@ -64,6 +65,14 @@ public interface GrpcServerModule extends NettyCommonModule {
             .bossEventLoopGroup(bossEventLoop)
             .workerEventLoopGroup(eventLoop)
             .channelFactory(nettyChannelFactory.getServerFactory());
+
+        if (grpcServerConfig.maxConnectionAge() != null) {
+            builder.maxConnectionAge(grpcServerConfig.maxConnectionAge().toMillis(), TimeUnit.MILLISECONDS);
+        }
+
+        if (grpcServerConfig.maxConnectionAgeGrace() != null) {
+            builder.maxConnectionAgeGrace(grpcServerConfig.maxConnectionAgeGrace().toMillis(), TimeUnit.MILLISECONDS);
+        }
 
         if (grpcServerConfig.reflectionEnabled() && isClassPresent("io.grpc.protobuf.services.ProtoReflectionService")) {
             builder.addService(ProtoReflectionService.newInstance());

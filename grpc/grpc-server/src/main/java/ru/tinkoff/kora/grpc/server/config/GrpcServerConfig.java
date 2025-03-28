@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.grpc.server.config;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.util.Size;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
@@ -26,4 +27,10 @@ public interface GrpcServerConfig {
     }
 
     TelemetryConfig telemetry();
+
+    @Nullable
+    Duration maxConnectionAge();
+
+    @Nullable
+    Duration maxConnectionAgeGrace();
 }
