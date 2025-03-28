@@ -11,16 +11,10 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 public final class DefaultJdkSchedulingExecutor implements Lifecycle, JdkSchedulingExecutor {
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultJdkSchedulingExecutor.class);
-    private static final AtomicReferenceFieldUpdater<DefaultJdkSchedulingExecutor, ScheduledThreadPoolExecutor> SERVICE = AtomicReferenceFieldUpdater.newUpdater(
-        DefaultJdkSchedulingExecutor.class,
-        ScheduledThreadPoolExecutor.class,
-        "service"
-    );
 
     private final ScheduledExecutorServiceConfig config;
     private volatile ScheduledThreadPoolExecutor service;
@@ -35,30 +29,26 @@ public final class DefaultJdkSchedulingExecutor implements Lifecycle, JdkSchedul
         var started = System.nanoTime();
 
         var counter = new AtomicInteger();
-        var service = new ScheduledThreadPoolExecutor(0, r -> {
+        var service = new ScheduledThreadPoolExecutor(this.config.threads(), r -> {
             var name = "kora-scheduling-" + counter.incrementAndGet();
             var t = new Thread(r, name);
             t.setDaemon(false);
             return t;
         });
-        service.setMaximumPoolSize(this.config.threads());
         service.setKeepAliveTime(1, TimeUnit.MINUTES);
         service.allowCoreThreadTimeOut(true);
         service.setRemoveOnCancelPolicy(true);
-        if (!SERVICE.compareAndSet(this, null, service)) {
-            service.shutdownNow();
-        }
+        this.service = service;
 
         logger.info("JdkSchedulingExecutor started in {}", TimeUtils.tookForLogging(started));
     }
 
     @Override
     public void release() {
-        var service = SERVICE.getAndSet(this, null);
-        if (service != null) {
+        if (this.service != null) {
             logger.debug("JdkSchedulingExecutor stopping...");
             var started = System.nanoTime();
-            if (!shutdownExecutorService(service, config.shutdownWait())) {
+            if (!shutdownExecutorService(this.service, config.shutdownWait())) {
                 logger.warn("JdkSchedulingExecutor failed completing graceful shutdown in {}", config.shutdownWait());
             }
             logger.info("JdkSchedulingExecutor stopped in {}", TimeUtils.tookForLogging(started));

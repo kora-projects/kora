@@ -8,7 +8,7 @@ import java.time.Duration;
 public interface ScheduledExecutorServiceConfig {
 
     default int threads() {
-        return 20;
+        return 2;
     }
 
     default Duration shutdownWait() {

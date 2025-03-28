@@ -16,6 +16,10 @@ public final class TimeUtils {
     }
 
     public static String tookForLogging(long started) {
-        return Duration.ofNanos(System.nanoTime() - started).truncatedTo(ChronoUnit.MILLIS).toString().substring(2).toLowerCase();
+        return durationForLogging(System.nanoTime() - started);
+    }
+
+    public static String durationForLogging(long duration) {
+        return Duration.ofNanos(duration).truncatedTo(ChronoUnit.MILLIS).toString().substring(2).toLowerCase();
     }
 }

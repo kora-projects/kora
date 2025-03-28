@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.scheduling.common.telemetry;
 
-import org.slf4j.Logger;
-import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
-
 import jakarta.annotation.Nullable;
+import org.slf4j.Logger;
+import ru.tinkoff.kora.common.util.TimeUtils;
+import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
 public final class Slf4jSchedulingLogger implements SchedulingLogger {
     private final Logger logger;
@@ -27,11 +27,12 @@ public final class Slf4jSchedulingLogger implements SchedulingLogger {
             gen.writeStringField("jobMethod", this.jobMethod);
             gen.writeEndObject();
         });
-        this.logger.debug(arg, "Starting SLF4J scheduling job");
+
+        this.logger.debug(arg, "Scheduled Job execution started...");
     }
 
     @Override
-    public void logJobFinish(long duration, @Nullable Throwable e) {
+    public void logJobFinish(long durationInNanos, @Nullable Throwable e) {
         if (!this.logger.isWarnEnabled()) {
             return;
         }
@@ -42,15 +43,15 @@ public final class Slf4jSchedulingLogger implements SchedulingLogger {
             gen.writeStartObject();
             gen.writeStringField("jobClass", this.jobClass);
             gen.writeStringField("jobMethod", this.jobMethod);
-            long durationMs = duration / 1_000_000;
+            long durationMs = durationInNanos / 1_000_000;
             gen.writeNumberField("duration", durationMs);
             gen.writeEndObject();
         });
 
         if (e != null) {
-            this.logger.warn(arg, "Finished SLF4J scheduling job with error", e);
-        } else {
-            this.logger.info(arg, "Finished SLF4J scheduling job");
+            this.logger.error(arg, "Scheduled Job execution failed with error", e);
+        } else if (logger.isInfoEnabled()) {
+            this.logger.info(arg, "Scheduled Job execution complete in {}", TimeUtils.durationForLogging(durationInNanos));
         }
     }
 }

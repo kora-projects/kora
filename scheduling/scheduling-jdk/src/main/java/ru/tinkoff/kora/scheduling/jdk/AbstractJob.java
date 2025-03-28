@@ -12,19 +12,23 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class AbstractJob implements Lifecycle {
+
     private final Logger logger;
+
     private final SchedulingTelemetry telemetry;
     private final JdkSchedulingExecutor service;
     private final Runnable command;
-    private volatile boolean started = false;
+
     private final ReentrantLock lock = new ReentrantLock(true);
+
+    private volatile boolean started = false;
     private volatile ScheduledFuture<?> scheduledFuture;
 
     public AbstractJob(SchedulingTelemetry telemetry, JdkSchedulingExecutor service, Runnable command) {
+        this.logger = LoggerFactory.getLogger(telemetry.jobClass());
         this.telemetry = telemetry;
         this.service = service;
         this.command = command;
-        this.logger = LoggerFactory.getLogger(telemetry.jobClass());
     }
 
     @Override
@@ -35,12 +39,12 @@ public abstract class AbstractJob implements Lifecycle {
                 return;
             }
             this.started = true;
-            logger.debug("Scheduled Job '{}#{}' starting...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
+            logger.debug("JDK Job '{}#{}' starting...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
             final long started = TimeUtils.started();
 
             this.scheduledFuture = this.schedule(this.service, this::runJob);
 
-            logger.info("Started Scheduled Job '{}#{}' started in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(),
+            logger.info("JDK Job '{}#{}' started in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(),
                 TimeUtils.tookForLogging(started));
         } finally {
             this.lock.unlock();
@@ -60,8 +64,7 @@ public abstract class AbstractJob implements Lifecycle {
             try {
                 this.command.run();
                 telemetryCtx.close(null);
-            } catch (Exception e) {
-                logger.warn("Uncaught exception while running job: {}#{}", this.telemetry.jobClass().getCanonicalName(), this.telemetry.jobMethod(), e);
+            } catch (Throwable e) {
                 telemetryCtx.close(e);
             }
         } finally {
@@ -73,7 +76,7 @@ public abstract class AbstractJob implements Lifecycle {
 
     @Override
     public final void release() {
-        logger.debug("Scheduled Job '{}#{}' stopping...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
+        logger.debug("JDK Job '{}#{}' stopping...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
         final long started = TimeUtils.started();
 
         this.lock.lock();
@@ -87,7 +90,7 @@ public abstract class AbstractJob implements Lifecycle {
             this.scheduledFuture = null;
             f.cancel(false);
 
-            logger.info("Scheduled Job '{}#{}' stopped in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(), TimeUtils.tookForLogging(started));
+            logger.info("JDK Job '{}#{}' stopped in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(), TimeUtils.tookForLogging(started));
         } finally {
             this.lock.unlock();
         }
