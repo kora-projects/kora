@@ -7,13 +7,12 @@ import java.math.BigInteger
 import java.util.*
 
 class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
+
     @Test
     fun testInt() {
         compile("""
             @Json
-            data class TestRecord(val value: Int) {
-            }
-            
+            data class TestRecord(val value: Int)
             """.trimIndent())
         compileResult.assertSuccess()
         val mapper = mapper("TestRecord")
@@ -25,9 +24,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
     fun testNullableInteger() {
         compile("""
             @Json
-            data class TestRecord(val value: Int?) {
-            }
-            
+            data class TestRecord(val value: Int?)
             """.trimIndent())
         compileResult.assertSuccess()
         val mapper = mapper("TestRecord")
@@ -40,9 +37,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
     fun testLong() {
         compile("""
             @Json
-            data class TestRecord(val value: Long) {
-            }
-            
+            data class TestRecord(val value: Long)
             """.trimIndent())
         compileResult.assertSuccess()
         val mapper = mapper("TestRecord")
@@ -54,9 +49,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
     fun testNullableLong() {
         compile("""
             @Json
-            data class TestRecord(val value: Long?) {
-            }
-            
+            data class TestRecord(val value: Long?)
             """.trimIndent())
         compileResult.assertSuccess()
         val mapper = mapper("TestRecord")
@@ -69,9 +62,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
     fun testShort() {
         compile("""
             @Json
-            data class TestRecord(val value: Short) {
-            }
-            
+            data class TestRecord(val value: Short)
             """.trimIndent())
         compileResult.assertSuccess()
         val mapper = mapper("TestRecord")
@@ -83,9 +74,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
     fun testNullableShort() {
         compile("""
             @Json
-            data class TestRecord(val value: Short?) {
-            }
-            
+            data class TestRecord(val value: Short?)
             """.trimIndent())
         compileResult.assertSuccess()
         val mapper = mapper("TestRecord")
@@ -98,9 +87,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
     fun testFloat() {
         compile("""
             @Json
-            data class TestRecord(val value: Float) {
-            }
-            
+            data class TestRecord(val value: Float)
             """.trimIndent())
         compileResult.assertSuccess()
         val mapper = mapper("TestRecord")
@@ -113,9 +100,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
     fun testNullableFloat() {
         compile("""
             @Json
-            data class TestRecord(val value: Float?) {
-            }
-            
+            data class TestRecord(val value: Float?)
             """.trimIndent())
         compileResult.assertSuccess()
         val mapper = mapper("TestRecord")
@@ -129,9 +114,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
     fun testDouble() {
         compile("""
             @Json
-            data class TestRecord(val value: Double) {
-            }
-            
+            data class TestRecord(val value: Double)
             """.trimIndent())
         compileResult.assertSuccess()
         val mapper = mapper("TestRecord")
@@ -144,9 +127,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
     fun testNullableDouble() {
         compile("""
             @Json
-            data class TestRecord(val value: Double?) {
-            }
-            
+            data class TestRecord(val value: Double?)
             """.trimIndent())
         compileResult.assertSuccess()
         val mapper = mapper("TestRecord")
@@ -160,9 +141,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
     fun testBoolean() {
         compile("""
             @Json
-            data class TestRecord(val value: Boolean) {
-            }
-            
+            data class TestRecord(val value: Boolean)
             """.trimIndent())
         compileResult.assertSuccess()
         val mapper = mapper("TestRecord")
@@ -175,9 +154,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
     fun testNullableBoolean() {
         compile("""
             @Json
-            data class TestRecord(val value: Boolean?) {
-            }
-            
+            data class TestRecord(val value: Boolean?)
             """.trimIndent())
         compileResult.assertSuccess()
         val mapper = mapper("TestRecord")
@@ -191,9 +168,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
     fun testString() {
         compile("""
             @Json
-            data class TestRecord(val value: String) {
-            }
-            
+            data class TestRecord(val value: String)
             """.trimIndent())
         compileResult.assertSuccess()
         val mapper = mapper("TestRecord")
@@ -205,9 +180,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
     fun testNullableString() {
         compile("""
             @Json
-            data class TestRecord(val value: String?) {
-            }
-            
+            data class TestRecord(val value: String?)
             """.trimIndent())
         compileResult.assertSuccess()
         val mapper = mapper("TestRecord")
@@ -220,9 +193,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
     fun testUuid() {
         compile("""
             @Json
-            data class TestRecord(val value: java.util.UUID) {
-            }
-            
+            data class TestRecord(val value: java.util.UUID)
             """.trimIndent())
         compileResult.assertSuccess()
         val uuid = UUID.randomUUID()
@@ -235,9 +206,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
     fun testNullableUuid() {
         compile("""
             @Json
-            data class TestRecord(val value: java.util.UUID?) {
-            }
-            
+            data class TestRecord(val value: java.util.UUID?)
             """.trimIndent())
         compileResult.assertSuccess()
         val uuid = UUID.randomUUID()
@@ -251,9 +220,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
     fun testBigInteger() {
         compile("""
             @Json
-            data class TestRecord(val value: java.math.BigInteger) {
-            }
-            
+            data class TestRecord(val value: java.math.BigInteger)
             """.trimIndent())
         compileResult.assertSuccess()
         val mapper = mapper("TestRecord")
@@ -265,9 +232,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
     fun testNullableBigInteger() {
         compile("""
             @Json
-            data class TestRecord(val value: java.math.BigInteger?) {
-            }
-            
+            data class TestRecord(val value: java.math.BigInteger?)
             """.trimIndent())
         compileResult.assertSuccess()
         val mapper = mapper("TestRecord")

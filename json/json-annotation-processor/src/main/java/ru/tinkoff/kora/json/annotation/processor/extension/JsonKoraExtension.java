@@ -1,6 +1,8 @@
 package ru.tinkoff.kora.json.annotation.processor.extension;
 
 import jakarta.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
@@ -30,6 +32,8 @@ import java.util.Objects;
 import java.util.Set;
 
 public class JsonKoraExtension implements KoraExtension {
+
+    private static final Logger logger = LoggerFactory.getLogger(JsonKoraExtension.class);
 
     private final Types types;
     private final Elements elements;
@@ -65,6 +69,9 @@ public class JsonKoraExtension implements KoraExtension {
                 return null;
             }
             var jsonElement = (TypeElement) this.types.asElement(possibleJsonClass);
+            if (JsonUtils.isNativePackage(elements, jsonElement)) {
+                return null;
+            }
             if (AnnotationUtils.findAnnotation(jsonElement, JsonTypes.json) != null || AnnotationUtils.findAnnotation(jsonElement, JsonTypes.jsonWriterAnnotation) != null) {
                 return KoraExtensionDependencyGenerator.generatedFrom(elements, jsonElement, JsonTypes.jsonWriter);
             }
@@ -89,6 +96,7 @@ public class JsonKoraExtension implements KoraExtension {
                 Objects.requireNonNull(this.writerTypeMetaParser.parse(jsonElement, possibleJsonClass));
                 return () -> this.generateWriter(possibleJsonClass, possibleJsonClass);
             } catch (ProcessingErrorException e) {
+                logger.warn(e.getMessage());
                 return null;
             }
         }
@@ -99,11 +107,14 @@ public class JsonKoraExtension implements KoraExtension {
                 return null;
             }
             var jsonElement = (TypeElement) types.asElement(possibleJsonClass);
+            if (JsonUtils.isNativePackage(elements, jsonElement)) {
+                return null;
+            }
             if (AnnotationUtils.findAnnotation(jsonElement, JsonTypes.json) != null
                 || AnnotationUtils.findAnnotation(jsonElement, JsonTypes.jsonReaderAnnotation) != null
                 || CommonUtils.findConstructors(jsonElement, s -> s.contains(Modifier.PUBLIC))
-                .stream()
-                .anyMatch(e -> AnnotationUtils.findAnnotation(e, JsonTypes.jsonReaderAnnotation) != null)) {
+                    .stream()
+                    .anyMatch(e -> AnnotationUtils.findAnnotation(e, JsonTypes.jsonReaderAnnotation) != null)) {
                 return KoraExtensionDependencyGenerator.generatedFrom(elements, jsonElement, JsonTypes.jsonReader);
             }
             if (jsonElement.getKind().isInterface()) {
@@ -127,6 +138,7 @@ public class JsonKoraExtension implements KoraExtension {
                 Objects.requireNonNull(this.readerTypeMetaParser.parse(jsonElement, typeMirror));
                 return () -> this.generateReader(possibleJsonClass, possibleJsonClass);
             } catch (ProcessingErrorException e) {
+                logger.warn(e.getMessage());
                 return null;
             }
         }

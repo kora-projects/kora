@@ -32,6 +32,9 @@ class JsonKoraExtension(
         val erasure = actualType.starProjection()
         if (erasure == jsonWriterErasure) {
             val possibleJsonClass = type.arguments[0].type!!.resolve()
+            if (possibleJsonClass.declaration.isNativePackage()) {
+                return null
+            }
             if (possibleJsonClass.isMarkedNullable) {
                 val jsonWriterDecl = resolver.getClassDeclarationByName(JsonTypes.jsonWriter.canonicalName)!!
                 val functionDecl = resolver.getFunctionDeclarationsByName("ru.tinkoff.kora.json.common.JsonKotlin.writerForNullable").first()
@@ -71,6 +74,9 @@ class JsonKoraExtension(
         }
         if (erasure == jsonReaderErasure) {
             val possibleJsonClass = type.arguments[0].type!!.resolve()
+            if (possibleJsonClass.declaration.isNativePackage()) {
+                return null
+            }
             if (possibleJsonClass.isMarkedNullable) {
                 val jsonReaderDecl = resolver.getClassDeclarationByName(JsonTypes.jsonReader.canonicalName)!!
                 val functionDecl = resolver.getFunctionDeclarationsByName("ru.tinkoff.kora.json.common.JsonKotlin.readerForNullable").first()
@@ -107,6 +113,7 @@ class JsonKoraExtension(
                 readerTypeMetaParser.parse(possibleJsonClassDeclaration)
                 return { generateReader(resolver, type, possibleJsonClassDeclaration) }
             } catch (e: ProcessingErrorException) {
+                e.message?.let { kspLogger.warn(it, null) }
                 return null
             }
         }
