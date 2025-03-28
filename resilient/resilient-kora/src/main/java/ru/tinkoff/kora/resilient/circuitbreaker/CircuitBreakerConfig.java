@@ -19,33 +19,40 @@ public interface CircuitBreakerConfig {
         final NamedConfig defaultConfig = circuitbreaker().get(DEFAULT);
         final NamedConfig namedConfig = circuitbreaker().getOrDefault(name, defaultConfig);
         if (namedConfig == null)
-            throw new IllegalStateException("CircuitBreaker no configuration is provided, but either '" + name + "' or '" + DEFAULT + "' config is required");
+            throw new IllegalStateException("CircuitBreaker no configuration is provided, but either '%s' or '%s' config is required".formatted(name, DEFAULT));
 
         final NamedConfig mergedConfig = merge(namedConfig, defaultConfig);
         if (mergedConfig.failureRateThreshold() == null)
-            throw new IllegalStateException("CircuitBreaker 'failureRateThreshold' is not configured in either '" + name + "' or '" + DEFAULT + "' config");
+            throw new IllegalStateException("CircuitBreaker property '%s' is not configured in either '%s' or '%s' config"
+                .formatted("failureRateThreshold", name, DEFAULT));
         if (mergedConfig.waitDurationInOpenState() == null)
-            throw new IllegalStateException("CircuitBreaker 'waitDurationInOpenState' is not configured in either '" + name + "' or '" + DEFAULT + "' config");
+            throw new IllegalStateException("CircuitBreaker property '%s' is not configured in either '%s' or '%s' config"
+                .formatted("waitDurationInOpenState", name, DEFAULT));
         if (mergedConfig.permittedCallsInHalfOpenState() == null)
-            throw new IllegalStateException("CircuitBreaker 'permittedCallsInHalfOpenState' is not configured in either '" + name + "' or '" + DEFAULT + "' config");
+            throw new IllegalStateException("CircuitBreaker property '%s' is not configured in either '%s' or '%s' config"
+                .formatted("permittedCallsInHalfOpenState", name, DEFAULT));
         if (mergedConfig.slidingWindowSize() == null)
-            throw new IllegalStateException("CircuitBreaker 'slidingWindowSize' is not configured in either '" + name + "' or '" + DEFAULT + "' config");
+            throw new IllegalStateException("CircuitBreaker property '%s' is not configured in either '%s' or '%s' config"
+                .formatted("slidingWindowSize", name, DEFAULT));
         if (mergedConfig.minimumRequiredCalls() == null)
-            throw new IllegalStateException("CircuitBreaker 'minimumRequiredCalls' is not configured in either '" + name + "' or '" + DEFAULT + "' config");
+            throw new IllegalStateException("CircuitBreaker property '%s' is not configured in either '%s' or '%s' config"
+                .formatted("minimumRequiredCalls", name, DEFAULT));
 
         if (mergedConfig.minimumRequiredCalls() < 1)
-            throw new IllegalArgumentException("CircuitBreaker '" + name + "' minimumRequiredCalls can't be negative, but was " + mergedConfig.minimumRequiredCalls());
+            throw new IllegalArgumentException("CircuitBreaker '%s' property '%s' can't be negative value, but was: %s"
+                .formatted(name, "minimumRequiredCalls", mergedConfig.minimumRequiredCalls()));
         if (mergedConfig.slidingWindowSize() < 1)
-            throw new IllegalArgumentException("CircuitBreaker '" + name + "' slidingWindowSize can't be negative, but was " + mergedConfig.slidingWindowSize());
+            throw new IllegalArgumentException("CircuitBreaker '%s' property '%s' can't be negative value, but was: %s"
+                .formatted(name, "slidingWindowSize", mergedConfig.slidingWindowSize()));
         if (mergedConfig.minimumRequiredCalls() > mergedConfig.slidingWindowSize())
-            throw new IllegalArgumentException("CircuitBreaker '" + name + "' minimumRequiredCalls was " + mergedConfig.minimumRequiredCalls()
-                                               + " can't be more than slidingWindowSize which is " + mergedConfig.slidingWindowSize());
+            throw new IllegalArgumentException("CircuitBreaker '%s' property '%s' has value %s, it can't be greater than property '%s' which value was: %s"
+                .formatted(name, "minimumRequiredCalls", mergedConfig.minimumRequiredCalls(), "slidingWindowSize", mergedConfig.slidingWindowSize()));
         if (mergedConfig.permittedCallsInHalfOpenState() > mergedConfig.minimumRequiredCalls())
-            throw new IllegalArgumentException("CircuitBreaker '" + name + "' minimumRequiredCalls was " + mergedConfig.minimumRequiredCalls()
-                + " can't be more than permittedCallsInHalfOpenState which is " + mergedConfig.permittedCallsInHalfOpenState());
+            throw new IllegalArgumentException("CircuitBreaker '%s' property '%s' has value %s, it can't be greater than property '%s' which value was: %s"
+                .formatted(name, "permittedCallsInHalfOpenState", mergedConfig.permittedCallsInHalfOpenState(), "minimumRequiredCalls", mergedConfig.minimumRequiredCalls()));
         if (mergedConfig.failureRateThreshold() > 100 || mergedConfig.failureRateThreshold() < 1)
-            throw new IllegalArgumentException("CircuitBreaker '" + name + "' failureRateThreshold is percentage and must be in range 1 to 100, but was "
-                                               + mergedConfig.failureRateThreshold());
+            throw new IllegalArgumentException("CircuitBreaker '%s' failureRateThreshold is percentage and must be in range from 1 to 100, but was: %s"
+                .formatted(name, mergedConfig.failureRateThreshold()));
 
         return mergedConfig;
     }
