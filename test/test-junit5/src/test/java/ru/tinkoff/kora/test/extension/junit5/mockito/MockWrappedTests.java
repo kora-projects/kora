@@ -3,7 +3,6 @@ package ru.tinkoff.kora.test.extension.junit5.mockito;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.Spy;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
 import ru.tinkoff.kora.test.extension.junit5.TestComponent;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplication;
