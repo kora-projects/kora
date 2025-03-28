@@ -39,12 +39,12 @@ public abstract class AbstractJob implements Lifecycle {
                 return;
             }
             this.started = true;
-            logger.debug("Scheduled Job '{}#{}' starting...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
+            logger.debug("JDK Job '{}#{}' starting...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
             final long started = TimeUtils.started();
 
             this.scheduledFuture = this.schedule(this.service, this::runJob);
 
-            logger.info("Started Scheduled Job '{}#{}' started in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(),
+            logger.info("JDK Job '{}#{}' started in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(),
                 TimeUtils.tookForLogging(started));
         } finally {
             this.lock.unlock();
@@ -65,7 +65,6 @@ public abstract class AbstractJob implements Lifecycle {
                 this.command.run();
                 telemetryCtx.close(null);
             } catch (Throwable e) {
-                logger.warn("Uncaught exception while running job: {}#{}", this.telemetry.jobClass().getCanonicalName(), this.telemetry.jobMethod(), e);
                 telemetryCtx.close(e);
             }
         } finally {
@@ -77,7 +76,7 @@ public abstract class AbstractJob implements Lifecycle {
 
     @Override
     public final void release() {
-        logger.debug("Scheduled Job '{}#{}' stopping...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
+        logger.debug("JDK Job '{}#{}' stopping...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
         final long started = TimeUtils.started();
 
         this.lock.lock();
@@ -91,7 +90,7 @@ public abstract class AbstractJob implements Lifecycle {
             this.scheduledFuture = null;
             f.cancel(false);
 
-            logger.info("Scheduled Job '{}#{}' stopped in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(), TimeUtils.tookForLogging(started));
+            logger.info("JDK Job '{}#{}' stopped in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(), TimeUtils.tookForLogging(started));
         } finally {
             this.lock.unlock();
         }
