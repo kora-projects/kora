@@ -7,7 +7,8 @@ import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplication;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent1;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent12;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 
 @KoraAppTest(value = TestApplication.class)
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)

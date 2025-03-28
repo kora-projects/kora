@@ -5,7 +5,6 @@ import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.common.KoraApp;
 import ru.tinkoff.kora.common.annotation.Root;
 
-import java.math.BigInteger;
 import java.util.function.Function;
 
 @KoraApp

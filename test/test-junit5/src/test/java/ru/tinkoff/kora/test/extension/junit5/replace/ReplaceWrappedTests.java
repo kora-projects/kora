@@ -2,7 +2,6 @@ package ru.tinkoff.kora.test.extension.junit5.replace;
 
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTestGraphModifier;
 import ru.tinkoff.kora.test.extension.junit5.KoraGraphModification;

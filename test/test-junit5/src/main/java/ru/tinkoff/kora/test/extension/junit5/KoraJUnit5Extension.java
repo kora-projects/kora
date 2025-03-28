@@ -9,10 +9,8 @@ import org.junit.platform.commons.util.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
-import ru.tinkoff.kora.application.graph.Graph;
-import ru.tinkoff.kora.application.graph.Node;
-import ru.tinkoff.kora.application.graph.Wrapped;
+import ru.tinkoff.kora.application.graph.*;
+import ru.tinkoff.kora.application.graph.internal.GraphImpl;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.util.TimeUtils;
 
@@ -601,7 +599,9 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         if (KoraAppGraph.class.equals(candidate.type())) {
             return graph.koraAppGraph();
         }
-        if (Graph.class.equals(candidate.type())) {
+        if (Graph.class.equals(candidate.type())
+            || GraphImpl.class.equals(candidate.type())
+            || RefreshableGraph.class.equals(candidate.type())) {
             return graph.refreshableGraph();
         }
         var nodes = graph.graphDraw().findNodesByType(candidate.type(), candidate.tagsAsArray());
@@ -757,6 +757,9 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         if (KoraAppGraph.class.isAssignableFrom(field.getType())) {
             throw new ExtensionConfigurationException("KoraAppGraph can't be target of @Mock");
         }
+        if (Graph.class.isAssignableFrom(field.getType())) {
+            throw new ExtensionConfigurationException("Graph can't be target of @Mock");
+        }
 
         final Class<?>[] tags = parseTags(field);
         final GraphCandidate candidate = new GraphCandidate(field.getGenericType(), tags);
@@ -777,6 +780,9 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     private static GraphModification mockParameter(Parameter parameter) {
         if (KoraAppGraph.class.isAssignableFrom(parameter.getType())) {
             throw new ExtensionConfigurationException("KoraAppGraph can't be target of @Mock");
+        }
+        if (Graph.class.isAssignableFrom(parameter.getType())) {
+            throw new ExtensionConfigurationException("Graph can't be target of @Mock");
         }
 
         final Class<?>[] tag = parseTags(parameter);
@@ -819,12 +825,25 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                 metadata.parameterMocks,
                 metadata.classMetadata.constructorMocks)
             .flatMap(Collection::stream)
+            .filter(m -> {
+                if (components.isEmpty() || components.stream().allMatch(KoraJUnit5Extension::isGraph)) {
+                    return m instanceof GraphMockitoSpy spy && spy.isSpyGraph()
+                           || m instanceof GraphMockkSpyk spyk && spyk.isSpyGraph();
+                }
+
+                return true;
+            })
             .map(GraphModification::candidate)
             .collect(Collectors.toSet());
 
         var result = new HashSet<>(components);
         result.addAll(mockGraphComponents);
         return result;
+    }
+
+    private static boolean isGraph(GraphCandidate candidate) {
+        return candidate.type() instanceof Class<?> cl
+               && (KoraAppGraph.class.isAssignableFrom(cl) || Graph.class.isAssignableFrom(cl));
     }
 
     @SuppressWarnings("unchecked")
