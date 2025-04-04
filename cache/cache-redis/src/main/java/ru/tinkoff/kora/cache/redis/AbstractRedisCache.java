@@ -461,7 +461,7 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
 
         var responseCompletionStage = (expireAfterWriteMillis == null)
             ? redisClient.mset(keyAndValuesAsBytes)
-            : redisClient.psetex(keyAndValuesAsBytes, expireAfterAccessMillis);
+            : redisClient.psetex(keyAndValuesAsBytes, expireAfterWriteMillis);
 
         return responseCompletionStage
             .thenApply(r -> {
