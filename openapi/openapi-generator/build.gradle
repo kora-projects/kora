@@ -20,6 +20,7 @@ dependencies {
     implementation libs.caffeine
     implementation libs.commons.codec
     implementation libs.commons.io
+    implementation libs.translit.icu4j
 
     testImplementation(project(":json:json-common"))
     testImplementation(project(":json:jackson-module"))

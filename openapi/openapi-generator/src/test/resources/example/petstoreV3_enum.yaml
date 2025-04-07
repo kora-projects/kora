@@ -57,6 +57,12 @@ components:
         nonReqString:
           type: string
           enum: [ Dingo-Don, Husky, Retriever, Shepherd ]
+        translite:
+          type: string
+          enum: [ Лелик, Болик, HalfЛелик ]
+        мегаТранслит:
+          type: string
+          enum: [ Лелик, Болик, HalfЛелик ]
         nullableArrayString:
           type: array
           nullable: true
@@ -64,6 +70,7 @@ components:
             type: string
             enum:
               - Dingo-Don
+              - BimBim
               - Husky
               - Retriever
               - Shepherd
@@ -73,6 +80,7 @@ components:
             type: string
             enum:
               - Dingo-Don
+              - BimBim
               - Husky
               - Retriever
               - Shepherd
