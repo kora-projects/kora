@@ -1,5 +1,6 @@
 dependencies {
     implementation project(':aop:aop-annotation-processor')
+    implementation project(':logging:logging-common')
 
     testImplementation project(':logging:logging-common')
     testImplementation testFixtures(project(':annotation-processor-common'))
