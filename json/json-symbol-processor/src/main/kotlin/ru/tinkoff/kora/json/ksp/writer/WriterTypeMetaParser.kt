@@ -92,11 +92,11 @@ class WriterTypeMetaParser(resolver: Resolver) {
             .filter { e -> e.functionKind == FunctionKind.MEMBER }
             .filter { e -> e.parameters.isEmpty() }
             .filter { e ->
-                val methodName = e.simpleName.toString()
+                val methodName = e.simpleName.asString()
                 methodName == paramName || methodName == "get$capitalizedParamName"
             }
             .filter { m -> m.returnType!!.toTypeName() == fieldType.toTypeName() }
-            .map { m -> m.simpleName.asString() }
+            .map { m -> paramName }
             .firstOrNull()
             ?: throw ProcessingErrorException("Can't detect field accessor: $paramName", field)
     }

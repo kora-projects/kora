@@ -147,4 +147,40 @@ class JsonKoraExtensionTest : AbstractSymbolProcessorTest() {
         val graph = newObject("TestAppGraph").invoke<ApplicationGraphDraw>("graph")!!
         assertThat(graph.nodes).hasSize(3)
     }
+
+
+    @Test
+    fun testReaderFromJavaClass() {
+        compile0(listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
+            @KoraApp
+            interface TestApp  : ru.tinkoff.kora.json.common.JsonCommonModule{
+                data class TestClass(val a: String)
+
+                @Root
+                fun test(r: ru.tinkoff.kora.json.common.JsonReader<ru.tinkoff.kora.json.ksp.dto.JavaBeanDto>) {}
+            }
+        """.trimIndent())
+
+        compileResult.assertSuccess()
+        val graph = newObject("TestAppGraph").invoke<ApplicationGraphDraw>("graph")!!
+        assertThat(graph.nodes).hasSize(2)
+    }
+
+    @Test
+    fun testWriterFromJavaClass() {
+        compile0(listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
+            @KoraApp
+            interface TestApp  : ru.tinkoff.kora.json.common.JsonCommonModule{
+                data class TestClass(val a: String)
+
+                @Root
+                fun test(r: ru.tinkoff.kora.json.common.JsonWriter<ru.tinkoff.kora.json.ksp.dto.JavaBeanDto>) {}
+            }
+        """.trimIndent())
+
+        compileResult.assertSuccess()
+        val graph = newObject("TestAppGraph").invoke<ApplicationGraphDraw>("graph")!!
+        assertThat(graph.nodes).hasSize(2)
+    }
+
 }
