@@ -30,11 +30,11 @@ class JsonKoraExtensionTest : AbstractSymbolProcessorTest() {
     fun testReaderFromNonAnnotatedClass() {
         compile0(listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
             @KoraApp
-            interface TestApp {
+            interface TestApp  : ru.tinkoff.kora.json.common.JsonCommonModule{
                 data class TestClass(val a: String)
 
                 @Root
-                fun test(r: ru.tinkoff.kora.json.common.JsonReader<TestClass>) {}
+                fun test(r: ru.tinkoff.kora.json.common.JsonReader<ru.tinkoff.kora.json.ksp.dto.JavaBeanDto>) {}
             }
         """.trimIndent())
 
