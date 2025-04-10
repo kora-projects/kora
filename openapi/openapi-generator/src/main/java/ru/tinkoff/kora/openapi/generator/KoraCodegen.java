@@ -668,6 +668,11 @@ public class KoraCodegen extends DefaultCodegen {
                 discriminatorProperty.required = true;
                 for (var mappedModel : model.discriminator.getMappedModels()) {
                     var childModel = allModels.get(mappedModel.getModelName());
+                    if (childModel == null) {
+                        throw new IllegalArgumentException("Child model '%s' not found, it is probably a free form object and is ignored by OpenAPI generator"
+                            .formatted(mappedModel.getModelName()));
+                    }
+
                     childModel.parentModel = model;
                     childModel.parent = model.classname;
                     var mappings = map.get(mappedModel.getModelName());
