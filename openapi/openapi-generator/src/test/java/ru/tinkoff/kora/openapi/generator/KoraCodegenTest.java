@@ -79,6 +79,7 @@ class KoraCodegenTest {
             "/example/petstoreV3_nullable.yaml",
             "/example/petstoreV3.yaml",
             "/example/petstoreV2.yaml",
+            "/example/petstoreV3_filter.yaml",
         };
 
         for (var fileName : files) {
@@ -88,6 +89,7 @@ class KoraCodegenTest {
                     .replace(".json", "");
 
                 result.add(new SwaggerParams(mode, fileName, name, new SwaggerParams.Options(false, false)));
+
                 if (fileName.contains("security")) {
                     result.add(new SwaggerParams(mode, fileName, name + "_auth_arg", new SwaggerParams.Options(true, false)));
                 }
@@ -149,6 +151,11 @@ class KoraCodegenTest {
             .addAdditionalProperty("authAsMethodArgument", options.authAsArg())
             .addAdditionalProperty("enableJsonNullable", options.jsonNullable())
             .addAdditionalProperty("clientConfigPrefix", "test");
+
+        if (spec.contains("_filter")) {
+            configurator.addOpenAPINormalizer("FILTER", "operationId:updatePets|getDeliveries");
+            configurator.addAdditionalProperty("filterWithModels", "true");
+        }
 
         var processors = new Processor[]{new JsonAnnotationProcessor(), new HttpClientAnnotationProcessor(), new HttpControllerProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()};
         var clientOptInput = configurator.toClientOptInput();
