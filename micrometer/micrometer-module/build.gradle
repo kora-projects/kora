@@ -4,6 +4,7 @@ dependencies {
     api libs.opentelemetry.semconv
     api libs.opentelemetry.semconv.incubating
     api libs.opentelemetry.api
+    api libs.opentelemetry.micrometer.meter.provider
 
     annotationProcessor project(':config:config-annotation-processor')
 

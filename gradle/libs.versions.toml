@@ -17,7 +17,7 @@ kotlin-testing = "1.5.0"
 ksp = "1.9.10-1.0.13"
 kotlinpoet = "1.18.1"
 swagger = "2.2.25"
-opentelemetry = "1.37.0"
+opentelemetry = "1.49.0"
 undertow = "2.3.18.Final"
 undertow-jakarta = "6.2.8.Final"
 camunda7 = "7.21.0"
@@ -38,10 +38,11 @@ prometheus-collector-caffeine = { module = "io.prometheus:simpleclient_caffeine"
 opentelemetry-sdk-trace = { module = "io.opentelemetry:opentelemetry-sdk-trace", version.ref = "opentelemetry" }
 opentelemetry-context = { module = "io.opentelemetry:opentelemetry-context", version.ref = "opentelemetry" }
 opentelemetry-api = { module = "io.opentelemetry:opentelemetry-api", version.ref = "opentelemetry" }
-opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.25.0-alpha" }
-opentelemetry-semconv-incubating = { module = "io.opentelemetry.semconv:opentelemetry-semconv-incubating", version = "1.25.0-alpha" }
-opentelemetry-exporter-sender-jdk = { module = "io.opentelemetry:opentelemetry-exporter-sender-jdk", version = "1.37.0-alpha" }
+opentelemetry-exporter-sender-jdk = { module = "io.opentelemetry:opentelemetry-exporter-sender-jdk", version.ref = "opentelemetry" }
 opentelemetry-exporter-otlp = { module = "io.opentelemetry:opentelemetry-exporter-otlp", version.ref = "opentelemetry" }
+opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.25.0-alpha" }
+opentelemetry-semconv-incubating = { module = "io.opentelemetry.semconv:opentelemetry-semconv-incubating", version = "1.32.0-alpha" }
+opentelemetry-micrometer-meter-provider = { module = "io.opentelemetry.contrib:opentelemetry-micrometer-meter-provider", version = "1.46.0-alpha" }
 
 typesafe-config = { module = "com.typesafe:config", version = "1.4.3" }
 snakeyaml-engine = { module = "org.snakeyaml:snakeyaml-engine", version = "2.7" }

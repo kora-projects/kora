@@ -2,6 +2,9 @@ package ru.tinkoff.kora.micrometer.module;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
+import io.opentelemetry.contrib.metrics.micrometer.CallbackRegistrar;
+import io.opentelemetry.contrib.metrics.micrometer.MicrometerMeterProvider;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.annotation.Root;
@@ -170,5 +173,12 @@ public interface MetricsModule {
     @DefaultComponent
     default MicrometerZeebeClientWorkerJobMetricsFactory micrometerZeebeClientWorkerJobMetricsFactory(MeterRegistry meterRegistry) {
         return new MicrometerZeebeClientWorkerJobMetricsFactory(meterRegistry);
+    }
+
+    @DefaultComponent
+    default MicrometerMeterProvider micrometerMeterProvider(MeterRegistry registry, @Nullable CallbackRegistrar callbackRegistrar) {
+        return MicrometerMeterProvider.builder(registry)
+            .setCallbackRegistrar(callbackRegistrar)
+            .build();
     }
 }
