@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.opentelemetry.tracing.exporter.grpc;
 
 import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
+import io.opentelemetry.sdk.common.export.RetryPolicy;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
@@ -21,8 +22,22 @@ public interface OpentelemetryGrpcExporterModule extends OpentelemetryTracingMod
         var exporter = OtlpGrpcSpanExporter.builder()
             .setEndpoint(config.endpoint())
             .setTimeout(config.exportTimeout())
-            .build();
-        return new LifecycleWrapper<>(exporter, e -> {}, SpanExporter::close);
+            .setCompression(config.compression());
+
+        if (config.connectTimeout() != null) {
+            exporter.setConnectTimeout(config.connectTimeout());
+        }
+        var retryPolicy = config.retryPolicy();
+        if (retryPolicy != null) {
+            exporter.setRetryPolicy(RetryPolicy.builder()
+                .setMaxAttempts(retryPolicy.maxAttempts())
+                .setMaxBackoff(retryPolicy.maxBackoff())
+                .setInitialBackoff(retryPolicy.initialBackoff())
+                .setBackoffMultiplier(retryPolicy.backoffMultiplier())
+                .build());
+        }
+
+        return new LifecycleWrapper<>(exporter.build(), e -> {}, SpanExporter::close);
     }
 
     default OpentelemetryGrpcExporterConfig otlpGrpcSpanExporterConfig(Config config, ConfigValueExtractor<OpentelemetryGrpcExporterConfig.FromConfig> extractor) {
@@ -39,10 +54,11 @@ public interface OpentelemetryGrpcExporterModule extends OpentelemetryTracingMod
             return new LifecycleWrapper<>(SpanProcessor.composite(), v -> {}, v -> {});
         }
         var spanProcessor = BatchSpanProcessor.builder(spanExporter)
-            .setExporterTimeout(config.exportTimeout())
+            .setExporterTimeout(config.batchExportTimeout())
             .setMaxExportBatchSize(config.maxExportBatchSize())
             .setMaxQueueSize(config.maxQueueSize())
             .setScheduleDelay(config.scheduleDelay())
+            .setExportUnsampledSpans(config.exportUnsampledSpans())
             .build();
         return new LifecycleWrapper<>(spanProcessor, p -> {}, SpanProcessor::close);
     }

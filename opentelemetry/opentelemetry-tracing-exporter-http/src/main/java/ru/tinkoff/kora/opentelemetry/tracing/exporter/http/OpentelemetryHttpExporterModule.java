@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.opentelemetry.tracing.exporter.http;
 
 import io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporter;
+import io.opentelemetry.sdk.common.export.RetryPolicy;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
@@ -20,9 +21,25 @@ public interface OpentelemetryHttpExporterModule extends OpentelemetryTracingMod
         var exporter = OtlpHttpSpanExporter.builder()
             .setEndpoint(config.endpoint())
             .setTimeout(config.exportTimeout())
-            .build();
+            .setCompression(config.compression());
 
-        return new LifecycleWrapper<>(exporter, e -> {}, SpanExporter::close);
+        if (config.connectTimeout() != null) {
+            exporter.setConnectTimeout(config.connectTimeout());
+        }
+        if (config.compression() != null) {
+            exporter.setCompression(config.compression());
+        }
+        var retryPolicy = config.retryPolicy();
+        if (retryPolicy != null) {
+            exporter.setRetryPolicy(RetryPolicy.builder()
+                .setMaxAttempts(retryPolicy.maxAttempts())
+                .setMaxBackoff(retryPolicy.maxBackoff())
+                .setInitialBackoff(retryPolicy.initialBackoff())
+                .setBackoffMultiplier(retryPolicy.backoffMultiplier())
+                .build());
+        }
+
+        return new LifecycleWrapper<>(exporter.build(), e -> {}, SpanExporter::close);
     }
 
     default OpentelemetryHttpExporterConfig otlpGrpcSpanExporterConfig(Config config, ConfigValueExtractor<OpentelemetryHttpExporterConfig.FromConfig> extractor) {
@@ -39,10 +56,11 @@ public interface OpentelemetryHttpExporterModule extends OpentelemetryTracingMod
             return new LifecycleWrapper<>(SpanProcessor.composite(), v -> {}, v -> {});
         }
         var spanProcessor = BatchSpanProcessor.builder(spanExporter)
-            .setExporterTimeout(config.exportTimeout())
+            .setExporterTimeout(config.batchExportTimeout())
             .setMaxExportBatchSize(config.maxExportBatchSize())
             .setMaxQueueSize(config.maxQueueSize())
             .setScheduleDelay(config.scheduleDelay())
+            .setExportUnsampledSpans(config.exportUnsampledSpans())
             .build();
         return new LifecycleWrapper<>(spanProcessor, p -> {}, SpanProcessor::close);
     }
