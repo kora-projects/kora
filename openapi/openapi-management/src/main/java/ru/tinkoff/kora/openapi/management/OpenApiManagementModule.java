@@ -6,6 +6,7 @@ import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandlerImpl;
 
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 public interface OpenApiManagementModule {
@@ -15,22 +16,21 @@ public interface OpenApiManagementModule {
     }
 
     default HttpServerRequestHandler openApiManagementController(OpenApiManagementConfig config) {
-        final String path = (config.file().size() == 1) ? config.endpoint() : config.endpoint() + "/{file}";
         if (!config.enabled()) {
-            return HttpServerRequestHandlerImpl.get(path,
+            // random path so the disabled path WILL NOT be blocked and user can reuse such path for himself
+            return HttpServerRequestHandlerImpl.get("/openapi-" + UUID.randomUUID(),
                 (context, request) -> CompletableFuture.completedFuture(HttpServerResponse.of(404)));
         }
 
         var handler = new OpenApiHttpServerHandler(config.file(), f -> f);
+        final String path = (config.file().size() == 1) ? config.endpoint() : config.endpoint() + "/{file}";
         return HttpServerRequestHandlerImpl.get(path, handler);
     }
 
     default HttpServerRequestHandler swaggerUIManagementController(OpenApiManagementConfig config) {
-        if (config.swaggerui() == null) {
-            return HttpServerRequestHandlerImpl.get("/swagger-ui",
-                (context, request) -> CompletableFuture.completedFuture(HttpServerResponse.of(404)));
-        } else if (!config.enabled() || !config.swaggerui().enabled()) {
-            return HttpServerRequestHandlerImpl.get(config.swaggerui().endpoint(),
+        if (config.swaggerui() == null || !config.enabled() || !config.swaggerui().enabled()) {
+            // random path so the disabled path WILL NOT be blocked and user can reuse such path for himself
+            return HttpServerRequestHandlerImpl.get("/swagger-ui-" + UUID.randomUUID(),
                 (context, request) -> CompletableFuture.completedFuture(HttpServerResponse.of(404)));
         }
 
@@ -39,11 +39,9 @@ public interface OpenApiManagementModule {
     }
 
     default HttpServerRequestHandler rapidocManagementController(OpenApiManagementConfig config) {
-        if (config.rapidoc() == null) {
-            return HttpServerRequestHandlerImpl.get("/rapidoc",
-                (context, request) -> CompletableFuture.completedFuture(HttpServerResponse.of(404)));
-        } else if (!config.enabled() || !config.rapidoc().enabled()) {
-            return HttpServerRequestHandlerImpl.get(config.rapidoc().endpoint(),
+        if (config.rapidoc() == null || !config.enabled() || !config.rapidoc().enabled()) {
+            // random path so the disabled path WILL NOT be blocked and user can reuse such path for himself
+            return HttpServerRequestHandlerImpl.get("/rapidoc-" + UUID.randomUUID(),
                 (context, request) -> CompletableFuture.completedFuture(HttpServerResponse.of(404)));
         }
 
