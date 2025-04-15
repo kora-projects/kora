@@ -133,7 +133,8 @@ public class KoraCodegen extends DefaultCodegen {
         Map<String, List<Interceptor>> interceptors,
         Map<String, List<AdditionalAnnotation>> additionalContractAnnotations,
         boolean requestInDelegateParams,
-        boolean enableJsonNullable
+        boolean enableJsonNullable,
+        boolean forceIncludeOptional
     ) {
         static List<CliOption> cliOptions() {
             var cliOptions = new ArrayList<CliOption>();
@@ -149,6 +150,7 @@ public class KoraCodegen extends DefaultCodegen {
             cliOptions.add(CliOption.newString(ADDITIONAL_CONTRACT_ANNOTATIONS, "Additional annotations for HTTP client/server methods"));
             cliOptions.add(CliOption.newBoolean(AUTH_AS_METHOD_ARGUMENT, "HTTP client authorization as method argument"));
             cliOptions.add(CliOption.newBoolean(ENABLE_JSON_NULLABLE, "If enabled then wraps Nullable and NonRequired fields with JsonNullable type"));
+            cliOptions.add(CliOption.newString(FORCE_INCLUDE_OPTIONAL, "If enabled forces Nullable and NonRequired fields to be included ALWAYS even if null, can't be enabled with enableJsonNullable simultaneously"));
             return cliOptions;
         }
 
@@ -165,6 +167,7 @@ public class KoraCodegen extends DefaultCodegen {
             var additionalContractAnnotations = new HashMap<String, List<AdditionalAnnotation>>();
             var requestInDelegateParams = false;
             var enableJsonNullable = false;
+            var forceIncludeOptional = false;
 
             if (additionalProperties.containsKey(CODEGEN_MODE)) {
                 codegenMode = Mode.ofMode(additionalProperties.get(CODEGEN_MODE).toString());
@@ -221,9 +224,12 @@ public class KoraCodegen extends DefaultCodegen {
             if (additionalProperties.containsKey(ENABLE_JSON_NULLABLE)) {
                 enableJsonNullable = Boolean.parseBoolean(additionalProperties.get(ENABLE_JSON_NULLABLE).toString());
             }
+            if (additionalProperties.containsKey(FORCE_INCLUDE_OPTIONAL)) {
+                forceIncludeOptional = Boolean.parseBoolean(additionalProperties.get(FORCE_INCLUDE_OPTIONAL).toString());
+            }
 
             return new CodegenParams(codegenMode, jsonAnnotation, enableServerValidation, authAsMethodArgument, primaryAuth, clientConfigPrefix,
-                securityConfigPrefix, clientTags, interceptors, additionalContractAnnotations, requestInDelegateParams, enableJsonNullable);
+                securityConfigPrefix, clientTags, interceptors, additionalContractAnnotations, requestInDelegateParams, enableJsonNullable, forceIncludeOptional);
         }
 
         void processAdditionalProperties(Map<String, Object> additionalProperties) {
@@ -280,6 +286,7 @@ public class KoraCodegen extends DefaultCodegen {
     public static final String ADDITIONAL_CONTRACT_ANNOTATIONS = "additionalContractAnnotations";
     public static final String AUTH_AS_METHOD_ARGUMENT = "authAsMethodArgument";
     public static final String ENABLE_JSON_NULLABLE = "enableJsonNullable";
+    public static final String FORCE_INCLUDE_OPTIONAL = "forceIncludeOptional";
 
     protected String invokerPackage = "org.openapitools";
     protected boolean fullJavaUtil;
@@ -586,8 +593,9 @@ public class KoraCodegen extends DefaultCodegen {
                 if (variable.isNullable && !variable.required) {
                     if (params.enableJsonNullable) {
                         variable.vendorExtensions.put("x-json-nullable", true);
-                    } else {
+                    } else if(params.forceIncludeOptional) {
                         variable.vendorExtensions.put("x-json-include-always", true);
+                    } else {
                         //TODO remove in 2.0 and make default behavior that ENABLE_JSON_NULLABLE is enabled
                         LOGGER.warn("Detected isNullable and NonRequired field: {}#{}\nYou may want add option '{}' in configOptions to treat it as JsonNullable<T>, this will be default behavior in 2.0",
                             model.name, variable.name, ENABLE_JSON_NULLABLE);
@@ -614,8 +622,9 @@ public class KoraCodegen extends DefaultCodegen {
                 if (variable.isNullable && !variable.required) {
                     if (params.enableJsonNullable) {
                         variable.vendorExtensions.put("x-json-nullable", true);
-                    } else {
+                    } else if(params.forceIncludeOptional) {
                         variable.vendorExtensions.put("x-json-include-always", true);
+                    } else {
                         //TODO remove in 2.0 and make default behavior that ENABLE_JSON_NULLABLE is enabled
                         LOGGER.warn("Detected isNullable and NonRequired field: {}#{}\nYou may want add option '{}' in configOptions to treat it as JsonNullable<T>, this will be default behavior in 2.0",
                             model.name, variable.name, ENABLE_JSON_NULLABLE);
