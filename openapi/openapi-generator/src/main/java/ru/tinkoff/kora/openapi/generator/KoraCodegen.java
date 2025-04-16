@@ -2358,6 +2358,38 @@ public class KoraCodegen extends DefaultCodegen {
         }
     }
 
+    @Deprecated
+    public String toEnumVarNameDeprecated(String value, String datatype) {
+        if (value.length() == 0) {
+            return "EMPTY";
+        }
+
+        // for symbol, e.g. $, #
+        if (getSymbolName(value) != null) {
+            return getSymbolName(value).toUpperCase(Locale.ROOT);
+        }
+
+        // camelCase to snakeCase
+
+        // number
+        if ("Integer".equals(datatype) || "Int".equals(datatype) || "Long".equals(datatype) ||
+            "Float".equals(datatype) || "Double".equals(datatype) || "BigDecimal".equals(datatype)) {
+            String varName = "NUMBER_" + value;
+            varName = varName.replaceAll("-", "MINUS_");
+            varName = varName.replaceAll("\\+", "PLUS_");
+            varName = varName.replaceAll("\\.", "_DOT_");
+            return varName;
+        }
+
+        // string
+        String var = value.replaceAll("\\W+", "_").toUpperCase(Locale.ROOT);
+        if (var.matches("\\d.*")) {
+            return "_" + var;
+        } else {
+            return var;
+        }
+    }
+
     @Override
     protected List<Map<String, Object>> buildEnumVars(List<Object> values, String dataType) {
         List<Map<String, Object>> enumVars = super.buildEnumVars(values, dataType);
