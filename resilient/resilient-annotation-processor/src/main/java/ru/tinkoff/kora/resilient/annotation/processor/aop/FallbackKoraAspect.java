@@ -71,7 +71,7 @@ public class FallbackKoraAspect implements KoraAspect {
             return CodeBlock.builder().add("""
                 try {
                     $L;
-                } catch (Exception _e) {
+                } catch (Throwable _e) {
                     if ($L.canFallback(_e)) {
                         $L;
                     } else {
@@ -84,7 +84,7 @@ public class FallbackKoraAspect implements KoraAspect {
             return CodeBlock.builder().add("""
                 try {
                     return $L;
-                } catch (Exception _e) {
+                } catch (Throwable _e) {
                     if ($L.canFallback(_e)) {
                         return $L;
                     } else {
@@ -101,15 +101,16 @@ public class FallbackKoraAspect implements KoraAspect {
 
         return CodeBlock.builder().add("""
                 return $L.exceptionallyCompose(_e -> {
-                    if (_e instanceof $T ce) {
-                        _e = ce.getCause();
+                    var _cause = _e;
+                    if (_cause instanceof $T ce) {
+                        _cause = ce.getCause();
                     }
-                    if ($L.canFallback(_e)) {
+                    if ($L.canFallback(_cause)) {
                         return $L;
                     }
-                    return $T.failedFuture(new $T(_e));
+                    return $T.failedFuture(_cause);
                 });""", superMethod.toString(), CompletionException.class, fieldFallback, fallbackMethod,
-            CompletableFuture.class, CompletionException.class).build();
+            CompletableFuture.class).build();
     }
 
     private CodeBlock buildBodyMono(ExecutableElement method, FallbackMeta fallbackCall, String superCall, String fieldFallback) {

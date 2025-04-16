@@ -79,7 +79,7 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
                 $L;
             } catch ($T _e) {
                 throw _e;
-            } catch (Exception _e) {
+            } catch (Throwable _e) {
                 $L.releaseOnError(_e);
                 throw _e;
             }
@@ -90,30 +90,25 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
 
         return CodeBlock.builder().add("""
-                try {
-                    $L.acquire();
-                    return $L.thenApply(_result -> {
-                                $L.releaseOnSuccess();
-                                return _result;
-                            })
-                            .exceptionally(_e -> {
-                                if (_e instanceof $T ce) {
-                                    _e = ce.getCause();
-                                }
-                                $L.releaseOnError(_e);
-                                if(_e instanceof $T _ex) {
-                                    throw _ex;
-                                }
-                                throw new $T(_e);
-                            });
-                } catch ($T _e) {
-                    return $T.failedFuture(_e);
-                } catch (Exception _e) {
-                    $L.releaseOnError(_e);
-                    throw _e;
-                }
-                """, cbField, superMethod, cbField, CompletionException.class, cbField, RuntimeException.class,
-            CompletionException.class, PERMITTED_EXCEPTION, CompletableFuture.class, cbField).build();
+            try {
+                $L.acquire();
+                return $L.whenComplete((_r, _e) -> {
+                    if (_e != null) {
+                        if (_e instanceof $T ce) {
+                            _e = ce.getCause();
+                        }
+                        $L.releaseOnError(_e);
+                    } else {
+                        $L.releaseOnSuccess();
+                    }
+                });
+            } catch ($T _e) {
+                return $T.failedFuture(_e);
+            } catch (Throwable _e) {
+                $L.releaseOnError(_e);
+                throw _e;
+            }
+            """, cbField, superMethod, CompletionException.class, cbField, cbField, PERMITTED_EXCEPTION, CompletableFuture.class, cbField).build();
     }
 
     private CodeBlock buildBodyMono(ExecutableElement method, String superCall, String cbField) {

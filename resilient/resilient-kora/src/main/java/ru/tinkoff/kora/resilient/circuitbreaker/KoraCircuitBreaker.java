@@ -3,9 +3,9 @@ package ru.tinkoff.kora.resilient.circuitbreaker;
 import jakarta.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.time.Clock;
-import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
@@ -28,15 +28,7 @@ import java.util.function.Supplier;
  * --------------------------------------------------------------------------------------------------
  */
 @SuppressWarnings("ConstantConditions")
-record KoraCircuitBreaker(
-    AtomicLong state,
-    String name,
-    CircuitBreakerConfig.NamedConfig config,
-    CircuitBreakerPredicate failurePredicate,
-    CircuitBreakerMetrics metrics,
-    long waitDurationInOpenStateInMillis,
-    Clock clock
-) implements CircuitBreaker {
+final class KoraCircuitBreaker implements CircuitBreaker {
 
     private static final Logger logger = LoggerFactory.getLogger(KoraCircuitBreaker.class);
 
@@ -52,8 +44,23 @@ record KoraCircuitBreaker(
     private static final long ERR_COUNTER_INC = 1L << 31;
     private static final long BOTH_COUNTERS_INC = ERR_COUNTER_INC + COUNTER_INC;
 
+    private final AtomicLong state;
+    private final String name;
+    private final CircuitBreakerConfig.NamedConfig config;
+    private final CircuitBreakerPredicate failurePredicate;
+    private final CircuitBreakerMetrics metrics;
+    private final long waitDurationInOpenStateInMillis;
+    private final Clock clock;
+
     KoraCircuitBreaker(String name, CircuitBreakerConfig.NamedConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerMetrics metrics) {
-        this(new AtomicLong(CLOSED_STATE), name, config, failurePredicate, metrics, config.waitDurationInOpenState().toMillis(), Clock.systemDefaultZone());
+        this.state = new AtomicLong(CLOSED_STATE);
+        this.name = name;
+        this.config = config;
+        this.failurePredicate = failurePredicate;
+        this.metrics = metrics;
+        this.waitDurationInOpenStateInMillis = config.waitDurationInOpenState().toMillis();
+        this.clock = Clock.systemDefaultZone();
+
         this.metrics.recordState(name, State.CLOSED);
     }
 
@@ -148,20 +155,20 @@ record KoraCircuitBreaker(
             if (acquired < config.permittedCallsInHalfOpenState()) {
                 final boolean isAcquired = this.state.compareAndSet(value, value + 1);
                 if (isAcquired) {
-                    logger.trace("CircuitBreaker '{}' acquired", name);
+                    logger.trace("CircuitBreaker '{}' acquired in HALF_OPEN state", name);
                     return true;
                 } else {
                     return tryAcquire();
                 }
             } else {
-                logger.trace("CircuitBreaker '{}' can't be acquired in HALF_OPEN state", name);
+                logger.trace("CircuitBreaker '{}' rejected in HALF_OPEN state", name);
                 return false;
             }
         }
 
-        // go to half open
         final long currentTimeInMillis = clock.millis();
         final long beenInOpenState = currentTimeInMillis - value;
+        // go to half open
         if (beenInOpenState >= waitDurationInOpenStateInMillis) {
             if (this.state.compareAndSet(value, HALF_OPEN_STATE + 1)) {
                 onStateChange(State.OPEN, State.HALF_OPEN);
@@ -173,8 +180,8 @@ record KoraCircuitBreaker(
             }
         } else {
             if (logger.isTraceEnabled()) {
-                logger.trace("CircuitBreaker '{}' can't be acquired being in OPEN state for '{}' when require minimum '{}'",
-                    name, Duration.ofMillis(beenInOpenState), Duration.ofMillis(waitDurationInOpenStateInMillis));
+                logger.trace("CircuitBreaker '{}' rejected being in OPEN state for '{}' when require minimum '{}'",
+                    name, TimeUtils.durationForLogging(beenInOpenState), TimeUtils.durationForLogging(waitDurationInOpenStateInMillis));
             }
             return false;
         }
@@ -216,12 +223,6 @@ record KoraCircuitBreaker(
             final int permitted = config.permittedCallsInHalfOpenState();
             if (success >= permitted) {
                 return CLOSED_STATE;
-            }
-
-            final int errors = countHalfOpenError(currentState);
-            final int total = success + errors;
-            if (total >= permitted) {
-                return getOpenState();
             }
 
             return currentState + HALF_OPEN_INCREMENT_SUCCESS;
@@ -276,7 +277,13 @@ record KoraCircuitBreaker(
                 return currentState + BOTH_COUNTERS_INC;
             }
         } else if (state == State.HALF_OPEN) {
-            return getOpenState();
+            final int errors = countHalfOpenError(currentState) + 1;
+            final int permitted = config.permittedCallsInHalfOpenState();
+            if (errors >= permitted) {
+                return getOpenState();
+            }
+
+            return currentState + HALF_OPEN_INCREMENT_ERROR;
         } else {
             // do nothing with open state
             return currentState;

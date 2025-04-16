@@ -81,7 +81,7 @@ class CircuitBreakerKoraAspect(val resolver: Resolver) : KoraAspect {
                 %L
             } catch (e: %T) {
                 throw e
-            } catch (e: java.lang.Exception) {
+            } catch (e: Throwable) {
                 %L.releaseOnError(e)
                 throw e
             }
@@ -105,7 +105,7 @@ class CircuitBreakerKoraAspect(val resolver: Resolver) : KoraAspect {
                     %L.releaseOnSuccess()
                 } catch (e: %T) {
                     throw e
-                } catch (e: java.lang.Exception) {
+                } catch (e: Throwable) {
                     %L.releaseOnError(e)
                     throw e
                 }

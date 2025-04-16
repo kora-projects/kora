@@ -100,7 +100,7 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
                 controlFlow("while (true)") {
                     controlFlow("try") {
                         add("return ").add(buildMethodCall(method, superCall)).add("\n")
-                        nextControlFlow("catch (_e: Exception)")
+                        nextControlFlow("catch (_e: Throwable)")
                         addStatement("val _status = _state.onException(_e)")
                         controlFlow("when (_status)") {
                             controlFlow("%T.REJECTED ->", MEMBER_RETRY_STATUS) {
