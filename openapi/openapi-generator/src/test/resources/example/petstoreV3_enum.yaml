@@ -74,6 +74,7 @@ components:
               - Husky
               - Retriever
               - MetaRetroRetriever
+              - Mega3000Retriever
               - Shepherd
         nonReqArrayString:
           type: array

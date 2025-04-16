@@ -789,7 +789,7 @@ public class KoraCodegen extends DefaultCodegen {
     private String getUpperSnakeCase(String value, Locale locale) {
         return Arrays.stream(value.split("[^a-zA-Z0-9]"))
             .map(String::strip)
-            .flatMap(s -> Arrays.stream(s.split("(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|( +)")))
+            .flatMap(s -> Arrays.stream(s.split("(?<=[\\d+])(?=[A-Za-z])|(?<=[a-z])(?=[A-Z\\d])|(?<=[A-Z])(?=[A-Z][a-z])|( +)"))) // too much, don't guarantee how it works
             .map(String::strip)
             .map(s -> s.toUpperCase(locale))
             .collect(Collectors.joining("_"));
