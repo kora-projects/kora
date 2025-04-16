@@ -38,7 +38,7 @@ components:
         id:
           type: integer
           format: int64
-        name:
+        '@name':
           type: string
         tag:
           type: string

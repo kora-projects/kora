@@ -34,16 +34,43 @@ components:
             required1: { type: string }
     TestBaseObject1:
       type: object
-      required: [ kind ]
+      required: [ '@kind' ]
       description: Use 'SdpStream' as kind instead 'SdpGpStream'
       discriminator:
-        propertyName: kind
+        propertyName: '@kind'
         mapping:
           Mapping1: '#/components/schemas/TestBaseObject1Child1'
           Mapping2: '#/components/schemas/TestBaseObject1Child2'
           Mapping3: '#/components/schemas/TestBaseObject1Child2'
       properties:
-        kind:
+        '@kind':
+          type: string
+
+    TestBaseDelivery:
+      type: object
+      required:
+        - request_data
+      properties:
+        request_data:
+          oneOf:
+            - $ref: '#/components/schemas/TestBaseDelivery1'
+            - $ref: '#/components/schemas/TestBaseDelivery2'
+          discriminator:
+            propertyName: '@type'
+            mapping:
+              req1: '#/components/schemas/TestBaseDelivery1'
+              req2: '#/components/schemas/TestBaseDelivery2'
+
+    TestBaseDelivery1:
+      type: object
+      properties:
+        name:
+          type: string
+
+    TestBaseDelivery2:
+      type: object
+      properties:
+        name:
           type: string
 
     DeliveryTypeEnum:
