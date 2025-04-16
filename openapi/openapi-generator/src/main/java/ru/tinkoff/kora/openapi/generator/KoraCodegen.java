@@ -666,7 +666,7 @@ public class KoraCodegen extends DefaultCodegen {
                     enumVars.add(Map.of("name", enumVar, "value", enumStr));
 
                     var enumVarDeprecated = toEnumVarNameDeprecated(enumValue, "String");
-                    if (!enumVarDeprecated.equals(enumValue)) {
+                    if (!enumVarDeprecated.equals(enumVar)) {
                         enumVarsDeprecated.add(Map.of("name", enumVarDeprecated,
                             "nameNew", enumVar,
                             "value", enumStr));
