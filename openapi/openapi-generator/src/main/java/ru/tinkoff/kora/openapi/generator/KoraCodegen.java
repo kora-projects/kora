@@ -644,7 +644,7 @@ public class KoraCodegen extends DefaultCodegen {
                 model.allVars.removeIf(p -> p.name.equals(model.discriminator.getPropertyName()));
                 var discriminatorProperty = new CodegenProperty();
                 discriminatorProperty.name = model.discriminator.getPropertyName();
-                discriminatorProperty.baseName = model.discriminator.getPropertyName();
+                discriminatorProperty.baseName = model.discriminator.getPropertyBaseName();
                 discriminatorProperty.openApiType = model.discriminator.getPropertyType();
                 if (model.discriminator.getMapping() != null) {
                     discriminatorProperty._enum = new ArrayList<>(model.discriminator.getMapping().keySet());
