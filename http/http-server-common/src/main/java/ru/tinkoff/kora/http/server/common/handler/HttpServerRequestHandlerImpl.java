@@ -13,18 +13,29 @@ import java.util.concurrent.ExecutionException;
 import static ru.tinkoff.kora.http.common.HttpMethod.*;
 
 public final class HttpServerRequestHandlerImpl implements HttpServerRequestHandler {
+
     private final String method;
     private final String routeTemplate;
     private final HandlerFunction handler;
+    private final boolean enabled;
 
     public HttpServerRequestHandlerImpl(String method, String routeTemplate, HandlerFunction handler) {
+        this(method, routeTemplate, handler, true);
+    }
+
+    public HttpServerRequestHandlerImpl(String method, String routeTemplate, HandlerFunction handler, boolean enabled) {
         this.method = method;
         this.routeTemplate = routeTemplate;
         this.handler = handler;
+        this.enabled = enabled;
     }
 
     public static HttpServerRequestHandlerImpl of(String method, String routeTemplate, HandlerFunction handler) {
         return new HttpServerRequestHandlerImpl(method, routeTemplate, handler);
+    }
+
+    public static HttpServerRequestHandlerImpl of(String method, String routeTemplate, HandlerFunction handler, boolean enabled) {
+        return new HttpServerRequestHandlerImpl(method, routeTemplate, handler, enabled);
     }
 
     public static HttpServerRequestHandlerImpl get(String routeTemplate, HandlerFunction handler) {
@@ -71,6 +82,11 @@ public final class HttpServerRequestHandlerImpl implements HttpServerRequestHand
     @Override
     public String routeTemplate() {
         return this.routeTemplate;
+    }
+
+    @Override
+    public boolean enabled() {
+        return enabled;
     }
 
     @Override
