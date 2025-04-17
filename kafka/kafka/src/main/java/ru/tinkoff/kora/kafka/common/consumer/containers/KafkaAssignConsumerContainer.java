@@ -196,7 +196,10 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
             var latestOffset = entry.getValue();
             var currentOffset = this.offsets.get(p.partition());
             if (currentOffset != null) {
-                var lag = latestOffset - currentOffset;
+                // add -1 cause
+                // In the default read_uncommitted isolation level endOffsets() returns, the end offset is the high watermark
+                // (that is, the offset of the last successfully replicated message plus one)
+                var lag = latestOffset - currentOffset - 1;
                 this.telemetry.reportLag(p, lag);
             }
         }
