@@ -14,6 +14,10 @@ public interface HttpServerRequestHandler {
 
     CompletionStage<HttpServerResponse> handle(Context ctx, HttpServerRequest request) throws Exception;
 
+    default boolean enabled() {
+        return true;
+    }
+
     interface HandlerFunction {
         CompletionStage<HttpServerResponse> apply(Context context, HttpServerRequest request) throws Exception;
     }

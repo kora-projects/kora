@@ -2,10 +2,7 @@ package ru.tinkoff.kora.http.server.common.router;
 
 
 import jakarta.annotation.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.common.Context;
-import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.*;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
@@ -44,6 +41,10 @@ public class PublicApiHandler {
         this.pathTemplateMatcher = new HashMap<>();
         this.allMethodMatchers = new PathTemplateMatcher<>();
         for (var h : handlers) {
+            if(!h.enabled()) {
+                continue;
+            }
+
             var route = h.routeTemplate();
             var methodMatchers = this.pathTemplateMatcher.computeIfAbsent(h.method(), k -> new PathTemplateMatcher<>());
             var oldValue = methodMatchers.add(route, h);
