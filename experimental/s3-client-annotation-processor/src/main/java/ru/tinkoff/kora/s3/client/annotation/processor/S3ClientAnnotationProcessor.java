@@ -141,9 +141,16 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                     throw new ProcessingErrorException("@S3.Client method without operation annotation can't be non default", method);
                 } else if (operationType.isPresent()) {
                     S3Operation operation = getOperation(method, operationType.get());
-                    MethodSpec methodSpec = MethodSpec.overriding(method)
-                        .addCode(operation.code())
-                        .build();
+                    var methodSpecBuilder = MethodSpec.overriding(method)
+                        .addCode(operation.code());
+
+                    if (operation.impl() == ImplType.AWS) {
+                        methodSpecBuilder.addException(CLASS_AWS_EXCEPTION);
+                    } else {
+                        methodSpecBuilder.addException(CLASS_S3_EXCEPTION);
+                    }
+
+                    MethodSpec methodSpec = methodSpecBuilder.build();
 
                     implSpecBuilder.addMethod(methodSpec);
 
@@ -306,7 +313,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
 
         var codeBuilder = CodeBlock.builder();
         for (VariableElement parameter : method.getParameters()) {
-            if(!(method.getReturnType() instanceof PrimitiveType)) {
+            if (!(method.getReturnType() instanceof PrimitiveType)) {
                 codeBuilder.add("""
                     if($T.isNull($L)) {
                         throw new $T("S3.Get request key argument expected, but was null for arg: $L");
@@ -536,7 +543,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
 
         var codeBuilder = CodeBlock.builder();
         for (VariableElement parameter : method.getParameters()) {
-            if(!(method.getReturnType() instanceof PrimitiveType)) {
+            if (!(method.getReturnType() instanceof PrimitiveType)) {
                 codeBuilder.add("""
                     if($T.isNull($L)) {
                         throw new $T("S3.List request prefix argument expected, but was null for arg: $L");
@@ -669,7 +676,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
 
         var methodBuilder = CodeBlock.builder();
         for (VariableElement parameter : method.getParameters()) {
-            if(!(method.getReturnType() instanceof PrimitiveType)) {
+            if (!(method.getReturnType() instanceof PrimitiveType)) {
                 methodBuilder.add("""
                     if($T.isNull($L)) {
                         throw new $T("S3.Put request argument expected, but was null for arg: $L");
@@ -901,7 +908,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
 
         var methodBuilder = CodeBlock.builder();
         for (VariableElement parameter : method.getParameters()) {
-            if(!(method.getReturnType() instanceof PrimitiveType)) {
+            if (!(method.getReturnType() instanceof PrimitiveType)) {
                 methodBuilder.add("""
                     if($T.isNull($L)) {
                         throw new $T("S3.Delete request key argument expected, but was null for arg: $L");
