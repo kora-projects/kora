@@ -13,6 +13,7 @@ import javax.lang.model.element.ExecutableElement;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -88,22 +89,22 @@ public class TimeoutKoraAspect implements KoraAspect {
         return CodeBlock.builder().add("""
                 return $L.toCompletableFuture()
                     .orTimeout($L.timeout().toMillis(), $T.MILLISECONDS)
-                    .exceptionally(e -> {
-                      if (e instanceof $T ce) {
-                          e = ce.getCause();
+                    .exceptionallyCompose(_e -> {
+                      var _cause = _e;
+                      if (_cause instanceof $T ce) {
+                          _cause = ce.getCause();
                       }
-                      if(e instanceof $T) {
+                      if(_cause instanceof $T) {
                         if($L != null) {
                             $L.recordTimeout($S, $L.timeout().toNanos());
                         }
-                        throw new $T($S, "Timeout exceeded " + $L.timeout());
-                      } else if(e instanceof $T ex) {
-                        throw ex;
+                        return $T.failedFuture(new $T($S, "Timeout exceeded " + $L.timeout()));
+                      } else {
+                        return $T.failedFuture(_cause);
                       }
-                      throw new $T(e);
                     });""", superMethod.toString(), fieldTimeout, TimeUnit.class, CompletionException.class, TimeoutException.class,
-            fieldMetrics, fieldMetrics, timeoutName, fieldTimeout, EXHAUSTED_EXCEPTION, timeoutName, fieldTimeout,
-            RuntimeException.class, CompletionException.class).build();
+            fieldMetrics, fieldMetrics, timeoutName, fieldTimeout, CompletableFuture.class,
+            EXHAUSTED_EXCEPTION, timeoutName, fieldTimeout, CompletableFuture.class).build();
     }
 
     private CodeBlock buildBodyMono(ExecutableElement method, String superCall, String timeoutName, String fieldTimeout, String fieldMetrics) {

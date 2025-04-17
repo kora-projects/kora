@@ -65,7 +65,11 @@ record KoraTimeout(String name, long delayMaxNanos, TimeoutMetrics metrics, Exec
         try {
             return handler.get(delayMaxNanos, TimeUnit.NANOSECONDS);
         } catch (ExecutionException e) {
-            KoraTimeouterUtils.doThrow(e.getCause());
+            if (e.getCause() instanceof RuntimeException re) {
+                throw re;
+            } else {
+                KoraTimeouterUtils.doThrow(e.getCause());
+            }
         } catch (java.util.concurrent.TimeoutException e) {
             handler.cancel(true);
             final Duration timeout = timeout();
