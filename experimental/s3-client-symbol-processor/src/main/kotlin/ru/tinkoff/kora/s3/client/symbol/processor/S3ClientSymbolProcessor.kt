@@ -7,6 +7,7 @@ import com.google.devtools.ksp.symbol.*
 import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.jvm.throws
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.common.Component
@@ -55,6 +56,8 @@ class S3ClientSymbolProcessor(
         private val CLASS_CLIENT_AWS_TAG = ClassName("software.amazon.awssdk.awscore", "AwsClient")
         private val CLASS_CLIENT_AWS_MULTIPART_TAG = ClassName("software.amazon.awssdk.services.s3.model", "MultipartUpload")
 
+        private val CLASS_S3_EXCEPTION = ClassName("ru.tinkoff.kora.s3.client", "S3Exception")
+        private val CLASS_S3_EXCEPTION_NOT_FOUND = ClassName("ru.tinkoff.kora.s3.client", "S3NotFoundException")
         private val CLASS_S3_UPLOAD: ClassName = ClassName("ru.tinkoff.kora.s3.client.model", "S3ObjectUpload")
         private val CLASS_S3_BODY: ClassName = ClassName("ru.tinkoff.kora.s3.client.model", "S3Body")
         private val CLASS_S3_BODY_BYTES: ClassName = ClassName("ru.tinkoff.kora.s3.client.model", "ByteS3Body")
@@ -68,6 +71,7 @@ class S3ClientSymbolProcessor(
 
         private val CLASS_JDK_FLOW_ADAPTER = ClassName("reactor.adapter", "JdkFlowAdapter")
 
+        private val CLASS_AWS_EXCEPTION = ClassName("software.amazon.awssdk.awscore.exception", "AwsServiceException")
         private val CLASS_AWS_EXCEPTION_NO_KEY = ClassName("software.amazon.awssdk.services.s3.model", "NoSuchKeyException")
         private val CLASS_AWS_EXCEPTION_NO_BUCKET = ClassName("software.amazon.awssdk.services.s3.model", "NoSuchBucketException")
         private val CLASS_AWS_IS_SYNC_BODY: ClassName = ClassName("software.amazon.awssdk.core.sync", "RequestBody")
@@ -141,10 +145,15 @@ class S3ClientSymbolProcessor(
                 throw ProcessingErrorException("@S3.Client method without operation annotation can't be non default", func)
             } else {
                 val operation = getOperation(func, operationType)
-                val methodSpec = func.overridingKeepAop(resolver)
+                var methodSpecBuilder = func.overridingKeepAop(resolver)
                     .addCode(operation.code)
-                    .build()
 
+                methodSpecBuilder = when (operation.impl) {
+                    S3Operation.ImplType.AWS -> methodSpecBuilder.throws(CLASS_AWS_EXCEPTION)
+                    else -> methodSpecBuilder.throws(CLASS_S3_EXCEPTION)
+                }
+
+                val methodSpec = methodSpecBuilder.build();
                 implSpecBuilder.addFunction(methodSpec)
 
                 val signatures = mutableListOf<Signature>()
