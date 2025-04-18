@@ -38,7 +38,7 @@ public final class MicrometerGrpcServerMetricsFactory implements GrpcServerMetri
                 case V120 -> "milliseconds";
                 case V123 -> "s";
             })
-            .tag(RpcIncubatingAttributes.RPC_SYSTEM.getKey(), RpcIncubatingAttributes.RpcSystemValues.GRPC)
+            .tag(RpcIncubatingAttributes.RPC_SYSTEM.getKey(), RpcIncubatingAttributes.RpcSystemIncubatingValues.GRPC)
             .tag(RpcIncubatingAttributes.RPC_SERVICE.getKey(), metricsKey.serviceName)
             .tag(RpcIncubatingAttributes.RPC_METHOD.getKey(), metricsKey.methodName)
             .tag(RpcIncubatingAttributes.RPC_GRPC_STATUS_CODE.getKey(), Integer.toString(code))
@@ -46,14 +46,14 @@ public final class MicrometerGrpcServerMetricsFactory implements GrpcServerMetri
 
         var requestsPerRpc = Counter.builder("rpc.server.requests_per_rpc")
             .baseUnit("messages")
-            .tag(RpcIncubatingAttributes.RPC_SYSTEM.getKey(), RpcIncubatingAttributes.RpcSystemValues.GRPC)
+            .tag(RpcIncubatingAttributes.RPC_SYSTEM.getKey(), RpcIncubatingAttributes.RpcSystemIncubatingValues.GRPC)
             .tag(RpcIncubatingAttributes.RPC_SERVICE.getKey(), metricsKey.serviceName)
             .tag(RpcIncubatingAttributes.RPC_METHOD.getKey(), metricsKey.methodName)
             .register(this.meterRegistry);
 
         var responsesPerRpc = Counter.builder("rpc.server.responses_per_rpc")
             .baseUnit("messages")
-            .tag(RpcIncubatingAttributes.RPC_SYSTEM.getKey(), RpcIncubatingAttributes.RpcSystemValues.GRPC)
+            .tag(RpcIncubatingAttributes.RPC_SYSTEM.getKey(), RpcIncubatingAttributes.RpcSystemIncubatingValues.GRPC)
             .tag(RpcIncubatingAttributes.RPC_SERVICE.getKey(), metricsKey.serviceName)
             .tag(RpcIncubatingAttributes.RPC_METHOD.getKey(), metricsKey.methodName)
             .register(this.meterRegistry);

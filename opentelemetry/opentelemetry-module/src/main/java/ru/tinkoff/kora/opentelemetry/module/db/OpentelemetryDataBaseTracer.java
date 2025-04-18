@@ -26,16 +26,16 @@ public final class OpentelemetryDataBaseTracer implements DataBaseTracer {
 
     private static String toDbSystem(String type) {
         return switch (type) {
-            case "as400", "db2" -> DbIncubatingAttributes.DbSystemValues.DB2;
-            case "derby" -> DbIncubatingAttributes.DbSystemValues.DERBY;
-            case "h2" -> DbIncubatingAttributes.DbSystemValues.H2;
+            case "as400", "db2" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.IBM_DB2;
+            case "derby" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.DERBY;
+            case "h2" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.H2DATABASE;
             case "hsqldb" -> "hsqldb";
-            case "mariadb" -> DbIncubatingAttributes.DbSystemValues.MARIADB;
-            case "mysql" -> DbIncubatingAttributes.DbSystemValues.MYSQL;
-            case "oracle" -> DbIncubatingAttributes.DbSystemValues.ORACLE;
-            case "postgresql", "postgres" -> DbIncubatingAttributes.DbSystemValues.POSTGRESQL;
-            case "jtds", "microsoft", "sqlserver" -> DbIncubatingAttributes.DbSystemValues.MSSQL;
-            default -> DbIncubatingAttributes.DbSystemValues.OTHER_SQL;
+            case "mariadb" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.MARIADB;
+            case "mysql" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.MYSQL;
+            case "oracle" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.ORACLE_DB;
+            case "postgresql", "postgres" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.POSTGRESQL;
+            case "jtds", "microsoft", "sqlserver" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.MICROSOFT_SQL_SERVER;
+            default -> DbIncubatingAttributes.DbSystemNameIncubatingValues.OTHER_SQL;
         };
     }
 

@@ -8,13 +8,13 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.SpanLimits;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.samplers.Sampler;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.application.graph.LifecycleWrapper;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.opentelemetry.module.OpentelemetryModule;
 
-import jakarta.annotation.Nullable;
 import java.util.function.Supplier;
 
 public interface OpentelemetryTracingModule extends OpentelemetryModule {

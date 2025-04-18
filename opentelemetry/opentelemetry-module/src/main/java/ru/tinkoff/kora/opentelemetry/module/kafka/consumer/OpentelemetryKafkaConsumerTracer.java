@@ -36,7 +36,7 @@ public final class OpentelemetryKafkaConsumerTracer implements KafkaConsumerTrac
         var spans = new HashMap<TopicPartition, Span>(partitions.size());
         var rootSpan = this.tracer.spanBuilder("kafka.poll")
             .setSpanKind(SpanKind.CONSUMER)
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingIncubatingAttributes.MessagingSystemValues.KAFKA)
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA)
             .setNoParent()
             .startSpan();
         var rootCtx = otctx.add(rootSpan);
@@ -47,7 +47,7 @@ public final class OpentelemetryKafkaConsumerTracer implements KafkaConsumerTrac
                 .setParent(rootCtx.getContext())
                 .setSpanKind(SpanKind.CONSUMER)
                 .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, "kafka")
-                .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION, MessagingIncubatingAttributes.MessagingOperationValues.RECEIVE)
+                .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION, MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues.RECEIVE)
                 .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME, topicPartition.topic())
                 .setAttribute(MessagingIncubatingAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION, (long) topicPartition.partition())
                 .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID, String.valueOf(topicPartition.partition()))

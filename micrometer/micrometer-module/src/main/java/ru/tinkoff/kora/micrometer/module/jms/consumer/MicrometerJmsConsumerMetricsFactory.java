@@ -20,7 +20,7 @@ public class MicrometerJmsConsumerMetricsFactory implements JmsConsumerMetricsFa
         var builder = DistributionSummary.builder("messaging.receive.duration")
             .serviceLevelObjectives(config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
             .baseUnit("s")
-            .tag(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemValues.JMS)
+            .tag(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.JMS)
             .tag(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), queueName);
 
         var distributionSummary = builder.register(this.meterRegistry);

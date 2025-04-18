@@ -1,10 +1,12 @@
 package ru.tinkoff.kora.opentelemetry.tracing.exporter.http;
 
+import io.opentelemetry.api.metrics.MeterProvider;
 import io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporter;
+import io.opentelemetry.sdk.common.export.RetryPolicy;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
-import ru.tinkoff.kora.application.graph.LifecycleWrapper;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.ConfigValue;
@@ -13,16 +15,34 @@ import ru.tinkoff.kora.opentelemetry.tracing.OpentelemetryTracingModule;
 
 public interface OpentelemetryHttpExporterModule extends OpentelemetryTracingModule {
     @DefaultComponent
-    default LifecycleWrapper<SpanExporter> spanExporter(OpentelemetryHttpExporterConfig exporterConfig) {
+    default SpanExporter spanExporter(OpentelemetryHttpExporterConfig exporterConfig, @Nullable MeterProvider meterProvider) {
         if (!(exporterConfig instanceof OpentelemetryHttpExporterConfig.FromConfig config)) {
-            return new LifecycleWrapper<>(SpanExporter.composite(), v -> {}, v -> {});
+            return SpanExporter.composite();
         }
         var exporter = OtlpHttpSpanExporter.builder()
             .setEndpoint(config.endpoint())
             .setTimeout(config.exportTimeout())
-            .build();
+            .setCompression(config.compression());
+        if (meterProvider != null) {
+            exporter.setMeterProvider(meterProvider);
+        }
+        if (config.connectTimeout() != null) {
+            exporter.setConnectTimeout(config.connectTimeout());
+        }
+        if (config.compression() != null) {
+            exporter.setCompression(config.compression());
+        }
+        var retryPolicy = config.retryPolicy();
+        if (retryPolicy != null) {
+            exporter.setRetryPolicy(RetryPolicy.builder()
+                .setMaxAttempts(retryPolicy.maxAttempts())
+                .setMaxBackoff(retryPolicy.maxBackoff())
+                .setInitialBackoff(retryPolicy.initialBackoff())
+                .setBackoffMultiplier(retryPolicy.backoffMultiplier())
+                .build());
+        }
 
-        return new LifecycleWrapper<>(exporter, e -> {}, SpanExporter::close);
+        return exporter.build();
     }
 
     default OpentelemetryHttpExporterConfig otlpGrpcSpanExporterConfig(Config config, ConfigValueExtractor<OpentelemetryHttpExporterConfig.FromConfig> extractor) {
@@ -34,16 +54,19 @@ public interface OpentelemetryHttpExporterModule extends OpentelemetryTracingMod
     }
 
     @DefaultComponent
-    default LifecycleWrapper<SpanProcessor> spanProcessor(OpentelemetryHttpExporterConfig exporterConfig, SpanExporter spanExporter) {
+    default SpanProcessor spanProcessor(OpentelemetryHttpExporterConfig exporterConfig, SpanExporter spanExporter, @Nullable MeterProvider meterProvider) {
         if (!(exporterConfig instanceof OpentelemetryHttpExporterConfig.FromConfig config)) {
-            return new LifecycleWrapper<>(SpanProcessor.composite(), v -> {}, v -> {});
+            return SpanProcessor.composite();
         }
         var spanProcessor = BatchSpanProcessor.builder(spanExporter)
-            .setExporterTimeout(config.exportTimeout())
+            .setExporterTimeout(config.batchExportTimeout())
             .setMaxExportBatchSize(config.maxExportBatchSize())
             .setMaxQueueSize(config.maxQueueSize())
             .setScheduleDelay(config.scheduleDelay())
-            .build();
-        return new LifecycleWrapper<>(spanProcessor, p -> {}, SpanProcessor::close);
+            .setExportUnsampledSpans(config.exportUnsampledSpans());
+        if (meterProvider != null) {
+            spanProcessor.setMeterProvider(meterProvider);
+        }
+        return spanProcessor.build();
     }
 }
