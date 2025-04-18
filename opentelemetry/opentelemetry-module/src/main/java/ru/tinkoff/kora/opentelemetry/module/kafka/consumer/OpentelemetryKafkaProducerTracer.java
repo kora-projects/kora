@@ -32,7 +32,7 @@ public class OpentelemetryKafkaProducerTracer implements KafkaProducerTracer {
             .setSpanKind(SpanKind.PRODUCER)
             .setParent(otctx.getContext())
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, "kafka")
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION, MessagingIncubatingAttributes.MessagingOperationValues.PUBLISH)
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION, MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues.PUBLISH)
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME, record.topic())
             .startSpan();
         W3CTraceContextPropagator.getInstance().inject(otctx.getContext().with(span), record, ProducerRecordTextMapSetter.INSTANCE);

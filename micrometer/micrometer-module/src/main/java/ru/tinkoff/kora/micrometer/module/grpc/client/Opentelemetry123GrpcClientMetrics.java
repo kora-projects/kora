@@ -88,7 +88,7 @@ public final class Opentelemetry123GrpcClientMetrics implements GrpcClientMetric
         var list = new ArrayList<Tag>(7);
         list.add(Tag.of(RpcIncubatingAttributes.RPC_METHOD.getKey(), key.bareMethodName()));
         list.add(Tag.of(RpcIncubatingAttributes.RPC_SERVICE.getKey(), rpcService));
-        list.add(Tag.of(RpcIncubatingAttributes.RPC_SYSTEM.getKey(), RpcIncubatingAttributes.RpcSystemValues.GRPC));
+        list.add(Tag.of(RpcIncubatingAttributes.RPC_SYSTEM.getKey(), RpcIncubatingAttributes.RpcSystemIncubatingValues.GRPC));
         list.add(Tag.of(ServerAttributes.SERVER_ADDRESS.getKey(), serverAddress));
         list.add(Tag.of(ServerAttributes.SERVER_PORT.getKey(), String.valueOf(serverPort)));
 
