@@ -24,7 +24,9 @@
     }
 
     object Constants { {{#allowableValues}}{{#enumVars}}
-      const val {{{name}}}: {{dataType}} = {{{value}}}{{/enumVars}}{{/allowableValues}}
+      const val {{{name}}}: {{dataType}} = {{{value}}}{{/enumVars}}{{#enumVarsDeprecated}}
+      @Deprecated("Use {{{nameNew}}} instead")
+      const val {{{name}}}: {{dataType}} = {{{value}}}{{/enumVarsDeprecated}}{{/allowableValues}}
     }
 
 

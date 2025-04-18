@@ -656,12 +656,21 @@ public class KoraCodegen extends DefaultCodegen {
                     }
                 }
                 discriminatorProperty.allowableValues = new LinkedHashMap<>();
-                discriminatorProperty.allowableValues.put("enumVars", new ArrayList<>());
+                ArrayList<Map<String, ?>> enumVars = new ArrayList<>();
+                ArrayList<Map<String, ?>> enumVarsDeprecated = new ArrayList<>();
+                discriminatorProperty.allowableValues.put("enumVars", enumVars);
+                discriminatorProperty.allowableValues.put("enumVarsDeprecated", enumVarsDeprecated);
                 for (var enumValue : discriminatorProperty._enum) {
-                    var l = (List<Map<String, ?>>) discriminatorProperty.allowableValues.get("enumVars");
                     var enumVar = toEnumVarName(enumValue, "String");
                     var enumStr = toEnumValue(enumValue, "String");
-                    l.add(Map.of("name", enumVar, "value", enumStr));
+                    enumVars.add(Map.of("name", enumVar, "value", enumStr));
+
+                    var enumVarDeprecated = toEnumVarNameDeprecated(enumValue, "String");
+                    if (!enumVarDeprecated.equals(enumVar)) {
+                        enumVarsDeprecated.add(Map.of("name", enumVarDeprecated,
+                            "nameNew", enumVar,
+                            "value", enumStr));
+                    }
                 }
                 discriminatorProperty.datatypeWithEnum = toEnumName(discriminatorProperty);
                 discriminatorProperty.dataType = "String";
@@ -777,12 +786,12 @@ public class KoraCodegen extends DefaultCodegen {
         return objs;
     }
 
-    private String getUpperSnakeCase(String value) {
+    private String getUpperSnakeCase(String value, Locale locale) {
         return Arrays.stream(value.split("[^a-zA-Z0-9]"))
             .map(String::strip)
-            .flatMap(s -> Arrays.stream(s.split("(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|( +)")))
+            .flatMap(s -> Arrays.stream(s.split("(?<=[\\d+])(?=[A-Za-z])|(?<=[a-z])(?=[A-Z\\d])|(?<=[A-Z])(?=[A-Z][a-z])|( +)"))) // too much, don't guarantee how it works
             .map(String::strip)
-            .map(String::toUpperCase)
+            .map(s -> s.toUpperCase(locale))
             .collect(Collectors.joining("_"));
     }
 
@@ -2328,6 +2337,41 @@ public class KoraCodegen extends DefaultCodegen {
             return getSymbolName(value).toUpperCase(Locale.ROOT);
         }
 
+        value = transliteIfNeeded(value);
+        String upperSnakeCase = getUpperSnakeCase(value, Locale.ROOT);
+
+        // number
+        if ("Integer".equals(datatype) || "Int".equals(datatype) || "Long".equals(datatype) ||
+            "Float".equals(datatype) || "Double".equals(datatype) || "BigDecimal".equals(datatype)) {
+            String varName = "NUMBER_" + upperSnakeCase;
+            varName = varName.replaceAll("-", "MINUS_");
+            varName = varName.replaceAll("\\+", "PLUS_");
+            varName = varName.replaceAll("\\.", "_DOT_");
+            return varName;
+        }
+
+        // string
+        String var = upperSnakeCase.replaceAll("\\W+", "_").toUpperCase(Locale.ROOT);
+        if (var.matches("\\d.*")) {
+            return "_" + var;
+        } else {
+            return var;
+        }
+    }
+
+    @Deprecated
+    public String toEnumVarNameDeprecated(String value, String datatype) {
+        if (value.length() == 0) {
+            return "EMPTY";
+        }
+
+        // for symbol, e.g. $, #
+        if (getSymbolName(value) != null) {
+            return getSymbolName(value).toUpperCase(Locale.ROOT);
+        }
+
+        value = transliteIfNeeded(value);
+
         // number
         if ("Integer".equals(datatype) || "Int".equals(datatype) || "Long".equals(datatype) ||
             "Float".equals(datatype) || "Double".equals(datatype) || "BigDecimal".equals(datatype)) {
@@ -2339,12 +2383,100 @@ public class KoraCodegen extends DefaultCodegen {
         }
 
         // string
-        value = transliteIfNeeded(value);
         String var = value.replaceAll("\\W+", "_").toUpperCase(Locale.ROOT);
         if (var.matches("\\d.*")) {
             return "_" + var;
         } else {
             return var;
+        }
+    }
+
+    @Override
+    protected List<Map<String, Object>> buildEnumVars(List<Object> values, String dataType) {
+        List<Map<String, Object>> enumVars = super.buildEnumVars(values, dataType);
+
+        int truncateIdx = isRemoveEnumValuePrefix()
+            ? findCommonPrefixOfVars(values).length()
+            : 0;
+
+        for (Object value : values) {
+            String enumName = truncateIdx == 0
+                ? String.valueOf(value)
+                : value.toString().substring(truncateIdx);
+
+            if (enumName.isEmpty()) {
+                enumName = value.toString();
+            }
+
+            final String finalEnumName = toEnumVarName(enumName, dataType);
+            final String finalEnumNameDeprecated = toEnumVarNameDeprecated(enumName, dataType);
+
+            if (!finalEnumNameDeprecated.equals(finalEnumName)) {
+                enumVars.stream()
+                    .filter(e -> finalEnumName.equals(e.get("name")))
+                    .findFirst()
+                    .ifPresent(enumVar -> enumVar.put("nameDeprecated", finalEnumNameDeprecated));
+
+            }
+        }
+
+        return enumVars;
+    }
+
+    @Override
+    public ModelsMap postProcessModelsEnum(ModelsMap objs) {
+        ModelsMap modelsMap = super.postProcessModelsEnum(objs);
+
+        for (ModelMap mo : objs.getModels()) {
+            CodegenModel cm = mo.getModel();
+
+            if (Boolean.TRUE.equals(cm.isEnum) && cm.allowableValues != null) {
+                List<Map<String, Object>> enumVars = (List<Map<String, Object>>) cm.allowableValues.get("enumVars");
+                if (enumVars != null) {
+                    List<Map<String, Object>> enumVarsDeprecated = new ArrayList<>();
+                    for (Map<String, Object> enumVar : enumVars) {
+                        if (enumVar.containsKey("nameDeprecated")) {
+                            enumVarsDeprecated.add(Map.of("name", enumVar.get("nameDeprecated"),
+                                "nameNew", enumVar.get("name"),
+                                "value", enumVar.get("value")));
+                        }
+                    }
+
+                    if (!enumVarsDeprecated.isEmpty()) {
+                        cm.allowableValues.put("enumVarsDeprecated", enumVarsDeprecated);
+                    }
+                }
+            }
+        }
+
+        return modelsMap;
+    }
+
+    @Override
+    public void updateCodegenPropertyEnum(CodegenProperty var) {
+        super.updateCodegenPropertyEnum(var);
+
+        Map<String, Object> allowableValues = var.allowableValues;
+        if (var.mostInnerItems != null) {
+            allowableValues = var.mostInnerItems.allowableValues;
+        }
+
+        if (allowableValues != null) {
+            List<Map<String, Object>> enumVars = (List<Map<String, Object>>) allowableValues.get("enumVars");
+            if (enumVars != null) {
+                List<Map<String, Object>> enumVarsDeprecated = new ArrayList<>();
+                for (Map<String, Object> enumVar : enumVars) {
+                    if (enumVar.containsKey("nameDeprecated")) {
+                        enumVarsDeprecated.add(Map.of("name", enumVar.get("nameDeprecated"),
+                            "nameNew", enumVar.get("name"),
+                            "value", enumVar.get("value")));
+                    }
+                }
+
+                if (!enumVarsDeprecated.isEmpty()) {
+                    allowableValues.put("enumVarsDeprecated", enumVarsDeprecated);
+                }
+            }
         }
     }
 

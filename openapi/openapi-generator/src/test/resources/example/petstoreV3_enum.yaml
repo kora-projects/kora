@@ -73,6 +73,8 @@ components:
               - BimBim
               - Husky
               - Retriever
+              - MetaRetroRetriever
+              - Mega3000Retriever
               - Shepherd
         nonReqArrayString:
           type: array
@@ -92,6 +94,7 @@ components:
               - Dingo-Don
               - Husky
               - Retriever
+              - MetaRetroRetriever
               - Shepherd
         reqAndNotNullArrayString:
           type: array
