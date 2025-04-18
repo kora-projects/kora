@@ -42,6 +42,11 @@ public class ValidateMethodKoraAspect implements KoraAspect {
     }
 
     @Override
+    public Set<ClassName> getSupportedAnnotationClassNames() {
+        return Set.of(VALIDATE_TYPE);
+    }
+
+    @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         final boolean isMono = MethodUtils.isMono(method);
         final boolean isFlux = MethodUtils.isFlux(method);

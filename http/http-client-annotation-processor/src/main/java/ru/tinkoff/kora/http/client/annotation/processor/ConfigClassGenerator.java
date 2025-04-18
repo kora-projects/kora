@@ -1,11 +1,9 @@
 package ru.tinkoff.kora.http.client.annotation.processor;
 
-import com.squareup.javapoet.AnnotationSpec;
-import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeSpec;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
-import ru.tinkoff.kora.common.annotation.Generated;
 
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
@@ -23,9 +21,8 @@ public class ConfigClassGenerator {
         var typeName = HttpClientUtils.configName(element);
 
         var b = TypeSpec.interfaceBuilder(typeName)
-            .addAnnotation(AnnotationSpec.builder(Generated.class)
-                .addMember("value", CodeBlock.of("$S", HttpClientAnnotationProcessor.class.getCanonicalName()))
-                .build())
+            .addOriginatingElement(element)
+            .addAnnotation(AnnotationUtils.generated(ConfigClassGenerator.class))
             .addModifiers(Modifier.PUBLIC)
             .addSuperinterface(declarativeHttpClientConfig)
             .addAnnotation(CommonClassNames.configValueExtractorAnnotation);

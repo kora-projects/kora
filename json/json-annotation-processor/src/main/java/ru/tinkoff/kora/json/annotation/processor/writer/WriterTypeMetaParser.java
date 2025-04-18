@@ -2,8 +2,8 @@ package ru.tinkoff.kora.json.annotation.processor.writer;
 
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
+import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
-import ru.tinkoff.kora.common.naming.NameConverter;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
 import ru.tinkoff.kora.json.annotation.processor.KnownType;
 import ru.tinkoff.kora.json.annotation.processor.writer.JsonClassWriterMeta.FieldMeta;
@@ -12,7 +12,6 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,19 +21,12 @@ import java.util.stream.Collectors;
 import static ru.tinkoff.kora.annotation.processor.common.CommonUtils.getNameConverter;
 
 public class WriterTypeMetaParser {
-    private final ProcessingEnvironment env;
-    private final Elements elements;
     private final Types types;
     private final KnownType knownTypes;
-    private final TypeMirror jsonFieldAnnotation;
 
     public WriterTypeMetaParser(ProcessingEnvironment env, KnownType knownTypes) {
-        this.env = env;
-        this.elements = env.getElementUtils();
         this.types = env.getTypeUtils();
         this.knownTypes = knownTypes;
-        var jsonFieldElement = this.elements.getTypeElement(JsonTypes.jsonFieldAnnotation.canonicalName());
-        this.jsonFieldAnnotation = jsonFieldElement.asType();
     }
 
     public JsonClassWriterMeta parse(TypeElement jsonClass, TypeMirror typeMirror) {
@@ -66,7 +58,7 @@ public class WriterTypeMetaParser {
 
 
     private FieldMeta parseField(TypeElement jsonClass, VariableElement field) {
-        var jsonField = this.findJsonField(field);
+        var jsonField = AnnotationUtils.findAnnotation(field, JsonTypes.jsonFieldAnnotation);
 
         var fieldNameConverter = getNameConverter(jsonClass);
         var fieldTypeMirror = field.asType();
@@ -100,16 +92,7 @@ public class WriterTypeMetaParser {
         }
     }
 
-    @Nullable
-    private AnnotationMirror findJsonField(VariableElement param) {
-        return param.getAnnotationMirrors()
-            .stream()
-            .filter(a -> this.types.isSameType(a.getAnnotationType(), this.jsonFieldAnnotation))
-            .findFirst()
-            .orElse(null);
-    }
-
-    private String parseJsonName(VariableElement param, @Nullable AnnotationMirror jsonField, @Nullable NameConverter nameConverter) {
+    private String parseJsonName(VariableElement param, @Nullable AnnotationMirror jsonField, @Nullable CommonUtils.NameConverter nameConverter) {
         if (jsonField == null) {
             if (nameConverter != null) {
                 return nameConverter.convert(param.getSimpleName().toString());

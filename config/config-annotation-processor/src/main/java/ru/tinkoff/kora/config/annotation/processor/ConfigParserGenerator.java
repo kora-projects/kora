@@ -3,10 +3,8 @@ package ru.tinkoff.kora.config.annotation.processor;
 import com.squareup.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
-import ru.tinkoff.kora.common.util.Either;
 
 import javax.annotation.processing.ProcessingEnvironment;
-import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -30,7 +28,7 @@ public class ConfigParserGenerator {
         this.processingEnv = processingEnv;
     }
 
-    public Either<Void, List<ProcessingError>> generateForInterface(RoundEnvironment roundEnv, DeclaredType targetType) {
+    public Either<Void, List<ProcessingError>> generateForInterface(DeclaredType targetType) {
         var element = (TypeElement) targetType.asElement();
         var f = ConfigUtils.parseFields(this.types, element);
         if (f.isRight()) {
@@ -39,8 +37,8 @@ public class ConfigParserGenerator {
         var typeName = NameUtils.generatedType(element, ConfigClassNames.configValueExtractor);
         var typeBuilder = TypeSpec.classBuilder(typeName)
             .addOriginatingElement(element)
-            .addSuperinterface(ParameterizedTypeName.get(ConfigClassNames.configValueExtractor, TypeName.get(targetType)))
             .addAnnotation(AnnotationUtils.generated(ConfigParserGenerator.class))
+            .addSuperinterface(ParameterizedTypeName.get(ConfigClassNames.configValueExtractor, TypeName.get(targetType)))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
         var fields = Objects.requireNonNull(f.left());
         var defaultsType = buildDefaultsType(targetType, element, fields);
@@ -164,7 +162,7 @@ public class ConfigParserGenerator {
         return rootParse.build();
     }
 
-    public Either<Void, List<ProcessingError>> generateForRecord(RoundEnvironment roundEnv, DeclaredType targetType) {
+    public Either<Void, List<ProcessingError>> generateForRecord(DeclaredType targetType) {
         var element = (TypeElement) targetType.asElement();
         var f = ConfigUtils.parseFields(this.types, element);
         if (f.isRight()) {
@@ -173,8 +171,8 @@ public class ConfigParserGenerator {
         var typeName = NameUtils.generatedType(element, ConfigClassNames.configValueExtractor);
         var typeBuilder = TypeSpec.classBuilder(typeName)
             .addOriginatingElement(element)
-            .addSuperinterface(ParameterizedTypeName.get(ConfigClassNames.configValueExtractor, TypeName.get(targetType)))
             .addAnnotation(AnnotationUtils.generated(ConfigParserGenerator.class))
+            .addSuperinterface(ParameterizedTypeName.get(ConfigClassNames.configValueExtractor, TypeName.get(targetType)))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
         var fields = Objects.requireNonNull(f.left());
         var implClassName = ClassName.get(element);
@@ -196,7 +194,7 @@ public class ConfigParserGenerator {
         return Either.left(null);
     }
 
-    public Either<Void, List<ProcessingError>> generateForPojo(RoundEnvironment roundEnv, DeclaredType targetType) {
+    public Either<Void, List<ProcessingError>> generateForPojo(DeclaredType targetType) {
         var element = (TypeElement) targetType.asElement();
         var f = ConfigUtils.parseFields(this.types, element);
         if (f.isRight()) {
@@ -205,8 +203,8 @@ public class ConfigParserGenerator {
         var typeName = NameUtils.generatedType(element, ConfigClassNames.configValueExtractor);
         var typeBuilder = TypeSpec.classBuilder(typeName)
             .addOriginatingElement(element)
-            .addSuperinterface(ParameterizedTypeName.get(ConfigClassNames.configValueExtractor, TypeName.get(targetType)))
             .addAnnotation(AnnotationUtils.generated(ConfigParserGenerator.class))
+            .addSuperinterface(ParameterizedTypeName.get(ConfigClassNames.configValueExtractor, TypeName.get(targetType)))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
         var fields = Objects.requireNonNull(f.left());
 

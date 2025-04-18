@@ -7,8 +7,6 @@ apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 dependencies {
     api project(':annotation-processor-common')
     api project(':kora-app-annotation-processor')
-    api libs.reactive.streams
-    api libs.javapoet
 
     testImplementation testFixtures(project(':annotation-processor-common'))
     testImplementation project(':http:http-server-common')
