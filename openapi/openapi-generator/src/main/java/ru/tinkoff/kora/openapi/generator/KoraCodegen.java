@@ -172,7 +172,6 @@ public class KoraCodegen extends DefaultCodegen {
             var enableJsonNullable = false;
             var filterWithModels = false;
             var prefixPath = "";
-            var filterWithModels = false;
 
             if (additionalProperties.containsKey(CODEGEN_MODE)) {
                 codegenMode = Mode.ofMode(additionalProperties.get(CODEGEN_MODE).toString());
