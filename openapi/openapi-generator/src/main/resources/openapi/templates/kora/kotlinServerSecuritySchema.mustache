@@ -88,7 +88,7 @@ public interface ApiSecurity {
                     val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("Authorization"){{/isOAuth}}
                     val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}} = this.{{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}.extract(request, {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token){{^isOAuth}}{{/isOAuth}}{{#isOAuth}}{{#vendorExtensions.hasScopes}}
                         .thenCompose<Principal> { principal ->
-                            {{#scopes}}{{#-first}}if{{/-first}}{{^-first}}else if{{/-first}} (!principal.scopes().contains("{{scope}}")) {
+                            {{#scopes}}{{#-first}}if{{/-first}}{{^-first}} else if{{/-first}} (!principal.scopes().contains("{{scope}}")) {
                                 CompletableFuture.failedFuture(HttpServerResponseException.of(403, "Forbidden"))
                             }{{/scopes}} else {
                                 CompletableFuture.completedFuture(principal)
