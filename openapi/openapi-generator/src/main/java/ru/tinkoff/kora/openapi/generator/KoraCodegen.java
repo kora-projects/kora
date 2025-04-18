@@ -135,7 +135,8 @@ public class KoraCodegen extends DefaultCodegen {
         Map<String, List<AdditionalAnnotation>> additionalContractAnnotations,
         boolean requestInDelegateParams,
         boolean enableJsonNullable,
-        boolean filterWithModels
+        boolean filterWithModels,
+        String prefixPath
     ) {
         static List<CliOption> cliOptions() {
             var cliOptions = new ArrayList<CliOption>();
@@ -152,6 +153,7 @@ public class KoraCodegen extends DefaultCodegen {
             cliOptions.add(CliOption.newBoolean(AUTH_AS_METHOD_ARGUMENT, "HTTP client authorization as method argument"));
             cliOptions.add(CliOption.newBoolean(ENABLE_JSON_NULLABLE, "If enabled then wraps Nullable and NonRequired fields with JsonNullable type"));
             cliOptions.add(CliOption.newBoolean(FILTER_WITH_MODELS, "If enabled then when openapiNormalizer FILTER option is specified, will try to filter not only operations, but all unused models as well"));
+            cliOptions.add(CliOption.newString(PREFIX_PATH, "Path prefix for HTTP Server controllers"));
             return cliOptions;
         }
 
@@ -169,6 +171,7 @@ public class KoraCodegen extends DefaultCodegen {
             var requestInDelegateParams = false;
             var enableJsonNullable = false;
             var filterWithModels = false;
+            var prefixPath = "";
 
             if (additionalProperties.containsKey(CODEGEN_MODE)) {
                 codegenMode = Mode.ofMode(additionalProperties.get(CODEGEN_MODE).toString());
@@ -228,14 +231,18 @@ public class KoraCodegen extends DefaultCodegen {
             if (additionalProperties.containsKey(FILTER_WITH_MODELS)) {
                 filterWithModels = Boolean.parseBoolean(additionalProperties.get(FILTER_WITH_MODELS).toString());
             }
+            if (additionalProperties.containsKey(PREFIX_PATH)) {
+                prefixPath = additionalProperties.get(PREFIX_PATH).toString();
+            }
 
             return new CodegenParams(codegenMode, jsonAnnotation, enableServerValidation, authAsMethodArgument, primaryAuth, clientConfigPrefix,
-                securityConfigPrefix, clientTags, interceptors, additionalContractAnnotations, requestInDelegateParams, enableJsonNullable, filterWithModels);
+                securityConfigPrefix, clientTags, interceptors, additionalContractAnnotations, requestInDelegateParams, enableJsonNullable, filterWithModels, prefixPath);
         }
 
         void processAdditionalProperties(Map<String, Object> additionalProperties) {
             additionalProperties.put("hasSecurityConfigPrefix", securityConfigPrefix != null);
             additionalProperties.put("requestInDelegateParams", requestInDelegateParams);
+            additionalProperties.put("prefixPath", prefixPath);
 
             switch (codegenMode) {
                 case JAVA_CLIENT -> {
@@ -288,6 +295,7 @@ public class KoraCodegen extends DefaultCodegen {
     public static final String AUTH_AS_METHOD_ARGUMENT = "authAsMethodArgument";
     public static final String ENABLE_JSON_NULLABLE = "enableJsonNullable";
     public static final String FILTER_WITH_MODELS = "filterWithModels";
+    public static final String PREFIX_PATH = "prefixPath";
 
     protected String invokerPackage = "org.openapitools";
     protected boolean fullJavaUtil;
