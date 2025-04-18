@@ -57,6 +57,12 @@ components:
         nonReqString:
           type: string
           enum: [ Dingo-Don, Husky, Retriever, Shepherd ]
+        translite:
+          type: string
+          enum: [ Лелик, Болик, HalfЛелик ]
+        мегаТранслит:
+          type: string
+          enum: [ Лелик, Болик, HalfЛелик ]
         nullableArrayString:
           type: array
           nullable: true
@@ -64,8 +70,11 @@ components:
             type: string
             enum:
               - Dingo-Don
+              - BimBim
               - Husky
               - Retriever
+              - MetaRetroRetriever
+              - Mega3000Retriever
               - Shepherd
         nonReqArrayString:
           type: array
@@ -73,6 +82,7 @@ components:
             type: string
             enum:
               - Dingo-Don
+              - BimBim
               - Husky
               - Retriever
               - Shepherd
@@ -84,6 +94,7 @@ components:
               - Dingo-Don
               - Husky
               - Retriever
+              - MetaRetroRetriever
               - Shepherd
         reqAndNotNullArrayString:
           type: array

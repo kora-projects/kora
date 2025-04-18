@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
+import com.ibm.icu.text.Transliterator;
 import com.samskivert.mustache.Mustache;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
@@ -134,6 +135,7 @@ public class KoraCodegen extends DefaultCodegen {
         Map<String, List<AdditionalAnnotation>> additionalContractAnnotations,
         boolean requestInDelegateParams,
         boolean enableJsonNullable,
+        boolean filterWithModels,
         String prefixPath
     ) {
         static List<CliOption> cliOptions() {
@@ -150,6 +152,7 @@ public class KoraCodegen extends DefaultCodegen {
             cliOptions.add(CliOption.newString(ADDITIONAL_CONTRACT_ANNOTATIONS, "Additional annotations for HTTP client/server methods"));
             cliOptions.add(CliOption.newBoolean(AUTH_AS_METHOD_ARGUMENT, "HTTP client authorization as method argument"));
             cliOptions.add(CliOption.newBoolean(ENABLE_JSON_NULLABLE, "If enabled then wraps Nullable and NonRequired fields with JsonNullable type"));
+            cliOptions.add(CliOption.newBoolean(FILTER_WITH_MODELS, "If enabled then when openapiNormalizer FILTER option is specified, will try to filter not only operations, but all unused models as well"));
             cliOptions.add(CliOption.newString(PREFIX_PATH, "Path prefix for HTTP Server controllers"));
             return cliOptions;
         }
@@ -167,7 +170,9 @@ public class KoraCodegen extends DefaultCodegen {
             var additionalContractAnnotations = new HashMap<String, List<AdditionalAnnotation>>();
             var requestInDelegateParams = false;
             var enableJsonNullable = false;
+            var filterWithModels = false;
             var prefixPath = "";
+            var filterWithModels = false;
 
             if (additionalProperties.containsKey(CODEGEN_MODE)) {
                 codegenMode = Mode.ofMode(additionalProperties.get(CODEGEN_MODE).toString());
@@ -224,12 +229,15 @@ public class KoraCodegen extends DefaultCodegen {
             if (additionalProperties.containsKey(ENABLE_JSON_NULLABLE)) {
                 enableJsonNullable = Boolean.parseBoolean(additionalProperties.get(ENABLE_JSON_NULLABLE).toString());
             }
+            if (additionalProperties.containsKey(FILTER_WITH_MODELS)) {
+                filterWithModels = Boolean.parseBoolean(additionalProperties.get(FILTER_WITH_MODELS).toString());
+            }
             if (additionalProperties.containsKey(PREFIX_PATH)) {
                 prefixPath = additionalProperties.get(PREFIX_PATH).toString();
             }
 
             return new CodegenParams(codegenMode, jsonAnnotation, enableServerValidation, authAsMethodArgument, primaryAuth, clientConfigPrefix,
-                securityConfigPrefix, clientTags, interceptors, additionalContractAnnotations, requestInDelegateParams, enableJsonNullable, prefixPath);
+                securityConfigPrefix, clientTags, interceptors, additionalContractAnnotations, requestInDelegateParams, enableJsonNullable, filterWithModels, prefixPath);
         }
 
         void processAdditionalProperties(Map<String, Object> additionalProperties) {
@@ -287,6 +295,7 @@ public class KoraCodegen extends DefaultCodegen {
     public static final String ADDITIONAL_CONTRACT_ANNOTATIONS = "additionalContractAnnotations";
     public static final String AUTH_AS_METHOD_ARGUMENT = "authAsMethodArgument";
     public static final String ENABLE_JSON_NULLABLE = "enableJsonNullable";
+    public static final String FILTER_WITH_MODELS = "filterWithModels";
     public static final String PREFIX_PATH = "prefixPath";
 
     protected String invokerPackage = "org.openapitools";
@@ -663,12 +672,21 @@ public class KoraCodegen extends DefaultCodegen {
                     }
                 }
                 discriminatorProperty.allowableValues = new LinkedHashMap<>();
-                discriminatorProperty.allowableValues.put("enumVars", new ArrayList<>());
+                ArrayList<Map<String, ?>> enumVars = new ArrayList<>();
+                ArrayList<Map<String, ?>> enumVarsDeprecated = new ArrayList<>();
+                discriminatorProperty.allowableValues.put("enumVars", enumVars);
+                discriminatorProperty.allowableValues.put("enumVarsDeprecated", enumVarsDeprecated);
                 for (var enumValue : discriminatorProperty._enum) {
-                    var l = (List<Map<String, ?>>) discriminatorProperty.allowableValues.get("enumVars");
                     var enumVar = toEnumVarName(enumValue, "String");
                     var enumStr = toEnumValue(enumValue, "String");
-                    l.add(Map.of("name", enumVar, "value", enumStr));
+                    enumVars.add(Map.of("name", enumVar, "value", enumStr));
+
+                    var enumVarDeprecated = toEnumVarNameDeprecated(enumValue, "String");
+                    if (!enumVarDeprecated.equals(enumVar)) {
+                        enumVarsDeprecated.add(Map.of("name", enumVarDeprecated,
+                            "nameNew", enumVar,
+                            "value", enumStr));
+                    }
                 }
                 discriminatorProperty.datatypeWithEnum = toEnumName(discriminatorProperty);
                 discriminatorProperty.dataType = "String";
@@ -784,12 +802,12 @@ public class KoraCodegen extends DefaultCodegen {
         return objs;
     }
 
-    private String getUpperSnakeCase(String value) {
+    private String getUpperSnakeCase(String value, Locale locale) {
         return Arrays.stream(value.split("[^a-zA-Z0-9]"))
             .map(String::strip)
-            .flatMap(s -> Arrays.stream(s.split("(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|( +)")))
+            .flatMap(s -> Arrays.stream(s.split("(?<=[\\d+])(?=[A-Za-z])|(?<=[a-z])(?=[A-Z\\d])|(?<=[A-Z])(?=[A-Z][a-z])|( +)"))) // too much, don't guarantee how it works
             .map(String::strip)
-            .map(String::toUpperCase)
+            .map(s -> s.toUpperCase(locale))
             .collect(Collectors.joining("_"));
     }
 
@@ -1641,6 +1659,129 @@ public class KoraCodegen extends DefaultCodegen {
         }
     }
 
+    private void setFilteredSchemaComponentsIfEnabled(OpenAPI openAPI) {
+        if (!this.params.filterWithModels) {
+            return;
+        }
+        if (!this.openapiNormalizer.containsKey("FILTER")) {
+            return;
+        }
+
+        List<Operation> ops = openAPI.getPaths().entrySet().stream()
+            .flatMap(e -> e.getValue().readOperations().stream())
+            .filter(op -> op.getExtensions() != null && String.valueOf(op.getExtensions().get("x-internal")).equals("false"))
+            .toList();
+
+        if (ops.isEmpty()) {
+            return;
+        }
+
+        List<String> requestSchemas = ops.stream()
+            .filter(op -> op.getRequestBody() != null && op.getRequestBody().getContent() != null)
+            .flatMap(op -> op.getRequestBody().getContent().values().stream())
+            .filter(req -> req.getSchema() != null)
+            .flatMap(req -> getAllRefs(req.getSchema()).stream())
+            .filter(Objects::nonNull)
+            .filter(o -> !o.isBlank())
+            .map(ModelUtils::getSimpleRef)
+            .toList();
+
+        List<String> responseSchemas = ops.stream()
+            .flatMap(op -> op.getResponses().values().stream())
+            .filter(res -> res.getContent() != null)
+            .flatMap(res -> res.getContent().values().stream())
+            .filter(res -> res.getSchema() != null)
+            .flatMap(req -> getAllRefs(req.getSchema()).stream())
+            .filter(Objects::nonNull)
+            .filter(o -> !o.isBlank())
+            .map(ModelUtils::getSimpleRef)
+            .toList();
+
+        Set<String> filteredSchemas = Stream.concat(requestSchemas.stream(), responseSchemas.stream())
+            .collect(Collectors.toSet());
+
+        Map<String, Schema> schemas = ModelUtils.getSchemas(openAPI);
+        schemas.forEach((name, schema) -> {
+            if (filteredSchemas.contains(name)) {
+                if (schema.getDiscriminator() != null) {
+                    schemas.forEach((targetName, targetSchema) -> {
+                        if (targetSchema != schema) {
+                            List<String> allRefs = getAllRefs(targetSchema);
+                            Set<String> simpleRefs = allRefs.stream()
+                                .map(ModelUtils::getSimpleRef)
+                                .collect(Collectors.toSet());
+                            simpleRefs.add(targetName);
+
+                            if (simpleRefs.contains(name)) {
+                                filteredSchemas.addAll(simpleRefs);
+                            }
+                        }
+                    });
+                }
+            }
+        });
+
+        schemas.forEach((name, schema) -> {
+            if (!filteredSchemas.contains(name)) {
+                // if x-internal=true then model WILL NOT be generated by openapi generator
+                schema.addExtension("x-internal", true);
+            } else {
+                schema.addExtension("x-internal", false);
+            }
+        });
+    }
+
+    private List<String> getAllRefs(Schema req) {
+        List<String> refs = new ArrayList<>();
+        if (req.get$ref() != null) {
+            refs.add(req.get$ref());
+        }
+
+        if (req.getItems() != null) {
+            List<String> itemRefs = getAllRefs(req.getItems());
+            refs.addAll(itemRefs);
+        }
+
+        if (req.getAllOf() != null) {
+            for (Object s : req.getAllOf()) {
+                if (s instanceof Schema<?> schema) {
+                    refs.addAll(getAllRefs(schema));
+                }
+            }
+        }
+
+        if (req.getAnyOf() != null) {
+            for (Object s : req.getAnyOf()) {
+                if (s instanceof Schema<?> schema) {
+                    refs.addAll(getAllRefs(schema));
+                }
+            }
+        }
+
+        if (req.getOneOf() != null) {
+            for (Object s : req.getOneOf()) {
+                if (s instanceof Schema<?> schema) {
+                    refs.addAll(getAllRefs(schema));
+                }
+            }
+        }
+
+        Schema referencedSchema = ModelUtils.getReferencedSchema(openAPI, req);
+        if (referencedSchema != req) {
+            List<String> allRefRefs = getAllRefs(referencedSchema);
+            refs.addAll(allRefRefs);
+        }
+
+        return refs;
+    }
+
+    // only access point Before models will be generated
+    @Override
+    public void processOpenAPI(OpenAPI openAPI) {
+        super.processOpenAPI(openAPI);
+        setFilteredSchemaComponentsIfEnabled(openAPI);
+    }
+
     @Override
     public ModelsMap postProcessModels(ModelsMap objs) {
         // recursively add import for mapping one type to multiple imports
@@ -2305,9 +2446,23 @@ public class KoraCodegen extends DefaultCodegen {
         return super.needToImport(type) && !type.contains(".");
     }
 
+    private String transliteIfNeeded(String name) {
+        for (int i = 0; i < name.length(); i++) {
+            if (Character.UnicodeBlock.of(name.charAt(i)).equals(Character.UnicodeBlock.CYRILLIC)) {
+                String cyrillicToLatin = "Russian-Latin/BGN";
+                Transliterator.getAvailableIDs();
+                Transliterator toLatinTrans = Transliterator.getInstance(cyrillicToLatin);
+                return toLatinTrans.transliterate(name);
+            }
+        }
+
+        return name;
+    }
+
     @Override
     public String toEnumName(CodegenProperty property) {
-        return sanitizeName(camelize(property.name)) + "Enum";
+        String name = transliteIfNeeded(property.name);
+        return sanitizeName(camelize(name)) + "Enum";
     }
 
     @Override
@@ -2320,6 +2475,41 @@ public class KoraCodegen extends DefaultCodegen {
         if (getSymbolName(value) != null) {
             return getSymbolName(value).toUpperCase(Locale.ROOT);
         }
+
+        value = transliteIfNeeded(value);
+        String upperSnakeCase = getUpperSnakeCase(value, Locale.ROOT);
+
+        // number
+        if ("Integer".equals(datatype) || "Int".equals(datatype) || "Long".equals(datatype) ||
+            "Float".equals(datatype) || "Double".equals(datatype) || "BigDecimal".equals(datatype)) {
+            String varName = "NUMBER_" + upperSnakeCase;
+            varName = varName.replaceAll("-", "MINUS_");
+            varName = varName.replaceAll("\\+", "PLUS_");
+            varName = varName.replaceAll("\\.", "_DOT_");
+            return varName;
+        }
+
+        // string
+        String var = upperSnakeCase.replaceAll("\\W+", "_").toUpperCase(Locale.ROOT);
+        if (var.matches("\\d.*")) {
+            return "_" + var;
+        } else {
+            return var;
+        }
+    }
+
+    @Deprecated
+    public String toEnumVarNameDeprecated(String value, String datatype) {
+        if (value.length() == 0) {
+            return "EMPTY";
+        }
+
+        // for symbol, e.g. $, #
+        if (getSymbolName(value) != null) {
+            return getSymbolName(value).toUpperCase(Locale.ROOT);
+        }
+
+        value = transliteIfNeeded(value);
 
         // number
         if ("Integer".equals(datatype) || "Int".equals(datatype) || "Long".equals(datatype) ||
@@ -2337,6 +2527,95 @@ public class KoraCodegen extends DefaultCodegen {
             return "_" + var;
         } else {
             return var;
+        }
+    }
+
+    @Override
+    protected List<Map<String, Object>> buildEnumVars(List<Object> values, String dataType) {
+        List<Map<String, Object>> enumVars = super.buildEnumVars(values, dataType);
+
+        int truncateIdx = isRemoveEnumValuePrefix()
+            ? findCommonPrefixOfVars(values).length()
+            : 0;
+
+        for (Object value : values) {
+            String enumName = truncateIdx == 0
+                ? String.valueOf(value)
+                : value.toString().substring(truncateIdx);
+
+            if (enumName.isEmpty()) {
+                enumName = value.toString();
+            }
+
+            final String finalEnumName = toEnumVarName(enumName, dataType);
+            final String finalEnumNameDeprecated = toEnumVarNameDeprecated(enumName, dataType);
+
+            if (!finalEnumNameDeprecated.equals(finalEnumName)) {
+                enumVars.stream()
+                    .filter(e -> finalEnumName.equals(e.get("name")))
+                    .findFirst()
+                    .ifPresent(enumVar -> enumVar.put("nameDeprecated", finalEnumNameDeprecated));
+
+            }
+        }
+
+        return enumVars;
+    }
+
+    @Override
+    public ModelsMap postProcessModelsEnum(ModelsMap objs) {
+        ModelsMap modelsMap = super.postProcessModelsEnum(objs);
+
+        for (ModelMap mo : objs.getModels()) {
+            CodegenModel cm = mo.getModel();
+
+            if (Boolean.TRUE.equals(cm.isEnum) && cm.allowableValues != null) {
+                List<Map<String, Object>> enumVars = (List<Map<String, Object>>) cm.allowableValues.get("enumVars");
+                if (enumVars != null) {
+                    List<Map<String, Object>> enumVarsDeprecated = new ArrayList<>();
+                    for (Map<String, Object> enumVar : enumVars) {
+                        if (enumVar.containsKey("nameDeprecated")) {
+                            enumVarsDeprecated.add(Map.of("name", enumVar.get("nameDeprecated"),
+                                "nameNew", enumVar.get("name"),
+                                "value", enumVar.get("value")));
+                        }
+                    }
+
+                    if (!enumVarsDeprecated.isEmpty()) {
+                        cm.allowableValues.put("enumVarsDeprecated", enumVarsDeprecated);
+                    }
+                }
+            }
+        }
+
+        return modelsMap;
+    }
+
+    @Override
+    public void updateCodegenPropertyEnum(CodegenProperty var) {
+        super.updateCodegenPropertyEnum(var);
+
+        Map<String, Object> allowableValues = var.allowableValues;
+        if (var.mostInnerItems != null) {
+            allowableValues = var.mostInnerItems.allowableValues;
+        }
+
+        if (allowableValues != null) {
+            List<Map<String, Object>> enumVars = (List<Map<String, Object>>) allowableValues.get("enumVars");
+            if (enumVars != null) {
+                List<Map<String, Object>> enumVarsDeprecated = new ArrayList<>();
+                for (Map<String, Object> enumVar : enumVars) {
+                    if (enumVar.containsKey("nameDeprecated")) {
+                        enumVarsDeprecated.add(Map.of("name", enumVar.get("nameDeprecated"),
+                            "nameNew", enumVar.get("name"),
+                            "value", enumVar.get("value")));
+                    }
+                }
+
+                if (!enumVarsDeprecated.isEmpty()) {
+                    allowableValues.put("enumVarsDeprecated", enumVarsDeprecated);
+                }
+            }
         }
     }
 
