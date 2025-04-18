@@ -1,0 +1,402 @@
+openapi: 3.0.3
+
+info:
+  title: Petstore with discriminator
+  version: 1.0.0
+
+paths:
+  /pets:
+    patch:
+      operationId: updatePets
+      requestBody:
+        content:
+          application/json; charset=utf-8:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/PetCat'
+      responses:
+        '200':
+          description: Pets
+
+  /parcels:
+    get:
+      operationId: getParcels
+      responses:
+        '200':
+          description: Parcels
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParcelAllOf"
+
+  /deliveries:
+    get:
+      security:
+        - apiKeyAuth: [ ]
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+        - oAuth:
+          - pets:read
+      operationId: getDeliveries
+      responses:
+        '200':
+          description: Deliveries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryAllOf"
+        default:
+          description: Parcels
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+
+components:
+  schemas:
+    TestBaseObject1Child2:
+      allOf:
+        - $ref: '#/components/schemas/TestBaseObject1'
+        - type: object
+          required: [ required1 ]
+          properties:
+            required1: { type: string }
+    TestBaseObject1Child1:
+      allOf:
+        - $ref: '#/components/schemas/TestBaseObject1'
+        - type: object
+          required: [ required1 ]
+          properties:
+            required1: { type: string }
+    TestBaseObject1:
+      type: object
+      required: [ kind ]
+      description: Use 'SdpStream' as kind instead 'SdpGpStream'
+      discriminator:
+        propertyName: kind
+        mapping:
+          Mapping1: '#/components/schemas/TestBaseObject1Child1'
+          Mapping2: '#/components/schemas/TestBaseObject1Child2'
+          Mapping3: '#/components/schemas/TestBaseObject1Child2'
+      properties:
+        kind:
+          type: string
+
+    DeliveryTypeEnum:
+      type: string
+      enum:
+        - spb-city
+        - msk-city
+
+    DeliveryAllOf:
+      type: object
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/DeliveryTypeEnum'
+      discriminator:
+        propertyName: type
+        mapping:
+          spb-city: '#/components/schemas/DeliveryAllOfSame'
+          msk-city: '#/components/schemas/DeliveryAllOfSame'
+
+    DeliveryAllOfSame:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/DeliveryAllOf'
+        - type: object
+          properties:
+            contractName:
+              type: string
+
+    DeliverySimple:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/DeliveryTypeEnum'
+      discriminator:
+        propertyName: type
+        mapping:
+          spb-city: '#/components/schemas/DeliverySimpleSame'
+          msk-city: '#/components/schemas/DeliverySimpleSame'
+
+    DeliverySimpleSame:
+      type: object
+      properties:
+        contractName:
+          type: string
+        type:
+          $ref: '#/components/schemas/DeliveryTypeEnum'
+
+    DeliverySingle:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/DeliveryTypeEnum'
+      discriminator:
+        propertyName: type
+        mapping:
+          msk-city: '#/components/schemas/DeliverySingleSame'
+
+    DeliverySingleSame:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/DeliverySingle'
+        - type: object
+          properties:
+            contractName:
+              type: string
+
+    ParcelAllOf:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          format: uuid
+      discriminator:
+        propertyName: type
+        mapping:
+          SOCHI: '#/components/schemas/ParcelAllOfBig'
+
+    ParcelAllOfBig:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/ParcelAllOf'
+        - type: object
+          properties:
+            contractName:
+              type: string
+
+    ParcelOneOf:
+      oneOf:
+        - $ref: '#/components/schemas/ParcelOneOfSmall'
+        - $ref: '#/components/schemas/ParcelOneOfBig'
+      discriminator:
+        propertyName: type
+        mapping:
+          SMALL: '#/components/schemas/ParcelOneOfSmall'
+          BIG: '#/components/schemas/ParcelOneOfBig'
+
+    ParcelOneOfSmall:
+      type: object
+      properties:
+        type:
+          type: string
+        id:
+          type: string
+          format: uuid
+
+    ParcelOneOfBig:
+      type: object
+      properties:
+        type:
+          type: string
+        contractName:
+          type: string
+
+    ProductType:
+      type: string
+      enum: [ pie-product, tie-product ]
+
+    ProductOneOf:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          $ref: '#/components/schemas/ProductType'
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/ProductOneOfDataSmall'
+            - $ref: '#/components/schemas/ProductOneOfDataBig'
+          discriminator:
+            propertyName: type
+            mapping:
+              pie-product: '#/components/schemas/ProductOneOfDataSmall'
+              tie-product: '#/components/schemas/ProductOneOfDataBig'
+
+    ProductOneOfDataSmall:
+      type: object
+      properties:
+        type:
+          type: string
+        id:
+          type: string
+          format: uuid
+
+    ProductOneOfDataBig:
+      type: object
+      properties:
+        type:
+          type: string
+        contractName:
+          type: string
+
+    # int/boolean not supported in JsonDiscriminator
+    #    ResponseData:
+    #      type: object
+    #      properties:
+    #        status:
+    #          type: boolean
+    #      discriminator:
+    #        propertyName: status
+    #        mapping:
+    #          true: '#/components/schemas/ResponseDataSuccess'
+    #          false: '#/components/schemas/ResponseDataError'
+    #
+    #    ResponseDataSuccess:
+    #      type: object
+    #      properties:
+    #        message:
+    #          type: string
+    #
+    #    ResponseDataError:
+    #      type: object
+    #      properties:
+    #        code:
+    #          type: int
+
+    ValidationErrorDto:
+      title: ValidationErrorDto
+      type: object
+      required:
+        - fieldRequired
+        - fieldRequiredNullable
+        - fieldRequiredNonNullable
+      properties:
+        type:
+          type: string
+          enum:
+            - Block.Error1
+            - Block.Error2
+            - Prop.Error
+        fieldRequired:
+          type: string
+          example: 123
+        fieldNullable:
+          type: string
+          nullable: true
+          example: 123
+        fieldRequiredNullable:
+          type: string
+          nullable: true
+          example: 123
+        fieldRequiredNonNullable:
+          type: string
+          example: 123
+      discriminator:
+        propertyName: type
+        mapping:
+          'Block.Error1': '#/components/schemas/ValidationErrorDtoBlock'
+          'Block.Error2': '#/components/schemas/ValidationErrorDtoBlock'
+          'Prop.Error': '#/components/schemas/ValidationErrorDtoProp'
+
+    ValidationErrorDtoProp:
+      title: PropValidationErrorDto
+      allOf:
+        - $ref: '#/components/schemas/ValidationErrorDto'
+        - type: object
+          properties:
+            type:
+              type: string
+
+    ValidationErrorDtoBlock:
+      title: PropValidationErrorDto
+      allOf:
+        - $ref: '#/components/schemas/ValidationErrorDto'
+        - type: object
+          properties:
+            type:
+              type: string
+            key:
+              type: integer
+
+    Pet:
+      type: object
+      required:
+        - pet_type
+      properties:
+        pet_type:
+          type: string
+      discriminator:
+        propertyName: pet_type
+    PetDog: # "Dog" is a value for the pet_type property (the discriminator value)
+      allOf: # Combines the main `Pet` schema with `Dog`-specific properties
+        - $ref: '#/components/schemas/Pet'
+        - type: object
+          # all other properties specific to a `Dog`
+          properties:
+            bark:
+              type: boolean
+            breed:
+              type: string
+              enum: [ Dingo-Don, Husky, Retriever, Shepherd ]
+            int-breed:
+              description: "enum with int value"
+              type: int
+              enum: [ 5, 7, 8, 10 ]
+    PetCat: # "Cat" is a value for the pet_type property (the discriminator value)
+      allOf: # Combines the main `Pet` schema with `Cat`-specific properties
+        - $ref: '#/components/schemas/PetCommon'
+        - type: object
+          # all other properties specific to a `Cat`
+          properties:
+            hunts:
+              type: boolean
+            age:
+              type: integer
+    PetCommon: # "Cat" is a value for the pet_type property (the discriminator value)
+      allOf: # Combines the main `Pet` schema with `Cat`-specific properties
+        - $ref: '#/components/schemas/Pet'
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-KEY
+    basicAuth:
+      type: http
+      scheme: basic
+    oAuth:
+      type: oauth2
+      description: This API uses OAuth 2 with the implicit grant flow. [More info](https://api.example.com/docs/auth)
+      flows:
+        implicit:
+          authorizationUrl: https://api.example.com/oauth2/authorize
+          scopes:
+            pets:read: Read user information
+            pets:write: Modify user information
+
+security:
+  - bearerAuth: []
+  - apiKeyAuth: []
+  - basicAuth: []
+  - oAuth:
+      - pets:write
+      - pets:read
+

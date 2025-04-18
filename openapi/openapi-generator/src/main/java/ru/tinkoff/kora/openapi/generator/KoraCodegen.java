@@ -134,7 +134,8 @@ public class KoraCodegen extends DefaultCodegen {
         Map<String, List<Interceptor>> interceptors,
         Map<String, List<AdditionalAnnotation>> additionalContractAnnotations,
         boolean requestInDelegateParams,
-        boolean enableJsonNullable
+        boolean enableJsonNullable,
+        boolean filterWithModels
     ) {
         static List<CliOption> cliOptions() {
             var cliOptions = new ArrayList<CliOption>();
@@ -150,6 +151,7 @@ public class KoraCodegen extends DefaultCodegen {
             cliOptions.add(CliOption.newString(ADDITIONAL_CONTRACT_ANNOTATIONS, "Additional annotations for HTTP client/server methods"));
             cliOptions.add(CliOption.newBoolean(AUTH_AS_METHOD_ARGUMENT, "HTTP client authorization as method argument"));
             cliOptions.add(CliOption.newBoolean(ENABLE_JSON_NULLABLE, "If enabled then wraps Nullable and NonRequired fields with JsonNullable type"));
+            cliOptions.add(CliOption.newBoolean(FILTER_WITH_MODELS, "If enabled then when openapiNormalizer FILTER option is specified, will try to filter not only operations, but all unused models as well"));
             return cliOptions;
         }
 
@@ -166,6 +168,7 @@ public class KoraCodegen extends DefaultCodegen {
             var additionalContractAnnotations = new HashMap<String, List<AdditionalAnnotation>>();
             var requestInDelegateParams = false;
             var enableJsonNullable = false;
+            var filterWithModels = false;
 
             if (additionalProperties.containsKey(CODEGEN_MODE)) {
                 codegenMode = Mode.ofMode(additionalProperties.get(CODEGEN_MODE).toString());
@@ -222,9 +225,12 @@ public class KoraCodegen extends DefaultCodegen {
             if (additionalProperties.containsKey(ENABLE_JSON_NULLABLE)) {
                 enableJsonNullable = Boolean.parseBoolean(additionalProperties.get(ENABLE_JSON_NULLABLE).toString());
             }
+            if (additionalProperties.containsKey(FILTER_WITH_MODELS)) {
+                filterWithModels = Boolean.parseBoolean(additionalProperties.get(FILTER_WITH_MODELS).toString());
+            }
 
             return new CodegenParams(codegenMode, jsonAnnotation, enableServerValidation, authAsMethodArgument, primaryAuth, clientConfigPrefix,
-                securityConfigPrefix, clientTags, interceptors, additionalContractAnnotations, requestInDelegateParams, enableJsonNullable);
+                securityConfigPrefix, clientTags, interceptors, additionalContractAnnotations, requestInDelegateParams, enableJsonNullable, filterWithModels);
         }
 
         void processAdditionalProperties(Map<String, Object> additionalProperties) {
@@ -281,6 +287,7 @@ public class KoraCodegen extends DefaultCodegen {
     public static final String ADDITIONAL_CONTRACT_ANNOTATIONS = "additionalContractAnnotations";
     public static final String AUTH_AS_METHOD_ARGUMENT = "authAsMethodArgument";
     public static final String ENABLE_JSON_NULLABLE = "enableJsonNullable";
+    public static final String FILTER_WITH_MODELS = "filterWithModels";
 
     protected String invokerPackage = "org.openapitools";
     protected boolean fullJavaUtil;
@@ -1641,6 +1648,129 @@ public class KoraCodegen extends DefaultCodegen {
             model.imports.add("ApiModelProperty");
             model.imports.add("ApiModel");
         }
+    }
+
+    private void setFilteredSchemaComponentsIfEnabled(OpenAPI openAPI) {
+        if (!this.params.filterWithModels) {
+            return;
+        }
+        if (!this.openapiNormalizer.containsKey("FILTER")) {
+            return;
+        }
+
+        List<Operation> ops = openAPI.getPaths().entrySet().stream()
+            .flatMap(e -> e.getValue().readOperations().stream())
+            .filter(op -> op.getExtensions() != null && String.valueOf(op.getExtensions().get("x-internal")).equals("false"))
+            .toList();
+
+        if (ops.isEmpty()) {
+            return;
+        }
+
+        List<String> requestSchemas = ops.stream()
+            .filter(op -> op.getRequestBody() != null && op.getRequestBody().getContent() != null)
+            .flatMap(op -> op.getRequestBody().getContent().values().stream())
+            .filter(req -> req.getSchema() != null)
+            .flatMap(req -> getAllRefs(req.getSchema()).stream())
+            .filter(Objects::nonNull)
+            .filter(o -> !o.isBlank())
+            .map(ModelUtils::getSimpleRef)
+            .toList();
+
+        List<String> responseSchemas = ops.stream()
+            .flatMap(op -> op.getResponses().values().stream())
+            .filter(res -> res.getContent() != null)
+            .flatMap(res -> res.getContent().values().stream())
+            .filter(res -> res.getSchema() != null)
+            .flatMap(req -> getAllRefs(req.getSchema()).stream())
+            .filter(Objects::nonNull)
+            .filter(o -> !o.isBlank())
+            .map(ModelUtils::getSimpleRef)
+            .toList();
+
+        Set<String> filteredSchemas = Stream.concat(requestSchemas.stream(), responseSchemas.stream())
+            .collect(Collectors.toSet());
+
+        Map<String, Schema> schemas = ModelUtils.getSchemas(openAPI);
+        schemas.forEach((name, schema) -> {
+            if (filteredSchemas.contains(name)) {
+                if (schema.getDiscriminator() != null) {
+                    schemas.forEach((targetName, targetSchema) -> {
+                        if (targetSchema != schema) {
+                            List<String> allRefs = getAllRefs(targetSchema);
+                            Set<String> simpleRefs = allRefs.stream()
+                                .map(ModelUtils::getSimpleRef)
+                                .collect(Collectors.toSet());
+                            simpleRefs.add(targetName);
+
+                            if (simpleRefs.contains(name)) {
+                                filteredSchemas.addAll(simpleRefs);
+                            }
+                        }
+                    });
+                }
+            }
+        });
+
+        schemas.forEach((name, schema) -> {
+            if (!filteredSchemas.contains(name)) {
+                // if x-internal=true then model WILL NOT be generated by openapi generator
+                schema.addExtension("x-internal", true);
+            } else {
+                schema.addExtension("x-internal", false);
+            }
+        });
+    }
+
+    private List<String> getAllRefs(Schema req) {
+        List<String> refs = new ArrayList<>();
+        if (req.get$ref() != null) {
+            refs.add(req.get$ref());
+        }
+
+        if (req.getItems() != null) {
+            List<String> itemRefs = getAllRefs(req.getItems());
+            refs.addAll(itemRefs);
+        }
+
+        if (req.getAllOf() != null) {
+            for (Object s : req.getAllOf()) {
+                if (s instanceof Schema<?> schema) {
+                    refs.addAll(getAllRefs(schema));
+                }
+            }
+        }
+
+        if (req.getAnyOf() != null) {
+            for (Object s : req.getAnyOf()) {
+                if (s instanceof Schema<?> schema) {
+                    refs.addAll(getAllRefs(schema));
+                }
+            }
+        }
+
+        if (req.getOneOf() != null) {
+            for (Object s : req.getOneOf()) {
+                if (s instanceof Schema<?> schema) {
+                    refs.addAll(getAllRefs(schema));
+                }
+            }
+        }
+
+        Schema referencedSchema = ModelUtils.getReferencedSchema(openAPI, req);
+        if (referencedSchema != req) {
+            List<String> allRefRefs = getAllRefs(referencedSchema);
+            refs.addAll(allRefRefs);
+        }
+
+        return refs;
+    }
+
+    // only access point Before models will be generated
+    @Override
+    public void processOpenAPI(OpenAPI openAPI) {
+        super.processOpenAPI(openAPI);
+        setFilteredSchemaComponentsIfEnabled(openAPI);
     }
 
     @Override
