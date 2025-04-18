@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
+import com.ibm.icu.text.Transliterator;
 import com.samskivert.mustache.Mustache;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
@@ -2297,9 +2298,23 @@ public class KoraCodegen extends DefaultCodegen {
         return super.needToImport(type) && !type.contains(".");
     }
 
+    private String transliteIfNeeded(String name) {
+        for (int i = 0; i < name.length(); i++) {
+            if (Character.UnicodeBlock.of(name.charAt(i)).equals(Character.UnicodeBlock.CYRILLIC)) {
+                String cyrillicToLatin = "Russian-Latin/BGN";
+                Transliterator.getAvailableIDs();
+                Transliterator toLatinTrans = Transliterator.getInstance(cyrillicToLatin);
+                return toLatinTrans.transliterate(name);
+            }
+        }
+
+        return name;
+    }
+
     @Override
     public String toEnumName(CodegenProperty property) {
-        return sanitizeName(camelize(property.name)) + "Enum";
+        String name = transliteIfNeeded(property.name);
+        return sanitizeName(camelize(name)) + "Enum";
     }
 
     @Override
@@ -2324,6 +2339,7 @@ public class KoraCodegen extends DefaultCodegen {
         }
 
         // string
+        value = transliteIfNeeded(value);
         String var = value.replaceAll("\\W+", "_").toUpperCase(Locale.ROOT);
         if (var.matches("\\d.*")) {
             return "_" + var;
