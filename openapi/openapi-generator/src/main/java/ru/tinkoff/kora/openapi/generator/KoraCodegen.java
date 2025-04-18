@@ -2337,6 +2337,7 @@ public class KoraCodegen extends DefaultCodegen {
             return getSymbolName(value).toUpperCase(Locale.ROOT);
         }
 
+        value = transliteIfNeeded(value);
         String upperSnakeCase = getUpperSnakeCase(value, Locale.ROOT);
 
         // number
@@ -2369,7 +2370,7 @@ public class KoraCodegen extends DefaultCodegen {
             return getSymbolName(value).toUpperCase(Locale.ROOT);
         }
 
-        // camelCase to snakeCase
+        value = transliteIfNeeded(value);
 
         // number
         if ("Integer".equals(datatype) || "Int".equals(datatype) || "Long".equals(datatype) ||
@@ -2476,39 +2477,6 @@ public class KoraCodegen extends DefaultCodegen {
                     allowableValues.put("enumVarsDeprecated", enumVarsDeprecated);
                 }
             }
-        }
-    }
-
-    @Deprecated
-    public String toEnumVarNameDeprecated(String value, String datatype) {
-        if (value.length() == 0) {
-            return "EMPTY";
-        }
-
-        // for symbol, e.g. $, #
-        if (getSymbolName(value) != null) {
-            return getSymbolName(value).toUpperCase(Locale.ROOT);
-        }
-
-        // camelCase to snakeCase
-
-        // number
-        if ("Integer".equals(datatype) || "Int".equals(datatype) || "Long".equals(datatype) ||
-            "Float".equals(datatype) || "Double".equals(datatype) || "BigDecimal".equals(datatype)) {
-            String varName = "NUMBER_" + value;
-            varName = varName.replaceAll("-", "MINUS_");
-            varName = varName.replaceAll("\\+", "PLUS_");
-            varName = varName.replaceAll("\\.", "_DOT_");
-            return varName;
-        }
-
-        // string
-        value = transliteIfNeeded(value);
-        String var = value.replaceAll("\\W+", "_").toUpperCase(Locale.ROOT);
-        if (var.matches("\\d.*")) {
-            return "_" + var;
-        } else {
-            return var;
         }
     }
 
