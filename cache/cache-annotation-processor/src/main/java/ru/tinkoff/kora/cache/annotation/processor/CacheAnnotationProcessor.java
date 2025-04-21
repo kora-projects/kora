@@ -6,7 +6,6 @@ import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.TagUtils;
-import ru.tinkoff.kora.common.DefaultComponent;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -17,10 +16,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.tools.Diagnostic;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
 
 public class CacheAnnotationProcessor extends AbstractKoraProcessor {
@@ -49,17 +45,14 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
     }
 
     @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(ANNOTATION_CACHE.canonicalName());
+    public Set<ClassName> getSupportedAnnotationClassNames() {
+        return Set.of(ANNOTATION_CACHE);
     }
 
     @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        var cacheAnnotation = processingEnv.getElementUtils().getTypeElement(ANNOTATION_CACHE.canonicalName());
-        if (cacheAnnotation == null) {
-            return false;
-        }
-        for (var element : roundEnv.getElementsAnnotatedWith(cacheAnnotation)) {
+    protected void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        for (var annotated : annotatedElements.getOrDefault(ANNOTATION_CACHE, List.of())) {
+            var element = annotated.element();
             if (!element.getKind().isInterface()) {
                 messager.printMessage(Diagnostic.Kind.ERROR, "@Cache annotation is intended to be used on interfaces, but was: " + element.getKind().name(), element);
                 continue;
@@ -81,12 +74,12 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
 
             var cacheImplBase = getCacheImplBase(cacheContract, cacheContractType);
             var implSpec = TypeSpec.classBuilder(getCacheImpl(cacheContract))
+                .addOriginatingElement(cacheContract)
+                .addAnnotation(AnnotationUtils.generated(CacheAnnotationProcessor.class))
                 .addModifiers(Modifier.FINAL)
-                .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
-                    .addMember("value", CodeBlock.of("$S", CacheAnnotationProcessor.class.getCanonicalName())).build())
                 .addMethod(getCacheConstructor(configPath, cacheContractType))
                 .superclass(cacheImplBase)
-                .addSuperinterface(cacheContract.asType())
+                .addSuperinterface(cacheContractClassName)
                 .build();
 
             try {
@@ -94,9 +87,9 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                 implFile.writeTo(processingEnv.getFiler());
 
                 var moduleSpecBuilder = TypeSpec.interfaceBuilder(ClassName.get(packageName, "$%sModule".formatted(cacheContractClassName.simpleName())))
+                    .addOriginatingElement(cacheContract)
+                    .addAnnotation(AnnotationUtils.generated(CacheAnnotationProcessor.class))
                     .addModifiers(Modifier.PUBLIC)
-                    .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
-                        .addMember("value", CodeBlock.of("$S", CacheAnnotationProcessor.class.getCanonicalName())).build())
                     .addAnnotation(CommonClassNames.module)
                     .addMethod(getCacheMethodImpl(cacheContract, cacheContractType))
                     .addMethod(getCacheMethodConfig(cacheContract, cacheContractType));
@@ -119,7 +112,6 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
             }
         }
 
-        return false;
     }
 
     @Nullable
@@ -200,7 +192,7 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
 
         var methodBuilder = MethodSpec.methodBuilder(methodName)
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
-            .addAnnotation(DefaultComponent.class);
+            .addAnnotation(CommonClassNames.defaultComponent);
 
         var recordFields = keyType.asElement().getEnclosedElements().stream()
             .filter(e -> e.getKind() == ElementKind.RECORD_COMPONENT)
@@ -217,8 +209,8 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
 
             var keyName = "_key" + (i + 1);
             keyBuilder.addStatement("var $L = $L.apply($T.requireNonNull(key.$L(), $S))",
-                    keyName, mapperName, Objects.class, recordField.getSimpleName().toString(),
-                    "Cache key '%s' field '%s' must be non null".formatted(keyType.asElement().toString(), recordField.getSimpleName().toString()));
+                keyName, mapperName, Objects.class, recordField.getSimpleName().toString(),
+                "Cache key '%s' field '%s' must be non null".formatted(keyType.asElement().toString(), recordField.getSimpleName().toString()));
 
             if (i == 0) {
                 compositeKeyBuilder.add("var _compositeKey = new byte[");

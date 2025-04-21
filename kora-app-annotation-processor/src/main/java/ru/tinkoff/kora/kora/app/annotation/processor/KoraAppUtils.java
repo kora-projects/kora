@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
-import ru.tinkoff.kora.common.KoraApp;
-import ru.tinkoff.kora.common.KoraSubmodule;
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclaration;
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ModuleDeclaration;
 
@@ -107,7 +107,8 @@ public class KoraAppUtils {
     public static List<TypeElement> findKoraSubmoduleModules(Elements elements, Set<TypeElement> interfaces, TypeElement koraAppElement, ProcessingEnvironment processingEnv) {
         var result = new ArrayList<TypeElement>();
         for (var typeElement : interfaces) {
-            if (typeElement.getAnnotation(KoraSubmodule.class) != null) {
+
+            if (AnnotationUtils.isAnnotationPresent(typeElement, CommonClassNames.koraSubmodule)) {
                 var name = typeElement.getQualifiedName().toString() + "SubmoduleImpl";
                 var module = elements.getTypeElement(name);
                 if (module == null) {
@@ -117,7 +118,7 @@ public class KoraAppUtils {
                 }
             }
 
-            if (typeElement.getAnnotation(KoraApp.class) != null && !typeElement.equals(koraAppElement)) {
+            if (AnnotationUtils.isAnnotationPresent(typeElement, CommonClassNames.koraApp) && !typeElement.equals(koraAppElement)) {
                 var name = typeElement.getQualifiedName().toString() + "SubmoduleImpl";
                 var module = elements.getTypeElement(name);
                 if (module != null) {

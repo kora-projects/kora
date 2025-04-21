@@ -3,7 +3,6 @@ package ru.tinkoff.kora.database.annotation.processor.cassandra;
 import com.squareup.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
-import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
 import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
 import ru.tinkoff.kora.database.annotation.processor.RepositoryGenerator;
@@ -18,34 +17,25 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 public class CassandraRepositoryGenerator implements RepositoryGenerator {
-    private final TypeMirror repositoryInterface;
     private final Types types;
     private final Elements elements;
     private final Filer filer;
 
     public CassandraRepositoryGenerator(ProcessingEnvironment processingEnv) {
-        var repository = processingEnv.getElementUtils().getTypeElement(CassandraTypes.REPOSITORY.canonicalName());
-        if (repository == null) {
-            this.repositoryInterface = null;
-        } else {
-            this.repositoryInterface = repository.asType();
-        }
         this.types = processingEnv.getTypeUtils();
         this.elements = processingEnv.getElementUtils();
         this.filer = processingEnv.getFiler();
     }
 
     @Override
-    @Nullable
-    public TypeMirror repositoryInterface() {
-        return this.repositoryInterface;
+    public ClassName repositoryInterface() {
+        return CassandraTypes.REPOSITORY;
     }
 
     @Override
@@ -172,13 +162,13 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
                 b.addStatement("return _session.executeAsync(_s).thenCompose($N::apply)", resultMapperName);
             }
             b.addCode("""
-                    $<})$<
-                      .whenComplete((_result, _error) -> {
-                        _telemetry.close(_error);
-                        _ctxCurrent.inject();
-                      })""");
+                $<})$<
+                  .whenComplete((_result, _error) -> {
+                    _telemetry.close(_error);
+                    _ctxCurrent.inject();
+                  })""");
 
-            if(((DeclaredType) returnType).asElement().toString().equals(CompletableFuture.class.getCanonicalName())) {
+            if (((DeclaredType) returnType).asElement().toString().equals(CompletableFuture.class.getCanonicalName())) {
                 b.addCode(".toCompletableFuture();");
             } else {
                 b.addCode(";");
@@ -295,7 +285,7 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
 
         var executorTag = DbUtils.getTag(repositoryElement);
         if (executorTag != null) {
-            constructorBuilder.addParameter(ParameterSpec.builder(CassandraTypes.CONNECTION_FACTORY, "_connectionFactory").addAnnotation(AnnotationSpec.builder(Tag.class).addMember("value", executorTag).build()).build());
+            constructorBuilder.addParameter(ParameterSpec.builder(CassandraTypes.CONNECTION_FACTORY, "_connectionFactory").addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value", executorTag).build()).build());
         } else {
             constructorBuilder.addParameter(CassandraTypes.CONNECTION_FACTORY, "_connectionFactory");
         }

@@ -1,11 +1,11 @@
 package ru.tinkoff.kora.database.annotation.processor.jdbc;
 
 import com.squareup.javapoet.*;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.database.annotation.processor.DbEntityReadHelper;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
-import ru.tinkoff.kora.database.annotation.processor.jdbc.extension.JdbcTypesExtension;
 
 import javax.annotation.processing.Filer;
 import javax.lang.model.element.Modifier;
@@ -74,7 +74,7 @@ public class JdbcEntityGenerator {
 
         var type = TypeSpec.classBuilder(mapperClassName)
             .addOriginatingElement(entity.typeElement())
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", "$S", JdbcTypesExtension.class.getCanonicalName()).build())
+            .addAnnotation(AnnotationUtils.generated(JdbcEntityGenerator.class))
             .addSuperinterface(ParameterizedTypeName.get(
                 JdbcTypes.RESULT_SET_MAPPER, ParameterizedTypeName.get(ClassName.get(List.class), TypeName.get(entity.typeMirror()))
             ))
@@ -108,7 +108,7 @@ public class JdbcEntityGenerator {
         var mapperName = rowMapperName(entity.typeElement());
         var type = TypeSpec.classBuilder(mapperName)
             .addOriginatingElement(entity.typeElement())
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", "$S", JdbcTypesExtension.class.getCanonicalName()).build())
+            .addAnnotation(AnnotationUtils.generated(JdbcEntityGenerator.class))
             .addSuperinterface(ParameterizedTypeName.get(
                 JdbcTypes.ROW_MAPPER, TypeName.get(entity.typeMirror())
             ))
@@ -145,7 +145,7 @@ public class JdbcEntityGenerator {
         var mapperName = resultSetMapperName(entity.typeElement());
         var type = TypeSpec.classBuilder(mapperName)
             .addOriginatingElement(entity.typeElement())
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", "$S", JdbcTypesExtension.class.getCanonicalName()).build())
+            .addAnnotation(AnnotationUtils.generated(JdbcEntityGenerator.class))
             .addSuperinterface(ParameterizedTypeName.get(
                 JdbcTypes.RESULT_SET_MAPPER, TypeName.get(entity.typeMirror())
             ))

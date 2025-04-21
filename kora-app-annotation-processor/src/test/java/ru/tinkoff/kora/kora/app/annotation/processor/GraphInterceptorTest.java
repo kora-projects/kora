@@ -55,18 +55,18 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
 
                 @KoraApp
                 public interface ExampleApplication {
-                            
+                
                     class TestRoot {}
-                    
+                
                     @Component
                     class TestClass {
-                               
+                
                         @TestAspect
                         public String getSome() {
                             return "1";
                         }
                     }
-                    
+                
                     class TestInterceptor implements GraphInterceptor<TestClass> {
                         public TestClass init(TestClass value) {
                             return value;
@@ -81,7 +81,7 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
                     default TestRoot root(TestClass testClass) {
                         return new TestRoot();
                     }
-                    
+                
                     default TestInterceptor interceptor() {
                         return new TestInterceptor();
                     }
