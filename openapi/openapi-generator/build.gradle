@@ -47,17 +47,16 @@ dependencies {
 }
 
 
-def javaPlugin = project.extensions.getByType(JavaPluginExtension)
-javaPlugin.sourceSets {
+sourceSets {
     testGenerated {
         java {
             def addOpenapiDir = { String path ->
-                srcDir project.file("build/out/$path/java-client")
-                srcDir project.file("build/out/$path/java-server")
-                srcDir project.file("build/out/$path/java-reactive-client")
-                srcDir project.file("build/out/$path/java-reactive-server")
-                srcDir project.file("build/out/$path/java-async-client")
-                srcDir project.file("build/out/$path/java-async-server")
+                java.srcDirs += project.file("build/out/$path/java-client")
+                java.srcDirs += project.file("build/out/$path/java-server")
+                java.srcDirs += project.file("build/out/$path/java-reactive-client")
+                java.srcDirs += project.file("build/out/$path/java-reactive-server")
+                java.srcDirs += project.file("build/out/$path/java-async-client")
+                java.srcDirs += project.file("build/out/$path/java-async-server")
                 pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
                     kotlin {
                         sourceSets {
@@ -83,15 +82,20 @@ javaPlugin.sourceSets {
             addOpenapiDir("petstoreV3_security_oauth")
             addOpenapiDir("petstoreV3_validation")
             addOpenapiDir("petstoreV3_form")
+            addOpenapiDir("petstoreV3_additional_props")
+            addOpenapiDir("petstoreV3_filter")
+            addOpenapiDir("petstoreV3_nullable")
+            addOpenapiDir("petstoreV3_request_parameters")
+            addOpenapiDir("petstoreV3_types")
         }
     }
 }
 
-sourceSets {
-    testGenerated {
-        java.srcDirs += "$buildDir/out"
-    }
-}
+//sourceSets {
+//    testGenerated {
+//        java.srcDirs += "$buildDir/out"
+//    }
+//}
 
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
