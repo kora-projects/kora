@@ -74,11 +74,11 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
             """.trimIndent()
         )
 
-        val m1 = reader("TestInterface_Impl1")
+        val m1 = writer("TestInterface_Impl1")
         assertThat(m1).isNotNull()
-        val m2 = reader("TestInterface_Impl2")
+        val m2 = writer("TestInterface_Impl2")
         assertThat(m2).isNotNull()
-        val m = reader("TestInterface", m1, m2)
+        val m = writer("TestInterface", m1, m2)
         assertThat(m).isNotNull()
     }
 
