@@ -25,7 +25,8 @@ import jakarta.annotation.Nullable;
 @ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorField("{{{propertyBaseName}}}")
 public sealed interface {{classname}} permits {{#vendorExtensions.x-unique-mapped-models}}{{.}}{{^-last}}, {{/-last}}{{/vendorExtensions.x-unique-mapped-models}} {
 {{#vendorExtensions.x-discriminator-property}}
-  /** {{#description}}{{.}}{{/description}}{{^description}}{{name}}{{/description}} */
+
+  /** {{#description}}{{.}}{{/description}}{{^description}}{{name}}{{/description}}{{#example}} (example: {{.}}){{/example}} */
   {{{datatypeWithEnum}}} {{name}}();{{/vendorExtensions.x-discriminator-property}}{{#allVars}}
   {{^isDiscriminator}}
         {{#isEnum}}
@@ -39,7 +40,7 @@ public sealed interface {{classname}} permits {{#vendorExtensions.x-unique-mappe
         {{/isContainer}}
         {{/isEnum}}
 
-  /** {{#description}}{{.}}{{/description}}{{^description}}{{name}}{{/description}} */
+  /** {{#description}}{{.}}{{/description}}{{^description}}{{name}}{{/description}}{{#example}} (example: {{.}}){{/example}} */
   {{^vendorExtensions.x-json-nullable}}{{^required}}@Nullable {{/required}}{{{datatypeWithEnum}}}{{/vendorExtensions.x-json-nullable}}{{#vendorExtensions.x-json-nullable}}ru.tinkoff.kora.json.common.JsonNullable<{{{datatypeWithEnum}}}>{{/vendorExtensions.x-json-nullable}} {{name}}();{{/isDiscriminator}}{{/allVars}}
 {{#vendorExtensions.x-discriminator-property}}
 

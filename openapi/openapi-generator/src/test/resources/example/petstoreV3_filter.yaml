@@ -357,7 +357,7 @@ components:
       allOf: # Combines the main `Pet` schema with `Cat`-specific properties
         - $ref: '#/components/schemas/Pet'
         - type: object
-          # all other properties specific to a `Cat`
+          # all other properties specific to a `PetCommon`
           properties:
             age:
               $ref: '#/components/schemas/Age'

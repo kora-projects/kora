@@ -700,6 +700,23 @@ public class KoraCodegen extends DefaultCodegen {
                     var property = discriminatorProperty.clone();
                     childModel.allVars.add(0, property);
                     childModel.requiredVars.add(0, property);
+
+                    for (CodegenProperty prop : childModel.optionalVars) {
+                        if (prop.isOverridden != null && prop.isOverridden) {
+                            if (model.optionalVars.stream().noneMatch(p -> p.name.equals(prop.name))) {
+                                prop.isOverridden = false;
+                            }
+                        }
+                    }
+
+                    for (CodegenProperty prop : childModel.requiredVars) {
+                        if (prop.isOverridden != null && prop.isOverridden) {
+                            if (model.requiredVars.stream().noneMatch(p -> p.name.equals(prop.name))) {
+                                prop.isOverridden = false;
+                            }
+                        }
+                    }
+
                     if (mappings.size() == 1) {
                         var enumValue = "%s.%s.%s".formatted(model.classname, discriminatorProperty.datatypeWithEnum, toEnumVarName(mappings.get(0), "String"));
                         property.vendorExtensions.put("x-discriminator-single", enumValue);
@@ -1630,7 +1647,6 @@ public class KoraCodegen extends DefaultCodegen {
         }
         return codegenModel;
     }
-
 
     @Override
     public void postProcessModelProperty(CodegenModel model, CodegenProperty property) {

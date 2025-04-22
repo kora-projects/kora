@@ -21,20 +21,17 @@ package {{package}}
 @ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorField("{{{propertyBaseName}}}")
 sealed interface {{classname}} {
 {{#vendorExtensions.x-discriminator-property}}
-  /**
-   * {{#description}}{{.}}{{/description}}{{^description}}{{name}}{{/description}} {{#example}}
-   * (example: {{.}}){{/example}}
-   */
+
+  /** {{#description}}{{.}}{{/description}}{{^description}}{{name}}{{/description}}{{#example}} (example: {{.}}){{/example}} */
   val {{name}}: {{^vendorExtensions.x-json-nullable}}{{{datatypeWithEnum}}}{{^required}}?{{/required}}{{/vendorExtensions.x-json-nullable}}{{#vendorExtensions.x-json-nullable}}ru.tinkoff.kora.json.common.JsonNullable<{{{datatypeWithEnum}}}>{{/vendorExtensions.x-json-nullable}}
 {{/vendorExtensions.x-discriminator-property}}
   {{#allVars}}
-  /**
-   * {{#description}}{{.}}{{/description}}{{^description}}{{name}}{{/description}} {{#example}}
-   * (example: {{.}}){{/example}}
-   */
+
+  /** {{#description}}{{.}}{{/description}}{{^description}}{{name}}{{/description}}{{#example}} (example: {{.}}){{/example}} */
   val {{name}}: {{^vendorExtensions.x-json-nullable}}{{{datatypeWithEnum}}}{{^required}}?{{/required}}{{/vendorExtensions.x-json-nullable}}{{#vendorExtensions.x-json-nullable}}ru.tinkoff.kora.json.common.JsonNullable<{{{datatypeWithEnum}}}>{{/vendorExtensions.x-json-nullable}}
 {{/allVars}}
 {{#vendorExtensions.x-discriminator-property}}
+
         {{^isContainer}}
     {{>kotlinEnumClass}}
         {{/isContainer}}
@@ -68,7 +65,8 @@ sealed interface {{classname}} {
   {{/vendorExtensions.x-has-pattern}}{{#vendorExtensions.x-has-valid-model}}@ru.tinkoff.kora.validation.common.annotation.Valid
   {{/vendorExtensions.x-has-valid-model}}
 {{#isOverridden}}override {{/isOverridden}}val {{name}}: {{^vendorExtensions.x-json-nullable}}{{#isDiscriminator}}{{parent}}.{{/isDiscriminator}}{{{datatypeWithEnum}}}{{/vendorExtensions.x-json-nullable}}{{#vendorExtensions.x-json-nullable}}ru.tinkoff.kora.json.common.JsonNullable<{{#isDiscriminator}}{{parent}}.{{/isDiscriminator}}{{{datatypeWithEnum}}}>{{/vendorExtensions.x-json-nullable}},
-{{/requiredVars}}{{#optionalVars}}
+{{/requiredVars}}
+{{#optionalVars}}
   @ru.tinkoff.kora.json.common.annotation.JsonField("{{baseName}}")
   {{#vendorExtensions.x-has-min-max}}@ru.tinkoff.kora.validation.common.annotation.Range(from = {{minimum}}.toDouble(), to = {{maximum}}.toDouble(), boundary = ru.tinkoff.kora.validation.common.annotation.Range.Boundary.{{#exclusiveMinimum}}EXCLUSIVE{{/exclusiveMinimum}}{{^exclusiveMinimum}}INCLUSIVE{{/exclusiveMinimum}}_{{#exclusiveMaximum}}EXCLUSIVE{{/exclusiveMaximum}}{{^exclusiveMaximum}}INCLUSIVE{{/exclusiveMaximum}})
   {{/vendorExtensions.x-has-min-max}}{{#vendorExtensions.x-has-min-max-items}}@ru.tinkoff.kora.validation.common.annotation.Size(min = {{minItems}}, max = {{maxItems}})
