@@ -7,18 +7,13 @@ import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.LogUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
-import ru.tinkoff.kora.common.annotation.Generated;
-import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppUtils;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
-import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class JsonAnnotationProcessor extends AbstractKoraProcessor {
 
@@ -92,11 +87,11 @@ public class JsonAnnotationProcessor extends AbstractKoraProcessor {
         }
 
         var jsonReaderElements = roundEnv.getElementsAnnotatedWith(this.jsonReaderAnnotation).stream()
-            .filter(e -> e.getKind().isClass() || e.getKind() == ElementKind.CONSTRUCTOR)
-            .map(e -> (e.getKind() == ElementKind.CONSTRUCTOR)
+            .filter(e -> e.getKind().isClass() || e.getKind() == ElementKind.INTERFACE || e.getKind() == ElementKind.CONSTRUCTOR)
+            .filter(e -> AnnotationUtils.findAnnotation(e, JsonTypes.json) == null)
+            .map(e -> e.getKind() == ElementKind.CONSTRUCTOR
                 ? e.getEnclosingElement()
                 : e)
-            .filter(e -> AnnotationUtils.findAnnotation(e, JsonTypes.json) == null)
             .toList();
         LogUtils.logElementsFull(log, Level.DEBUG, "Generating JsonReaders for", jsonReaderElements);
         for (var e : jsonReaderElements) {

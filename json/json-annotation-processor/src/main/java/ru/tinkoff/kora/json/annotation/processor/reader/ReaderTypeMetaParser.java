@@ -33,13 +33,13 @@ public class ReaderTypeMetaParser {
 
     public JsonClassReaderMeta parse(TypeElement jsonClass, TypeMirror typeMirror) throws ProcessingErrorException {
         if (jsonClass.getKind() != ElementKind.CLASS && jsonClass.getKind() != ElementKind.RECORD) {
-            throw new IllegalArgumentException("Should not be called for non class elements");
+            throw new IllegalArgumentException("JsonReader can be generated only for types that are class/record/sealed interface");
         }
         if (jsonClass.getModifiers().contains(Modifier.ABSTRACT)) {
-            throw new IllegalArgumentException("Should not be called for abstract elements");
+            throw new IllegalArgumentException("JsonReader can't be generated for abstract types");
         }
-        var jsonConstructor = Objects.requireNonNull(this.findJsonConstructor(jsonClass));
 
+        var jsonConstructor = Objects.requireNonNull(this.findJsonConstructor(jsonClass));
         var fields = new ArrayList<FieldMeta>(jsonConstructor.getParameters().size());
         var nameConverter = getNameConverter(jsonClass);
 

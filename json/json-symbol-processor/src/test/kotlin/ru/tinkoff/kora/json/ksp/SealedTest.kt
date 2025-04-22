@@ -8,8 +8,9 @@ import ru.tinkoff.kora.ksp.common.GraphUtil.toGraph
 import java.nio.charset.StandardCharsets
 
 class SealedTest : AbstractJsonSymbolProcessorTest() {
+
     @Test
-    fun testSealedInterface() {
+    fun testJsonSealedInterface() {
         compile(
             """
             @Json
@@ -36,6 +37,52 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
     }
 
     @Test
+    fun testJsonReaderSealedInterface() {
+        compile(
+            """
+            @JsonReader
+            @JsonDiscriminatorField("@type")
+            sealed interface TestInterface {
+                @Json
+                data class Impl1(val value: String) : TestInterface
+                @Json
+                data class Impl2(val value: Int) : TestInterface
+            }
+            """.trimIndent()
+        )
+
+        val m1 = reader("TestInterface_Impl1")
+        assertThat(m1).isNotNull()
+        val m2 = reader("TestInterface_Impl2")
+        assertThat(m2).isNotNull()
+        val m = reader("TestInterface", m1, m2)
+        assertThat(m).isNotNull()
+    }
+
+    @Test
+    fun testJsonWriterSealedInterface() {
+        compile(
+            """
+            @JsonWriter
+            @JsonDiscriminatorField("@type")
+            sealed interface TestInterface {
+                @Json
+                data class Impl1(val value: String) : TestInterface
+                @Json
+                data class Impl2(val value: Int) : TestInterface
+            }
+            """.trimIndent()
+        )
+
+        val m1 = writer("TestInterface_Impl1")
+        assertThat(m1).isNotNull()
+        val m2 = writer("TestInterface_Impl2")
+        assertThat(m2).isNotNull()
+        val m = writer("TestInterface", m1, m2)
+        assertThat(m).isNotNull()
+    }
+
+    @Test
     fun testSealedInterface0() {
         compile(
             """
@@ -58,7 +105,8 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
             listOf(m1, m2)
         )
 
-        m.assertRead("""
+        m.assertRead(
+            """
             { 
               "array": [1, 2, 3],
               "object": {
@@ -68,7 +116,8 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
               "@type":"Impl1",
               "value":"test"
             }
-            """.trimIndent(), new("TestInterface\$Impl1", "test"))
+            """.trimIndent(), new("TestInterface\$Impl1", "test")
+        )
     }
 
     @Test
