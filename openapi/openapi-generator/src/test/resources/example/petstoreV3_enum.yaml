@@ -80,12 +80,7 @@ components:
           type: array
           items:
             type: string
-            enum:
-              - Dingo-Don
-              - BimBim
-              - Husky
-              - Retriever
-              - Shepherd
+            enum: [ Dingo-Don, BimBim, Husky, Retriever, Shepherd ]
         reqArrayString:
           type: array
           items:
