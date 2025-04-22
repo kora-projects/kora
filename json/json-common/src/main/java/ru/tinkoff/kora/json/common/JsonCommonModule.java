@@ -54,6 +54,26 @@ public interface JsonCommonModule {
     }
 
     @DefaultComponent
+    default JsonWriter<Short> shortJsonWriter() {
+        return (gen, object) -> {
+            if (object == null) {
+                gen.writeNull();
+            } else {
+                gen.writeNumber(object);
+            }
+        };
+    }
+
+    @DefaultComponent
+    default JsonReader<Short> shortJsonReader() {
+        return parser -> switch (parser.currentToken()) {
+            case VALUE_NULL -> null;
+            case VALUE_NUMBER_INT -> parser.getShortValue();
+            default -> throw new JsonParseException(parser, "Expecting VALUE_NUMBER_INT token, got " + parser.currentToken());
+        };
+    }
+
+    @DefaultComponent
     default JsonWriter<Integer> integerJsonWriter() {
         return (gen, object) -> {
             if (object == null) {
@@ -73,8 +93,166 @@ public interface JsonCommonModule {
         };
     }
 
+    @DefaultComponent
+    default JsonWriter<Long> longJsonWriter() {
+        return (gen, object) -> {
+            if (object == null) {
+                gen.writeNull();
+            } else {
+                gen.writeNumber(object);
+            }
+        };
+    }
+
+    @DefaultComponent
+    default JsonReader<Long> longJsonReader() {
+        return parser -> switch (parser.currentToken()) {
+            case VALUE_NULL -> null;
+            case VALUE_NUMBER_INT -> parser.getLongValue();
+            default -> throw new JsonParseException(parser, "Expecting VALUE_NUMBER_INT token, got " + parser.currentToken());
+        };
+    }
+
+    @DefaultComponent
+    default JsonWriter<Double> doubleJsonWriter() {
+        return (gen, object) -> {
+            if (object == null) {
+                gen.writeNull();
+            } else {
+                gen.writeNumber(object);
+            }
+        };
+    }
+
+    @DefaultComponent
+    default JsonReader<Double> doubleJsonReader() {
+        return parser -> switch (parser.currentToken()) {
+            case VALUE_NULL -> null;
+            case VALUE_NUMBER_FLOAT, VALUE_NUMBER_INT -> parser.getDoubleValue();
+            default -> throw new JsonParseException(parser, "Expecting VALUE_NUMBER_FLOAT or VALUE_NUMBER_INT token, got " + parser.currentToken());
+        };
+    }
+
+    @DefaultComponent
+    default JsonWriter<Float> floatJsonWriter() {
+        return (gen, object) -> {
+            if (object == null) {
+                gen.writeNull();
+            } else {
+                gen.writeNumber(object);
+            }
+        };
+    }
+
+    @DefaultComponent
+    default JsonReader<Float> floatJsonReader() {
+        return parser -> switch (parser.currentToken()) {
+            case VALUE_NULL -> null;
+            case VALUE_NUMBER_FLOAT, VALUE_NUMBER_INT -> parser.getFloatValue();
+            default -> throw new JsonParseException(parser, "Expecting VALUE_NUMBER_FLOAT or VALUE_NUMBER_INT token, got " + parser.currentToken());
+        };
+    }
+
+    @DefaultComponent
+    default JsonWriter<String> stringJsonWriter() {
+        return (gen, object) -> {
+            if (object == null) {
+                gen.writeNull();
+            } else {
+                gen.writeString(object);
+            }
+        };
+    }
+
+    @DefaultComponent
+    default JsonReader<String> stringJsonReader() {
+        return parser -> switch (parser.currentToken()) {
+            case VALUE_NULL -> null;
+            case VALUE_STRING -> parser.getText();
+            default -> throw new JsonParseException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
+        };
+    }
+
+    @DefaultComponent
+    default JsonWriter<Boolean> booleanJsonWriter() {
+        return (gen, object) -> {
+            if (object == null) {
+                gen.writeNull();
+            } else {
+                gen.writeBoolean(object);
+            }
+        };
+    }
+
+    @DefaultComponent
+    default JsonReader<Boolean> booleanJsonReader() {
+        return parser -> switch (parser.currentToken()) {
+            case VALUE_NULL -> null;
+            case VALUE_TRUE -> true;
+            case VALUE_FALSE -> false;
+            default -> throw new JsonParseException(parser, "Expecting VALUE_TRUE or VALUE_FALSE token, got " + parser.currentToken());
+        };
+    }
+
+    @DefaultComponent
+    default JsonWriter<BigDecimal> bigDecimalJsonWriter() {
+        return (gen, bigDecimal) -> {
+            if (bigDecimal == null) {
+                gen.writeNull();
+            } else {
+                gen.writeNumber(bigDecimal);
+            }
+        };
+    }
+
+    @DefaultComponent
+    default JsonReader<BigDecimal> bigDecimalJsonReader() {
+        return parser -> switch (parser.currentToken()) {
+            case VALUE_NULL -> null;
+            case VALUE_NUMBER_FLOAT, VALUE_NUMBER_INT -> parser.getDecimalValue();
+            default -> throw new JsonParseException(parser, "Expecting VALUE_NUMBER_FLOAT or VALUE_NUMBER_INT token, got " + parser.currentToken());
+        };
+    }
+
+
+    @DefaultComponent
+    default JsonWriter<BigInteger> bigIntegerJsonWriter() {
+        return (gen, bigDecimal) -> {
+            if (bigDecimal == null) {
+                gen.writeNull();
+            } else {
+                gen.writeNumber(bigDecimal);
+            }
+        };
+    }
+
+    @DefaultComponent
+    default JsonReader<BigInteger> bigIntegerJsonReader() {
+        return parser -> switch (parser.currentToken()) {
+            case VALUE_NULL -> null;
+            case VALUE_NUMBER_INT -> parser.getBigIntegerValue();
+            default -> throw new JsonParseException(parser, "Expecting VALUE_NUMBER_INT token, got " + parser.currentToken());
+        };
+    }
+
+    @DefaultComponent
+    default JsonWriter<RawJson> rawJsonWriter() {
+        return new RawJsonWriter();
+    }
+
+    @DefaultComponent
+    default JsonReader<UUID> uuidJsonReader() {
+        return new UuidJsonCodec();
+    }
+
+    @DefaultComponent
+    default JsonWriter<UUID> uuidJsonWriter() {
+        return new UuidJsonCodec();
+    }
+
     /**
      * {@link DateTimeFormatter#ISO_DATE} is used intentionally for OffsetID formatting
+     *
      * @return writer
      */
     @DefaultComponent
@@ -90,6 +268,7 @@ public interface JsonCommonModule {
 
     /**
      * {@link DateTimeFormatter#ISO_DATE} is used intentionally for flexible nanos precision parsing
+     *
      * @return reader
      */
     @DefaultComponent
@@ -114,6 +293,7 @@ public interface JsonCommonModule {
 
     /**
      * {@link DateTimeFormatter#ISO_LOCAL_TIME} is used intentionally for flexible nanos precision parsing
+     *
      * @return reader
      */
     @DefaultComponent
@@ -138,6 +318,7 @@ public interface JsonCommonModule {
 
     /**
      * {@link DateTimeFormatter#ISO_LOCAL_DATE_TIME} is used intentionally for flexible nanos precision parsing
+     *
      * @return reader
      */
     @DefaultComponent
@@ -162,6 +343,7 @@ public interface JsonCommonModule {
 
     /**
      * {@link DateTimeFormatter#ISO_OFFSET_TIME} is used intentionally for flexible nanos precision parsing
+     *
      * @return reader
      */
     @DefaultComponent
@@ -186,6 +368,7 @@ public interface JsonCommonModule {
 
     /**
      * {@link DateTimeFormatter#ISO_OFFSET_DATE_TIME} is used intentionally for flexible nanos precision parsing
+     *
      * @return reader
      */
     @DefaultComponent
@@ -210,6 +393,7 @@ public interface JsonCommonModule {
 
     /**
      * {@link DateTimeFormatter#ISO_ZONED_DATE_TIME} is used intentionally for flexible nanos precision parsing
+     *
      * @return reader
      */
     @DefaultComponent
@@ -400,142 +584,5 @@ public interface JsonCommonModule {
             case VALUE_STRING -> Duration.parse(parser.getValueAsString());
             default -> throw new JsonParseException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
         };
-    }
-
-    @DefaultComponent
-    default JsonWriter<Long> longJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeNumber(object);
-            }
-        };
-    }
-
-    @DefaultComponent
-    default JsonReader<Long> longJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_NUMBER_INT -> parser.getLongValue();
-            default -> throw new JsonParseException(parser, "Expecting VALUE_NUMBER_INT token, got " + parser.currentToken());
-        };
-    }
-
-    @DefaultComponent
-    default JsonWriter<Double> doubleJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeNumber(object);
-            }
-        };
-    }
-
-    @DefaultComponent
-    default JsonReader<Double> doubleJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_NUMBER_FLOAT, VALUE_NUMBER_INT -> parser.getDoubleValue();
-            default -> throw new JsonParseException(parser, "Expecting VALUE_NUMBER_FLOAT or VALUE_NUMBER_INT token, got " + parser.currentToken());
-        };
-    }
-
-    @DefaultComponent
-    default JsonWriter<String> stringJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeString(object);
-            }
-        };
-    }
-
-    @DefaultComponent
-    default JsonReader<String> stringJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_STRING -> parser.getText();
-            default -> throw new JsonParseException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
-        };
-    }
-
-    @DefaultComponent
-    default JsonWriter<Boolean> booleanJsonWriter() {
-        return (gen, object) -> {
-            if (object == null) {
-                gen.writeNull();
-            } else {
-                gen.writeBoolean(object);
-            }
-        };
-    }
-
-    @DefaultComponent
-    default JsonReader<Boolean> booleanJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_TRUE -> true;
-            case VALUE_FALSE -> false;
-            default -> throw new JsonParseException(parser, "Expecting VALUE_TRUE or VALUE_FALSE token, got " + parser.currentToken());
-        };
-    }
-
-    @DefaultComponent
-    default JsonWriter<BigDecimal> bigDecimalJsonWriter() {
-        return (gen, bigDecimal) -> {
-            if (bigDecimal == null) {
-                gen.writeNull();
-            } else {
-                gen.writeNumber(bigDecimal);
-            }
-        };
-    }
-
-    @DefaultComponent
-    default JsonReader<BigDecimal> bigDecimalJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_NUMBER_FLOAT, VALUE_NUMBER_INT -> parser.getDecimalValue();
-            default -> throw new JsonParseException(parser, "Expecting VALUE_NUMBER_FLOAT or VALUE_NUMBER_INT token, got " + parser.currentToken());
-        };
-    }
-
-
-    @DefaultComponent
-    default JsonWriter<BigInteger> bigIntegerJsonWriter() {
-        return (gen, bigDecimal) -> {
-            if (bigDecimal == null) {
-                gen.writeNull();
-            } else {
-                gen.writeNumber(bigDecimal);
-            }
-        };
-    }
-
-    @DefaultComponent
-    default JsonReader<BigInteger> bigIntegerJsonReader() {
-        return parser -> switch (parser.currentToken()) {
-            case VALUE_NULL -> null;
-            case VALUE_NUMBER_INT -> parser.getBigIntegerValue();
-            default -> throw new JsonParseException(parser, "Expecting VALUE_NUMBER_INT token, got " + parser.currentToken());
-        };
-    }
-
-    @DefaultComponent
-    default JsonWriter<RawJson> rawJsonWriter() {
-        return new RawJsonWriter();
-    }
-
-    @DefaultComponent
-    default JsonReader<UUID> uuidJsonReader() {
-        return new UuidJsonCodec();
-    }
-
-    @DefaultComponent
-    default JsonWriter<UUID> uuidJsonWriter() {
-        return new UuidJsonCodec();
     }
 }
