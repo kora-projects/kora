@@ -91,19 +91,20 @@ open class DependencyTest : AbstractKoraAppProcessorTest() {
                 }
 
                 fun class2(promise: PromiseOf<Class1>): Class2 {
-                    return Class2()
+                    return Class2("")
                 }
 
                 @Root
                 fun root(class2: Class2) = Any()
 
                 interface Interface1 {
+                    val someVal: String
                     fun method() {}
                     fun methodWithReservedNameParameter(`is`: String) {}
-
+                    private fun privateFun() {}
                 }
                 class Class1
-                class Class2 : Interface1
+                class Class2(override val someVal: String) : Interface1
             }
         """.trimIndent())
     }
