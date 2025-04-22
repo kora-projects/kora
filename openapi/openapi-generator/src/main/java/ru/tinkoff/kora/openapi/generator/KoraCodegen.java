@@ -609,10 +609,6 @@ public class KoraCodegen extends DefaultCodegen {
                             model.name, variable.name, ENABLE_JSON_NULLABLE);
                     }
                 }
-
-                if (variable.isEnum) {
-                    variable.datatypeWithEnum = toEnumName(variable);
-                }
             }
 
             // Optional-vars visit
@@ -638,16 +634,16 @@ public class KoraCodegen extends DefaultCodegen {
                     }
                 }
 
-                if (variable.isEnum) {
-                    variable.datatypeWithEnum = toEnumName(variable);
-                }
+//                if (variable.isEnum) {
+//                    variable.datatypeWithEnum = toEnumName(variable);
+//                }
             }
 
-            for (var variable : model.requiredVars) {
-                if (variable.isEnum) {
-                    variable.datatypeWithEnum = toEnumName(variable);
-                }
-            }
+//            for (var variable : model.requiredVars) {
+//                if (variable.isEnum) {
+//                    variable.datatypeWithEnum = toEnumName(variable);
+//                }
+//            }
 
             if (model.discriminator != null) {
                 var map = model.discriminator.getMappedModels().stream()
@@ -2456,6 +2452,12 @@ public class KoraCodegen extends DefaultCodegen {
         }
 
         return name;
+    }
+
+    @Override
+    public String sanitizeName(String name, String removeCharRegEx, ArrayList<String> exceptionList) {
+        String result = super.sanitizeName(name, removeCharRegEx, exceptionList);
+        return transliteIfNeeded(result);
     }
 
     @Override
