@@ -33,7 +33,7 @@ public class ReaderTypeMetaParser {
 
     public JsonClassReaderMeta parse(TypeElement jsonClass, TypeMirror typeMirror) throws ProcessingErrorException {
         if (jsonClass.getKind() != ElementKind.CLASS && jsonClass.getKind() != ElementKind.RECORD) {
-            throw new IllegalArgumentException("JsonReader can be generated only for types that are class/data class/sealed interface");
+            throw new IllegalArgumentException("JsonReader can be generated only for types that are class/record/sealed interface");
         }
         if (jsonClass.getModifiers().contains(Modifier.ABSTRACT)) {
             throw new IllegalArgumentException("JsonReader can't be generated for abstract types");
