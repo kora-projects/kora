@@ -25,10 +25,10 @@ class ReaderTypeMetaParser(
 
     fun parse(declaration: KSClassDeclaration): JsonClassReaderMeta {
         if (declaration.classKind != ClassKind.CLASS) {
-            throw ProcessingErrorException("JsonReader can be generated only for types that are class/data class/sealed interface", declaration)
+            throw IllegalArgumentException("JsonReader can be generated only for types that are class/data class/sealed interface")
         }
         if (declaration.modifiers.contains(Modifier.ABSTRACT)) {
-            throw ProcessingErrorException("JsonReader can't be generated for abstract types", declaration)
+            throw IllegalArgumentException("JsonReader can't be generated for abstract types")
         }
 
         val jsonConstructor = this.findJsonConstructor(declaration)
