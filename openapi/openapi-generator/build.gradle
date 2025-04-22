@@ -91,11 +91,5 @@ sourceSets {
     }
 }
 
-//sourceSets {
-//    testGenerated {
-//        java.srcDirs += "$buildDir/out"
-//    }
-//}
-
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
