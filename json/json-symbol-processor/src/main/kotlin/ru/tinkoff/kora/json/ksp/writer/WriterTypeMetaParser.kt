@@ -25,8 +25,15 @@ class WriterTypeMetaParser(resolver: Resolver) {
 
     private val knownTypes: KnownType = KnownType(resolver)
 
-    fun parse(jsonClassDeclaration: KSClassDeclaration): JsonClassWriterMeta {
-        val fieldElements = parseFields(jsonClassDeclaration)
+    fun parse(declaration: KSClassDeclaration): JsonClassWriterMeta {
+        if (declaration.classKind != ClassKind.CLASS) {
+            throw ProcessingErrorException("JsonWriter can be generated only for types that are class/data class/sealed interface", declaration)
+        }
+        if (declaration.modifiers.contains(Modifier.ABSTRACT)) {
+            throw ProcessingErrorException("JsonWriter can't be generated for abstract types", declaration)
+        }
+
+        val fieldElements = parseFields(declaration)
         val fieldMetas = mutableListOf<JsonClassWriterMeta.FieldMeta>()
         for (fieldElement in fieldElements) {
             val jsonField = when (fieldElement) {
@@ -35,10 +42,10 @@ class WriterTypeMetaParser(resolver: Resolver) {
                 is KSValueParameter -> fieldElement.findJsonField()
                 else -> throw IllegalStateException()
             }
-            val fieldMeta = parseField(jsonClassDeclaration, fieldElement, jsonField)
+            val fieldMeta = parseField(declaration, fieldElement, jsonField)
             fieldMetas.add(fieldMeta)
         }
-        return JsonClassWriterMeta(jsonClassDeclaration, fieldMetas)
+        return JsonClassWriterMeta(declaration, fieldMetas)
     }
 
     private fun parseFields(jsonClassDeclaration: KSClassDeclaration): List<KSDeclaration> {

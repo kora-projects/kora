@@ -39,10 +39,10 @@ public class WriterTypeMetaParser {
 
     public JsonClassWriterMeta parse(TypeElement jsonClass, TypeMirror typeMirror) {
         if (jsonClass.getKind() != ElementKind.CLASS && jsonClass.getKind() != ElementKind.RECORD) {
-            throw new IllegalArgumentException("Should not be called for non classes");
+            throw new ProcessingErrorException("JsonReader can be generated only for types that are class/data class/sealed interface", jsonClass);
         }
         if (jsonClass.getModifiers().contains(Modifier.ABSTRACT)) {
-            throw new IllegalArgumentException("Should not be called for abstract classes");
+            throw new ProcessingErrorException("JsonWriter can't be generated for abstract types", jsonClass);
         }
 
         var fieldElements = this.parseFields(jsonClass);
