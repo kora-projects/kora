@@ -287,7 +287,9 @@ public class DependencyTest extends AbstractKoraAppTest {
         var draw = compile("""
             @KoraApp
             public interface ExampleApplication {
-                interface TestInterface1 {}
+                interface TestInterface1 {
+                    private void testPrivateFunction() {}
+                }
                 interface TestInterface2 {}
                 class TestClass2 implements TestInterface1, TestInterface2 {}
                 class TestClass1 {}

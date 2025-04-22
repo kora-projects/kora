@@ -4,6 +4,7 @@ import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.isOpen
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.*
@@ -166,8 +167,8 @@ object GraphBuilder {
                     stack.addLast(
                         ProcessingState.ResolutionFrame.Component(
                             optionalDeclaration, listOf(
-                            claim
-                        )
+                                claim
+                            )
                         )
                     )
                     continue@frame
@@ -308,7 +309,7 @@ object GraphBuilder {
 
         val typeTpr = claimTypeDeclaration.typeParameters.toTypeParameterResolver()
         val typeParameters = claimTypeDeclaration.typeParameters.map { it.toTypeVariableName(typeTpr) }
-        val typeName = if (typeParameters.isEmpty())  claimTypeDeclaration.toClassName() else claimTypeDeclaration.toClassName().parameterizedBy(typeParameters)
+        val typeName = if (typeParameters.isEmpty()) claimTypeDeclaration.toClassName() else claimTypeDeclaration.toClassName().parameterizedBy(typeParameters)
         val promiseType = CommonClassNames.promiseOf.parameterizedBy(WildcardTypeName.producerOf(typeName))
         val type = TypeSpec.classBuilder(resultClassName)
             .generated(GraphBuilder::class)
@@ -329,10 +330,12 @@ object GraphBuilder {
                     .addStatement("this.getDelegate()")
                     .build()
             )
-            .addFunction(FunSpec.builder("getDelegate")
+            .addFunction(
+                FunSpec.builder("getDelegate")
                 .addModifiers(KModifier.PRIVATE)
                 .returns(typeName)
-                .addCode(CodeBlock.builder()
+                    .addCode(
+                        CodeBlock.builder()
                     .addStatement("var delegate = this.delegate")
                     .controlFlow("if (delegate == null)") {
                         addStatement("delegate = this.promise.get().get()!!")
@@ -353,7 +356,7 @@ object GraphBuilder {
         }
 
         for (fn in claimTypeDeclaration.getAllFunctions()) {
-            if (!fn.isOpen()) {
+            if (!fn.isOpen() || fn.modifiers.contains(Modifier.PRIVATE)) {
                 continue
             }
             if (fn.simpleName.asString() in setOf("equals", "hashCode", "toString")) {
@@ -373,6 +376,16 @@ object GraphBuilder {
             }
             method.addCode(")\n")
             type.addFunction(method.build())
+        }
+        for (allProperty in claimTypeDeclaration.getAllProperties()) {
+            val prop = PropertySpec.builder(allProperty.simpleName.asString(), allProperty.type.resolve().toTypeName(), KModifier.OVERRIDE)
+                .getter(
+                    FunSpec.getterBuilder()
+                        .addStatement("return this.getDelegate().%N", allProperty.simpleName.getShortName())
+                        .build()
+                )
+                .build()
+            type.addProperty(prop)
         }
 
         val file = FileSpec.builder(packageName, resultClassName)
@@ -432,10 +445,10 @@ object GraphBuilder {
                 listOf(
                     ComponentDependency.PromisedProxyParameterDependency(
                         declaration, DependencyClaim(
-                        declaration.type,
-                        declaration.tags,
-                        ONE_REQUIRED
-                    )
+                            declaration.type,
+                            declaration.tags,
+                            ONE_REQUIRED
+                        )
                     )
                 )
             )
