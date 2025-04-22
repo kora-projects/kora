@@ -14,8 +14,9 @@ import java.util.function.Supplier;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class SealedTest extends AbstractJsonAnnotationProcessorTest {
+
     @Test
-    public void testSealedInterface() throws IOException {
+    public void testJsonSealedInterface() throws IOException {
         compile("""
             @Json
             @JsonDiscriminatorField("@type")
@@ -39,6 +40,48 @@ public class SealedTest extends AbstractJsonAnnotationProcessorTest {
         assertThat(m.toByteArray(o2)).asString(StandardCharsets.UTF_8).isEqualTo(json2);
         assertThat(m.read(json1.getBytes(StandardCharsets.UTF_8))).isEqualTo(o1);
         assertThat(m.read(json2.getBytes(StandardCharsets.UTF_8))).isEqualTo(o2);
+    }
+
+    @Test
+    public void testJsonReaderSealedInterface() {
+        compile("""
+            @JsonReader
+            @JsonDiscriminatorField("@type")
+            public sealed interface TestInterface {
+                @Json
+                record Impl1(String value) implements TestInterface{}
+                @Json
+                record Impl2(int value) implements TestInterface{}
+            }
+            """);
+
+        var m1 = reader("TestInterface_Impl1");
+        assertThat(m1).isNotNull();
+        var m2 = reader("TestInterface_Impl2");
+        assertThat(m2).isNotNull();
+        var m = reader("TestInterface", m1, m2);
+        assertThat(m).isNotNull();
+    }
+
+    @Test
+    public void testJsonWriterSealedInterface() throws IOException {
+        compile("""
+            @JsonWriter
+            @JsonDiscriminatorField("@type")
+            public sealed interface TestInterface {
+                @Json
+                record Impl1(String value) implements TestInterface{}
+                @Json
+                record Impl2(int value) implements TestInterface{}
+            }
+            """);
+
+        var m1 = writer("TestInterface_Impl1");
+        assertThat(m1).isNotNull();
+        var m2 = writer("TestInterface_Impl2");
+        assertThat(m2).isNotNull();
+        var m = writer("TestInterface", m1, m2);
+        assertThat(m).isNotNull();
     }
 
     @Test
