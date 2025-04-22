@@ -37,7 +37,7 @@ paths:
         - basicAuth: [ ]
         - bearerAuth: [ ]
         - oAuth:
-          - pets:read
+            - pets:read
       operationId: getDeliveries
       responses:
         '200':
@@ -347,16 +347,27 @@ components:
     PetCat: # "Cat" is a value for the pet_type property (the discriminator value)
       allOf: # Combines the main `Pet` schema with `Cat`-specific properties
         - $ref: '#/components/schemas/PetCommon'
+        - $ref: '#/components/schemas/Species'
         - type: object
           # all other properties specific to a `Cat`
           properties:
             hunts:
               type: boolean
-            age:
-              type: integer
     PetCommon: # "Cat" is a value for the pet_type property (the discriminator value)
       allOf: # Combines the main `Pet` schema with `Cat`-specific properties
         - $ref: '#/components/schemas/Pet'
+        - type: object
+          # all other properties specific to a `PetCommon`
+          properties:
+            age:
+              $ref: '#/components/schemas/Age'
+
+    Age:
+      type: object
+      properties:
+        age:
+          type: integer
+          format: int32
 
     Error:
       type: object
@@ -368,7 +379,58 @@ components:
           type: integer
           format: int32
         message:
+          $ref: '#/components/schemas/Message'
+        details:
+          items:
+            $ref: '#/components/schemas/Detail'
+
+    Message:
+      type: object
+      required:
+        - message
+      properties:
+        message:
           type: string
+        extraMessage:
+          $ref: '#/components/schemas/ExtraMessage'
+
+    ExtraMessage:
+      type: object
+      properties:
+       extraMessage:
+         $ref: '#/components/schemas/Message'
+
+    DetailExtra:
+      type: object
+      properties:
+        extra:
+          type: string
+
+    Detail:
+      type: object
+      properties:
+        message:
+          $ref: '#/components/schemas/Message'
+      additionalProperties:
+        $ref: '#/components/schemas/DetailExtra'
+
+
+    Species:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        contact_info:
+          type: object
+          properties:
+            email:
+              type: string
+              format: email
+            phone:
+              type: string
+
 
   securitySchemes:
     bearerAuth:
@@ -393,9 +455,9 @@ components:
             pets:write: Modify user information
 
 security:
-  - bearerAuth: []
-  - apiKeyAuth: []
-  - basicAuth: []
+  - bearerAuth: [ ]
+  - apiKeyAuth: [ ]
+  - basicAuth: [ ]
   - oAuth:
       - pets:write
       - pets:read

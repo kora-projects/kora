@@ -88,6 +88,10 @@ components:
         id:
           type: string
           format: uuid
+        name:
+          type: string
+        code:
+          type: string
         type:
           $ref: '#/components/schemas/DeliveryTypeEnum'
       discriminator:
@@ -104,6 +108,46 @@ components:
           properties:
             contractName:
               type: string
+
+    DeliveryAllOfMulti:
+      type: object
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        code:
+          type: string
+        type:
+          $ref: '#/components/schemas/DeliveryTypeEnum'
+      discriminator:
+        propertyName: type
+        mapping:
+          spb-city: '#/components/schemas/DeliveryAllOfMultiOne'
+          msk-city: '#/components/schemas/DeliveryAllOfMultiTwo'
+
+    DeliveryAllOfMultiOne:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/DeliveryAllOfMulti'
+        - type: object
+          properties:
+            contractName:
+              type: string
+
+    DeliveryAllOfMultiTwo:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/DeliveryAllOfMulti'
+        - type: object
+          properties:
+            destName:
+              type: string
+
 
     DeliverySimple:
       type: object

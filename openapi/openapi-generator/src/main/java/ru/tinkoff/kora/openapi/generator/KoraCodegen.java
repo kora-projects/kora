@@ -14,10 +14,7 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.examples.Example;
-import io.swagger.v3.oas.models.media.ArraySchema;
-import io.swagger.v3.oas.models.media.ComposedSchema;
-import io.swagger.v3.oas.models.media.Schema;
-import io.swagger.v3.oas.models.media.StringSchema;
+import io.swagger.v3.oas.models.media.*;
 import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.parameters.RequestBody;
 import io.swagger.v3.oas.models.servers.Server;
@@ -703,6 +700,23 @@ public class KoraCodegen extends DefaultCodegen {
                     var property = discriminatorProperty.clone();
                     childModel.allVars.add(0, property);
                     childModel.requiredVars.add(0, property);
+
+                    for (CodegenProperty prop : childModel.optionalVars) {
+                        if (prop.isOverridden != null && prop.isOverridden) {
+                            if (model.optionalVars.stream().noneMatch(p -> p.name.equals(prop.name))) {
+                                prop.isOverridden = false;
+                            }
+                        }
+                    }
+
+                    for (CodegenProperty prop : childModel.requiredVars) {
+                        if (prop.isOverridden != null && prop.isOverridden) {
+                            if (model.requiredVars.stream().noneMatch(p -> p.name.equals(prop.name))) {
+                                prop.isOverridden = false;
+                            }
+                        }
+                    }
+
                     if (mappings.size() == 1) {
                         var enumValue = "%s.%s.%s".formatted(model.classname, discriminatorProperty.datatypeWithEnum, toEnumVarName(mappings.get(0), "String"));
                         property.vendorExtensions.put("x-discriminator-single", enumValue);
@@ -1634,7 +1648,6 @@ public class KoraCodegen extends DefaultCodegen {
         return codegenModel;
     }
 
-
     @Override
     public void postProcessModelProperty(CodegenModel model, CodegenProperty property) {
         if (!fullJavaUtil) {
@@ -1675,7 +1688,7 @@ public class KoraCodegen extends DefaultCodegen {
             .filter(op -> op.getRequestBody() != null && op.getRequestBody().getContent() != null)
             .flatMap(op -> op.getRequestBody().getContent().values().stream())
             .filter(req -> req.getSchema() != null)
-            .flatMap(req -> getAllRefs(req.getSchema()).stream())
+            .flatMap(req -> getAllRefs(req.getSchema(), new ArrayList<>()).stream())
             .filter(Objects::nonNull)
             .filter(o -> !o.isBlank())
             .map(ModelUtils::getSimpleRef)
@@ -1686,38 +1699,27 @@ public class KoraCodegen extends DefaultCodegen {
             .filter(res -> res.getContent() != null)
             .flatMap(res -> res.getContent().values().stream())
             .filter(res -> res.getSchema() != null)
-            .flatMap(req -> getAllRefs(req.getSchema()).stream())
+            .flatMap(req -> getAllRefs(req.getSchema(), new ArrayList<>()).stream())
             .filter(Objects::nonNull)
             .filter(o -> !o.isBlank())
             .map(ModelUtils::getSimpleRef)
             .toList();
 
-        Set<String> filteredSchemas = Stream.concat(requestSchemas.stream(), responseSchemas.stream())
-            .collect(Collectors.toSet());
+        Set<String> rootSchemas = Stream.concat(requestSchemas.stream(), responseSchemas.stream())
+            .collect(Collectors.toUnmodifiableSet());
 
+        Set<String> filteredToSaveSchemas = new HashSet<>(rootSchemas);
         Map<String, Schema> schemas = ModelUtils.getSchemas(openAPI);
-        schemas.forEach((name, schema) -> {
-            if (filteredSchemas.contains(name)) {
-                if (schema.getDiscriminator() != null) {
-                    schemas.forEach((targetName, targetSchema) -> {
-                        if (targetSchema != schema) {
-                            List<String> allRefs = getAllRefs(targetSchema);
-                            Set<String> simpleRefs = allRefs.stream()
-                                .map(ModelUtils::getSimpleRef)
-                                .collect(Collectors.toSet());
-                            simpleRefs.add(targetName);
 
-                            if (simpleRefs.contains(name)) {
-                                filteredSchemas.addAll(simpleRefs);
-                            }
-                        }
-                    });
-                }
+        schemas.forEach((name, schema) -> {
+            if (rootSchemas.contains(name)) {
+                Set<String> refs = getSimpleRefRecursive(name, schema, schemas, new HashMap<>(), new HashSet<>(), true);
+                filteredToSaveSchemas.addAll(refs);
             }
         });
 
         schemas.forEach((name, schema) -> {
-            if (!filteredSchemas.contains(name)) {
+            if (!filteredToSaveSchemas.contains(name)) {
                 // if x-internal=true then model WILL NOT be generated by openapi generator
                 schema.addExtension("x-internal", true);
             } else {
@@ -1726,21 +1728,130 @@ public class KoraCodegen extends DefaultCodegen {
         });
     }
 
-    private List<String> getAllRefs(Schema req) {
+    private Set<String> getSimpleRefRecursive(String targetName,
+                                              Schema<?> targetSchema,
+                                              Map<String, Schema> schemas,
+                                              Map<String, Set<String>> discriminatorSchemaRefs,
+                                              Set<String> visited,
+                                              boolean checkVisited) {
+        if (checkVisited) {
+            if (targetSchema instanceof ObjectSchema && visited.contains(targetName)) {
+                return Collections.emptySet();
+            } else if (targetSchema instanceof ObjectSchema) {
+                visited.add(targetName);
+            }
+        }
+
+        final Set<String> refs = new HashSet<>();
+        refs.add(targetName);
+
+        if (targetSchema.getDiscriminator() != null) {
+            // getting from  targetSchema.getDiscriminator().getMapping() may work only when its specified and won't consider other cases
+            schemas.forEach((candidateName, candidateSchema) -> {
+                if (candidateSchema != targetSchema) {
+                    Set<String> discRefs = discriminatorSchemaRefs.computeIfAbsent(candidateName, k -> {
+                        List<String> allRefs = getAllRefs(candidateSchema, new ArrayList<>());
+                        Set<String> allDiscRefs = allRefs.stream()
+                            .map(ModelUtils::getSimpleRef)
+                            .collect(Collectors.toSet());
+                        allDiscRefs.add(candidateName);
+                        return allDiscRefs;
+                    });
+
+                    if (discRefs.contains(targetName)) {
+                        for (String discRef : discRefs) {
+                            Schema discSchema = schemas.get(discRef);
+                            Set<String> itemRefs = getSimpleRefFromSchemaRef(discSchema, schemas, discriminatorSchemaRefs, visited);
+                            refs.addAll(itemRefs);
+                        }
+                        refs.addAll(discRefs);
+                    }
+                }
+            });
+        }
+
+        if (targetSchema.getProperties() != null) {
+            targetSchema.getProperties().forEach((propName, prop) -> {
+                Set<String> propRefs = getSimpleRefFromSchemaRef(prop, schemas, discriminatorSchemaRefs, visited);
+                refs.addAll(propRefs);
+
+                if (prop.getItems() != null) {
+                    Set<String> itemRefs = getSimpleRefFromSchemaRef(prop.getItems(), schemas, discriminatorSchemaRefs, visited);
+                    refs.addAll(itemRefs);
+                }
+            });
+        }
+
+        List<Schema<?>> innerSchemas = getAllInnerSchemas(targetSchema);
+        for (Schema<?> innerSchema : innerSchemas) {
+            Set<String> innerSchemaRefs = getSimpleRefRecursive(targetName, innerSchema, schemas, discriminatorSchemaRefs, visited, false);
+            refs.addAll(innerSchemaRefs);
+        }
+
+        return refs;
+    }
+
+    private Set<String> getSimpleRefFromSchemaRef(Schema<?> targetSchema,
+                                                  Map<String, Schema> schemas,
+                                                  Map<String, Set<String>> discriminatorSchemaRefs,
+                                                  Set<String> visited) {
+        if (targetSchema.get$ref() == null) {
+            return Collections.emptySet();
+        }
+
+        final Set<String> refs = new HashSet<>();
+        String targetRef = ModelUtils.getSimpleRef(targetSchema.get$ref());
+        refs.add(targetRef);
+
+        Schema targetRefSchema = schemas.get(targetRef);
+        if (targetRefSchema != null) {
+            Set<String> itemsRefs = getSimpleRefRecursive(targetRef, targetRefSchema, schemas, discriminatorSchemaRefs, visited, true);
+            refs.addAll(itemsRefs);
+        }
+
+        return refs;
+    }
+
+    private List<String> getAllRefs(Schema req, List<Schema<?>> visited) {
+        if (req instanceof ObjectSchema && visited.stream().anyMatch(s -> s == req)) {
+            return Collections.emptyList();
+        }
+
+        if (req instanceof ObjectSchema) {
+            visited.add(req);
+        }
+
         List<String> refs = new ArrayList<>();
         if (req.get$ref() != null) {
             refs.add(req.get$ref());
         }
 
-        if (req.getItems() != null) {
-            List<String> itemRefs = getAllRefs(req.getItems());
-            refs.addAll(itemRefs);
+        List<Schema<?>> innerSchemas = getAllInnerSchemas(req);
+        for (Schema<?> innerSchema : innerSchemas) {
+            if (innerSchema.get$ref() != null) {
+                refs.add(innerSchema.get$ref());
+            }
+
+            visited.add(innerSchema);
+            List<String> schemaRefs = getAllRefs(innerSchema, visited);
+            refs.addAll(schemaRefs);
+        }
+
+        return refs;
+    }
+
+    private List<Schema<?>> getAllInnerSchemas(Schema req) {
+        List<Schema<?>> schemas = new ArrayList<>();
+
+        Schema referencedSchema = ModelUtils.getReferencedSchema(openAPI, req);
+        if (referencedSchema != req) {
+            schemas.add(referencedSchema);
         }
 
         if (req.getAllOf() != null) {
             for (Object s : req.getAllOf()) {
                 if (s instanceof Schema<?> schema) {
-                    refs.addAll(getAllRefs(schema));
+                    schemas.add(schema);
                 }
             }
         }
@@ -1748,7 +1859,7 @@ public class KoraCodegen extends DefaultCodegen {
         if (req.getAnyOf() != null) {
             for (Object s : req.getAnyOf()) {
                 if (s instanceof Schema<?> schema) {
-                    refs.addAll(getAllRefs(schema));
+                    schemas.add(schema);
                 }
             }
         }
@@ -1756,18 +1867,24 @@ public class KoraCodegen extends DefaultCodegen {
         if (req.getOneOf() != null) {
             for (Object s : req.getOneOf()) {
                 if (s instanceof Schema<?> schema) {
-                    refs.addAll(getAllRefs(schema));
+                    schemas.add(schema);
                 }
             }
         }
 
-        Schema referencedSchema = ModelUtils.getReferencedSchema(openAPI, req);
-        if (referencedSchema != req) {
-            List<String> allRefRefs = getAllRefs(referencedSchema);
-            refs.addAll(allRefRefs);
+        if (req.getItems() != null) {
+            schemas.add(req.getItems());
         }
 
-        return refs;
+        if (req.getAdditionalProperties() instanceof Schema<?> s) {
+            schemas.add(s);
+        }
+
+        if (req.getAdditionalItems() != null) {
+            schemas.add(req.getAdditionalItems());
+        }
+
+        return schemas;
     }
 
     // only access point Before models will be generated
