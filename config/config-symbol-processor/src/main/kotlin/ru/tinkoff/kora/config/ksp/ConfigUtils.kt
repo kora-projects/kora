@@ -30,7 +30,7 @@ object ConfigUtils {
                     val mapping = recordComponent.parseMappingData().getMapping(ConfigClassNames.configValueExtractor)
                     fields.add(
                         ConfigField(
-                            name, recordComponentType.toTypeName(), isNullable, false, mapping
+                            name, recordComponentType.toTypeName(), isNullable, false, false, mapping
                         )
                     )
                 }
@@ -83,7 +83,7 @@ object ConfigUtils {
                 if (seen.add(it.simpleName.asString())) {
                     val isNullable = fieldType.isMarkedNullable
                     val mapping = it.parseMappingData().getMapping(ConfigClassNames.configValueExtractor)
-                    fields.add(ConfigField(it.simpleName.asString(), fieldType.toTypeName(), isNullable, true, mapping))
+                    fields.add(ConfigField(it.simpleName.asString(), fieldType.toTypeName(), isNullable, true, false, mapping))
                 }
             }
         }
@@ -101,12 +101,23 @@ object ConfigUtils {
                 val fieldType = parameter.type.resolve()
                 val isNullable = fieldType.isMarkedNullable
                 val mapping = parameter.parseMappingData().getMapping(ConfigClassNames.configValueExtractor)
-                fields.add(ConfigField(name, fieldType.toTypeName(), isNullable, false, mapping))
+                fields.add(ConfigField(name, fieldType.toTypeName(), isNullable, false, false, mapping))
             }
         }
 
         fun parseInterfaceFields(type: KSType, typeDecl: KSClassDeclaration) {
             require(typeDecl.classKind == ClassKind.INTERFACE) { "Method expecting interface" }
+            for (property in typeDecl.getAllProperties()) {
+                val name = property.simpleName.asString()
+                val propertyType = property.type.resolve()
+                val isNullable = propertyType.nullability == Nullability.NULLABLE
+                val mapping = property.parseMappingData().getMapping(ConfigClassNames.configValueExtractor)
+                fields.add(
+                    ConfigField(
+                        name, propertyType.toTypeName().copy(isNullable), isNullable, false, true, mapping
+                    )
+                )
+            }
             for (function in typeDecl.getAllFunctions()) {
                 when (function.simpleName.asString()) {
                     "equals" -> {
@@ -155,7 +166,7 @@ object ConfigUtils {
                     val mapping = function.parseMappingData().getMapping(ConfigClassNames.configValueExtractor)
                     fields.add(
                         ConfigField(
-                            name, functionType.returnType!!.toTypeName().copy(isNullable), isNullable, !function.isAbstract, mapping
+                            name, functionType.returnType!!.toTypeName().copy(isNullable), isNullable, !function.isAbstract, false, mapping
                         )
                     )
                 }
@@ -188,5 +199,5 @@ object ConfigUtils {
         }
     }
 
-    data class ConfigField(val name: String, val typeName: TypeName, val isNullable: Boolean, val hasDefault: Boolean, val mapping: MappingData?)
+    data class ConfigField(val name: String, val typeName: TypeName, val isNullable: Boolean, val hasDefault: Boolean, val isVal: Boolean, val mapping: MappingData?)
 }

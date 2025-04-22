@@ -63,9 +63,10 @@ class ConfigParserGenerator(private val resolver: Resolver) {
             }
         } else {
             if (fields.isEmpty()) {
-                typeBuilder.addProperty(PropertySpec.builder("DEFAULTS", implClassName, KModifier.PRIVATE, KModifier.FINAL)
-                    .initializer("%T", implClassName)
-                    .build()
+                typeBuilder.addProperty(
+                    PropertySpec.builder("DEFAULTS", implClassName, KModifier.PRIVATE, KModifier.FINAL)
+                        .initializer("%T", implClassName)
+                        .build()
                 )
             } else if (!hasRequiredFields) {
                 val initializer = CodeBlock.builder().add("%T(", implClassName).indent()
@@ -401,14 +402,20 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         val constructor = FunSpec.constructorBuilder()
         for (field in fields) {
             constructor.addParameter(field.name, field.typeName)
-            b.addProperty(PropertySpec.builder(field.name, field.typeName, KModifier.PRIVATE).initializer("%N", field.name).build())
-            b.addFunction(
-                FunSpec.builder(field.name)
-                    .addModifiers(KModifier.OVERRIDE)
-                    .returns(field.typeName)
-                    .addStatement("return this.%N", field.name)
-                    .build()
-            )
+            if (field.isVal) {
+                b.addProperty(PropertySpec.builder(field.name, field.typeName, KModifier.OVERRIDE).initializer("%N", field.name).build())
+            } else {
+                b.addProperty(PropertySpec.builder(field.name, field.typeName, KModifier.PRIVATE).initializer("%N", field.name).build())
+            }
+            if (!field.isVal) {
+                b.addFunction(
+                    FunSpec.builder(field.name)
+                        .addModifiers(KModifier.OVERRIDE)
+                        .returns(field.typeName)
+                        .addStatement("return this.%N", field.name)
+                        .build()
+                )
+            }
         }
         if (fields.any { it.typeName is ParameterizedTypeName && it.typeName.rawType == ARRAY || it.typeName is ClassName && it.typeName.packageName == "kotlin" && it.typeName.simpleName.endsWith("Array") }) {
             val equals = FunSpec.builder("equals")

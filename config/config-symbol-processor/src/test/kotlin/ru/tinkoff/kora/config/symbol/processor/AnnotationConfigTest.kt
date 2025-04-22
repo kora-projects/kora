@@ -32,6 +32,21 @@ class AnnotationConfigTest : AbstractConfigTest() {
     }
 
     @Test
+    fun testValSupported() {
+        val extractor = compileConfig(
+            listOf<Any>(), """
+            @ConfigValueExtractor
+            interface TestConfig {
+              val value: Int
+            }
+            
+            """.trimIndent()
+        )
+        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value" to 42)).root()))
+            .isEqualTo(new("\$TestConfig_ConfigValueExtractor\$TestConfig_Impl", 42))
+    }
+
+    @Test
     fun testNullableIntSupported() {
         val extractor = compileConfig(
             listOf<Any>(), """
