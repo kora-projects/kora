@@ -88,10 +88,10 @@ public class JsonAnnotationProcessor extends AbstractKoraProcessor {
 
         var jsonReaderElements = roundEnv.getElementsAnnotatedWith(this.jsonReaderAnnotation).stream()
             .filter(e -> e.getKind().isClass() || e.getKind() == ElementKind.INTERFACE || e.getKind() == ElementKind.CONSTRUCTOR)
-            .filter(e -> AnnotationUtils.findAnnotation(e, JsonTypes.json) == null)
             .map(e -> e.getKind() == ElementKind.CONSTRUCTOR
                 ? e.getEnclosingElement()
                 : e)
+            .filter(e -> AnnotationUtils.findAnnotation(e, JsonTypes.json) == null)
             .toList();
         LogUtils.logElementsFull(log, Level.DEBUG, "Generating JsonReaders for", jsonReaderElements);
         for (var e : jsonReaderElements) {

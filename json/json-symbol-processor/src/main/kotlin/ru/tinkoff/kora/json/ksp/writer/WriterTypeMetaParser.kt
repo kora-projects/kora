@@ -27,10 +27,10 @@ class WriterTypeMetaParser(resolver: Resolver) {
 
     fun parse(declaration: KSClassDeclaration): JsonClassWriterMeta {
         if (declaration.classKind != ClassKind.CLASS) {
-            throw IllegalArgumentException("JsonWriter can be generated only for types that are class/data class/sealed interface")
+            throw ProcessingErrorException("JsonWriter can be generated only for types that are class/data class/sealed interface, but called for: ${declaration.qualifiedName!!.asString()}", declaration)
         }
         if (declaration.modifiers.contains(Modifier.ABSTRACT)) {
-            throw IllegalArgumentException("JsonWriter can't be generated for abstract types")
+            throw ProcessingErrorException("JsonWriter can't be generated for abstract types, but called for: ${declaration.qualifiedName!!.asString()}", declaration)
         }
 
         val fieldElements = parseFields(declaration)
