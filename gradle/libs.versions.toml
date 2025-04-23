@@ -172,8 +172,8 @@ swagger-core = { module = "io.swagger.core.v3:swagger-core", version.ref = "swag
 swagger-models = { module = "io.swagger.core.v3:swagger-models", version.ref = "swagger" }
 swagger-annotations = { module = "io.swagger.core.v3:swagger-annotations", version.ref = "swagger" }
 
-s3client-minio = { module = "io.minio:minio", version = "8.5.12" }
-s3client-aws = { module = "software.amazon.awssdk:s3", version = "2.27.12" }
+s3client-minio = { module = "io.minio:minio", version = "8.5.17" }
+s3client-aws = { module = "software.amazon.awssdk:s3", version = "2.27.24" }
 
 camunda7-engine = { module = "org.camunda.bpm:camunda-engine", version.ref = "camunda7" }
 camunda7-rest-jakarta = { module = "org.camunda.bpm:camunda-engine-rest-jakarta", version.ref = "camunda7" }
