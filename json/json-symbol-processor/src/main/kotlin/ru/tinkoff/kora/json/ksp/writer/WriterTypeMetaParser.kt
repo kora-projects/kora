@@ -27,7 +27,7 @@ class WriterTypeMetaParser(resolver: Resolver) {
 
     fun parse(declaration: KSClassDeclaration): JsonClassWriterMeta {
         if (declaration.classKind != ClassKind.CLASS) {
-            throw ProcessingErrorException("JsonWriter can be generated only for types that are class/data class/sealed interface, but called for: ${declaration.qualifiedName!!.asString()}", declaration)
+            throw ProcessingErrorException("JsonWriter can be generated only for types that are class/data class/sealed, but called for: ${declaration.qualifiedName!!.asString()}", declaration)
         }
         if (declaration.modifiers.contains(Modifier.ABSTRACT)) {
             throw ProcessingErrorException("JsonWriter can't be generated for abstract types, but called for: ${declaration.qualifiedName!!.asString()}", declaration)
