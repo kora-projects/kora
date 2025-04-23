@@ -84,6 +84,7 @@ sourceSets {
             addOpenapiDir("petstoreV3_security_basic")
             addOpenapiDir("petstoreV3_security_bearer")
             addOpenapiDir("petstoreV3_security_oauth")
+            addOpenapiDir("petstoreV3_security_cookie")
             addOpenapiDir("petstoreV3_single_response")
             addOpenapiDir("petstoreV3_types")
             addOpenapiDir("petstoreV3_validation")

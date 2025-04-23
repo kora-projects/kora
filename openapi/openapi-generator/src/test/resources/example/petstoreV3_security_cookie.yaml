@@ -11,6 +11,8 @@ paths:
       operationId: listPets
       tags:
         - pets
+      security:
+        - CookieAuth: [ ]
       parameters:
         - name: limit
           in: query
@@ -24,6 +26,7 @@ paths:
           description: A paged array of pets
           headers:
             x-next:
+              required: true
               description: A link to the next page of responses
               schema:
                 type: string
@@ -43,6 +46,9 @@ paths:
       operationId: petsTwoSecurity
       tags:
         - pets
+      security:
+        - CookieAuth: [ ]
+        - AnotherCookieAuth: [ ]
       parameters:
         - name: limit
           in: query
@@ -56,6 +62,7 @@ paths:
           description: A paged array of pets
           headers:
             x-next:
+              required: true
               description: A link to the next page of responses
               schema:
                 type: string
@@ -88,6 +95,7 @@ paths:
           description: A paged array of pets
           headers:
             x-next:
+              required: true
               description: A link to the next page of responses
               schema:
                 type: string
@@ -102,6 +110,15 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 components:
+  securitySchemes:
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: X-COOKIE-KEY
+    AnotherCookieAuth:
+      type: apiKey
+      in: cookie
+      name: X-COOKIE-KEY
   schemas:
     Pet:
       type: object
@@ -131,37 +148,4 @@ components:
           format: int32
         message:
           type: string
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-    apiKeyAuth:
-      type: apiKey
-      in: header
-      name: X-API-KEY
-    basicAuth:
-      type: http
-      scheme: basic
-    cookieAuth:
-      type: apiKey
-      in: cookie
-      name: X-COOKIE-KEY
-    oAuth:
-      type: oauth2
-      description: This API uses OAuth 2 with the implicit grant flow. [More info](https://api.example.com/docs/auth)
-      flows:
-        implicit:
-          authorizationUrl: https://api.example.com/oauth2/authorize
-          scopes:
-            read_pets: read your pets
-            write_pets: modify pets in your account
-security:
-  - bearerAuth: []
-  - apiKeyAuth: []
-  - basicAuth: []
-  - cookieAuth: []
-  - oAuth:
-      - write_pets
-      - read_pets
 

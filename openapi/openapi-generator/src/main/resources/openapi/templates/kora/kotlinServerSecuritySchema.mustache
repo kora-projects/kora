@@ -49,10 +49,8 @@ public interface ApiSecurity {
             {{#methods}}{{#vendorExtensions.isFirst}}{{#isApiKey}}{{#isKeyInHeader}}
             val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("{{keyParamName}}"){{/isKeyInHeader}}{{#isKeyInQuery}}
             val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query = request.queryParams().get("{{keyParamName}}")
-            val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query == null || {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query.isEmpty()
-            ? null
-            : {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query.iterator().next(){{/isKeyInQuery}}{{#isKeyInCookie}}
-            val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.cookies().stream().filter(c -> "{{keyParamName}}".equals(c.name())).map(c -> c.value()).findFirst().orElse(null)
+            val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query?.firstOrNull(){{/isKeyInQuery}}{{#isKeyInCookie}}
+            val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.cookies().filter { "{{keyParamName}}" == it.name() }.map { it.value() }.firstOrNull()
             {{/isKeyInCookie}}
             {{/isApiKey}}{{#isBasicBasic}}
             val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("Authorization"){{/isBasicBasic}}{{#isBasicBearer}}
@@ -79,10 +77,8 @@ public interface ApiSecurity {
             {{/vendorExtensions.isFirst}}{{/methods}}{{#methods}}{{^vendorExtensions.isFirst}}{{#lambda.indented}}{{#isApiKey}}{{#isKeyInHeader}}
                     val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("{{keyParamName}}"){{/isKeyInHeader}}{{#isKeyInQuery}}
                     val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query = request.queryParams().get("{{keyParamName}}")
-                    val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query == null || {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query.isEmpty()
-                    ? null
-                    : {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query.iterator().next(){{/isKeyInQuery}}{{#isKeyInCookie}}
-                    val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.cookies().stream().filter(c -> "{{keyParamName}}".equals(c.name())).map(c -> c.value()).findFirst().orElse(null){{/isKeyInCookie}}{{/isApiKey}}{{#isBasicBasic}}
+                    val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query?.firstOrNull(){{/isKeyInQuery}}{{#isKeyInCookie}}
+                    val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.cookies().filter { "{{keyParamName}}" == it.name() }.map { it.value() }.firstOrNull(){{/isKeyInCookie}}{{/isApiKey}}{{#isBasicBasic}}
                     val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("Authorization"){{/isBasicBasic}}{{#isBasicBearer}}
                     val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("Authorization"){{/isBasicBearer}}{{#isOAuth}}
                     val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("Authorization"){{/isOAuth}}
