@@ -4,6 +4,7 @@ import io.undertow.Undertow;
 import io.undertow.connector.ByteBufferPool;
 import io.undertow.server.DefaultByteBufferPool;
 import org.xnio.XnioWorker;
+import ru.tinkoff.kora.application.graph.LifecycleWrapper;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.common.DefaultComponent;
@@ -34,7 +35,7 @@ public interface UndertowModule extends HttpServerModule {
 
     @Tag(UndertowPrivateHttpServer.class)
     @DefaultComponent
-    default ByteBufferPool undertowPrivateByteBufferPool() {
+    default Wrapped<ByteBufferPool> undertowPrivateByteBufferPool() {
         final long maxMemory = Runtime.getRuntime().maxMemory();
         final boolean directBuffers;
         final int bufferSize;
@@ -58,6 +59,7 @@ public interface UndertowModule extends HttpServerModule {
             directBuffers = true;
         }
 
-        return new DefaultByteBufferPool(directBuffers, bufferSize, maxPoolSize, 4);
+        DefaultByteBufferPool pool = new DefaultByteBufferPool(directBuffers, bufferSize, maxPoolSize, 4);
+        return new LifecycleWrapper<>(pool, p -> {}, ByteBufferPool::close);
     }
 }
