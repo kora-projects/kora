@@ -4,18 +4,18 @@ import com.google.devtools.ksp.isProtected
 import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
-import com.squareup.kotlinpoet.*
-import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
-import com.squareup.kotlinpoet.ksp.toAnnotationSpec
-import com.squareup.kotlinpoet.ksp.toClassName
-import com.squareup.kotlinpoet.ksp.toTypeName
-import com.squareup.kotlinpoet.ksp.toTypeVariableName
+import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.KModifier
+import com.squareup.kotlinpoet.ParameterSpec
+import com.squareup.kotlinpoet.TypeSpec
+import com.squareup.kotlinpoet.ksp.*
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames.aopAnnotation
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.resolveToUnderlying
 
 object CommonAopUtils {
-    fun KSClassDeclaration.extendsKeepAop(newName: String): TypeSpec.Builder {
+
+    fun KSClassDeclaration.extendsKeepAop(newName: String, resolver: Resolver): TypeSpec.Builder {
         val type = this
         val b: TypeSpec.Builder = TypeSpec.classBuilder(newName)
             .addOriginatingKSFile(type.containingFile!!)
@@ -25,7 +25,32 @@ object CommonAopUtils {
             b.superclass(type.toClassName())
         }
 
-        if(hasAopAnnotations(type)) {
+        var hasAop = hasAopAnnotation(type)
+        val methods = findMethods(type) { f -> f.isPublic() || f.isProtected() }
+        for (method in methods) {
+            var isMethodAop = hasAopAnnotation(method)
+
+            for (parameter in method.parameters) {
+                if (hasAopAnnotation(parameter)) {
+                    isMethodAop = true
+                }
+            }
+
+            if (isMethodAop && !method.isAbstract) {
+                val superParameters = method.parameters.joinToString(", ") { p -> p.name!!.asString() }
+                b.addFunction(
+                    method.overridingKeepAop(resolver)
+                        .addCode("return super.%L(%L)", method.simpleName.asString(), superParameters)
+                        .build()
+                )
+            }
+
+            if (!hasAop) {
+                hasAop = isMethodAop
+            }
+        }
+
+        if (hasAop) {
             b.addModifiers(KModifier.OPEN)
         } else {
             b.addModifiers(KModifier.FINAL)

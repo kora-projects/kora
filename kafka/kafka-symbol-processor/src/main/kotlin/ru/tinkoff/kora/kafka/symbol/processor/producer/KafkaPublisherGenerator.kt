@@ -198,7 +198,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
         val packageName = classDeclaration.packageName.asString()
         val implementationName = classDeclaration.generatedClassName("Impl")
 
-        val b = classDeclaration.extendsKeepAop(implementationName)
+        val b = classDeclaration.extendsKeepAop(implementationName, resolver)
             .generated(KafkaPublisherSymbolProcessor::class)
             .addOriginatingKSFile(classDeclaration.containingFile!!)
             .addSuperinterface(KafkaClassNames.generatedPublisher)

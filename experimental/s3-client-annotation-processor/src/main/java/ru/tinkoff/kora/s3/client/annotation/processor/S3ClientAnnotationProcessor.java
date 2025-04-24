@@ -119,11 +119,9 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
     }
 
     private TypeSpec generateClient(TypeElement s3client) {
-        var implSpecBuilder = TypeSpec.classBuilder(NameUtils.generatedType(s3client, "Impl"))
-            .addModifiers(Modifier.FINAL, Modifier.PUBLIC)
+        var implSpecBuilder = CommonUtils.extendsKeepAop(s3client, NameUtils.generatedType(s3client, "Impl"))
             .addAnnotation(AnnotationUtils.generated(S3ClientAnnotationProcessor.class))
-            .addAnnotation(Component.class)
-            .addSuperinterface(s3client.asType());
+            .addAnnotation(Component.class);
 
         final Set<Signature> constructed = new HashSet<>();
         var constructorBuilder = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);

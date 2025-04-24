@@ -20,13 +20,13 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotations
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
+import ru.tinkoff.kora.ksp.common.CommonAopUtils.extendsKeepAop
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.configValueExtractor
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 import ru.tinkoff.kora.ksp.common.TagUtils.parseTags
 import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
-import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
 class CacheSymbolProcessor(
     private val environment: SymbolProcessorEnvironment
@@ -68,12 +68,11 @@ class CacheSymbolProcessor(
             val cacheImplName = cacheContract.toClassName()
 
             val cacheImplBase = getCacheImplBase(cacheContractType)
-            val implSpec = TypeSpec.classBuilder(getCacheImpl(cacheContract))
+            val implSpec = cacheContract.extendsKeepAop(getCacheImpl(cacheContract).simpleName, resolver)
                 .generated(CacheSymbolProcessor::class)
                 .primaryConstructor(getCacheConstructor(cacheContractType))
                 .addSuperclassConstructorParameter(getCacheSuperConstructorCall(cacheContract, cacheContractType))
                 .superclass(cacheImplBase)
-                .addSuperinterface(cacheContract.toTypeName())
                 .build()
 
             val fileImplSpec = FileSpec.builder(cacheContract.packageName.asString(), implSpec.name.toString())

@@ -63,7 +63,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
     fun generate(declaration: KSClassDeclaration): TypeSpec {
         val typeName = declaration.clientName()
         val methods: List<MethodData> = this.parseMethods(declaration)
-        val builder = declaration.extendsKeepAop(typeName)
+        val builder = declaration.extendsKeepAop(typeName, resolver)
             .generated(ClientClassGenerator::class)
 
         if (declaration.findAnnotation(CommonClassNames.component) != null) {
