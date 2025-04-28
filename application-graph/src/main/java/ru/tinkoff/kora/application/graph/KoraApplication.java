@@ -38,7 +38,6 @@ public final class KoraApplication {
                 }
             });
             thread.setName("kora-shutdown");
-            thread.setDaemon(true);
             Runtime.getRuntime().addShutdownHook(thread);
             return graph;
         } catch (Exception e) {
