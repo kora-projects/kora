@@ -5,10 +5,11 @@ import io.grpc.ServerCall;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
-import io.opentelemetry.semconv.incubating.RpcIncubatingAttributes;
 import ru.tinkoff.kora.grpc.server.telemetry.GrpcServerMetrics;
 import ru.tinkoff.kora.grpc.server.telemetry.GrpcServerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.MetricsConfig;
+import ru.tinkoff.kora.micrometer.module.grpc.server.tag.MetricsKey;
+import ru.tinkoff.kora.micrometer.module.grpc.server.tag.MicrometerGrpcServerTagsProvider;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,13 +19,13 @@ public final class MicrometerGrpcServerMetricsFactory implements GrpcServerMetri
     private final ConcurrentHashMap<MetricsKey, GrpcServerMetrics> metrics = new ConcurrentHashMap<>();
     private final MeterRegistry meterRegistry;
     private final MetricsConfig metricsConfig;
+    private final MicrometerGrpcServerTagsProvider grpcServerTagsProvider;
 
-    public MicrometerGrpcServerMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
+    public MicrometerGrpcServerMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig, MicrometerGrpcServerTagsProvider grpcServerTagsProvider) {
         this.meterRegistry = meterRegistry;
         this.metricsConfig = metricsConfig;
+        this.grpcServerTagsProvider = grpcServerTagsProvider;
     }
-
-    private record MetricsKey(String serviceName, String methodName) {}
 
     @Override
     public GrpcServerMetrics get(TelemetryConfig.MetricsConfig config, ServerCall<?, ?> call, Metadata headers, String serviceName, String methodName) {
@@ -38,24 +39,17 @@ public final class MicrometerGrpcServerMetricsFactory implements GrpcServerMetri
                 case V120 -> "milliseconds";
                 case V123 -> "s";
             })
-            .tag(RpcIncubatingAttributes.RPC_SYSTEM.getKey(), RpcIncubatingAttributes.RpcSystemIncubatingValues.GRPC)
-            .tag(RpcIncubatingAttributes.RPC_SERVICE.getKey(), metricsKey.serviceName)
-            .tag(RpcIncubatingAttributes.RPC_METHOD.getKey(), metricsKey.methodName)
-            .tag(RpcIncubatingAttributes.RPC_GRPC_STATUS_CODE.getKey(), Integer.toString(code))
+            .tags(this.grpcServerTagsProvider.getDurationTags(code, metricsKey))
             .register(this.meterRegistry);
 
         var requestsPerRpc = Counter.builder("rpc.server.requests_per_rpc")
             .baseUnit("messages")
-            .tag(RpcIncubatingAttributes.RPC_SYSTEM.getKey(), RpcIncubatingAttributes.RpcSystemIncubatingValues.GRPC)
-            .tag(RpcIncubatingAttributes.RPC_SERVICE.getKey(), metricsKey.serviceName)
-            .tag(RpcIncubatingAttributes.RPC_METHOD.getKey(), metricsKey.methodName)
+            .tags(this.grpcServerTagsProvider.getRequestsTags(metricsKey))
             .register(this.meterRegistry);
 
         var responsesPerRpc = Counter.builder("rpc.server.responses_per_rpc")
             .baseUnit("messages")
-            .tag(RpcIncubatingAttributes.RPC_SYSTEM.getKey(), RpcIncubatingAttributes.RpcSystemIncubatingValues.GRPC)
-            .tag(RpcIncubatingAttributes.RPC_SERVICE.getKey(), metricsKey.serviceName)
-            .tag(RpcIncubatingAttributes.RPC_METHOD.getKey(), metricsKey.methodName)
+            .tags(this.grpcServerTagsProvider.getResponsesTags(metricsKey))
             .register(this.meterRegistry);
 
         return switch (metricsConfig.opentelemetrySpec()) {
