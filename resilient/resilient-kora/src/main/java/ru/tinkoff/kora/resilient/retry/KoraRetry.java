@@ -3,6 +3,8 @@ package ru.tinkoff.kora.resilient.retry;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.internal.loom.VirtualThreadExecutorHolder;
 
 import java.util.ArrayList;
@@ -16,6 +18,8 @@ import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 final class KoraRetry implements Retry {
+
+    private static final Logger logger = LoggerFactory.getLogger(KoraRetry.class);
 
     final String name;
     final long delayNanos;
