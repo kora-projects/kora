@@ -60,12 +60,16 @@ public interface TestApplication extends TestExtendModule {
         return (s) -> 1;
     }
 
-    class CustomWrapper implements Wrapped<Float> {
+    class CustomWrapper implements Wrapped<SomeContract> {
 
         @Override
-        public Float value() {
-            return 1.0F;
+        public SomeContract value() {
+            return () -> "1";
         }
+    }
+
+    interface SomeContract {
+        String get();
     }
 
     interface SomeWrapped {

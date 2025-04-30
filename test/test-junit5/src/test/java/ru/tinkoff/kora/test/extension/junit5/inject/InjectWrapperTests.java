@@ -14,8 +14,6 @@ public class InjectWrapperTests {
     private TestApplication.SomeChild someChild;
     @TestComponent
     private Integer someInt;
-    @TestComponent
-    private Float someFloat;
 
     @Test
     void emptyTest() {

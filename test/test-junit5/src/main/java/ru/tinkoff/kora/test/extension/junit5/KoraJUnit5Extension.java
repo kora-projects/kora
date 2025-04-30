@@ -184,11 +184,15 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         return context.getTestInstanceLifecycle().orElse(TestInstance.Lifecycle.PER_METHOD);
     }
 
-    private void prepareMocks(TestGraphContext graphInitialized) {
+    private void resetMocks(TestGraphContext graphInitialized) {
         logger.debug("Resetting mocks...");
         if (MockUtils.haveAnyMockEngine()) {
             for (var node : graphInitialized.graphDraw().getNodes()) {
                 var mockCandidate = graphInitialized.refreshableGraph().get(node);
+                if (mockCandidate instanceof Wrapped<?>) {
+                    continue;
+                }
+
                 MockUtils.resetIfMock(mockCandidate);
             }
         }
@@ -344,9 +348,12 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
     @Override
     public void beforeEach(ExtensionContext context) {
-        var koraTestContext = getInitializedKoraTestContext(InitializeOrigin.METHOD, context);
         MDC.clear();
-        prepareMocks(koraTestContext.graph.initialized());
+
+        var koraTestContext = getInitializedKoraTestContext(InitializeOrigin.METHOD, context);
+        if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_CLASS) {
+            resetMocks(koraTestContext.graph.initialized()); // may be skip reset and pass it completely on user
+        }
         injectComponentsToFields(koraTestContext.metadata, koraTestContext.graph.initialized(), context);
     }
 
