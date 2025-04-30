@@ -1,6 +1,9 @@
 package ru.tinkoff.kora.json.ksp.extension
 
-import com.google.devtools.ksp.*
+import com.google.devtools.ksp.getClassDeclarationByName
+import com.google.devtools.ksp.getConstructors
+import com.google.devtools.ksp.getFunctionDeclarationsByName
+import com.google.devtools.ksp.isPrivate
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
@@ -58,7 +61,10 @@ class JsonKoraExtension(
             if (possibleJsonClassDeclaration.isAnnotationPresent(JsonTypes.json) || possibleJsonClassDeclaration.isAnnotationPresent(JsonTypes.jsonWriterAnnotation)) {
                 return generatedByProcessor(resolver, possibleJsonClassDeclaration, "JsonWriter")
             }
-            if (possibleJsonClassDeclaration.modifiers.contains(Modifier.ENUM) || possibleJsonClassDeclaration.modifiers.contains(Modifier.SEALED)) {
+            if (possibleJsonClassDeclaration.modifiers.contains(Modifier.SEALED)) {
+                return { generateWriter(resolver, type, possibleJsonClassDeclaration) }
+            }
+            if (possibleJsonClassDeclaration.modifiers.contains(Modifier.ENUM) || possibleJsonClassDeclaration.classKind == ClassKind.ENUM_CLASS) {
                 return { generateWriter(resolver, type, possibleJsonClassDeclaration) }
             }
             if (possibleJsonClassDeclaration.classKind != ClassKind.CLASS) {
@@ -103,7 +109,10 @@ class JsonKoraExtension(
             ) {
                 return generatedByProcessor(resolver, possibleJsonClassDeclaration, "JsonReader")
             }
-            if (possibleJsonClassDeclaration.modifiers.contains(Modifier.ENUM) || possibleJsonClassDeclaration.modifiers.contains(Modifier.SEALED)) {
+            if (possibleJsonClassDeclaration.modifiers.contains(Modifier.SEALED)) {
+                return { generateReader(resolver, type, possibleJsonClassDeclaration) }
+            }
+            if (possibleJsonClassDeclaration.modifiers.contains(Modifier.ENUM) || possibleJsonClassDeclaration.classKind == ClassKind.ENUM_CLASS) {
                 return { generateReader(resolver, type, possibleJsonClassDeclaration) }
             }
             if (possibleJsonClassDeclaration.classKind != ClassKind.CLASS) {
@@ -161,11 +170,5 @@ class JsonKoraExtension(
         } else {
             throw ProcessingErrorException("No primary constructor found for: $resultElement", resultElement)
         }
-    }
-
-    private fun isProcessableType(typeRef: KSType): Boolean {
-        val declaration = typeRef.declaration as KSClassDeclaration
-        val classKind = declaration.classKind
-        return classKind == ClassKind.ENUM_CLASS || (classKind == ClassKind.CLASS && !typeRef.declaration.isOpen())
     }
 }
