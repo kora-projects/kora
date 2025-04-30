@@ -9,7 +9,7 @@ import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -41,7 +41,7 @@ public final class JsonObjectCodec {
             throw new JsonParseException(parser, "Expecting {VALUE_TRUE, VALUE_FALSE, VALUE_STRING, VALUE_NUMBER_INT, VALUE_NUMBER_FLOAT} token, got " + token);
         }
         if (token == JsonToken.START_OBJECT) {
-            var object = new HashMap<String, Object>();
+            var object = new LinkedHashMap<String, Object>();
             String fieldName;
             while ((fieldName = parser.nextFieldName()) != null) {
                 parser.nextToken();
