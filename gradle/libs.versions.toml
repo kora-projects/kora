@@ -1,5 +1,5 @@
 ["versions"]
-slf4j = "2.0.16"
+slf4j = "2.0.17"
 micrometer = "1.12.13"
 reactor = "3.6.12"
 kotlin_ = "1.9.10" # Visit https://kotlinlang.org/docs/releases.html#release-details to see versions compatability
@@ -7,7 +7,7 @@ kotlin-coroutines = "1.7.3"
 jackson = "2.17.3"
 mockserver = "5.15.0"
 netty = "4.1.100.Final"
-kafka = "3.7.1"
+kafka = "3.7.2"
 vertx = "4.3.8"
 testcontainers = "1.18.3"
 cassandra = "4.18.1"
@@ -16,12 +16,12 @@ grpc-kotlin = "1.4.1"
 kotlin-testing = "1.5.0"
 ksp = "1.9.10-1.0.13"
 kotlinpoet = "1.18.1"
-swagger = "2.2.25"
+swagger = "2.2.30"
 opentelemetry = "1.49.0"
 undertow = "2.3.18.Final"
-undertow-jakarta = "6.2.8.Final"
+undertow-jakarta = "6.2.12.Final"
 camunda7 = "7.21.0"
-zeebe = "8.6.7"
+zeebe = "8.6.13"
 
 ["libraries"]
 jsr305 = { module = "com.google.code.findbugs:jsr305", version = "3.0.2" }
@@ -29,7 +29,7 @@ jakarta-annotations = { module = "jakarta.annotation:jakarta.annotation-api", ve
 
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 slf4j-jul = { module = "org.slf4j:jul-to-slf4j", version.ref = "slf4j" }
-logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.16" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.18" }
 
 micrometer-core = { module = "io.micrometer:micrometer-core", version.ref = "micrometer" }
 micrometer-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus", version.ref = "micrometer" }
@@ -53,7 +53,7 @@ cassandra-metrics = { module = "org.apache.cassandra:java-driver-metrics-microme
 reactive-streams = { module = "org.reactivestreams:reactive-streams", version = "1.0.4" }
 reactor-core = { module = "io.projectreactor:reactor-core", version.ref = "reactor" }
 reactor-test = { module = "io.projectreactor:reactor-test", version.ref = "reactor" }
-reactor-pool = { module = "io.projectreactor.addons:reactor-pool", version = "1.0.8" }
+reactor-pool = { module = "io.projectreactor.addons:reactor-pool", version = "1.0.10" }
 
 kotlin-stdlib-common = { module = "org.jetbrains.kotlin:kotlin-stdlib-common", version.ref = "kotlin_" }
 kotlin-stdlib-lib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin_" }
@@ -109,21 +109,21 @@ r2dbc-spi = { module = "io.r2dbc:r2dbc-spi", version = "1.0.0.RELEASE" }
 r2dbc-pool = { module = "io.r2dbc:r2dbc-pool", version = "1.0.2.RELEASE" }
 r2dbc-postgres = { module = "org.postgresql:r2dbc-postgresql", version = "1.0.5.RELEASE" }
 
-byte-buddy-core = { module = "net.bytebuddy:byte-buddy", version = "1.14.9" }
-byte-buddy-agent = { module = "net.bytebuddy:byte-buddy-agent", version = "1.14.9" }
+byte-buddy-core = { module = "net.bytebuddy:byte-buddy", version = "1.14.19" }
+byte-buddy-agent = { module = "net.bytebuddy:byte-buddy-agent", version = "1.14.19" }
 
 javapoet = { module = "com.squareup:javapoet", version = "1.13.0" }
-classgraph = { module = "io.github.classgraph:classgraph", version = "4.8.170" }
+classgraph = { module = "io.github.classgraph:classgraph", version = "4.8.179" }
 
-lettuce-core = { module = "io.lettuce:lettuce-core", version = "6.5.2.RELEASE" }
+lettuce-core = { module = "io.lettuce:lettuce-core", version = "6.5.5.RELEASE" }
 apache-pool = { module = "org.apache.commons:commons-pool2", version = "2.12.1" }
 quartz = { module = "org.quartz-scheduler:quartz", version = "2.3.2" }
 
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.1.8" }
 
 awaitility = { module = "org.awaitility:awaitility", version = "4.2.1" }
-junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version = "5.10.2" }
-junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version = "1.10.2" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version = "5.10.5" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version = "1.10.5" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.11.0" }
 mockito-inline = { module = "org.mockito:mockito-inline", version = "5.2.0" }
 mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version = "5.3.1" }
@@ -172,8 +172,8 @@ swagger-core = { module = "io.swagger.core.v3:swagger-core", version.ref = "swag
 swagger-models = { module = "io.swagger.core.v3:swagger-models", version.ref = "swagger" }
 swagger-annotations = { module = "io.swagger.core.v3:swagger-annotations", version.ref = "swagger" }
 
-s3client-minio = { module = "io.minio:minio", version = "8.5.12" }
-s3client-aws = { module = "software.amazon.awssdk:s3", version = "2.27.12" }
+s3client-minio = { module = "io.minio:minio", version = "8.5.17" }
+s3client-aws = { module = "software.amazon.awssdk:s3", version = "2.27.24" }
 
 camunda7-engine = { module = "org.camunda.bpm:camunda-engine", version.ref = "camunda7" }
 camunda7-rest-jakarta = { module = "org.camunda.bpm:camunda-engine-rest-jakarta", version.ref = "camunda7" }
