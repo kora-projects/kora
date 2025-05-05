@@ -41,7 +41,7 @@ record KoraRetryState(
     @Override
     public RetryStatus onException(@Nonnull Throwable throwable) {
         if (!failurePredicate.test(throwable)) {
-            logger.trace("RetryState '{}' rejected exception: {}", name, throwable.getClass().getCanonicalName());
+            logger.trace("RetryState '{}' rejected exception due to predicate: {}", name, throwable.toString());
             return RetryStatus.REJECTED;
         }
 
@@ -49,11 +49,12 @@ record KoraRetryState(
         if (attemptsUsed <= attemptsMax) {
             if (logger.isDebugEnabled()) {
                 logger.debug("RetryState '{}' initiating '{}' retry attempt in '{}' due to exception: {}",
-                    name, attemptsUsed, Duration.ofNanos(getDelayNanos()), throwable.getClass().getCanonicalName());
+                    name, attemptsUsed, Duration.ofNanos(getDelayNanos()), throwable.toString());
             }
 
             return RetryStatus.ACCEPTED;
         } else {
+            logger.trace("Retry '{}' exhausted after {} attempts due to: {}", name, getAttemptsMax(), throwable.toString());
             return RetryStatus.EXHAUSTED;
         }
     }

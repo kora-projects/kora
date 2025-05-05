@@ -1,17 +1,17 @@
 package ru.tinkoff.kora.resilient.circuitbreaker;
 
+import jakarta.annotation.Nonnull;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreaker.State;
 
-import jakarta.annotation.Nonnull;
 import java.time.Duration;
 
 class KoraCircuitBreakerTests extends Assertions {
 
-    private static final Duration WAIT_IN_OPEN = Duration.ofMillis(10);
+    private static final Duration WAIT_IN_OPEN = Duration.ofMillis(50);
 
     static class CustomPredicate implements CircuitBreakerPredicate {
 
@@ -63,8 +63,8 @@ class KoraCircuitBreakerTests extends Assertions {
         // then
         assertTrue(circuitBreaker.tryAcquire()); // closed
         circuitBreaker.releaseOnError(new IllegalStateException());
+        assertFalse(circuitBreaker.tryAcquire()); // closed switched to open
         assertEquals(State.OPEN, circuitBreaker.getState());
-        assertFalse(circuitBreaker.tryAcquire()); // open
     }
 
     @Test
@@ -83,8 +83,8 @@ class KoraCircuitBreakerTests extends Assertions {
         circuitBreaker.releaseOnError(new IllegalStateException());
 
         // then
+        assertFalse(circuitBreaker.tryAcquire()); // closed switched to open
         assertEquals(State.OPEN, circuitBreaker.getState());
-        assertFalse(circuitBreaker.tryAcquire()); // open
     }
 
     @Test
@@ -101,20 +101,123 @@ class KoraCircuitBreakerTests extends Assertions {
         assertTrue(circuitBreaker.tryAcquire()); // closed
         circuitBreaker.releaseOnError(new IllegalStateException());
 
-        assertEquals(State.OPEN, circuitBreaker.getState());
         assertFalse(circuitBreaker.tryAcquire()); // open
+        assertEquals(State.OPEN, circuitBreaker.getState());
 
         awaitily().until(circuitBreaker::tryAcquire); // half open
         assertEquals(State.HALF_OPEN, circuitBreaker.getState());
         circuitBreaker.releaseOnError(new IllegalStateException());
-        assertTrue(circuitBreaker::tryAcquire); // half open
-        assertEquals(State.HALF_OPEN, circuitBreaker.getState());
-        circuitBreaker.releaseOnError(new IllegalStateException());
-        assertFalse(circuitBreaker::tryAcquire); // half open
 
         // then
+        assertFalse(circuitBreaker.tryAcquire()); // half open switched to open
         assertEquals(State.OPEN, circuitBreaker.getState());
+    }
+
+    @Test
+    void switchFromClosedToOpenToHalfOpenToOpenToHalfOpenToOpen() {
+        // given
+        final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
+            100, WAIT_IN_OPEN, 2, 2L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+        final KoraCircuitBreaker circuitBreaker = new KoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), new NoopCircuitBreakerMetrics());
+
+        // when
+        assertEquals(State.CLOSED, circuitBreaker.getState());
+        assertTrue(circuitBreaker.tryAcquire()); // closed
+        circuitBreaker.releaseOnError(new IllegalStateException());
+        assertTrue(circuitBreaker.tryAcquire()); // closed
+        circuitBreaker.releaseOnError(new IllegalStateException());
+
+        assertFalse(circuitBreaker.tryAcquire()); // closed switched to open
+        assertEquals(State.OPEN, circuitBreaker.getState());
+
+        awaitily().until(circuitBreaker::tryAcquire); // half open
+        assertEquals(State.HALF_OPEN, circuitBreaker.getState());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+
+        assertFalse(circuitBreaker.tryAcquire()); // half open switched to open
+        assertEquals(State.OPEN, circuitBreaker.getState());
+
+        awaitily().until(circuitBreaker::tryAcquire); // half open
+        assertEquals(State.HALF_OPEN, circuitBreaker.getState());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+
+        // then
+        assertFalse(circuitBreaker.tryAcquire()); // half open switched to open
+        assertEquals(State.OPEN, circuitBreaker.getState());
+    }
+
+    @Test
+    void switchFromClosedToOpenToHalfOpenToOpenToHalfOpenToClosed() {
+        // given
+        final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
+            100, WAIT_IN_OPEN, 2, 2L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+        final KoraCircuitBreaker circuitBreaker = new KoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), new NoopCircuitBreakerMetrics());
+
+        // when
+        assertEquals(State.CLOSED, circuitBreaker.getState());
+        assertTrue(circuitBreaker.tryAcquire()); // closed
+        circuitBreaker.releaseOnError(new IllegalStateException());
+        assertTrue(circuitBreaker.tryAcquire()); // closed
+        circuitBreaker.releaseOnError(new IllegalStateException());
+
+        assertFalse(circuitBreaker.tryAcquire()); // closed switched to open
+        assertEquals(State.OPEN, circuitBreaker.getState());
+
+        awaitily().until(circuitBreaker::tryAcquire); // half open
+        assertEquals(State.HALF_OPEN, circuitBreaker.getState());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+
+        assertFalse(circuitBreaker.tryAcquire()); // // half open switched to open
+        assertEquals(State.OPEN, circuitBreaker.getState());
+
+        awaitily().until(circuitBreaker::tryAcquire); // half open
+        assertEquals(State.HALF_OPEN, circuitBreaker.getState());
+        circuitBreaker.releaseOnSuccess();
+        assertTrue(circuitBreaker::tryAcquire); // half open
+        assertFalse(circuitBreaker::tryAcquire); // half open limit
+        assertEquals(State.HALF_OPEN, circuitBreaker.getState());
+        circuitBreaker.releaseOnSuccess();
+
+        // then
+        assertTrue(circuitBreaker.tryAcquire()); // closed
+        assertEquals(State.CLOSED, circuitBreaker.getState());
+    }
+
+    @Test
+    void switchFromClosedToOpenToHalfOpenToOpenToHalfOpenWhenPartFailToOpen() {
+        // given
+        final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
+            100, WAIT_IN_OPEN, 2, 2L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+        final KoraCircuitBreaker circuitBreaker = new KoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), new NoopCircuitBreakerMetrics());
+
+        // when
+        assertEquals(State.CLOSED, circuitBreaker.getState());
+        assertTrue(circuitBreaker.tryAcquire()); // closed
+        circuitBreaker.releaseOnError(new IllegalStateException());
+        assertTrue(circuitBreaker.tryAcquire()); // closed
+        circuitBreaker.releaseOnError(new IllegalStateException());
+
+        assertFalse(circuitBreaker.tryAcquire()); // closed switched to open
+        assertEquals(State.OPEN, circuitBreaker.getState());
+
+        awaitily().until(circuitBreaker::tryAcquire); // half open
+        assertEquals(State.HALF_OPEN, circuitBreaker.getState());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+
+        assertFalse(circuitBreaker.tryAcquire()); // half open switched to open
+        assertEquals(State.OPEN, circuitBreaker.getState());
+
+        awaitily().until(circuitBreaker::tryAcquire); // half open
+        assertEquals(State.HALF_OPEN, circuitBreaker.getState());
+        circuitBreaker.releaseOnSuccess();
+        assertTrue(circuitBreaker::tryAcquire); // half open
+        assertFalse(circuitBreaker::tryAcquire); // half open limit
+        assertEquals(State.HALF_OPEN, circuitBreaker.getState());
+        circuitBreaker.releaseOnError(new IllegalStateException());
+
+        // then
         assertFalse(circuitBreaker.tryAcquire()); // open
+        assertEquals(State.OPEN, circuitBreaker.getState());
     }
 
     @Test
@@ -130,44 +233,19 @@ class KoraCircuitBreakerTests extends Assertions {
         circuitBreaker.releaseOnError(new IllegalStateException());
         assertTrue(circuitBreaker.tryAcquire()); // closed
         circuitBreaker.releaseOnError(new IllegalStateException());
-        assertEquals(State.OPEN, circuitBreaker.getState());
         assertFalse(circuitBreaker.tryAcquire()); // open
+        assertEquals(State.OPEN, circuitBreaker.getState());
 
         awaitily().until(circuitBreaker::tryAcquire); // half open
         assertEquals(State.HALF_OPEN, circuitBreaker.getState());
         circuitBreaker.releaseOnSuccess();
-        assertTrue(circuitBreaker.tryAcquire());
-        assertFalse(circuitBreaker.tryAcquire());
+        assertTrue(circuitBreaker.tryAcquire()); // half open
+        assertFalse(circuitBreaker.tryAcquire()); // half open limit
         circuitBreaker.releaseOnSuccess();
 
         // then
-        assertEquals(State.CLOSED, circuitBreaker.getState());
         assertTrue(circuitBreaker.tryAcquire()); // closed
-    }
-
-    @Test
-    void switchFromClosedToOpenToHalfOpenWithMultipleAcquire() {
-        // given
-        final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
-            100, WAIT_IN_OPEN, 2, 1L, 1L, KoraCircuitBreakerPredicate.class.getCanonicalName());
-        final KoraCircuitBreaker circuitBreaker = new KoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), new NoopCircuitBreakerMetrics());
-
-        // when
         assertEquals(State.CLOSED, circuitBreaker.getState());
-        assertTrue(circuitBreaker.tryAcquire()); // closed
-        circuitBreaker.releaseOnError(new IllegalStateException());
-        assertEquals(State.OPEN, circuitBreaker.getState());
-        assertFalse(circuitBreaker.tryAcquire()); // open
-
-        // then
-        awaitily().until(circuitBreaker::tryAcquire); // half open
-        assertEquals(State.HALF_OPEN, circuitBreaker.getState());
-        circuitBreaker.releaseOnSuccess();
-        assertTrue(circuitBreaker.tryAcquire());
-        assertFalse(circuitBreaker.tryAcquire());
-        circuitBreaker.releaseOnSuccess();
-        assertEquals(State.CLOSED, circuitBreaker.getState());
-        assertTrue(circuitBreaker.tryAcquire()); // closed
     }
 
     @Test
@@ -181,8 +259,8 @@ class KoraCircuitBreakerTests extends Assertions {
         assertEquals(State.CLOSED, circuitBreaker.getState());
         assertTrue(circuitBreaker.tryAcquire()); // closed
         circuitBreaker.releaseOnError(new IllegalStateException());
-        assertEquals(State.OPEN, circuitBreaker.getState());
         assertFalse(circuitBreaker.tryAcquire()); // open
+        assertEquals(State.OPEN, circuitBreaker.getState());
 
         // then
         awaitily().until(circuitBreaker::tryAcquire); // half open
@@ -205,12 +283,12 @@ class KoraCircuitBreakerTests extends Assertions {
         assertEquals(State.CLOSED, circuitBreaker.getState());
         assertTrue(circuitBreaker.tryAcquire()); // closed
         circuitBreaker.releaseOnError(new NullPointerException());
-        assertEquals(State.CLOSED, circuitBreaker.getState());
         assertTrue(circuitBreaker.tryAcquire()); // closed
+        assertEquals(State.CLOSED, circuitBreaker.getState());
         circuitBreaker.releaseOnError(new IllegalStateException());
 
         // then
+        assertFalse(circuitBreaker.tryAcquire()); // closed switched to open
         assertEquals(State.OPEN, circuitBreaker.getState());
-        assertFalse(circuitBreaker.tryAcquire()); // open
     }
 }

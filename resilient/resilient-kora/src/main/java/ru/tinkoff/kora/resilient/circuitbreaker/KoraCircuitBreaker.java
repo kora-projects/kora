@@ -130,7 +130,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
     }
 
     private void onStateChange(@Nonnull State prevState, @Nonnull State newState) {
-        logger.debug("CircuitBreaker '{}' switched from {} to {}", name, prevState, newState);
+        logger.info("CircuitBreaker '{}' switched from {} to {}", name, prevState, newState);
         metrics.recordState(name, newState);
     }
 
@@ -146,7 +146,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
         final long value = state.get();
         final State state = getState(value);
         if (state == State.CLOSED) {
-            logger.trace("CircuitBreaker '{}' acquired", name);
+            logger.trace("CircuitBreaker '{}' acquired in CLOSED state", name);
             return true;
         }
 
@@ -155,13 +155,15 @@ final class KoraCircuitBreaker implements CircuitBreaker {
             if (acquired < config.permittedCallsInHalfOpenState()) {
                 final boolean isAcquired = this.state.compareAndSet(value, value + 1);
                 if (isAcquired) {
-                    logger.trace("CircuitBreaker '{}' acquired in HALF_OPEN state", name);
+                    if (logger.isTraceEnabled()) {
+                        logger.trace("CircuitBreaker '{}' acquired in HALF_OPEN state with {} calls left", name, acquired - 1);
+                    }
                     return true;
                 } else {
                     return tryAcquire();
                 }
             } else {
-                logger.trace("CircuitBreaker '{}' rejected in HALF_OPEN state", name);
+                logger.trace("CircuitBreaker '{}' rejected in HALF_OPEN state due to all {} calls acquired", name, acquired);
                 return false;
             }
         }
@@ -172,7 +174,10 @@ final class KoraCircuitBreaker implements CircuitBreaker {
         if (beenInOpenState >= waitDurationInOpenStateInMillis) {
             if (this.state.compareAndSet(value, HALF_OPEN_STATE + 1)) {
                 onStateChange(State.OPEN, State.HALF_OPEN);
-                logger.trace("CircuitBreaker '{}' acquired", name);
+                if (logger.isTraceEnabled()) {
+                    logger.trace("CircuitBreaker '{}' acquired in HALF_OPEN state with {} calls left",
+                        name, config.permittedCallsInHalfOpenState() - 1);
+                }
                 return true;
             } else {
                 // prob concurrently switched to half open and have to reacquire
@@ -180,7 +185,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
             }
         } else {
             if (logger.isTraceEnabled()) {
-                logger.trace("CircuitBreaker '{}' rejected being in OPEN state for '{}' when require minimum '{}'",
+                logger.trace("CircuitBreaker '{}' rejected in OPEN state for waiting '{}' when require minimum wait time '{}'",
                     name, TimeUtils.durationForLogging(beenInOpenState), TimeUtils.durationForLogging(waitDurationInOpenStateInMillis));
             }
             return false;
@@ -205,7 +210,11 @@ final class KoraCircuitBreaker implements CircuitBreaker {
             onStateChange(prevState, newState);
         }
 
-        logger.trace("CircuitBreaker '{}' released on success", name);
+        if (prevState == newState) {
+            logger.trace("CircuitBreaker '{}' released in {} state on success", name, newState);
+        } else {
+            logger.trace("CircuitBreaker '{}' released from {} to {} state on success", name, prevState, newState);
+        }
     }
 
     private long calculateStateOnSuccess(long currentState) {
@@ -235,6 +244,11 @@ final class KoraCircuitBreaker implements CircuitBreaker {
     @Override
     public void releaseOnError(@Nonnull Throwable throwable) {
         if (!failurePredicate.test(throwable)) {
+            if (logger.isTraceEnabled()) {
+                final long currentStateLong = state.get();
+                var currentState = getState(currentStateLong);
+                logger.trace("CircuitBreaker '{}' skipped error in {} state due to predicate test failed: {}", name, currentState, throwable.toString());
+            }
             return;
         }
 
@@ -254,7 +268,11 @@ final class KoraCircuitBreaker implements CircuitBreaker {
             onStateChange(prevState, newState);
         }
 
-        logger.trace("CircuitBreaker '{}' released on error: {}", name, throwable.getClass().getCanonicalName());
+        if (prevState == newState) {
+            logger.trace("CircuitBreaker '{}' released in {} state on error: {}", name, newState, throwable.toString());
+        } else {
+            logger.trace("CircuitBreaker '{}' released from {} to {} state on error: {}", name, prevState, newState, throwable.toString());
+        }
     }
 
     private long calculateStateOnFailure(long currentState) {
@@ -277,13 +295,8 @@ final class KoraCircuitBreaker implements CircuitBreaker {
                 return currentState + BOTH_COUNTERS_INC;
             }
         } else if (state == State.HALF_OPEN) {
-            final int errors = countHalfOpenError(currentState) + 1;
-            final int permitted = config.permittedCallsInHalfOpenState();
-            if (errors >= permitted) {
-                return getOpenState();
-            }
-
-            return currentState + HALF_OPEN_INCREMENT_ERROR;
+            // if any error in half-open then go to open state
+            return getOpenState();
         } else {
             // do nothing with open state
             return currentState;
