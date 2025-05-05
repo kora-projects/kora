@@ -39,10 +39,10 @@ public class WriterTypeMetaParser {
 
     public JsonClassWriterMeta parse(TypeElement jsonClass, TypeMirror typeMirror) {
         if (jsonClass.getKind() != ElementKind.CLASS && jsonClass.getKind() != ElementKind.RECORD) {
-            throw new IllegalArgumentException("JsonWriter can be generated only for types that are class/record/sealed interface");
+            throw new IllegalArgumentException("JsonWriter can be generated only for types that are class/record/sealed, but called for: " + jsonClass);
         }
         if (jsonClass.getModifiers().contains(Modifier.ABSTRACT)) {
-            throw new IllegalArgumentException("JsonWriter can't be generated for abstract types");
+            throw new IllegalArgumentException("JsonWriter can't be generated for abstract types, but called for: " + jsonClass);
         }
 
         var fieldElements = this.parseFields(jsonClass);

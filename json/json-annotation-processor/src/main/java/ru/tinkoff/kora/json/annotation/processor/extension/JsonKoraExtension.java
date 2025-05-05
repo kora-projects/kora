@@ -75,31 +75,28 @@ public class JsonKoraExtension implements KoraExtension {
             if (AnnotationUtils.findAnnotation(jsonElement, JsonTypes.json) != null || AnnotationUtils.findAnnotation(jsonElement, JsonTypes.jsonWriterAnnotation) != null) {
                 return KoraExtensionDependencyGenerator.generatedFrom(elements, jsonElement, JsonTypes.jsonWriter);
             }
-            if (jsonElement.getKind().isInterface()) {
+
+            if (jsonElement.getKind().isInterface() || jsonElement.getModifiers().contains(Modifier.ABSTRACT)) {
                 if (jsonElement.getModifiers().contains(Modifier.SEALED)) {
-                    return () -> this.generateWriter(typeMirror, possibleJsonClass);
+                    return () -> this.generateWriter(jsonElement, possibleJsonClass);
                 } else {
                     return null;
                 }
             }
-            if (jsonElement.getModifiers().contains(Modifier.ABSTRACT)) {
-                if (jsonElement.getModifiers().contains(Modifier.SEALED)) {
-                    return () -> this.generateWriter(possibleJsonClass, possibleJsonClass);
-                } else {
-                    return null;
-                }
-            }
+
             if (jsonElement.getKind() == ElementKind.ENUM) {
-                return () -> this.generateWriter(possibleJsonClass, possibleJsonClass);
+                return () -> this.generateWriter(jsonElement, possibleJsonClass);
             }
+
             try {
                 Objects.requireNonNull(this.writerTypeMetaParser.parse(jsonElement, possibleJsonClass));
-                return () -> this.generateWriter(possibleJsonClass, possibleJsonClass);
+                return () -> this.generateWriter(jsonElement, possibleJsonClass);
             } catch (ProcessingErrorException e) {
-                logger.warn(e.getMessage());
+                logger.warn(e.getMessage(), e);
                 return null;
             }
         }
+
         if (this.types.isSameType(erasure, this.jsonReaderErasure)) {
             var readerType = (DeclaredType) typeMirror;
             var possibleJsonClass = readerType.getTypeArguments().get(0);
@@ -117,26 +114,22 @@ public class JsonKoraExtension implements KoraExtension {
                     .anyMatch(e -> AnnotationUtils.findAnnotation(e, JsonTypes.jsonReaderAnnotation) != null)) {
                 return KoraExtensionDependencyGenerator.generatedFrom(elements, jsonElement, JsonTypes.jsonReader);
             }
-            if (jsonElement.getKind().isInterface()) {
+
+            if (jsonElement.getKind().isInterface() || jsonElement.getModifiers().contains(Modifier.ABSTRACT)) {
                 if (jsonElement.getModifiers().contains(Modifier.SEALED)) {
-                    return () -> this.generateReader(typeMirror, possibleJsonClass);
+                    return () -> this.generateReader(jsonElement, possibleJsonClass);
                 } else {
                     return null;
                 }
             }
-            if (jsonElement.getModifiers().contains(Modifier.ABSTRACT)) {
-                if (jsonElement.getModifiers().contains(Modifier.SEALED)) {
-                    return () -> this.generateReader(possibleJsonClass, possibleJsonClass);
-                } else {
-                    return null;
-                }
-            }
+
             if (jsonElement.getKind() == ElementKind.ENUM) {
-                return () -> this.generateReader(possibleJsonClass, possibleJsonClass);
+                return () -> this.generateReader(jsonElement, possibleJsonClass);
             }
+
             try {
                 Objects.requireNonNull(this.readerTypeMetaParser.parse(jsonElement, typeMirror));
-                return () -> this.generateReader(possibleJsonClass, possibleJsonClass);
+                return () -> this.generateReader(jsonElement, possibleJsonClass);
             } catch (ProcessingErrorException e) {
                 logger.warn(e.getMessage());
                 return null;
@@ -146,53 +139,51 @@ public class JsonKoraExtension implements KoraExtension {
     }
 
     @Nullable
-    private ExtensionResult generateReader(TypeMirror jsonClass, TypeMirror possibleJsonClass) {
-        var jsonTypeElement = (TypeElement) this.types.asElement(jsonClass);
-        var packageElement = this.elements.getPackageOf(jsonTypeElement).getQualifiedName().toString();
-        var resultClassName = JsonUtils.jsonReaderName(this.types, jsonClass);
+    private ExtensionResult generateReader(TypeElement jsonElement, TypeMirror jsonType) {
+        var packageElement = this.elements.getPackageOf(jsonElement).getQualifiedName().toString();
+        var resultClassName = JsonUtils.jsonReaderName(this.types, jsonType);
         var resultElement = this.elements.getTypeElement(packageElement + "." + resultClassName);
         this.messager.printMessage(
             Diagnostic.Kind.WARNING,
-            "Type is not annotated with @Json or @JsonWriter, but %s is requested by graph. Generating one in graph building process will lead to another round of compiling which will slow down you build".formatted(possibleJsonClass),
-            jsonTypeElement
+            "Type is not annotated with @Json or @JsonWriter, but %s is requested by graph. Generating one in graph building process will lead to another round of compiling which will slow down you build".formatted(jsonType),
+            jsonElement
         );
         if (resultElement != null) {
             return buildExtensionResult(resultElement);
         }
 
-        var hasJsonConstructor = CommonUtils.findConstructors(jsonTypeElement, s -> !s.contains(Modifier.PRIVATE))
+        var hasJsonConstructor = CommonUtils.findConstructors(jsonElement, s -> !s.contains(Modifier.PRIVATE))
             .stream()
             .anyMatch(e -> AnnotationUtils.findAnnotation(e, JsonTypes.jsonReaderAnnotation) != null);
-        if (hasJsonConstructor || AnnotationUtils.findAnnotation(jsonTypeElement, JsonTypes.jsonReaderAnnotation) != null) {
+        if (hasJsonConstructor || AnnotationUtils.findAnnotation(jsonElement, JsonTypes.jsonReaderAnnotation) != null) {
             // annotation processor will handle that
             return ExtensionResult.nextRound();
         }
 
-        this.processor.generateReader(jsonTypeElement);
+        this.processor.generateReader(jsonElement);
         return ExtensionResult.nextRound();
     }
 
     @Nullable
-    private ExtensionResult generateWriter(TypeMirror jsonClass, TypeMirror jsonWriterType) {
-        var jsonTypeElement = (TypeElement) this.types.asElement(jsonClass);
+    private ExtensionResult generateWriter(TypeElement jsonElement, TypeMirror jsonType) {
         this.messager.printMessage(
             Diagnostic.Kind.WARNING,
-            "Type is not annotated with @Json or @JsonWriter, but %s is requested by graph. Generating one in graph building process will lead to another round of compiling which will slow down you build".formatted(jsonWriterType),
-            jsonTypeElement
+            "Type is not annotated with @Json or @JsonWriter, but %s is requested by graph. Generating one in graph building process will lead to another round of compiling which will slow down you build".formatted(jsonType),
+            jsonElement
         );
-        var packageElement = this.elements.getPackageOf(jsonTypeElement).getQualifiedName().toString();
-        var resultClassName = JsonUtils.jsonWriterName(this.types, jsonClass);
+        var packageElement = this.elements.getPackageOf(jsonElement).getQualifiedName().toString();
+        var resultClassName = JsonUtils.jsonWriterName(this.types, jsonType);
         var resultElement = this.elements.getTypeElement(packageElement + "." + resultClassName);
         if (resultElement != null) {
             return buildExtensionResult(resultElement);
         }
 
-        if (AnnotationUtils.findAnnotation(jsonTypeElement, JsonTypes.json) != null || AnnotationUtils.findAnnotation(jsonTypeElement, JsonTypes.jsonWriterAnnotation) != null) {
+        if (AnnotationUtils.findAnnotation(jsonElement, JsonTypes.json) != null || AnnotationUtils.findAnnotation(jsonElement, JsonTypes.jsonWriterAnnotation) != null) {
             // annotation processor will handle that
             return ExtensionResult.nextRound();
         }
 
-        this.processor.generateWriter(jsonTypeElement);
+        this.processor.generateWriter(jsonElement);
         return ExtensionResult.nextRound();
     }
 

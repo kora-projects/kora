@@ -183,4 +183,47 @@ class JsonKoraExtensionTest : AbstractSymbolProcessorTest() {
         assertThat(graph.nodes).hasSize(2)
     }
 
+    @Test
+    fun testReaderFromExtensionGeneratedForSealedInterface() {
+        compile0(listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
+            @KoraApp
+            interface TestApp {
+            
+                @ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorField("type")
+                sealed interface TestInterface {
+                    data class Impl1(val value: String) : TestInterface
+                    data class Impl2(val value: Int) : TestInterface
+                }
+
+                @Root
+                fun test(r: ru.tinkoff.kora.json.common.JsonReader<TestInterface>) {}
+            }
+        """.trimIndent())
+
+        compileResult.assertSuccess()
+        val graph = newObject("TestAppGraph").invoke<ApplicationGraphDraw>("graph")!!
+        assertThat(graph.nodes).hasSize(4)
+    }
+
+    @Test
+    fun testWriterFromExtensionGeneratedForSealedInterface() {
+        compile0(listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
+            @KoraApp
+            interface TestApp {
+            
+                @ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorField("type")
+                sealed interface TestInterface {
+                    data class Impl1(val value: String) : TestInterface
+                    data class Impl2(val value: Int) : TestInterface
+                }
+
+                @Root
+                fun test(r: ru.tinkoff.kora.json.common.JsonWriter<TestInterface>) {}
+            }
+        """.trimIndent())
+
+        compileResult.assertSuccess()
+        val graph = newObject("TestAppGraph").invoke<ApplicationGraphDraw>("graph")!!
+        assertThat(graph.nodes).hasSize(4)
+    }
 }

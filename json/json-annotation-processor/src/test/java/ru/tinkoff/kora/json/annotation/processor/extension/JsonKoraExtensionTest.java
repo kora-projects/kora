@@ -117,4 +117,51 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
         assertThat(app.draw().getNodes()).hasSize(2);
     }
 
+    @Test
+    public void testReaderFromExtensionGeneratedForSealedInterface() {
+        compile(List.of(new KoraAppProcessor()), """
+            @ru.tinkoff.kora.common.KoraApp
+            public interface TestApp {
+            
+              @JsonDiscriminatorField("type")
+              sealed interface TestInterface {
+                record Impl1(String value) implements TestInterface { }
+                record Impl2(int value) implements TestInterface { }
+              }
+            
+              default String root0(ru.tinkoff.kora.json.common.JsonReader<TestInterface> r) { return ""; }
+            
+              @Root
+              default Integer root1(String test) { return 42; }
+            }
+            """);
+
+        compileResult.assertSuccess();
+        var app = loadGraph("TestApp");
+        assertThat(app.draw().getNodes()).hasSize(5);
+    }
+
+    @Test
+    public void testWriterFromExtensionGeneratedForSealedInterface() {
+        compile(List.of(new KoraAppProcessor()), """
+            @ru.tinkoff.kora.common.KoraApp
+            public interface TestApp {
+            
+              @JsonDiscriminatorField("type")
+              sealed interface TestInterface {
+                record Impl1(String value) implements TestInterface { }
+                record Impl2(int value) implements TestInterface { }
+              }
+            
+              default String root0(ru.tinkoff.kora.json.common.JsonWriter<TestInterface> r) { return ""; }
+            
+              @Root
+              default Integer root1(String test) { return 42; }
+            }
+            """);
+
+        compileResult.assertSuccess();
+        var app = loadGraph("TestApp");
+        assertThat(app.draw().getNodes()).hasSize(5);
+    }
 }
