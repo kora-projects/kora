@@ -20,7 +20,7 @@ public class EnumConfigValueExtractor<T extends Enum<T>> implements ConfigValueE
             var str = stringValue.value();
             var enumValue = this.map.get(str);
             if (enumValue == null) {
-                throw ConfigValueExtractionException.parsingError(value, new IllegalArgumentException("Unknown enum value: " + str));
+                throw ConfigValueExtractionException.parsingError(value, new IllegalArgumentException("Unknown enum value: " + str + " when expected one of " + map.keySet()));
             }
             return enumValue;
         }
