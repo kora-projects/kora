@@ -16,6 +16,7 @@ import ru.tinkoff.kora.ksp.common.*
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
+import ru.tinkoff.kora.ksp.common.CommonAopUtils.extendsKeepAop
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.overridingKeepAop
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isCollection
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isMap
@@ -123,10 +124,9 @@ class S3ClientSymbolProcessor(
     }
 
     private fun generateClient(s3client: KSClassDeclaration, resolver: Resolver): TypeSpec {
-        val implSpecBuilder: TypeSpec.Builder = TypeSpec.classBuilder(s3client.generatedClassName("Impl"))
+        val implSpecBuilder: TypeSpec.Builder = s3client.extendsKeepAop(s3client.generatedClassName("Impl"), resolver)
             .generated(S3ClientSymbolProcessor::class)
             .addAnnotation(Component::class)
-            .addSuperinterface(s3client.toTypeName())
 
         val constructed = HashSet<Signature>()
         val constructorBuilder = FunSpec.constructorBuilder()

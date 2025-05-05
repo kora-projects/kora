@@ -2,10 +2,7 @@ package ru.tinkoff.kora.cache.annotation.processor;
 
 import com.squareup.javapoet.*;
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
-import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
-import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
-import ru.tinkoff.kora.annotation.processor.common.TagUtils;
+import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.common.DefaultComponent;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -80,13 +77,11 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
             }
 
             var cacheImplBase = getCacheImplBase(cacheContract, cacheContractType);
-            var implSpec = TypeSpec.classBuilder(getCacheImpl(cacheContract))
-                .addModifiers(Modifier.FINAL)
+            var implSpec = CommonUtils.extendsKeepAop(cacheContract, getCacheImpl(cacheContract).simpleName())
                 .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
                     .addMember("value", CodeBlock.of("$S", CacheAnnotationProcessor.class.getCanonicalName())).build())
                 .addMethod(getCacheConstructor(configPath, cacheContractType))
                 .superclass(cacheImplBase)
-                .addSuperinterface(cacheContract.asType())
                 .build();
 
             try {
@@ -217,8 +212,8 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
 
             var keyName = "_key" + (i + 1);
             keyBuilder.addStatement("var $L = $L.apply($T.requireNonNull(key.$L(), $S))",
-                    keyName, mapperName, Objects.class, recordField.getSimpleName().toString(),
-                    "Cache key '%s' field '%s' must be non null".formatted(keyType.asElement().toString(), recordField.getSimpleName().toString()));
+                keyName, mapperName, Objects.class, recordField.getSimpleName().toString(),
+                "Cache key '%s' field '%s' must be non null".formatted(keyType.asElement().toString(), recordField.getSimpleName().toString()));
 
             if (i == 0) {
                 compositeKeyBuilder.add("var _compositeKey = new byte[");
