@@ -75,6 +75,7 @@ class KoraCodegenTest {
             "/example/petstoreV3_security_basic.yaml",
             "/example/petstoreV3_security_bearer.yaml",
             "/example/petstoreV3_security_oauth.yaml",
+            "/example/petstoreV3_security_cookie.yaml",
             "/example/petstoreV3_discriminator.yaml",
             "/example/petstoreV3_nullable.yaml",
             "/example/petstoreV3.yaml",
