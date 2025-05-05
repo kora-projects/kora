@@ -281,7 +281,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             : "class '" + getTestClassName(context) + "'";
 
         if (!isReady) {
-            logger.info("@KoraAppTest test {} setup started...", testTarget);
+            logger.info("@KoraAppTest test {} context setup started...", testTarget);
         }
 
         var startedMeta = TimeUtils.started();
@@ -312,7 +312,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         }
 
         if (!isReady) {
-            logger.info("@KoraAppTest test {} setup took: {}",
+            logger.info("@KoraAppTest test {} context setup took: {}",
                 testTarget, TimeUtils.tookForLogging(started));
         }
 
