@@ -16,7 +16,6 @@ import java.util.function.Supplier
 @KoraAppTest(TestApplication::class)
 class MockkGraphModificationTests : KoraAppTestGraphModifier {
 
-
     @TestComponent
     lateinit var mock1: TestComponent1
 
