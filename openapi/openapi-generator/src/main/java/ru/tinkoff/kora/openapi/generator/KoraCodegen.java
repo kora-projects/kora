@@ -608,6 +608,19 @@ public class KoraCodegen extends DefaultCodegen {
                 }
             }
 
+            // Required-vars visit
+            for (var variable : model.requiredVars) {
+                if (params.enableValidation) {
+                    if (variable.getRef() != null) {
+                        var variableModelField = allModels.get(variable.openApiType);
+                        if (variableModelField != null) {
+                            variable.vendorExtensions.put("x-has-valid-model", true);
+                        }
+                    }
+                    this.visitVariableValidation(variable, variable.openApiType, variable.dataFormat, variable.vendorExtensions);
+                }
+            }
+
             // Optional-vars visit
             for (var variable : model.optionalVars) {
                 if (params.enableValidation) {
