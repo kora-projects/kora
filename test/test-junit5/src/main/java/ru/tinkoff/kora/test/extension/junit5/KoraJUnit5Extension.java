@@ -184,12 +184,16 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         return context.getTestInstanceLifecycle().orElse(TestInstance.Lifecycle.PER_METHOD);
     }
 
-    private void prepareMocks(TestGraphContext graphInitialized) {
+    private void resetMocks(TestGraphContext graphInitialized) {
         logger.debug("Resetting mocks...");
         if (MockUtils.haveAnyMockEngine()) {
             for (var node : graphInitialized.graphDraw().getNodes()) {
                 var mockCandidate = graphInitialized.refreshableGraph().get(node);
-                MockUtils.resetIfMock(mockCandidate);
+                if (mockCandidate instanceof Wrapped<?> w) {
+                    MockUtils.resetIfMock(w.value());
+                } else {
+                    MockUtils.resetIfMock(mockCandidate);
+                }
             }
         }
     }
@@ -277,7 +281,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             : "class '" + getTestClassName(context) + "'";
 
         if (!isReady) {
-            logger.info("@KoraAppTest test {} setup started...", testTarget);
+            logger.info("@KoraAppTest test {} context setup started...", testTarget);
         }
 
         var startedMeta = TimeUtils.started();
@@ -308,7 +312,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         }
 
         if (!isReady) {
-            logger.info("@KoraAppTest test {} setup took: {}",
+            logger.info("@KoraAppTest test {} context setup took: {}",
                 testTarget, TimeUtils.tookForLogging(started));
         }
 
@@ -344,9 +348,12 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
     @Override
     public void beforeEach(ExtensionContext context) {
-        var koraTestContext = getInitializedKoraTestContext(InitializeOrigin.METHOD, context);
         MDC.clear();
-        prepareMocks(koraTestContext.graph.initialized());
+
+        var koraTestContext = getInitializedKoraTestContext(InitializeOrigin.METHOD, context);
+        if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_CLASS) {
+            resetMocks(koraTestContext.graph.initialized()); // may be skip reset and pass it completely on user
+        }
         injectComponentsToFields(koraTestContext.metadata, koraTestContext.graph.initialized(), context);
     }
 
@@ -687,107 +694,30 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         if (KoraAppGraph.class.equals(candidate.type())) {
             return graph.koraAppGraph();
         }
+
         if (Graph.class.equals(candidate.type())
             || GraphImpl.class.equals(candidate.type())
             || RefreshableGraph.class.equals(candidate.type())) {
             return graph.refreshableGraph();
         }
-        var nodes = graph.graphDraw().findNodesByType(candidate.type(), candidate.tagsAsArray());
+
+        Set<Node<?>> nodes = GraphUtils.findNodeByTypeOrAssignable(graph.graphDraw(), candidate);
         if (nodes.size() == 1) {
-            return graph.refreshableGraph().get(nodes.get(0));
+            Node<?> node = nodes.iterator().next();
+            var object = graph.refreshableGraph().get(node);
+            boolean isNodeWrapped = GraphUtils.isWrapped(node.type());
+            boolean isCandidateWrapped = GraphUtils.isWrapped(candidate.type());
+            if (isNodeWrapped && !isCandidateWrapped) {
+                return ((Wrapped<?>) object).value();
+            } else {
+                return object;
+            }
         }
         if (nodes.size() > 1) {
             throw new ExtensionConfigurationException(candidate + " expected to have one suitable component, got " + nodes.size());
         }
-        if (candidate.type() instanceof Class<?> clazz) {
-            var objects = new ArrayList<>();
-            for (var node : graph.graphDraw().getNodes()) {
-                var object = graph.refreshableGraph().get(node);
-                if (clazz.isInstance(object)) {
-                    if (candidate.tags().isEmpty() && node.tags().length == 0) {
-                        objects.add(object);
-                    } else if (candidate.tags().size() == 1 && candidate.tags().get(0).getCanonicalName().equals("ru.tinkoff.kora.common.Tag.Any")) {
-                        objects.add(object);
-                    } else if (Arrays.equals(candidate.tagsAsArray(), node.tags())) {
-                        objects.add(object);
-                    }
-                } else if (object instanceof Wrapped<?> wo && clazz.isInstance(wo.value())) {
-                    if (candidate.tags().isEmpty() && node.tags().length == 0) {
-                        objects.add(wo.value());
-                    } else if (candidate.tags().size() == 1 && candidate.tags().get(0).getCanonicalName().equals("ru.tinkoff.kora.common.Tag.Any")) {
-                        objects.add(wo.value());
-                    } else if (Arrays.equals(candidate.tagsAsArray(), node.tags())) {
-                        objects.add(wo.value());
-                    }
-                }
-            }
-            if (objects.size() == 1) {
-                return objects.get(0);
-            }
-            if (objects.size() > 1) {
-                throw new ExtensionConfigurationException(candidate + " expected to have one suitable component, got " + objects.size());
-            }
-        }
-        if (candidate.type() instanceof ParameterizedType parameterizedType) {
-            var objects = new ArrayList<>();
-            var clazz = (Class<?>) parameterizedType.getRawType();
-            for (var node : graph.graphDraw().getNodes()) {
-                var object = graph.refreshableGraph().get(node);
-                if (clazz.isInstance(object) && doesExtendOrImplement(object.getClass(), parameterizedType)) {
-                    if (candidate.tags().isEmpty() && node.tags().length == 0) {
-                        objects.add(object);
-                    } else if (candidate.tags().size() == 1 && candidate.tags().get(0).getCanonicalName().equals("ru.tinkoff.kora.common.Tag.Any")) {
-                        objects.add(object);
-                    } else if (Arrays.equals(candidate.tagsAsArray(), node.tags())) {
-                        objects.add(object);
-                    }
-                } else if (object instanceof Wrapped<?> wo && clazz.isInstance(wo.value()) && doesExtendOrImplement(object.getClass(), parameterizedType)) {
-                    if (candidate.tags().isEmpty() && node.tags().length == 0) {
-                        objects.add(wo.value());
-                    } else if (candidate.tags().size() == 1 && candidate.tags().get(0).getCanonicalName().equals("ru.tinkoff.kora.common.Tag.Any")) {
-                        objects.add(wo.value());
-                    } else if (Arrays.equals(candidate.tagsAsArray(), node.tags())) {
-                        objects.add(wo.value());
-                    }
-                }
-            }
-            if (objects.size() == 1) {
-                return objects.get(0);
-            }
-            if (objects.size() > 1) {
-                throw new ExtensionConfigurationException(candidate + " expected to have one suitable component, got " + objects.size());
-            }
-        }
+
         throw new ExtensionConfigurationException(candidate + " wasn't found in graph, please check @KoraAppTest configuration");
-    }
-
-    private static boolean doesImplement(Class<?> aClass, ParameterizedType parameterizedType) {
-        for (var genericInterface : aClass.getGenericInterfaces()) {
-            if (genericInterface.equals(parameterizedType)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean doesExtendOrImplement(Class<?> aClass, ParameterizedType parameterizedType) {
-        if (doesImplement(aClass, parameterizedType)) {
-            return true;
-        }
-        var superclass = aClass.getGenericSuperclass();
-        if (superclass == null) {
-            return false;
-        }
-        if (superclass.equals(parameterizedType)) {
-            return true;
-        }
-        if (superclass instanceof Class<?> clazz) {
-            return doesExtendOrImplement(clazz, parameterizedType);
-        }
-        if (superclass instanceof ParameterizedType clazz) {
-            return doesExtendOrImplement((Class<?>) clazz.getRawType(), parameterizedType);
-        }
-        return false;
     }
 
     private static boolean isCandidate(AnnotatedElement element) {

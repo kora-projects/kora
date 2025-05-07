@@ -41,7 +41,9 @@ final class MockUtils {
         }
 
         if (isMockkAvailable) {
-            MockKKt.clearAllMocks(true, true, true, true, true, true, true);
+            if (MockKKt.isMockKMock(mockCandidate, true, true, true, false, false)) {
+                MockKKt.clearMocks(mockCandidate, new Object[]{}, true, true, true, true, true);
+            }
         }
     }
 

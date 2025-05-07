@@ -1,9 +1,14 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
+import io.mockk.Answer;
+import io.mockk.ConstantAnswer;
 import io.mockk.MockKKt;
+import io.mockk.MockKMatcherScope;
 import io.mockk.impl.annotations.MockK;
 import kotlin.jvm.JvmClassMappingKt;
+import kotlin.jvm.functions.Function1;
 import kotlin.reflect.KClass;
+import org.mockito.Mockito;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Node;
 import ru.tinkoff.kora.application.graph.Wrapped;
@@ -27,8 +32,8 @@ record GraphMockkMock(GraphCandidate candidate,
 
         var classToMock = getClassToMock(candidate);
         var name = Optional.of(annotation.name())
-                .filter(n -> !n.isBlank())
-                .orElse(defaultName);
+            .filter(n -> !n.isBlank())
+            .orElse(defaultName);
 
         return new GraphMockkMock(candidate, classToMock, name, annotation.relaxed(), annotation.relaxUnitFun());
     }
@@ -58,8 +63,18 @@ record GraphMockkMock(GraphCandidate candidate,
     private <T> void replaceNode(ApplicationGraphDraw graphDraw, Node<T> node, Class<?> mockClass) {
         graphDraw.replaceNode(node, g -> {
             var kotlinClass = JvmClassMappingKt.getKotlinClass(mockClass);
-            var mock = (T) MockKKt.mockkClass(kotlinClass, null, relaxed, new KClass<?>[]{}, relaxUnitFun, v -> null);
-            if (node.type() instanceof Class<?> tc && Wrapped.class.isAssignableFrom(tc)) {
+
+            boolean isWrappedClass = node.type() instanceof Class<?> tc && Wrapped.class.isAssignableFrom(tc);
+            boolean isWrappedInterface = node.type() instanceof ParameterizedType pt && Wrapped.class.isAssignableFrom(((Class<?>) pt.getRawType()));
+
+            var mock = (T) MockKKt.mockkClass(kotlinClass, null, isWrappedClass || relaxed, new KClass<?>[]{}, isWrappedClass || relaxUnitFun, v -> null);
+
+            if (isWrappedClass && !mockClass.equals(node.type())) {
+                var kotlinTC = JvmClassMappingKt.getKotlinClass(((Class<?>) node.type()));
+                Wrapped<T> mockedWrapper = (Wrapped<T>) MockKKt.mockkClass(kotlinTC, null, relaxed, new KClass<?>[]{}, relaxUnitFun, v -> null);
+                MockKKt.every(mockKMatcherScope -> mockedWrapper.value()).returns(mock);
+                return ((T) mockedWrapper);
+            } else if (isWrappedInterface) {
                 return (T) (Wrapped<?>) () -> mock;
             } else {
                 return mock;

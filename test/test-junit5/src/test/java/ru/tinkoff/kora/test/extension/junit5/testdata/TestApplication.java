@@ -6,6 +6,7 @@ import ru.tinkoff.kora.common.KoraApp;
 import ru.tinkoff.kora.common.annotation.Root;
 
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 @KoraApp
 public interface TestApplication extends TestExtendModule {
@@ -60,12 +61,21 @@ public interface TestApplication extends TestExtendModule {
         return (s) -> 1;
     }
 
-    class CustomWrapper implements Wrapped<Float> {
+    @Root
+    default Function<Supplier<String>, Supplier<Integer>> consumerMegaExample() {
+        return (s) -> () -> 1;
+    }
+
+    class CustomWrapper implements Wrapped<SomeContract> {
 
         @Override
-        public Float value() {
-            return 1.0F;
+        public SomeContract value() {
+            return () -> "1";
         }
+    }
+
+    interface SomeContract {
+        String get();
     }
 
     interface SomeWrapped {

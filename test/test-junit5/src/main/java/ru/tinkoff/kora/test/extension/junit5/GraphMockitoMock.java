@@ -84,10 +84,12 @@ record GraphMockitoMock(GraphCandidate candidate,
             }
 
             var mock = (T) Mockito.mock(mockClass, settings);
-            if (node.type() instanceof Class<?> tc && Wrapped.class.isAssignableFrom(tc)) {
+            if (node.type() instanceof Class<?> tc && Wrapped.class.isAssignableFrom(tc) && !mockClass.equals(node.type())) {
+                Wrapped<T> mockedWrapper = (Wrapped<T>) Mockito.mock(tc, settings);
+                Mockito.when(mockedWrapper.value()).thenReturn(mock);
+                return ((T) mockedWrapper);
+            } else if (node.type() instanceof ParameterizedType pt && Wrapped.class.isAssignableFrom((Class<?>) pt.getRawType())) {
                 return (T) (Wrapped<?>) () -> mock;
-            } else if (node.type() instanceof ParameterizedType pt && Wrapped.class.isAssignableFrom(((Class<?>) pt.getRawType()))) {
-                return (T)(Wrapped<?>) () -> mock;
             } else {
                 return mock;
             }

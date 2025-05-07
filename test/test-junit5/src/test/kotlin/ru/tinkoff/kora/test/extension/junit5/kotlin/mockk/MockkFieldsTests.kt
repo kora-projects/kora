@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.test.extension.junit5.kotlin.mockk
 
+import io.mockk.MockKMatcherScope
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -32,7 +33,9 @@ class MockkFieldsTests {
 
     @BeforeEach
     fun setupMocks() {
-        every { mock.get() } returns "?"
+        every(fun MockKMatcherScope.(): String? {
+            return mock.get()
+        }) returns "?"
         every { mock2.get() } returns "999"
     }
 
