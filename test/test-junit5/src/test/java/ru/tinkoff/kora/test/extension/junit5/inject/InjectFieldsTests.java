@@ -46,11 +46,6 @@ public class InjectFieldsTests {
     }
 
     @Test
-    void emptyTest() {
-        // do nothing
-    }
-
-    @Test
     void testBean() {
         assertEquals("1", component1.get());
         assertEquals("12", component12.get());
