@@ -13,6 +13,7 @@ import javax.lang.model.util.Types;
 import java.util.List;
 
 public sealed interface ComponentDependency {
+
     DependencyClaim claim();
 
     CodeBlock write(ProcessingContext ctx, ClassName graphTypeName, List<ResolvedComponent> resolvedComponents);
@@ -27,6 +28,21 @@ public sealed interface ComponentDependency {
         public CodeBlock write(ProcessingContext ctx, ClassName graphTypeName, List<ResolvedComponent> resolvedComponents) {
             return CodeBlock.of("g.get($T.$N.$N)", graphTypeName, this.component.holderName(), this.component.fieldName());
         }
+
+        @Override
+        public String toString() {
+            final StringBuilder sb = new StringBuilder("TargetDependency[");
+            sb.append("claim=").append(claim);
+            sb.append(", index=").append(component.index());
+            sb.append(", fieldName=").append(component.fieldName());
+            sb.append(", holder=").append(component.holderName());
+            sb.append(", component=").append(component.declaration());
+            if (component.templateParams() != null && !component.templateParams().isEmpty()) {
+                sb.append(", templateParams=").append(component.templateParams());
+            }
+            sb.append(']');
+            return sb.toString();
+        }
     }
 
     record WrappedTargetDependency(DependencyClaim claim, ResolvedComponent component) implements SingleDependency {
@@ -34,6 +50,21 @@ public sealed interface ComponentDependency {
         @Override
         public CodeBlock write(ProcessingContext ctx, ClassName graphTypeName, List<ResolvedComponent> resolvedComponents) {
             return CodeBlock.of("g.get($T.$N.$N).value()", graphTypeName, this.component.holderName(), this.component.fieldName());
+        }
+
+        @Override
+        public String toString() {
+            final StringBuilder sb = new StringBuilder("WrappedTargetDependency[");
+            sb.append("claim=").append(claim);
+            sb.append(", index=").append(component.index());
+            sb.append(", fieldName=").append(component.fieldName());
+            sb.append(", holder=").append(component.holderName());
+            sb.append(", component=").append(component.declaration());
+            if (component.templateParams() != null && !component.templateParams().isEmpty()) {
+                sb.append(", templateParams=").append(component.templateParams());
+            }
+            sb.append(']');
+            return sb.toString();
         }
     }
 
@@ -62,6 +93,23 @@ public sealed interface ComponentDependency {
         public ResolvedComponent component() {
             return delegate.component();
         }
+
+        @Override
+        public String toString() {
+            final StringBuilder sb = new StringBuilder("ValueOfDependency[");
+            sb.append("claim=").append(claim);
+
+            ResolvedComponent resolvedComponent = component();
+            sb.append(", index=").append(resolvedComponent.index());
+            sb.append(", fieldName=").append(resolvedComponent.fieldName());
+            sb.append(", holder=").append(resolvedComponent.holderName());
+            sb.append(", component=").append(resolvedComponent.declaration());
+            if (resolvedComponent.templateParams() != null && !resolvedComponent.templateParams().isEmpty()) {
+                sb.append(", templateParams=").append(resolvedComponent.templateParams());
+            }
+            sb.append(']');
+            return sb.toString();
+        }
     }
 
     record PromiseOfDependency(DependencyClaim claim, SingleDependency delegate) implements SingleDependency {
@@ -76,6 +124,23 @@ public sealed interface ComponentDependency {
         @Override
         public ResolvedComponent component() {
             return delegate.component();
+        }
+
+        @Override
+        public String toString() {
+            final StringBuilder sb = new StringBuilder("PromiseOfDependency[");
+            sb.append("claim=").append(claim);
+
+            ResolvedComponent resolvedComponent = component();
+            sb.append(", index=").append(resolvedComponent.index());
+            sb.append(", fieldName=").append(resolvedComponent.fieldName());
+            sb.append(", holder=").append(resolvedComponent.holderName());
+            sb.append(", component=").append(resolvedComponent.declaration());
+            if (resolvedComponent.templateParams() != null && !resolvedComponent.templateParams().isEmpty()) {
+                sb.append(", templateParams=").append(resolvedComponent.templateParams());
+            }
+            sb.append(']');
+            return sb.toString();
         }
     }
 
@@ -143,6 +208,11 @@ public sealed interface ComponentDependency {
         public CodeBlock write(ProcessingContext ctx, ClassName graphTypeName, List<ResolvedComponent> resolvedComponents) {
             var dependencies = GraphResolutionHelper.findDependency(ctx, declaration, resolvedComponents, this.claim);
             return CodeBlock.of("g.promiseOf($T.$N.$N)", graphTypeName, dependencies.component().holderName(), dependencies.component().fieldName());
+        }
+
+        @Override
+        public String toString() {
+            return "PromisedProxyParameterDependency[claim=" + claim + ", component=" + declaration + ']';
         }
     }
 }
