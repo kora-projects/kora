@@ -50,6 +50,28 @@ public sealed interface ComponentDeclaration {
         public String declarationString() {
             return module.element().getQualifiedName() + "." + method.getSimpleName();
         }
+
+        @Override
+        public String toString() {
+            final StringBuilder sb = new StringBuilder("FromModuleComponent[");
+            sb.append("type=").append(type);
+            sb.append(", module=").append(module);
+            sb.append(", method=").append(method);
+            if (tags != null && !tags.isEmpty()) {
+                sb.append(", tags=").append(tags);
+            }
+            if (methodParameterTypes != null && !methodParameterTypes.isEmpty()) {
+                sb.append(", methodParameterTypes=").append(methodParameterTypes);
+            }
+            if (typeVariables != null && !typeVariables.isEmpty()) {
+                sb.append(", typeVariables=").append(typeVariables);
+            }
+            if (isInterceptor) {
+                sb.append(", isInterceptor=").append(isInterceptor);
+            }
+            sb.append(']');
+            return sb.toString();
+        }
     }
 
     record AnnotatedComponent(TypeMirror type, TypeElement typeElement, Set<String> tags, ExecutableElement constructor, List<TypeMirror> methodParameterTypes,
@@ -63,11 +85,31 @@ public sealed interface ComponentDeclaration {
         public String declarationString() {
             return typeElement.getQualifiedName().toString();
         }
+
+        @Override
+        public String toString() {
+            final StringBuilder sb = new StringBuilder("AnnotatedComponent[");
+            sb.append("type=").append(type);
+            sb.append(", typeElement=").append(typeElement);
+            sb.append(", constructor=").append(constructor);
+            if (tags != null && !tags.isEmpty()) {
+                sb.append(", tags=").append(tags);
+            }
+            if (methodParameterTypes != null && !methodParameterTypes.isEmpty()) {
+                sb.append(", methodParameterTypes=").append(methodParameterTypes);
+            }
+            if (typeVariables != null && !typeVariables.isEmpty()) {
+                sb.append(", typeVariables=").append(typeVariables);
+            }
+            if (isInterceptor) {
+                sb.append(", isInterceptor=").append(isInterceptor);
+            }
+            sb.append(']');
+            return sb.toString();
+        }
     }
 
     record DiscoveredAsDependencyComponent(DeclaredType type, TypeElement typeElement, ExecutableElement constructor, Set<String> tags) implements ComponentDeclaration {
-        public DiscoveredAsDependencyComponent {
-        }
 
         @Override
         public Element source() {
@@ -88,6 +130,19 @@ public sealed interface ComponentDeclaration {
         public String declarationString() {
             return typeElement.getQualifiedName().toString();
         }
+
+        @Override
+        public String toString() {
+            final StringBuilder sb = new StringBuilder("DiscoveredAsDependencyComponent[");
+            sb.append("type=").append(type);
+            sb.append(", typeElement=").append(typeElement);
+            sb.append(", constructor=").append(constructor);
+            if (tags != null && !tags.isEmpty()) {
+                sb.append(", tags=").append(tags);
+            }
+            sb.append(']');
+            return sb.toString();
+        }
     }
 
     record FromExtensionComponent(
@@ -106,6 +161,24 @@ public sealed interface ComponentDeclaration {
         @Override
         public String declarationString() {
             return source.getEnclosingElement().toString() + "." + source.getSimpleName();
+        }
+
+        @Override
+        public String toString() {
+            final StringBuilder sb = new StringBuilder("FromExtensionComponent[");
+            sb.append("type=").append(type);
+            sb.append(", source=").append(source);
+            if (tags != null && !tags.isEmpty()) {
+                sb.append(", tags=").append(tags);
+            }
+            if (dependencyTypes != null && !dependencyTypes.isEmpty()) {
+                sb.append(", dependencyTypes=").append(dependencyTypes);
+            }
+            if (dependencyTags != null && dependencyTags.stream().anyMatch(t -> !t.isEmpty())) {
+                sb.append(", dependencyTags=").append(dependencyTags);
+            }
+            sb.append(']');
+            return sb.toString();
         }
     }
 
@@ -154,6 +227,17 @@ public sealed interface ComponentDeclaration {
         @Override
         public String declarationString() {
             return "<EmptyOptional>";
+        }
+
+        @Override
+        public String toString() {
+            final StringBuilder sb = new StringBuilder("OptionalComponent[");
+            sb.append("type=").append(type);
+            if (tags != null && !tags.isEmpty()) {
+                sb.append(", tags=").append(tags);
+            }
+            sb.append(']');
+            return sb.toString();
         }
     }
 

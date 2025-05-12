@@ -26,4 +26,30 @@ public record ResolvedComponent(int index, ComponentDeclaration declaration, Typ
         var holderNumber = this.index / COMPONENTS_PER_HOLDER_CLASS;
         return "holder" + holderNumber;
     }
+
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder("ResolvedComponent[");
+        sb.append("index=").append(index);
+        sb.append(", declaration=").append(declaration);
+        sb.append(", type=").append(type);
+        if (tags != null && !tags.isEmpty()) {
+            sb.append(", tags=").append(tags);
+        }
+        if (templateParams != null && !templateParams.isEmpty()) {
+            sb.append(", templateParams=").append(templateParams);
+        }
+        if (dependencies != null && !dependencies.isEmpty()) {
+            sb.append(", dependencies=");
+            for (int i = 0; i < dependencies.size(); i++) {
+                ComponentDependency componentDependency = dependencies.get(i);
+                sb.append(componentDependency);
+                if (i + 1 < dependencies.size()) {
+                    sb.append(", ");
+                }
+            }
+        }
+        sb.append(']');
+        return sb.toString();
+    }
 }
