@@ -8,18 +8,19 @@ import ru.tinkoff.kora.common.Context
 import java.sql.Connection
 import java.sql.SQLException
 
-suspend fun <T> JdbcConnectionFactory.withConnectionSuspend(userDispatcher: CoroutineDispatcher? = null, callback: suspend (Connection) -> T): T {
+private suspend fun <T> JdbcConnectionFactory.withConnectionInternal(
+    userDispatcher: CoroutineDispatcher? = null,
+    callback: suspend (ConnectionContext) -> T
+): T {
     if (this !is JdbcDatabase) {
         throw UnsupportedOperationException("Only JdbcDatabase is supported")
     }
 
-    val factory = this
-
     val curCtx = Context.current()
-    val currentConnection = curCtx[factory.connectionKey]
-    if (currentConnection != null) {
+    val currentConnectionCtx = ConnectionContext.get(curCtx)
+    if (currentConnectionCtx != null) {
         try {
-            return callback.invoke(currentConnection)
+            return callback.invoke(currentConnectionCtx)
         } catch (e: SQLException) {
             throw RuntimeSqlException(e)
         }
@@ -27,21 +28,20 @@ suspend fun <T> JdbcConnectionFactory.withConnectionSuspend(userDispatcher: Coro
 
     try {
         val dispatcher = userDispatcher
-            ?: factory.executor?.asCoroutineDispatcher()
+            ?: executor?.asCoroutineDispatcher()
             ?: Dispatchers.IO
 
         val forkCtx = curCtx.fork()
         return withContext(dispatcher + Context.Kotlin.asCoroutineContext(forkCtx)) {
             try {
                 val newConnection = newConnection()
-                forkCtx[factory.connectionKey] = newConnection
-                newConnection.use {
-                    callback.invoke(it)
-                }
+                val connectionCtx = ConnectionContext(newConnection)
+                ConnectionContext.set(forkCtx, connectionCtx)
+                newConnection.use { callback.invoke(connectionCtx) }
             } catch (e: SQLException) {
                 throw RuntimeSqlException(e)
             } finally {
-                forkCtx.remove(factory.connectionKey)
+                ConnectionContext.remove(forkCtx)
             }
         }
     } finally {
@@ -49,8 +49,19 @@ suspend fun <T> JdbcConnectionFactory.withConnectionSuspend(userDispatcher: Coro
     }
 }
 
+suspend fun <T> JdbcConnectionFactory.withConnectionSuspend(
+    userDispatcher: CoroutineDispatcher? = null,
+    callback: suspend (Connection) -> T
+): T = withConnectionInternal(userDispatcher) { ctx -> callback(ctx.connection()) }
+
+suspend fun <T> JdbcConnectionFactory.withConnectionCtxSuspend(
+    userDispatcher: CoroutineDispatcher? = null,
+    callback: suspend (ConnectionContext) -> T
+): T = withConnectionInternal(userDispatcher, callback)
+
 suspend fun <T> JdbcConnectionFactory.inTxSuspend(context: CoroutineDispatcher? = null, callback: suspend (Connection) -> T): T {
-    return this.withConnectionSuspend(context) { connection ->
+    return this.withConnectionCtxSuspend(context) { connectionCtx ->
+        val connection = connectionCtx.connection()
         if (!connection.autoCommit) {
             callback.invoke(connection)
         }
@@ -59,6 +70,7 @@ suspend fun <T> JdbcConnectionFactory.inTxSuspend(context: CoroutineDispatcher? 
         try {
             val result: T = callback.invoke(connection)
             connection.commit()
+            connectionCtx.postCommitActions().forEach { it::run }
             connection.autoCommit = true
             result
         } catch (e: Exception) {

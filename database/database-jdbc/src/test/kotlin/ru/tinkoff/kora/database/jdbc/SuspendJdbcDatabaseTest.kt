@@ -23,6 +23,7 @@ import java.sql.ResultSet
 import java.sql.SQLException
 import java.time.Duration
 import java.util.*
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 
 @ExtendWith(PostgresTestContainer::class)
@@ -111,11 +112,15 @@ internal class SuspendJdbcDatabaseTest {
             )
             Assertions.assertThat(values).hasSize(0)
 
+            val latch = CountDownLatch(1)
             db.inTx(SqlRunnable {
+                db.currentConnectionContext().addPostCommitAction { latch.countDown() }
                 db.currentConnection().prepareStatement(sql).use { stmt ->
                     stmt.execute()
                 }
             })
+
+            Assertions.assertThat(latch.count).isEqualTo(0)
 
             values = params.query(
                 "SELECT value FROM %s".formatted(tableName), extractor

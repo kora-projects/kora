@@ -5,6 +5,7 @@ import org.mockito.Mockito;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
+import ru.tinkoff.kora.database.jdbc.ConnectionContext;
 import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory;
 import ru.tinkoff.kora.database.jdbc.JdbcHelper;
 import ru.tinkoff.kora.database.jdbc.RuntimeSqlException;
@@ -19,6 +20,7 @@ public class MockJdbcExecutor implements JdbcConnectionFactory {
     public final PreparedStatement preparedStatement = Mockito.mock(PreparedStatement.class);
     public final CallableStatement callableStatement = Mockito.mock(CallableStatement.class);
     public final Connection mockConnection = Mockito.mock(Connection.class);
+    public final ConnectionContext mockConnectionContext = new ConnectionContext(mockConnection);
 
     public void reset() {
         Mockito.reset(resultSet, preparedStatement, callableStatement, mockConnection);
@@ -48,6 +50,11 @@ public class MockJdbcExecutor implements JdbcConnectionFactory {
     @Override
     public Connection currentConnection() {
         return mockConnection;
+    }
+
+    @Override
+    public ConnectionContext currentConnectionContext() {
+        return mockConnectionContext;
     }
 
     @Override
