@@ -19,6 +19,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
 
 @ExtendWith({PostgresTestContainer.class})
@@ -124,11 +125,15 @@ class JdbcDatabaseTest {
             var values = params.query("SELECT value FROM %s".formatted(tableName), extractor);
             Assertions.assertThat(values).hasSize(0);
 
+            var latch = new CountDownLatch(1);
             db.inTx(() -> {
+                db.currentConnectionContext().addPostCommitAction(latch::countDown);
                 try (var stmt = db.currentConnection().prepareStatement(sql)) {
                     stmt.execute();
                 }
             });
+            
+            Assertions.assertThat(latch.getCount()).isEqualTo(0);
 
             values = params.query("SELECT value FROM %s".formatted(tableName), extractor);
             Assertions.assertThat(values).hasSize(1);
