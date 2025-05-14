@@ -4,6 +4,8 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
+import ru.tinkoff.kora.database.jdbc.ConnectionContext.PostCommitAction;
+import ru.tinkoff.kora.database.jdbc.ConnectionContext.PostRollbackAction;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -23,6 +25,9 @@ public interface JdbcConnectionFactory {
 
     @Nullable
     Connection currentConnection();
+    
+    @Nullable
+    ConnectionContext currentConnectionContext();
 
     Connection newConnection();
 
@@ -71,11 +76,13 @@ public interface JdbcConnectionFactory {
             try {
                 var result = callback.apply(connection);
                 connection.commit();
+                currentConnectionContext().postCommitActions().forEach(PostCommitAction::run);
                 connection.setAutoCommit(true);
                 return result;
             } catch (Exception e) {
                 try {
                     connection.rollback();
+                    currentConnectionContext().postRollbackActions().forEach(PostRollbackAction::run);
                     connection.setAutoCommit(true);
                 } catch (SQLException sqlException) {
                     e.addSuppressed(sqlException);
