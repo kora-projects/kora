@@ -94,8 +94,10 @@ internal class SuspendJdbcDatabaseTest {
             }
 
         withDb(params) { db: JdbcDatabase ->
+            val latch = CountDownLatch(1)
             try {
                 db.inTxSuspend {
+                    db.currentConnectionContext().addPostRollbackAction { latch.countDown() }
                     db.currentConnection().prepareStatement(sql).use { stmt ->
                         stmt.execute()
                     }
@@ -106,21 +108,23 @@ internal class SuspendJdbcDatabaseTest {
                     throw RuntimeException("something wrong", e)
                 }
             }
+            
+            Assertions.assertThat(latch.count).isEqualTo(0)
 
             var values = params.query(
                 "SELECT value FROM %s".formatted(tableName), extractor
             )
             Assertions.assertThat(values).hasSize(0)
 
-            val latch = CountDownLatch(1)
+            val latch1 = CountDownLatch(1)
             db.inTx(SqlRunnable {
-                db.currentConnectionContext().addPostCommitAction { latch.countDown() }
+                db.currentConnectionContext().addPostCommitAction { latch1.countDown() }
                 db.currentConnection().prepareStatement(sql).use { stmt ->
                     stmt.execute()
                 }
             })
 
-            Assertions.assertThat(latch.count).isEqualTo(0)
+            Assertions.assertThat(latch1.count).isEqualTo(0)
 
             values = params.query(
                 "SELECT value FROM %s".formatted(tableName), extractor

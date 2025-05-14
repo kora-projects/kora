@@ -5,6 +5,7 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 import ru.tinkoff.kora.database.jdbc.ConnectionContext.PostCommitAction;
+import ru.tinkoff.kora.database.jdbc.ConnectionContext.PostRollbackAction;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -81,6 +82,7 @@ public interface JdbcConnectionFactory {
             } catch (Exception e) {
                 try {
                     connection.rollback();
+                    currentConnectionContext().postRollbackActions().forEach(PostRollbackAction::run);
                     connection.setAutoCommit(true);
                 } catch (SQLException sqlException) {
                     e.addSuppressed(sqlException);
