@@ -70,12 +70,13 @@ suspend fun <T> JdbcConnectionFactory.inTxSuspend(context: CoroutineDispatcher? 
         try {
             val result: T = callback.invoke(connection)
             connection.commit()
-            connectionCtx.postCommitActions().forEach { it::run }
+            connectionCtx.postCommitActions().forEach { it.run() }
             connection.autoCommit = true
             result
         } catch (e: Exception) {
             try {
                 connection.rollback()
+                connectionCtx.postRollbackActions().forEach { it.run() }
                 connection.autoCommit = true
             } catch (sqlException: SQLException) {
                 e.addSuppressed(sqlException)
