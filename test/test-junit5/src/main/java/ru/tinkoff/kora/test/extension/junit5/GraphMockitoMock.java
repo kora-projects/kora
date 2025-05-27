@@ -16,15 +16,20 @@ import java.util.Optional;
 record GraphMockitoMock(GraphCandidate candidate,
                         Class<?> mockClass,
                         String name,
+                        Object value,
                         Mock annotation) implements GraphModification {
 
-    public static GraphModification ofAnnotated(GraphCandidate candidate, AnnotatedElement element, String defaultName) {
+    public static GraphModification ofField(GraphCandidate candidate, AnnotatedElement element, String defaultName, Object value) {
         var annotation = element.getAnnotation(Mock.class);
         var name = Optional.of(annotation.name())
             .filter(n -> !n.isBlank())
             .orElse(defaultName);
 
-        return new GraphMockitoMock(candidate, getClassToMock(candidate), name, annotation);
+        return new GraphMockitoMock(candidate, getClassToMock(candidate), name, value, annotation);
+    }
+
+    public static GraphModification ofAnnotated(GraphCandidate candidate, AnnotatedElement element, String defaultName) {
+        return ofField(candidate, element, defaultName, null);
     }
 
     @Override
