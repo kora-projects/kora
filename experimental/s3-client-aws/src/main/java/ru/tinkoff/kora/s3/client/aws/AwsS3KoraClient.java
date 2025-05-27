@@ -60,13 +60,12 @@ public class AwsS3KoraClient implements S3KoraClient {
     }
 
     private S3ObjectMeta getMetaInternal(String bucket, String key) throws S3NotFoundException {
-        var request = GetObjectAttributesRequest.builder()
+        var request = HeadObjectRequest.builder()
             .bucket(bucket)
             .key(key)
-            .objectAttributes(ObjectAttributes.OBJECT_SIZE)
             .build();
 
-        var response = syncClient.getObjectAttributes(request);
+        var response = syncClient.headObject(request);
         return new AwsS3ObjectMeta(key, response);
     }
 
