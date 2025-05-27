@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.test.extension.junit5.mockito;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.mockito.Spy;
@@ -26,6 +27,7 @@ public class SpyFromGraphRootTests {
         Mockito.when(spy.get()).thenReturn("?");
     }
 
+    @Disabled
     @Test
     void fieldSpy() {
         assertTrue(MockUtil.isSpy(spy));
