@@ -434,11 +434,12 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
     @Override
     public void afterEach(ExtensionContext context) {
+        var koraTestContext = getKoraTestContext(context);
         context.getStore(MOCKITO).remove(SESSION, MockitoSession.class).finishMocking(context.getExecutionException().orElse(null));
 
         var mockParameters = context.getStore(MOCKITO).getOrComputeIfAbsent(HashSet.class);
         var unusedStubbing = AllInvocationsFinder.findStubbings(mockParameters).stream().filter(UnusedStubbingReporting::shouldBeReported).toList();
-        var reporter = new MockitoUnusedStubbingReporter(unusedStubbing);
+        var reporter = new MockitoUnusedStubbingReporter(unusedStubbing, koraTestContext.annotation.strictness());
 
         context.getStore(MOCKITO).remove(HashSet.class);
         reporter.reportUnused();
