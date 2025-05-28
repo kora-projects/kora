@@ -9,6 +9,7 @@ import org.junit.platform.commons.support.AnnotationSupport;
 import org.junit.platform.commons.util.ReflectionUtils;
 import org.mockito.Mockito;
 import org.mockito.MockitoSession;
+import org.mockito.Spy;
 import org.mockito.internal.configuration.plugins.Plugins;
 import org.mockito.internal.invocation.finder.AllInvocationsFinder;
 import org.mockito.internal.session.MockitoSessionLoggerAdapter;
@@ -391,15 +392,44 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     @Override
     public void beforeEach(ExtensionContext context) {
         MDC.clear();
-        Object testInstance = context.getRequiredTestInstance();
-        MockitoSession session = Mockito.mockitoSession().initMocks(testInstance).logger(new MockitoSessionLoggerAdapter(Plugins.getMockitoLogger())).startMocking();
-        context.getStore(MOCKITO).put(SESSION, session);
+        initMockitoSession(context);
 
         var koraTestContext = getInitializedKoraTestContext(InitializeOrigin.METHOD, context);
         if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_CLASS) {
             resetMocks(koraTestContext.graph.initialized()); // may be skip reset and pass it completely on user
         }
         injectComponentsToFields(koraTestContext.metadata, koraTestContext.graph.initialized(), context);
+    }
+
+    private void initMockitoSession(ExtensionContext context) {
+        var testInstance = context.getRequiredTestInstance();
+        var spyFields = new ArrayList<Field>();
+        for (Field declaredField : testInstance.getClass().getDeclaredFields()) {
+            if (declaredField.isAnnotationPresent(Spy.class)) {
+                declaredField.setAccessible(true);
+                try {
+                    if (declaredField.get(testInstance) == null) {
+                        declaredField.set(testInstance, Mockito.mock(declaredField.getType())); // Here we initialize spy to prevent initMocks in mockitoSession
+                        spyFields.add(declaredField);
+                    }
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+        var annotation = findKoraAppTest(context);
+        MockitoSession session = Mockito.mockitoSession()
+            .strictness(annotation.map(KoraAppTest::strictness).orElse(null))
+            .initMocks(testInstance)
+            .logger(new MockitoSessionLoggerAdapter(Plugins.getMockitoLogger())).startMocking();
+        context.getStore(MOCKITO).put(SESSION, session);
+        for (Field declaredField : spyFields) {
+            try {
+                declaredField.set(testInstance, null);
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     @Override
