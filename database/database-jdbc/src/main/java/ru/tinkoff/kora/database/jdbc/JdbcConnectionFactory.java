@@ -73,22 +73,23 @@ public interface JdbcConnectionFactory {
                 return callback.apply(connection);
             }
             connection.setAutoCommit(false);
+            T result;
             try {
-                var result = callback.apply(connection);
+                result = callback.apply(connection);
                 connection.commit();
-                currentConnectionContext().postCommitActions().forEach(PostCommitAction::run);
                 connection.setAutoCommit(true);
-                return result;
             } catch (Exception e) {
                 try {
                     connection.rollback();
-                    currentConnectionContext().postRollbackActions().forEach(PostRollbackAction::run);
                     connection.setAutoCommit(true);
+                    currentConnectionContext().postRollbackActions().forEach(PostRollbackAction::run);
                 } catch (SQLException sqlException) {
                     e.addSuppressed(sqlException);
                 }
                 throw e;
             }
+            currentConnectionContext().postCommitActions().forEach(PostCommitAction::run);
+            return result;
         });
     }
 
