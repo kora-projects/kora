@@ -94,7 +94,7 @@ public class JdkHttpClientResponse implements HttpClientResponse {
         public String contentType() {
             var contentType = this.contentType;
             if (Objects.equals(contentType, EMPTY)) {
-                this.contentType = contentType = headers.firstValue("content-length").orElse(null);
+                this.contentType = contentType = headers.firstValue("content-type").orElse(null);
             }
             return contentType;
         }
