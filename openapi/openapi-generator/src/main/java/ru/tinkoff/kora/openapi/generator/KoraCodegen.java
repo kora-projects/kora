@@ -589,7 +589,7 @@ public class KoraCodegen extends DefaultCodegen {
                 if (params.enableValidation) {
                     if (variable.getRef() != null) {
                         var variableModelField = allModels.get(variable.openApiType);
-                        if (variableModelField != null) {
+                        if (variableModelField != null && !variableModelField.isEnum) {
                             variable.vendorExtensions.put("x-has-valid-model", true);
                         }
                     }
@@ -613,7 +613,7 @@ public class KoraCodegen extends DefaultCodegen {
                 if (params.enableValidation) {
                     if (variable.getRef() != null) {
                         var variableModelField = allModels.get(variable.openApiType);
-                        if (variableModelField != null) {
+                        if (variableModelField != null && !variableModelField.isEnum) {
                             variable.vendorExtensions.put("x-has-valid-model", true);
                         }
                     }
@@ -626,7 +626,7 @@ public class KoraCodegen extends DefaultCodegen {
                 if (params.enableValidation) {
                     if (variable.getRef() != null) {
                         var variableModelField = allModels.get(variable.openApiType);
-                        if (variableModelField != null) {
+                        if (variableModelField != null && !variableModelField.isEnum) {
                             variable.vendorExtensions.put("x-has-valid-model", true);
                         }
                     }
@@ -643,17 +643,7 @@ public class KoraCodegen extends DefaultCodegen {
                             model.name, variable.name, ENABLE_JSON_NULLABLE);
                     }
                 }
-
-//                if (variable.isEnum) {
-//                    variable.datatypeWithEnum = toEnumName(variable);
-//                }
             }
-
-//            for (var variable : model.requiredVars) {
-//                if (variable.isEnum) {
-//                    variable.datatypeWithEnum = toEnumName(variable);
-//                }
-//            }
 
             if (model.discriminator != null) {
                 var map = model.discriminator.getMappedModels().stream()
