@@ -20,9 +20,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class BuildEnvironment {
+
     public static final Logger log = LoggerFactory.getLogger("ru.tinkoff.kora");
     private static final AtomicBoolean INIT = new AtomicBoolean(false);
     private static Path buildDir = Paths.get(".");
+
+    private BuildEnvironment() {}
 
     public static synchronized void init(ProcessingEnvironment processingEnv) {
         if (!INIT.compareAndSet(false, true)) {
@@ -44,6 +47,22 @@ public class BuildEnvironment {
             return;
         }
         initLog(processingEnv);
+
+        var thread = getShutdownThread();
+        Runtime.getRuntime().addShutdownHook(thread);
+    }
+
+    private static Thread getShutdownThread() {
+        var thread = new Thread(() -> {
+            try {
+                log.info("Annotation processing shutdown...");
+                close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+        thread.setName("kora-ap-shutdown");
+        return thread;
     }
 
     private static void initLog(ProcessingEnvironment processingEnv) {
@@ -76,5 +95,11 @@ public class BuildEnvironment {
         if (log instanceof ch.qos.logback.classic.Logger logger) {
             logger.setLevel(Level.valueOf(processingEnv.getOptions().getOrDefault("koraLogLevel", "INFO")));
         }
+    }
+
+    public static synchronized void close() {
+        var ctx = (LoggerContext) LoggerFactory.getILoggerFactory();
+        var kora = ctx.getLogger("ru.tinkoff.kora");
+        kora.detachAndStopAllAppenders();
     }
 }
