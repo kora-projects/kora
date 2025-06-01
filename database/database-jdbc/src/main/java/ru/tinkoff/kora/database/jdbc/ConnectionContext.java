@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.database.jdbc;
 
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Objects;
@@ -31,7 +32,10 @@ public class ConnectionContext {
         return this.connection;
     }
 
-    public void addPostCommitAction(PostCommitAction action) {
+    public void addPostCommitAction(PostCommitAction action) throws SQLException {
+        if (!this.isActiveTransaction()) {
+            throw new IllegalStateException("Cannot add post commit action when transaction is not active");
+        }
         if (this.postCommitActions == null) {
             this.postCommitActions = new ArrayList<>();
         }
@@ -42,7 +46,10 @@ public class ConnectionContext {
         return Objects.requireNonNullElseGet(this.postCommitActions, ArrayList::new);
     }
 
-    public void addPostRollbackAction(PostRollbackAction action) {
+    public void addPostRollbackAction(PostRollbackAction action) throws SQLException {
+        if (!this.isActiveTransaction()) {
+            throw new IllegalStateException("Cannot add post rollback action when transaction is not active");
+        }
         if (this.postRollbackActions == null) {
             this.postRollbackActions = new ArrayList<>();
         }
@@ -72,5 +79,9 @@ public class ConnectionContext {
 
     public interface PostRollbackAction {
         void run();
+    }
+
+    private boolean isActiveTransaction() throws SQLException {
+        return this.connection != null && !this.connection.isClosed() && !this.connection.getAutoCommit();
     }
 }
