@@ -34,7 +34,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Get
                 S3ObjectMeta get(String key);
             }
@@ -49,7 +49,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Get
                 Optional<S3ObjectMeta> get(String key);
             }
@@ -64,7 +64,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Get
                 S3Object get(String key);
             }
@@ -79,7 +79,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Get
                 Optional<S3Object> get(String key);
             }
@@ -94,7 +94,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Get
                 List<S3ObjectMeta> get(Collection<String> keys);
             }
@@ -109,7 +109,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Get
                 List<S3Object> get(List<String> keys);
             }
@@ -124,7 +124,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Get("{key1}-{key2}")
                 S3ObjectMeta get(String key1, long key2);
             }
@@ -139,7 +139,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         assertThatThrownBy(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Get("{key1}-{key12345}")
                 S3ObjectMeta get(String key1);
             }
@@ -151,7 +151,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Get("const-key")
                 S3ObjectMeta get();
             }
@@ -166,7 +166,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Get("pre-{key1}")
                 S3ObjectMeta get(String key1);
             }
@@ -181,7 +181,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Get("{key1}-suffix")
                 S3ObjectMeta get(String key1);
             }
@@ -196,7 +196,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Get("pre-{key1}-suffix")
                 S3ObjectMeta get(String key1);
             }
@@ -211,7 +211,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         assertThatThrownBy(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Get("const-key")
                 S3ObjectMeta get(String key);
             }
@@ -224,7 +224,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.List
                 S3ObjectMetaList list();
             }
@@ -239,7 +239,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.List
                 S3ObjectList list();
             }
@@ -254,7 +254,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.List
                 S3ObjectMetaList list(String prefix);
             }
@@ -269,7 +269,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.List
                 S3ObjectList list(String prefix);
             }
@@ -284,7 +284,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.List(limit = 100)
                 S3ObjectList list(String prefix);
             }
@@ -299,7 +299,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.List("{key1}-{key2}")
                 S3ObjectList list(String key1, long key2);
             }
@@ -314,7 +314,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.List(value = "{key1}", delimiter = "/")
                 S3ObjectList list(String key1);
             }
@@ -329,7 +329,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         assertThatThrownBy(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.List("{key1}-{key12345}")
                 S3ObjectList list(String key1);
             }
@@ -341,7 +341,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.List("const-key")
                 S3ObjectList list();
             }
@@ -356,7 +356,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         assertThatThrownBy(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.List("const-key")
                 S3ObjectList list(String key);
             }
@@ -369,7 +369,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Delete
                 void delete(String key);
             }
@@ -384,7 +384,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Delete("{key1}-{key2}")
                 void delete(String key1, long key2);
             }
@@ -399,7 +399,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         assertThatThrownBy(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Delete("{key1}-{key12345}")
                 void delete(String key1);
             }
@@ -411,7 +411,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Delete("const-key")
                 void delete();
             }
@@ -426,7 +426,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         assertThatThrownBy(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Delete("const-key")
                 void delete(String key);
             }
@@ -439,7 +439,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Delete
                 void delete(List<String> key);
             }
@@ -455,7 +455,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Put
                 void put(String key, S3Body body);
             }
@@ -470,7 +470,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Put
                 S3ObjectUpload put(String key, S3Body body);
             }
@@ -485,7 +485,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Put
                 void put(String key, byte[] body);
             }
@@ -500,7 +500,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Put
                 void put(String key, ByteBuffer body);
             }
@@ -515,7 +515,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Put(type = "type")
                 void put(String key, S3Body body);
             }
@@ -530,7 +530,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Put(encoding = "encoding")
                 void put(String key, S3Body body);
             }
@@ -545,7 +545,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Put(type = "type", encoding = "encoding")
                 void put(String key, S3Body body);
             }
@@ -560,7 +560,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Put("{key1}-{key2}")
                 void put(String key1, long key2, S3Body body);
             }
@@ -575,7 +575,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         assertThatThrownBy(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Put("{key1}-{key12345}")
                 void put(String key1, S3Body body);
             }
@@ -587,7 +587,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Put("const-key")
                 void put(S3Body body);
             }
@@ -602,7 +602,7 @@ class S3KoraClientTests extends AbstractAnnotationProcessorTest {
         assertThatThrownBy(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Put("const-key")
                 void put(String key, S3Body body);
             }

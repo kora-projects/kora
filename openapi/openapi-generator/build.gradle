@@ -88,6 +88,8 @@ sourceSets {
             addOpenapiDir("petstoreV3_single_response")
             addOpenapiDir("petstoreV3_types")
             addOpenapiDir("petstoreV3_validation")
+            addOpenapiDir("invest-guild")
+            addOpenapiDir("media-backend-api")
         }
     }
 }

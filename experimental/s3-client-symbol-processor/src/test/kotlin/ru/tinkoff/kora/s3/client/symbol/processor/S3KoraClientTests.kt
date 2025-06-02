@@ -39,6 +39,23 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun clientGetMetaOptional() {
+        this.compile0(
+            """
+            @S3.Client("my")
+            interface Client {
+                        
+                @S3.Get
+                fun get(key: String): S3ObjectMeta?
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        val clazz = compileResult.loadClass("\$Client_Impl")
+        assertThat(clazz).isNotNull()
+    }
+
+    @Test
     fun clientGetObject() {
         this.compile0(
             """
@@ -47,6 +64,23 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
                         
                 @S3.Get
                 fun get(key: String): S3Object
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        val clazz = compileResult.loadClass("\$Client_Impl")
+        assertThat(clazz).isNotNull()
+    }
+
+    @Test
+    fun clientGetObjectOptional() {
+        this.compile0(
+            """
+            @S3.Client("my")
+            interface Client {
+                        
+                @S3.Get
+                fun get(key: String): S3Object?
             }
             """.trimIndent()
         )

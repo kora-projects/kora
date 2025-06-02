@@ -37,6 +37,23 @@ class S3AwsSuspendClientTests : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun clientGetMetaAws() {
+        this.compile0(
+            """
+            @S3.Client("my")
+            interface Client {
+                        
+                @S3.Get
+                suspend fun get(key: String): HeadObjectResponse
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        val clazz = compileResult.loadClass("\$Client_Impl")
+        assertThat(clazz).isNotNull()
+    }
+
+    @Test
     fun clientListAws() {
         this.compile0(
             """

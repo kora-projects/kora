@@ -78,6 +78,8 @@ class S3ClientSymbolProcessor(
         private val CLASS_AWS_IS_SYNC_BODY: ClassName = ClassName("software.amazon.awssdk.core.sync", "RequestBody")
         private val CLASS_AWS_IS_ASYNC_BODY: ClassName = ClassName("software.amazon.awssdk.core.async", "AsyncRequestBody")
         private val CLASS_AWS_IS_ASYNC_TRANSFORMER: ClassName = ClassName("software.amazon.awssdk.core.async", "AsyncResponseTransformer")
+        private val CLASS_AWS_GET_META_REQUEST = ClassName("software.amazon.awssdk.services.s3.model", "HeadObjectRequest")
+        private val CLASS_AWS_GET_META_RESPONSE = ClassName("software.amazon.awssdk.services.s3.model", "HeadObjectResponse")
         private val CLASS_AWS_GET_REQUEST: ClassName = ClassName("software.amazon.awssdk.services.s3.model", "GetObjectRequest")
         private val CLASS_AWS_GET_RESPONSE: ClassName = ClassName("software.amazon.awssdk.services.s3.model", "GetObjectResponse")
         private val CLASS_AWS_GET_IS_RESPONSE: TypeName = ClassName("software.amazon.awssdk.core", "ResponseInputStream").parameterizedBy(CLASS_AWS_GET_RESPONSE)
@@ -300,26 +302,40 @@ class S3ClientSymbolProcessor(
         }
 
         val returnType = method.returnType!!.toTypeName()
+        val returnMatchType = returnType.copy(false)
 
-        if (CLASS_S3_OBJECT == returnType || CLASS_S3_OBJECT_META == returnType) {
+        if (CLASS_S3_OBJECT == returnMatchType || CLASS_S3_OBJECT_META == returnMatchType) {
             if (firstParameter != null && firstParameter.type.resolve().isCollection()) {
                 throw ProcessingErrorException("@S3.Get operation expected single result, but parameter is collection of keys", method)
             }
 
             val bodyBuilder: CodeBlock.Builder = CodeBlock.builder()
             if (mode == S3Operation.Mode.SYNC) {
-                bodyBuilder.add("return _simpleSyncClient")
+                bodyBuilder.add("return ")
+                if (returnType.isNullable) {
+                    bodyBuilder.beginControlFlow("try")
+                }
+
+                bodyBuilder.add("_simpleSyncClient")
+                if (CLASS_S3_OBJECT == returnMatchType) {
+                    bodyBuilder.addStatement(".get(_clientConfig.bucket(), _key)")
+                } else {
+                    bodyBuilder.addStatement(".getMeta(_clientConfig.bucket(), _key)")
+                }
+
+                if (returnType.isNullable) {
+                    bodyBuilder
+                        .nextControlFlow("catch(e: %T)", CLASS_S3_EXCEPTION_NOT_FOUND)
+                        .addStatement("null")
+                        .endControlFlow()
+                }
             } else {
                 bodyBuilder.add("return _simpleAsyncClient")
-            }
-
-            if (CLASS_S3_OBJECT == returnType) {
-                bodyBuilder.add(".get(_clientConfig.bucket(), _key)")
-            } else {
-                bodyBuilder.add(".getMeta(_clientConfig.bucket(), _key)")
-            }
-
-            if (mode == S3Operation.Mode.ASYNC) {
+                if (CLASS_S3_OBJECT == returnType) {
+                    bodyBuilder.add(".get(_clientConfig.bucket(), _key)")
+                } else {
+                    bodyBuilder.add(".getMeta(_clientConfig.bucket(), _key)")
+                }
                 bodyBuilder.add(".%M()", MEMBER_AWAIT_FUTURE)
             }
 
@@ -360,7 +376,52 @@ class S3ClientSymbolProcessor(
             bodyBuilder.add("\n")
 
             return S3Operation(method, operationMeta.annotation, S3Operation.OperationType.GET, S3Operation.ImplType.SIMPLE, mode, bodyBuilder.build())
-        } else if (CLASS_AWS_GET_RESPONSE == returnType || CLASS_AWS_GET_IS_RESPONSE == returnType) {
+        } else if (CLASS_AWS_GET_META_RESPONSE == returnMatchType) {
+            if (firstParameter != null && firstParameter.type.resolve().isCollection()) {
+                throw ProcessingErrorException("@S3.Get operation expected single result, but parameter is collection of keys", method)
+            }
+
+            val clientField = if (mode == S3Operation.Mode.SYNC) "_awsSyncClient" else "_awsAsyncClient"
+
+            val codeBuilder: CodeBlock.Builder = CodeBlock.builder()
+                .add(key.code)
+                .add("\n")
+                .addStatement(
+                    """
+                    val _request = %T.builder()
+                        .bucket(_clientConfig.bucket())
+                        .key(_key)
+                        .build()
+                        """.trimIndent(), CLASS_AWS_GET_META_REQUEST
+                )
+                .add("\n")
+
+            if (mode == S3Operation.Mode.SYNC) {
+                codeBuilder.add("return ")
+                if (returnType.isNullable) {
+                    codeBuilder.beginControlFlow("try")
+                }
+
+                codeBuilder.addStatement("%L.headObject(_request)", clientField).build()
+
+                if (returnType.isNullable) {
+                    codeBuilder
+                        .nextControlFlow("catch(e: %T)", CLASS_AWS_EXCEPTION_NO_KEY)
+                        .addStatement("null")
+                        .nextControlFlow("catch(e: %T)", CLASS_AWS_EXCEPTION_NO_BUCKET)
+                        .addStatement("null")
+                        .endControlFlow()
+                }
+            } else {
+                codeBuilder
+                    .add("return %L.headObject(_request)", clientField)
+                    .build()
+
+                codeBuilder.add(".%M()\n", MEMBER_AWAIT_FUTURE)
+            }
+
+            return S3Operation(method, operationMeta.annotation, S3Operation.OperationType.GET, S3Operation.ImplType.AWS, mode, codeBuilder.build())
+        } else if (CLASS_AWS_GET_RESPONSE == returnMatchType || CLASS_AWS_GET_IS_RESPONSE == returnMatchType) {
             if (firstParameter != null && firstParameter.type.resolve().isCollection()) {
                 throw ProcessingErrorException("@S3.Get operation expected single result, but parameter is collection of keys", method)
             }
@@ -381,13 +442,28 @@ class S3ClientSymbolProcessor(
                 .add("\n")
 
             if (mode == S3Operation.Mode.SYNC) {
-                if (CLASS_AWS_GET_RESPONSE == returnType) {
-                    codeBuilder.addStatement("return %L.getObject(_request).response()", clientField).build()
+                if (returnType.isNullable) {
+                    codeBuilder.beginControlFlow("try")
+                    codeBuilder.add("return ")
                 } else {
-                    codeBuilder.addStatement("return %L.getObject(_request)", clientField).build()
+                    codeBuilder.add("return ")
+                }
+
+                if (CLASS_AWS_GET_RESPONSE == returnMatchType) {
+                    codeBuilder.add("%L.getObject(_request).response()", clientField).build()
+                } else {
+                    codeBuilder.add("%L.getObject(_request)", clientField).build()
+                }
+
+                if (returnType.isNullable) {
+                    codeBuilder
+                        .addStatement(")")
+                        .nextControlFlow("catch(e: %T | %T)", CLASS_AWS_EXCEPTION_NO_KEY, CLASS_AWS_EXCEPTION_NO_BUCKET)
+                        .addStatement("return null")
+                        .endControlFlow()
                 }
             } else {
-                if (CLASS_AWS_GET_RESPONSE == returnType) {
+                if (CLASS_AWS_GET_RESPONSE == returnMatchType) {
                     codeBuilder
                         .add(
                             "return %L.getObject(_request, %T.toBlockingInputStream()).thenApply { it.response() }",
@@ -415,7 +491,7 @@ class S3ClientSymbolProcessor(
                 )
             } else {
                 throw ProcessingErrorException(
-                    "@S3.Get operation unsupported method return signature, expected any of ${CLASS_S3_OBJECT.simpleName}/${CLASS_S3_OBJECT_META.simpleName}/${CLASS_AWS_GET_RESPONSE.simpleName}/ResponseInputStream<${CLASS_AWS_GET_RESPONSE.simpleName}>",
+                    "@S3.Get operation unsupported method return signature, expected any of ${CLASS_S3_OBJECT.simpleName}/${CLASS_S3_OBJECT_META.simpleName}/${CLASS_AWS_GET_META_RESPONSE.simpleName}/${CLASS_AWS_GET_RESPONSE.simpleName}/ResponseInputStream<${CLASS_AWS_GET_RESPONSE.simpleName}>",
                     method
                 )
             }
