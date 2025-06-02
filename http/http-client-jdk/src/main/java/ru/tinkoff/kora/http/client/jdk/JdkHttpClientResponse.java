@@ -217,12 +217,17 @@ public class JdkHttpClientResponse implements HttpClientResponse {
                 if (item == null) {
                     if (completed) {
                         this.subscriber.onComplete();
+                        WIP.set(this, 0);
+                        return;
                     } else {
                         this.subscription.request(1);
                         item = buffer.peek();
                     }
                 }
                 if (item == null) {
+                    if (completed) {
+                        this.subscriber.onComplete();
+                    }
                     WIP.set(this, 0);
                     return;
                 }
