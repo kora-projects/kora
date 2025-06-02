@@ -442,11 +442,9 @@ class S3ClientSymbolProcessor(
                 .add("\n")
 
             if (mode == S3Operation.Mode.SYNC) {
+                codeBuilder.add("return ")
                 if (returnType.isNullable) {
                     codeBuilder.beginControlFlow("try")
-                    codeBuilder.add("return ")
-                } else {
-                    codeBuilder.add("return ")
                 }
 
                 if (CLASS_AWS_GET_RESPONSE == returnMatchType) {
@@ -457,9 +455,10 @@ class S3ClientSymbolProcessor(
 
                 if (returnType.isNullable) {
                     codeBuilder
-                        .addStatement(")")
-                        .nextControlFlow("catch(e: %T | %T)", CLASS_AWS_EXCEPTION_NO_KEY, CLASS_AWS_EXCEPTION_NO_BUCKET)
-                        .addStatement("return null")
+                        .nextControlFlow("catch(e: %T)", CLASS_AWS_EXCEPTION_NO_KEY)
+                        .addStatement("null")
+                        .nextControlFlow("catch(e: %T)", CLASS_AWS_EXCEPTION_NO_BUCKET)
+                        .addStatement("null")
                         .endControlFlow()
                 }
             } else {
