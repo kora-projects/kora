@@ -19,9 +19,16 @@ import java.util.stream.Collectors;
 
 import static ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim.DependencyClaimType.*;
 
-public class GraphResolutionHelper {
+public final class GraphResolutionHelper {
+
+    private GraphResolutionHelper() { }
+
     @Nullable
     public static ComponentDependency.SingleDependency findDependency(ProcessingContext ctx, ComponentDeclaration forDeclaration, List<ResolvedComponent> resolvedComponents, DependencyClaim dependencyClaim) {
+        if (dependencyClaim.type().getKind() == TypeKind.ERROR) {
+            throw new ProcessingErrorException("Component error type dependency claim " + dependencyClaim.type(), forDeclaration.source());
+        }
+
         var dependencies = findDependencies(ctx, resolvedComponents, dependencyClaim);
         if (dependencies.size() == 1) {
             return dependencies.get(0);
@@ -29,7 +36,12 @@ public class GraphResolutionHelper {
         if (dependencies.isEmpty()) {
             return null;
         }
-        var deps = dependencies.stream().map(ComponentDependency.SingleDependency::component).map(Objects::toString).collect(Collectors.joining("\n")).indent(2);
+
+        var deps = dependencies.stream()
+            .map(ComponentDependency.SingleDependency::component)
+            .map(Objects::toString)
+            .collect(Collectors.joining("\n")).indent(2);
+
         throw new ProcessingErrorException("More than one component matches dependency claim " + dependencyClaim.type() + ":\n" + deps, forDeclaration.source());
     }
 
@@ -39,21 +51,23 @@ public class GraphResolutionHelper {
             if (!dependencyClaim.tagsMatches(resolvedComponent.tags())) {
                 continue;
             }
+
             var isDirectAssignable = ctx.types.isAssignable(resolvedComponent.type(), dependencyClaim.type());
             var isWrappedAssignable = ctx.serviceTypeHelper.isAssignableToUnwrapped(resolvedComponent.type(), dependencyClaim.type());
             if (!isDirectAssignable && !isWrappedAssignable) {
                 continue;
             }
+
             var targetDependency = isWrappedAssignable
                 ? new ComponentDependency.WrappedTargetDependency(dependencyClaim, resolvedComponent)
                 : new ComponentDependency.TargetDependency(dependencyClaim, resolvedComponent);
+
             switch (dependencyClaim.claimType()) {
                 case ONE_REQUIRED, ONE_NULLABLE -> result.add(targetDependency);
                 case PROMISE_OF, NULLABLE_PROMISE_OF -> result.add(new ComponentDependency.PromiseOfDependency(dependencyClaim, targetDependency));
                 case VALUE_OF, NULLABLE_VALUE_OF -> result.add(new ComponentDependency.ValueOfDependency(dependencyClaim, targetDependency));
                 case ALL_OF_ONE, ALL_OF_PROMISE, ALL_OF_VALUE, TYPE_REF -> throw new IllegalStateException();
             }
-            ;
         }
         return result;
     }
@@ -127,6 +141,10 @@ public class GraphResolutionHelper {
 
     @Nullable
     public static ComponentDeclaration findDependencyDeclarationFromTemplate(ProcessingContext ctx, ComponentDeclaration forDeclaration, List<ComponentDeclaration> sourceDeclarations, DependencyClaim dependencyClaim) {
+        if (dependencyClaim.type().getKind() == TypeKind.ERROR) {
+            throw new ProcessingErrorException("Component error type dependency claim " + dependencyClaim.type(), forDeclaration.source());
+        }
+
         var declarations = findDependencyDeclarationsFromTemplate(ctx, forDeclaration, sourceDeclarations, dependencyClaim);
         if (declarations.size() == 0) {
             return null;
@@ -146,6 +164,10 @@ public class GraphResolutionHelper {
     }
 
     public static List<ComponentDeclaration> findDependencyDeclarationsFromTemplate(ProcessingContext ctx, ComponentDeclaration forDeclaration, List<ComponentDeclaration> sourceDeclarations, DependencyClaim dependencyClaim) {
+        if (dependencyClaim.type().getKind() == TypeKind.ERROR) {
+            throw new ProcessingErrorException("Component error type dependency claim " + dependencyClaim.type(), forDeclaration.source());
+        }
+
         var claimType = dependencyClaim.claimType();
         if (claimType == ALL_OF_ONE || claimType == ALL_OF_PROMISE || claimType == ALL_OF_VALUE) {
             throw new UnsupportedOperationException();
@@ -266,6 +288,10 @@ public class GraphResolutionHelper {
 
     @Nullable
     public static ComponentDeclaration findDependencyDeclaration(ProcessingContext ctx, ComponentDeclaration forDeclaration, List<ComponentDeclaration> sourceDeclarations, DependencyClaim dependencyClaim) {
+        if (dependencyClaim.type().getKind() == TypeKind.ERROR) {
+            throw new ProcessingErrorException("Component error type dependency claim " + dependencyClaim.type(), forDeclaration.source());
+        }
+
         if (dependencyClaim.claimType() == ALL_OF_ONE || dependencyClaim.claimType() == ALL_OF_PROMISE || dependencyClaim.claimType() == ALL_OF_VALUE) {
             throw new IllegalStateException();
         }
