@@ -84,6 +84,7 @@ components:
       required:
         - id
         - type
+        - reqType
       properties:
         id:
           type: string
@@ -93,6 +94,8 @@ components:
         code:
           type: string
         type:
+          $ref: '#/components/schemas/DeliveryTypeEnum'
+        reqType:
           $ref: '#/components/schemas/DeliveryTypeEnum'
       discriminator:
         propertyName: type

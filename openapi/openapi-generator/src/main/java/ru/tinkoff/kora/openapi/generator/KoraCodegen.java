@@ -713,9 +713,12 @@ public class KoraCodegen extends DefaultCodegen {
                     }
 
                     for (CodegenProperty prop : childModel.requiredVars) {
-                        if (prop.isOverridden != null && prop.isOverridden) {
-                            if (model.requiredVars.stream().noneMatch(p -> p.name.equals(prop.name))) {
+                        if (prop.isOverridden != null) {
+                            boolean haveReqVar = model.requiredVars.stream().anyMatch(p -> p.name.equals(prop.name));
+                            if (prop.isOverridden && !haveReqVar) {
                                 prop.isOverridden = false;
+                            } else {
+                                prop.isOverridden = haveReqVar;
                             }
                         }
                     }
