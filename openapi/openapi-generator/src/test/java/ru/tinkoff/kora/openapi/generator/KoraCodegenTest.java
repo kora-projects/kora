@@ -154,7 +154,7 @@ class KoraCodegenTest {
             .addAdditionalProperty("clientConfigPrefix", "test");
 
         if (spec.contains("_filter")) {
-            configurator.addOpenAPINormalizer("FILTER", "operationId:updatePets|getDeliveries");
+            configurator.addOpenAPINormalizer("FILTER", "operationId:updatePets|getDeliveries|getSystems");
             configurator.addAdditionalProperty("filterWithModels", "true");
         }
 
