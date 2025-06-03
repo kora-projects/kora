@@ -13,6 +13,7 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 public interface DefaultConfigExtractorsModule {
+
     default <T> ConfigValueExtractor<List<T>> listConfigValueExtractor(ConfigValueExtractor<T> elementValueExtractor) {
         return new ListConfigValueExtractor<>(elementValueExtractor);
     }
@@ -21,8 +22,8 @@ public interface DefaultConfigExtractorsModule {
         return new SetConfigValueExtractor<>(elementValueExtractor);
     }
 
-    default <T> ConfigValueExtractor<Map<String, T>> mapConfigValueExtractor(ConfigValueExtractor<T> listValueExtractor) {
-        return new MapConfigValueExtractor<>(listValueExtractor);
+    default <K, V> ConfigValueExtractor<Map<K, V>> mapConfigKeyValueExtractor(ConfigValueExtractor<K> keyExtractor, ConfigValueExtractor<V> valueExtractor) {
+        return new MapConfigKeyValueExtractor<>(keyExtractor, valueExtractor);
     }
 
     @DefaultComponent
