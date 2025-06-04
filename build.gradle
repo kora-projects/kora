@@ -1,7 +1,7 @@
 plugins {
     id "org.jetbrains.kotlin.jvm" version "1.9.10" apply false
     id 'jacoco'
-    id('io.github.gradle-nexus.publish-plugin') version '1.3.0'
+    id('io.github.gradle-nexus.publish-plugin') version '2.0.0'
 }
 
 if (hasProperty('buildScan')) {
@@ -15,7 +15,8 @@ nexusPublishing {
     packageGroup = "ru.tinkoff"
     repositories {
         sonatype {
-            stagingProfileId = '1a63f6e54ff32d'
+            nexusUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/service/local/"))
+            snapshotRepositoryUrl.set(uri("https://central.sonatype.com/repository/maven-snapshots/"))
             username = System.getenv().getOrDefault("REPO_USER", "")
             password = System.getenv().getOrDefault("REPO_PASSWORD", "")
         }
