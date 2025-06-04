@@ -15,8 +15,16 @@ public class TelemetryInterceptor implements ServerInterceptor {
     public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call, Metadata headers, ServerCallHandler<ReqT, RespT> next) {
         var ctx = this.telemetry.get().createContext(call, headers);
         var c = new TelemetryServerCall<>(call, ctx);
-        var listener = next.startCall(c, headers);
-        return new TelemetryServerCallListener<>(listener, ctx);
+        try {
+            var listener = next.startCall(c, headers);
+            return new TelemetryServerCallListener<>(listener, ctx);
+        } catch (StatusRuntimeException e) {
+            ctx.close(e.getStatus(), e);
+            throw e;
+        } catch (Exception e) {
+            ctx.close(null, e);
+            throw e;
+        }
     }
 
     private static final class TelemetryServerCall<REQUEST, RESPONSE> extends ForwardingServerCall.SimpleForwardingServerCall<REQUEST, RESPONSE> {
@@ -37,6 +45,9 @@ public class TelemetryInterceptor implements ServerInterceptor {
         public void close(Status status, Metadata trailers) {
             try {
                 delegate().close(status, trailers);
+            } catch (StatusRuntimeException e) {
+                this.telemetryContext.close(e.getStatus(), e);
+                throw e;
             } catch (Throwable e) {
                 this.telemetryContext.close(null, e);
                 throw e;
@@ -63,6 +74,9 @@ public class TelemetryInterceptor implements ServerInterceptor {
         public void onHalfClose() {
             try {
                 delegate().onHalfClose();
+            } catch (StatusRuntimeException e) {
+                this.telemetryContext.close(e.getStatus(), e);
+                throw e;
             } catch (Throwable e) {
                 this.telemetryContext.close(null, e);
                 throw e;
@@ -73,6 +87,9 @@ public class TelemetryInterceptor implements ServerInterceptor {
         public void onCancel() {
             try {
                 delegate().onCancel();
+            } catch (StatusRuntimeException e) {
+                this.telemetryContext.close(e.getStatus(), e);
+                throw e;
             } catch (Throwable e) {
                 this.telemetryContext.close(null, e);
                 throw e;
@@ -83,6 +100,9 @@ public class TelemetryInterceptor implements ServerInterceptor {
         public void onComplete() {
             try {
                 delegate().onComplete();
+            } catch (StatusRuntimeException e) {
+                this.telemetryContext.close(e.getStatus(), e);
+                throw e;
             } catch (Throwable e) {
                 this.telemetryContext.close(null, e);
                 throw e;
@@ -93,6 +113,9 @@ public class TelemetryInterceptor implements ServerInterceptor {
         public void onReady() {
             try {
                 delegate().onReady();
+            } catch (StatusRuntimeException e) {
+                this.telemetryContext.close(e.getStatus(), e);
+                throw e;
             } catch (Throwable e) {
                 this.telemetryContext.close(null, e);
                 throw e;
