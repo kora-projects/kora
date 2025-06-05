@@ -281,7 +281,19 @@ paths:
             operationId: getInventory
             produces:
                 - application/json
-            parameters: []
+            parameters:
+              - name: firstHeader
+                in: header
+                required: true
+                type: string
+              - name: middleHeader
+                in: header
+                required: true
+                type: string
+              - name: lastHeader
+                in: header
+                required: true
+                type: string
             responses:
                 '200':
                     description: successful operation
@@ -439,9 +451,17 @@ paths:
                 - application/xml
                 - application/json
             parameters:
+                - name: firstHeader
+                  in: header
+                  required: true
+                  type: string
                 - name: username
                   in: query
                   description: The user name for login
+                  required: true
+                  type: string
+                - name: middleHeader
+                  in: header
                   required: true
                   type: string
                 - name: password
@@ -449,11 +469,7 @@ paths:
                   description: The password for login in clear text
                   required: true
                   type: string
-                - name: someHeader
-                  in: header
-                  required: true
-                  type: string
-                - name: otherHeader
+                - name: lastHeader
                   in: header
                   required: true
                   type: string

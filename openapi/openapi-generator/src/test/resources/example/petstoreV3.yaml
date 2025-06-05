@@ -14,6 +14,11 @@ paths:
             tags:
                 - pets
             parameters:
+              - name: firstHeader
+                in: header
+                required: true
+                schema:
+                  type: string
               - name: limit
                 in: query
                 description: How many items to return at one time (max 100)
@@ -21,6 +26,11 @@ paths:
                 schema:
                   type: integer
                   format: int32
+              - name: middleHeader
+                in: header
+                required: true
+                schema:
+                  type: string
               - name: requiredLimit
                 in: query
                 description: How many items to return at one time (max 100)
@@ -28,16 +38,6 @@ paths:
                 schema:
                   type: integer
                   format: int32
-              - name: someHeader
-                in: header
-                required: true
-                schema:
-                  type: string
-              - name: otherHeader
-                in: header
-                required: true
-                schema:
-                  type: string
             responses:
                 '200':
                     description: A paged array of pets
@@ -116,6 +116,35 @@ paths:
                 schema:
                   type: string
                   format: binary
+          default:
+            description: unexpected error
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/Error"
+    /pets/inventory:
+      get:
+        operationId: petInventories
+        tags:
+          - pets
+        parameters:
+          - name: firstHeader
+            in: header
+            required: true
+            schema:
+              type: string
+          - name: middleHeader
+            in: header
+            required: true
+            schema:
+              type: string
+        responses:
+          '200':
+            description: Expected response to a valid request
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/Pets"
           default:
             description: unexpected error
             content:

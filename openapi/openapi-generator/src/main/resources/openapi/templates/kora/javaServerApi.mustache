@@ -40,10 +40,8 @@ public{{^vendorExtensions.allowAspects}} final{{/vendorExtensions.allowAspects}}
     {{#notes}}
     * {{.}}
     {{/notes}}
-    *
-    {{#allParams}}
-    {{^implicitHeaders}}* @param {{paramName}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/implicitHeaders}}{{#implicitHeaders}}{{^isHeaderParam}}* @param {{paramName}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/isHeaderParam}}{{/implicitHeaders}}
-    {{/allParams}}
+    * {{#allParams}}
+    * @param {{paramName}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/allParams}}
     * @return {{#responses}}{{message}} (status code {{code}}){{^-last}}
     *         or {{/-last}}{{/responses}}
     {{#isDeprecated}}
@@ -57,9 +55,9 @@ public{{^vendorExtensions.allowAspects}} final{{/vendorExtensions.allowAspects}}
     {{#koraAdditionalContractAnnotations}}
     {{.}}
     {{/koraAdditionalContractAnnotations}}
-    @ru.tinkoff.kora.http.common.annotation.HttpRoute(method = "{{httpMethod}}", path = "{{path}}"){{#getHasHeaderParams}}{{#implicitHeaders}}
+    @ru.tinkoff.kora.http.common.annotation.HttpRoute(method = "{{httpMethod}}", path = "{{path}}"){{#vendorExtensions.x-has-implicit-headers}}
     @io.swagger.v3.oas.annotations.Parameters({
-{{#headerParams}}{{>implicitHeaderV3}}{{/headerParams}}    }){{/implicitHeaders}}{{/getHasHeaderParams}}
+{{#implicitHeadersParams}}{{>implicitHeaderV3}}{{/implicitHeadersParams}}    }){{/vendorExtensions.x-has-implicit-headers}}
     {{#hasAuthMethods}}
     @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = @ru.tinkoff.kora.common.Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}.class), value = ru.tinkoff.kora.http.server.common.HttpServerInterceptor.class)
     {{/hasAuthMethods}}
@@ -68,7 +66,8 @@ public{{^vendorExtensions.allowAspects}} final{{/vendorExtensions.allowAspects}}
     {{/vendorExtensions.x-validate}}
     {{#koraInterceptors}}
     {{#interceptorTags}}
-    @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = @ru.tinkoff.kora.common.Tag({ {{interceptorTags}} }), value = {{interceptorImpl}})
+    @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = @ru.tinkoff.kora.common.Tag({ {{interceptorTags}} }),
+        value = {{interceptorImpl}})
     {{/interceptorTags}}
     {{^interceptorTags}}
     @ru.tinkoff.kora.http.common.annotation.InterceptWith({{interceptorImpl}})
@@ -80,10 +79,9 @@ public{{^vendorExtensions.allowAspects}} final{{/vendorExtensions.allowAspects}}
     @ru.tinkoff.kora.common.Mapping({{classname}}ServerResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponseMapper.class)
     public {{#isAsync}}CompletionStage<{{/isAsync}}{{#isReactive}}Mono<{{/isReactive}}{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{#isAsync}}>{{/isAsync}}{{#isReactive}}>{{/isReactive}} {{operationId}}({{#vendorExtensions.requestInDelegateParams}}
       HttpServerRequest _serverRequest{{#hasParams}}, {{/hasParams}}
-    {{/vendorExtensions.requestInDelegateParams}}{{>javaAnnotatedParams}}
-    ) throws Exception {
+    {{/vendorExtensions.requestInDelegateParams}}{{>javaAnnotatedParams}}) throws Exception {
         return this.delegate.{{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}
-            {{#allParams}}{{#hasFormParams}}{{^isFormParam}}{{^implicitHeaders}}{{paramName}}, {{/implicitHeaders}}{{#implicitHeaders}}{{^isHeaderParam}}{{paramName}}, {{/isHeaderParam}}{{/implicitHeaders}}{{/isFormParam}}{{/hasFormParams}}{{^hasFormParams}}{{^implicitHeaders}}{{paramName}}{{^-last}}, {{/-last}}{{/implicitHeaders}}{{#implicitHeaders}}{{^isHeaderParam}}{{paramName}}{{^-last}}, {{/-last}}{{/isHeaderParam}}{{/implicitHeaders}}{{/hasFormParams}}{{/allParams}}{{#hasFormParams}}
+            {{#allParams}}{{#hasFormParams}}{{^isFormParam}}{{paramName}}, {{/isFormParam}}{{/hasFormParams}}{{^hasFormParams}}{{paramName}}{{^-last}}, {{/-last}}{{/hasFormParams}}{{/allParams}}{{#hasFormParams}}
             form{{/hasFormParams}}
         );
     }

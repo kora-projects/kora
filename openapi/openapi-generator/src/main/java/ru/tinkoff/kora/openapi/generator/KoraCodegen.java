@@ -1966,6 +1966,35 @@ public class KoraCodegen extends DefaultCodegen {
         return postProcessModelsEnum(objs);
     }
 
+    protected void handleImplicitHeaders(CodegenOperation operation, boolean implicitHeaders, @Nullable Pattern implicitHeadersRegex) {
+        if (operation.allParams.isEmpty()) {
+            return;
+        }
+
+        final ArrayList<CodegenParameter> copy = new ArrayList<>(operation.allParams);
+        operation.allParams.clear();
+
+        for (CodegenParameter p : copy) {
+            if (p.isHeaderParam && (implicitHeaders || shouldBeImplicitHeader(p, implicitHeadersRegex))) {
+                operation.implicitHeadersParams.add(p);
+                operation.headerParams.removeIf(header -> header.baseName.equals(p.baseName));
+                LOGGER.info("Update operation [{}]. Remove header [{}] because it's marked to be implicit", operation.operationId, p.baseName);
+            } else {
+                operation.allParams.add(p);
+            }
+        }
+
+        if(!operation.implicitHeadersParams.isEmpty()) {
+            operation.vendorExtensions.put("x-has-implicit-headers", true);
+        }
+
+        operation.hasParams = !operation.allParams.isEmpty();
+    }
+
+    protected boolean shouldBeImplicitHeader(CodegenParameter parameter, @Nullable Pattern implicitHeadersRegex) {
+        return implicitHeadersRegex != null && implicitHeadersRegex.matcher(parameter.baseName).matches();
+    }
+
     @Override
     public OperationsMap postProcessOperationsWithModels(OperationsMap objs, List<ModelMap> allModels) {
         // Remove imports of List, ArrayList, Map and HashMap as they are
@@ -1983,6 +2012,13 @@ public class KoraCodegen extends DefaultCodegen {
 
         record AuthMethodGroup(String name, List<CodegenSecurity> methods) {}
 
+        @Nullable
+        final Pattern implicitHeadersRegex = Optional.ofNullable(additionalProperties.get("implicitHeadersRegex"))
+            .filter(s -> s instanceof String str && !str.isBlank())
+            .map(s -> Pattern.compile(((String) s)))
+            .orElse(null);
+        final boolean implicitHeaders = Boolean.TRUE.equals(additionalProperties.get("implicitHeadersRegex"));
+
         var authMethods = (List<AuthMethodGroup>) this.vendorExtensions.computeIfAbsent("authMethods", k -> new ArrayList<AuthMethodGroup>());
         var tags = (Set<String>) this.vendorExtensions.computeIfAbsent("tags", k -> new TreeSet<String>());
         var operations = (Map<String, Object>) objs.get("operations");
@@ -1991,6 +2027,7 @@ public class KoraCodegen extends DefaultCodegen {
         }
         var operationList = (List<CodegenOperation>) operations.get("operation");
         for (var op : operationList) {
+            handleImplicitHeaders(op, implicitHeaders, implicitHeadersRegex);
             var operationImports = new TreeSet<String>();
             for (var p : op.allParams) {
                 if (importMapping.containsKey(p.dataType)) {
@@ -2378,6 +2415,10 @@ public class KoraCodegen extends DefaultCodegen {
                 var requiredParams = new ArrayList<CodegenParameter>();
                 var optionalParams = new ArrayList<CodegenParameter>();
                 for (var param : op.allParams) {
+                    if(param.isHeaderParam && implicitHeaders) {
+                        continue;
+                    }
+
                     if (param.notRequiredOrIsNullable() && !param.isPathParam) {
                         optionalParams.add(param);
                         param.vendorExtensions.put("x-optional-params", optionalParams);
