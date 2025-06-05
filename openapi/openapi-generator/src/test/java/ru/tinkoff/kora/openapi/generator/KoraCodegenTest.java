@@ -164,10 +164,13 @@ class KoraCodegenTest {
             .addAdditionalProperty("enableServerValidation", name.contains("validation"))
             .addAdditionalProperty("authAsMethodArgument", options.authAsArg())
             .addAdditionalProperty("enableJsonNullable", options.jsonNullable())
-//            .addAdditionalProperty("implicitHeaders", true)
-            .addAdditionalProperty("implicitHeadersRegex", "fi.*")
+            .addAdditionalProperty("implicitHeaders", options.implicitHeaders())
             .addAdditionalProperty("requestInDelegateParams", options.includeServerRequest())
             .addAdditionalProperty("clientConfigPrefix", "test");
+
+        if (options.implicitHeadersRegex() != null) {
+            configurator.addAdditionalProperty("implicitHeadersRegex", options.implicitHeadersRegex());
+        }
 
         if (spec.contains("_filter")) {
             configurator.addOpenAPINormalizer("FILTER", "operationId:updatePets|getDeliveries|getSystems");
