@@ -24,24 +24,20 @@ import {{package}}.{{classname}}Responses.*;
 public interface {{classname}}ServerResponseMappers {
 {{#operations}}
 {{#operation}}
+
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
   final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper implements HttpServerResponseMapper<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>{
+
     {{#responses}}
     {{#dataType}}
     private final HttpServerResponseMapper<HttpResponseEntity<{{{dataType}}}>> response{{code}}Delegate;
     {{/dataType}}
     {{/responses}}
 
-
-    public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponseMapper(
-      {{#responses}}
-      {{#dataType}}
-      {{^isBinary}}
-      @{{vendorExtensions.jsonTag}}
-      {{/isBinary}}
-      HttpServerResponseMapper<{{{dataType}}}> response{{code}}Delegate{{#vendorExtensions.hasMore}},{{/vendorExtensions.hasMore}}
-      {{/dataType}}
-      {{/responses}}) {
+    public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponseMapper({{#responses}}{{#dataType}}{{^isBinary}}
+      @{{vendorExtensions.jsonTag}}{{/isBinary}}
+      HttpServerResponseMapper<{{{dataType}}}> response{{code}}Delegate{{#vendorExtensions.hasMore}},{{/vendorExtensions.hasMore}}{{/dataType}}{{/responses}}
+    ) {
       {{#responses}}
       {{#dataType}}
       this.response{{code}}Delegate = new HttpServerResponseEntityMapper<>(response{{code}}Delegate);
@@ -52,34 +48,26 @@ public interface {{classname}}ServerResponseMappers {
     @Override
     public HttpServerResponse apply(Context ctx, HttpServerRequest request, {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse response) throws java.io.IOException { {{#responses}}{{^vendorExtensions.singleResponse}}
       if (response instanceof {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse rs) { {{/vendorExtensions.singleResponse}}{{#vendorExtensions.singleResponse}}
-      var rs = response;{{/vendorExtensions.singleResponse}}
-        {{#vendorExtensions.isBinaryUnknownType}}
-        var headers = HttpHeaders.of("content-type", "{{{vendorExtensions.contentType}}}");
-        {{/vendorExtensions.isBinaryUnknownType}}
-        {{^vendorExtensions.isBinaryUnknownType}}
-        var headers = HttpHeaders.of();
-        {{/vendorExtensions.isBinaryUnknownType}}{{#headers}}{{#required}}
+        var rs = response;{{/vendorExtensions.singleResponse}}{{#vendorExtensions.isBinaryUnknownType}}
+        var headers = HttpHeaders.of("content-type", "{{{vendorExtensions.contentType}}}");{{/vendorExtensions.isBinaryUnknownType}}{{^vendorExtensions.isBinaryUnknownType}}
+        var headers = HttpHeaders.of();{{/vendorExtensions.isBinaryUnknownType}}{{#headers}}{{#required}}
         headers.set("{{baseName}}", rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}());{{/required}}{{^required}}
         if (rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}() != null) {
           headers.set("{{baseName}}", rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}());
-        }{{/required}}{{/headers}}
-        {{#isBinary}}{{#vendorExtensions.isBinaryUnknownType}}
+        }{{/required}}{{/headers}}{{#isBinary}}{{#vendorExtensions.isBinaryUnknownType}}
         var entity = HttpResponseEntity.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, rs.content());
-        return this.response{{code}}Delegate.apply(ctx, request, entity);
-        {{/vendorExtensions.isBinaryUnknownType}}{{^vendorExtensions.isBinaryUnknownType}}
-        return HttpServerResponse.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, HttpBody.of(ctx, "{{{vendorExtensions.contentType}}}", rs.content()));
-        {{/vendorExtensions.isBinaryUnknownType}}{{/isBinary}}
-        {{^isBinary}}{{^dataType}}
+        return this.response{{code}}Delegate.apply(ctx, request, entity);{{/vendorExtensions.isBinaryUnknownType}}{{^vendorExtensions.isBinaryUnknownType}}
+        return HttpServerResponse.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, HttpBody.of(ctx, "{{{vendorExtensions.contentType}}}", rs.content()));{{/vendorExtensions.isBinaryUnknownType}}{{/isBinary}}{{^isBinary}}{{^dataType}}
         return HttpServerResponse.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers);{{/dataType}}{{#dataType}}
         var entity = HttpResponseEntity.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, rs.content());
         return this.response{{code}}Delegate.apply(ctx, request, entity);{{/dataType}}{{/isBinary}}{{^vendorExtensions.singleResponse}}
-      }{{/vendorExtensions.singleResponse}}{{/responses}}
+      }
+      {{/vendorExtensions.singleResponse}}{{/responses}}
       {{^vendorExtensions.singleResponse}}
       throw new IllegalStateException();
       {{/vendorExtensions.singleResponse}}
     }
   }
-
 {{/operation}}
 {{/operations}}
 }

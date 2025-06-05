@@ -7,25 +7,32 @@ package {{package}};
 
 {{#imports}}import {{import}};
 {{/imports}}
+{{#isAsync}}
+import java.util.concurrent.CompletionStage;
+{{/isAsync}}{{#isReactive}}
+import reactor.core.publisher.Mono;
+{{/isReactive}}
+
+import java.util.List;
+import java.util.Map;
+import jakarta.annotation.Nullable;
 {{#requestInDelegateParams}}
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 {{/requestInDelegateParams}}
 
-import java.util.List;
-import java.util.Map;
-
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
 public interface {{classname}}Delegate {
+
 {{#operations}}
 {{#operation}}
-    {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {{operationId}}(
-{{#vendorExtensions.requestInDelegateParams}}      HttpServerRequest _serverRequest{{#hasParams}},
-{{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}{{#allParams}}      {{^isFormParam}}
-      {{^required}}@jakarta.annotation.Nullable
-      {{/required}}{{{dataType}}} {{paramName}}{{#hasFormParams}},{{/hasFormParams}}{{^hasFormParams}}{{^-last}},{{/-last}}{{/hasFormParams}}
-{{/isFormParam}}{{/allParams}}    {{#hasFormParams}}
-      {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam form
-    {{/hasFormParams}}) throws Exception ;
+    {{#isAsync}}CompletionStage<{{/isAsync}}{{#isReactive}}Mono<{{/isReactive}}{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{#isAsync}}>{{/isAsync}}{{#isReactive}}>{{/isReactive}} {{operationId}}(
+      {{#vendorExtensions.requestInDelegateParams}}HttpServerRequest _serverRequest{{#hasParams}},{{/hasParams}}
+      {{/vendorExtensions.requestInDelegateParams}}{{^implicitHeaders}}{{#allParams}}{{^isFormParam}}
+      {{^required}}@Nullable {{/required}}{{{dataType}}} {{paramName}}{{#hasFormParams}}, {{/hasFormParams}}{{^hasFormParams}}{{^-last}}, {{/-last}}{{/hasFormParams}}{{/isFormParam}}
+      {{/allParams}}{{/implicitHeaders}}{{#implicitHeaders}}{{#allParams}}{{^isFormParam}}{{^isHeaderParam}}{{^required}}@Nullable {{/required}}{{{dataType}}} {{paramName}}{{#hasFormParams}} ,{{/hasFormParams}}{{^hasFormParams}}{{^-last}}, {{/-last}}{{/hasFormParams}}
+      {{/isHeaderParam}}{{/isFormParam}}{{/allParams}}{{/implicitHeaders}}{{#hasFormParams}}
+      {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam form{{/hasFormParams}}
+    ) throws Exception;
 
 {{/operation}}
 }

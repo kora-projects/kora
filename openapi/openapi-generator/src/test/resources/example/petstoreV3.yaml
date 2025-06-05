@@ -28,6 +28,16 @@ paths:
                 schema:
                   type: integer
                   format: int32
+              - name: someHeader
+                in: header
+                required: true
+                schema:
+                  type: string
+              - name: otherHeader
+                in: header
+                required: true
+                schema:
+                  type: string
             responses:
                 '200':
                     description: A paged array of pets

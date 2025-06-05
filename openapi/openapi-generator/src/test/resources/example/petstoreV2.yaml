@@ -449,6 +449,14 @@ paths:
                   description: The password for login in clear text
                   required: true
                   type: string
+                - name: someHeader
+                  in: header
+                  required: true
+                  type: string
+                - name: otherHeader
+                  in: header
+                  required: true
+                  type: string
             responses:
                 '200':
                     description: successful operation

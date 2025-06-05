@@ -417,17 +417,9 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("javaClientAsyncResponseMappers.mustache", "ClientResponseMappers.java");
                 apiTemplateFiles.put("javaClientRequestMappers.mustache", "ClientRequestMappers.java");
             }
-            case JAVA_SERVER -> {
+            case JAVA_SERVER, JAVA_REACTIVE_SERVER, JAVA_ASYNC_SERVER -> {
                 apiTemplateFiles.put("javaServerApi.mustache", "Controller.java");
                 apiTemplateFiles.put("javaServerApiDelegate.mustache", "Delegate.java");
-                apiTemplateFiles.put("javaApiResponses.mustache", "Responses.java");
-                apiTemplateFiles.put("javaServerRequestMappers.mustache", "ServerRequestMappers.java");
-                apiTemplateFiles.put("javaServerResponseMappers.mustache", "ServerResponseMappers.java");
-                modelTemplateFiles.put("javaModel.mustache", ".java");
-            }
-            case JAVA_REACTIVE_SERVER, JAVA_ASYNC_SERVER -> {
-                apiTemplateFiles.put("javaAsyncServerApi.mustache", "Controller.java");
-                apiTemplateFiles.put("javaAsyncServerApiDelegate.mustache", "Delegate.java");
                 apiTemplateFiles.put("javaApiResponses.mustache", "Responses.java");
                 apiTemplateFiles.put("javaServerRequestMappers.mustache", "ServerRequestMappers.java");
                 apiTemplateFiles.put("javaServerResponseMappers.mustache", "ServerResponseMappers.java");
